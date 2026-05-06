@@ -1,12 +1,7 @@
 # Star-Compose: Jetpack Compose Migration Report & Developer Guide
 
-**Repo:** https://github.com/The412Banner/star-compose  
-**Branch:** `main`  
-**Final migration commit:** `6537038`  
-**Latest commit (Part D era):** `546d25e`  
-**Latest commit (Part E refresh):** see `git log` on `beta-4`  
 **Date:** 2026-04-16  
-**Last updated:** 2026-05-06 — Part E appended (post-2026-04-22 status refresh)
+**Last updated:** 2026-05-06 — Part G appended (post-2026-04-22 work: SDL2 controller fix, ViewModel read/seed bug, dead-code cleanup)
 
 ---
 
@@ -48,17 +43,30 @@
 - [D2–D9. Per-Job Detail](#d2-job-detail-help--support)
 - [D10. New Gotchas (13–18)](#d10-new-gotchas-discovered-during-feedback-fixes)
 
-**Part E — Post-2026-04-22 Status (refresh)**
-- [E1. New milestones since Part D](#e1-new-milestones-since-part-d)
-- [E2. Releases shipped from this work](#e2-releases-shipped-from-this-work)
-- [E3. New Compose dialogs/overlays added](#e3-new-compose-dialogsoverlays-added-part-b2-supplement)
-- [E4. Bridging pattern: in-game drawer](#e4-bridging-pattern-in-game-drawer)
-- [E5. Pending cleanup (Java dead code from in-game migration)](#e5-pending-cleanup-java-dead-code-from-in-game-migration)
-- [E6. New gotchas (G19)](#e6-new-gotchas-g19)
-- [E7. Updated summary stats (supersedes B7)](#e7-updated-summary-stats-supersedes-b7)
-- [E8. Still active — needs migration](#e8-still-active--needs-migration-supersedes-ui_migration_reportmd-2)
-- [E9. Still active — Java config-helper dialogs (deferred deletion)](#e9-still-active--java-config-helper-dialogs-deferred-deletion)
-- [E10. What this report does NOT cover](#e10-what-this-report-does-not-cover)
+**Part E — Post-Migration Improvements (2026-04-20)**
+- [E1. AdrenoTools SIGSEGV Fix](#e1-adrenotools--turnip-driver-sigsegv-fix)
+- [E2. Developer Feedback Fixes](#e2-developer-feedback-fixes)
+- [E3. TopAppBar Actions Architecture](#e3-topappbar-actions-architecture)
+- [E4. Shortcut Grid Cover Art Layout](#e4-shortcut-grid--cover-art-layout)
+- [E5. Shortcut List Tech Info Columns](#e5-shortcut-list-item--tech-info-columns)
+- [E6. New Gotchas (19–22)](#e6-new-gotchas-1922)
+
+**Part F — Post-Migration Improvements (2026-04-22)**
+- [F1. Animated Splash Screen](#f1-animated-splash-screen)
+- [F2. Custom Accent Color Fix](#f2-custom-accent-color--base-preset-inheritance-fix)
+- [F3. AppDrawer + AppTopBar Theme Fix](#f3-appdrawer--apptopbar--materialtheme-color-fix)
+- [F4. In-Game Drawer Compose Migration](#f4-in-game-side-drawer--full-compose-migration)
+- [F5. Contents URL Update](#f5-contents-screen--remote-profiles-url)
+- [F6. New Gotchas (23–25)](#f6-new-gotchas-2325)
+
+**Part G — Post-2026-04-22 Status (2026-05-06)**
+- [G1. Controller Support — SDL2 SoName Symlink Lost in Splash-Install Migration](#g1-controller-support--sdl2-soname-symlink-lost-in-splash-install-migration)
+- [G2. Box64 Component Dropdown — Read/Seed Bug in ContainerDetailViewModel](#g2-box64-component-dropdown--readseed-bug-in-containerdetailviewmodel)
+- [G3. UI Text and Branding Pass](#g3-ui-text-and-branding-pass)
+- [G4. Dead Java/XML Cleanup — In-Game Dialog Migration Tail End](#g4-dead-javaxml-cleanup--in-game-dialog-migration-tail-end)
+- [G5. New Gotchas (26–27)](#g5-new-gotchas-2627)
+- [G6. Updated Summary Stats](#g6-updated-summary-stats)
+- [G7. Still Active — Needs Migration](#g7-still-active--needs-migration)
 
 ---
 
@@ -1822,142 +1830,647 @@ Composables promoted to `internal` visibility so they can be shared across scree
 
 ---
 
-## Part E — Post-2026-04-22 Status (refresh)
+## Part E — Post-Migration Improvements (2026-04-20)
 
-**Refresh date:** 2026-05-06
-**Coverage:** What changed between Part D (2026-04-17) and 2026-05-06. The narrative in Parts A–D still applies; this part records new milestones, new bug fixes, and updated stats.
+### E1. AdrenoTools / Turnip Driver SIGSEGV Fix
 
-### E1. New milestones since Part D
+**Symptom:** GPU extension count showed `0/0` in the graphics driver config dialog instead of the expected `169/169`. The app did not crash but extensions were silently missing.
 
-| Date | Commit | Milestone |
-|---|---|---|
-| 2026-04-22 | `d1be7af` | Fancy splash screen with sparkle canvas + theme accent colors |
-| 2026-04-22 | `f79f1ef` | **In-game side drawer migrated to Jetpack Compose** (`XServerDrawer.kt` + `XServerDrawerState`); replaces the legacy `NavigationView` in `XServerDisplayActivity` |
-| 2026-04-22 | `e68dea0` | **All in-game dialogs and overlays migrated to Jetpack Compose** — `ActiveWindowsDialog.kt`, `DebugDialogContent.kt`, `ScreenEffectsDialog.kt`, `TaskManagerDialog.kt`, `VibrationDialog.kt`, `InputControlsDialog.kt`, `FSROverlay.kt`, `MagnifierOverlay.kt` |
-| 2026-04-22 | `802a36f` | Overlays hosted as proper `Dialog` windows; screen-effects width + task-manager scroll fixes |
-| 2026-04-22 | `9289d57` | `@JvmField + Runnable` pattern for Java→Kotlin callback bridging (XServerDrawerState callbacks) |
-| 2026-04-23 | `289609d` | VKD3D content-profile extraction fixes (identifier format + cache gate) — landed before Beta 2 |
-| 2026-04-23/24 | `76c6628` `a1017f6` | Controller APK-parity fixes (softRelease, releaseSlot, event pre-creation, PlugPlay revert) |
-| 2026-05-06 | `c48043f` | **Controller support root cause fixed** — Compose splash-install path now creates the `libSDL2-2.0.so.0` SoName symlink that the legacy `installFromAssets()` path created. `LATEST_VERSION` 21→22 forces re-extract for existing users (Wine prefixes survive). Shipped in **Beta 3** |
-| 2026-05-06 | `1330bb4` | **Box64 dropdown stale-display bug fixed** — `ContainerDetailViewModel.loadContainerData()` now seeds `selectedBox64Version` from the saved container value after `refreshWineDependent()` resets the list. Cosmetic-only bug; runtime was always correct (DXVK HUD verified). On `beta-4` |
+**Root cause:** The Compose migration moved `GPUInformation` JNI calls onto background coroutine threads (`Dispatchers.IO`). The AdrenoTools `hook_android_dlopen_ext` is not reentrant across threads — concurrent invocations from the main thread and an IO thread triggered a SIGSEGV race condition.
 
-### E2. Releases shipped from this work
+**Rule established:** ALL `GPUInformation` native methods must run on the main thread:
+- `enumerateExtensions()` — called inside `LaunchedEffect(version)` with no `withContext`
+- `isDriverSupported()` / `getRenderer()` — called inside `LaunchedEffect(Unit)`, outside any `withContext(Dispatchers.IO)` block
+- Pure file I/O (`enumarateInstalledDrivers()`, `gpu_cards.json`) stays on `Dispatchers.IO`
 
-| Tag | Name | Date | Built from |
+**File:** `ContainerDetailScreen.kt` → `GraphicsDriverConfigDialog` composable  
+**Commits:** `8035420` (partial), `e22815c` (full fix)  
+**CI:** `24662739330` ✅
+
+---
+
+### E2. Developer Feedback Fixes
+
+After device testing, 5 pieces of developer feedback were applied in a single pass.
+
+#### E2 Fix Summary Table
+
+| # | Issue | Fix | Commit |
 |---|---|---|---|
-| `v7.1.4x-cmod-20260423-ec08c09` | Winlator Star Bionic Compose Beta 2 | 2026-04-23 | VKD3D fixes + in-game Compose dialogs/overlays + drawer |
-| `v7.1.4x-cmod-20260506-7adfaf1` | **Winlator Star Bionic Compose Beta 3** | 2026-05-06 | Beta 2 + controller support fully restored (4 fixes) |
+| 1 | Appearance in wrong drawer section | Moved `DrawerItem(Screen.Appearance)` from Emulation to Tools section in `AppDrawer.kt` | `0879429` |
+| 2 | Action buttons (import, grid toggle, sort) were inline below the list | Moved all action buttons into `AppTopBar` via `LocalTopBarActions` `CompositionLocal` | `0879429` |
+| 3 | Shortcut grid used 2-column large tiles | `GridCells.Adaptive(120.dp)` for ~3 columns portrait, more in landscape | `0879429` → `a595b7a` |
+| 4 | Grid items used 3-dot menu button | Replaced with `combinedClickable` long-press to open context menu | `0879429` |
+| 5 | Top bar buttons disappeared when dialogs opened | `DisposableEffect.onDispose` was firing on dialog open, not just navigation. Fixed by removing `DisposableEffect` and adding `LaunchedEffect(currentRoute)` in `MainActivity` to clear actions only on route change | `afaf051` |
 
-### E3. New Compose dialogs/overlays added (Part B2 supplement)
+---
 
-| Replaced Java/XML | New Compose | Trigger |
-|---|---|---|
-| `contentdialog/ActiveWindowsDialog.java` + `active_windows_dialog.xml` | `ui/dialogs/ActiveWindowsDialog.kt` | In-game window list button |
-| `contentdialog/DebugDialog.java` + `debug_dialog.xml` | `ui/dialogs/DebugDialogContent.kt` | In-game debug log overlay (state in `XServerDialogState`) |
-| `contentdialog/ScreenEffectDialog.java` + `screen_effect_dialog.xml` | `ui/dialogs/ScreenEffectsDialog.kt` | In-game screen effects button |
-| `contentdialog/FSRControlFloatingDialog.java` + `fsr_control_dialog.xml` | `ui/overlays/FSROverlay.kt` | In-game FSR floating overlay |
-| `widget/MagnifierView.java` + `magnifier_view.xml` | `ui/overlays/MagnifierOverlay.kt` | In-game magnifier overlay |
-| `winhandler/TaskManagerDialog.java` + `task_manager_dialog.xml` + `process_info_list_item.xml` | `ui/dialogs/TaskManagerDialog.kt` | In-game task manager |
-| (new) | `ui/dialogs/VibrationDialog.kt` | In-game vibration settings |
-| (new) | `ui/dialogs/InputControlsDialog.kt` | In-game input-controls dialog |
+### E3. TopAppBar Actions Architecture
 
-> **Important:** the Java originals listed above STILL EXIST in the tree as of 2026-05-06. They are dead code (zero references except `DebugDialog` which is still called from `widget/LogView.java`), pending the cleanup in §E5.
+Screens push their own action buttons into the shared `AppTopBar` without prop drilling via a `CompositionLocal`:
 
-### E4. Bridging pattern: in-game drawer
-
-`XServerDisplayActivity` is intentionally still a Java `Activity` (engine-adjacent — see A15). To host the new Compose drawer it uses a hybrid approach:
-
+**`LocalTopBarActions.kt`:**
 ```kotlin
-// ui/XServerDrawer.kt
-fun setupComposeView(view: ComposeView) {
-    view.setContent { WinlatorTheme { XServerDrawer() } }
+val LocalTopBarActions = compositionLocalOf<MutableState<@Composable RowScope.() -> Unit>> {
+    mutableStateOf({})
 }
 ```
 
-Java side calls into a singleton `XServerDrawerState` object that exposes `StateFlow`-backed booleans (paused, mouse modes, log/magnifier visibility) and `Runnable` callbacks for menu actions. Java mutates the StateFlows via setters; Compose observes them via `collectAsState`. This avoids rewriting the activity while still giving the drawer a fully Compose surface.
+**In `MainActivity.kt`:**
+```kotlin
+val topBarActionsState = remember { topBarActionsState() }
+LaunchedEffect(currentRoute) { topBarActionsState.value = {} }  // clear on navigation only
+CompositionLocalProvider(LocalTopBarActions provides topBarActionsState) { ... }
+```
 
-This is the same `@JvmField + Runnable` callback bridging pattern documented in commit `9289d57`. New gotcha (G19, see §E6) covers it.
+**In each screen:**
+```kotlin
+val topBarActions = LocalTopBarActions.current
+SideEffect {  // SideEffect not DisposableEffect — keeps captures fresh every recomposition
+    topBarActions.value = { /* IconButtons here */ }
+}
+```
 
-### E5. Pending cleanup (Java dead code from in-game migration)
+**Why `SideEffect` not `DisposableEffect`:** `DisposableEffect.onDispose` fires whenever the composable leaves composition — including when a dialog opens on the same screen. This clears the top bar buttons mid-session. `SideEffect` runs on every recomposition and has no `onDispose`, so buttons stay visible while dialogs are open.
 
-Six Java files have Compose replacements but were not deleted. Five have zero references and can be removed immediately. The sixth has a single Java caller blocking deletion.
+---
 
-| File | Refs | Status | Action |
-|---|---|---|---|
-| `contentdialog/ActiveWindowsDialog.java` | 0 | Dead | Delete |
-| `contentdialog/ScreenEffectDialog.java` | 0 | Dead | Delete |
-| `contentdialog/FSRControlFloatingDialog.java` | 0 | Dead | Delete |
-| `widget/MagnifierView.java` | 0 | Dead | Delete |
-| `winhandler/TaskManagerDialog.java` | 0 | Dead | Delete |
-| `contentdialog/DebugDialog.java` | 1 | Blocked | First fix `widget/LogView.java` lines 230, 237, 245 — replace `DebugDialog.setPaused(x)` calls with `XServerDialogState.INSTANCE.setLogPaused(x)` (the Compose state holder already exposes this). Then delete. |
+### E4. Shortcut Grid — Cover Art Layout
 
-After deletion, the corresponding XML layouts (`active_windows_dialog.xml`, `active_window_item.xml`, `debug_dialog.xml`, `debug_toolbar.xml`, `fsr_control_dialog.xml`, `magnifier_view.xml`, `screen_effect_dialog.xml`, `task_manager_dialog.xml`, `process_info_list_item.xml`) can also be removed.
+Grid tiles were redesigned so the game cover art fills the entire tile (`ContentScale.Crop`) with a vertical gradient scrim at the bottom overlaying the game name and container name in white text.
 
-This cleanup did not block Beta 2 or Beta 3 because Java-class presence with zero references costs only APK size, not runtime correctness.
+**`ShortcutGridItem` structure:**
+```kotlin
+Box(modifier = Modifier.aspectRatio(1f).clip(RoundedCornerShape(8.dp))...) {
+    Image(contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+    Box(
+        modifier = Modifier.align(Alignment.BottomStart)
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.75f))))
+            .padding(8.dp)
+    ) {
+        Column {
+            Text(shortcut.name, color = Color.White, fontWeight = FontWeight.Bold)
+            Text(containerName, fontSize = 10.sp, color = Color.White.copy(0.7f))
+        }
+    }
+    DropdownMenu(...)  // long-press context menu
+}
+```
 
-### E6. New gotchas (G19)
+**Commit:** `a595b7a` CI: `24667712651` ✅
 
-**G19. Hybrid Java-Activity ↔ Compose-drawer bridging via singleton StateFlow + Runnable callbacks**
+---
 
-When you have a Java `Activity` you don't want to rewrite (XServerDisplayActivity is the engine boundary), but you do want the drawer/dialogs inside it to be Compose, the working pattern is:
+### E5. Shortcut List Item — Tech Info Columns
 
-1. Define a Kotlin `object` (singleton) state holder — e.g. `XServerDrawerState`.
-2. Use `MutableStateFlow<Boolean>` (or whatever type) for each piece of observable state. Mark them `@JvmField` so Java can read/write directly.
-3. Use `Runnable?` for callbacks the drawer triggers — Java sets these in `onCreate`. `Runnable` works for both languages without coercion shims.
-4. In the Compose composable, use `state.value.collectAsState()` to bind StateFlows to recomposition.
-5. In the Java activity, use a `ComposeView` and call a top-level Kotlin `setupComposeView(view)` helper that calls `setContent { ... }`.
+The list view card was extended to show per-shortcut technical settings in the right-hand space, keeping card height unchanged.
 
-Pitfalls: if you use `() -> Unit` instead of `Runnable`, Java needs a `kotlin.jvm.functions.Function0` shim that's noisy at the call site. Stick to `Runnable`. Also: never mutate StateFlow from a non-main-thread context without `withContext(Dispatchers.Main)` — Compose recomposition assumes main thread.
+**Layout:**
+```
+[icon]  Game Name          1280x720 · turnip25.1.0   [▶] [⋮]
+        Container-1        DXVK 2.3.1 · VKD3D 3.1
+```
 
-### E7. Updated summary stats (supersedes B7)
+**Implementation:** A second `Column(horizontalAlignment = Alignment.End)` sits between the name column and action buttons. Top line: resolution + GPU driver version. Bottom line: DXVK version + VKD3D version — both parsed from the single `dxwrapperConfig` key-value string.
+
+```kotlin
+val cfgMap = dxwrapperCfg.split(",").mapNotNull {
+    val parts = it.split("=", limit = 2)
+    if (parts.size == 2) parts[0].trim() to parts[1].trim() else null
+}.toMap()
+val dxvkVersion = cfgMap["version"] ?: ""
+val vkd3dVersion = cfgMap["vkd3dVersion"] ?: ""
+```
+
+**Commits:** `bdf2657`, `658013f`, `41b9f88` — CI: `24671327547` ✅
+
+---
+
+### E6. New Gotchas (19–22)
+
+| # | Gotcha | Details |
+|---|---|---|
+| 19 | `GPUInformation` JNI must stay on main thread | `hook_android_dlopen_ext` is not reentrant. Any `GPUInformation.*` call on a background thread races with the main thread and causes SIGSEGV. Use `LaunchedEffect` with no `withContext` for these calls. |
+| 20 | `DisposableEffect.onDispose` fires on dialog open | If a screen pushes state in `DisposableEffect(Unit)` and clears it in `onDispose`, dialogs opening on the same screen will trigger `onDispose` and wipe the state. Use `SideEffect` for state that should persist while the screen is visible. |
+| 21 | `combinedClickable` requires `@OptIn(ExperimentalFoundationApi::class)` | Must annotate the composable function and add `import androidx.compose.foundation.ExperimentalFoundationApi`. Missing annotation causes compile error. |
+| 22 | `dxwrapperConfig` stores both DXVK and VKD3D in one string | Format: `version=X,framerate=0,...,vkd3dVersion=Y,...`. Use key-value parsing (`split(",")` → `split("=")`) to extract individual versions. Do not use `GraphicsDriverConfigDialog.getVersion()` directly — it returns `version` value which includes trailing config keys. |
+
+---
+
+## Part F — Post-Migration Improvements (2026-04-22)
+
+### F1. Animated Splash Screen
+
+The splash screen was completely rebuilt as a Canvas-animated Compose full-screen experience.
+
+**New features:**
+- 18 four-point sparkles orbiting the logo, each with independent speed, size, and rotation — drawn via `Canvas { drawFourPointStar(...) }` using `withFrameMillis` for per-frame updates
+- Logo pulse animation — `Modifier.scale(animateFloatAsState(1.0f → 1.07f))` on a repeating `InfiniteTransition`
+- Glowing progress bar — layered fake glow (3 `drawRoundRect` passes with expanding size and decreasing alpha) + shimmer sweep via `clipRect { drawRoundRect(Brush.horizontalGradient(...)) }`
+- Cycling status text — 5 messages mapped to progress ranges with animated ellipsis dots
+- Smooth animated percentage counter — `animateIntAsState(progress.toInt())`
+- `AnimatedVisibility(fadeIn + scaleIn)` Proceed button that appears on completion
+
+**Key fix (CI failure):** `clipRect` used inside `DrawScope` requires an explicit import — `import androidx.compose.ui.graphics.drawscope.clipRect`. Without it the compiler cannot resolve the overload and the build fails with a type mismatch error. This import is not auto-suggested by IDE tooling.
+
+**File:** `ui/screens/SplashScreen.kt`  
+**Commits:** `d1be7af` (initial), `65712d6` (clipRect import fix)  
+**CI:** `24788390969` ✅
+
+---
+
+### F2. Custom Accent Color — Base Preset Inheritance Fix
+
+**Problem:** When the user selected a custom accent color from the HSV picker, all non-accent colors (background, surface, surfaceVariant) reset to the hardcoded "Custom" preset defaults — flat gray — regardless of which theme preset was active before the switch.
+
+**Root cause:** `setCustomAccent()` set `_presetIndex` to `CUSTOM_PRESET_INDEX`. The `colorScheme` flow then used the "Custom" preset entry for *all* color values, including background and surface, instead of inheriting them from the previously active preset.
+
+**Fix — `AppThemeState.kt`:** Added `_customBaseIndex: MutableStateFlow<Int>` which snapshots the current preset index at the moment the user first switches to Custom. The `colorScheme` flow uses this base preset for background/surface/surfaceVariant and only overrides the `primary` (accent) color.
+
+```kotlin
+private val _customBaseIndex = MutableStateFlow(0)
+
+fun setCustomAccent(color: Color) {
+    // Snapshot the current preset as the base before switching to Custom
+    if (_presetIndex.value != CUSTOM_PRESET_INDEX) {
+        _customBaseIndex.value = _presetIndex.value
+        themePrefs.edit().putInt("custom_base_index", _customBaseIndex.value).apply()
+    }
+    _customAccent.value = color
+    _presetIndex.value  = CUSTOM_PRESET_INDEX
+    themePrefs.edit().putInt("custom_accent", color.toArgb())
+               .putInt("preset_index", CUSTOM_PRESET_INDEX).apply()
+}
+
+val colorScheme: Flow<ColorScheme> =
+    combine(_presetIndex, _customAccent, _isDarkMode, _customBaseIndex) { index, accent, dark, baseIdx ->
+        val preset = if (index == CUSTOM_PRESET_INDEX)
+            themePresets.getOrElse(baseIdx) { themePresets.first() }   // use base for bg/surface
+        else
+            themePresets.getOrElse(index) { themePresets.first() }
+        val override = if (index == CUSTOM_PRESET_INDEX) accent else null
+        if (dark) preset.toColorScheme(accentOverride = override)
+        else      preset.toLightColorScheme(accentOverride = override)
+    }
+```
+
+**File:** `ui/theme/AppThemeState.kt`  
+**Commit:** `65712d6`
+
+---
+
+### F3. AppDrawer + AppTopBar — MaterialTheme Color Fix
+
+**Problem:** After the dynamic theme system was introduced, the navigation drawer and top app bar remained gray regardless of the active theme. They were still using static color constants imported from `Color.kt` (`Surface`, `Background`, `OnSurface`, etc.) rather than reading from `MaterialTheme.colorScheme`.
+
+**Fix:** Replaced all static constant references in both files with `MaterialTheme.colorScheme.*` equivalents.
+
+| Static constant (removed) | Replaced with |
+|---|---|
+| `.background(Surface)` | `.background(MaterialTheme.colorScheme.surface)` |
+| `.background(Color(0xFF1A1A1A))` | `.background(MaterialTheme.colorScheme.background)` |
+| `tint = OnSurfaceVariant` | `tint = MaterialTheme.colorScheme.onSurfaceVariant` |
+| `color = OnSurface` | `color = MaterialTheme.colorScheme.onSurface` |
+| `containerColor = Surface` (TopAppBar) | `containerColor = MaterialTheme.colorScheme.surface` |
+| `Color.White` (icon tint/text) | `MaterialTheme.colorScheme.onSurface` |
+
+**Files:** `ui/AppDrawer.kt`, `ui/AppTopBar.kt`  
+**Commit:** `e8acb58`  
+**CI:** `24790554006` ✅
+
+---
+
+### F4. In-Game Side Drawer — Full Compose Migration
+
+The in-game side drawer (shown while a Wine session is running, opened by swiping from the left edge) was fully migrated from `NavigationView` + XML menu + RecyclerView animation helpers to Jetpack Compose.
+
+#### Architecture
+
+The existing `DrawerLayout` is kept as the shell — it handles touch interception, edge-swipe detection, scrim, and open/close animation. Only the `NavigationView` content is replaced with a `ComposeView`.
+
+```
+DrawerLayout (kept)
+├── FLXServerDisplay (kept — game surface)
+├── ComposeView id=XServerDrawerComposeView (NEW — replaces NavigationView)
+└── XRTextInput (kept — XR keyboard input)
+```
+
+#### XServerDrawerState.kt (new)
+
+Kotlin `object` singleton bridging `XServerDisplayActivity` (Java) ↔ Compose:
+
+```kotlin
+object XServerDrawerState {
+    // StateFlows — drive Compose recomposition
+    val isPaused:               StateFlow<Boolean>
+    val isRelativeMouseMovement:StateFlow<Boolean>
+    val isMouseDisabled:        StateFlow<Boolean>
+    val moveCursorToTouchpoint: StateFlow<Boolean>
+    val showLogs:               StateFlow<Boolean>
+    val showMagnifier:          StateFlow<Boolean>
+    val cursorExpanded:         StateFlow<Boolean>
+
+    // Callbacks set by Activity — @JvmField + Runnable for Java interop
+    @JvmField var onClose:                  Runnable? = null
+    @JvmField var onKeyboard:               Runnable? = null
+    @JvmField var onInputControls:          Runnable? = null
+    @JvmField var onScreenEffects:          Runnable? = null
+    @JvmField var onGraphicEngine:          Runnable? = null
+    @JvmField var onVibration:              Runnable? = null
+    @JvmField var onToggleFullscreen:       Runnable? = null
+    @JvmField var onPauseResume:            Runnable? = null
+    @JvmField var onPipMode:                Runnable? = null
+    @JvmField var onActiveWindows:          Runnable? = null
+    @JvmField var onTaskManager:            Runnable? = null
+    @JvmField var onMagnifier:              Runnable? = null
+    @JvmField var onLogs:                   Runnable? = null
+    @JvmField var onExit:                   Runnable? = null
+    @JvmField var onMoveCursorToTouchpoint: Runnable? = null
+    @JvmField var onRelativeMouseMovement:  Runnable? = null
+    @JvmField var onDisableMouse:           Runnable? = null
+
+    fun toggleCursorExpanded()
+    fun reset()
+    // + Boolean setters for Java to call
+}
+```
+
+#### XServerDrawer.kt (new)
+
+Top-level `fun setupComposeView(view: ComposeView)` callable from Java as `XServerDrawerKt.setupComposeView(composeView)`.
+
+Menu structure — all items:
+| Item | State-aware | Behavior |
+|------|------------|---------|
+| Keyboard | — | `onKeyboard?.run()` |
+| Input Controls | — | `onInputControls?.run()` |
+| Mouse & Cursor *(collapsible header)* | `cursorExpanded` | `toggleCursorExpanded()` — `AnimatedVisibility(expandVertically + fadeIn)` |
+| → Move Cursor to Touchpoint | `moveCursorToTouchpoint` (checkmark) | `onMoveCursorToTouchpoint?.run()` |
+| → Relative Mouse Movement | `isRelativeMouse` (checkmark) | `onRelativeMouseMovement?.run()` |
+| → Disable Mouse | `isMouseDisabled` (checkmark) | `onDisableMouse?.run()` |
+| Screen Effects | — | `onScreenEffects?.run()` |
+| Graphic Engine | — | `onGraphicEngine?.run()` |
+| Vibration | — | `onVibration?.run()` |
+| Toggle Fullscreen | — | `onToggleFullscreen?.run()` |
+| Pause / Resume | `isPaused` (icon flips) | `onPauseResume?.run()` |
+| Picture in Picture | — | `onPipMode?.run()` |
+| Active Windows | — | `onActiveWindows?.run()` |
+| Task Manager | — | `onTaskManager?.run()` |
+| Magnifier | hidden if `!showMagnifier` | `onMagnifier?.run()` |
+| Logs | hidden if `!showLogs` | `onLogs?.run()` |
+| Exit | — | `onExit?.run()` (no close — exits session) |
+
+#### XServerDisplayActivity.java changes
+
+Removed (~400 lines):
+- `implements NavigationView.OnNavigationItemSelectedListener`
+- `navigationView` field
+- All nav view setup (duplicate `findViewById`, dark mode styling, menu config)
+- `onNavigationItemSelected()` method (130 lines)
+- All RecyclerView animation helpers: `navRecycler()`, `findNavRecycler()`, `titlesForIds()`, `rowTitle()`, `findVisibleRowsForTitles()`, `animateInGroupItems()`, `animateOutGroupItems()`, `applyGroup()`, `persistSection()`, `expandGroup()`, `collapseGroup()`, `finishCollapse()`
+- Fields: `expCursor`, `navLayoutAnim`, `enableLogs` (field), `allowMagnifier`, `navigationFocused`, `PREF_EXP_CURSOR`, `ANIM_DURATION`, `SLIDE_DP`, `COLLAPSE_TRANSLATION_DP`, `CURSOR_IDS`, `dp()`
+
+Added (~80 lines):
+- `ComposeView` and `XServerDrawerKt`/`XServerDrawerState` imports
+- `XServerDrawerState.INSTANCE.reset()` + all callback wiring
+- `XServerDrawerKt.setupComposeView(drawerComposeView)` call
+
+#### B4 update — in-game drawer now Compose
+
+The following item is removed from "Java dialogs kept" in B4:
+> ~~`NavigationView` + `onNavigationItemSelected` — in-game side drawer~~
+
+The drawer is now fully Compose. The `DrawerLayout` XML shell remains.
+
+**Files:**
+- NEW: `ui/XServerDrawerState.kt`
+- NEW: `ui/XServerDrawer.kt`
+- MODIFIED: `res/layout/xserver_display_activity.xml` — `NavigationView` → `ComposeView`
+- MODIFIED: `XServerDisplayActivity.java` — ~400 lines removed, ~80 added
+
+**Commits:** `f79f1ef` (initial), `9289d57` (@JvmField fix), `3659f74` (merge to main)  
+**CI:** `24793070513` ✅
+
+---
+
+### F5. Contents Screen — Remote Profiles URL
+
+The remote profiles endpoint used by `ContentsManager.java` was updated from the original GitLab URL to the Bionic Nightly content index:
+
+```java
+// Before
+public static final String REMOTE_PROFILES = "https://gitlab.com/.../content.json";
+
+// After
+public static final String REMOTE_PROFILES =
+    "https://raw.githubusercontent.com/Xnick417x/Winlator-Bionic-Nightly-wcp/refs/heads/main/content.json";
+```
+
+**File:** `contents/ContentsManager.java`  
+**Commit:** `e8acb58`
+
+---
+
+### F6. New Gotchas (23–25)
+
+#### Gotcha 23: Kotlin `object` properties are private fields from Java's perspective
+
+Kotlin `object` `var` properties compile to private backing fields with public getter/setter methods. Java code that tries to assign them directly (`state.onClose = ...`) gets a compile error: `onClose has private access in XServerDrawerState`.
+
+Two options:
+1. **`@JvmField`** — exposes the backing field as a public Java field. Java can assign directly. Best when the field is meant to be read/written from both Java and Kotlin.
+2. **Explicit Java-callable setter** — `fun setOnClose(r: Runnable?) { onClose = r }`. More explicit but more boilerplate.
+
+For callbacks on a bridge singleton, `@JvmField` is cleaner.
+
+```kotlin
+// Wrong — Java cannot assign this
+var onClose: Runnable? = null
+
+// Right — Java can assign directly
+@JvmField var onClose: Runnable? = null
+```
+
+#### Gotcha 24: `() -> Unit` Kotlin lambdas cannot be assigned from Java void lambdas
+
+Kotlin `(() -> Unit)?` compiles to `Function0<Unit>`. A Java lambda `() -> doSomething()` returns `void`, not `kotlin.Unit`. Java throws: `incompatible types: bad return type in lambda expression`.
+
+**Fix:** Use `Runnable?` instead of `(() -> Unit)?` for any property that Java will set. Java `Runnable` accepts void lambdas natively. Kotlin callers invoke it with `.run()` instead of `.invoke()`.
+
+```kotlin
+// Wrong — Java cannot assign a void lambda
+@JvmField var onClose: (() -> Unit)? = null
+
+// Right — Runnable works from both Java and Kotlin
+@JvmField var onClose: Runnable? = null
+```
+
+```java
+// Java (works naturally):
+state.onClose = () -> drawerLayout.closeDrawers();
+```
+
+```kotlin
+// Kotlin (call with .run()):
+state.onClose?.run()
+```
+
+#### Gotcha 25: `import androidx.compose.ui.graphics.drawscope.clipRect` is not auto-suggested
+
+When using `clipRect { }` inside a `DrawScope` lambda (e.g. inside `Canvas { }`), the compiler needs the explicit `drawscope` package import. The IDE does not always suggest it, and the error message is a generic type mismatch rather than "unresolved reference", making it hard to diagnose.
+
+```kotlin
+// Required — add this explicitly:
+import androidx.compose.ui.graphics.drawscope.clipRect
+
+// Usage:
+Canvas(modifier) {
+    clipRect(right = fillWidth) {
+        drawRoundRect(brush = shimmerBrush, ...)
+    }
+}
+```
+
+Without this import the build fails with `error: type mismatch` or `overload resolution ambiguity` pointing at the `clipRect` call site.
+## Part G — Post-2026-04-22 Status (2026-05-06)
+
+This part covers work landed between 2026-04-23 and 2026-05-06. Two non-trivial bugs surfaced after the in-game-Compose migration shipped — both rooted in the Java→Compose split — and a small wave of UI text/branding changes. Plus the actual cleanup of dead Java/XML dialogs that the in-game migration left behind.
+
+---
+
+### G1. Controller Support — SDL2 SoName Symlink Lost in Splash-Install Migration
+
+After the Compose migration shipped, physical controllers (gamepads, joysticks) stopped being detected by Wine games on the Compose builds — even though they had worked correctly in the legacy Java/XML build. The on-screen controller (OSC) still worked; only physical evdev input was missing.
+
+#### Root cause
+
+The pre-Compose install path was:
+
+```
+MainActivity.java (legacy)
+  → ImageFsInstaller.installIfNeeded()
+    → installFromAssets()
+        ├── extract pattern tarballs
+        ├── install Wine
+        ├── install drivers
+        ├── createImgVersionFile(LATEST_VERSION)
+        └── FileUtils.symlink("libSDL2-2.0.so",
+              "<imagefs>/usr/lib/libSDL2-2.0.so.0")  ← critical line
+```
+
+When the splash screen was migrated to Compose (Part A → SplashViewModel + installFromAssetsWithCallback), the new install method was a copy-paste of the old one but **the SDL2 SoName symlink line was not brought over**. Compose-era installs left `libSDL2-2.0.so.0` missing while keeping the actual file `libSDL2-2.0.so` and the alias `libSDL2.so`.
+
+Why this was silent for so long: Android has no `ldconfig`, so SoName resolution must be a real on-disk filename for every variant a `dlopen` call asks for. Stock Wine xinput (proton-9.x) calls `dlopen("libSDL2-2.0.so.0", ...)` to use SDL2's joystick backend. With the symlink missing the dlopen returned `NULL`, and Wine fell back to its winebus/HID stack — which on Linux uses udev/sysfs to enumerate `/dev/input/event*`. Android has no working udev. So the enumerator returned zero devices, `/dev/input/event*` never got opened, and libfakeinput's `ioctl`/`open` interposers never fired. Game saw no controller. No errors were logged because every step "succeeded" — Wine simply chose the wrong code path.
+
+The on-screen controller worked because OSC bytes are pushed directly into the FakeInputWriter's event-file backing — that path never goes through Wine's joystick enumeration.
+
+#### Fix
+
+One line restored, plus a `LATEST_VERSION` bump to force re-extract for users whose imagefs was already installed on a Compose build without the symlink:
+
+```java
+// ImageFsInstaller.java
+public static final byte LATEST_VERSION = 22;  // was 21
+
+static void installFromAssetsWithCallback(...) {
+    // ... existing extract + Wine + drivers + version file ...
+    FileUtils.symlink(
+        "libSDL2-2.0.so",
+        new File(imageFs.getLibDir(), "libSDL2-2.0.so.0").getAbsolutePath()
+    );
+    // ...
+}
+```
+
+`clearRootDir` preserves the `home` subdirectory during re-extract, so Wine prefixes, per-container state, and shortcuts all survive the upgrade.
+
+#### Why this is a portable lesson
+
+The general pattern: when migrating any install/setup pipeline from Java to Kotlin/Compose, **diff line-by-line against the legacy version, not just behavior-by-behavior**. SoName symlinks, font cache rebuilds, default-locale patches, registry seeds — anything done as a side effect after the main extraction is the easiest thing to lose in a copy-paste of the install method. Behavioral testing only catches it when a game gets far enough to actually need the missing piece. By that time the Compose build has shipped.
+
+---
+
+### G2. Box64 Component Dropdown — Read/Seed Bug in ContainerDetailViewModel
+
+After several Compose iterations, a cosmetic-only bug appeared in the container edit dialog: changing the Box64 component (e.g. from `0.3.7` default to a contents-profile version), saving, then re-opening the container's edit dialog showed the dropdown reset to the default — even though the change was actually saved correctly and the new version was running at game launch (DXVK HUD verified).
+
+#### Root cause
+
+`ContainerDetailViewModel.loadContainerData()` calls `refreshWineDependent(selectedWineVersion)` to populate the Box64-version entry list. That function ends with:
+
+```kotlin
+private fun refreshWineDependent(wineVersion: String) {
+    // ... compute b64Array based on isArm64EC + content profiles ...
+    box64VersionEntries = b64Array
+    selectedBox64Version = box64VersionEntries.firstOrNull() ?: ""  // <-- always resets
+}
+```
+
+Resetting to entry 0 is **correct** when the user changes the Wine version (the Box64 entry list is different for arm64ec vs x86_64), so the function gets called from `onWineVersionChanged` with the same body. But the same function is also called once at initial load — and at initial load, the saved selection is silently overwritten by entry 0 before the dialog renders.
+
+This is the classic Compose pitfall: a function that's correct for the change-handler context is wrong for the initial-load context. Other fields in the same ViewModel got it right by following a load-then-seed pattern (e.g. FEXCore: `loadFEXCoreVersions()` then `selectedFEXCoreVersion = c?.getFEXCoreVersion() ?: …`); Box64 was the outlier.
+
+#### Fix
+
+Don't change `refreshWineDependent` (its behavior is correct on Wine-version change). Instead, override the reset on initial load only:
+
+```kotlin
+// In loadContainerData(), right after refreshWineDependent(selectedWineVersion):
+c?.box64Version
+    ?.takeIf { it.isNotEmpty() && box64VersionEntries.contains(it) }
+    ?.let { selectedBox64Version = it }
+```
+
+The `takeIf { box64VersionEntries.contains(it) }` guard means a saved value that's no longer available (uninstalled content profile) gracefully falls back to the entry-0 default rather than putting the dropdown into an invalid state.
+
+#### Why this is a portable lesson
+
+A function that resets state is rarely "always-correct" or "always-wrong" — the correctness depends on which call site you're looking at. When your ViewModel has `loadContainerData()` calling helper functions that themselves manipulate UI state, **trace each piece of state from disk → Container object → ViewModel field → composable**, and check that the seeding order matches the desired final state. Helper functions that mutate state are fine, but the seed-from-disk step has to come *after* them, not before.
+
+Same fix template applies any time you have:
+1. A "refresh list" function used in two contexts (init + change).
+2. The function defaults a selection to "first entry" or some computed default.
+3. Init-time you want the saved value, change-time you want the default.
+
+→ Reset to default inside the helper (correct for change context), then **override at the init call site** with the saved value if available.
+
+---
+
+### G3. UI Text and Branding Pass
+
+A small wave of user-facing text changes — purely cosmetic, but worth noting because they touched several Compose surfaces in parallel and risked drift:
+
+| Surface | File | Changed |
+|---|---|---|
+| Splash screen | `ui/screens/SplashScreen.kt` | App title + version label |
+| About dialog | `MainActivity.kt` | Title + version line (replaces `BuildConfig.VERSION_NAME`/`VERSION_CODE` format with a hard-coded user-facing string) |
+| App drawer header | `ui/AppDrawer.kt` | Title |
+| In-game drawer header | `ui/XServerDrawer.kt` | Title |
+
+Build-side `versionName` / `versionCode` in `app/build.gradle` were intentionally **not** changed, so the existing CI tag and APK-naming convention (`v<versionName>-<date>-<sha>`) continues to work.
+
+Lesson: when a fork rebrand changes user-facing strings, audit every Compose surface that displays the app name. Title text tends to live in 4–5 places (splash, app drawer header, in-game drawer header, about dialog, occasionally a top bar) and they all want updating in lockstep.
+
+---
+
+### G4. Dead Java/XML Cleanup — In-Game Dialog Migration Tail End
+
+When Part F migrated the in-game drawer + dialogs/overlays to Compose, the new Compose files (`ui/dialogs/*.kt`, `ui/overlays/*.kt`) were added but the corresponding Java + XML originals were left in the tree. They ship as dead code in the APK (no functional impact, just a few hundred KB of compiled classes + layout binaries).
+
+#### Files now safe to delete (zero references)
+
+```
+contentdialog/ActiveWindowsDialog.java
+contentdialog/FSRControlFloatingDialog.java
+contentdialog/ScreenEffectDialog.java
+widget/MagnifierView.java
+winhandler/TaskManagerDialog.java
+
+res/layout/active_windows_dialog.xml
+res/layout/active_window_item.xml
+res/layout/fsr_control_dialog.xml
+res/layout/magnifier_view.xml
+res/layout/screen_effect_dialog.xml
+res/layout/task_manager_dialog.xml
+res/layout/process_info_list_item.xml
+res/layout/about_dialog.xml
+res/layout/debug_dialog.xml
+res/layout/debug_toolbar.xml
+```
+
+#### `DebugDialog.java` — blocked on `LogView.java`
+
+The Java `DebugDialog.setPaused(boolean)` static is still called from `widget/LogView.java` lines 230, 237, 245. Before deleting `DebugDialog.java`:
+
+```java
+// LogView.java — replace 3 call sites
+// Was:
+DebugDialog.setPaused(true);
+// New:
+XServerDialogState.INSTANCE.setLogPaused(true);
+// Plus remove the import:
+// import com.winlator.cmod.contentdialog.DebugDialog;
+```
+
+The new sink (`XServerDialogState.setLogPaused(Boolean)`) already exists from Part F4's drawer migration; only the Java call site needs to be retargeted.
+
+#### Java config-helper dialogs — separate cleanup
+
+Several `contentdialog/*Dialog.java` files have their UI fully migrated to Compose but their **static helper methods** are still called from Compose code:
+
+| File | Static helpers in use |
+|---|---|
+| `ContentDialog.java` | `confirm()`, `prompt()`, `alert()` (~12 refs) |
+| `DXVKConfigDialog.java` | `parseConfig()`, `setEnvVars()`, `loadDxvkVersionList()`, `compareVersion()` (~4 refs) |
+| `GraphicsDriverConfigDialog.java` | `parseGraphicsDriverConfig()`, `toGraphicsDriverConfig()`, `getVersion()` (~6 refs) |
+| `WineD3DConfigDialog.java` | `parseConfig()`, `setEnvVars()`, `loadGpuNames()` (~5 refs) |
+
+These can be deleted only after the statics are extracted into Kotlin objects (e.g. `DxvkConfig` in `core/`). It's mechanical work, not a UI migration — separate task.
+
+---
+
+### G5. New Gotchas (26–27)
+
+#### G26. SoName Symlinks During imagefs Install Are Easy to Lose in a Java→Kotlin Migration
+
+When you migrate any install/setup pipeline from Java to Kotlin/Compose, the actual file copy/extract is the easy part to get right. The side-effect operations — symlinks, font cache, registry seeds, locale patches — that come *after* the main extraction are the easy parts to lose.
+
+Defensive approach: before merging an install-path migration, do a `git diff old/InstallMethod.java new/InstallMethod.kt` line by line, **not** behavior by behavior. Functional tests only catch a missing side effect when the dependent feature actually runs (in the SDL2 case, only when a game queried physical joysticks). By the time you find it, the new install path has shipped to users.
+
+#### G27. ViewModel Reset Helpers Need Init-Time Override Hooks
+
+If your ViewModel has a `loadContainerData()` (or equivalent init function) that calls a "refresh / repopulate dropdown" helper, and that helper resets the selection to a default — you need to **re-seed the saved value at the init call site**, not inside the helper.
+
+Helpers used in two contexts (initial load + change handler) cannot make a single correct decision about whether to use the default or the saved value, because that's context-dependent. The clean pattern:
+
+```kotlin
+fun loadXxx() {
+    refreshDependent(currentValue)              // populates entries, resets selection
+    saved?.takeIf { entries.contains(it) }      // re-seed only if saved value
+        ?.let { selected = it }                 //   is still in the entries list
+}
+
+fun onChanged(newValue: String) {
+    refreshDependent(newValue)                  // resets — correct here
+}
+```
+
+Don't try to detect "is this initial load" inside the helper — that's a leaky abstraction. Let the caller decide.
+
+---
+
+### G6. Updated Summary Stats
 
 | Metric | Part B7 (2026-04-17) | Now (2026-05-06) | Delta |
 |---|---|---|---|
 | Java Fragments deleted | 7 | 7 | — |
 | Fragment XML layouts deleted | 8 | 8 | — |
-| Java Dialog classes deleted | 11 | 11 (15 Compose-replaced but 4 awaiting cleanup; see §E5) | net 0 |
-| Dialog XML layouts deleted | 15 | 15 (more pending §E5) | — |
-| Other Java/utility files deleted | 14 | 14 | — |
-| New Kotlin Compose screens | 10 | 10 (incl. `AppearanceScreen`, `SavesScreen` already in count) | — |
-| New Kotlin Compose **in-game dialogs/overlays** | n/a | **8** (ActiveWindows, Debug, ScreenEffects, TaskManager, Vibration, InputControls, FSR overlay, Magnifier overlay) | +8 |
-| New Kotlin Compose **in-game drawer** | n/a | **1** (`XServerDrawer.kt` + `XServerDrawerState`) | +1 |
+| Java Dialog classes deleted | 11 | 11 (5 more queued; see §G4) | — |
+| Dialog XML layouts deleted | 15 | 15 (10 more queued; see §G4) | — |
+| New Kotlin Compose screens | 10 | 10 | — |
+| **In-game Compose dialogs/overlays added** (Part F supplement) | n/a | **8** | +8 |
+| **In-game Compose drawer added** (Part F4) | n/a | **1** | +1 |
 | New Kotlin ViewModels | 6 | 6 | — |
 | Internal reusable composables | 8 | 8 | — |
-| XML layouts remaining in `res/layout/` | ~81 | **73** | −8 (in-game dialog layouts swapped for Compose, pending cleanup of the actual files) |
-| Post-Part-D bug-fix commits | n/a | ~12 | +12 |
-| New gotchas | 18 (Parts A11+D10) | **19** (adds G19, §E6) | +1 |
-| Releases shipped | 0 | 2 (Beta 2 + Beta 3) | +2 |
+| XML layouts remaining in `res/layout/` | ~81 | **73** | −8 |
+| Documented gotchas | 18 (Parts A11+D10) | **27** (adds Parts E6, F6, G5) | +9 |
 
-### E8. Still active — needs migration (supersedes UI_MIGRATION_REPORT.md §2)
+---
 
-| File | Status as of 2026-05-06 | Notes |
-|---|---|---|
-| `SettingsFragment.java` + `settings_fragment.xml` | Active, hosted via `FragmentScreen` | Dark mode mismatch with Compose theme still partially mitigated (Job 4 listener); full Compose migration estimated 2h |
-| `InputControlsFragment.java` | Active, hosted via `FragmentScreen` | Complex custom view hierarchy; intentionally kept |
-| `ShortcutPickerActivity.java` | Active | Standalone Activity for home-screen shortcut picker; ~1h to convert to Compose Dialog or BottomSheet |
-| `BigPictureActivity.java` | Active | Standalone TV-style launcher; not part of main UI flow; deferred |
-| `ControlsEditorActivity.java` | Active | Visual input-bindings editor; complex custom canvas; intentionally kept |
-| `restore/RestoreActivity.java` | Active | Backup-restore flow Activity; ~1h to convert |
-| `saves/CustomFilePickerActivity.java` | Active | File-picker variant; ~30m to convert or replace with `ActivityResultContracts.OpenDocumentTree` |
-| `store/*` (Amazon/Epic/GOG/Steam main+detail+login activities) | Active, View-based Kotlin (not Compose) | Largest remaining surface; deferred to a separate epic |
-| `XServerDisplayActivity.java` | Active, intentionally kept | Engine boundary — see A15 |
-| `XrActivity.java` | Active, intentionally kept | XR/VR engine boundary |
+### G7. Still Active — Needs Migration
 
-### E9. Still active — Java config-helper dialogs (deferred deletion)
+Items below were untouched by Parts E–G and remain on the roadmap:
 
-These dialogs are referenced by Compose code as static-helper holders only. Their UI was already replaced (see B2) but the static utility methods inside them are still called. Each one needs its statics moved into a Kotlin object before deletion.
-
-| File | Static methods still in use |
+| File | Notes |
 |---|---|
-| `contentdialog/ContentDialog.java` | `confirm()`, `prompt()`, `alert()` — base helpers (12 references) |
-| `contentdialog/DXVKConfigDialog.java` | `parseConfig()`, `setEnvVars()`, `loadDxvkVersionList()`, `compareVersion()` (4 refs) |
-| `contentdialog/GraphicsDriverConfigDialog.java` | `parseGraphicsDriverConfig()`, `toGraphicsDriverConfig()`, `getVersion()` (6 refs) |
-| `contentdialog/WineD3DConfigDialog.java` | `parseConfig()`, `setEnvVars()`, `loadGpuNames()` (5 refs) |
+| `SettingsFragment.java` + `settings_fragment.xml` + `preference_*.xml` (8 layouts) | XML PreferenceScreen; dark-mode mismatch with Compose theme. Migrate to `ui/screens/SettingsScreen.kt` as a `LazyColumn` of preference rows. ~2h. |
+| `ShortcutPickerActivity.java` | Standalone Activity; convert to Compose Dialog launched from `MainActivity` with `ActivityResultContracts`. ~1h. |
+| `restore/RestoreActivity.java` | Compose screen inside the nav graph with `LaunchedEffect` for restore logic. ~1h. |
+| `saves/CustomFilePickerActivity.java` | Replace with `ActivityResultContracts.OpenDocument` or a Compose `LazyColumn` browser. ~1.5h. |
+| `ControlsEditorActivity.java` | Heavy custom canvas — wrap `InputControlsView` via `AndroidView`; migrate the nested config dialogs to Compose `AlertDialog`. ~4h. |
+| `ExternalControllerBindingsActivity.java` | Compose `LazyColumn` with `AlertDialog` per binding row. ~2h. |
+| `BigPictureActivity.java` | TV/couch-mode launcher with custom tiled background. `LazyVerticalGrid` + Compose `Canvas` for the background animation. ~2.5h. |
+| Store activities (`store/*.java` — 12 files across Amazon/Epic/GOG/Steam) | Largest remaining surface; treat as a separate epic. |
+| `XServerDisplayActivity.java`, `XrActivity.java` | **Engine boundary — keep as Java** (see A15). |
+| `InputControlsFragment.java` | Compose dialog `ui/dialogs/InputControlsDialog.kt` exists from Part F. Verify the fragment is no longer launched anywhere; if dead, delete in the §G4 cleanup. |
 
-These are **not** UI-migration blockers; they're a separate Kotlin-conversion follow-up.
-
-### E10. What this report does NOT cover
-
-- The store activities (Amazon/Epic/GOG/Steam) — explicitly out of scope for the UI Compose migration. They have separate planning docs in BannerHub/star-compose history.
-- Engine-internal changes (Wine, Box64/FEX, JNI) — by policy, never touched (A15).
-- The `beta-4` integration branch process — see the project's release/branching workflow (lives outside this doc).

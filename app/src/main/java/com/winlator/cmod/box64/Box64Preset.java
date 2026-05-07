@@ -7,6 +7,11 @@ public class Box64Preset {
     public static final String COMPATIBILITY = "COMPATIBILITY";
     public static final String INTERMEDIATE = "INTERMEDIATE";
     public static final String PERFORMANCE = "PERFORMANCE";
+    public static final String PERFORMANCE_MALI = "PERFORMANCE_MALI";
+    public static final String EXTREME = "EXTREME";
+    public static final String UNITY = "UNITY";
+    public static final String UNITY_MONO_BLEEDING_EDGE = "UNITY_MONO_BLEEDING_EDGE";
+    public static final String DENUVO = "DENUVO";
     public static final String CUSTOM = "CUSTOM";
     public final String id;
     public final String name;

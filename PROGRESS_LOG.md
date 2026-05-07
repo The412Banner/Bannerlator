@@ -1,5 +1,23 @@
 # Star-Compose — Progress Log
 
+## 2026-05-07 — Shortcut Settings tab-switch state-loss fix (`fix/shortcut-envvars-tab-switch-loss`)
+
+**Branch:** `fix/shortcut-envvars-tab-switch-loss` off `beta4`
+
+**Bug reported by user:** Same tab-switch state-loss seen earlier in Container Settings was also reported in **Shortcut Settings** — editing a shortcut, adding an env var, switching tabs, then switching back: the var is gone.
+
+**Root cause:** Identical pattern to the Container Settings fix from earlier today. `ScEnvVarsTab` and `ScAdvancedTab` in `ShortcutsScreen.kt` host legacy Java widgets (`EnvVarsView`, `CPUListView`) via `AndroidView`. Source of truth lives inside the widget; parent `save()` reads it through a `MutableState<View?>` ref. Tab switch destroys the Composable + widget, taking unsaved input with it. Fallback (`shortcut.getExtra(...)`) returns the stored extra, which was never updated during editing.
+
+**Fix:**
+- `ScEnvVarsTab` already receives `shortcut` — added `DisposableEffect(Unit) { onDispose { ... } }` that flushes `envVarsViewRef.value?.envVars` into `shortcut.putExtra("envVars", ...)` before disposal. `Shortcut.putExtra` mutates only the in-memory JSONObject; disk persistence still happens later via `save() → saveData()` so Cancel still discards correctly.
+- `ScAdvancedTab` doesn't receive `shortcut` directly. Added an `onCpuListSnapshot: (String) -> Unit` parameter; the parent passes `{ shortcut.putExtra("cpuList", it) }`. DisposableEffect inside the tab calls the snapshot.
+- Added explicit `import androidx.compose.runtime.DisposableEffect` (file uses explicit imports).
+
+**Files touched:**
+- `app/src/main/java/com/winlator/cmod/ui/screens/ShortcutsScreen.kt`
+
+---
+
 ## 2026-05-07 — Container Settings tab-switch state-loss fix (`fix/envvars-tab-switch-loss`)
 
 **Branch:** `fix/envvars-tab-switch-loss` off `beta4`

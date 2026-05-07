@@ -76,6 +76,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
@@ -1142,6 +1143,7 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
                             onStartupChange = { selectedStartupSelection = it },
                             cpuListViewRef = cpuListViewRef,
                             initialCpuList = shortcut.getExtra("cpuList", shortcut.container.getCPUList(true)),
+                            onCpuListSnapshot = { shortcut.putExtra("cpuList", it) },
                             sharpnessEffectEntries = sharpnessEffectEntries,
                             selectedSharpnessEffect = selectedSharpnessEffect,
                             onSharpnessEffectChange = { selectedSharpnessEffect = it },
@@ -1237,6 +1239,16 @@ private fun ScWinComponentsTab(components: androidx.compose.runtime.snapshots.Sn
 @Composable
 private fun ScEnvVarsTab(shortcut: Shortcut, envVarsViewRef: MutableState<EnvVarsView?>) {
     var showAddEnvVar by remember { mutableStateOf(false) }
+    // Flush the legacy EnvVarsView's contents back into the Shortcut's in-memory
+    // extras before the tab leaves composition, so a tab switch doesn't drop
+    // in-progress edits. shortcut.putExtra mutates only the in-memory JSONObject;
+    // disk persistence still happens later in save() -> saveData().
+    DisposableEffect(Unit) {
+        onDispose {
+            envVarsViewRef.value?.let { shortcut.putExtra("envVars", it.envVars.ifEmpty { null }) }
+            envVarsViewRef.value = null
+        }
+    }
     Column {
         AndroidView(
             factory = { ctx ->
@@ -1294,6 +1306,7 @@ private fun ScAdvancedTab(
     onStartupChange: (String) -> Unit,
     cpuListViewRef: MutableState<CPUListView?>,
     initialCpuList: String,
+    onCpuListSnapshot: (String) -> Unit,
     sharpnessEffectEntries: List<String>,
     selectedSharpnessEffect: String,
     onSharpnessEffectChange: (String) -> Unit,
@@ -1302,6 +1315,14 @@ private fun ScAdvancedTab(
     sharpnessDenoise: Int,
     onSharpnessDenoiseChange: (Int) -> Unit
 ) {
+    // Flush legacy CPUListView selection back to the parent (Shortcut extras)
+    // before the tab leaves composition, so a tab switch doesn't drop edits.
+    DisposableEffect(Unit) {
+        onDispose {
+            cpuListViewRef.value?.let { onCpuListSnapshot(it.checkedCPUListAsString) }
+            cpuListViewRef.value = null
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionBox(title = "Box64") {
             LabeledDropdown(

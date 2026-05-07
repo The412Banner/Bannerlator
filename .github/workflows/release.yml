@@ -1,4 +1,4 @@
-name: Manual Release Build
+name: Nightly Manual Release Build
 
 on:
   workflow_dispatch:
@@ -21,6 +21,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: recursive
+        fetch-depth: 20   # needed for commit logs
 
     - name: set up JDK 17
       uses: actions/setup-java@v4
@@ -34,13 +35,11 @@ jobs:
         git clone --depth 1 -b gamenative-latest https://github.com/joshuatam/JavaSteam javasteam_src
         cd javasteam_src
 
-        # Patch HardwareUtils.java: SystemUtils.IS_OS_ANDROID missing in commons-lang3 3.14.0
         HW_FILE=$(find . -name "HardwareUtils.java" 2>/dev/null | head -1)
         if [ -n "$HW_FILE" ]; then
           sed -i 's/SystemUtils\.IS_OS_ANDROID/false/g' "$HW_FILE"
         fi
 
-        # Patch Utils.java: newer SystemUtils OS fields missing in older commons-lang3
         UTILS_FILE=$(find . -name "Utils.java" -path "*/javasteam/*" 2>/dev/null | head -1)
         if [ -n "$UTILS_FILE" ]; then
           sed -i \
@@ -54,7 +53,6 @@ jobs:
 
         ./gradlew jar --no-daemon 2>&1 | tail -20
 
-        # Find main JAR (contains SteamClient.class)
         MAIN_JAR=""
         for j in $(find . -name "*.jar" -path "*/build/libs/*" \
             | grep -v "sources\|javadoc\|test" | sort); do
@@ -69,22 +67,17 @@ jobs:
             | while read f; do echo "$(wc -c < "$f") $f"; done \
             | sort -rn | head -1 | cut -d' ' -f2-)
         fi
-        echo "Main JAR: $MAIN_JAR ($(du -sh "$MAIN_JAR" | cut -f1))"
 
-        # Find DepotDownloader JAR
         DD_JAR=$(find . -name "javasteam-depotdownloader-*.jar" -path "*/build/libs/*" \
           ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | head -1)
 
-        # Copy to app/libs/steam
         mkdir -p ../app/libs/steam
         cp "$MAIN_JAR" ../app/libs/steam/javasteam.jar
 
-        # protobuf-java
         PROTO_JAR=$(find ~/.gradle/caches -name "protobuf-java-*.jar" \
           ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | head -1)
         [ -n "$PROTO_JAR" ] && cp "$PROTO_JAR" ../app/libs/steam/protobuf-java.jar
 
-        # commons-lang3
         LANG3_JAR=$(find ~/.gradle/caches -name "commons-lang3-*.jar" \
           ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | sort -V | tail -1)
         if [ -n "$LANG3_JAR" ]; then
@@ -94,7 +87,6 @@ jobs:
             -O ../app/libs/steam/commons-lang3.jar
         fi
 
-        # DepotDownloader and its deps
         if [ -n "$DD_JAR" ] && [ -s "$DD_JAR" ]; then
           cp "$DD_JAR" ../app/libs/steam/javasteam-depotdownloader.jar
           GRADLE_CACHE=~/.gradle/caches/modules-2/files-2.1
@@ -103,7 +95,7 @@ jobs:
             local found
             found=$(find "$GRADLE_CACHE" -name "$pattern" \
               ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | sort -V | tail -1)
-            [ -n "$found" ] && cp "$found" "$dest" && echo "  ✓ $pattern"
+            [ -n "$found" ] && cp "$found" "$dest"
           }
           gather_jar "ktor-client-cio-jvm-*.jar"            "../app/libs/steam/ktor-client-cio.jar"
           gather_jar "ktor-client-core-jvm-*.jar"           "../app/libs/steam/ktor-client-core.jar"
@@ -117,9 +109,6 @@ jobs:
           gather_jar "kotlinx-io-core-jvm-*.jar"            "../app/libs/steam/kotlinx-io-core.jar"
         fi
 
-        echo "steam libs:"
-        ls -lh ../app/libs/steam/
-
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
@@ -129,7 +118,7 @@ jobs:
     - name: Get version info
       run: |
         echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-        echo "VERSION=$(cat app/build.gradle | grep versionName | head -1 | cut -d '"' -f 2)" >> $GITHUB_ENV
+        echo "VERSION=$(grep versionName app/build.gradle | head -1 | cut -d '\"' -f 2)" >> $GITHUB_ENV
         echo "BUILD_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
 
     - name: Rename APK
@@ -137,15 +126,23 @@ jobs:
         mv app/build/outputs/apk/debug/app-debug.apk \
            app/build/outputs/apk/debug/star-compose-v${{ env.VERSION }}-${{ env.SHORT_SHA }}.apk
 
+    - name: Generate changelog table
+      run: |
+        echo "## Changelog" > changelog.md
+        echo "" >> changelog.md
+        echo "| Commit | Message |" >> changelog.md
+        echo "|--------|---------|" >> changelog.md
+        git log -n 10 --pretty=format:"| \`%h\` | %s |" >> changelog.md
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ env.VERSION }}-${{ env.BUILD_DATE }}-${{ env.SHORT_SHA }}
-        name: Star Compose v${{ env.VERSION }} — ${{ env.BUILD_DATE }}
+        tag_name: star-nightly-${{ env.SHORT_SHA }}
+        name: star Nightly -git_${{ env.SHORT_SHA }}
         body: |
-          **Commit:** `${{ env.SHORT_SHA }}`
-          **Built:** ${{ env.BUILD_DATE }}
+          ## Changelog
+          $(cat changelog.md)
 
           ${{ github.event.inputs.release_notes }}
         files: app/build/outputs/apk/debug/star-compose-v${{ env.VERSION }}-${{ env.SHORT_SHA }}.apk
-        prerelease: false
+        prerelease: true

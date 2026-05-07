@@ -255,6 +255,13 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         selectedWineVersion = c?.wineVersion ?: wineVersionEntries.firstOrNull() ?: ""
         refreshWineDependent(selectedWineVersion)
 
+        // Box64 version: refreshWineDependent() resets to entry 0 (correct on
+        // Wine-version change since the list differs for arm64ec). On initial
+        // load we override that to honor the container's saved selection.
+        c?.box64Version
+            ?.takeIf { it.isNotEmpty() && box64VersionEntries.contains(it) }
+            ?.let { selectedBox64Version = it }
+
         // Graphics driver (load as display name for dropdown)
         selectedGraphicsDriver   = identifierToDisplay(c?.graphicsDriver ?: Container.DEFAULT_GRAPHICS_DRIVER, graphicsDriverEntries)
         graphicsDriverConfig     = c?.graphicsDriverConfig ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG

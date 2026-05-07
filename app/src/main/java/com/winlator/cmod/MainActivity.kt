@@ -416,13 +416,13 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = androidx.compose.ui.Modifier.size(72.dp)
                 )
                 Text(
-                    text = "Bionic Star",
+                    text = "Star Bionic",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                    text = "v1.2-REVAMPED",
                     fontSize = 13.sp,
                     color = com.winlator.cmod.ui.theme.OnSurfaceVariant
                 )

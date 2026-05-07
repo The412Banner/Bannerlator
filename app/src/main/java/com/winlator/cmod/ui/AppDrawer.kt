@@ -104,7 +104,7 @@ fun AppDrawerContent(
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = "Bionic Star",
+                text = "Star Bionic",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
             )

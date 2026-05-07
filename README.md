@@ -57,13 +57,31 @@ This fork stands on a long chain of prior work. Credit, in lineage order:
 
 | Contributor | Contribution |
 |---|---|
-| **brunodev85** | Original [Winlator](https://github.com/brunodev85/winlator) — Wine + Box64 + Turnip on Android. Foundation of every fork below. |
-| **coffincolors** (cmod) | The `cmod` Winlator fork that introduced many of the customization features this codebase still relies on. |
-| **Xnick417x** | Maintains the [Winlator-Bionic-Nightly-wcp](https://github.com/Xnick417x/Winlator-Bionic-Nightly-wcp) content registry. The registry JSON consumed by this fork: <https://raw.githubusercontent.com/Xnick417x/Winlator-Bionic-Nightly-wcp/refs/heads/main/content.json> |
+| **brunodev85** | Original [Winlator](https://github.com/brunodev85/winlator) — Wine + Box64 + Turnip on Android. Foundation of every fork below. Also serves the `input_controls` profiles consumed by this fork: <https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/> |
+| **coffincolors** | [`cmod` Winlator fork](https://github.com/coffincolors/winlator) — package `com.winlator.cmod` and the customization layer this codebase is built on. |
+| **Pipetto-crypto** | [Winlator Bionic fork](https://github.com/Pipetto-crypto/winlator) (the "Bionic" half of *Star Bionic*) and the upstream [Box64 fix branch](https://github.com/Pipetto-crypto/box64). Co-credited on cmod. |
+| **Xnick417x** | Maintains the [Winlator-Bionic-Nightly-wcp](https://github.com/Xnick417x/Winlator-Bionic-Nightly-wcp) WCP releases repo: nightly DXVK, VKD3D-Proton, FEXCore, Box64, WOWBox64, Turnip, Wine, Proton, and weekly bundles, plus the content registry consumed by this fork: <https://raw.githubusercontent.com/Xnick417x/Winlator-Bionic-Nightly-wcp/refs/heads/main/content.json> |
 | **jacojayy** | Maintainer of the [Star](https://github.com/jacojayy/star) line. SDK36 patches in the bundled Turnip driver for newer DXVK compatibility. |
-| **vivsi** | Controller support contributions to the Star line that informed this fork's controller fixes. |
-| **The412Banner** *(this repo's primary contributor)* | Full Jetpack Compose UI migration, in-game overlay rewrite, controller-support restore (SDL2 SoName fix + four event files), Box64 edit-dialog fix, theme system, and CI/release infrastructure. |
-| **brunodev85** (re-credit) | The `input_controls` profiles served from <https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/> |
+| **vivsi** | Controller support contributions. |
+| **The412Banner** *(this repo's primary contributor)* | Full Jetpack Compose UI migration, in-game overlay rewrite, controller-support restore (SDL2 SoName fix + four event files), Box64 edit-dialog fix, theme system, and CI/release infrastructure. Also maintains the [Nightlies WCP Hub](https://github.com/The412Banner/Nightlies) and [Banners-Turnip](https://github.com/The412Banner/Banners-Turnip). |
+
+### Sibling forks (not in this fork's direct lineage, but worth knowing)
+
+- **StevenMXZ** — [Winlator-Ludashi](https://github.com/StevenMXZ/Winlator-Ludashi): Bionic-based fork with `dev-vanilla`, `ludashi` (renamed package for Xiaomi performance-mode detection), and `redmagic` (Genshin Impact package name for RedMagic frame-gen) build variants.
+
+### Upstream stack
+
+The Wine/translation stack this app bundles or downloads:
+
+- **Wine** — [WineHQ](https://www.winehq.org/)
+- **Box64 / Box86** — [ptitSeb](https://github.com/ptitSeb)
+- **FEXCore** — [FEX-Emu](https://github.com/FEX-Emu)
+- **DXVK** — [doitsujin / Philip Rebohle](https://github.com/doitsujin)
+- **DXVK-GPLAsync patch** — [Ph42oN](https://gitlab.com/Ph42oN)
+- **DXVK-Sarek** — [pythonlover02](https://github.com/pythonlover02)
+- **VKD3D-Proton** — [Hans-Kristian Arntzen](https://github.com/HansKristian-Work)
+- **Turnip / Mesa** — [Freedreno team @ Mesa](https://gitlab.freedesktop.org/mesa/mesa)
+- **Proton layers (bionic)** — [GameNative](https://github.com/utkarshdalal/GameNative)
 
 Credits surfaced in the **Star Bionic REVAMPED** release (`star.bionic-revamp`):
 

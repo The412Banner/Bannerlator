@@ -8,7 +8,7 @@
 <h1 align="center"> star -
 Windows applications and games on Android.</h1>
 
-**star** is an application which it's base on Winlator that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
+**star** is an application that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
 
 - **Package:** `com.winlator.cmod`
 - **Version:** `v1.2-REVAMPED` (build identifier `7.1.4x-cmod`, versionCode `20`)

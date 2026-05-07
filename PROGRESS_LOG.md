@@ -323,3 +323,126 @@ A multi-session investigation into why D3D12 games fail with `E_NOINTERFACE` (0x
 - Pure file I/O (`enumarateInstalledDrivers()`, `gpu_cards.json`) stays on `Dispatchers.IO`
 
 **File:** `ContainerDetailScreen.kt` → `GraphicsDriverConfigDialog` composable
+
+---
+
+## Controller Support — SDL2 SoName Symlink Fix (2026-05-06) — SHIPPED IN BETA 3 ✅
+
+**Branch:** `fix/controller-support` → merged to `main` (PR #1, merge commit `7adfaf1`)
+**Release:** [Winlator Star Bionic Compose Beta 3](https://github.com/The412Banner/star-compose/releases/tag/v7.1.4x-cmod-20260506-7adfaf1) — 2026-05-06
+**CI:** Any-branch run `25456134263` ✅ green; Manual Release Build run `25456652846` ✅ green
+
+### Root cause
+Java→Compose splash-install migration introduced `SplashViewModel.installIfNeeded()` → `installFromAssetsWithCallback()` which is a copy-paste of the legacy `installFromAssets()` but lost the line that creates `<imagefs>/usr/lib/libSDL2-2.0.so.0` as a symlink to `libSDL2-2.0.so`. Wine xinput's `dlopen("libSDL2-2.0.so.0")` failed → fallback to winebus/HID stack → udev enumeration (broken on Android) → zero `/dev/input/event*` opens → libfakeinput hooks never fire → games saw no controller input.
+
+Verification log: `star-controller-test-5.txt` (2026-05-06 15:09) shows `Adding controller fd 48 event event0..3`, `Hooking ioctl EVIOCGID/EV_KEY/EV_ABS/EV_FF`, `Assigned device 43 to slot 0`, `FakeInputWriter wrote slot=event0 bytes=48/48` then `72/72` — the full pipeline firing for the first time after the fix.
+
+### Fix
+Three commits cherry-picked clean from `controller-diag-combined` (which had diagnostic noise) onto `fix/controller-support`:
+- `76c6628` — APK parity: `softRelease()` instead of `destroy()` on disconnect, releaseSlot keeps writers alive, pre-create event files, PlugPlay revert
+- `81f1a9f` — pre-create all 4 event files at startup (Wine scans `/dev/input/` once at boot)
+- `c48043f` — wire SDL2 SoName symlink into Compose splash install path; bump `LATEST_VERSION` 21→22 to force re-extract for existing users (Wine prefixes survive — `clearRootDir` preserves `home`)
+
+Net diff: 5 files, +19/-5. Zero `InputDebug` references — all diagnostic code stripped.
+
+### User verification
+"yeah I could navigate in game menus and control the player fine" (gow.exe).
+
+---
+
+## Beta 3 Release Notes Pass (2026-05-06)
+
+Renamed CI release to "**Winlator Star Bionic Compose Beta 3**" (matches Beta 2 naming). APK asset renamed via GH API to `Winlator-Star-Bionic-Compose-Beta3.apk`.
+
+Release notes cover:
+- Controller support root cause + 4 fixes
+- Box64 component dropdown known limitation (cosmetic only — fix queued; later landed as Box64 fix below)
+- Beta 2 → Beta 3 signing-key mismatch caveat (Android refuses install-on-top with sig mismatch; users must uninstall Beta 2 first, losing prefixes/containers)
+- First-launch imagefs re-extract behavior (LATEST_VERSION 21→22) when signatures happen to match
+
+---
+
+## Box64 Dropdown — Stale-Display Bug Fix (2026-05-06) — ON BETA-4 ✅
+
+**Branch:** `fix/box64-edit-dialog-stale-display` (commit `1330bb4`) → merged into `beta-4` (merge commit `fce8cf0`)
+**CI:** Any-branch run `25459995549` ✅ green
+**User verification:** "fixed and working correctly"
+
+### Root cause
+`ContainerDetailViewModel.loadContainerData()` calls `refreshWineDependent(selectedWineVersion)` which ends with:
+```kotlin
+selectedBox64Version = box64VersionEntries.firstOrNull() ?: ""  // resets to entry 0
+```
+Reset is correct on Wine-version change (Box64 entry list differs for arm64ec) but wrong on initial load — overrode the saved value before the dialog rendered. Save and runtime were always correct (DXVK HUD verified the chosen Box64 version was actually running); display-only bug.
+
+### Fix
+7 lines after `refreshWineDependent` call site at `ContainerDetailViewModel.kt:258`:
+```kotlin
+c?.box64Version
+    ?.takeIf { it.isNotEmpty() && box64VersionEntries.contains(it) }
+    ?.let { selectedBox64Version = it }
+```
+Mirrors the existing pattern used for FEXCore (`loadFEXCoreVersions()` then `selectedFEXCoreVersion = c?.getFEXCoreVersion()`).
+
+---
+
+## Branding/Version Rename (2026-05-06) — ON BETA-4 ✅
+
+**Branch:** `feature/branding-rename-and-revamped-version` (commit `d7ee591`) → merged into `beta-4` (merge commit `6e89bd7`)
+**CI:** run `25461593118` ✅ green
+**User verification:** "all is changed correctly"
+
+### Changes
+4 user-facing strings updated in 4 files (+6/-6):
+
+| File | Was | Now |
+|---|---|---|
+| `ui/screens/SplashScreen.kt` | "Bionic Star" + "V1.2" | **"Star Bionic"** + **"v1.2-REVAMPED"** |
+| `MainActivity.kt` (about dialog) | "Bionic Star" + `Version ${BuildConfig.VERSION_NAME} (${VERSION_CODE})` | **"Star Bionic"** + **"v1.2-REVAMPED"** |
+| `ui/AppDrawer.kt` (main app drawer header) | "Bionic Star" | **"Star Bionic"** |
+| `ui/XServerDrawer.kt` (in-game drawer header) | "Bionic Star" | **"Star Bionic"** |
+
+`build.gradle` `versionName` and `versionCode` intentionally **unchanged** so CI tag/APK naming convention continues working (`v7.1.4x-cmod-<date>-<sha>`).
+
+---
+
+## Compose Migration Report Sync + Part G (2026-05-06) — ON BETA-4 ✅
+
+**Branches:**
+- star-compose: `docs/migration-report-refresh` → merged into `beta-4` (`6c1329c`); then `docs/sync-with-nightlies-add-part-g` → merged into `beta-4` (`29b243e`)
+- Nightlies: `docs/add-part-g-post-2026-04-22` → merged into `main` (`e688ef7`)
+
+### What was wrong
+The in-repo `COMPOSE_MIGRATION_REPORT.md` in star-compose was last updated 2026-04-17 at Part D. Past Claude sessions added Parts E (2026-04-20) and F (2026-04-22) directly to the canonical public copy in `The412Banner/Nightlies/main/COMPOSE_MIGRATION_REPORT.md` without syncing back to star-compose. The two had drifted by ~400 lines. My initial refresh attempt added a "Part E" section that name-collided with Nightlies' existing Part E and partly duplicated Part F4's content.
+
+### What was done
+1. Replaced star-compose's report with the Nightlies canonical content as the new base (catches up Parts E + F).
+2. Dropped the wrongly-named "Part E" interim refresh.
+3. Wrote a new **Part G** covering 2026-04-23 → 2026-05-06 work — applied identically to both repos:
+   - G1. SDL2 controller fix (with portable lesson for fork developers)
+   - G2. Box64 dropdown read/seed bug + reusable fix template
+   - G3. UI branding pass
+   - G4. Dead Java/XML cleanup status (5 safe to delete + 1 blocked on LogView fix + 4 contentdialog statics)
+   - G5. New gotchas G26 (SoName symlinks during install migration) + G27 (ViewModel reset helpers need init-time override)
+   - G6. Updated stats — 27 total documented gotchas
+   - G7. Refreshed "Still Active — Needs Migration" roadmap
+
+Both copies now identical at 2,476 lines. Memory entry saved (`feedback_compose_migration_doc_canonical.md`) so future sessions know Nightlies is the canonical home.
+
+### Bonus: UI_MIGRATION_REPORT.md committed
+The previously-untracked `UI_MIGRATION_REPORT.md` (originally generated 2026-04-22) was edited with current 2026-05-06 status markers and committed to `beta-4` for the first time.
+
+---
+
+## Beta-4 Integration Branch — Current State (2026-05-06)
+
+After today's session, `beta-4` is at `6e89bd7` and contains 3 verified items + 2 doc passes:
+
+| # | Merge | Verified | What |
+|---|---|---|---|
+| 1 | `fce8cf0` | ✅ | Box64 dropdown stale-display fix |
+| 2 | `6c1329c` | n/a (docs) | Migration report refresh (initial Part E attempt — superseded) |
+| 3 | `29b243e` | n/a (docs) | Sync with Nightlies canonical + Part G |
+| 4 | `6e89bd7` | ✅ | Branding/version rename ("Star Bionic" + "v1.2-REVAMPED") |
+
+Workflow established this session: features land on their own branch off `beta-4`, get tested and approved by user, then merge into `beta-4`. When user and developers happy, merge `beta-4` → `main` and trigger Manual Release Build for Beta 4. Memory entry: `feedback_star_compose_beta_branch_workflow.md`.

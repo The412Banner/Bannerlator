@@ -87,6 +87,7 @@ fun MagnifierOverlay(state: XServerDialogState) {
                 text = "${(zoom * 100).toInt()}%",
                 style = MaterialTheme.typography.titleMedium,
                 fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
             Row(verticalAlignment = Alignment.CenterVertically) {

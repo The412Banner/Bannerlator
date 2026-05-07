@@ -1,5 +1,44 @@
 # Star-Compose — Progress Log
 
+## 2026-05-07 — Accent + visibility sweep (`fix/accent-and-visibility-sweep`)
+
+**Branch:** `fix/accent-and-visibility-sweep` off `beta4`
+
+**Bugs reported by user (with screenshots, accent set to lime green via Appearance picker):**
+1. Magnifier in-game overlay: "100%" zoom percentage rendered black-on-dark; the three buttons (−, +, ✕) used a muted purple-gray that ignored the accent picker entirely.
+2. CPU pinning checkboxes (Container Settings & Shortcut Settings → Advanced) stayed purple instead of following the user's lime accent.
+3. Environment Variables row toggles (boolean envvars like MESA_SHADER_CACHE_DISABLE) rendered in default Android blue regardless of accent.
+4. Graphics Engine (FSR) overlay still had labels rendering as dark text on dark surface — first attempted on `fix/cpu-pin-and-graphics-engine-visibility` (which the user confirmed worked but was never merged); folded into this sweep.
+
+**Root causes:**
+- Anything reading `MaterialTheme.colorScheme.primary` follows the accent picker correctly. But Compose `FilledTonalButton` reads `secondaryContainer` / `onSecondaryContainer`, which `ThemePreset.toColorScheme()` was not setting — so M3 fell back to its built-in default purple-gray, ignoring the user's choice. Magnifier buttons are the only `FilledTonalButton` usage in the codebase.
+- Legacy XML widgets (`CPUListView`, `EnvVarsView`) inflate their CheckBox/ToggleButton from static `styles.xml` resources, which are baked at build time and never see the runtime `AppThemeState`. These widgets need to read the accent programmatically and apply it after inflation.
+- FSROverlay and MagnifierOverlay use `Modifier.background(...)` rather than a `Surface { ... }`, which means `LocalContentColor` is never set, so Text composables without an explicit `color = ...` fall back to `Color.Black` even though the surrounding `WinlatorTheme` defines `onSurface` as light gray.
+
+**Fixes:**
+- `ThemePreset.kt` — `toColorScheme()` and `toLightColorScheme()` now also set `secondary`, `onSecondary`, `secondaryContainer`, `onSecondaryContainer` derived from the accent. The smallest surface change that fixes Magnifier `FilledTonalButton`s without affecting any other unaudited M3 widgets (verified: zero other `FilledTonalButton`/`FilledCard`/etc. in tree).
+- `MagnifierOverlay.kt` — added `color = MaterialTheme.colorScheme.onSurface` to the "100%" Text.
+- `FSROverlay.kt` — re-applied the four `color = MaterialTheme.colorScheme.onSurface` fixes from the abandoned `fix/cpu-pin-and-graphics-engine-visibility` branch (confirmed working by user testing).
+- `AppThemeState.kt` — added `@JvmStatic fun getCurrentAccentArgb(): Int` so legacy Java widgets can read the current accent without doing Kotlin inline-class gymnastics from Java.
+- `CPUListView.java` — after inflating each CPU CheckBox, calls `CompoundButtonCompat.setButtonTintList(...)` with a `ColorStateList` built from `AppThemeState.getCurrentAccentArgb()`. Defensive fallback to `#FFBA86FC` if the singleton is somehow not yet initialised.
+- `EnvVarsView.java` — added `applyAccentTint(view)` helper that calls `setBackgroundTintList(...)` on legacy `ToggleButton` widgets in the boolean-envvar row. Wired into the existing `applyDarkTheme` path so the tint is applied alongside the dark-mode setup.
+
+**Why the sweep was bundled:**
+- The four root causes are entangled: Tier B (theme gap) is what makes Magnifier buttons pick up the accent; Tier C/D (legacy widget tinting) needs the same `getCurrentAccentArgb()` helper that has to be added to `AppThemeState`. Splitting would have required a private helper duplicated across two files.
+- One CI run, one device test, one merge.
+
+**Files touched:**
+- `app/src/main/java/com/winlator/cmod/ui/theme/ThemePreset.kt`
+- `app/src/main/java/com/winlator/cmod/ui/theme/AppThemeState.kt`
+- `app/src/main/java/com/winlator/cmod/ui/overlays/FSROverlay.kt`
+- `app/src/main/java/com/winlator/cmod/ui/overlays/MagnifierOverlay.kt`
+- `app/src/main/java/com/winlator/cmod/widget/CPUListView.java`
+- `app/src/main/java/com/winlator/cmod/widget/EnvVarsView.java`
+
+**Pending follow-up:** The abandoned `fix/cpu-pin-and-graphics-engine-visibility` branch (commit `2b0a2a0`) should be deleted after this sweep merges, since its FSROverlay fix is replicated here and its bad XML hex tint was already reverted.
+
+---
+
 ## 2026-05-07 — Shortcut Settings tab-switch state-loss fix (`fix/shortcut-envvars-tab-switch-loss`)
 
 **Branch:** `fix/shortcut-envvars-tab-switch-loss` off `beta4`

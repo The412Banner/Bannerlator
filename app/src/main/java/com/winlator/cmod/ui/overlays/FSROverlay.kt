@@ -114,6 +114,7 @@ fun FSROverlay(state: XServerDialogState) {
                 Text(
                     "Graphics Engine",
                     style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -123,7 +124,7 @@ fun FSROverlay(state: XServerDialogState) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("FSR", modifier = Modifier.weight(1f))
+                Text("FSR", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                 Switch(
                     checked = fsrEnabled,
                     onCheckedChange = { fsrEnabled = it; pushUpdate() }
@@ -164,7 +165,8 @@ fun FSROverlay(state: XServerDialogState) {
             // Level slider
             Text(
                 "Strength: ${"%.0f".format(fsrLevel)}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Slider(
                 value = fsrLevel,
@@ -183,7 +185,7 @@ fun FSROverlay(state: XServerDialogState) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("HDR", modifier = Modifier.weight(1f))
+                Text("HDR", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                 Switch(
                     checked = hdrEnabled,
                     onCheckedChange = { hdrEnabled = it; pushUpdate() }

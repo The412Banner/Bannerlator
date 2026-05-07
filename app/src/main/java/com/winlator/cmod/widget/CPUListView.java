@@ -1,6 +1,7 @@
 package com.winlator.cmod.widget;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,8 +10,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.core.widget.CompoundButtonCompat;
 
 import com.winlator.cmod.R;
+import com.winlator.cmod.ui.theme.AppThemeState;
 
 import java.util.Arrays;
 import java.util.List;
@@ -37,6 +40,7 @@ public class CPUListView extends LinearLayout {
     private void refreshContent() {
         removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(getContext());
+        ColorStateList accentTint = currentAccentTint();
 
         for (int i = 0; i < numProcessors; i++) {
             View itemView = inflater.inflate(R.layout.cpu_list_item, this, false);
@@ -44,11 +48,24 @@ public class CPUListView extends LinearLayout {
             CheckBox checkBox = itemView.findViewById(R.id.CheckBox);
             checkBox.setTag(tag);
             checkBox.setChecked(checkedCPUList == null || checkedCPUList.contains(String.valueOf(i)));
+            CompoundButtonCompat.setButtonTintList(checkBox, accentTint);
 
             ((TextView)itemView.findViewById(R.id.TextView)).setText(tag);
             addView(itemView);
         }
     }
+
+    /** Pull the current Compose-side accent (set via Appearance > custom color) so
+     * legacy XML widgets visually agree with the rest of the UI. Defensive fallback
+     * in case the theme singleton hasn't been initialized yet. */
+    private static ColorStateList currentAccentTint() {
+        try {
+            return ColorStateList.valueOf(AppThemeState.getCurrentAccentArgb());
+        } catch (Throwable ignored) {
+            return ColorStateList.valueOf(0xFFBA86FC);
+        }
+    }
+}
 
     public void setCheckedCPUList(String checkedCPUList) {
         this.checkedCPUList = Arrays.asList(checkedCPUList.split(","));

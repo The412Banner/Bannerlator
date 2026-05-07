@@ -1,6 +1,7 @@
 package com.winlator.cmod.widget;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.text.InputType;
 import android.util.AttributeSet;
@@ -23,6 +24,7 @@ import com.winlator.cmod.R;
 import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.UnitUtils;
+import com.winlator.cmod.ui.theme.AppThemeState;
 
 import java.util.Arrays;
 
@@ -144,12 +146,26 @@ public class EnvVarsView extends FrameLayout {
             } else if (view instanceof Spinner) {
                 ((Spinner) view).setPopupBackgroundResource(R.drawable.content_dialog_background_dark);
             } else if (view instanceof ToggleButton) {
-                // Apply custom styles if needed for ToggleButton
-                // For example, you could change the background or text colors
+                applyAccentTint(view);
             }
         } else {
             // Apply light theme if needed
         }
+    }
+
+    /** Tint the active state of legacy ToggleButton/CheckBox-style widgets to
+     *  match the runtime accent color from Compose's Appearance picker. The
+     *  toggle_button_selector drawable still controls shape; this only re-colors
+     *  the on-state via a background tint. Defensive fallback if AppThemeState
+     *  has not been initialised. */
+    private void applyAccentTint(View view) {
+        int argb;
+        try {
+            argb = AppThemeState.getCurrentAccentArgb();
+        } catch (Throwable ignored) {
+            argb = 0xFFBA86FC;
+        }
+        view.setBackgroundTintList(ColorStateList.valueOf(argb));
     }
 
     // Method to get environment variables as a string
@@ -192,6 +208,7 @@ public class EnvVarsView extends FrameLayout {
                 toggleButton.setVisibility(VISIBLE);
                 toggleButton.setChecked(value.equals("1") || value.equals("true"));
                 applyDarkTheme(toggleButton); // Apply dark theme
+                applyAccentTint(toggleButton); // Tint the on-state to match Compose accent
                 getValueCallback = () -> toggleButton.isChecked() ? knownEnvVar[3] : knownEnvVar[2];
                 break;
             case "SELECT":

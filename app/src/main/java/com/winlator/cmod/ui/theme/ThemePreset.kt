@@ -17,29 +17,43 @@ data class ThemePreset(
     val divider: Color = Color(0xFF404040),
     val error: Color = Color(0xFFCF6679),
 ) {
-    fun toColorScheme(accentOverride: Color? = null) = darkColorScheme(
-        primary          = accentOverride ?: primary,
-        onPrimary        = onPrimary,
-        background       = background,
-        onBackground     = onBackground,
-        surface          = surface,
-        onSurface        = onSurface,
-        surfaceVariant   = surfaceVariant,
-        onSurfaceVariant = onSurfaceVariant,
-        error            = error,
-    )
+    fun toColorScheme(accentOverride: Color? = null): androidx.compose.material3.ColorScheme {
+        val accent = accentOverride ?: primary
+        return darkColorScheme(
+            primary              = accent,
+            onPrimary            = onPrimary,
+            secondary            = accent,
+            onSecondary          = onPrimary,
+            secondaryContainer   = accent.copy(alpha = 0.30f),
+            onSecondaryContainer = onSurface,
+            background           = background,
+            onBackground         = onBackground,
+            surface              = surface,
+            onSurface            = onSurface,
+            surfaceVariant       = surfaceVariant,
+            onSurfaceVariant     = onSurfaceVariant,
+            error                = error,
+        )
+    }
 
-    fun toLightColorScheme(accentOverride: Color? = null) = lightColorScheme(
-        primary          = accentOverride ?: primary,
-        onPrimary        = Color(0xFFFFFFFF),
-        background       = Color(0xFFF5F5F5),
-        onBackground     = Color(0xFF1A1A1A),
-        surface          = Color(0xFFFFFFFF),
-        onSurface        = Color(0xFF1A1A1A),
-        surfaceVariant   = Color(0xFFEAEAEA),
-        onSurfaceVariant = Color(0xFF555555),
-        error            = Color(0xFFB00020),
-    )
+    fun toLightColorScheme(accentOverride: Color? = null): androidx.compose.material3.ColorScheme {
+        val accent = accentOverride ?: primary
+        return lightColorScheme(
+            primary              = accent,
+            onPrimary            = Color(0xFFFFFFFF),
+            secondary            = accent,
+            onSecondary          = Color(0xFFFFFFFF),
+            secondaryContainer   = accent.copy(alpha = 0.20f),
+            onSecondaryContainer = Color(0xFF1A1A1A),
+            background           = Color(0xFFF5F5F5),
+            onBackground         = Color(0xFF1A1A1A),
+            surface              = Color(0xFFFFFFFF),
+            onSurface            = Color(0xFF1A1A1A),
+            surfaceVariant       = Color(0xFFEAEAEA),
+            onSurfaceVariant     = Color(0xFF555555),
+            error                = Color(0xFFB00020),
+        )
+    }
 }
 
 val themePresets: List<ThemePreset> = listOf(

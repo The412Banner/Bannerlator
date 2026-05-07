@@ -74,4 +74,11 @@ object AppThemeState {
         return if (_isDarkMode.value) preset.toColorScheme(accentOverride = override)
                else                   preset.toLightColorScheme(accentOverride = override)
     }
+
+    /** Java-friendly entry point: returns the current accent (primary) color as an
+     *  ARGB int. Used by legacy AndroidView widgets (CPUListView, EnvVarsView) so
+     *  they can tint their CheckBox/ToggleButton drawables to match the Compose
+     *  accent picker. */
+    @JvmStatic
+    fun getCurrentAccentArgb(): Int = currentColorSchemeSnapshot().primary.toArgb()
 }

@@ -1,5 +1,27 @@
 # Star-Compose — Progress Log
 
+## 2026-05-08 — Top-bar action buttons missing on first navigation (`fix/topbar-actions-race`)
+
+**Branch:** `fix/topbar-actions-race` off `beta4`
+
+**Bug reported by user:** After navigating to the Shortcuts screen, the three top-bar action buttons (Import, Grid/List toggle, Sort) are missing. They only appear after the user goes into a container, adds a shortcut from inside, and returns. Same pattern would have hit the Containers-screen Import-container button.
+
+**Root cause:** A composition-vs-coroutine ordering race between two effect types. `MainActivity.kt` clears stale top-bar actions on route change with a `LaunchedEffect(currentRoute) { topBarActionsState.value = {} }` (parent). `ShortcutsScreen` and `ContainersScreen` set their actions with `SideEffect { topBarActions.value = { ... } }` (child). `SideEffect` runs synchronously during the commit phase; `LaunchedEffect` dispatches a coroutine on `AndroidUiDispatcher.Main` that runs **after** commit. So on first navigation:
+
+1. Commit phase — child's SideEffect sets actions = { Import, Grid, Sort }.
+2. Post-commit — parent's LaunchedEffect coroutine runs and clears actions = {}.
+3. AppTopBar reads cleared state → no buttons.
+
+The buttons later appear because the user round-trips Containers → ContainerDetail → adds a shortcut → returns. `shortcuts.collectAsState(initial = emptyList())` flips from empty to non-empty, triggering a fresh ShortcutsScreen recomposition. SideEffect fires again, and this time there's no in-flight LaunchedEffect to undo it (key didn't change), so the buttons stick.
+
+**Fix:** Switch both `SideEffect { ... }` blocks to `LaunchedEffect(Unit) { ... }`. Both parent's clear and child's set are now coroutines on the same dispatcher; parent enqueues first (commits before the child) and runs first (clears), child enqueues second and runs after (sets). Final state is "buttons present" on every navigation. The lambda still captures `isGridView` / `sortOrder` via Compose's automatic state subscription, so AppTopBar still recomposes when those change without re-registering the effect.
+
+**Files touched:**
+- `app/src/main/java/com/winlator/cmod/ui/screens/ShortcutsScreen.kt` — SideEffect → LaunchedEffect(Unit), drop dead SideEffect import.
+- `app/src/main/java/com/winlator/cmod/ui/screens/ContainersScreen.kt` — same.
+
+---
+
 ## 2026-05-08 — EXE shortcut launch fix + cover art (round 2 on `fix/shortcut-import-exe-support`)
 
 **Branch:** same `fix/shortcut-import-exe-support` off `beta4` (round 1 = `07612f3`)
@@ -34,6 +56,8 @@
 **Why no extension-specific copy?** A real Windows game needs its DLLs and assets next to the exe; copying just the binary into drive_c would break the game. Wine's default `Z:` drive maps to host `/`, so any exe under `/storage/emulated/0/...` is naturally reachable as `Z:\storage\emulated\0\...`. We point the shortcut at the in-place location instead of duplicating storage.
 
 **Phase 2 (deferred):** drive-mapping auto-add for cleaner paths (`D:` → game folder), working-directory detection (`Path=` field), EXE icon extraction (jacojayy added an 813-line `ExeIconExtractor.java` we could lift), pre-launch reachability check, bulk folder import.
+
+---
 
 ## 2026-05-07 — Accent + visibility sweep (`fix/accent-and-visibility-sweep`)
 

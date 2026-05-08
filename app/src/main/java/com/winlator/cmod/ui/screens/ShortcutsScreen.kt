@@ -79,7 +79,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -176,7 +175,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     val topBarActions = LocalTopBarActions.current
-    SideEffect {
+    // LaunchedEffect — not SideEffect — so this runs in the same dispatcher queue as
+    // MainActivity's route-change clear (which is a LaunchedEffect). Parent enqueues
+    // first and runs first (clears); we enqueue second and run after (sets). A
+    // SideEffect would run synchronously during commit, getting steamrolled by the
+    // parent's clear when it fires post-commit.
+    LaunchedEffect(Unit) {
         topBarActions.value = {
             IconButton(onClick = { showImportContainerPicker = true }) {
                 Icon(Icons.Filled.FileDownload, contentDescription = "Import shortcut", tint = androidx.compose.ui.graphics.Color.White)

@@ -44,7 +44,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -101,7 +100,11 @@ fun ContainersScreen(
     var showImportPicker by remember { mutableStateOf(false) }
 
     val topBarActions = LocalTopBarActions.current
-    SideEffect {
+    // LaunchedEffect — not SideEffect — so this runs in the same dispatcher queue as
+    // MainActivity's route-change clear (parent enqueues first, we enqueue second and
+    // run after). A SideEffect would set during commit and the parent's post-commit
+    // clear would steamroll it on first navigation to this screen.
+    LaunchedEffect(Unit) {
         topBarActions.value = {
             IconButton(onClick = { showImportPicker = true }) {
                 Icon(Icons.Filled.FileDownload, contentDescription = "Import container", tint = androidx.compose.ui.graphics.Color.White)

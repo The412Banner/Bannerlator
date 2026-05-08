@@ -58,10 +58,9 @@ This fork stands on a long chain of prior work. Credit, in lineage order:
 | **brunodev85** | Original [Winlator](https://github.com/brunodev85/winlator) — Wine + Box64 + Turnip on Android. Foundation of every fork below. Also serves the `input_controls` profiles consumed by this fork: <https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/> |
 | **coffincolors** | [`cmod` Winlator fork](https://github.com/coffincolors/winlator) — package `com.winlator.cmod` and the customization layer this codebase is built on. |
 | **Pipetto-crypto** | [Winlator Bionic fork](https://github.com/Pipetto-crypto/winlator) (the "Bionic" half of *Star Bionic*) and the upstream [Box64 fix branch](https://github.com/Pipetto-crypto/box64). Co-credited on cmod. |
-| **Xnick417x** | Maintains the [Winlator-Bionic-Nightly-wcp](https://github.com/Xnick417x/Winlator-Bionic-Nightly-wcp) WCP releases repo: nightly DXVK, VKD3D-Proton, FEXCore, Box64, WOWBox64, Turnip, Wine, Proton, and weekly bundles, plus the content registry consumed by this fork: <https://raw.githubusercontent.com/Xnick417x/Winlator-Bionic-Nightly-wcp/refs/heads/main/content.json> |
 | **jacojayy** | Maintainer of the [Star](https://github.com/jacojayy/star) line. SDK36 patches in the bundled Turnip driver for newer DXVK compatibility. |
 | **vivsi** | Controller support contributions. |
-| **The412Banner** *(this repo's primary contributor)* | Full Jetpack Compose UI migration, in-game overlay rewrite, controller-support restore (SDL2 SoName fix + four event files), Box64 edit-dialog fix, theme system, and CI/release infrastructure. Also maintains the [Nightlies WCP Hub](https://github.com/The412Banner/Nightlies) and [Banners-Turnip](https://github.com/The412Banner/Banners-Turnip). |
+| **The412Banner** | Full Jetpack Compose UI migration, in-game overlay rewrite, controller-support restore (SDL2 SoName fix + four event files), Box64 edit-dialog fix, theme system, and CI/release infrastructure. Also maintains the [Nightlies WCP Hub](https://github.com/The412Banner/Nightlies) and [Banners-Turnip](https://github.com/The412Banner/Banners-Turnip). |
 
 ### Sibling forks (not in this fork's direct lineage, but worth knowing)
 

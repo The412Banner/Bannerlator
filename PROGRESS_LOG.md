@@ -1,5 +1,35 @@
 # Star-Compose — Progress Log
 
+## 2026-05-08 — Beta 3C shipped + release-workflow heredoc fix + jacojayy/star/beta4 force-sync
+
+**main HEAD:** `4492f75` (after the workflow fix). Pushed to `jacojayy/star/beta4` with `--force-with-lease=beta4:57b591b`; both branches now identical.
+
+**Released:** "Winlator Star Bionic Compose Beta 3C", tag `v7.1.4x-cmod-20260508-9fc3bba`, asset `Winlator-Star-Bionic-Compose-Beta3C.apk`, marked Latest. URL: https://github.com/The412Banner/star-compose/releases/tag/v7.1.4x-cmod-20260508-9fc3bba.
+
+**Sequence:**
+1. `beta4` (5099c91) → fast-forward into `main` (the three EXE-import-flow fixes + topbar-actions-race fix + new default contents URL).
+2. Cherry-picked jacojayy `57b591b` "Refactor changelog generation in release workflow" onto main as `9fc3bba`.
+3. Ran "Nightly Manual Release Build" on main → auto-created `star-nightly-9fc3bba` release. Rebadged via gh API: created tag `v7.1.4x-cmod-20260508-9fc3bba`, PATCHed release (tag_name + name + prerelease=false + make_latest=true), renamed APK asset, deleted orphan `star-nightly-9fc3bba` tag.
+4. Discovered the auto-generated body contained literal `%0A` strings instead of newlines — bug in jacojayy's `57b591b`. The URL-encoding (`%0A`/`%0D`/`%25`) only worked with the deprecated `::set-output::` mechanism; `$GITHUB_ENV` does NOT auto-decode. Workaround: `gh release edit --notes-file` to overwrite the Beta 3C body with proper release notes.
+5. Permanent fix on `main` (`4492f75`): replaced the URL-encoded `CHANGELOG=$CHANGELOG_CONTENT` env-var assignment with heredoc syntax (`echo "CHANGELOG<<__CHANGELOG_EOF__"` / `cat changelog.md` / `echo "__CHANGELOG_EOF__"` all into `$GITHUB_ENV`). Verified by triggering the workflow; resulting auto-release body rendered as proper markdown heading + bordered table. Verification release `star-nightly-4492f75` and tag deleted.
+6. Force-pushed our `main` to `jacojayy/star/beta4` (his `57b591b` SHA dropped — content survives via our `9fc3bba` plus the heredoc fix on top). Both branches identical at `4492f75`. Used `--force-with-lease=beta4:<his-sha>` for safety.
+
+**Files touched:** `.github/workflows/release.yml` (heredoc fix only).
+
+**Branch cleanup post-Beta-3C ship:** `fix/shortcut-import-exe-support`, `fix/topbar-actions-race`, `fix/default-contents-url`, and `beta4-test` deleted from origin and locally during the prior beta4-test merge cycle.
+
+---
+
+## 2026-05-08 — Default contents URL → The412Banner/winlator-contents (`fix/default-contents-url`)
+
+**Branch:** `fix/default-contents-url` off `beta4` (deleted post-merge).
+
+**Change:** `ContentsManager.REMOTE_PROFILES` default flipped from the third-party `Xnick417x/Winlator-Bionic-Nightly-wcp/refs/heads/main/content.json` to the in-house `The412Banner/winlator-contents/main/contents.json`. New installs and any user who hasn't manually overridden the URL in Settings get the new default on next launch. Users who already saved a custom URL keep their override — no migration of existing prefs.
+
+**Files touched:** `app/src/main/java/com/winlator/cmod/contents/ContentsManager.java` (1 line).
+
+---
+
 ## 2026-05-08 — Top-bar action buttons missing on first navigation (`fix/topbar-actions-race`)
 
 **Branch:** `fix/topbar-actions-race` off `beta4`

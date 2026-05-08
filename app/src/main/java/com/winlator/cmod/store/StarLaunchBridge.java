@@ -214,9 +214,9 @@ public final class StarLaunchBridge {
      * If the store URL fails, a SteamGridDB lookup is attempted automatically
      * before giving up.
      */
-    private static void saveCoverArt(Context ctx, Container container,
-                                     File shortcutFile, String safeName,
-                                     String url) {
+    public static void saveCoverArt(Context ctx, Container container,
+                                    File shortcutFile, String safeName,
+                                    String url) {
         Bitmap bmp = downloadBitmap(url);
 
         // If store URL failed, try SteamGridDB as last resort

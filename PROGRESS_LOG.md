@@ -1,5 +1,24 @@
 # Star-Compose — Progress Log
 
+## 2026-05-08 — EXE shortcut launch fix + cover art (round 2 on `fix/shortcut-import-exe-support`)
+
+**Branch:** same `fix/shortcut-import-exe-support` off `beta4` (round 1 = `07612f3`)
+
+**Bugs reported by user after round 1 device test:**
+1. Imported EXE shortcut appears in the list but launches as "file not found".
+2. No cover art image is attached to the imported shortcut.
+
+**Root cause of #1:** I copied the `Z:\\…` pattern from `StarLaunchBridge.writeShortcut` without verifying what `Z:` actually maps to. **`Z:` maps to the imagefs root** (`<filesDir>/imagefs/`) — the chroot view Wine sees, not Android `/`. `StarLaunchBridge` only works because store-installed games live inside imagefs; it strips that prefix before prepending `Z:`. For an EXE on `/storage/emulated/0/…` the path `Z:\storage\emulated\0\…` does not exist inside Wine's filesystem view. The correct mapping comes from `container.drives` — the default is `F:` → primary external storage, `D:` → Downloads.
+
+**Root cause of #2:** Round 1's EXE branch never wrote anything to `container.getIconsDir(64)` and never registered customCoverArt — that pipeline lived only in `StarLaunchBridge.saveCoverArt`.
+
+**Fixes (commit pending CI):**
+- `ShortcutsViewModel.kt` — `writeExeShortcut` now resolves the Wine path against `container.drivesIterator()`, picking the longest drive prefix that contains the EXE (so `/storage/emulated/0/Games/foo.exe` → `F:\Games\foo.exe`). When no existing drive matches, `allocateDriveLetter` picks the next free letter (G:..Y: first, then A/B/D/E/F, never C: or Z:), maps it to the EXE's parent folder, appends to `container.drives`, and calls `container.saveData()` to persist. 4-backslash separators applied via a single `replace` after path construction.
+- `ShortcutsViewModel.kt` — after the `.desktop` is written, kicks off a background thread that calls `StarLaunchBridge.saveCoverArt(...)` with `null` URL, which triggers the SteamGridDB autocomplete + grids lookup using the display name as the query and saves the resulting bitmap to both `container.getIconsDir(64)/<safeName>.png` (the field `Icon=<safeName>` references) and `Shortcut.saveCustomCoverArt(...)`. Refresh runs after the cover art finishes so the new icon shows up without a manual refresh.
+- `StarLaunchBridge.java` — `saveCoverArt` flipped from `private` to `public` so the EXE-import path can call it. No semantic change for store integrations.
+
+**Round 3 (queued — separate commit on the same branch):** PE icon extractor as a fallback when SteamGridDB has nothing. New `ExeIconExtractor.kt` that parses the PE resource directory → `RT_GROUP_ICON` → picks the best-size `RT_ICON` → handles both PNG-embedded (Vista+) and DIB icon entries → writes a 64×64 PNG into `container.getIconsDir(64)`.
+
 ## 2026-05-08 — Shortcut import EXE support + truthful toast (`fix/shortcut-import-exe-support`)
 
 **Branch:** `fix/shortcut-import-exe-support` off `beta4`

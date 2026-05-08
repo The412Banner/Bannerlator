@@ -13,6 +13,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.container.Shortcut
+import com.winlator.cmod.store.StarLaunchBridge
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -91,13 +92,25 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     private fun importExe(container: Container, uri: Uri, sourceName: String, context: Context): ImportResult {
         val realPath = resolveLocalPath(context, uri)
             ?: return ImportResult.Error("EXE must be on local storage. Cloud / SAF locations aren't supported.")
-        if (!File(realPath).isFile) {
+        val exeFile = File(realPath)
+        if (!exeFile.isFile) {
             return ImportResult.Error("Could not access EXE on disk: $realPath")
         }
         val displayName = sourceName.substringBeforeLast('.', sourceName)
         return try {
-            writeExeShortcut(container, realPath, displayName)
+            val shortcutFile = writeExeShortcut(container, exeFile, displayName)
             refresh()
+            // Cover art on a background thread — SteamGridDB lookup involves network I/O.
+            val safeName = shortcutFile.nameWithoutExtension
+            Thread({
+                try {
+                    StarLaunchBridge.saveCoverArt(context.applicationContext, container,
+                        shortcutFile, safeName, null)
+                    refresh()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Cover art lookup failed for $safeName", e)
+                }
+            }, "exe-import-cover-art").start()
             ImportResult.Success
         } catch (e: IOException) {
             Log.e(TAG, "Failed to write EXE shortcut", e)
@@ -133,20 +146,24 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun writeExeShortcut(container: Container, exePath: String, displayName: String) {
+    private fun writeExeShortcut(container: Container, exeFile: File, displayName: String): File {
         val desktopDir = container.getDesktopDir()
         if (!desktopDir.exists()) desktopDir.mkdirs()
 
         val safeName = displayName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim().ifEmpty { "game" }
         val shortcutFile = File(desktopDir, "$safeName.desktop")
 
-        // Mirrors StarLaunchBridge.writeShortcut: Z:-prefixed, 4-backslash separators,
-        // no env WINEPREFIX (Winlator infers the container from the file's location).
-        val winPath = exePath.removePrefix("/").replace("/", "\\\\\\\\")
+        // Resolve to a Wine drive letter against the container's mount map. Z: would
+        // map to imagefs root (chroot view) and not reach external storage, so we use
+        // F:/D:/etc. as defined in container.drives. If no existing drive contains the
+        // EXE path we add and persist a new letter pointing at the parent directory.
+        val winPath = resolveWindowsPath(container, exeFile.absolutePath)
+        // 4-backslash separators per Winlator's two-pass StringUtils.unescape().
+        val escaped = winPath.replace("\\", "\\\\\\\\")
         val content = buildString {
             append("[Desktop Entry]\n")
             append("Name=").append(displayName).append("\n")
-            append("Exec=wine Z:\\\\\\\\").append(winPath).append("\n")
+            append("Exec=wine ").append(escaped).append("\n")
             append("Icon=").append(safeName).append("\n")
             append("Type=Application\n")
             append("StartupWMClass=explorer\n")
@@ -154,7 +171,62 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             append("[Extra Data]\n")
         }
         shortcutFile.writeText(content)
-        Log.d(TAG, "Wrote EXE shortcut: ${shortcutFile.path} -> $exePath")
+        Log.d(TAG, "Wrote EXE shortcut: ${shortcutFile.path} -> $winPath ($exeFile)")
+        return shortcutFile
+    }
+
+    /**
+     * Builds a Wine-side Windows path for `exePath` using the container's drive map.
+     * If no existing drive contains the EXE, a new letter is allocated to the EXE's
+     * parent folder and persisted on the container.
+     */
+    private fun resolveWindowsPath(container: Container, exePath: String): String {
+        val match = bestDriveMatch(container, exePath)
+        if (match != null) {
+            val (letter, mountPath) = match
+            val rel = exePath.removePrefix(mountPath).removePrefix("/").replace("/", "\\")
+            return "$letter:\\$rel"
+        }
+        // No existing drive — allocate one for the parent folder and persist.
+        val parent = File(exePath).parentFile?.absolutePath ?: "/"
+        val letter = allocateDriveLetter(container)
+            ?: throw IOException("No free drive letter available to map $parent")
+        val newDrives = container.drives + "$letter:$parent"
+        container.drives = newDrives
+        try {
+            container.saveData()
+            Log.d(TAG, "Auto-added drive $letter: -> $parent (container ${container.id})")
+        } catch (e: Exception) {
+            Log.w(TAG, "Drive persist failed (continuing with in-memory mapping)", e)
+        }
+        val fileName = File(exePath).name.replace("/", "\\")
+        return "$letter:\\$fileName"
+    }
+
+    /** Returns (letter, mountPath) of the longest-matching drive prefix, or null. */
+    private fun bestDriveMatch(container: Container, exePath: String): Pair<String, String>? {
+        var best: Pair<String, String>? = null
+        for (entry in container.drivesIterator()) {
+            val letter = entry[0]
+            val mountPath = entry[1].trimEnd('/')
+            if (mountPath.isEmpty()) continue
+            val matches = exePath == mountPath ||
+                    exePath.startsWith(if (mountPath.endsWith("/")) mountPath else "$mountPath/")
+            if (matches && (best == null || mountPath.length > best!!.second.length)) {
+                best = letter to mountPath
+            }
+        }
+        return best
+    }
+
+    /** Picks the next free drive letter (skips C: and Z:, plus anything already mapped). */
+    private fun allocateDriveLetter(container: Container): String? {
+        val used = mutableSetOf("C", "Z")
+        for (entry in container.drivesIterator()) used += entry[0].uppercase()
+        // Try G..Y first to avoid stomping on common user-set letters (D/E/F).
+        val order = ('G'..'Y').map { it.toString() } +
+                listOf("A", "B", "D", "E", "F")
+        return order.firstOrNull { it !in used }
     }
 
     private fun resolveLocalPath(ctx: Context, uri: Uri): String? {

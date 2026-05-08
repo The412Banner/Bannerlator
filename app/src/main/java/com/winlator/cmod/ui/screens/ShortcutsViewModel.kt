@@ -13,6 +13,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.container.Shortcut
+import com.winlator.cmod.core.FileUtils
 import com.winlator.cmod.store.StarLaunchBridge
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -101,11 +102,28 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             val shortcutFile = writeExeShortcut(container, exeFile, displayName)
             refresh()
             // Cover art on a background thread — SteamGridDB lookup involves network I/O.
+            // Fallback chain: store URL (none here) → SGDB → PE icon extraction from the EXE.
             val safeName = shortcutFile.nameWithoutExtension
+            val appCtx = context.applicationContext
             Thread({
                 try {
-                    StarLaunchBridge.saveCoverArt(context.applicationContext, container,
-                        shortcutFile, safeName, null)
+                    StarLaunchBridge.saveCoverArt(appCtx, container, shortcutFile, safeName, null)
+                    val iconFile = container.getIconsDir(64)?.let { File(it, "$safeName.png") }
+                    if (iconFile == null || !iconFile.exists()) {
+                        // SGDB miss — try extracting an icon from the EXE itself.
+                        ExeIconExtractor.extract(exeFile)?.let { bmp ->
+                            container.getIconsDir(64)?.let { iconsDir ->
+                                if (!iconsDir.exists()) iconsDir.mkdirs()
+                                FileUtils.saveBitmapToFile(bmp, File(iconsDir, "$safeName.png"))
+                            }
+                            try {
+                                Shortcut(container, shortcutFile).saveCustomCoverArt(bmp)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "saveCustomCoverArt failed for $safeName", e)
+                            }
+                            Log.d(TAG, "PE icon extraction succeeded for $safeName")
+                        }
+                    }
                     refresh()
                 } catch (e: Exception) {
                     Log.w(TAG, "Cover art lookup failed for $safeName", e)

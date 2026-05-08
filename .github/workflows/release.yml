@@ -21,7 +21,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: recursive
-        fetch-depth: 20   # needed for commit logs
+        fetch-depth: 20
 
     - name: set up JDK 17
       uses: actions/setup-java@v4
@@ -128,11 +128,19 @@ jobs:
 
     - name: Generate changelog table
       run: |
-        echo "## Changelog" > changelog.md
-        echo "" >> changelog.md
-        echo "| Commit | Message |" >> changelog.md
-        echo "|--------|---------|" >> changelog.md
-        git log -n 10 --pretty=format:"| \`%h\` | %s |" >> changelog.md
+        {
+          echo "## Changelog"
+          echo ""
+          echo "| Commit | Title |"
+          echo "|--------|--------|"
+          git log -n 10 --pretty=format:"| \`%h\` | %s |"
+        } > changelog.md
+
+        CHANGELOG_CONTENT="$(cat changelog.md)"
+        CHANGELOG_CONTENT="${CHANGELOG_CONTENT//'%'/'%25'}"
+        CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\n'/'%0A'}"
+        CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\r'/'%0D'}"
+        echo "CHANGELOG=$CHANGELOG_CONTENT" >> $GITHUB_ENV
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
@@ -140,8 +148,7 @@ jobs:
         tag_name: star-nightly-${{ env.SHORT_SHA }}
         name: star Nightly -git_${{ env.SHORT_SHA }}
         body: |
-          ## Changelog
-          $(cat changelog.md)
+          ${{ env.CHANGELOG }}
 
           ${{ github.event.inputs.release_notes }}
         files: app/build/outputs/apk/debug/star-compose-v${{ env.VERSION }}-${{ env.SHORT_SHA }}.apk

@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <com.winlator.cmod.bigpicture.TiledBackgroundView
+    <com.winlator.star.bigpicture.TiledBackgroundView
         android:id="@+id/parallaxBackgroundView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>

@@ -54,7 +54,7 @@
                 android:textColor="#CCCCCC"
                 android:textSize="12sp" />
 
-            <com.winlator.cmod.widget.SeekBar
+            <com.winlator.star.widget.SeekBar
                 android:id="@+id/SBSharpness"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"

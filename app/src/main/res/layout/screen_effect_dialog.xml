@@ -6,13 +6,13 @@
             <FrameLayout android:layout_width="fill_parent" android:layout_height="wrap_content">
                 <LinearLayout style="@style/FieldSet">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/brightness" />
-                    <com.winlator.cmod.widget.SeekBar
+                    <com.winlator.star.widget.SeekBar
                         android:id="@+id/SBBrightness" android:layout_width="fill_parent" android:layout_height="60dp" app:maxValue="50" app:minValue="-50" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/contrast" />
-                    <com.winlator.cmod.widget.SeekBar
+                    <com.winlator.star.widget.SeekBar
                         android:id="@+id/SBContrast" android:layout_width="fill_parent" android:layout_height="60dp" app:maxValue="100" app:minValue="-100" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/gamma" />
-                    <com.winlator.cmod.widget.SeekBar
+                    <com.winlator.star.widget.SeekBar
                         android:id="@+id/SBGamma" android:layout_width="fill_parent" android:layout_height="60dp" app:maxValue="3.0" app:minValue="0.5" app:step="0.01" />
                 </LinearLayout>
                 <TextView android:background="#ffffffff" android:text="@string/color_adjustment" style="@style/FieldSetLabel" android:id="@+id/LBLColorAdjustment" />/>

@@ -118,12 +118,12 @@ downloadProton.dependsOn(downloadImageFS)
 preBuild.dependsOn(downloadProton)
 
 android {
-    namespace 'com.winlator.cmod'
+    namespace 'com.winlator.star'
     compileSdk 34
     buildToolsVersion "35.0.0"
 
     defaultConfig {
-        applicationId "com.winlator.cmod"
+        applicationId "com.winlator.star"
         minSdkVersion 26
         targetSdkVersion 28
         versionCode 20

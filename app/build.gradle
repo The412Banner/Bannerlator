@@ -131,6 +131,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags ''
+                arguments "-DCMAKE_CXX_CLANG_TIDY="
             }
         }
 
@@ -184,7 +185,6 @@ android {
     externalNativeBuild {
         cmake {
             path 'src/main/cpp/CMakeLists.txt'
-            arguments "-DCMAKE_CXX_CLANG_TIDY="
         }
     }
 

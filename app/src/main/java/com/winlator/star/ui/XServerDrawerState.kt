@@ -60,6 +60,7 @@ object XServerDrawerState {
     fun setShowLogs(v: Boolean)                { _showLogs.value = v }
     fun setShowMagnifier(v: Boolean)           { _showMagnifier.value = v }
     fun setLsfgEnabled(v: Boolean)              { _lsfgEnabled.value = v }
+    fun getLsfgEnabled(): Boolean = _lsfgEnabled.value
     fun setCursorExpanded(v: Boolean)          { _cursorExpanded.value = v }
 
     fun toggleCursorExpanded() {

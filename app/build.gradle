@@ -131,7 +131,6 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags ''
-                arguments "-DCMAKE_CXX_CLANG_TIDY="
             }
         }
 

@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(Winlator)
 
+# Disable clang-tidy (AGP enables it by default but its include paths
+# don't work with NDK cross-compilation for the lsfg-vk dependency)
+set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE)
+set(CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function-declaration")
 
 add_subdirectory(OpenXR-SDK)

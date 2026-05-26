@@ -1,4 +1,4 @@
-name: Nightly CI Release Build
+name: Nightly CI Release Build (different pkg)
 
 on:
   workflow_dispatch:

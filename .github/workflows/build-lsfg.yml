@@ -11,9 +11,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install NDK
         run: |
           sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"

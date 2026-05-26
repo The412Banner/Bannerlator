@@ -18,11 +18,9 @@ jobs:
         submodules: recursive
 
     - name: set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y -q openjdk-17-jdk
 
     - name: Build JavaSteam and copy JARs to app/libs/steam
       run: |
@@ -117,9 +115,6 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
     - name: Install NDK
       run: |
         sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"

@@ -66,6 +66,7 @@ fun ContainerDetailScreen(
     var showDxvkConfig           by remember { mutableStateOf(false) }
     var showWineD3DConfig        by remember { mutableStateOf(false) }
     var showFpsConfig            by remember { mutableStateOf(false) }
+    var showLsfgConfig           by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
     val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
@@ -118,7 +119,8 @@ fun ContainerDetailScreen(
                 onShowGfxConfig = { showGraphicsDriverConfig = true },
                 onShowDxvkConfig = { showDxvkConfig = true },
                 onShowWineD3DConfig = { showWineD3DConfig = true },
-                onShowFpsConfig = { showFpsConfig = true }
+                onShowFpsConfig = { showFpsConfig = true },
+                onShowLsfgConfig = { showLsfgConfig = true }
             )
 
             // ── Tabs ───────────────────────────────────────────────────────────
@@ -183,6 +185,12 @@ fun ContainerDetailScreen(
             onDismiss = { showFpsConfig = false }
         )
     }
+    if (showLsfgConfig) {
+        LsfgConfigDialog(
+            viewModel = viewModel,
+            onDismiss = { showLsfgConfig = false }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,6 +201,7 @@ private fun TopLevelFields(
     onShowDxvkConfig: () -> Unit,
     onShowWineD3DConfig: () -> Unit,
     onShowFpsConfig: () -> Unit,
+    onShowLsfgConfig: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -278,6 +287,60 @@ private fun TopLevelFields(
                 if (wrapper.contains("dxvk")) onShowDxvkConfig() else onShowWineD3DConfig()
             }) {
                 Icon(Icons.Default.Settings, contentDescription = null)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        // LSFG (Lossless Scaling Frame Generation)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(
+                checked = viewModel.lsfgEnabled,
+                onCheckedChange = { viewModel.lsfgEnabled = it }
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.lsfg_enabled), modifier = Modifier.weight(1f))
+            if (viewModel.lsfgEnabled) {
+                IconButton(onClick = onShowLsfgConfig) {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                }
+            }
+        }
+        if (viewModel.lsfgEnabled) {
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LabeledDropdown(
+                    label = stringResource(R.string.lsfg_multiplier),
+                    options = viewModel.lsfgMultiplierEntries,
+                    selectedOption = viewModel.lsfgMultiplierEntries.getOrNull(
+                        viewModel.lsfgMultiplierEntries.indexOfFirst {
+                            it.startsWith(viewModel.selectedLsfgMultiplier.toString())
+                        }.coerceAtLeast(0)
+                    ) ?: "2x",
+                    onSelect = { opt ->
+                        val num = opt.removeSuffix("x").toIntOrNull() ?: 2
+                        viewModel.selectedLsfgMultiplier = num
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                LabeledDropdown(
+                    label = stringResource(R.string.lsfg_quality),
+                    options = viewModel.lsfgQualityEntries,
+                    selectedOption = when (viewModel.selectedLsfgQuality) {
+                        "performance" -> viewModel.lsfgQualityEntries.getOrNull(0) ?: ""
+                        "balanced" -> viewModel.lsfgQualityEntries.getOrNull(1) ?: ""
+                        "quality" -> viewModel.lsfgQualityEntries.getOrNull(2) ?: ""
+                        else -> viewModel.lsfgQualityEntries.getOrNull(1) ?: ""
+                    },
+                    onSelect = { opt ->
+                        viewModel.selectedLsfgQuality = when (opt) {
+                            viewModel.lsfgQualityEntries.getOrNull(0) -> "performance"
+                            viewModel.lsfgQualityEntries.getOrNull(2) -> "quality"
+                            else -> "balanced"
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -860,6 +923,83 @@ internal fun SectionBox(
 }
 
 @Composable
+
+// ── LSFG Config Dialog ─────────────────────────────────────────────────────
+@Composable
+internal fun LsfgConfigDialog(
+    viewModel: ContainerDetailViewModel,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.lsfg_advanced_settings)) },
+        text = {
+            Column {
+                // Flow Scale
+                Text(stringResource(R.string.lsfg_flow_scale))
+                Text(
+                    stringResource(R.string.lsfg_flow_scale_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Slider(
+                    value = viewModel.lsfgFlowScale.toFloat(),
+                    onValueChange = { viewModel.lsfgFlowScale = it.toInt() },
+                    valueRange = 50f..200f,
+                    steps = 14,
+                )
+                Text("${viewModel.lsfgFlowScale}%", modifier = Modifier.align(Alignment.CenterHorizontally))
+                Spacer(Modifier.height(12.dp))
+
+                // Max Input Latency
+                Text(stringResource(R.string.lsfg_max_latency))
+                Text(
+                    stringResource(R.string.lsfg_max_latency_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Slider(
+                    value = viewModel.lsfgMaxLatency.toFloat(),
+                    onValueChange = { viewModel.lsfgMaxLatency = it.toInt() },
+                    valueRange = 0f..33f,
+                    steps = 32,
+                )
+                Text("${viewModel.lsfgMaxLatency}ms", modifier = Modifier.align(Alignment.CenterHorizontally))
+                Spacer(Modifier.height(12.dp))
+
+                // GPU Architecture
+                LabeledDropdown(
+                    label = stringResource(R.string.lsfg_gpu_arch),
+                    options = viewModel.lsfgGpuArchEntries,
+                    selectedOption = when (viewModel.selectedLsfgGpuArch) {
+                        "mali" -> viewModel.lsfgGpuArchEntries.getOrNull(1) ?: ""
+                        "adreno" -> viewModel.lsfgGpuArchEntries.getOrNull(2) ?: ""
+                        else -> viewModel.lsfgGpuArchEntries.getOrNull(0) ?: ""
+                    },
+                    onSelect = { opt ->
+                        viewModel.selectedLsfgGpuArch = when (opt) {
+                            viewModel.lsfgGpuArchEntries.getOrNull(1) -> "mali"
+                            viewModel.lsfgGpuArchEntries.getOrNull(2) -> "adreno"
+                            else -> "auto"
+                        }
+                    }
+                )
+                Text(
+                    stringResource(R.string.lsfg_gpu_arch_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.close))
+            }
+        }
+    )
+}
+
 internal fun LabeledDropdown(
     label: String,
     options: List<String>,

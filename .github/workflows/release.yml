@@ -132,6 +132,8 @@ jobs:
         sdkmanager --install "ndk;26.1.10909125"
         echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
+    - name: Grant execute permission for build script
+      run: chmod +x build-lsfg-android.sh
     - name: Build LSFG native library
       run: ./build-lsfg-android.sh
 

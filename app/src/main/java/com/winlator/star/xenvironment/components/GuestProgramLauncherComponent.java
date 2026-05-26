@@ -378,6 +378,27 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             envVars.putAll(this.envVars);
         }
 
+        // LSFG (Lossless Scaling Frame Generation) — if enabled
+        {
+            boolean lsfgEnabled = container.isLsfgEnabled();
+            if (shortcut != null) {
+                String lsfgExtra = shortcut.getExtra("lsfgEnabled", "");
+                if (!lsfgExtra.isEmpty()) lsfgEnabled = lsfgExtra.equals("1");
+            }
+            if (lsfgEnabled) {
+                String lsfgDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d/lsfg";
+                String vkLayerPath = envVars.get("VK_LAYER_PATH");
+                envVars.put("VK_LAYER_PATH", lsfgDir + (vkLayerPath.isEmpty() ? "" : ":" + vkLayerPath));
+                String ldLibPath = envVars.get("LD_LIBRARY_PATH");
+                envVars.put("LD_LIBRARY_PATH", lsfgDir + (ldLibPath.isEmpty() ? "" : ":" + ldLibPath));
+                envVars.put("LSFG_MULTIPLIER", String.valueOf(container.getLsfgMultiplier()));
+                envVars.put("LSFG_QUALITY", container.getLsfgQuality());
+                envVars.put("LSFG_FLOW_SCALE", String.valueOf(container.getLsfgFlowScale()));
+                envVars.put("LSFG_MAX_LATENCY", String.valueOf(container.getLsfgMaxLatency()));
+                envVars.put("LSFG_GPU_ARCH", container.getLsfgGpuArch());
+            }
+        }
+
         String emulator = container.getEmulator();
         if (shortcut != null)
             emulator = shortcut.getExtra("emulator", container.getEmulator());

@@ -48,6 +48,8 @@ jobs:
       run: |
         sudo apt-get update -q
         sudo apt-get install -y -q openjdk-17-jdk
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+        echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
     - name: Build JavaSteam and copy JARs to app/libs/steam
       run: |

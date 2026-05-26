@@ -24,6 +24,7 @@ object XServerDrawerState {
     val showMagnifier: StateFlow<Boolean> = _showMagnifier
 
     private val _lsfgEnabled              = MutableStateFlow(false)
+    @get:JvmName("getLsfgEnabledState")
     val lsfgEnabled: StateFlow<Boolean>   = _lsfgEnabled
 
     private val _cursorExpanded          = MutableStateFlow(false)

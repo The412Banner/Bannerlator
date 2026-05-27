@@ -303,13 +303,14 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         fpsCounterConfig  = c?.getFPSCounterConfig() ?: Container.DEFAULT_FPS_COUNTER_CONFIG
         fullscreenStretched = c?.isFullscreenStretched == true
 
-        // LSFG
+        // LSFG — seed GPU-aware defaults for new containers
+        val lsfgDefaults = if (c == null) Container.getLsfgDefaults() else null
         lsfgEnabled      = c?.isLsfgEnabled ?: Container.DEFAULT_LSFG_ENABLED
-        selectedLsfgMultiplier = c?.lsfgMultiplier ?: Container.DEFAULT_LSFG_MULTIPLIER
-        selectedLsfgQuality    = c?.lsfgQuality ?: Container.DEFAULT_LSFG_QUALITY
-        lsfgFlowScale    = c?.lsfgFlowScale ?: Container.DEFAULT_LSFG_FLOW_SCALE
-        lsfgMaxLatency   = c?.lsfgMaxLatency ?: Container.DEFAULT_LSFG_MAX_LATENCY
-        selectedLsfgGpuArch = c?.lsfgGpuArch ?: Container.DEFAULT_LSFG_GPU_ARCH
+        selectedLsfgMultiplier = c?.lsfgMultiplier ?: lsfgDefaults?.multiplier ?: Container.DEFAULT_LSFG_MULTIPLIER
+        selectedLsfgQuality    = c?.lsfgQuality ?: lsfgDefaults?.quality ?: Container.DEFAULT_LSFG_QUALITY
+        lsfgFlowScale    = c?.lsfgFlowScale ?: lsfgDefaults?.flowScale ?: Container.DEFAULT_LSFG_FLOW_SCALE
+        lsfgMaxLatency   = c?.lsfgMaxLatency ?: lsfgDefaults?.maxLatency ?: Container.DEFAULT_LSFG_MAX_LATENCY
+        selectedLsfgGpuArch = c?.lsfgGpuArch ?: lsfgDefaults?.gpuArch ?: Container.DEFAULT_LSFG_GPU_ARCH
 
         val locale = java.util.Locale.getDefault()
         lcAll = c?.getLC_ALL() ?: "${locale.language}_${locale.country}.UTF-8"

@@ -655,7 +655,23 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="select_png_jpg_jpeg_ico">Select PNG/JPG/JPEG/ICO</string>
     <string name="shortcuticon">ShortcutIcon</string>
     <string name="active_windows">Active Windows</string>
-    <string name="contact_us">Help and Support</string></resources>
+    <string name="contact_us">Help and Support</string>
+    <string name="lsfg_multiplier">Frame Multiplier</string>
+    <string name="lsfg_quality">Quality</string>
+    <string name="lsfg_flow_scale">Flow Scale</string>
+    <string name="lsfg_max_latency">Max Input Latency</string>
+    <string name="lsfg_gpu_arch">GPU Architecture</string>
+    <string name="lsfg_advanced_settings">Advanced LSFG Settings</string>
+    <string name="lsfg_settings">LSFG Settings</string>
+    <string name="lsfg_multiplier_desc">How many interpolated frames between real frames. 2x = double FPS.</string>
+    <string name="lsfg_quality_desc">Performance: fastest, lighter artifacts. Balanced: good tradeoff. Quality: best visual.</string>
+    <string name="lsfg_flow_scale_desc">Motion estimation sensitivity. Higher = smoother but may ghost. 100%% is default.</string>
+    <string name="lsfg_max_latency_desc">Wait time for next real frame. Lower = more responsive, higher = smoother.</string>
+    <string name="lsfg_gpu_arch_desc">Optimizes compute for your GPU. Auto detects from device info.</string>
+    <string name="lsfg_close">Close</string>
+
+</resources>
+
 
 
 

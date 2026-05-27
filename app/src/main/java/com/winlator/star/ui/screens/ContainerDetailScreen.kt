@@ -185,12 +185,6 @@ fun ContainerDetailScreen(
             onDismiss = { showFpsConfig = false }
         )
     }
-    if (showLsfgConfig) {
-        LsfgConfigDialog(
-            viewModel = viewModel,
-            onDismiss = { showLsfgConfig = false }
-        )
-    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -201,7 +195,6 @@ private fun TopLevelFields(
     onShowDxvkConfig: () -> Unit,
     onShowWineD3DConfig: () -> Unit,
     onShowFpsConfig: () -> Unit,
-    onShowLsfgConfig: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -299,49 +292,6 @@ private fun TopLevelFields(
             )
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.lsfg_enabled), modifier = Modifier.weight(1f))
-            if (viewModel.lsfgEnabled) {
-                IconButton(onClick = onShowLsfgConfig) {
-                    Icon(Icons.Default.Settings, contentDescription = null)
-                }
-            }
-        }
-        if (viewModel.lsfgEnabled) {
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LabeledDropdown(
-                    label = stringResource(R.string.lsfg_multiplier),
-                    options = viewModel.lsfgMultiplierEntries,
-                    selectedOption = viewModel.lsfgMultiplierEntries.getOrNull(
-                        viewModel.lsfgMultiplierEntries.indexOfFirst {
-                            it.startsWith(viewModel.selectedLsfgMultiplier.toString())
-                        }.coerceAtLeast(0)
-                    ) ?: "2x",
-                    onSelect = { opt ->
-                        val num = opt.removeSuffix("x").toIntOrNull() ?: 2
-                        viewModel.selectedLsfgMultiplier = num
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(8.dp))
-                LabeledDropdown(
-                    label = stringResource(R.string.lsfg_quality),
-                    options = viewModel.lsfgQualityEntries,
-                    selectedOption = when (viewModel.selectedLsfgQuality) {
-                        "performance" -> viewModel.lsfgQualityEntries.getOrNull(0) ?: ""
-                        "balanced" -> viewModel.lsfgQualityEntries.getOrNull(1) ?: ""
-                        "quality" -> viewModel.lsfgQualityEntries.getOrNull(2) ?: ""
-                        else -> viewModel.lsfgQualityEntries.getOrNull(1) ?: ""
-                    },
-                    onSelect = { opt ->
-                        viewModel.selectedLsfgQuality = when (opt) {
-                            viewModel.lsfgQualityEntries.getOrNull(0) -> "performance"
-                            viewModel.lsfgQualityEntries.getOrNull(2) -> "quality"
-                            else -> "balanced"
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
         Spacer(Modifier.height(8.dp))
 
@@ -922,7 +872,6 @@ internal fun SectionBox(
     }
 }
 
-// ── LSFG Config Dialog ─────────────────────────────────────────────────────
 @Composable
 internal fun LsfgConfigDialog(
     viewModel: ContainerDetailViewModel,

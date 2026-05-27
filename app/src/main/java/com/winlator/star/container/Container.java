@@ -20,6 +20,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.Iterator;
+import android.opengl.GLES10;
 
 public class Container {
     public enum XrControllerMapping {
@@ -32,7 +33,7 @@ public class Container {
     public static final String DEFAULT_AUDIO_DRIVER = "alsa";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk+vkd3d";
-    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,async=0,asyncCache=0" + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";
+    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.getDxvkDefault() + ",framerate=0,async=0,asyncCache=0" + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG =
             "vulkanVersion=1.3" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device";
     public static final String DEFAULT_DDRAWRAPPER = "none";
@@ -92,7 +93,43 @@ public class Container {
 
 
 
-    public Container(int id) {
+    
+    public static boolean isMaliGPU() {
+        try {
+            String renderer = GLES10.glGetString(GLES10.GL_RENDERER);
+            return renderer != null && renderer.contains("Mali");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static ContainerDefaults getLsfgDefaults() {
+        boolean isMali = isMaliGPU();
+        int multiplier = 2;
+        String quality = isMali ? "performance" : "balanced";
+        int flowScale = isMali ? 50 : 100;
+        int maxLatency = isMali ? 8 : 16;
+        String gpuArch = isMali ? "mali" : "auto";
+        return new ContainerDefaults(multiplier, quality, flowScale, maxLatency, gpuArch);
+    }
+
+    public static class ContainerDefaults {
+        public final int multiplier;
+        public final String quality;
+        public final int flowScale;
+        public final int maxLatency;
+        public final String gpuArch;
+
+        public ContainerDefaults(int multiplier, String quality, int flowScale, int maxLatency, String gpuArch) {
+            this.multiplier = multiplier;
+            this.quality = quality;
+            this.flowScale = flowScale;
+            this.maxLatency = maxLatency;
+            this.gpuArch = gpuArch;
+        }
+    }
+
+public Container(int id) {
         this.id = id;
         this.name = "Container-"+id;
     }

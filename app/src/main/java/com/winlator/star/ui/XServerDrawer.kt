@@ -83,7 +83,6 @@ fun XServerDrawer() {
             .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(rememberScrollState()),
     ) {
-        // ── Header ────────────────────────────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -106,14 +105,12 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Keyboard ──────────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_keyboard,
             label = "Keyboard",
             onClick = { state.onKeyboard?.run(); state.onClose?.run() },
         )
 
-        // ── Input Controls ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_input_controls,
             label = "Input Controls",
@@ -122,7 +119,6 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Mouse & Cursor header (collapsible) ───────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -177,21 +173,18 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Screen Effects ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_screen_effect,
             label = "Screen Effects",
             onClick = { state.onScreenEffects?.run(); state.onClose?.run() },
         )
 
-        // ── Graphic Engine ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_settings,
             label = "Graphic Engine",
             onClick = { state.onGraphicEngine?.run(); state.onClose?.run() },
         )
 
-                // ── LSFG (Lossless Scaling Frame Gen) ─────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -220,7 +213,6 @@ fun XServerDrawer() {
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // Multiplier
                 LsfgDropdown(
                     label = "Multiplier",
                     options = listOf("2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x"),
@@ -232,7 +224,6 @@ fun XServerDrawer() {
                     },
                 )
 
-                // Quality
                 val qualityOptions = listOf("performance", "balanced", "quality")
                 LsfgDropdown(
                     label = "Quality",
@@ -244,7 +235,6 @@ fun XServerDrawer() {
                     },
                 )
 
-                // Flow Scale
                 Text(
                     "Flow Scale: ${state.getLsfgFlowScale()}%",
                     style = MaterialTheme.typography.bodySmall,
@@ -263,7 +253,6 @@ fun XServerDrawer() {
                     steps = 14,
                 )
 
-                // Max Latency
                 Text(
                     "Max Input Latency: ${state.getLsfgMaxLatency()}ms",
                     style = MaterialTheme.typography.bodySmall,
@@ -282,18 +271,6 @@ fun XServerDrawer() {
                     steps = 32,
                 )
 
-                // GPU Architecture
-                LsfgDropdown(
-                    label = "GPU Architecture",
-                    options = listOf("auto", "mali", "adreno"),
-                    selectedOption = state.getLsfgGpuArch(),
-                    onSelect = { opt ->
-                        state.setLsfgGpuArch(opt)
-                        state.onApplyLsfg?.run()
-                    },
-                )
-
-                // Reset to Defaults button
                 Button(
                     onClick = { state.onResetLsfg?.run() },
                     modifier = Modifier.fillMaxWidth(),
@@ -303,7 +280,6 @@ fun XServerDrawer() {
             }
         }
 
-// ── Vibration ─────────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_input_controls,
             label = "Vibration",
@@ -312,21 +288,18 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Toggle Fullscreen ─────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_fullscreen,
             label = "Toggle Fullscreen",
             onClick = { state.onToggleFullscreen?.run(); state.onClose?.run() },
         )
 
-        // ── Pause / Resume ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = if (isPaused) R.drawable.icon_play else R.drawable.icon_pause,
             label = if (isPaused) "Resume" else "Pause",
             onClick = { state.onPauseResume?.run(); state.onClose?.run() },
         )
 
-        // ── Picture in Picture ────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.ic_picture_in_picture_alt,
             label = "Picture in Picture",
@@ -335,21 +308,18 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Active Windows ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_active_windows,
             label = "Active Windows",
             onClick = { state.onActiveWindows?.run(); state.onClose?.run() },
         )
 
-        // ── Task Manager ──────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_task_manager,
             label = "Task Manager",
             onClick = { state.onTaskManager?.run(); state.onClose?.run() },
         )
 
-        // ── Magnifier (conditional) ───────────────────────────────────────────
         if (showMagnifier) {
             DrawerMenuItem(
                 iconRes = R.drawable.icon_magnifier,
@@ -358,7 +328,6 @@ fun XServerDrawer() {
             )
         }
 
-        // ── Logs (conditional) ────────────────────────────────────────────────
         if (showLogs) {
             DrawerMenuItem(
                 iconRes = R.drawable.icon_debug,
@@ -369,7 +338,6 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Exit ──────────────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_exit,
             label = "Exit",
@@ -429,7 +397,6 @@ private fun DrawerCheckItem(label: String, checked: Boolean, onClick: () -> Unit
         }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

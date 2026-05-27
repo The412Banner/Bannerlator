@@ -670,6 +670,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="lsfg_gpu_arch_desc">Optimizes compute for your GPU. Auto detects from device info.</string>
     <string name="lsfg_close">Close</string>
 
+    <string name="graphics_driver_show_incompatible">Show incompatible drivers</string>
 </resources>
 
 

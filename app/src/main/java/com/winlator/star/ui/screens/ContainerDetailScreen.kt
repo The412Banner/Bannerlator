@@ -1179,7 +1179,7 @@ internal fun DxvkConfigDialog(
     val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
     val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
 
-    LaunchedEffect(showAllDrivers) {
+    LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val cm = ContentsManager(context)
             cm.syncContents()
@@ -1289,7 +1289,7 @@ internal fun WineD3DConfigDialog(
     val videoMemEntries = remember { context.resources.getStringArray(R.array.video_memory_size_entries).toList() }
     var gpuNames      by remember { mutableStateOf(listOf<String>()) }
 
-    LaunchedEffect(showAllDrivers) {
+    LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val names = WineD3DConfigDialog.loadGpuNames(context)
             withContext(Dispatchers.Main) { gpuNames = names }

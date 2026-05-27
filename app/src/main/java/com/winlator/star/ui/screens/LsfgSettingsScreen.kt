@@ -23,13 +23,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.preference.PreferenceManager
 import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.ui.XServerDrawerState
+
+private val qualityNames = listOf("performance", "balanced", "quality")
+private val gpuArchNames = listOf("auto", "mali", "adreno")
 
 @Composable
 fun LsfgSettingsScreen() {
@@ -43,8 +45,6 @@ fun LsfgSettingsScreen() {
     var gpuArch by remember { mutableIntStateOf(prefs.getInt("lsfg_default_gpu_arch", 0)) }
     var showSavedNote by remember { mutableStateOf(false) }
 
-    val gpuArchNames = listOf("auto", "mali", "adreno")
-
     val qualityLabels = listOf(
         context.getString(R.string.lsfg_quality_performance),
         context.getString(R.string.lsfg_quality_balanced),
@@ -56,25 +56,18 @@ fun LsfgSettingsScreen() {
         context.getString(R.string.lsfg_gpu_arch_adreno)
     )
 
-    fun applyGpuDefaults(archIndex: Int) {
-        val arch = gpuArchNames.getOrElse(archIndex) { "auto" }
-        var m = 2; var q = 1; var fs = 100; var ml = 16
-        try {
-            val containerDefaults = Container.getLsfgDefaults(arch)
-            if (containerDefaults != null) {
-                m = containerDefaults.getOrDefault("multiplier", 2) as Int
-                q = containerDefaults.getOrDefault("quality", 1) as Int
-                fs = containerDefaults.getOrDefault("flowScale", 100) as Int
-                ml = containerDefaults.getOrDefault("maxLatency", 16) as Int
-            }
-        } catch (_: Exception) {}
-        multiplier = m; quality = q; flowScale = fs; maxLatency = ml
+    fun applyGpuDefaults() {
+        val defaults = Container.getLsfgDefaults()
+        multiplier = defaults.multiplier
+        quality = qualityNames.indexOf(defaults.quality).coerceAtLeast(0)
+        flowScale = defaults.flowScale
+        maxLatency = defaults.maxLatency
+        gpuArch = gpuArchNames.indexOf(defaults.gpuArch).coerceAtLeast(0)
     }
 
     fun pushToXServer() {
         try {
             val state = XServerDrawerState
-            val qualityNames = listOf("performance", "balanced", "quality")
             state.setLsfgMultiplier(multiplier)
             state.setLsfgQuality(qualityNames.getOrElse(quality) { "balanced" })
             state.setLsfgFlowScale(flowScale)
@@ -173,15 +166,12 @@ fun LsfgSettingsScreen() {
         MultiToggle(
             labels = gpuArchLabels,
             selectedIndex = gpuArch,
-            onSelect = { newArch ->
-                gpuArch = newArch
-                applyGpuDefaults(newArch)
-            }
+            onSelect = { gpuArch = it }
         )
         Spacer(Modifier.height(24.dp))
 
         OutlinedButton(
-            onClick = { applyGpuDefaults(gpuArch) },
+            onClick = { applyGpuDefaults() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Reset to GPU Defaults")

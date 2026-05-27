@@ -274,7 +274,7 @@ private fun TopLevelFields(
                 }
             }
             IconButton(onClick = {
-                val wrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper)
+                val wrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "")
                 if (wrapper.contains("dxvk")) onShowDxvkConfig() else onShowWineD3DConfig()
             }) {
                 Icon(Icons.Default.Settings, contentDescription = null)
@@ -1421,4 +1421,5 @@ internal fun FpsCounterConfigDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
     )
 }
+
 

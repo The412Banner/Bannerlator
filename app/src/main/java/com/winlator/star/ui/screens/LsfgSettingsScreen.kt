@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Button
@@ -22,11 +23,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.preference.PreferenceManager
 import com.winlator.star.R
 import com.winlator.star.container.Container
+import com.winlator.star.ui.XServerDrawerState
 
 @Composable
 fun LsfgSettingsScreen() {
@@ -38,6 +41,7 @@ fun LsfgSettingsScreen() {
     var flowScale by remember { mutableIntStateOf(prefs.getInt("lsfg_default_flow_scale", 100)) }
     var maxLatency by remember { mutableIntStateOf(prefs.getInt("lsfg_default_max_latency", 16)) }
     var gpuArch by remember { mutableIntStateOf(prefs.getInt("lsfg_default_gpu_arch", 0)) }
+    var showSavedNote by remember { mutableStateOf(false) }
 
     val gpuArchNames = listOf("auto", "mali", "adreno")
 
@@ -65,6 +69,31 @@ fun LsfgSettingsScreen() {
             }
         } catch (_: Exception) {}
         multiplier = m; quality = q; flowScale = fs; maxLatency = ml
+    }
+
+    fun pushToXServer() {
+        try {
+            val state = XServerDrawerState
+            val qualityNames = listOf("performance", "balanced", "quality")
+            state.setLsfgMultiplier(multiplier)
+            state.setLsfgQuality(qualityNames.getOrElse(quality) { "balanced" })
+            state.setLsfgFlowScale(flowScale)
+            state.setLsfgMaxLatency(maxLatency)
+            state.setLsfgGpuArch(gpuArchNames.getOrElse(gpuArch) { "auto" })
+            state.onApplyLsfg?.run()
+        } catch (_: Exception) {}
+    }
+
+    fun saveDefaults() {
+        prefs.edit()
+            .putInt("lsfg_default_multiplier", multiplier)
+            .putInt("lsfg_default_quality", quality)
+            .putInt("lsfg_default_flow_scale", flowScale)
+            .putInt("lsfg_default_max_latency", maxLatency)
+            .putInt("lsfg_default_gpu_arch", gpuArch)
+            .apply()
+        showSavedNote = true
+        pushToXServer()
     }
 
     Column(
@@ -159,20 +188,34 @@ fun LsfgSettingsScreen() {
         }
         Spacer(Modifier.height(8.dp))
 
+        if (showSavedNote) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Text(
+                    text = "Saved \u2014 overrides any live XServer adjustments.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
         Button(
-            onClick = {
-                prefs.edit()
-                    .putInt("lsfg_default_multiplier", multiplier)
-                    .putInt("lsfg_default_quality", quality)
-                    .putInt("lsfg_default_flow_scale", flowScale)
-                    .putInt("lsfg_default_max_latency", maxLatency)
-                    .putInt("lsfg_default_gpu_arch", gpuArch)
-                    .apply()
-            },
+            onClick = { saveDefaults() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Save as Defaults")
         }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Saving will override any live XServer adjustments.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(Modifier.height(16.dp))
     }
 }

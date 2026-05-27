@@ -871,8 +871,6 @@ internal fun SectionBox(
 }
 
 @Composable
-
-@Composable
 internal fun LabeledDropdown(
     label: String,
     options: List<String>,

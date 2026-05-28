@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import com.winlator.star.ui.dialogs.ActiveWindowsDialog
 import com.winlator.star.ui.dialogs.DebugDialogContent
+import com.winlator.star.ui.dialogs.FpsCounterConfigDialog
 import com.winlator.star.ui.dialogs.InputControlsDialog
 import com.winlator.star.ui.dialogs.ScreenEffectsDialog
 import com.winlator.star.ui.dialogs.TaskManagerDialog
@@ -36,6 +37,7 @@ fun XServerDialogHost() {
         XServerDialogState.ActiveDialog.SCREEN_EFFECTS -> ScreenEffectsDialog(state)
         XServerDialogState.ActiveDialog.ACTIVE_WINDOWS -> ActiveWindowsDialog(state)
         XServerDialogState.ActiveDialog.TASK_MANAGER   -> TaskManagerDialog(state)
+        XServerDialogState.ActiveDialog.FPS_COUNTER_CONFIG -> FpsCounterConfigDialog(state)
         XServerDialogState.ActiveDialog.NONE           -> Unit
     }
 

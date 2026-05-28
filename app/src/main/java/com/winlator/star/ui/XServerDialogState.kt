@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 object XServerDialogState {
 
     enum class ActiveDialog {
-        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, TASK_MANAGER
+        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, TASK_MANAGER,
+        FPS_COUNTER_CONFIG
     }
 
     // -------------------------------------------------------------------------
@@ -250,6 +251,16 @@ object XServerDialogState {
     @JvmField var onTmSetAffinity: TmAffinityCallback? = null
 
     // -------------------------------------------------------------------------
+    // FPS Counter Config dialog
+    // -------------------------------------------------------------------------
+    private val _fpsCounterConfig = MutableStateFlow("")
+    val fpsCounterConfig: StateFlow<String> = _fpsCounterConfig
+
+    fun setFpsCounterConfig(s: String) { _fpsCounterConfig.value = s }
+
+    @JvmField var onFpsCounterConfigApply: StringCallback? = null
+
+    // -------------------------------------------------------------------------
     // Reset — call when activity is destroyed or restarted
     // -------------------------------------------------------------------------
     fun reset() {
@@ -285,6 +296,7 @@ object XServerDialogState {
         _tmMemTitle.value      = "Memory"
         _tmMemInfo.value       = ""
         _tmCount.value         = 0
+        _fpsCounterConfig.value = ""
 
         onMagnifierZoom = null; onMagnifierHide = null
         onFsrUpdate = null
@@ -294,5 +306,6 @@ object XServerDialogState {
         onWindowClick = null
         onTmRefresh = null; onTmDismissed = null; onTmNewTask = null
         onTmBringToFront = null; onTmKillProcess = null; onTmSetAffinity = null
+        onFpsCounterConfigApply = null
     }
 }

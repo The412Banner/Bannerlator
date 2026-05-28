@@ -162,8 +162,10 @@ jobs:
 
     - name: Rename APK
       run: |
-        mv ${{ matrix.flavor.apkPath }} \
-           app/build/outputs/apk/${{ matrix.flavor.name }}/debug/${{ matrix.flavor.apkLabel }}-${{ github.event.inputs.release_number }}.apk
+        SRC='${{ matrix.flavor.apkPath }}'
+        DEST="$(dirname "$SRC")/${{ matrix.flavor.apkLabel }}-${{ github.event.inputs.release_number }}.apk"
+        mv "$SRC" "$DEST"
+        echo "RELEASE_APK=$DEST" >> $GITHUB_ENV
 
     - name: Generate changelog table
       run: |
@@ -192,5 +194,5 @@ jobs:
           </p>
 
           ${{ env.CHANGELOG }}
-        files: app/build/outputs/apk/${{ matrix.flavor.name }}/debug/${{ matrix.flavor.apkLabel }}-${{ github.event.inputs.release_number }}.apk
+        files: ${{ env.RELEASE_APK }}
         prerelease: true

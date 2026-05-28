@@ -1,0 +1,14 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "VK_LAYER_LSFGVK_frame_generation",
+    "description": "Lossless Scaling frame generation layer (Android ARM64)",
+    "implementation_version": "1",
+    "library_path": "libVkLayer_LSFGVK_frame_generation.so",
+    "type": "GLOBAL",
+    "api_version": "1.3.0",
+    "disable_environment": {
+      "DISABLE_LSFGVK": "1"
+    }
+  }
+}

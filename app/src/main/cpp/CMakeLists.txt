@@ -2,11 +2,19 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(Winlator)
 
+# Disable clang-tidy (AGP enables it by default but its include paths
+# don't work with NDK cross-compilation for the lsfg-vk dependency)
+
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function-declaration")
 
 add_subdirectory(OpenXR-SDK)
 add_subdirectory(patchelf)
 add_subdirectory(adrenotools)
+# lsfg-vk is built separately by build-lsfg.yml (standalone cmake)
+# and its .so is copied to jniLibs. AGP's cmake integration enables
+# clang-tidy which fails on NDK cross-compile of the lsfg-vk headers.
+# add_subdirectory(lsfg-vk)
 
 # Add Winlator shared library
 add_library(winlator SHARED

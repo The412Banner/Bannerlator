@@ -26,21 +26,22 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Clone repository
       uses: actions/checkout@v4
       with:
         submodules: recursive
+        token: ${{ secrets.GHQ_PAT }}
         fetch-depth: 20
 
     - name: set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y -q openjdk-17-jdk
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+        echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
     - name: Build JavaSteam and copy JARs to app/libs/steam
       run: |
@@ -123,6 +124,25 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+
+    - name: Install NDK
+      run: |
+        SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+        mkdir -p "$SDK_ROOT"
+        if [ ! -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+          curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools/
+          mkdir -p "$SDK_ROOT/cmdline-tools"
+          mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
+          rm -f /tmp/cmdline-tools.zip
+        fi
+        yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;26.1.10909125" "cmake;3.22.1"
+        echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+
+    - name: Grant execute permission for build script
+      run: chmod +x build-lsfg-android.sh
+    - name: Build LSFG native library
+      run: ./build-lsfg-android.sh
 
     - name: Build with Gradle
       run: ./gradlew assembleDebug

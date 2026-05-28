@@ -60,6 +60,7 @@ private fun iconFor(screen: Screen): ImageVector = when (screen) {
     Screen.FileManager   -> Icons.Filled.FolderOpen
     Screen.Settings      -> Icons.Filled.Settings
     Screen.Appearance    -> Icons.Filled.Palette
+    Screen.LsfgSettings  -> Icons.Filled.Settings
     else                 -> Icons.Filled.Storefront
 }
 
@@ -89,7 +90,6 @@ fun AppDrawerContent(
             .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(rememberScrollState()),
     ) {
-        // ── Logo header ───────────────────────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -112,7 +112,6 @@ fun AppDrawerContent(
 
         Divider(color = DividerColor)
 
-        // ── Emulation section ─────────────────────────────────────────────────
         SectionHeader("Emulation")
         DrawerItem(Screen.Shortcuts,     currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
@@ -120,17 +119,16 @@ fun AppDrawerContent(
 
         Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
 
-        // ── Tools section ─────────────────────────────────────────────────────
         SectionHeader("Tools")
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
         DrawerItem(Screen.Contents,      currentRoute, onNavigate)
         DrawerItem(Screen.AdrenoTools,   currentRoute, onNavigate)
         DrawerItem(Screen.Saves,         currentRoute, onNavigate)
         DrawerItem(Screen.Appearance,    currentRoute, onNavigate)
+        DrawerItem(Screen.LsfgSettings,  currentRoute, onNavigate)
 
         Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
 
-        // ── Game Stores section ───────────────────────────────────────────────
         SectionHeader("Game Stores")
         Screen.storeItems.forEach { screen ->
             DrawerStoreItem(screen, onLaunchStore)
@@ -138,7 +136,6 @@ fun AppDrawerContent(
 
         Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
 
-        // ── About And Support section ─────────────────────────────────────────
         SectionHeader("About And Support")
         DrawerIconItem(
             label = "About",

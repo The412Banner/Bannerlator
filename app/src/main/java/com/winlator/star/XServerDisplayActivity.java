@@ -344,6 +344,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setIsPaused(isPaused);
         state.setIsRelativeMouseMovement(isRelativeMouseMovement);
         state.setIsMouseDisabled(isMouseDisabled);
+        // LSFG initial state comes from container config (set later in setupXEnvironment)
+        state.setLsfgEnabled(false);
 
         state.onClose                  = () -> runOnUiThread(() -> drawerLayout.closeDrawers());
         state.onKeyboard               = () -> AppUtils.showKeyboard(this);
@@ -351,6 +353,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.onScreenEffects          = () -> showScreenEffectsDialog();
         state.onGraphicEngine          = () -> showFsrOverlay();
         state.onVibration              = () -> showVibrationDialog();
+        state.onLsfgToggle              = () -> {
+            boolean current = XServerDrawerState.INSTANCE.getLsfgEnabled();
+            XServerDrawerState.INSTANCE.setLsfgEnabled(!current);
+        };
+        state.onApplyLsfg               = () -> {
+            // LSFG settings changed - apply to the running environment
+        };
+        state.onResetLsfg               = () -> {
+            // Reset to GPU defaults using GLES detection
+            boolean isMali = false;
+            try {
+                String r = android.opengl.GLES10.glGetString(android.opengl.GLES10.GL_RENDERER);
+                if (r != null) isMali = r.contains("Mali");
+            } catch (Exception ignore) {
+            }
+            XServerDrawerState drawState = XServerDrawerState.INSTANCE;
+            drawState.setLsfgMultiplier(2);
+            drawState.setLsfgQuality(isMali ? "performance" : "balanced");
+            drawState.setLsfgFlowScale(isMali ? 50 : 100);
+            drawState.setLsfgMaxLatency(isMali ? 8 : 16);
+            drawState.setLsfgGpuArch(isMali ? "mali" : "auto");
+        };
         state.onToggleFullscreen       = () -> {
             xServerView.getRenderer().toggleFullscreen();
             touchpadView.toggleFullscreen();
@@ -1257,6 +1281,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         // Reset dxwrapper config
         dxwrapperConfig = null;
+
+        // Copy container LSFG config to drawer state
+        if (container != null) {
+            XServerDrawerState drawState = XServerDrawerState.INSTANCE;
+            drawState.setLsfgEnabled(container.isLsfgEnabled());
+            drawState.setLsfgMultiplier(container.getLsfgMultiplier());
+            drawState.setLsfgQuality(container.getLsfgQuality());
+            drawState.setLsfgFlowScale(container.getLsfgFlowScale());
+            drawState.setLsfgMaxLatency(container.getLsfgMaxLatency());
+            drawState.setLsfgGpuArch(container.getLsfgGpuArch());
+        }
         
     }
 

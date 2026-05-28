@@ -24,20 +24,36 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.ComposeView
 import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.Arrangement
 
 fun setupComposeView(view: ComposeView) {
     view.setContent {
@@ -56,6 +72,7 @@ fun XServerDrawer() {
     val isMouseDisabled     by state.isMouseDisabled.collectAsState()
     val moveCursorToTouch   by state.moveCursorToTouchpoint.collectAsState()
     val showLogs            by state.showLogs.collectAsState()
+    val lsfgEnabled         by state.lsfgEnabled.collectAsState()
     val showMagnifier       by state.showMagnifier.collectAsState()
     val cursorExpanded      by state.cursorExpanded.collectAsState()
 
@@ -66,7 +83,6 @@ fun XServerDrawer() {
             .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(rememberScrollState()),
     ) {
-        // ── Header ────────────────────────────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -89,14 +105,12 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Keyboard ──────────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_keyboard,
             label = "Keyboard",
             onClick = { state.onKeyboard?.run(); state.onClose?.run() },
         )
 
-        // ── Input Controls ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_input_controls,
             label = "Input Controls",
@@ -105,7 +119,6 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Mouse & Cursor header (collapsible) ───────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -160,21 +173,113 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Screen Effects ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_screen_effect,
             label = "Screen Effects",
             onClick = { state.onScreenEffects?.run(); state.onClose?.run() },
         )
 
-        // ── Graphic Engine ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_settings,
             label = "Graphic Engine",
             onClick = { state.onGraphicEngine?.run(); state.onClose?.run() },
         )
 
-        // ── Vibration ─────────────────────────────────────────────────────────
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { state.onLsfgToggle?.run() }
+                .padding(start = 20.dp, end = 20.dp, top = 11.dp, bottom = 11.dp),
+        ) {
+            Text(
+                text = "Lossless Scaling FG",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (lsfgEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = lsfgEnabled,
+                onCheckedChange = { state.onLsfgToggle?.run() },
+            )
+        }
+
+        AnimatedVisibility(
+            visible = lsfgEnabled,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                LsfgDropdown(
+                    label = "Multiplier",
+                    options = listOf("2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x"),
+                    selectedOption = "${state.getLsfgMultiplier()}x",
+                    onSelect = { opt ->
+                        val num = opt.removeSuffix("x").toIntOrNull() ?: 2
+                        state.setLsfgMultiplier(num)
+                        state.onApplyLsfg?.run()
+                    },
+                )
+
+                val qualityOptions = listOf("performance", "balanced", "quality")
+                LsfgDropdown(
+                    label = "Quality",
+                    options = qualityOptions,
+                    selectedOption = state.getLsfgQuality(),
+                    onSelect = { opt ->
+                        state.setLsfgQuality(opt)
+                        state.onApplyLsfg?.run()
+                    },
+                )
+
+                Text(
+                    "Flow Scale: ${state.getLsfgFlowScale()}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "Controls the density of motion vectors. Higher values capture more detail but may increase artifacts.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+                Slider(
+                    value = state.getLsfgFlowScale().toFloat(),
+                    onValueChange = { state.setLsfgFlowScale(it.toInt()) },
+                    onValueChangeFinished = { state.onApplyLsfg?.run() },
+                    valueRange = 50f..200f,
+                    steps = 14,
+                )
+
+                Text(
+                    "Max Input Latency: ${state.getLsfgMaxLatency()}ms",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "Maximum number of frames the system can hold for processing. Lower values reduce input lag.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+                Slider(
+                    value = state.getLsfgMaxLatency().toFloat(),
+                    onValueChange = { state.setLsfgMaxLatency(it.toInt()) },
+                    onValueChangeFinished = { state.onApplyLsfg?.run() },
+                    valueRange = 0f..33f,
+                    steps = 32,
+                )
+
+                Button(
+                    onClick = { state.onResetLsfg?.run() },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Reset to GPU Defaults")
+                }
+            }
+        }
+
         DrawerMenuItem(
             iconRes = R.drawable.icon_input_controls,
             label = "Vibration",
@@ -183,21 +288,18 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Toggle Fullscreen ─────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_fullscreen,
             label = "Toggle Fullscreen",
             onClick = { state.onToggleFullscreen?.run(); state.onClose?.run() },
         )
 
-        // ── Pause / Resume ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = if (isPaused) R.drawable.icon_play else R.drawable.icon_pause,
             label = if (isPaused) "Resume" else "Pause",
             onClick = { state.onPauseResume?.run(); state.onClose?.run() },
         )
 
-        // ── Picture in Picture ────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.ic_picture_in_picture_alt,
             label = "Picture in Picture",
@@ -206,21 +308,18 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Active Windows ────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_active_windows,
             label = "Active Windows",
             onClick = { state.onActiveWindows?.run(); state.onClose?.run() },
         )
 
-        // ── Task Manager ──────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_task_manager,
             label = "Task Manager",
             onClick = { state.onTaskManager?.run(); state.onClose?.run() },
         )
 
-        // ── Magnifier (conditional) ───────────────────────────────────────────
         if (showMagnifier) {
             DrawerMenuItem(
                 iconRes = R.drawable.icon_magnifier,
@@ -229,7 +328,6 @@ fun XServerDrawer() {
             )
         }
 
-        // ── Logs (conditional) ────────────────────────────────────────────────
         if (showLogs) {
             DrawerMenuItem(
                 iconRes = R.drawable.icon_debug,
@@ -240,7 +338,6 @@ fun XServerDrawer() {
 
         Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── Exit ──────────────────────────────────────────────────────────────
         DrawerMenuItem(
             iconRes = R.drawable.icon_exit,
             label = "Exit",
@@ -297,6 +394,41 @@ private fun DrawerCheckItem(label: String, checked: Boolean, onClick: () -> Unit
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(18.dp),
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LsfgDropdown(
+    label: String,
+    options: List<String>,
+    selectedOption: String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = selectedOption,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            options.forEach { opt ->
+                DropdownMenuItem(
+                    text = { Text(opt) },
+                    onClick = { onSelect(opt); expanded = false },
+                )
+            }
         }
     }
 }

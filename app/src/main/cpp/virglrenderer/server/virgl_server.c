@@ -116,7 +116,7 @@ static void virgl_server_handle_request(struct virgl_client *client)
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_winlator_xenvironment_components_VirGLRendererComponent_handleNewConnection(JNIEnv *env, jobject obj, jint fd) {
+Java_com_winlator_star_xenvironment_components_VirGLRendererComponent_handleNewConnection(JNIEnv *env, jobject obj, jint fd) {
    jni_info.env = env;
    jni_info.obj = obj;
    
@@ -129,19 +129,19 @@ Java_com_winlator_xenvironment_components_VirGLRendererComponent_handleNewConnec
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_xenvironment_components_VirGLRendererComponent_handleRequest(JNIEnv *env, jobject obj, jlong clientPtr) {
+Java_com_winlator_star_xenvironment_components_VirGLRendererComponent_handleRequest(JNIEnv *env, jobject obj, jlong clientPtr) {
    jni_info.env = env;
    jni_info.obj = obj;
    virgl_server_handle_request((struct virgl_client*)clientPtr);
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_xenvironment_components_VirGLRendererComponent_destroyClient(JNIEnv *env, jobject obj, jlong clientPtr) {
+Java_com_winlator_star_xenvironment_components_VirGLRendererComponent_destroyClient(JNIEnv *env, jobject obj, jlong clientPtr) {
    struct virgl_client *client = (struct virgl_client*)clientPtr;
    virgl_server_destroy_client(&client);
 }
 
 JNIEXPORT void JNICALL
-Java_com_winlator_xenvironment_components_VirGLRendererComponent_destroyRenderer(JNIEnv *env, jobject obj, jlong clientPtr) {
+Java_com_winlator_star_xenvironment_components_VirGLRendererComponent_destroyRenderer(JNIEnv *env, jobject obj, jlong clientPtr) {
    virgl_server_destroy_renderer((struct virgl_client*)clientPtr);
 }

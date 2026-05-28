@@ -16,6 +16,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-differentpkg-${{ github.event.inputs.release_tag }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -167,6 +171,34 @@ jobs:
         mv "$SRC" "$DEST"
         echo "RELEASE_APK=$DEST" >> $GITHUB_ENV
 
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: apk-${{ matrix.flavor.apkLabel }}
+        path: ${{ env.RELEASE_APK }}
+        if-no-files-found: error
+        retention-days: 7
+
+  # Single release job: runs only after every flavor build succeeds, then
+  # creates/updates the release ONCE with all APKs attached. This avoids the
+  # matrix race where parallel jobs hit action-gh-release on the same tag
+  # simultaneously and one loses with a 422 "must have a valid tag".
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 20
+
+    - name: Download all APK artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: apk-*
+        merge-multiple: true
+
     - name: Generate changelog table
       run: |
         {
@@ -194,5 +226,5 @@ jobs:
           </p>
 
           ${{ env.CHANGELOG }}
-        files: ${{ env.RELEASE_APK }}
+        files: dist/*.apk
         prerelease: true

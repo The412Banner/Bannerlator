@@ -25,30 +25,12 @@ Windows applications and games on Android.</h1>
 
 ---
 
-## What's in this fork
-
-- **Full Jetpack Compose UI.** Every user-facing screen, dialog, drawer, and overlay has been ported off Java/XML to Compose + Material 3. This is the only Winlator fork to do this.
-- **In-game Compose overlays.** Side drawer, settings dialogs, screen-effects panel, and task manager all run as Compose `Dialog` windows over the X server.
-- **Dynamic theme system.** `AppThemeState` + `ThemePreset` allow live color/theme switching.
-- **Controller support restored to Star 1.1 parity.** SDL2 SoName symlink wired into the Compose splash install path; all four controller event files pre-created at startup.
-- **Box64 dropdown bug fix.** Edit-dialog now seeds the Box64 selector from the saved container value instead of resetting on dependency refresh.
-- **Bionic content pattern.** Ships the larger `container_pattern_common.tzst` (bionic build, ~77 MB) for an expanded Start menu toolset.
-- **Adreno-tuned drivers bundled.** SDK36 patched Turnip, AdrenoTools v819, and Wrapper variants (gamenative, leegao, legacy, original).
-
 ## Building
 
 This project is built via **GitHub Actions only**. Local builds are not supported.
 
 
 Artifacts are published as workflow artifacts; tagged stable builds are also published as GitHub Releases.
-
----
-
-## Documentation in this repo
-
-- `COMPOSE_MIGRATION_REPORT.md` — developer guide for the Java/XML → Compose migration (Parts A–G), including patterns, gotchas, and the engine boundary.
-- `PROGRESS_LOG.md` — chronological record of every shipped change.
-- `UI_MIGRATION_REPORT.md` — remaining UI cleanup and migration plan.
 
 ---
 

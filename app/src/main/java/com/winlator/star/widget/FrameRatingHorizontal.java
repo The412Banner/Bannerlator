@@ -31,7 +31,7 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
     private float batteryWattage = 0;
     private final String totalRAM;
 
-    private final TextView tvFPS, tvCPUTemp, tvGPULoad, tvRAM, tvBatteryTemp, tvBatteryVoltage, tvRenderer, tvGPU;
+    private final TextView tvFPS, tvCPUTemp, tvGPULoad, tvRAM, tvBatteryTemp, tvBatteryVoltage, tvRenderer;
     
     // Drag handling
     private float lastX = 0;
@@ -55,7 +55,6 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
         tvBatteryTemp = findViewById(R.id.TVBatteryTemp);
         tvBatteryVoltage = findViewById(R.id.TVBatteryVoltage);
         tvRenderer = findViewById(R.id.TVRenderer);
-        tvGPU = findViewById(R.id.TVGPU);
 
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
@@ -65,10 +64,6 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
 
     public void setRenderer(String renderer) {
         if (tvRenderer != null) post(() -> tvRenderer.setText(renderer));
-    }
-
-    public void setGpuName(String gpuName) {
-        if (tvGPU != null) post(() -> tvGPU.setText(gpuName));
     }
 
     public void reset() {
@@ -91,7 +86,6 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
 
         int rendererVis = config.get("showRenderer", "0").equals("1") ? VISIBLE : GONE;
         if (tvRenderer != null) tvRenderer.setVisibility(rendererVis);
-        if (tvGPU != null) tvGPU.setVisibility(rendererVis);
 
         try {
             int trans = Integer.parseInt(config.get("hudTransparency", "0"));
@@ -110,7 +104,7 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
 
         if (time >= lastTime + 500) {
             lastFPS = ((float) (frameCount * 1000) / (time - lastTime));
-            cpuTemp = getCPUTemperature();
+            cpuTemp = calculateCPULoad();
             gpuLoad = calculateGPULoad();
 
             Intent batteryStatus = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
@@ -131,12 +125,12 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
-        if (tvFPS != null) tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
-        if (tvCPUTemp != null) tvCPUTemp.setText(String.format(Locale.ENGLISH, "%.1f°C", cpuTemp));
+        if (tvFPS != null) tvFPS.setText(String.format(Locale.ENGLISH, "FPS: %.0f", lastFPS));
+        if (tvCPUTemp != null) tvCPUTemp.setText(String.format(Locale.ENGLISH, "%.0f%%", cpuTemp));
         if (tvGPULoad != null) tvGPULoad.setText(gpuLoad + "%");
-        if (tvRAM != null) tvRAM.setText(getUsedRAM() + " / " + totalRAM);
+        if (tvRAM != null) tvRAM.setText(String.format(Locale.ENGLISH, "%.0f%%", getRAMPercentage()));
         if (tvBatteryTemp != null) tvBatteryTemp.setText(String.format(Locale.ENGLISH, "%.1f°C", batteryTemp));
-        if (tvBatteryVoltage != null) tvBatteryVoltage.setText(String.format(Locale.ENGLISH, "%.2fW", batteryWattage));
+        if (tvBatteryVoltage != null) tvBatteryVoltage.setText(String.format(Locale.ENGLISH, "%.0f%%", batteryWattage));
     }
 
     @Override
@@ -162,24 +156,29 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
         return super.onTouchEvent(event);
     }
 
-    private String getUsedRAM() {
+    private float getRAMPercentage() {
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
         am.getMemoryInfo(mi);
-        return StringUtils.formatBytes(mi.totalMem - mi.availMem, false);
+        return ((mi.totalMem - mi.availMem) * 100.0f) / mi.totalMem;
     }
 
-    private float getCPUTemperature() {
-        String[] paths = {"/sys/class/thermal/thermal_zone0/temp", "/sys/class/thermal/thermal_zone1/temp", "/sys/devices/virtual/thermal/thermal_zone0/temp"};
-        for (String path : paths) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
-                String line = reader.readLine();
-                if (line != null) {
-                    float temp = Float.parseFloat(line.trim());
-                    return temp > 1000 ? temp / 1000.0f : temp;
+    private float calculateCPULoad() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("/proc/stat"))) {
+            String line = reader.readLine();
+            if (line != null && line.startsWith("cpu ")) {
+                String[] parts = line.split("\\s+");
+                if (parts.length >= 5) {
+                    long user = Long.parseLong(parts[1]);
+                    long system = Long.parseLong(parts[3]);
+                    long idle = Long.parseLong(parts[4]);
+                    long total = user + system + idle;
+                    if (total > 0) {
+                        return ((user + system) * 100.0f) / total;
+                    }
                 }
-            } catch (Exception ignored) {}
-        }
+            }
+        } catch (Exception ignored) {}
         return 0;
     }
 

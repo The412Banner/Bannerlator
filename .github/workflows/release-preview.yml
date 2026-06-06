@@ -1,0 +1,149 @@
+name: Development CI Build (preview)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 20
+
+    - name: set up JDK 17
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y -q openjdk-17-jdk
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+        echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+
+    - name: Build JavaSteam and copy JARs to app/libs/steam
+      run: |
+        git clone --depth 1 -b gamenative-latest https://github.com/joshuatam/JavaSteam javasteam_src
+        cd javasteam_src
+
+        HW_FILE=$(find . -name "HardwareUtils.java" 2>/dev/null | head -1)
+        if [ -n "$HW_FILE" ]; then
+          sed -i 's/SystemUtils\.IS_OS_ANDROID/false/g' "$HW_FILE"
+        fi
+
+        UTILS_FILE=$(find . -name "Utils.java" -path "*/javasteam/*" 2>/dev/null | head -1)
+        if [ -n "$UTILS_FILE" ]; then
+          sed -i \
+            -e 's/SystemUtils\.IS_OS_MAC_OSX_SONOMA/false/g' \
+            -e 's/SystemUtils\.IS_OS_MAC_OSX_VENTURA/false/g' \
+            -e 's/SystemUtils\.IS_OS_MAC_OSX_MONTEREY/false/g' \
+            -e 's/SystemUtils\.IS_OS_MAC_OSX_BIG_SUR/false/g' \
+            -e 's/SystemUtils\.IS_OS_WINDOWS_11/false/g' \
+            "$UTILS_FILE"
+        fi
+
+        ./gradlew jar --no-daemon 2>&1 | tail -20
+
+        MAIN_JAR=""
+        for j in $(find . -name "*.jar" -path "*/build/libs/*" \
+            | grep -v "sources\|javadoc\|test" | sort); do
+          if jar tf "$j" 2>/dev/null | grep -q "SteamClient.class"; then
+            MAIN_JAR="$j"
+            break
+          fi
+        done
+        if [ -z "$MAIN_JAR" ]; then
+          MAIN_JAR=$(find . -name "*.jar" -path "*/build/libs/*" \
+            | grep -v "sources\|javadoc\|test" \
+            | while read f; do echo "$(wc -c < "$f") $f"; done \
+            | sort -rn | head -1 | cut -d' ' -f2-)
+        fi
+
+        DD_JAR=$(find . -name "javasteam-depotdownloader-*.jar" -path "*/build/libs/*" \
+          ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | head -1)
+
+        mkdir -p ../app/libs/steam
+        cp "$MAIN_JAR" ../app/libs/steam/javasteam.jar
+
+        PROTO_JAR=$(find ~/.gradle/caches -name "protobuf-java-*.jar" \
+          ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | head -1)
+        [ -n "$PROTO_JAR" ] && cp "$PROTO_JAR" ../app/libs/steam/protobuf-java.jar
+
+        LANG3_JAR=$(find ~/.gradle/caches -name "commons-lang3-*.jar" \
+          ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | sort -V | tail -1)
+        if [ -n "$LANG3_JAR" ]; then
+          cp "$LANG3_JAR" ../app/libs/steam/commons-lang3.jar
+        else
+          wget -q "https://repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar" \
+            -O ../app/libs/steam/commons-lang3.jar
+        fi
+
+        if [ -n "$DD_JAR" ] && [ -s "$DD_JAR" ]; then
+          cp "$DD_JAR" ../app/libs/steam/javasteam-depotdownloader.jar
+          GRADLE_CACHE=~/.gradle/caches/modules-2/files-2.1
+          gather_jar() {
+            local pattern="$1" dest="$2"
+            local found
+            found=$(find "$GRADLE_CACHE" -name "$pattern" \
+              ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | sort -V | tail -1)
+            [ -n "$found" ] && cp "$found" "$dest"
+          }
+          gather_jar "ktor-client-cio-jvm-*.jar"            "../app/libs/steam/ktor-client-cio.jar"
+          gather_jar "ktor-client-core-jvm-*.jar"           "../app/libs/steam/ktor-client-core.jar"
+          gather_jar "ktor-io-jvm-*.jar"                    "../app/libs/steam/ktor-io.jar"
+          gather_jar "ktor-http-jvm-*.jar"                  "../app/libs/steam/ktor-http.jar"
+          gather_jar "ktor-utils-jvm-*.jar"                 "../app/libs/steam/ktor-utils.jar"
+          gather_jar "ktor-network-jvm-*.jar"               "../app/libs/steam/ktor-network.jar"
+          gather_jar "ktor-network-tls-jvm-*.jar"           "../app/libs/steam/ktor-network-tls.jar"
+          gather_jar "kotlinx-serialization-json-jvm-*.jar" "../app/libs/steam/kotlinx-serialization-json.jar"
+          gather_jar "kotlinx-serialization-core-jvm-*.jar" "../app/libs/steam/kotlinx-serialization-core.jar"
+          gather_jar "kotlinx-io-core-jvm-*.jar"            "../app/libs/steam/kotlinx-io-core.jar"
+        fi
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Install NDK
+      run: |
+        SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+        mkdir -p "$SDK_ROOT"
+        if [ ! -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+          curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools/
+          mkdir -p "$SDK_ROOT/cmdline-tools"
+          mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
+          rm -f /tmp/cmdline-tools.zip
+        fi
+        yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;26.1.10909125" "cmake;3.22.1"
+        echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+
+    - name: Grant execute permission for build script
+      run: chmod +x build-lsfg-android.sh
+    - name: Build LSFG native library
+      run: ./build-lsfg-android.sh
+
+    - name: Build with Gradle (Standard Only)
+      run: ./gradlew :app:assembleStandardDebug
+
+    - name: Get version info
+      run: |
+        echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        echo "BUILD_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
+
+    - name: Rename APK
+      run: |
+        SRC="app/build/outputs/apk/standard/debug/app-standard-debug.apk"
+        DEST="$(dirname "$SRC")/star-standard-ci-${{ env.BUILD_DATE }}-${{ env.SHORT_SHA }}.apk"
+        mv "$SRC" "$DEST"
+        echo "RELEASE_APK=$DEST" >> $GITHUB_ENV
+
+    - name: Upload Standard APK to Actions Tab
+      uses: actions/upload-artifact@v4
+      with:
+        name: apk-star-standard
+        path: ${{ env.RELEASE_APK }}
+        if-no-files-found: error
+        retention-days: 7
+        

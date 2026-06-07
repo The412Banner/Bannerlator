@@ -1417,6 +1417,179 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
+
+        // Initialize inline tab states (Graphics, Controls, HUD)
+        initInlineTabStates(renderer);
+    }
+
+    private void initInlineTabStates(GLRenderer renderer) {
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+
+        // Input Controls state
+        ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
+        ArrayList<String> profileNames = new ArrayList<>();
+        int selectedPosition = 0;
+        for (int i = 0; i < profiles.size(); i++) {
+            ControlsProfile profile = profiles.get(i);
+            if (inputControlsView.getProfile() != null && profile.id == inputControlsView.getProfile().id)
+                selectedPosition = i + 1;
+            profileNames.add(profile.getName());
+        }
+        ds.setInputProfiles(profileNames);
+        ds.setSelectedProfileIdx(selectedPosition);
+        ds.setShowTouchscreen(inputControlsView.isShowTouchscreenControls());
+        ds.setTimeoutEnabled(preferences.getBoolean("touchscreen_timeout_enabled", false));
+        ds.setHapticsEnabled(preferences.getBoolean("touchscreen_haptics_enabled", false));
+
+        ds.onInputControlsConfirm = (profileIndex, showTouchscreen, timeout, haptics) -> {
+            inputControlsView.setShowTouchscreenControls(showTouchscreen);
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("touchscreen_timeout_enabled", timeout);
+            editor.putBoolean("touchscreen_haptics_enabled", haptics);
+            editor.apply();
+            if (timeout) startTouchscreenTimeout();
+            else touchpadView.setOnTouchListener(null);
+            if (profileIndex > 0) showInputControls(inputControlsManager.getProfiles().get(profileIndex - 1));
+            else hideInputControls();
+        };
+
+        ds.onInputControlsSettings = () -> {
+            int currentIdx = ds.getSelectedProfileIdx().getValue();
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.putExtra("edit_input_controls", true);
+            intent.putExtra("selected_profile_id",
+                currentIdx > 0 ? inputControlsManager.getProfiles().get(currentIdx - 1).id : 0);
+            editInputControlsCallback = () -> {
+                hideInputControls();
+                inputControlsManager.loadProfiles(true);
+            };
+            controlsEditorActivityResultLauncher.launch(intent);
+        };
+
+        // Vibration state
+        if (winHandler != null) {
+            int max = winHandler.getMaxControllers();
+            java.util.List<kotlin.Pair<String, Boolean>> kSlots = new java.util.ArrayList<>();
+            for (int i = 0; i < max; i++) {
+                kSlots.add(new kotlin.Pair<>(
+                    getString(com.winlator.star.R.string.vibration_slot, i + 1),
+                    winHandler.isVibrationEnabledForSlot(i)));
+            }
+            ds.setVibrationSlots(kSlots);
+            ds.onVibrationSlotChanged = (slot, enabled) -> winHandler.setVibrationEnabledForSlot(slot, enabled);
+        }
+
+        // Screen Effects state
+        ColorEffect ce   = (ColorEffect)        renderer.getEffectComposer().getEffect(ColorEffect.class);
+        FXAAEffect  fxaa = (FXAAEffect)         renderer.getEffectComposer().getEffect(FXAAEffect.class);
+        CRTEffect   crt  = (CRTEffect)          renderer.getEffectComposer().getEffect(CRTEffect.class);
+        ToonEffect  toon = (ToonEffect)         renderer.getEffectComposer().getEffect(ToonEffect.class);
+        NTSCCombinedEffect ntsc = (NTSCCombinedEffect) renderer.getEffectComposer().getEffect(NTSCCombinedEffect.class);
+
+        ds.setSeBrightness(ce   != null ? ce.getBrightness() * 100f : 0f);
+        ds.setSeContrast  (ce   != null ? ce.getContrast()   * 100f : 0f);
+        ds.setSeGamma     (ce   != null ? ce.getGamma()             : 1.0f);
+        ds.setSeFxaa      (fxaa != null);
+        ds.setSeCrt       (crt  != null);
+        ds.setSeToon      (toon != null);
+        ds.setSeNtsc      (ntsc != null);
+
+        java.util.Set<String> rawSet = new java.util.LinkedHashSet<>(
+            preferences.getStringSet("screen_effect_profiles", new java.util.LinkedHashSet<>()));
+        final ArrayList<String> seProfileNames = new ArrayList<>();
+        for (String p : rawSet) seProfileNames.add(p.split(":")[0]);
+        ds.setSeProfiles(seProfileNames);
+        String currentProfile = getScreenEffectProfile();
+        int selIdx = 0;
+        for (int i = 0; i < seProfileNames.size(); i++) {
+            if (seProfileNames.get(i).equals(currentProfile)) { selIdx = i + 1; break; }
+        }
+        ds.setSeSelectedProfile(selIdx);
+
+        ds.onScreenEffectsApply = (brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn, profileIndex) -> {
+            if (renderer == null) return;
+            applyScreenEffects(renderer, brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn);
+            if (profileIndex > 0 && profileIndex - 1 < seProfileNames.size()) {
+                String name = seProfileNames.get(profileIndex - 1);
+                saveScreenEffectProfile(name, brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn);
+                setScreenEffectProfile(name);
+            }
+        };
+
+        // Task Manager state
+        ds.onTmRefresh = () -> {
+            if (winHandler != null) winHandler.listProcesses();
+            updateTmCpuMemory(ds);
+        };
+        ds.onTmDismissed = () -> {
+            ds.setTmProcesses(new ArrayList<>());
+        };
+        ds.onTmNewTask = () -> ContentDialog.prompt(this, R.string.new_task, "taskmgr.exe",
+            command -> { if (winHandler != null) winHandler.exec(command); });
+        ds.onTmBringToFront = name -> {
+            if (winHandler != null) winHandler.bringToFront(name);
+        };
+        ds.onTmKillProcess = name -> ContentDialog.confirm(this, R.string.do_you_want_to_end_this_process,
+            () -> { if (winHandler != null) winHandler.killProcess(name); });
+        ds.onTmSetAffinity = (pid, mask) -> {
+            if (winHandler != null) winHandler.setProcessAffinity(pid, mask);
+        };
+
+        if (winHandler != null) {
+            winHandler.setOnGetProcessInfoListener(new OnGetProcessInfoListener() {
+                private final ArrayList<XServerDialogState.TmProcess> buffer = new ArrayList<>();
+
+                @Override
+                public void onGetProcessInfo(int index, int numProcesses, ProcessInfo info) {
+                    android.graphics.Bitmap icon = null;
+                    try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                        com.winlator.star.xserver.Window w = xServer.windowManager.findWindowWithProcessId(info.pid);
+                        if (w != null) icon = xServer.pixmapManager.getWindowIcon(w);
+                    } catch (Exception ignored) {}
+
+                    final android.graphics.Bitmap finalIcon = icon;
+                    runOnUiThread(() -> {
+                        if (index == 0) buffer.clear();
+                        buffer.add(new XServerDialogState.TmProcess(
+                            index, info.pid, info.name,
+                            info.getFormattedMemoryUsage(), info.wow64Process, finalIcon));
+                        if (numProcesses == 0 || index == numProcesses - 1) {
+                            ds.setTmProcesses(new ArrayList<>(buffer));
+                            ds.setTmCount(numProcesses);
+                        }
+                    });
+                }
+            });
+        }
+
+        ds.onInitGraphicsTab = () -> {};
+
+        // FSR state
+        FSREffect fsr = (FSREffect) renderer.getEffectComposer().getEffect(FSREffect.class);
+        HDREffect hdr = (HDREffect) renderer.getEffectComposer().getEffect(HDREffect.class);
+        ds.setFsrEnabled(fsr != null);
+        ds.setFsrMode   (fsr != null ? fsr.getMode()  : 0);
+        ds.setFsrLevel  (fsr != null ? fsr.getLevel() : 1.0f);
+        ds.setHdrEnabled(hdr != null);
+
+        ds.onFsrUpdate = (enabled, mode, level, hdrEn) -> {
+            if (renderer == null) return;
+            FSREffect cur = (FSREffect) renderer.getEffectComposer().getEffect(FSREffect.class);
+            if (cur != null) renderer.getEffectComposer().removeEffect(cur);
+            if (enabled) {
+                FSREffect newFsr = new FSREffect();
+                newFsr.setLevel(level);
+                newFsr.setMode(mode);
+                renderer.getEffectComposer().addEffect(newFsr);
+            }
+            HDREffect curHdr = (HDREffect) renderer.getEffectComposer().getEffect(HDREffect.class);
+            if (curHdr != null) renderer.getEffectComposer().removeEffect(curHdr);
+            if (hdrEn) {
+                HDREffect newHdr = new HDREffect();
+                newHdr.setStrength(1.0f);
+                renderer.getEffectComposer().addEffect(newHdr);
+            }
+        };
     }
 
 

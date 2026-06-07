@@ -252,6 +252,11 @@ object XServerDialogState {
     fun interface FpsConfigCallback { fun invoke(config: String) }
 
     // -------------------------------------------------------------------------
+    // Inline tab initialization callbacks
+    // -------------------------------------------------------------------------
+    @JvmField var onInitGraphicsTab: Runnable? = null
+
+    // -------------------------------------------------------------------------
     // Reset — call when activity is destroyed or restarted
     // -------------------------------------------------------------------------
     fun reset() {
@@ -295,5 +300,6 @@ object XServerDialogState {
         onWindowClick = null
         onTmRefresh = null; onTmDismissed = null; onTmNewTask = null
         onTmBringToFront = null; onTmKillProcess = null; onTmSetAffinity = null
+        onInitGraphicsTab = null
     }
 }

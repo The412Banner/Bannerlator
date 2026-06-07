@@ -3,7 +3,17 @@ package com.winlator.star.ui
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+enum class TabType {
+    GRAPHICS, HUD, CONTROLS, TASK_MANAGER,
+    ACTIVE_WINDOWS, KEYBOARD, MAGNIFIER, LOGS, PIP, PAUSE_RESUME, EXIT
+}
+
 object XServerDrawerState {
+
+    private val _selectedTab = MutableStateFlow(TabType.GRAPHICS)
+    val selectedTab: StateFlow<TabType> = _selectedTab
+
+    fun selectTab(tab: TabType) { _selectedTab.value = tab }
 
     private val _isPaused                = MutableStateFlow(false)
     val isPaused: StateFlow<Boolean>     = _isPaused
@@ -110,6 +120,7 @@ object XServerDrawerState {
     fun toggleFpsExpanded() { _fpsExpanded.value = !_fpsExpanded.value }
 
     fun reset() {
+        _selectedTab.value = TabType.GRAPHICS
         _isPaused.value = false
         _isRelativeMouseMovement.value = false
         _isMouseDisabled.value = false

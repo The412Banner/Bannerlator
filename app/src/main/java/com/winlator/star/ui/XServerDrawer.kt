@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -391,7 +392,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
     SectionHeader("Graphics")
 
-    ToggleRow("Fullscreen") {
+    ToggleRow("Fullscreen", true) {
         state.onToggleFullscreen?.run(); state.onClose?.run()
     }
 
@@ -410,7 +411,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
     var modeDropdownExpanded by remember { mutableStateOf(false) }
     val modeNames = listOf("Super Resolution", "DLS (Color Boost)")
 
-    ToggleRow("FSR") { fsrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
+    ToggleRow("FSR", fsrEnabled) { fsrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
 
     if (fsrEnabled) {
         Spacer(Modifier.height(4.dp))
@@ -434,7 +435,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         LabeledSlider("Strength", fsrLevel, 1f..5f, { fsrLevel = it }, { pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }, steps = 3)
     }
 
-    ToggleRow("HDR") { hdrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
+    ToggleRow("HDR", hdrEnabled) { hdrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
 
     HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
@@ -471,7 +472,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
     HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-    ToggleRow("Vegas FrameGen") { state.onLsfgToggle?.run() }
+    ToggleRow("Vegas FrameGen", lsfgEnabled) { state.onLsfgToggle?.run() }
 
     if (lsfgEnabled) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -485,7 +486,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
             LabeledSlider("Flow Scale", state.getLsfgFlowScale().toFloat(), 50f..200f, { state.setLsfgFlowScale(it.toInt()) }, { state.onApplyLsfg?.run() }, steps = 14, format = { "${it.toInt()}%" })
             LabeledSlider("Max Input Latency", state.getLsfgMaxLatency().toFloat(), 0f..33f, { state.setLsfgMaxLatency(it.toInt()) }, { state.onApplyLsfg?.run() }, steps = 32, format = { "${it.toInt()}ms" })
 
-            AccentButton("Reset to GPU Defaults") { state.onResetLsfg?.run() }
+            AccentButton("Reset to GPU Defaults") { state.onResetLsfg?.run(); Unit }
         }
     }
 }
@@ -675,6 +676,7 @@ private fun ControlsContent(state: XServerDrawerState) {
     AccentButton("Apply & Close") {
         XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
         state.onClose?.run()
+        Unit
     }
 
     HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))

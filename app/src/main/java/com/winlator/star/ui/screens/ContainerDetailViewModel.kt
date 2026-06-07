@@ -449,6 +449,27 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         refreshWineDependent(version)
     }
 
+    fun refreshWineVersions() {
+        contentsManager.syncContents()
+        val res = context.resources
+        val wineList = res.getStringArray(R.array.wine_entries).toMutableList()
+        for (p in contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE))
+            wineList.add(ContentsManager.getEntryName(p))
+        for (p in contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON))
+            wineList.add(ContentsManager.getEntryName(p))
+        wineVersionEntries = wineList
+    }
+
+    fun refreshBox64Versions() {
+        contentsManager.syncContents()
+        refreshWineDependent(selectedWineVersion)
+    }
+
+    fun refreshFEXCoreVersions() {
+        contentsManager.syncContents()
+        loadFEXCoreVersions()
+    }
+
     fun onExclusiveXInputChanged(checked: Boolean) {
         exclusiveXInput = checked
         if (!checked) {

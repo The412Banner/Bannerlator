@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +52,6 @@ import com.winlator.star.ui.theme.Divider as DividerColor
 private fun iconFor(screen: Screen): ImageVector = when (screen) {
     Screen.Containers    -> Icons.Filled.FolderOpen
     Screen.Shortcuts     -> Icons.Filled.OpenInNew
-    Screen.Contents      -> Icons.Filled.Inventory2
     Screen.InputControls -> Icons.Filled.SportsEsports
     Screen.AdrenoTools   -> Icons.Filled.Memory
     Screen.Saves         -> Icons.Filled.Save
@@ -121,7 +119,6 @@ fun AppDrawerContent(
 
         SectionHeader("Tools")
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
-        DrawerItem(Screen.Contents,      currentRoute, onNavigate)
         DrawerItem(Screen.AdrenoTools,   currentRoute, onNavigate)
         DrawerItem(Screen.Saves,         currentRoute, onNavigate)
         DrawerItem(Screen.Appearance,    currentRoute, onNavigate)

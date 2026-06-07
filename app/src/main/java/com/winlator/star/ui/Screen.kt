@@ -21,7 +21,7 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
 
     companion object {
         val drawerItems by lazy {
-            listOf(Shortcuts, Containers, Settings, Appearance, InputControls, Contents, AdrenoTools, LsfgSettings, Saves)
+            listOf(Shortcuts, Containers, Settings, Appearance, InputControls, AdrenoTools, LsfgSettings, Saves)
         }
         val storeItems by lazy {
             listOf(Gog, Epic, Amazon, Steam)

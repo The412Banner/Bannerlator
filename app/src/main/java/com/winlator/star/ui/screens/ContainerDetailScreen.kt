@@ -66,6 +66,11 @@ fun ContainerDetailScreen(
     var showDxvkConfig           by remember { mutableStateOf(false) }
     var showWineD3DConfig        by remember { mutableStateOf(false) }
     var showFpsConfig            by remember { mutableStateOf(false) }
+    var showWineDownloadSheet    by remember { mutableStateOf(false) }
+    var showBox64DownloadSheet   by remember { mutableStateOf(false) }
+    var showFexCoreDownloadSheet by remember { mutableStateOf(false) }
+    var showDxvkDownloadSheet    by remember { mutableStateOf(false) }
+    var showVkd3dDownloadSheet   by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
     val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
@@ -119,6 +124,7 @@ fun ContainerDetailScreen(
                 onShowDxvkConfig = { showDxvkConfig = true },
                 onShowWineD3DConfig = { showWineD3DConfig = true },
                 onShowFpsConfig = { showFpsConfig = true },
+                onShowWineDownloadSheet = { showWineDownloadSheet = true },
             )
 
             // ── Tabs ───────────────────────────────────────────────────────────
@@ -144,7 +150,13 @@ fun ContainerDetailScreen(
                     1 -> WinComponentsTab(viewModel)
                     2 -> EnvVarsTab(viewModel, envVarsViewRef)
                     3 -> DrivesTab(viewModel)
-                    4 -> AdvancedTab(viewModel, cpuListViewRef, cpuListWoW64Ref)
+                    4 -> AdvancedTab(
+                        viewModel,
+                        cpuListViewRef,
+                        cpuListWoW64Ref,
+                        onShowBox64DownloadSheet = { showBox64DownloadSheet = true },
+                        onShowFexCoreDownloadSheet = { showFexCoreDownloadSheet = true },
+                    )
                     5 -> XRTab(viewModel)
                 }
             }
@@ -167,7 +179,9 @@ fun ContainerDetailScreen(
             isVegas = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "").contains("vegas"),
             initialConfig = viewModel.dxWrapperConfig,
             onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showDxvkConfig = false },
-            onDismiss = { showDxvkConfig = false }
+            onDismiss = { showDxvkConfig = false },
+            onDownloadDxvk = { showDxvkDownloadSheet = true },
+            onDownloadVkd3d = { showVkd3dDownloadSheet = true }
         )
     }
     if (showWineD3DConfig) {
@@ -184,6 +198,46 @@ fun ContainerDetailScreen(
             onDismiss = { showFpsConfig = false }
         )
     }
+
+    // ── Content download sheets ────────────────────────────────────────────
+    if (showWineDownloadSheet) {
+        ContentDownloadSheet(
+            contentTypes = listOf(
+                com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_WINE,
+                com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_PROTON,
+            ),
+            onDismiss = { showWineDownloadSheet = false },
+            onContentChanged = { viewModel.refreshWineVersions() }
+        )
+    }
+    if (showBox64DownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64,
+            onDismiss = { showBox64DownloadSheet = false },
+            onContentChanged = { viewModel.refreshBox64Versions() }
+        )
+    }
+    if (showFexCoreDownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
+            onDismiss = { showFexCoreDownloadSheet = false },
+            onContentChanged = { viewModel.refreshFEXCoreVersions() }
+        )
+    }
+    if (showDxvkDownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_DXVK,
+            onDismiss = { showDxvkDownloadSheet = false },
+            onContentChanged = {}
+        )
+    }
+    if (showVkd3dDownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
+            onDismiss = { showVkd3dDownloadSheet = false },
+            onContentChanged = {}
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,6 +248,7 @@ private fun TopLevelFields(
     onShowDxvkConfig: () -> Unit,
     onShowWineD3DConfig: () -> Unit,
     onShowFpsConfig: () -> Unit,
+    onShowWineDownloadSheet: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -233,14 +288,26 @@ private fun TopLevelFields(
             Spacer(Modifier.height(8.dp))
         }
 
-        // Wine Version
-        LabeledDropdown(
-            label = stringResource(R.string.wine_version),
-            options = viewModel.wineVersionEntries,
-            selectedOption = viewModel.selectedWineVersion,
-            enabled = viewModel.wineVersionEnabled,
-            onSelect = { viewModel.onWineVersionChanged(it) }
-        )
+        // Wine Version + download gear
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            LabeledDropdown(
+                label = stringResource(R.string.wine_version),
+                options = viewModel.wineVersionEntries,
+                selectedOption = viewModel.selectedWineVersion,
+                enabled = viewModel.wineVersionEnabled,
+                onSelect = { viewModel.onWineVersionChanged(it) },
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedButton(
+                onClick = onShowWineDownloadSheet,
+                modifier = Modifier.size(40.dp),
+                border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                contentPadding = PaddingValues(0.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+            }
+        }
         Spacer(Modifier.height(8.dp))
 
         // Graphics Driver + config button
@@ -614,7 +681,9 @@ private fun DriveRow(
 private fun AdvancedTab(
     viewModel: ContainerDetailViewModel,
     cpuListViewRef: MutableState<CPUListView?>,
-    cpuListWoW64Ref: MutableState<CPUListView?>
+    cpuListWoW64Ref: MutableState<CPUListView?>,
+    onShowBox64DownloadSheet: () -> Unit = {},
+    onShowFexCoreDownloadSheet: () -> Unit = {},
 ) {
     val context = LocalContext.current
     // Flush legacy CPUListView selections back to the ViewModel before the tab
@@ -631,12 +700,24 @@ private fun AdvancedTab(
 
         // Box64 section
         SectionBox(title = "Box64") {
-            LabeledDropdown(
-                label = stringResource(R.string.box64_version),
-                options = viewModel.box64VersionEntries,
-                selectedOption = viewModel.selectedBox64Version,
-                onSelect = { viewModel.selectedBox64Version = it }
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                LabeledDropdown(
+                    label = stringResource(R.string.box64_version),
+                    options = viewModel.box64VersionEntries,
+                    selectedOption = viewModel.selectedBox64Version,
+                    onSelect = { viewModel.selectedBox64Version = it },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedButton(
+                    onClick = onShowBox64DownloadSheet,
+                    modifier = Modifier.size(40.dp),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                    contentPadding = PaddingValues(0.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
             Spacer(Modifier.height(8.dp))
             LabeledDropdown(
                 label = stringResource(R.string.box64_preset),
@@ -649,12 +730,24 @@ private fun AdvancedTab(
         // FEXCore section (arm64ec only)
         if (viewModel.isArm64EC) {
             SectionBox(title = "FEXCore") {
-                LabeledDropdown(
-                    label = stringResource(R.string.fexcore_version),
-                    options = viewModel.fexCoreVersionEntries,
-                    selectedOption = viewModel.selectedFEXCoreVersion,
-                    onSelect = { viewModel.selectedFEXCoreVersion = it }
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LabeledDropdown(
+                        label = stringResource(R.string.fexcore_version),
+                        options = viewModel.fexCoreVersionEntries,
+                        selectedOption = viewModel.selectedFEXCoreVersion,
+                        onSelect = { viewModel.selectedFEXCoreVersion = it },
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(
+                        onClick = onShowFexCoreDownloadSheet,
+                        modifier = Modifier.size(40.dp),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown(
                     label = stringResource(R.string.fexcore_preset),
@@ -1179,7 +1272,9 @@ internal fun DxvkConfigDialog(
     isVegas: Boolean = false,
     initialConfig: String,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDownloadDxvk: () -> Unit = {},
+    onDownloadVkd3d: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val config = remember(initialConfig) { DXVKConfigDialog.parseConfig(initialConfig) }
@@ -1237,9 +1332,38 @@ internal fun DxvkConfigDialog(
         title = { Text("DXVK ${stringResource(R.string.configuration)}") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
-                LabeledDropdown(stringResource(R.string.vkd3d_version), vkd3dVersions.value, selectedVkd3d, { selectedVkd3d = it })
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LabeledDropdown(
+                        stringResource(R.string.vkd3d_version), vkd3dVersions.value, selectedVkd3d, { selectedVkd3d = it },
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(
+                        onClick = onDownloadVkd3d,
+                        modifier = Modifier.size(40.dp),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Download VKD3D", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown(if (isVegas) "Vegas Selector" else stringResource(R.string.dxvk_version), filteredDxvk, selectedDxvk, { selectedDxvk = it })
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LabeledDropdown(
+                        if (isVegas) "Vegas Selector" else stringResource(R.string.dxvk_version),
+                        filteredDxvk, selectedDxvk, { selectedDxvk = it },
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(
+                        onClick = onDownloadDxvk,
+                        modifier = Modifier.size(40.dp),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Download DXVK", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 if (dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

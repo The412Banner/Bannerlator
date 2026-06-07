@@ -764,6 +764,10 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
     var showGfxConfig by remember { mutableStateOf(false) }
     var showDxvkConfig by remember { mutableStateOf(false) }
     var showWineD3DConfig by remember { mutableStateOf(false) }
+    var showBox64DownloadSheet by remember { mutableStateOf(false) }
+    var showFexCoreDownloadSheet by remember { mutableStateOf(false) }
+    var showDxvkDownloadSheet by remember { mutableStateOf(false) }
+    var showVkd3dDownloadSheet by remember { mutableStateOf(false) }
 
     // Tab
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -1129,37 +1133,39 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
                     when (selectedTab) {
                         0 -> ScWinComponentsTab(winComponents)
                         1 -> ScEnvVarsTab(shortcut, envVarsViewRef)
-                        2 -> ScAdvancedTab(
-                            isArm64EC = isArm64EC,
-                            box64Versions = box64Versions,
-                            selectedBox64Version = selectedBox64Version,
-                            onBox64VersionChange = { selectedBox64Version = it },
-                            box64Presets = box64Presets,
-                            selectedBox64PresetIndex = selectedBox64PresetIndex,
-                            onBox64PresetIndexChange = { selectedBox64PresetIndex = it },
-                            fexCoreVersions = fexCoreVersions,
-                            selectedFexCoreVersion = selectedFexCoreVersion,
-                            onFexVersionChange = { selectedFexCoreVersion = it },
-                            fexCorePresets = fexCorePresets,
-                            selectedFexPresetIndex = selectedFexCorePresetIndex,
-                            onFexPresetIndexChange = { selectedFexCorePresetIndex = it },
-                            controlsProfiles = controlsProfiles,
-                            selectedControlsProfileIndex = selectedControlsProfileIndex,
-                            onControlsProfileChange = { selectedControlsProfileIndex = it },
-                            startupSelectionEntries = startupSelectionEntries,
-                            selectedStartupSelection = selectedStartupSelection,
-                            onStartupChange = { selectedStartupSelection = it },
-                            cpuListViewRef = cpuListViewRef,
-                            initialCpuList = shortcut.getExtra("cpuList", shortcut.container.getCPUList(true)),
-                            onCpuListSnapshot = { shortcut.putExtra("cpuList", it) },
-                            sharpnessEffectEntries = sharpnessEffectEntries,
-                            selectedSharpnessEffect = selectedSharpnessEffect,
-                            onSharpnessEffectChange = { selectedSharpnessEffect = it },
-                            sharpnessLevel = sharpnessLevel,
-                            onSharpnessLevelChange = { sharpnessLevel = it },
-                            sharpnessDenoise = sharpnessDenoise,
-                            onSharpnessDenoiseChange = { sharpnessDenoise = it }
-                        )
+         2 -> ScAdvancedTab(
+            isArm64EC = isArm64EC,
+            box64Versions = box64Versions,
+            selectedBox64Version = selectedBox64Version,
+            onBox64VersionChange = { selectedBox64Version = it },
+            box64Presets = box64Presets,
+            selectedBox64PresetIndex = selectedBox64PresetIndex,
+            onBox64PresetIndexChange = { selectedBox64PresetIndex = it },
+            fexCoreVersions = fexCoreVersions,
+            selectedFexCoreVersion = selectedFexCoreVersion,
+            onFexVersionChange = { selectedFexCoreVersion = it },
+            fexCorePresets = fexCorePresets,
+            selectedFexPresetIndex = selectedFexCorePresetIndex,
+            onFexPresetIndexChange = { selectedFexCorePresetIndex = it },
+            controlsProfiles = controlsProfiles,
+            selectedControlsProfileIndex = selectedControlsProfileIndex,
+            onControlsProfileChange = { selectedControlsProfileIndex = it },
+            startupSelectionEntries = startupSelectionEntries,
+            selectedStartupSelection = selectedStartupSelection,
+            onStartupChange = { selectedStartupSelection = it },
+            cpuListViewRef = cpuListViewRef,
+            initialCpuList = shortcut.getExtra("cpuList", shortcut.container.getCPUList(true)),
+            onCpuListSnapshot = { shortcut.putExtra("cpuList", it) },
+            sharpnessEffectEntries = sharpnessEffectEntries,
+            selectedSharpnessEffect = selectedSharpnessEffect,
+            onSharpnessEffectChange = { selectedSharpnessEffect = it },
+            sharpnessLevel = sharpnessLevel,
+            onSharpnessLevelChange = { sharpnessLevel = it },
+            sharpnessDenoise = sharpnessDenoise,
+            onSharpnessDenoiseChange = { sharpnessDenoise = it },
+            onShowBox64DownloadSheet = { showBox64DownloadSheet = true },
+            onShowFexCoreDownloadSheet = { showFexCoreDownloadSheet = true }
+        )
                     }
                 }
 
@@ -1190,7 +1196,9 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             isVegas = StringUtils.parseIdentifier(selectedDxWrapper).contains("vegas"),
             initialConfig = dxWrapperConfig,
             onConfirm = { dxWrapperConfig = it; showDxvkConfig = false },
-            onDismiss = { showDxvkConfig = false }
+            onDismiss = { showDxvkConfig = false },
+            onDownloadDxvk = { showDxvkDownloadSheet = true },
+            onDownloadVkd3d = { showVkd3dDownloadSheet = true }
         )
     }
     if (showWineD3DConfig) {
@@ -1198,6 +1206,35 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             initialConfig = dxWrapperConfig,
             onConfirm = { dxWrapperConfig = it; showWineD3DConfig = false },
             onDismiss = { showWineD3DConfig = false }
+        )
+    }
+
+    if (showBox64DownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64,
+            onDismiss = { showBox64DownloadSheet = false },
+            onContentChanged = {}
+        )
+    }
+    if (showFexCoreDownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
+            onDismiss = { showFexCoreDownloadSheet = false },
+            onContentChanged = {}
+        )
+    }
+    if (showDxvkDownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_DXVK,
+            onDismiss = { showDxvkDownloadSheet = false },
+            onContentChanged = {}
+        )
+    }
+    if (showVkd3dDownloadSheet) {
+        ContentDownloadSheet(
+            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
+            onDismiss = { showVkd3dDownloadSheet = false },
+            onContentChanged = {}
         )
     }
 }
@@ -1322,7 +1359,9 @@ private fun ScAdvancedTab(
     sharpnessLevel: Int,
     onSharpnessLevelChange: (Int) -> Unit,
     sharpnessDenoise: Int,
-    onSharpnessDenoiseChange: (Int) -> Unit
+    onSharpnessDenoiseChange: (Int) -> Unit,
+    onShowBox64DownloadSheet: () -> Unit = {},
+    onShowFexCoreDownloadSheet: () -> Unit = {},
 ) {
     // Flush legacy CPUListView selection back to the parent (Shortcut extras)
     // before the tab leaves composition, so a tab switch doesn't drop edits.
@@ -1334,12 +1373,24 @@ private fun ScAdvancedTab(
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionBox(title = "Box64") {
-            LabeledDropdown(
-                label = stringResource(R.string.box64_version),
-                options = box64Versions,
-                selectedOption = box64Versions.firstOrNull { it == selectedBox64Version } ?: selectedBox64Version,
-                onSelect = onBox64VersionChange
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                LabeledDropdown(
+                    label = stringResource(R.string.box64_version),
+                    options = box64Versions,
+                    selectedOption = box64Versions.firstOrNull { it == selectedBox64Version } ?: selectedBox64Version,
+                    onSelect = onBox64VersionChange,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedButton(
+                    onClick = onShowBox64DownloadSheet,
+                    modifier = Modifier.size(40.dp),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                    contentPadding = PaddingValues(0.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = "Download Box64", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
             Spacer(Modifier.height(8.dp))
             val presetNames = box64Presets.map { it.name }
             LabeledDropdown(
@@ -1352,12 +1403,24 @@ private fun ScAdvancedTab(
 
         if (isArm64EC) {
             SectionBox(title = "FEXCore") {
-                LabeledDropdown(
-                    label = stringResource(R.string.fexcore_version),
-                    options = fexCoreVersions,
-                    selectedOption = fexCoreVersions.firstOrNull { it == selectedFexCoreVersion } ?: selectedFexCoreVersion,
-                    onSelect = onFexVersionChange
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LabeledDropdown(
+                        label = stringResource(R.string.fexcore_version),
+                        options = fexCoreVersions,
+                        selectedOption = fexCoreVersions.firstOrNull { it == selectedFexCoreVersion } ?: selectedFexCoreVersion,
+                        onSelect = onFexVersionChange,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(
+                        onClick = onShowFexCoreDownloadSheet,
+                        modifier = Modifier.size(40.dp),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Download FEXCore", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 val fexNames = fexCorePresets.map { it.name }
                 LabeledDropdown(

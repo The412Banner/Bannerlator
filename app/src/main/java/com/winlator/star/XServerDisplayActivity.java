@@ -393,7 +393,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         };
         state.onPipMode                = () -> enterPictureInPictureMode();
         state.onActiveWindows          = () -> showActiveWindowsDialog();
-        state.onTaskManager            = () -> showTaskManagerDialog();
+        state.onTaskManager            = () -> {
+            XServerDrawerState.INSTANCE.selectTab(com.winlator.star.ui.TabType.TASK_MANAGER);
+            setupTmCallbacks();
+            XServerDialogState.INSTANCE.setTmProcesses(new ArrayList<>());
+        };
         state.onMagnifier              = () -> showMagnifierOverlay();
         state.onLogs                   = () -> XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.DEBUG);
         state.onExit                   = () -> exit();
@@ -1590,6 +1594,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 renderer.getEffectComposer().addEffect(newHdr);
             }
         };
+
+        setupTmCallbacks();
     }
 
 
@@ -2592,7 +2598,7 @@ return true;
         ds.setMagnifierVisible(true);
     }
 
-    private void showTaskManagerDialog() {
+    private void setupTmCallbacks() {
         XServerDialogState ds = XServerDialogState.INSTANCE;
 
         ds.onTmRefresh = () -> {
@@ -2647,7 +2653,6 @@ return true;
         }
 
         updateTmCpuMemory(ds);
-        ds.show(XServerDialogState.ActiveDialog.TASK_MANAGER);
     }
 
     private void updateTmCpuMemory(XServerDialogState ds) {

@@ -1,5 +1,6 @@
 package com.winlator.star.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,16 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,8 +36,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -52,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
@@ -59,9 +62,20 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.winlator.star.R
+import com.winlator.star.ui.theme.GlowPurple
 import com.winlator.star.ui.theme.Primary
+import com.winlator.star.ui.theme.PrimaryDim
 import com.winlator.star.ui.theme.WinlatorTheme
+import kotlinx.coroutines.delay
+
+private val PureBlack = Color(0xFF000000)
+private val DarkSurface = Color(0xFF0D0D0D)
+private val DimWhite = Color(0xFFE8E8E8)
+private val MutedWhite = Color(0xFF999999)
+private val ToggleTrackOff = Color(0xFF333333)
+private val ToggleThumbOff = Color(0xFF666666)
 
 fun setupComposeView(view: ComposeView) {
     view.setContent {
@@ -82,13 +96,19 @@ fun XServerDrawer() {
         modifier = Modifier
             .fillMaxHeight()
             .width(380.dp)
-            .background(MaterialTheme.colorScheme.surface)
+            .background(PureBlack)
     ) {
         Column(
             modifier = Modifier
                 .width(60.dp)
                 .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(PureBlack, DarkSurface, PureBlack),
+                        startY = 0f,
+                        endY = Float.POSITIVE_INFINITY
+                    )
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.weight(1f))
@@ -96,15 +116,15 @@ fun XServerDrawer() {
             TabIconButton(R.drawable.icon_settings, selectedTab == TabType.GRAPHICS) {
                 handleTabClick(TabType.GRAPHICS, state)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             FpsTabButton(isSelected = selectedTab == TabType.HUD) {
                 handleTabClick(TabType.HUD, state)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             TabIconButton(R.drawable.icon_input_controls, selectedTab == TabType.CONTROLS) {
                 handleTabClick(TabType.CONTROLS, state)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             TabIconButton(R.drawable.icon_debug, selectedTab == TabType.ADVANCED) {
                 handleTabClick(TabType.ADVANCED, state)
             }
@@ -113,21 +133,22 @@ fun XServerDrawer() {
 
             Box(
                 modifier = Modifier
-                    .width(44.dp)
-                    .height(3.dp)
-                    .background(Primary, RoundedCornerShape(2.dp))
+                    .width(36.dp)
+                    .height(2.dp)
+                    .background(GlowPurple, RoundedCornerShape(1.dp))
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
-            TabIconButton(R.drawable.icon_task_manager, isSelected = false) {
-                state.onTaskManager?.run(); state.onClose?.run()
+            TabIconButton(R.drawable.icon_task_manager, selectedTab == TabType.TASK_MANAGER) {
+                state.selectTab(TabType.TASK_MANAGER)
+                state.onTaskManager?.run()
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             TabIconButton(pauseIcon, isSelected = false) {
                 state.onPauseResume?.run(); state.onClose?.run()
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             TabIconButton(R.drawable.icon_exit, isSelected = false) {
                 state.onExit?.run()
             }
@@ -140,13 +161,14 @@ fun XServerDrawer() {
                 .weight(1f)
                 .fillMaxHeight()
                 .verticalScroll(rememberScrollState())
-                .padding(12.dp),
+                .padding(14.dp),
         ) {
             when (selectedTab) {
                 TabType.GRAPHICS -> GraphicsContent(state)
                 TabType.HUD -> HudContent(state)
                 TabType.CONTROLS -> ControlsContent(state)
                 TabType.ADVANCED -> AdvancedContent(state)
+                TabType.TASK_MANAGER -> TmContent()
             }
         }
     }
@@ -156,21 +178,38 @@ private fun handleTabClick(tab: TabType, state: XServerDrawerState) {
     state.selectTab(tab)
 }
 
+// ───── Modern Tab Button ─────
+
 @Composable
 private fun TabIconButton(iconRes: Int, isSelected: Boolean, onClick: () -> Unit) {
-    val bgColor = if (isSelected) Primary else Color.Transparent
-    val borderColor = if (isSelected) Color.Transparent else Primary
-    val tintColor = if (isSelected) Color.White else Primary
+    val bgBrush = if (isSelected)
+        Brush.verticalGradient(listOf(PrimaryDim, Primary.copy(alpha = 0.3f)))
+    else
+        Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+
+    val borderColor = if (isSelected) GlowPurple.copy(alpha = 0.6f) else Color(0xFF333333)
+    val tintColor = if (isSelected) Color.White else MutedWhite
 
     Box(
         modifier = Modifier
             .size(44.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(bgColor, RoundedCornerShape(12.dp))
+            .background(bgBrush, RoundedCornerShape(12.dp))
             .border(1.5.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
+        if (isSelected) {
+            Canvas(Modifier.size(44.dp)) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(GlowPurple.copy(alpha = 0.25f), Color.Transparent),
+                        radius = size.minDimension / 2f
+                    ),
+                    radius = size.minDimension / 2f
+                )
+            }
+        }
         Icon(
             painter = painterResource(iconRes),
             contentDescription = null,
@@ -182,25 +221,160 @@ private fun TabIconButton(iconRes: Int, isSelected: Boolean, onClick: () -> Unit
 
 @Composable
 private fun FpsTabButton(isSelected: Boolean, onClick: () -> Unit) {
-    val bgColor = if (isSelected) Primary else Color.Transparent
-    val borderColor = if (isSelected) Color.Transparent else Primary
+    val bgBrush = if (isSelected)
+        Brush.verticalGradient(listOf(PrimaryDim, Primary.copy(alpha = 0.3f)))
+    else
+        Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+
+    val borderColor = if (isSelected) GlowPurple.copy(alpha = 0.6f) else Color(0xFF333333)
     val textColor = if (isSelected) Color.White else Primary
 
     Box(
         modifier = Modifier
             .size(44.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(bgColor, RoundedCornerShape(12.dp))
+            .background(bgBrush, RoundedCornerShape(12.dp))
             .border(1.5.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
+        if (isSelected) {
+            Canvas(Modifier.size(44.dp)) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(GlowPurple.copy(alpha = 0.25f), Color.Transparent),
+                        radius = size.minDimension / 2f
+                    ),
+                    radius = size.minDimension / 2f
+                )
+            }
+        }
         Text(
             text = "FPS",
             color = textColor,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
         )
+    }
+}
+
+// ───── Section Header ─────
+
+@Composable
+private fun SectionHeader(title: String) {
+    Column(modifier = Modifier.padding(bottom = 10.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold),
+            color = DimWhite,
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.4f)
+                .height(2.dp)
+                .background(
+                    Brush.horizontalGradient(listOf(GlowPurple, GlowPurple.copy(alpha = 0.1f))),
+                    RoundedCornerShape(1.dp)
+                )
+        )
+    }
+}
+
+// ───── Modern Toggle Row ─────
+
+@Composable
+private fun ToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(DarkSurface)
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = DimWhite,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = GlowPurple,
+                checkedTrackColor = PrimaryDim,
+                uncheckedThumbColor = ToggleThumbOff,
+                uncheckedTrackColor = ToggleTrackOff,
+            )
+        )
+    }
+}
+
+// ───── Modern Slider Row ─────
+
+@Composable
+private fun LabeledSlider(
+    label: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: (() -> Unit)? = null,
+    steps: Int = 0,
+    format: (Float) -> String = { "%.0f".format(it) }
+) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = DimWhite,
+            )
+            Text(
+                text = format(value),
+                style = MaterialTheme.typography.bodySmall,
+                color = Primary,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished ?: {},
+            valueRange = valueRange,
+            steps = steps,
+            colors = SliderDefaults.colors(
+                thumbColor = GlowPurple,
+                activeTrackColor = Primary,
+                inactiveTrackColor = ToggleTrackOff,
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent,
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+// ───── Modern Accent Button ─────
+
+@Composable
+private fun AccentButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().height(42.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = PrimaryDim,
+            contentColor = Color.White
+        )
+    ) {
+        Text(text, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -215,27 +389,16 @@ private fun GraphicsContent(state: XServerDrawerState) {
         XServerDialogState.onInitGraphicsTab?.run()
     }
 
-    Text("Graphics", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-    Spacer(Modifier.height(8.dp))
+    SectionHeader("Graphics")
 
-    // Fullscreen toggle
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable { state.onToggleFullscreen?.run(); state.onClose?.run() }
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.icon_fullscreen),
-            contentDescription = null,
-            tint = Primary,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text("Toggle Fullscreen", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+    ToggleRow("Fullscreen") {
+        state.onToggleFullscreen?.run(); state.onClose?.run()
     }
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+    Spacer(Modifier.height(4.dp))
+    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-    // FSR section (from FSROverlay)
+    // FSR section
     val initFsrEnabled by XServerDialogState.fsrEnabled.collectAsState()
     val initFsrMode by XServerDialogState.fsrMode.collectAsState()
     val initFsrLevel by XServerDialogState.fsrLevel.collectAsState()
@@ -247,42 +410,35 @@ private fun GraphicsContent(state: XServerDrawerState) {
     var modeDropdownExpanded by remember { mutableStateOf(false) }
     val modeNames = listOf("Super Resolution", "DLS (Color Boost)")
 
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text("FSR", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        Switch(checked = fsrEnabled, onCheckedChange = { fsrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) })
-    }
+    ToggleRow("FSR") { fsrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
 
-    ExposedDropdownMenuBox(expanded = modeDropdownExpanded, onExpandedChange = { if (fsrEnabled) modeDropdownExpanded = it }) {
-        OutlinedTextField(
-            value = modeNames.getOrElse(fsrMode) { modeNames[0] },
-            onValueChange = {},
-            readOnly = true,
-            enabled = fsrEnabled,
-            label = { Text("Mode") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeDropdownExpanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(),
-        )
-        ExposedDropdownMenu(expanded = modeDropdownExpanded, onDismissRequest = { modeDropdownExpanded = false }) {
-            modeNames.forEachIndexed { i, name ->
-                DropdownMenuItem(text = { Text(name) }, onClick = { fsrMode = i; modeDropdownExpanded = false; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) })
+    if (fsrEnabled) {
+        Spacer(Modifier.height(4.dp))
+        ExposedDropdownMenuBox(expanded = modeDropdownExpanded, onExpandedChange = { modeDropdownExpanded = it }) {
+            OutlinedTextField(
+                value = modeNames.getOrElse(fsrMode) { modeNames[0] },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Mode", color = MutedWhite) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                singleLine = true,
+            )
+            ExposedDropdownMenu(expanded = modeDropdownExpanded, onDismissRequest = { modeDropdownExpanded = false }) {
+                modeNames.forEachIndexed { i, name ->
+                    DropdownMenuItem(text = { Text(name) }, onClick = { fsrMode = i; modeDropdownExpanded = false; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) })
+                }
             }
         }
+
+        LabeledSlider("Strength", fsrLevel, 1f..5f, { fsrLevel = it }, { pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }, steps = 3)
     }
 
-    Spacer(Modifier.height(4.dp))
-    Text("Strength: ${"%.0f".format(fsrLevel)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-    Slider(value = fsrLevel, onValueChange = { fsrLevel = it }, onValueChangeFinished = { pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }, valueRange = 1f..5f, steps = 3, enabled = fsrEnabled, modifier = Modifier.fillMaxWidth())
+    ToggleRow("HDR") { hdrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
 
-    Spacer(Modifier.height(4.dp))
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text("HDR", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        Switch(checked = hdrEnabled, onCheckedChange = { hdrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) })
-    }
+    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-    // Screen Effects section (from ScreenEffectsDialog)
-    Text("Screen Effects", style = MaterialTheme.typography.labelMedium, color = Primary)
+    Text("Screen Effects", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     Spacer(Modifier.height(4.dp))
 
     val seBrightness by XServerDialogState.seBrightness.collectAsState()
@@ -304,23 +460,18 @@ private fun GraphicsContent(state: XServerDrawerState) {
         XServerDialogState.onScreenEffectsApply?.invoke(localBrightness, localContrast, localGamma, localFxaa, localCrt, localToon, localNtsc, 0)
     }
 
-    SeSlider("Brightness", localBrightness, -100f..100f) { localBrightness = it; applySe() }
-    SeSlider("Contrast", localContrast, -100f..100f) { localContrast = it; applySe() }
-    SeSlider("Gamma", localGamma, 0.5f..3.0f) { localGamma = it; applySe() }
-    Spacer(Modifier.height(4.dp))
+    LabeledSlider("Brightness", localBrightness, -100f..100f, { localBrightness = it; applySe() })
+    LabeledSlider("Contrast", localContrast, -100f..100f, { localContrast = it; applySe() })
+    LabeledSlider("Gamma", localGamma, 0.5f..3.0f, { localGamma = it; applySe() }, format = { "%.2f".format(it) })
 
     SeShaderToggle("FXAA", localFxaa) { localFxaa = it; applySe() }
     SeShaderToggle("CRT", localCrt) { localCrt = it; applySe() }
     SeShaderToggle("Toon", localToon) { localToon = it; applySe() }
     SeShaderToggle("NTSC", localNtsc) { localNtsc = it; applySe() }
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-    // Vegas FrameGen (from drawer)
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { state.onLsfgToggle?.run() }) {
-        Text("Vegas FrameGen", style = MaterialTheme.typography.bodyMedium, color = if (lsfgEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        Switch(checked = lsfgEnabled, onCheckedChange = { state.onLsfgToggle?.run() })
-    }
+    ToggleRow("Vegas FrameGen") { state.onLsfgToggle?.run() }
 
     if (lsfgEnabled) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -331,13 +482,10 @@ private fun GraphicsContent(state: XServerDrawerState) {
             LsfgInlineDropdown("Quality", listOf("performance", "balanced", "quality"), state.getLsfgQuality()) { opt ->
                 state.setLsfgQuality(opt); state.onApplyLsfg?.run()
             }
-            Text("Flow Scale: ${state.getLsfgFlowScale()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Slider(value = state.getLsfgFlowScale().toFloat(), onValueChange = { state.setLsfgFlowScale(it.toInt()) }, onValueChangeFinished = { state.onApplyLsfg?.run() }, valueRange = 50f..200f, steps = 14, modifier = Modifier.fillMaxWidth())
+            LabeledSlider("Flow Scale", state.getLsfgFlowScale().toFloat(), 50f..200f, { state.setLsfgFlowScale(it.toInt()) }, { state.onApplyLsfg?.run() }, steps = 14, format = { "${it.toInt()}%" })
+            LabeledSlider("Max Input Latency", state.getLsfgMaxLatency().toFloat(), 0f..33f, { state.setLsfgMaxLatency(it.toInt()) }, { state.onApplyLsfg?.run() }, steps = 32, format = { "${it.toInt()}ms" })
 
-            Text("Max Input Latency: ${state.getLsfgMaxLatency()}ms", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Slider(value = state.getLsfgMaxLatency().toFloat(), onValueChange = { state.setLsfgMaxLatency(it.toInt()) }, onValueChangeFinished = { state.onApplyLsfg?.run() }, valueRange = 0f..33f, steps = 32, modifier = Modifier.fillMaxWidth())
-
-            Button(onClick = { state.onResetLsfg?.run() }, modifier = Modifier.fillMaxWidth()) { Text("Reset to GPU Defaults") }
+            AccentButton("Reset to GPU Defaults") { state.onResetLsfg?.run() }
         }
     }
 }
@@ -347,17 +495,27 @@ private fun pushFsrUpdate(enabled: Boolean, mode: Int, level: Float, hdr: Boolea
 }
 
 @Composable
-private fun SeSlider(label: String, value: Float, range: ClosedFloatingPointRange<Float>, onValueChange: (Float) -> Unit) {
-    Text("$label: ${"%.1f".format(value)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-    Slider(value = value, onValueChange = onValueChange, valueRange = range, modifier = Modifier.fillMaxWidth())
-}
-
-@Composable
 private fun SeShaderToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(DarkSurface)
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = Primary,
+                uncheckedColor = ToggleThumbOff,
+                checkmarkColor = Color.White
+            )
+        )
         Spacer(Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+        Text(label, color = DimWhite, fontSize = 13.sp)
     }
 }
 
@@ -368,9 +526,10 @@ private fun LsfgInlineDropdown(label: String, options: List<String>, selectedOpt
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
             value = selectedOption, onValueChange = {}, readOnly = true,
-            label = { Text(label) },
+            label = { Text(label, color = MutedWhite) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier.menuAnchor().fillMaxWidth(),
+            singleLine = true,
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { opt -> DropdownMenuItem(text = { Text(opt) }, onClick = { onSelect(opt); expanded = false }) }
@@ -384,8 +543,7 @@ private fun LsfgInlineDropdown(label: String, options: List<String>, selectedOpt
 private fun HudContent(state: XServerDrawerState) {
     val fpsConfig by state.fpsConfig.collectAsState()
 
-    Text("HUD", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-    Spacer(Modifier.height(8.dp))
+    SectionHeader("HUD")
 
     fun parseConfig(s: String): Map<String, String> {
         if (s.isEmpty()) return emptyMap()
@@ -407,10 +565,10 @@ private fun HudContent(state: XServerDrawerState) {
     var showRenderer by remember { mutableStateOf(cfg.getOrDefault("showRenderer", "0") == "1") }
     var showBatteryTemp by remember { mutableStateOf(cfg.getOrDefault("showBatteryTemp", "0") == "1") }
 
-    val initialScale = cfg.getOrDefault("hudScale", "100")
-    val initialTrans = cfg.getOrDefault("hudTransparency", "0")
-    var selectedScale by remember { mutableStateOf("${initialScale}%") }
-    var selectedTrans by remember { mutableStateOf("${initialTrans}%") }
+    val initScale = cfg.getOrDefault("hudScale", "100").toFloatOrNull() ?: 100f
+    val initTrans = cfg.getOrDefault("hudTransparency", "0").toFloatOrNull() ?: 0f
+    var scaleValue by remember { mutableFloatStateOf(initScale) }
+    var transValue by remember { mutableFloatStateOf(initTrans) }
 
     fun buildConfig(): String = listOf(
         "hudMode=$hudMode",
@@ -420,48 +578,22 @@ private fun HudContent(state: XServerDrawerState) {
         "showRAM=${if (showRAM) "1" else "0"}",
         "showRenderer=${if (showRenderer) "1" else "0"}",
         "showBatteryTemp=${if (showBatteryTemp) "1" else "0"}",
-        "hudScale=${selectedScale.removeSuffix("%")}",
-        "hudTransparency=${selectedTrans.removeSuffix("%")}",
+        "hudScale=${scaleValue.toInt()}",
+        "hudTransparency=${transValue.toInt()}",
     ).joinToString(",")
 
-    HudDropdown("HUD Scale", listOf("50%", "75%", "100%", "125%", "150%"), selectedScale) { selectedScale = it; state.onFpsConfigApply?.invoke(buildConfig()) }
-    HudDropdown("HUD Transparency", listOf("0%", "10%", "20%", "30%", "40%", "50%"), selectedTrans) { selectedTrans = it; state.onFpsConfigApply?.invoke(buildConfig()) }
+    // Size and Opacity sliders
+    LabeledSlider("HUD Scale", scaleValue, 50f..200f, { scaleValue = it }, { state.onFpsConfigApply?.invoke(buildConfig()) }, format = { "${it.toInt()}%" })
+    LabeledSlider("HUD Opacity", transValue, 0f..100f, { transValue = it }, { state.onFpsConfigApply?.invoke(buildConfig()) }, format = { "${it.toInt()}%" })
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-    HudCheckItem("Show FPS", showFPS) { showFPS = !showFPS; state.onFpsConfigApply?.invoke(buildConfig()) }
-    HudCheckItem("Show CPU Temp", showCPULoad) { showCPULoad = !showCPULoad; state.onFpsConfigApply?.invoke(buildConfig()) }
-    HudCheckItem("Show GPU Load", showGPULoad) { showGPULoad = !showGPULoad; state.onFpsConfigApply?.invoke(buildConfig()) }
-    HudCheckItem("Show RAM", showRAM) { showRAM = !showRAM; state.onFpsConfigApply?.invoke(buildConfig()) }
-    HudCheckItem("Show Renderer", showRenderer) { showRenderer = !showRenderer; state.onFpsConfigApply?.invoke(buildConfig()) }
-    HudCheckItem("Show Battery Temp", showBatteryTemp) { showBatteryTemp = !showBatteryTemp; state.onFpsConfigApply?.invoke(buildConfig()) }
-}
+    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun HudDropdown(label: String, options: List<String>, selectedOption: String, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = selectedOption, onValueChange = {}, readOnly = true,
-            label = { Text(label) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { opt -> DropdownMenuItem(text = { Text(opt) }, onClick = { onSelect(opt); expanded = false }) }
-        }
-    }
-}
-
-@Composable
-private fun HudCheckItem(label: String, checked: Boolean, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        if (checked) Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-    }
+    ToggleRow("Show FPS", showFPS) { showFPS = !showFPS; state.onFpsConfigApply?.invoke(buildConfig()) }
+    ToggleRow("Show CPU Load", showCPULoad) { showCPULoad = !showCPULoad; state.onFpsConfigApply?.invoke(buildConfig()) }
+    ToggleRow("Show GPU Load", showGPULoad) { showGPULoad = !showGPULoad; state.onFpsConfigApply?.invoke(buildConfig()) }
+    ToggleRow("Show RAM", showRAM) { showRAM = !showRAM; state.onFpsConfigApply?.invoke(buildConfig()) }
+    ToggleRow("Show Renderer", showRenderer) { showRenderer = !showRenderer; state.onFpsConfigApply?.invoke(buildConfig()) }
+    ToggleRow("Show Battery Temp", showBatteryTemp) { showBatteryTemp = !showBatteryTemp; state.onFpsConfigApply?.invoke(buildConfig()) }
 }
 
 // ───── Controls Tab ─────
@@ -479,8 +611,7 @@ private fun ControlsContent(state: XServerDrawerState) {
     val isRelativeMouse by state.isRelativeMouseMovement.collectAsState()
     val isMouseDisabled by state.isMouseDisabled.collectAsState()
 
-    Text("Controls", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-    Spacer(Modifier.height(8.dp))
+    SectionHeader("Controls")
 
     // Input Controls section
     var selectedIdx by remember(initProfileIdx) { mutableIntStateOf(initProfileIdx) }
@@ -490,77 +621,87 @@ private fun ControlsContent(state: XServerDrawerState) {
     val allItems = listOf("-- Disabled --") + profiles
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    Text("Input Controls", style = MaterialTheme.typography.labelMedium, color = Primary)
-    Spacer(Modifier.height(4.dp))
+    Text("Input Controls", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Spacer(Modifier.height(6.dp))
 
     ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
         OutlinedTextField(
             value = allItems.getOrElse(selectedIdx) { "-- Disabled --" },
             onValueChange = {}, readOnly = true,
-            label = { Text("Profile") },
+            label = { Text("Profile", color = MutedWhite) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(),
+            singleLine = true,
         )
         ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
             allItems.forEachIndexed { i, label ->
-                DropdownMenuItem(text = { Text(label) }, onClick = { selectedIdx = i; dropdownExpanded = false })
+                DropdownMenuItem(text = { Text(label) }, onClick = {
+                    selectedIdx = i
+                    dropdownExpanded = false
+                    XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
+                })
             }
         }
     }
 
-    Spacer(Modifier.height(4.dp))
-    ControlsCheckRow("Show Touchscreen Controls", showTouchscreen) { showTouchscreen = it }
-    ControlsCheckRow("Enable Timeout", timeoutEnabled) { timeoutEnabled = it }
-    ControlsCheckRow("Enable Haptics", hapticsEnabled) { hapticsEnabled = it }
+    Spacer(Modifier.height(6.dp))
 
-    Spacer(Modifier.height(4.dp))
-    OutlinedButton(onClick = {
+    ToggleRow("Show Touchscreen Controls", showTouchscreen) {
+        showTouchscreen = it
         XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
-        XServerDialogState.onInputControlsSettings?.run()
-    }, modifier = Modifier.fillMaxWidth()) { Text("Profile Settings\u2026") }
+    }
+    ToggleRow("Enable Timeout", timeoutEnabled) {
+        timeoutEnabled = it
+        XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
+    }
+    ToggleRow("Enable Haptics", hapticsEnabled) {
+        hapticsEnabled = it
+        XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
+    }
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+    Spacer(Modifier.height(8.dp))
+
+    OutlinedButton(
+        onClick = {
+            XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
+            XServerDialogState.onInputControlsSettings?.run()
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+    ) { Text("Profile Settings\u2026") }
+
+    Spacer(Modifier.height(4.dp))
+
+    AccentButton("Apply & Close") {
+        XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
+        state.onClose?.run()
+    }
+
+    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
     // Mouse & Cursor section
-    Text("Mouse & Cursor", style = MaterialTheme.typography.labelMedium, color = Primary)
+    Text("Mouse & Cursor", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     Spacer(Modifier.height(4.dp))
 
-    ControlsMouseCheckItem("Move Cursor to Touchpoint", moveCursorToTouch) { state.onMoveCursorToTouchpoint?.run(); state.onClose?.run() }
-    ControlsMouseCheckItem("Relative Mouse Movement", isRelativeMouse) { state.onRelativeMouseMovement?.run(); state.onClose?.run() }
-    ControlsMouseCheckItem("Disable Mouse", isMouseDisabled) { state.onDisableMouse?.run(); state.onClose?.run() }
+    ToggleRow("Move Cursor to Touchpoint", moveCursorToTouch) {
+        state.onMoveCursorToTouchpoint?.run(); state.onClose?.run()
+    }
+    ToggleRow("Relative Mouse Movement", isRelativeMouse) {
+        state.onRelativeMouseMovement?.run(); state.onClose?.run()
+    }
+    ToggleRow("Disable Mouse", isMouseDisabled) {
+        state.onDisableMouse?.run(); state.onClose?.run()
+    }
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-    // Vibration section (from VibrationDialog)
-    Text("Vibration", style = MaterialTheme.typography.labelMedium, color = Primary)
+    // Vibration section
+    Text("Vibration", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     Spacer(Modifier.height(4.dp))
 
     val vibrationSlots by XServerDialogState.vibrationSlots.collectAsState()
     vibrationSlots.forEachIndexed { index, slot ->
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-            Text(slot.first, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            Switch(checked = slot.second, onCheckedChange = { XServerDialogState.onVibrationSlotChanged?.invoke(index, it) })
-        }
-    }
-}
-
-@Composable
-private fun ControlsCheckRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-        Spacer(Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-@Composable
-private fun ControlsMouseCheckItem(label: String, checked: Boolean, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
-    ) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        if (checked) Icon(Icons.Filled.Check, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+        ToggleRow(slot.first, slot.second) { XServerDialogState.onVibrationSlotChanged?.invoke(index, it) }
     }
 }
 
@@ -568,8 +709,7 @@ private fun ControlsMouseCheckItem(label: String, checked: Boolean, onClick: () 
 
 @Composable
 private fun AdvancedContent(state: XServerDrawerState) {
-    Text("Advanced", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-    Spacer(Modifier.height(8.dp))
+    SectionHeader("Advanced")
 
     AdvancedActionRow("Magnifier", R.drawable.icon_magnifier) {
         state.onClose?.run(); state.onMagnifier?.run()
@@ -592,7 +732,12 @@ private fun AdvancedContent(state: XServerDrawerState) {
 private fun AdvancedActionRow(label: String, iconRes: Int, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(DarkSurface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Icon(
             painter = painterResource(iconRes),
@@ -600,8 +745,114 @@ private fun AdvancedActionRow(label: String, iconRes: Int, onClick: () -> Unit) 
             tint = Primary,
             modifier = Modifier.size(20.dp),
         )
-        Spacer(Modifier.width(8.dp))
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(10.dp))
+        Text(label, color = DimWhite, modifier = Modifier.weight(1f))
+    }
+}
+
+// ───── Task Manager Tab ─────
+
+@Composable
+private fun TmContent() {
+    val processes by XServerDialogState.tmProcesses.collectAsState()
+    val cpuCores by XServerDialogState.tmCpuCores.collectAsState()
+    val cpuTitle by XServerDialogState.tmCpuTitle.collectAsState()
+    val memTitle by XServerDialogState.tmMemTitle.collectAsState()
+    val memInfo by XServerDialogState.tmMemInfo.collectAsState()
+    val count by XServerDialogState.tmCount.collectAsState()
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            XServerDialogState.onTmRefresh?.run()
+            delay(1000L)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { XServerDialogState.onTmDismissed?.run() }
+    }
+
+    SectionHeader("Task Manager")
+
+    Text(
+        text = "Processes: $count",
+        color = MutedWhite,
+        fontSize = 12.sp,
+    )
+
+    Spacer(Modifier.height(6.dp))
+
+    if (processes.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(DarkSurface)
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No processes", color = MutedWhite, fontSize = 13.sp)
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(DarkSurface)
+                .padding(4.dp)
+        ) {
+            processes.forEach { proc ->
+                TmProcessRow(proc)
+                if (proc != processes.last()) {
+                    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(horizontal = 8.dp))
+                }
+            }
+        }
+    }
+
+    Spacer(Modifier.height(10.dp))
+
+    // CPU info
+    Text(cpuTitle, color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Spacer(Modifier.height(2.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(DarkSurface)
+            .padding(10.dp)
+    ) {
+        cpuCores.forEach { core ->
+            Text(core, color = MutedWhite, fontSize = 11.sp, modifier = Modifier.padding(vertical = 1.dp))
+        }
+    }
+
+    Spacer(Modifier.height(8.dp))
+
+    // Memory info
+    Text(memTitle, color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Spacer(Modifier.height(2.dp))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(DarkSurface)
+            .padding(10.dp)
+    ) {
+        Text(memInfo, color = MutedWhite, fontSize = 11.sp)
+    }
+
+    Spacer(Modifier.height(10.dp))
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        TextButton(
+            onClick = {
+                XServerDialogState.onTmDismissed?.run()
+                XServerDialogState.onTmNewTask?.run()
+            }
+        ) { Text("New Task\u2026", color = Primary) }
+        Spacer(Modifier.weight(1f))
+        TextButton(onClick = { XServerDialogState.onTmDismissed?.run() }) { Text("Clear", color = MutedWhite) }
     }
 }
 
@@ -609,29 +860,54 @@ private fun AdvancedActionRow(label: String, iconRes: Int, onClick: () -> Unit) 
 private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
         if (proc.icon != null) {
-            Image(bitmap = proc.icon.asImageBitmap(), contentDescription = null, modifier = Modifier.size(24.dp))
+            Image(
+                bitmap = proc.icon.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            )
         } else {
-            Icon(painter = painterResource(R.drawable.taskmgr_process), contentDescription = null, modifier = Modifier.size(24.dp))
+            Icon(
+                painter = painterResource(R.drawable.taskmgr_process),
+                contentDescription = null,
+                tint = Primary,
+                modifier = Modifier.size(24.dp)
+            )
         }
-        Spacer(Modifier.width(6.dp))
+
+        Spacer(Modifier.width(8.dp))
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = proc.name + if (proc.wow64) " *32" else "",
-                style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = DimWhite,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "PID ${proc.pid}  \u2022  ${proc.formattedMemory}",
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MutedWhite,
+                fontSize = 10.sp,
             )
         }
+
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = Primary)
+                Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MutedWhite)
             }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
                 DropdownMenuItem(
                     text = { Text("Bring to Front") },
                     onClick = { menuExpanded = false; XServerDialogState.onTmBringToFront?.invoke(proc.name) },

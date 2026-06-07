@@ -61,7 +61,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.winlator.star.R
 import com.winlator.star.ui.theme.Primary
-import com.winlator.star.ui.theme.PrimaryVariant
 import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.delay
 
@@ -209,6 +208,7 @@ private fun TabIconButton(iconRes: Int, isSelected: Boolean, onClick: () -> Unit
 
 // ───── Graphics Tab ─────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GraphicsContent(state: XServerDrawerState) {
     val lsfgEnabled by state.lsfgEnabled.collectAsState()

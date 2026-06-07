@@ -396,6 +396,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.onTaskManager            = () -> {
             XServerDrawerState.INSTANCE.selectTab(com.winlator.star.ui.TabType.TASK_MANAGER);
             XServerDialogState.INSTANCE.setTmProcesses(new ArrayList<>());
+            registerTmProcessInfoListener();
         };
         state.onMagnifier              = () -> showMagnifierOverlay();
         state.onLogs                   = () -> XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.DEBUG);
@@ -1519,52 +1520,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         };
 
-        // Task Manager state
-        ds.onTmRefresh = () -> {
-            if (winHandler != null) winHandler.listProcesses();
-            updateTmCpuMemory(ds);
-        };
-        ds.onTmDismissed = () -> {
-            ds.setTmProcesses(new ArrayList<>());
-        };
-        ds.onTmNewTask = () -> ContentDialog.prompt(this, R.string.new_task, "taskmgr.exe",
-            command -> { if (winHandler != null) winHandler.exec(command); });
-        ds.onTmBringToFront = name -> {
-            if (winHandler != null) winHandler.bringToFront(name);
-        };
-        ds.onTmKillProcess = name -> ContentDialog.confirm(this, R.string.do_you_want_to_end_this_process,
-            () -> { if (winHandler != null) winHandler.killProcess(name); });
-        ds.onTmSetAffinity = (pid, mask) -> {
-            if (winHandler != null) winHandler.setProcessAffinity(pid, mask);
-        };
-
-        if (winHandler != null) {
-            winHandler.setOnGetProcessInfoListener(new OnGetProcessInfoListener() {
-                private final ArrayList<XServerDialogState.TmProcess> buffer = new ArrayList<>();
-
-                @Override
-                public void onGetProcessInfo(int index, int numProcesses, ProcessInfo info) {
-                    android.graphics.Bitmap icon = null;
-                    try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
-                        com.winlator.star.xserver.Window w = xServer.windowManager.findWindowWithProcessId(info.pid);
-                        if (w != null) icon = xServer.pixmapManager.getWindowIcon(w);
-                    } catch (Exception ignored) {}
-
-                    final android.graphics.Bitmap finalIcon = icon;
-                    runOnUiThread(() -> {
-                        if (index == 0) buffer.clear();
-                        buffer.add(new XServerDialogState.TmProcess(
-                            index, info.pid, info.name,
-                            info.getFormattedMemoryUsage(), info.wow64Process, finalIcon));
-                        if (numProcesses == 0 || index == numProcesses - 1) {
-                            ds.setTmProcesses(new ArrayList<>(buffer));
-                            ds.setTmCount(numProcesses);
-                        }
-                    });
-                }
-            });
-        }
-
         ds.onInitGraphicsTab = () -> {};
 
         // FSR state
@@ -2624,6 +2579,13 @@ return true;
             if (winHandler != null) winHandler.setProcessAffinity(pid, mask);
         };
 
+        registerTmProcessInfoListener();
+
+        updateTmCpuMemory(ds);
+    }
+
+    private void registerTmProcessInfoListener() {
+        XServerDialogState ds = XServerDialogState.INSTANCE;
         if (winHandler != null) {
             winHandler.setOnGetProcessInfoListener(new OnGetProcessInfoListener() {
                 private final ArrayList<XServerDialogState.TmProcess> buffer = new ArrayList<>();
@@ -2650,8 +2612,6 @@ return true;
                 }
             });
         }
-
-        updateTmCpuMemory(ds);
     }
 
     private void updateTmCpuMemory(XServerDialogState ds) {

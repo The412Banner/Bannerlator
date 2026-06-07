@@ -1739,6 +1739,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
     if (bcnEmulationCache != null) envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
 
+    String fdDevFeatures = graphicsDriverConfig.get("fdDevFeatures");
+    if (fdDevFeatures != null && fdDevFeatures.equals("1"))
+        envVars.put("FD_DEV_FEATURES", "enable_tp_ubwc_flag_hint=1");
+
     if (vkbasaltConfig != null && !vkbasaltConfig.isEmpty()) {
         envVars.put("ENABLE_VKBASALT", "1");
         envVars.put("VKBASALT_CONFIG", vkbasaltConfig);

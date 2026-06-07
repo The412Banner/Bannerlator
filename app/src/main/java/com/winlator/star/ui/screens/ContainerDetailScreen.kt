@@ -977,6 +977,7 @@ internal fun GraphicsDriverConfigDialog(
     var bcnEmulationCache by remember { mutableStateOf(cfg["bcnEmulationCache"] ?: "0") }
     var syncFrame        by remember { mutableStateOf(cfg["syncFrame"] == "1") }
     var disablePresentWait by remember { mutableStateOf(cfg["disablePresentWait"] == "1") }
+    var fdDevFeatures    by remember { mutableStateOf(cfg["fdDevFeatures"] == "1") }
 
     val deviceMemoryEntries = remember { context.resources.getStringArray(R.array.device_memory_entries).toList() }
     var selectedMemoryEntry by remember {
@@ -1093,6 +1094,10 @@ internal fun GraphicsDriverConfigDialog(
                     Checkbox(checked = disablePresentWait, onCheckedChange = { disablePresentWait = it })
                     Text(stringResource(R.string.graphics_driver_disable_present_wait))
                 }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = fdDevFeatures, onCheckedChange = { fdDevFeatures = it })
+                    Text("OneUI / HyperOS Fix")
+                }
             }
         },
         confirmButton = {
@@ -1108,7 +1113,8 @@ internal fun GraphicsDriverConfigDialog(
                     "bcnEmulation=$bcnEmulation;" +
                     "bcnEmulationType=$bcnEmulationType;" +
                     "bcnEmulationCache=$bcnEmulationCache;" +
-                    "gpuName=$gpuName"
+                    "gpuName=$gpuName" +
+                    ";fdDevFeatures=${if (fdDevFeatures) "1" else "0"}"
                 onConfirm(config)
             }) { Text(stringResource(android.R.string.ok)) }
         },

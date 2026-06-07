@@ -75,7 +75,6 @@ fun setupComposeView(view: ComposeView) {
 fun XServerDrawer() {
     val state = XServerDrawerState
     val selectedTab by state.selectedTab.collectAsState()
-    val showTaskManager by state.showTaskManagerInline.collectAsState()
     val isPaused by state.isPaused.collectAsState()
     val pauseIcon = if (isPaused) R.drawable.icon_play else R.drawable.icon_pause
 
@@ -116,8 +115,7 @@ fun XServerDrawer() {
                 modifier = Modifier
                     .width(44.dp)
                     .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Primary)
+                    .background(Primary, RoundedCornerShape(2.dp))
             )
 
             Spacer(Modifier.height(8.dp))
@@ -144,15 +142,11 @@ fun XServerDrawer() {
                 .verticalScroll(rememberScrollState())
                 .padding(12.dp),
         ) {
-            if (showTaskManager) {
-                TaskManagerContent(state)
-            } else {
-                when (selectedTab) {
-                    TabType.GRAPHICS -> GraphicsContent(state)
-                    TabType.HUD -> HudContent(state)
-                    TabType.CONTROLS -> ControlsContent(state)
-                    TabType.ADVANCED -> AdvancedContent(state)
-                }
+            when (selectedTab) {
+                TabType.GRAPHICS -> GraphicsContent(state)
+                TabType.HUD -> HudContent(state)
+                TabType.CONTROLS -> ControlsContent(state)
+                TabType.ADVANCED -> AdvancedContent(state)
             }
         }
     }

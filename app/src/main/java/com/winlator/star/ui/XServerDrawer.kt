@@ -84,8 +84,6 @@ private val allTabs = listOf(
     TabData(TabType.EXIT, R.drawable.icon_exit),
 )
 
-private val contentTabs = setOf(TabType.GRAPHICS, TabType.HUD, TabType.CONTROLS, TabType.TASK_MANAGER)
-
 fun setupComposeView(view: ComposeView) {
     view.setContent {
         WinlatorTheme {
@@ -150,7 +148,7 @@ fun XServerDrawer() {
 
 private fun handleTabClick(tab: TabType, state: XServerDrawerState) {
     when (tab) {
-        in contentTabs -> state.selectTab(tab)
+        TabType.GRAPHICS, TabType.HUD, TabType.CONTROLS, TabType.TASK_MANAGER -> state.selectTab(tab)
         TabType.ACTIVE_WINDOWS -> {
             state.onClose?.run()
             state.onActiveWindows?.run()
@@ -293,9 +291,6 @@ private fun GraphicsContent(state: XServerDrawerState) {
     val seCrt by XServerDialogState.seCrt.collectAsState()
     val seToon by XServerDialogState.seToon.collectAsState()
     val seNtsc by XServerDialogState.seNtsc.collectAsState()
-    val seProfiles by XServerDialogState.seProfiles.collectAsState()
-    val seSelectedProfile by XServerDialogState.seSelectedProfile.collectAsState()
-
     var localBrightness by remember(seBrightness) { mutableFloatStateOf(seBrightness) }
     var localContrast by remember(seContrast) { mutableFloatStateOf(seContrast) }
     var localGamma by remember(seGamma) { mutableFloatStateOf(seGamma) }
@@ -303,10 +298,9 @@ private fun GraphicsContent(state: XServerDrawerState) {
     var localCrt by remember(seCrt) { mutableStateOf(seCrt) }
     var localToon by remember(seToon) { mutableStateOf(seToon) }
     var localNtsc by remember(seNtsc) { mutableStateOf(seNtsc) }
-    var localSelectedProfile by remember(seSelectedProfile) { mutableIntStateOf(seSelectedProfile) }
 
     fun applySe() {
-        XServerDialogState.onScreenEffectsApply?.invoke(localBrightness, localContrast, localGamma, localFxaa, localCrt, localToon, localNtsc, localSelectedProfile)
+        XServerDialogState.onScreenEffectsApply?.invoke(localBrightness, localContrast, localGamma, localFxaa, localCrt, localToon, localNtsc, 0)
     }
 
     SeSlider("Brightness", localBrightness, -100f..100f) { localBrightness = it; applySe() }

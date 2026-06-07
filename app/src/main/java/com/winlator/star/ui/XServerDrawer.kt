@@ -528,12 +528,12 @@ private fun FpsCounterSection(state: XServerDrawerState) {
                 onSelect = { selectedTrans = it; state.onFpsConfigApply?.invoke(buildConfig()) },
             )
             Divider(color = MaterialTheme.colorScheme.outlineVariant)
-            FpsCheckItem("Show FPS", showFPS) { showFPS = it; state.onFpsConfigApply?.invoke(buildConfig()) }
-            FpsCheckItem("Show CPU Temp", showCPULoad) { showCPULoad = it; state.onFpsConfigApply?.invoke(buildConfig()) }
-            FpsCheckItem("Show GPU Load", showGPULoad) { showGPULoad = it; state.onFpsConfigApply?.invoke(buildConfig()) }
-            FpsCheckItem("Show RAM", showRAM) { showRAM = it; state.onFpsConfigApply?.invoke(buildConfig()) }
-            FpsCheckItem("Show Renderer", showRenderer) { showRenderer = it; state.onFpsConfigApply?.invoke(buildConfig()) }
-            FpsCheckItem("Show Battery Temp", showBatteryTemp) { showBatteryTemp = it; state.onFpsConfigApply?.invoke(buildConfig()) }
+            FpsCheckItem("Show FPS", showFPS) { showFPS = !showFPS; state.onFpsConfigApply?.invoke(buildConfig()) }
+            FpsCheckItem("Show CPU Temp", showCPULoad) { showCPULoad = !showCPULoad; state.onFpsConfigApply?.invoke(buildConfig()) }
+            FpsCheckItem("Show GPU Load", showGPULoad) { showGPULoad = !showGPULoad; state.onFpsConfigApply?.invoke(buildConfig()) }
+            FpsCheckItem("Show RAM", showRAM) { showRAM = !showRAM; state.onFpsConfigApply?.invoke(buildConfig()) }
+            FpsCheckItem("Show Renderer", showRenderer) { showRenderer = !showRenderer; state.onFpsConfigApply?.invoke(buildConfig()) }
+            FpsCheckItem("Show Battery Temp", showBatteryTemp) { showBatteryTemp = !showBatteryTemp; state.onFpsConfigApply?.invoke(buildConfig()) }
         }
     }
 }

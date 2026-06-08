@@ -1070,7 +1070,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (vegasVersion == null || vegasVersion.isEmpty())
                 vegasVersion = DefaultVersion.getVegasDefault();
             String ddrawrapper = dxwrapperConfig.get("ddrawrapper");
-            dxwrapper = "vegas-" + vegasVersion + ";;" + ddrawrapper;
+            String vkd3dVersion = dxwrapperConfig.get("vkd3dVersion");
+            String vkd3dPart = (vkd3dVersion != null && !vkd3dVersion.isEmpty() && !vkd3dVersion.equals("none") && !vkd3dVersion.equals("None"))
+                ? "vkd3d-" + vkd3dVersion : "";
+            dxwrapper = "vegas-" + vegasVersion + ";" + vkd3dPart + ";" + ddrawrapper;
         }
 
         if (!dxwrapper.equals(container.getExtra("dxwrapper"))) {

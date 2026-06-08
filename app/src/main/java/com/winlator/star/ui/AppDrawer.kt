@@ -121,7 +121,6 @@ fun AppDrawerContent(
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
         DrawerItem(Screen.AdrenoTools,   currentRoute, onNavigate)
         DrawerItem(Screen.Saves,         currentRoute, onNavigate)
-        DrawerItem(Screen.Appearance,    currentRoute, onNavigate)
         DrawerItem(Screen.LsfgSettings,  currentRoute, onNavigate)
 
         Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))

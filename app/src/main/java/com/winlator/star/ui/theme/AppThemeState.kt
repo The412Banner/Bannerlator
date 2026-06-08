@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.combine
 object AppThemeState {
     private lateinit var themePrefs: SharedPreferences
 
-    private val _presetIndex = MutableStateFlow(0)
+    private val _presetIndex = MutableStateFlow(1)
     val presetIndex: StateFlow<Int> = _presetIndex
 
     private val _customAccent = MutableStateFlow(Color(0xFF8B6BE0))
@@ -38,10 +38,10 @@ object AppThemeState {
     fun init(context: Context) {
         themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
 
-        _presetIndex.value = themePrefs.getInt("preset_index", 0).coerceIn(0, themePresets.size - 1)
+        _presetIndex.value = themePrefs.getInt("preset_index", 1).coerceIn(0, themePresets.size - 1)
         val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF8B6BE0).toArgb())
         _customAccent.value = Color(savedAccent)
-        _customBaseIndex.value = themePrefs.getInt("custom_base_index", 0).coerceIn(0, CUSTOM_PRESET_INDEX)
+        _customBaseIndex.value = themePrefs.getInt("custom_base_index", 1).coerceIn(0, CUSTOM_PRESET_INDEX)
         _isDarkMode.value = true
     }
 

@@ -71,6 +71,7 @@ fun ContainerDetailScreen(
     var showBox64DownloadSheet   by remember { mutableStateOf(false) }
     var showFexCoreDownloadSheet by remember { mutableStateOf(false) }
     var showDxvkDownloadSheet    by remember { mutableStateOf(false) }
+    var showVegasDownloadSheet   by remember { mutableStateOf(false) }
     var showVkd3dDownloadSheet   by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
@@ -174,14 +175,17 @@ fun ContainerDetailScreen(
             onDismiss = { showGraphicsDriverConfig = false }
         )
     }
+    val isVegasWrapper by remember {
+        mutableStateOf(StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "").contains("vegas"))
+    }
     if (showDxvkConfig) {
         DxvkConfigDialog(
             isArm64EC = viewModel.isArm64EC,
-            isVegas = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "").contains("vegas"),
+            isVegas = isVegasWrapper,
             initialConfig = viewModel.dxWrapperConfig,
             onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showDxvkConfig = false },
             onDismiss = { showDxvkConfig = false },
-            onDownloadDxvk = { showDxvkDownloadSheet = true },
+            onDownloadDxvk = { if (isVegasWrapper) showVegasDownloadSheet = true else showDxvkDownloadSheet = true },
             onDownloadVkd3d = { showVkd3dDownloadSheet = true }
         )
     }
@@ -236,6 +240,12 @@ fun ContainerDetailScreen(
         ContentDownloadSheet(
             contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
             onDismiss = { showVkd3dDownloadSheet = false },
+            onContentChanged = {}
+        )
+    }
+    if (showVegasDownloadSheet) {
+        VegasDownloadSheet(
+            onDismiss = { showVegasDownloadSheet = false },
             onContentChanged = {}
         )
     }

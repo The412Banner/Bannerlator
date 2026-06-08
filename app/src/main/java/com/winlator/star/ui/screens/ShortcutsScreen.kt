@@ -813,6 +813,7 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
     var showBox64DownloadSheet by remember { mutableStateOf(false) }
     var showFexCoreDownloadSheet by remember { mutableStateOf(false) }
     var showDxvkDownloadSheet by remember { mutableStateOf(false) }
+    var showVegasDownloadSheet by remember { mutableStateOf(false) }
     var showVkd3dDownloadSheet by remember { mutableStateOf(false) }
 
     // Tab
@@ -1236,14 +1237,15 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             onDismiss = { showGfxConfig = false }
         )
     }
+    val isVegasCfg = StringUtils.parseIdentifier(selectedDxWrapper).contains("vegas")
     if (showDxvkConfig) {
         DxvkConfigDialog(
             isArm64EC = isArm64EC,
-            isVegas = StringUtils.parseIdentifier(selectedDxWrapper).contains("vegas"),
+            isVegas = isVegasCfg,
             initialConfig = dxWrapperConfig,
             onConfirm = { dxWrapperConfig = it; showDxvkConfig = false },
             onDismiss = { showDxvkConfig = false },
-            onDownloadDxvk = { showDxvkDownloadSheet = true },
+            onDownloadDxvk = { if (isVegasCfg) showVegasDownloadSheet = true else showDxvkDownloadSheet = true },
             onDownloadVkd3d = { showVkd3dDownloadSheet = true }
         )
     }
@@ -1280,6 +1282,12 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
         ContentDownloadSheet(
             contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
             onDismiss = { showVkd3dDownloadSheet = false },
+            onContentChanged = {}
+        )
+    }
+    if (showVegasDownloadSheet) {
+        VegasDownloadSheet(
+            onDismiss = { showVegasDownloadSheet = false },
             onContentChanged = {}
         )
     }

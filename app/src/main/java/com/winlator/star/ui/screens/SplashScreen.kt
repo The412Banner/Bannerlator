@@ -173,7 +173,7 @@ fun SplashScreen(
                 color = Color.White,
             )
             Text(
-                text = "v1.2-REVAMPED",
+                text = "v1.3-vegas",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFFAAAAAA),

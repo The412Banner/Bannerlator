@@ -33,6 +33,9 @@ public class ContentsManager {
     public static final String[] BOX64_TRUST_FILES = {"${bindir}/box64"};
     public static final String[] WOWBOX64_TRUST_FILES = {"${system32}/wowbox64.dll"};
     public static final String[] FEXCORE_TRUST_FILES = {"${system32}/libwow64fex.dll", "${system32}/libarm64ecfex.dll"};
+    public static final String[] VEGAS_TRUST_FILES = {"${system32}/d3d8.dll", "${system32}/d3d9.dll", "${system32}/d3d10.dll", "${system32}/d3d10_1.dll",
+            "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
+            "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
     private Map<String, String> dirTemplateMap;
     private Map<ContentProfile.ContentType, List<String>> trustedFilesMap;
 
@@ -348,6 +351,7 @@ public class ContentsManager {
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;
                     case CONTENT_TYPE_WOWBOX64 -> WOWBOX64_TRUST_FILES;
                     case CONTENT_TYPE_FEXCORE -> FEXCORE_TRUST_FILES;
+                    case CONTENT_TYPE_VEGAS -> VEGAS_TRUST_FILES;
                     default -> new String[0];
                 };
                 for (String path : paths)

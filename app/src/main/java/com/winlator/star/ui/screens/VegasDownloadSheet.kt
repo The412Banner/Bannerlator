@@ -79,11 +79,11 @@ fun VegasDownloadSheet(
                         for (j in 0 until assets.length()) {
                             val a = assets.getJSONObject(j)
                             val aname = a.getString("name")
-                            if (aname.startsWith("dxvk-") && aname.endsWith(".wcp")) {
-                                wcpUrl = a.getString("browser_download_url")
-                            } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
-                                zipUrl = a.getString("browser_download_url")
-                            }
+                    if (aname.startsWith("vegas-") && aname.endsWith(".wcp")) {
+                        wcpUrl = a.getString("browser_download_url")
+                    } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
+                        zipUrl = a.getString("browser_download_url")
+                    }
                         }
                     }
                     if (wcpUrl != null) {

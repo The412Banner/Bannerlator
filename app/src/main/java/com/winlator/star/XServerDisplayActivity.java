@@ -2027,15 +2027,17 @@ return true;
     String ddrawrapper = dxwrapper.split(";")[2];
 
     // Extract vegas DLL archive
-    // vegas WCP profiles are stored as CONTENT_TYPE_DXVK with verName like "2.7.3-vegas"
+    // vegas WCPs use CONTENT_TYPE_VEGAS, verName like "vegas-2.7.3"
+    // getProfileByEntryName("vegas-2.7.3") can't resolve because the installed
+    // profile has verName="vegas-2.7.3" and verCode≥1, so we search manually.
     ContentProfile vegasProfile = contentsManager.getProfileByEntryName(vegasWrapper);
     if (vegasProfile == null) {
-        // getProfileByEntryName("vegas-2.7.3") fails because "vegas" is not a ContentType.
-        // Search manually within DXVK profiles.
-        String vegasVersion = vegasWrapper.substring("vegas-".length());
-        Log.d(TAG, "VEGAS profile not found by entry name, searching DXVK profiles for version: " + vegasVersion);
-        for (ContentProfile p : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_DXVK)) {
-            if (p.verName != null && p.verName.startsWith(vegasVersion + "-vegas")) {
+        String needVersion = vegasWrapper.substring("vegas-".length());
+        Log.d(TAG, "Searching VEGAS profiles for version: " + needVersion);
+        for (ContentProfile p : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)) {
+            String pVer = (p.verName != null && p.verName.startsWith("vegas-"))
+                    ? p.verName.substring("vegas-".length()) : p.verName;
+            if (needVersion.equals(pVer)) {
                 vegasProfile = p;
                 Log.d(TAG, "Found matching VEGAS content profile: " + ContentsManager.getEntryName(p));
                 break;

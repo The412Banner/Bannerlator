@@ -19,13 +19,14 @@ import com.winlator.star.ui.screens.FileManagerScreen
 import com.winlator.star.ui.screens.FragmentScreen
 import com.winlator.star.ui.screens.SavesScreen
 import com.winlator.star.ui.screens.ShortcutsScreen
+import com.winlator.star.ui.screens.SetupScreen
 import com.winlator.star.ui.screens.LsfgSettingsScreen
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
     selectedInputProfileId: Int,
-    startRoute: String = Screen.Containers.route,
+    startRoute: String = Screen.Games.route,
     modifier: Modifier = Modifier,
 ) {
     val activity = LocalContext.current as FragmentActivity
@@ -62,8 +63,18 @@ fun AppNavGraph(
             )
         }
 
-        composable(Screen.Shortcuts.route) {
+        composable(Screen.Games.route) {
             ShortcutsScreen()
+        }
+
+        composable(Screen.Setup.route) {
+            SetupScreen(
+                onSetupComplete = {
+                    navController.navigate(Screen.Games.route) {
+                        popUpTo(Screen.Setup.route) { inclusive = true }
+                    }
+                },
+            )
         }
 
         composable(Screen.InputControls.route) {

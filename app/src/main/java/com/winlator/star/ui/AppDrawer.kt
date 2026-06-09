@@ -51,7 +51,7 @@ import com.winlator.star.ui.theme.Divider as DividerColor
 
 private fun iconFor(screen: Screen): ImageVector = when (screen) {
     Screen.Containers    -> Icons.Filled.FolderOpen
-    Screen.Shortcuts     -> Icons.Filled.OpenInNew
+    Screen.Games         -> Icons.Filled.OpenInNew
     Screen.InputControls -> Icons.Filled.SportsEsports
     Screen.AdrenoTools   -> Icons.Filled.Memory
     Screen.Saves         -> Icons.Filled.Save
@@ -111,7 +111,7 @@ fun AppDrawerContent(
         Divider(color = DividerColor)
 
         SectionHeader("Emulation")
-        DrawerItem(Screen.Shortcuts,     currentRoute, onNavigate)
+        DrawerItem(Screen.Games,         currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
 

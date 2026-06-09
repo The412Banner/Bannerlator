@@ -138,11 +138,14 @@ class MainActivity : AppCompatActivity() {
         editInputControls = intent.getBooleanExtra("edit_input_controls", false)
         selectedProfileId = intent.getIntExtra("selected_profile_id", 0)
 
+        val setupCompleted = prefs.getBoolean("setup_completed", false)
+
         val startRoute = when {
             editInputControls -> Screen.InputControls.route
+            !setupCompleted -> Screen.Setup.route
             else -> {
                 val selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0)
-                menuItemIdToRoute(selectedMenuItemId) ?: Screen.Containers.route
+                menuItemIdToRoute(selectedMenuItemId) ?: Screen.Games.route
             }
         }
 
@@ -265,7 +268,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun menuItemIdToRoute(itemId: Int): String? = when (itemId) {
         R.id.main_menu_containers -> Screen.Containers.route
-        R.id.main_menu_shortcuts  -> Screen.Shortcuts.route
+        R.id.main_menu_shortcuts  -> Screen.Games.route
         R.id.main_menu_contents   -> Screen.Contents.route
         R.id.main_menu_input_controls -> Screen.InputControls.route
         R.id.main_menu_adrenotools_gpu_drivers -> Screen.AdrenoTools.route

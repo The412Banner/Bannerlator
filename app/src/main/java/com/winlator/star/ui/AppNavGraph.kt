@@ -70,9 +70,7 @@ fun AppNavGraph(
         composable(Screen.Setup.route) {
             SetupScreen(
                 onSetupComplete = {
-                    navController.navigate(Screen.Games.route) {
-                        popUpTo(Screen.Setup.route) { inclusive = true }
-                    }
+                    navController.popBackStack()
                 },
             )
         }

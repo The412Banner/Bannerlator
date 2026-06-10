@@ -179,8 +179,8 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
+        float displayFps = lastFPS;
         if (tvFPS != null) {
-            float displayFps = lastFPS;
             if (XServerDrawerState.INSTANCE.getNativeRenderingEnabled()) {
                 displayFps = applyDisplayTimingOffset(lastFPS);
             }

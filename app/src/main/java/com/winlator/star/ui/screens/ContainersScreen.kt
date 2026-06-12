@@ -2,6 +2,7 @@ package com.winlator.star.ui.screens
 
 import android.app.Activity
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import android.widget.Toast
 import androidx.compose.material.icons.filled.Add
@@ -26,12 +29,13 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import java.io.File
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -53,6 +57,7 @@ import androidx.compose.runtime.setValue
 import com.winlator.star.ui.LocalTopBarActions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -68,10 +73,8 @@ import com.winlator.star.core.FileUtils
 import com.winlator.star.core.StringUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.winlator.star.ui.theme.Divider as DividerColor
 import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
-import com.winlator.star.ui.theme.Surface
 import com.winlator.star.xenvironment.ImageFs
 
 @Composable
@@ -151,7 +154,6 @@ fun ContainersScreen(
                         },
                         onInfo = { storageInfoContainer = container },
                     )
-                    Divider(color = DividerColor)
                 }
             }
         }
@@ -272,71 +274,106 @@ private fun ContainerItem(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Surface)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF1A1A2E).copy(alpha = 0.85f),
+        ),
+        border = BorderStroke(1.dp, Color(0xFF555555)),
     ) {
-        Icon(
-            imageVector = Icons.Filled.FolderOpen,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(36.dp),
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = container.name,
-            style = MaterialTheme.typography.bodyLarge,
-            color = OnSurface,
-            modifier = Modifier.weight(1f),
-        )
-        // Run button
-        IconButton(onClick = onRun) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        ) {
+            // Container logo
             Icon(
-                imageVector = Icons.Filled.PlayArrow,
-                contentDescription = "Run",
+                imageVector = Icons.Filled.FolderOpen,
+                contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(44.dp),
             )
-        }
-        // 3-dot menu
-        Box {
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "Options",
-                    tint = OnSurfaceVariant,
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Info column: Name, Wine version, Resolution
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = container.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = OnSurface,
+                )
+                Text(
+                    text = container.wineVersion,
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant,
+                )
+                Text(
+                    text = container.screenSize,
+                    fontSize = 12.sp,
+                    color = OnSurfaceVariant,
                 )
             }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
+
+            // Settings button
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = OnSurfaceVariant,
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                        onClick = { menuExpanded = false; onEdit() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Duplicate") },
+                        leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
+                        onClick = { menuExpanded = false; onDuplicate() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Remove") },
+                        leadingIcon = { Icon(Icons.Filled.Delete, null) },
+                        onClick = { menuExpanded = false; onRemove() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Export") },
+                        leadingIcon = { Icon(Icons.Filled.FileUpload, null) },
+                        onClick = { menuExpanded = false; onExport() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Info") },
+                        leadingIcon = { Icon(Icons.Filled.Info, null) },
+                        onClick = { menuExpanded = false; onInfo() },
+                    )
+                }
+            }
+
+            // Circular play button
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable(onClick = onRun),
+                contentAlignment = Alignment.Center,
             ) {
-                DropdownMenuItem(
-                    text = { Text("Edit") },
-                    leadingIcon = { Icon(Icons.Filled.Edit, null) },
-                    onClick = { menuExpanded = false; onEdit() },
-                )
-                DropdownMenuItem(
-                    text = { Text("Duplicate") },
-                    leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
-                    onClick = { menuExpanded = false; onDuplicate() },
-                )
-                DropdownMenuItem(
-                    text = { Text("Remove") },
-                    leadingIcon = { Icon(Icons.Filled.Delete, null) },
-                    onClick = { menuExpanded = false; onRemove() },
-                )
-                DropdownMenuItem(
-                    text = { Text("Export") },
-                    leadingIcon = { Icon(Icons.Filled.FileUpload, null) },
-                    onClick = { menuExpanded = false; onExport() },
-                )
-                DropdownMenuItem(
-                    text = { Text("Info") },
-                    leadingIcon = { Icon(Icons.Filled.Info, null) },
-                    onClick = { menuExpanded = false; onInfo() },
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Run",
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp),
                 )
             }
         }

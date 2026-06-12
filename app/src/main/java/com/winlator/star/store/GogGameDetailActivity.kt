@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.ui.theme.WinlatorTheme
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,6 +64,33 @@ class GogGameDetailActivity : ComponentActivity() {
         const val RESULT_REFRESH = 100
         private const val TAG = "BH_GOG_DETAIL"
         private const val REQUEST_FOLDER_PICKER = 200
+
+        fun formatBytes(bytes: Long): String {
+            if (bytes >= 1_073_741_824L) return "%.1f GB".format(bytes / 1_073_741_824.0)
+            return "%.0f MB".format(bytes / 1_048_576.0)
+        }
+
+        private fun formatDate(iso: String?): String {
+            if (iso == null || iso.length < 10) return iso ?: ""
+            val parts = iso.substring(0, 10).split("-")
+            if (parts.size != 3) return iso.substring(0, 10)
+            try {
+                val year = parts[0].toInt()
+                val month = parts[1].toInt()
+                val day = parts[2].toInt()
+                val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                if (month < 1 || month > 12) return iso.substring(0, 10)
+                return "${months[month - 1]} $day, $year"
+            } catch (_: Exception) {
+                return iso.substring(0, 10)
+            }
+        }
+
+        private fun shortenPath(path: String): String {
+            val parts = path.split("/")
+            if (parts.size <= 3) return path
+            return "\u2026/${parts[parts.size - 2]}/${parts[parts.size - 1]}"
+        }
     }
 
     private lateinit var prefs: android.content.SharedPreferences
@@ -390,7 +419,7 @@ class GogGameDetailActivity : ComponentActivity() {
 
     private fun confirmUninstall() {
         val dlgTitle = title
-        AlertDialog.Builder(this)
+        androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Uninstall $dlgTitle?")
             .setMessage("This will delete all installed game files.")
             .setPositiveButton("Uninstall") { _, _ -> doUninstall() }
@@ -486,13 +515,13 @@ class GogGameDetailActivity : ComponentActivity() {
                     val stored = prefs.getString("gog_build_$gameId", null)
                     if (stored == null) {
                         prefs.edit().putString("gog_build_$gameId", latest).apply()
-                        updateStatusText = "Up to date (build ${latest.substring(0, minOf(12, latest.length()))}\u2026)"
+                        updateStatusText = "Up to date (build ${latest.substring(0, minOf(12, latest.length))}\u2026)"
                         updateBtnVisible = false
                     } else if (stored == latest) {
                         updateStatusText = "Up to date \u2713"
                         updateBtnVisible = false
                     } else {
-                        updateStatusText = "Update available!\nInstalled: ${stored.substring(0, minOf(10, stored.length()))}\u2026  \u2192  Latest: ${latest.substring(0, minOf(10, latest.length()))}\u2026"
+                        updateStatusText = "Update available!\nInstalled: ${stored.substring(0, minOf(10, stored.length))}\u2026  \u2192  Latest: ${latest.substring(0, minOf(10, latest.length))}\u2026"
                         updateBtnVisible = true
                     }
                 }
@@ -529,34 +558,6 @@ class GogGameDetailActivity : ComponentActivity() {
         dir.delete()
     }
 
-    companion object {
-        fun formatBytes(bytes: Long): String {
-            if (bytes >= 1_073_741_824L) return "%.1f GB".format(bytes / 1_073_741_824.0)
-            return "%.0f MB".format(bytes / 1_048_576.0)
-        }
-
-        private fun formatDate(iso: String?): String {
-            if (iso == null || iso.length < 10) return iso ?: ""
-            val parts = iso.substring(0, 10).split("-")
-            if (parts.size != 3) return iso.substring(0, 10)
-            try {
-                val year = parts[0].toInt()
-                val month = parts[1].toInt()
-                val day = parts[2].toInt()
-                val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-                if (month < 1 || month > 12) return iso.substring(0, 10)
-                return "${months[month - 1]} $day, $year"
-            } catch (_: Exception) {
-                return iso.substring(0, 10)
-            }
-        }
-
-        private fun shortenPath(path: String): String {
-            val parts = path.split("/")
-            if (parts.size <= 3) return path
-            return "\u2026/${parts[parts.size - 2]}/${parts[parts.size - 1]}"
-        }
-    }
 }
 
 private data class ExePickerStateGame(
@@ -918,51 +919,47 @@ private fun DlcCard(dlcJson: String?) {
             if (dlcJson == null || dlcJson == "[]" || dlcJson.isEmpty()) {
                 Text("No DLCs in your library for this game", fontSize = 13.sp, color = Color(0xFF555577))
             } else {
-                try {
-                    val arr = org.json.JSONArray(dlcJson)
-                    if (arr.length() == 0) {
-                        Text("No DLCs in your library for this game", fontSize = 13.sp, color = Color(0xFF555577))
-                    } else {
-                        Text(
-                            "${arr.length()} DLC${if (arr.length() == 1) "" else "s"} owned",
-                            fontSize = 12.sp,
-                            color = Color(0xFF888888),
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            "DLC content is included in gen2 game installs.",
-                            fontSize = 11.sp,
-                            color = Color(0xFF555577),
-                            modifier = Modifier.padding(top = 3.dp, bottom = 6.dp),
-                        )
-                        for (i in 0 until arr.length()) {
-                            val dlc = arr.optJSONObject(i) ?: continue
-                            val dlcTitle = dlc.optString("title", "Unknown DLC")
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color(0xFF1E1E2E), RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 8.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    dlcTitle,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFFDDDDDD),
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text(
-                                    "Owned",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF4CAF50),
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                            Spacer(Modifier.height(4.dp))
+                val arr = runCatching { org.json.JSONArray(dlcJson) }.getOrNull()
+                if (arr == null || arr.length() == 0) {
+                    Text("No DLCs in your library for this game", fontSize = 13.sp, color = Color(0xFF555577))
+                } else {
+                    Text(
+                        "${arr.length()} DLC${if (arr.length() == 1) "" else "s"} owned",
+                        fontSize = 12.sp,
+                        color = Color(0xFF888888),
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "DLC content is included in gen2 game installs.",
+                        fontSize = 11.sp,
+                        color = Color(0xFF555577),
+                        modifier = Modifier.padding(top = 3.dp, bottom = 6.dp),
+                    )
+                    for (i in 0 until arr.length()) {
+                        val dlc = arr.optJSONObject(i) ?: continue
+                        val dlcTitle = dlc.optString("title", "Unknown DLC")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF1E1E2E), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                dlcTitle,
+                                fontSize = 13.sp,
+                                color = Color(0xFFDDDDDD),
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                "Owned",
+                                fontSize = 11.sp,
+                                color = Color(0xFF4CAF50),
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
+                        Spacer(Modifier.height(4.dp))
                     }
-                } catch (_: Exception) {
-                    Text("Error reading DLC data", fontSize = 13.sp, color = Color(0xFF555577))
                 }
             }
         }

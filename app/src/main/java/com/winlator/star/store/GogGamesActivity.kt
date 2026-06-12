@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.winlator.star.ui.theme.WinlatorTheme
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,6 +82,43 @@ class GogGamesActivity : ComponentActivity() {
         private const val VIEW_MODE_KEY = "view_mode"
         private const val REQ_GAME_DETAIL = 1001
         private const val SGDB_KEY = "cf89227f12c773bb1117b6b109ae1659"
+
+        private fun httpGet(url: String, token: String?): String? {
+            return try {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.connectTimeout = 20000
+                conn.readTimeout = 20000
+                if (token != null) conn.setRequestProperty("Authorization", "Bearer $token")
+                if (conn.responseCode != 200) { conn.disconnect(); return null }
+                val sb = StringBuilder()
+                BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { br ->
+                    var line: String?
+                    while (br.readLine().also { line = it } != null) sb.append(line)
+                }
+                conn.disconnect()
+                sb.toString()
+            } catch (_: Exception) { null }
+        }
+
+        private fun sgdbFetchCover(title: String): String {
+            return try {
+                val encoded = URLEncoder.encode(title, "UTF-8")
+                val searchJson = httpGet(
+                    "https://www.steamgriddb.com/api/v2/search/autocomplete/$encoded", SGDB_KEY,
+                ) ?: return ""
+                val results = JSONObject(searchJson).optJSONArray("data")
+                if (results == null || results.length() == 0) return ""
+                val gameId = results.getJSONObject(0).getInt("id")
+
+                val gridsJson = httpGet(
+                    "https://www.steamgriddb.com/api/v2/grids/game/$gameId?dimensions=600x900&mimes=image/jpeg,image/png&limit=1",
+                    SGDB_KEY,
+                ) ?: return ""
+                val grids = JSONObject(gridsJson).optJSONArray("data")
+                if (grids == null || grids.length() == 0) return ""
+                grids.getJSONObject(0).optString("url", "")
+            } catch (_: Exception) { "" }
+        }
     }
 
     private lateinit var prefs: android.content.SharedPreferences
@@ -161,6 +199,7 @@ class GogGamesActivity : ComponentActivity() {
                     InstallConfirmDialog(
                         game = data.game,
                         freeBytes = data.freeBytes,
+                        gameSize = data.gameSize,
                         onConfirm = {
                             showInstallDialog = null
                             data.onConfirm()
@@ -219,7 +258,7 @@ class GogGamesActivity : ComponentActivity() {
             val loginTime = prefs.getInt("bh_gog_login_time", 0)
             val expiresIn = prefs.getInt("bh_gog_expires_in", 3600)
             val nowSec = System.currentTimeMillis() / 1000L
-            if (loginTime == 0L || nowSec >= loginTime + expiresIn) {
+            if (loginTime == 0 || nowSec >= loginTime + expiresIn) {
                 if (showProgress) withContext(Dispatchers.Main) { setSync("Refreshing token\u2026") }
                 val newToken = GogTokenRefresh.refresh(this@GogGamesActivity)
                 if (newToken == null) {
@@ -255,7 +294,7 @@ class GogGamesActivity : ComponentActivity() {
             val finalToken = token
             val pool = Executors.newFixedThreadPool(5)
             val futures = ids.map { id ->
-                pool.submit<java.util.concurrent.Callable<GogGame?>> { fetchGame(id, finalToken) }
+                pool.submit(java.util.concurrent.Callable<GogGame?> { fetchGame(id, finalToken) })
             }
             pool.shutdown()
 
@@ -497,7 +536,8 @@ class GogGamesActivity : ComponentActivity() {
         val cancelRunnable = GogDownloadManager.startDownload(this, game, object : GogDownloadManager.Callback {
             override fun onProgress(msg: String, pct: Int) {
                 runOnUiThread {
-                    downloadStates[game.gameId] = downloadStates[game.gameId]?.copy(
+                    val existing = downloadStates[game.gameId] ?: return@runOnUiThread
+                    downloadStates[game.gameId] = existing.copy(
                         progress = pct,
                         status = msg,
                     )
@@ -538,7 +578,8 @@ class GogGamesActivity : ComponentActivity() {
             }
         })
 
-        downloadStates[game.gameId] = downloadStates[game.gameId]?.copy(cancelRunnable = cancelRunnable)
+        val existing = downloadStates[game.gameId] ?: return
+        downloadStates[game.gameId] = existing.copy(cancelRunnable = cancelRunnable)
     }
 
     // ── Install confirmation dialog ──────────────────────────────────────────
@@ -562,105 +603,6 @@ class GogGamesActivity : ComponentActivity() {
             withContext(Dispatchers.Main) {
                 showInstallDialog = showInstallDialog?.copy(gameSize = size)
             }
-        }
-    }
-
-    // ── Grid install dialog ──────────────────────────────────────────────────
-
-    private fun showGridInstallDialog(game: GogGame) {
-        val isInstalled = prefs.getString("gog_exe_${game.gameId}", null) != null
-        val dirName = prefs.getString("gog_dir_${game.gameId}", null)
-
-        val content = Column(
-            modifier = Modifier.padding(16.dp, 8.dp, 16.dp, 4.dp),
-        ) {
-            val sb = StringBuilder()
-            if (game.developer.isNotEmpty()) sb.append("Developer: ${game.developer}\n")
-            if (game.category.isNotEmpty()) sb.append("Genre: ${game.category}\n")
-            val metaText = sb.toString().trim()
-            val descHtml = game.description
-            val fullText = if (metaText.isEmpty()) descHtml else "$metaText\n\n$descHtml"
-            Text(
-                text = android.text.Html.fromHtml(fullText, android.text.Html.FROM_HTML_MODE_COMPACT).toString(),
-                fontSize = 12.sp,
-                color = Color(0xFFCCCCCC),
-            )
-        }
-
-        if (isInstalled) {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(game.title)
-                .setView(android.widget.LinearLayout(this).apply {
-                    orientation = android.widget.LinearLayout.VERTICAL
-                    addView(android.widget.TextView(this@GogGamesActivity).apply {
-                        val sb = StringBuilder()
-                        if (game.developer.isNotEmpty()) sb.append("Developer: ${game.developer}\n")
-                        if (game.category.isNotEmpty()) sb.append("Genre: ${game.category}\n")
-                        text = sb.toString().trim()
-                        setTextColor(0xFFCCCCCC)
-                        textSize = 12f
-                    })
-                })
-                .setPositiveButton("Add to Launcher") { _, _ ->
-                    val exe = prefs.getString("gog_exe_${game.gameId}", null)
-                    if (exe != null) GogLaunchHelper.addToLauncher(this, game.title, exe, game.imageUrl)
-                }
-                .setNeutralButton("Uninstall") { _, _ ->
-                    if (dirName != null) {
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            val installPath = GogInstallPath.getInstallDir(this@GogGamesActivity, dirName)
-                            deleteDir(installPath)
-                            prefs.edit()
-                                .remove("gog_dir_${game.gameId}")
-                                .remove("gog_exe_${game.gameId}")
-                                .remove("gog_cover_${game.gameId}")
-                                .apply()
-                            withContext(Dispatchers.Main) {
-                                applyFilter(searchQuery)
-                                Toast.makeText(this@GogGamesActivity, "${game.title} uninstalled", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                }
-                .setNegativeButton("Close", null)
-                .show()
-        } else {
-            val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(game.title)
-                .setView(content)
-                .setNegativeButton("Close", null)
-                .create()
-            dialog.show()
-
-            val customInstall = android.widget.Button(this).apply {
-                text = "Install"
-                setTextColor(0xFFFFFFFF.toInt())
-                setBackgroundColor(0xFF7033FF.toInt())
-                textSize = 13f
-            }
-            val btnContainer = android.widget.LinearLayout(this).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                addView(LinearProgressIndicator(
-                    progress = { 0f },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color(0xFFFF9800),
-                    trackColor = Color(0xFF2A2A2A),
-                ).also { it.visibility = android.view.View.GONE })
-                addView(android.widget.TextView(this@GogGamesActivity).apply {
-                    setTextColor(0xFFFF9800.toInt())
-                    textSize = 11f
-                    visibility = android.view.View.GONE
-                })
-                addView(customInstall)
-            }
-            (content as? Column)?.let {
-                // We can't easily add the install button to the Compose content...
-                // Use AlertDialog with custom view instead
-            }
-            dialog.dismiss()
-
-            // Show a proper Compose install dialog
-            showInstallConfirm(game) { startDownload(game) }
         }
     }
 
@@ -746,44 +688,6 @@ class GogGamesActivity : ComponentActivity() {
         dir.delete()
     }
 
-    companion object {
-        private fun httpGet(url: String, token: String?): String? {
-            return try {
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = 20000
-                conn.readTimeout = 20000
-                if (token != null) conn.setRequestProperty("Authorization", "Bearer $token")
-                if (conn.responseCode != 200) { conn.disconnect(); return null }
-                val sb = StringBuilder()
-                BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { br ->
-                    var line: String?
-                    while (br.readLine().also { line = it } != null) sb.append(line)
-                }
-                conn.disconnect()
-                sb.toString()
-            } catch (_: Exception) { null }
-        }
-
-        private fun sgdbFetchCover(title: String): String {
-            return try {
-                val encoded = URLEncoder.encode(title, "UTF-8")
-                val searchJson = httpGet(
-                    "https://www.steamgriddb.com/api/v2/search/autocomplete/$encoded", SGDB_KEY,
-                ) ?: return ""
-                val results = JSONObject(searchJson).optJSONArray("data")
-                if (results == null || results.length() == 0) return ""
-                val gameId = results.getJSONObject(0).getInt("id")
-
-                val gridsJson = httpGet(
-                    "https://www.steamgriddb.com/api/v2/grids/game/$gameId?dimensions=600x900&mimes=image/jpeg,image/png&limit=1",
-                    SGDB_KEY,
-                ) ?: return ""
-                val grids = JSONObject(gridsJson).optJSONArray("data")
-                if (grids == null || grids.length() == 0) return ""
-                grids.getJSONObject(0).optString("url", "")
-            } catch (_: Exception) { "" }
-        }
-    }
 }
 
 // ── Data classes ────────────────────────────────────────────────────────────

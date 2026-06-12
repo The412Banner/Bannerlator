@@ -26,8 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -61,18 +62,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import androidx.lifecycle.lifecycleScope
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
-data class GameDownloadState(
-    val progress: Int = 0,
-    val status: String = "",
-    val isActive: Boolean = false,
-    val showProgress: Boolean = false,
-    val installed: Boolean = false,
-)
-
 class EpicGamesActivity : ComponentActivity() {
+    data class GameDownloadState(
+        val progress: Int = 0,
+        val status: String = "",
+        val isActive: Boolean = false,
+        val showProgress: Boolean = false,
+        val installed: Boolean = false,
+    )
 
     companion object {
         private const val TAG = "BH_EPIC"
@@ -549,7 +550,7 @@ private fun EpicGamesScreen(
     games: List<EpicGame>,
     scrollVisible: Boolean,
     refreshEnabled: Boolean,
-    downloadStates: Map<String, GameDownloadState>,
+    downloadStates: Map<String, EpicGamesActivity.GameDownloadState>,
     onBack: () -> Unit,
     onSearchChange: (String) -> Unit,
     onViewToggle: () -> Unit,
@@ -650,7 +651,7 @@ private fun EpicGamesScreen(
                     ) {
                         items(games, key = { it.appName }) { game ->
                             val ds = downloadStates[game.appName]
-                                ?: GameDownloadState(installed = game.isInstalled)
+                                ?: EpicGamesActivity.GameDownloadState(installed = game.isInstalled)
                             GameListCard(
                                 game = game,
                                 downloadState = ds,
@@ -675,7 +676,7 @@ private fun EpicGamesScreen(
                     ) {
                         items(games, key = { it.appName }) { game ->
                             val ds = downloadStates[game.appName]
-                                ?: GameDownloadState(installed = game.isInstalled)
+                                ?: EpicGamesActivity.GameDownloadState(installed = game.isInstalled)
                             GameGridTile(
                                 game = game,
                                 downloadState = ds,
@@ -701,7 +702,7 @@ private fun EpicGamesScreen(
                     ) {
                         items(games, key = { it.appName }) { game ->
                             val ds = downloadStates[game.appName]
-                                ?: GameDownloadState(installed = game.isInstalled)
+                                ?: EpicGamesActivity.GameDownloadState(installed = game.isInstalled)
                             GameGridTile(
                                 game = game,
                                 downloadState = ds,
@@ -736,7 +737,7 @@ private fun EmptyState(query: String) {
 @Composable
 private fun GameListCard(
     game: EpicGame,
-    downloadState: GameDownloadState,
+    downloadState: EpicGamesActivity.GameDownloadState,
     onClick: () -> Unit,
     onInstall: () -> Unit,
     onCancel: () -> Unit,
@@ -876,7 +877,7 @@ private fun GameListCard(
 @Composable
 private fun GameGridTile(
     game: EpicGame,
-    downloadState: GameDownloadState,
+    downloadState: EpicGamesActivity.GameDownloadState,
     artHeightDp: Int,
     onClick: () -> Unit,
     onInstall: () -> Unit,

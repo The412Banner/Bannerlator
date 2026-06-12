@@ -120,7 +120,7 @@ preBuild.dependsOn(downloadProton)
 android {
     namespace 'com.winlator.star'
     compileSdk 34
-    buildToolsVersion "34.0.0"
+    buildToolsVersion "35.0.0"
 
     defaultConfig {
         minSdkVersion 26
@@ -157,10 +157,6 @@ android {
     buildTypes {
         debug {
             minifyEnabled false
-        }
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 

@@ -57,6 +57,11 @@ class AmazonGameDetailActivity : ComponentActivity() {
     companion object {
         const val RESULT_REFRESH = 100
         private const val TAG = "BH_AMAZON_DETAIL"
+
+        fun formatBytes(bytes: Long): String = when {
+            bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
+            else -> "%.0f MB".format(bytes / 1_048_576.0)
+        }
     }
 
     private var prefs: SharedPreferences? = null
@@ -233,7 +238,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
                     if (cancelled.get()) return@install
                     val pct = if (total > 0) (dl * 100L / total).toInt() else 0
                     val name = if (!file.isNullOrEmpty()) file else "Downloading\u2026"
-                    withContext(Dispatchers.Main) {
+                    runOnUiThread {
                         progressValue = pct
                         progressLabel = name
                     }
@@ -586,12 +591,6 @@ class AmazonGameDetailActivity : ComponentActivity() {
         dir.delete()
     }
 
-    companion object {
-        fun formatBytes(bytes: Long): String = when {
-            bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
-            else -> "%.0f MB".format(bytes / 1_048_576.0)
-        }
-    }
 }
 
 // ─── Composable Screen ─────────────────────────────────────────────────────
@@ -865,7 +864,7 @@ private fun ActionsCard(
         if (launchBtnVisible) {
             ActionButton(
                 text = "Launch",
-                color = 0xFF2E7D32,
+                color = 0xFF2E7D32.toInt(),
                 enabled = launchBtnEnabled,
                 onClick = onLaunchClick,
             )
@@ -883,7 +882,7 @@ private fun ActionsCard(
         if (setExeBtnVisible) {
             ActionButton(
                 text = "Set .exe\u2026",
-                color = 0xFF444444,
+                color = 0xFF444444.toInt(),
                 onClick = onSetExeClick,
             )
         }
@@ -891,7 +890,7 @@ private fun ActionsCard(
         if (uninstallBtnVisible) {
             ActionButton(
                 text = "Uninstall",
-                color = 0xFF8B0000,
+                color = 0xFF8B0000.toInt(),
                 onClick = onUninstallClick,
             )
         }
@@ -949,14 +948,14 @@ private fun UpdatesCard(
         if (updateBtnVisible) {
             ActionButton(
                 text = "Update Now",
-                color = 0xFFCC7700,
+                color = 0xFFCC7700.toInt(),
                 onClick = onUpdateNowClick,
             )
         }
 
         ActionButton(
             text = "Check for Updates",
-            color = 0xFF332200,
+            color = 0xFF332200.toInt(),
             enabled = checkUpdatesEnabled,
             onClick = onCheckUpdatesClick,
         )
@@ -971,13 +970,31 @@ private fun DlcCard(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("bh_amazon_prefs", 0) }
 
+    val dlcArr = remember(dlcJson) {
+        if (dlcJson.isNullOrEmpty() || dlcJson == "[]") null
+        else runCatching { org.json.JSONArray(dlcJson) }.getOrNull()
+    }
+    val parseError = remember(dlcJson) {
+        !dlcJson.isNullOrEmpty() && dlcJson != "[]" &&
+            runCatching { org.json.JSONArray(dlcJson); false }.getOrDefault(true)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF1A1200), RoundedCornerShape(8.dp))
             .padding(14.dp, 12.dp, 14.dp, 12.dp),
     ) {
-        if (dlcJson.isNullOrEmpty() || dlcJson == "[]") {
+        if (parseError) {
+            Text(
+                text = "Error reading DLC data",
+                fontSize = 13.sp,
+                color = Color(0xFF554400),
+            )
+            return
+        }
+
+        if (dlcArr == null || dlcArr.length() == 0) {
             Text(
                 text = "No DLCs in your library for this game",
                 fontSize = 13.sp,
@@ -986,109 +1003,91 @@ private fun DlcCard(
             return
         }
 
-        try {
-            val arr = org.json.JSONArray(dlcJson)
-            if (arr.length() == 0) {
-                Text(
-                    text = "No DLCs in your library for this game",
-                    fontSize = 13.sp,
-                    color = Color(0xFF554400),
-                )
-                return
+        Text(
+            text = "${dlcArr.length()} DLC${if (dlcArr.length() == 1) "" else "s"} owned",
+            fontSize = 12.sp,
+            color = Color(0xFF888888),
+            fontWeight = FontWeight.Bold,
+        )
+
+        for (i in 0 until dlcArr.length()) {
+            val dlc = dlcArr.optJSONObject(i) ?: continue
+            val dlcEid = dlc.optString("eid", "")
+            val dlcPid = dlc.optString("pid", "")
+            val dlcTitleText = dlc.optString("title", "Unknown DLC")
+
+            val dlcInstalled = dlcPid.isNotEmpty() &&
+                prefs.getString("amazon_exe_$dlcPid", null) != null
+
+            var dlcStatusText by remember { mutableStateOf("") }
+            var dlcBtnText by remember {
+                mutableStateOf(if (dlcInstalled) "Reinstall" else "Install")
+            }
+            var dlcBtnColor by remember {
+                mutableIntStateOf(if (dlcInstalled) 0xFF2A3A00.toInt() else 0xFFCC7700.toInt())
             }
 
-            Text(
-                text = "${arr.length()} DLC${if (arr.length() == 1) "" else "s"} owned",
-                fontSize = 12.sp,
-                color = Color(0xFF888888),
-                fontWeight = FontWeight.Bold,
-            )
-
-            for (i in 0 until arr.length()) {
-                val dlc = arr.optJSONObject(i) ?: continue
-                val dlcEid = dlc.optString("eid", "")
-                val dlcPid = dlc.optString("pid", "")
-                val dlcTitleText = dlc.optString("title", "Unknown DLC")
-
-                val dlcInstalled = dlcPid.isNotEmpty() &&
-                    prefs.getString("amazon_exe_$dlcPid", null) != null
-
-                var dlcStatusText by remember { mutableStateOf("") }
-                var dlcBtnText by remember {
-                    mutableStateOf(if (dlcInstalled) "Reinstall" else "Install")
-                }
-                var dlcBtnColor by remember {
-                    mutableIntStateOf(if (dlcInstalled) 0xFF2A3A00.toInt() else 0xFFCC7700.toInt())
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                        .background(Color(0xFF1A1200), RoundedCornerShape(4.dp))
-                        .padding(8.dp, 6.dp, 8.dp, 6.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .background(Color(0xFF1A1200), RoundedCornerShape(4.dp))
+                    .padding(8.dp, 6.dp, 8.dp, 6.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Text(
+                        text = dlcTitleText,
+                        fontSize = 13.sp,
+                        color = Color(0xFFDDDDDD),
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (dlcInstalled) {
+                        Text(
+                            text = "\u2713",
+                            fontSize = 13.sp,
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+
+                if (dlcStatusText.isNotEmpty()) {
+                    Text(
+                        text = dlcStatusText,
+                        fontSize = 11.sp,
+                        color = Color(0xFF886600),
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
+                }
+
+                if (dlcEid.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Button(
+                        onClick = {
+                            if (dlcBtnText == "Downloading\u2026") return@Button
+                            dlcBtnText = "Downloading\u2026"
+                            dlcBtnColor = 0xFF444444.toInt()
+                            dlcStatusText = "Starting\u2026"
+                            onDlcInstall(dlcEid, dlcPid, dlcTitleText)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(dlcBtnColor),
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                        shape = RoundedCornerShape(4.dp),
                     ) {
                         Text(
-                            text = dlcTitleText,
+                            text = dlcBtnText,
+                            color = Color.White,
                             fontSize = 13.sp,
-                            color = Color(0xFFDDDDDD),
-                            modifier = Modifier.weight(1f),
                         )
-                        if (dlcInstalled) {
-                            Text(
-                                text = "\u2713",
-                                fontSize = 13.sp,
-                                color = Color(0xFF4CAF50),
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-
-                    if (dlcStatusText.isNotEmpty()) {
-                        Text(
-                            text = dlcStatusText,
-                            fontSize = 11.sp,
-                            color = Color(0xFF886600),
-                            modifier = Modifier.padding(top = 3.dp),
-                        )
-                    }
-
-                    if (dlcEid.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        Button(
-                            onClick = {
-                                if (dlcBtnText == "Downloading\u2026") return@Button
-                                dlcBtnText = "Downloading\u2026"
-                                dlcBtnColor = 0xFF444444.toInt()
-                                dlcStatusText = "Starting\u2026"
-                                onDlcInstall(dlcEid, dlcPid, dlcTitleText)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(dlcBtnColor),
-                            ),
-                            modifier = Modifier.fillMaxWidth().height(36.dp),
-                            shape = RoundedCornerShape(4.dp),
-                        ) {
-                            Text(
-                                text = dlcBtnText,
-                                color = Color.White,
-                                fontSize = 13.sp,
-                            )
-                        }
                     }
                 }
-
-                Spacer(Modifier.height(6.dp))
             }
-        } catch (e: Exception) {
-            Text(
-                text = "Error reading DLC data",
-                fontSize = 13.sp,
-                color = Color(0xFF554400),
-            )
+
+            Spacer(Modifier.height(6.dp))
         }
     }
 }

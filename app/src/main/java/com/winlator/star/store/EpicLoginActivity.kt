@@ -17,6 +17,7 @@ import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
 import java.util.concurrent.atomic.AtomicBoolean
 
 class EpicLoginActivity : ComponentActivity() {

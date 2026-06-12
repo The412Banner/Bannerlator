@@ -25,7 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +59,7 @@ import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -202,7 +203,7 @@ class AmazonGamesActivity : ComponentActivity() {
         }
     }
 
-    private fun syncLibrary(showProgress: Boolean) {
+    private suspend fun syncLibrary(showProgress: Boolean) {
         try {
             if (showProgress) setSync("Checking credentials\u2026", false)
             val creds = AmazonCredentialStore.load(this@AmazonGamesActivity)
@@ -1322,7 +1323,7 @@ private fun InstallConfirmDialog(
 
     LaunchedEffect(game.productId) {
         if (game.installSize > 0) {
-            sizeLabel = "Game size:  ${formatBytes(game.installSize)}"
+            sizeLabel = "Game size:  ${AmazonGamesActivity.formatBytes(game.installSize)}"
         } else {
             withContext(Dispatchers.IO) {
                 var size = 0L
@@ -1343,7 +1344,7 @@ private fun InstallConfirmDialog(
                 } catch (_: Exception) {}
                 val finalSize = size
                 withContext(Dispatchers.Main) {
-                    sizeLabel = "Game size:  ${if (finalSize > 0) formatBytes(finalSize) else "Unknown"}"
+                    sizeLabel = "Game size:  ${if (finalSize > 0) AmazonGamesActivity.formatBytes(finalSize) else "Unknown"}"
                 }
             }
         }
@@ -1361,7 +1362,7 @@ private fun InstallConfirmDialog(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Available storage:  ${formatBytes(freeBytes)}",
+                    text = "Available storage:  ${AmazonGamesActivity.formatBytes(freeBytes)}",
                     fontSize = 14.sp,
                     color = Color(0xFF88CC88),
                 )

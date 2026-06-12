@@ -47,6 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import androidx.lifecycle.lifecycleScope
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -70,7 +71,7 @@ class EpicGameDetailActivity : ComponentActivity() {
 
     private var exeNameText by mutableStateOf("")
     private var installBtnText by mutableStateOf("Install")
-    private var installBtnColor by mutableIntStateOf(0xFF1A73E8)
+    private var installBtnColor by mutableIntStateOf(0xFF1A73E8.toInt())
     private var launchBtnVisible by mutableStateOf(false)
     private var installBtnVisible by mutableStateOf(true)
     private var setExeBtnVisible by mutableStateOf(false)
@@ -89,7 +90,7 @@ class EpicGameDetailActivity : ComponentActivity() {
     private var dlcJson by mutableStateOf<String?>(null)
 
     private var cloudSaveDirText by mutableStateOf("No save folder set")
-    private var cloudSaveDirColor by mutableIntStateOf(0xFF445566)
+    private var cloudSaveDirColor by mutableIntStateOf(0xFF445566.toInt())
     private var cloudSaveStatusText by mutableStateOf("")
     private var cloudSaveStatusVisible by mutableStateOf(false)
     private var cloudButtonsEnabled by mutableStateOf(true)
@@ -111,7 +112,7 @@ class EpicGameDetailActivity : ComponentActivity() {
         val savedDir = prefs!!.getString("epic_save_dir_$appName", null)
         if (savedDir != null) {
             cloudSaveDirText = shortenPath(savedDir)
-            cloudSaveDirColor = 0xFFCCCCCC
+            cloudSaveDirColor = 0xFFCCCCCC.toInt()
         }
 
         dlcJson = catalogItemId?.let { prefs!!.getString("epic_dlcs_$it", null) }
@@ -189,7 +190,7 @@ class EpicGameDetailActivity : ComponentActivity() {
             if (!selectedPath.isNullOrEmpty()) {
                 prefs!!.edit().putString("epic_save_dir_$appName", selectedPath).apply()
                 cloudSaveDirText = shortenPath(selectedPath)
-                cloudSaveDirColor = 0xFFCCCCCC
+                cloudSaveDirColor = 0xFFCCCCCC.toInt()
                 cloudButtonsEnabled = true
                 Toast.makeText(this, "Save folder set", Toast.LENGTH_SHORT).show()
             }
@@ -220,7 +221,7 @@ class EpicGameDetailActivity : ComponentActivity() {
 
     private fun startInstallInternal() {
         installBtnText = "Cancel"
-        installBtnColor = 0xFFCC3333
+            installBtnColor = 0xFFCC3333.toInt()
         progressVisible = true
         progressLabelVisible = true
         launchBtnVisible = false
@@ -251,7 +252,7 @@ class EpicGameDetailActivity : ComponentActivity() {
                     installDir.absolutePath,
                 ) { msg, pct ->
                     if (!cancelled.get()) {
-                        withContext(Dispatchers.Main) {
+                        runOnUiThread {
                             progressValue = pct
                             progressLabelText = msg
                         }
@@ -312,7 +313,7 @@ class EpicGameDetailActivity : ComponentActivity() {
             progressVisible = false
             progressLabelVisible = false
             installBtnText = "Install"
-            installBtnColor = 0xFF1A73E8
+            installBtnColor = 0xFF1A73E8.toInt()
             launchBtnVisible = true
             setExeBtnVisible = true
             Toast.makeText(this@EpicGameDetailActivity, "Error: $msg", Toast.LENGTH_LONG).show()
@@ -325,7 +326,7 @@ class EpicGameDetailActivity : ComponentActivity() {
             progressVisible = false
             progressLabelVisible = false
             installBtnText = "Install"
-            installBtnColor = 0xFF1A73E8
+            installBtnColor = 0xFF1A73E8.toInt()
             launchBtnVisible = true
             setExeBtnVisible = true
         }
@@ -512,7 +513,7 @@ class EpicGameDetailActivity : ComponentActivity() {
         cloudButtonsEnabled = false
         cloudSaveStatusText = "Preparing upload\u2026"
         cloudSaveStatusVisible = true
-        EpicCloudSaveManager.uploadSaves(this, appName!!, File(dir), object : EpicCloudSaveManager.Callback() {
+        EpicCloudSaveManager.uploadSaves(this, appName!!, File(dir), object : EpicCloudSaveManager.Callback {
             override fun onStatus(msg: String) { runOnUiThread { cloudSaveStatusText = msg } }
             override fun onDone(msg: String) { runOnUiThread { cloudSaveStatusText = msg; cloudButtonsEnabled = true } }
             override fun onError(msg: String) { runOnUiThread { cloudSaveStatusText = "Error: $msg"; cloudButtonsEnabled = true } }
@@ -525,7 +526,7 @@ class EpicGameDetailActivity : ComponentActivity() {
         cloudButtonsEnabled = false
         cloudSaveStatusText = "Preparing download\u2026"
         cloudSaveStatusVisible = true
-        EpicCloudSaveManager.downloadSaves(this, appName!!, File(dir), object : EpicCloudSaveManager.Callback() {
+        EpicCloudSaveManager.downloadSaves(this, appName!!, File(dir), object : EpicCloudSaveManager.Callback {
             override fun onStatus(msg: String) { runOnUiThread { cloudSaveStatusText = msg } }
             override fun onDone(msg: String) { runOnUiThread { cloudSaveStatusText = msg; cloudButtonsEnabled = true } }
             override fun onError(msg: String) { runOnUiThread { cloudSaveStatusText = "Error: $msg"; cloudButtonsEnabled = true } }
@@ -622,7 +623,7 @@ private fun EpicGameDetailScreen(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DetailButton("\u2190", 0xFF1A3050, modifier = Modifier.height(36.dp), onClick = onBack)
+            DetailButton("\u2190", 0xFF1A3050.toInt(), modifier = Modifier.height(36.dp), onClick = onBack)
             Spacer(Modifier.width(8.dp))
             Text(
                 text = title,
@@ -696,10 +697,10 @@ private fun EpicGameDetailScreen(
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
             }
-            if (launchBtnVisible) DetailButton("Launch", 0xFF2E7D32, onClick = onLaunchClick)
+            if (launchBtnVisible) DetailButton("Launch", 0xFF2E7D32.toInt(), onClick = onLaunchClick)
             if (installBtnVisible) DetailButton(installBtnText, installBtnColor, onClick = onInstallClick)
-            if (setExeBtnVisible) DetailButton("Set .exe\u2026", 0xFF444444, onClick = onSetExeClick)
-            if (uninstallBtnVisible) DetailButton("Uninstall", 0xFF8B0000, onClick = onUninstallClick)
+            if (setExeBtnVisible) DetailButton("Set .exe\u2026", 0xFF444444.toInt(), onClick = onSetExeClick)
+            if (uninstallBtnVisible) DetailButton("Uninstall", 0xFF8B0000.toInt(), onClick = onUninstallClick)
         }
 
         SectionHeader("UPDATES")
@@ -720,8 +721,8 @@ private fun EpicGameDetailScreen(
                     color = Color(0xFFCCCCCC),
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
-                if (updateBtnVisible) DetailButton("Update Now", 0xFF0D5CA8, onClick = onUpdateClick)
-                DetailButton("Check for Updates", 0xFF1A2A3A, enabled = checkUpdatesEnabled, onClick = onCheckUpdates)
+                if (updateBtnVisible) DetailButton("Update Now", 0xFF0D5CA8.toInt(), onClick = onUpdateClick)
+                DetailButton("Check for Updates", 0xFF1A2A3A.toInt(), enabled = checkUpdatesEnabled, onClick = onCheckUpdates)
             }
         }
 
@@ -730,11 +731,12 @@ private fun EpicGameDetailScreen(
             if (dlcJson.isNullOrEmpty() || dlcJson == "[]") {
                 Text("No DLCs in your library for this game", fontSize = 13.sp, color = Color(0xFF445566))
             } else {
-                try {
-                    val arr = org.json.JSONArray(dlcJson)
-                    if (arr.length() == 0) {
-                        Text("No DLCs in your library for this game", fontSize = 13.sp, color = Color(0xFF445566))
-                    } else {
+                val arr = runCatching { org.json.JSONArray(dlcJson) }.getOrNull()
+                if (arr == null) {
+                    Text("Error reading DLC data", fontSize = 13.sp, color = Color(0xFF445566))
+                } else if (arr.length() == 0) {
+                    Text("No DLCs in your library for this game", fontSize = 13.sp, color = Color(0xFF445566))
+                } else {
                         Text(
                             text = "${arr.length()} DLC${if (arr.length() == 1) "" else "s"} owned",
                             fontSize = 12.sp,
@@ -769,7 +771,7 @@ private fun EpicGameDetailScreen(
                                     if (dlcApp.isNotEmpty() && dlcNs.isNotEmpty() && dlcCat.isNotEmpty()) {
                                         DetailButton(
                                             if (dlcInstalled) "Reinstall" else "Install",
-                                            if (dlcInstalled) 0xFF2A4A2A else 0xFF1A73E8,
+                                            if (dlcInstalled) 0xFF2A4A2A.toInt() else 0xFF1A73E8.toInt(),
                                             modifier = Modifier.padding(top = 4.dp).height(36.dp),
                                             onClick = { onDlcInstall(dlcApp, dlcNs, dlcCat, dlcTitle) },
                                         )
@@ -778,11 +780,8 @@ private fun EpicGameDetailScreen(
                             }
                         }
                     }
-                } catch (_: Exception) {
-                    Text("Error reading DLC data", fontSize = 13.sp, color = Color(0xFF445566))
                 }
             }
-        }
 
         SectionHeader("CLOUD SAVES")
         DetailCard {
@@ -798,7 +797,7 @@ private fun EpicGameDetailScreen(
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
-                DetailButton("Browse", 0xFF333355, modifier = Modifier.height(36.dp), onClick = onCloudBrowse)
+                DetailButton("Browse", 0xFF333355.toInt(), modifier = Modifier.height(36.dp), onClick = onCloudBrowse)
             }
             if (cloudSaveStatusVisible) {
                 Text(
@@ -808,8 +807,8 @@ private fun EpicGameDetailScreen(
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
             }
-            DetailButton("Upload Saves", 0xFF0277BD, enabled = cloudButtonsEnabled, onClick = onCloudUpload)
-            DetailButton("Download Saves", 0xFF2E7D32, enabled = cloudButtonsEnabled, onClick = onCloudDownload)
+            DetailButton("Upload Saves", 0xFF0277BD.toInt(), enabled = cloudButtonsEnabled, onClick = onCloudUpload)
+            DetailButton("Download Saves", 0xFF2E7D32.toInt(), enabled = cloudButtonsEnabled, onClick = onCloudDownload)
         }
 
         Spacer(Modifier.height(24.dp))

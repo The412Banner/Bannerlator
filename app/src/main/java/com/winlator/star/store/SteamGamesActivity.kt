@@ -1,44 +1,131 @@
 package com.winlator.star.store
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.LruCache
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
-import android.widget.*
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.winlator.star.ui.theme.WinlatorTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
-/**
- * Steam library screen — shows only type="game" entries.
- *
- * Each row shows the Steam library portrait art (600x900) loaded async,
- * falling back to the header image (header.jpg) if portrait isn't available.
- */
-class SteamGamesActivity : Activity(), SteamRepository.SteamEventListener {
+class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListener {
 
-    private val ui = Handler(Looper.getMainLooper())
-    private lateinit var statusText: TextView
-    private lateinit var listView: ListView
-    private lateinit var emptyText: TextView
-    private var games: List<SteamGame> = emptyList()
+    private var games by mutableStateOf<List<SteamGame>>(emptyList())
+    private var statusText by mutableStateOf("Loading library\u2026")
+    private var isLoading by mutableStateOf(true)
+    private var showSignOutDialog by mutableStateOf(false)
+    private var showExePicker by mutableStateOf<ExePickerData?>(null)
+
+    private val imageCache = object : LruCache<Int, Bitmap>(4 * 1024 * 1024) {
+        override fun sizeOf(key: Int, value: Bitmap) = value.byteCount
+    }
+    private val imageExecutor = Executors.newFixedThreadPool(4)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Defensive init: handle cold-start after process crash (Android restarts
-        // the top activity directly, bypassing SteamMainActivity which normally
-        // calls SteamPrefs.init + SteamForegroundService.start).
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
-        setContentView(buildUI())
+
+        setContent {
+            WinlatorTheme {
+                SteamGamesScreen(
+                    games = games,
+                    statusText = statusText,
+                    isLoading = isLoading,
+                    onBack = { finish() },
+                    onRefresh = { SteamRepository.getInstance().syncLibrary() },
+                    onLogout = { showSignOutDialog = true },
+                    onGameClick = { game ->
+                        startActivity(Intent(this@SteamGamesActivity, SteamGameDetailActivity::class.java)
+                            .putExtra(SteamGameDetailActivity.EXTRA_APP_ID, game.appId))
+                    },
+                    onUninstall = { game ->
+                        val db = SteamRepository.getInstance().database
+                        db.markUninstalled(game.appId)
+                        if (game.installDir.isNotEmpty()) {
+                            Thread { java.io.File(game.installDir).deleteRecursively() }.start()
+                        }
+                        loadGames()
+                    },
+                    onLaunch = { game -> launchInstalledGame(game) },
+                )
+
+                if (showSignOutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showSignOutDialog = false },
+                        title = { Text("Sign out of Steam?") },
+                        text = { Text("Your saved login will be removed. You will need to sign in again.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showSignOutDialog = false
+                                Thread { SteamRepository.getInstance().logout() }.start()
+                            }) { Text("Sign Out") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                        },
+                    )
+                }
+
+                showExePicker?.let { data ->
+                    ExePickerDialog(
+                        title = "Select executable for \"${data.gameName}\"",
+                        candidates = data.candidates,
+                        onDismiss = { showExePicker = null },
+                        onSelected = { chosen ->
+                            showExePicker = null
+                            StarLaunchBridge.addToLauncher(
+                                this@SteamGamesActivity, data.gameName, chosen, data.coverUrl
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
         SteamRepository.getInstance().addListener(this)
         loadGames()
         maybeAutoSync()
@@ -46,7 +133,6 @@ class SteamGamesActivity : Activity(), SteamRepository.SteamEventListener {
 
     override fun onResume() {
         super.onResume()
-        // Refresh list from cache when returning from detail screen (installed state may have changed)
         loadGames()
     }
 
@@ -55,410 +141,63 @@ class SteamGamesActivity : Activity(), SteamRepository.SteamEventListener {
         super.onDestroy()
     }
 
-    // -------------------------------------------------------------------------
-    // SteamRepository.SteamEventListener
-    // -------------------------------------------------------------------------
-
     override fun onEvent(event: String) {
         when {
             event.startsWith("LibraryProgress:") -> {
                 val parts = event.split(":")
                 val phase = parts.getOrNull(1)?.toIntOrNull() ?: 0
                 val count = parts.getOrNull(2)?.toIntOrNull() ?: 0
-                ui.post {
-                    statusText.text = if (phase == 0)
-                        "Syncing packages ($count)…"
-                    else
-                        "Fetching $count app records…"
-                }
+                statusText = if (phase == 0) "Syncing packages ($count)\u2026" else "Fetching $count app records\u2026"
             }
             event.startsWith("LibrarySynced:") -> {
-                // Reload from DB and derive count from what's actually showing —
-                // the event count can be 0 if Steam returned empty "no change" buffers
-                // for apps that haven't changed since last request.
-                ui.post {
-                    loadGames()
-                    statusText.text = "${games.size} games in library"
-                }
+                loadGames()
+                statusText = "${games.size} games in library"
             }
-            event == "LoggedOut" -> {
-                ui.post { finish() }
-            }
-            event == "Disconnected" -> {
-                // Transient disconnect — auto-reconnect is in progress.
-                // Don't close the activity; just show status.
-                ui.post { statusText.text = "Disconnected — reconnecting…" }
-            }
+            event == "LoggedOut" -> { finish() }
+            event == "Disconnected" -> { statusText = "Disconnected \u2014 reconnecting\u2026" }
             event == "Connected" -> {
-                // After reconnect, retry sync if still empty.
                 val repo = SteamRepository.getInstance()
                 if (games.isEmpty() && repo.isLoggedIn) {
-                    ui.post { statusText.text = "Reconnected — syncing library…" }
+                    statusText = "Reconnected \u2014 syncing library\u2026"
                     repo.syncLibrary()
                 }
             }
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Data — only show type="game" entries
-    // -------------------------------------------------------------------------
-
     private fun loadGames() {
         val repo = try {
             SteamRepository.getInstance()
         } catch (e: IllegalStateException) {
-            // Process was restarted without going through SteamMainActivity.
-            startActivity(android.content.Intent(this, SteamMainActivity::class.java))
+            startActivity(Intent(this, SteamMainActivity::class.java))
             finish()
             return
         }
-        // Use in-memory cache — avoids a SQLite read on every resume/rotate.
-        // Cache is invalidated on LibrarySynced, DownloadComplete, DownloadCancelled,
-        // and markUninstalled(), so installed state is always current.
         val rows = repo.getCachedGameRows()
         games = rows
             .filter { it.type == "game" }
             .map { SteamGame.fromGameRow(it) }
             .sortedBy { it.name.lowercase() }
+        isLoading = false
         if (games.isNotEmpty()) {
-            statusText.text = "${games.size} games in library"
+            statusText = "${games.size} games in library"
         }
-        refreshList()
     }
 
-    /**
-     * Auto-sync rules:
-     *  - Always sync if the library is empty (new login or wiped DB)
-     *  - Otherwise sync only if the last sync was more than 4 hours ago
-     *  - Never auto-sync if already syncing or not logged in
-     */
     private fun maybeAutoSync() {
         val repo = SteamRepository.getInstance()
         if (!repo.isLoggedIn) return
-        val staleThresholdSec = 4 * 60 * 60L  // 4 hours
+        val staleThresholdSec = 4 * 60 * 60L
         val elapsed = System.currentTimeMillis() / 1000L - repo.lastSyncTime
         if (games.isEmpty() || elapsed > staleThresholdSec) {
-            statusText.text = if (games.isEmpty()) "Syncing library…" else "Refreshing library…"
+            statusText = if (games.isEmpty()) "Syncing library\u2026" else "Refreshing library\u2026"
             repo.syncLibrary()
         }
     }
 
-    private fun refreshList() {
-        val adapter = object : ArrayAdapter<SteamGame>(this, 0, games) {
-            override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
-                val game = getItem(pos)!!
-                val row = (convertView as? LinearLayout) ?: buildRow()
-                // Tag the row with appId so the async image loader can detect recycling
-                row.tag = game.appId
-
-                val artView       = row.getChildAt(0) as ImageView
-                val infoView      = row.getChildAt(1) as LinearLayout
-                val nameView      = infoView.getChildAt(0) as TextView
-                val developerView = infoView.getChildAt(1) as TextView
-                val genresView    = infoView.getChildAt(2) as TextView
-                val sizeView      = infoView.getChildAt(3) as TextView
-                val metaView      = infoView.getChildAt(4) as TextView
-                val installedLabel = infoView.getChildAt(5) as TextView
-                val uninstallBtn  = infoView.getChildAt(6) as Button
-
-                nameView.text = game.name.ifEmpty { "App ${game.appId}" }
-
-                developerView.text = game.developer
-                developerView.visibility = if (game.developer.isNotEmpty()) View.VISIBLE else View.GONE
-
-                genresView.text = game.genres
-                genresView.visibility = if (game.genres.isNotEmpty()) View.VISIBLE else View.GONE
-
-                val sizeLabel = fmtSize(game.sizeBytes)
-                sizeView.text = sizeLabel
-                sizeView.visibility = if (game.sizeBytes > 0) View.VISIBLE else View.GONE
-
-                if (game.metacriticScore > 0) {
-                    metaView.text = "Metacritic: ${game.metacriticScore}"
-                    metaView.setTextColor(when {
-                        game.metacriticScore >= 75 -> 0xFF4CAF50.toInt()  // green
-                        game.metacriticScore >= 50 -> 0xFFFFC107.toInt()  // amber
-                        else                       -> 0xFFF44336.toInt()  // red
-                    })
-                    metaView.visibility = View.VISIBLE
-                } else {
-                    metaView.visibility = View.GONE
-                }
-
-                val launchBtn = infoView.getChildAt(7) as Button
-
-                // Installed indicator + action buttons
-                if (game.isInstalled) {
-                    installedLabel.visibility = View.VISIBLE
-                    uninstallBtn.visibility   = View.VISIBLE
-                    launchBtn.visibility      = View.VISIBLE
-                    uninstallBtn.setOnClickListener {
-                        val db = SteamRepository.getInstance().database
-                        db.markUninstalled(game.appId)
-                        if (game.installDir.isNotEmpty()) {
-                            Thread { java.io.File(game.installDir).deleteRecursively() }.start()
-                        }
-                        loadGames()
-                    }
-                    launchBtn.setOnClickListener { launchInstalledGame(game) }
-                } else {
-                    installedLabel.visibility = View.GONE
-                    uninstallBtn.visibility   = View.GONE
-                    launchBtn.visibility      = View.GONE
-                }
-
-                // Reset art to placeholder then kick off async load
-                artView.setImageResource(android.R.color.darker_gray)
-                loadCoverArt(artView, game.appId)
-                return row
-            }
-        }
-        listView.adapter = adapter
-        emptyText.visibility = if (games.isEmpty()) View.VISIBLE else View.GONE
-        listView.visibility  = if (games.isEmpty()) View.GONE   else View.VISIBLE
-    }
-
-    // -------------------------------------------------------------------------
-    // Cover art loading
-    // -------------------------------------------------------------------------
-
-    private fun loadCoverArt(view: ImageView, appId: Int) {
-        imageCache.get(appId)?.let { cached ->
-            view.setImageBitmap(cached)
-            return
-        }
-        imageExecutor.submit {
-            // Try portrait art first (600x900), fall back to wide header
-            val bmp = tryBitmap("https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/library_600x900.jpg")
-                   ?: tryBitmap("https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg")
-            if (bmp != null) {
-                imageCache.put(appId, bmp)
-                ui.post {
-                    // Only set if this view still shows the same appId (not recycled)
-                    val parent = view.parent as? LinearLayout
-                    if (parent?.tag == appId) view.setImageBitmap(bmp)
-                }
-            }
-        }
-    }
-
-    private fun tryBitmap(url: String): Bitmap? = try {
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = 6_000
-        conn.readTimeout    = 10_000
-        conn.connect()
-        if (conn.responseCode == 200)
-            BitmapFactory.decodeStream(conn.inputStream)
-        else null
-    } catch (_: Exception) { null }
-
-    // -------------------------------------------------------------------------
-    // UI construction
-    // -------------------------------------------------------------------------
-
-    private fun buildUI(): View {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(BG)
-        }
-
-        // Header bar
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            setBackgroundColor(Color.parseColor("#212121"))
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val backBtn = Button(this).apply {
-            text = "←"
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.TRANSPARENT)
-            setOnClickListener { finish() }
-        }
-        val title = TextView(this).apply {
-            text = "Steam Library"
-            textSize = 18f
-            setTextColor(Color.WHITE)
-            setPadding(dp(8), 0, 0, 0)
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        val refreshBtn = Button(this).apply {
-            text = "Refresh"
-            textSize = 13f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(BLUE)
-            setPadding(dp(12), 0, dp(12), 0)
-            setOnClickListener { SteamRepository.getInstance().syncLibrary() }
-        }
-        val logoutBtn = Button(this).apply {
-            text = "Logout"
-            textSize = 13f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(0xFFB71C1C.toInt())
-            setPadding(dp(12), 0, dp(12), 0)
-            setOnClickListener {
-                android.app.AlertDialog.Builder(this@SteamGamesActivity)
-                    .setTitle("Sign out of Steam?")
-                    .setMessage("Your saved login will be removed. You will need to sign in again.")
-                    .setPositiveButton("Sign Out") { _, _ ->
-                        Thread { SteamRepository.getInstance().logout() }.start()
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-            }
-        }
-        header.addView(backBtn)
-        header.addView(title)
-        header.addView(refreshBtn, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)).apply { marginEnd = dp(6) })
-        header.addView(logoutBtn, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)))
-        root.addView(header)
-
-        // Status bar
-        statusText = TextView(this).apply {
-            text = "Loading library…"
-            textSize = 12f
-            setTextColor(GRAY)
-            setPadding(dp(12), dp(5), dp(12), dp(5))
-            setBackgroundColor(Color.parseColor("#1A1A2E"))
-        }
-        root.addView(statusText)
-
-        // Empty state
-        emptyText = TextView(this).apply {
-            text = "No games found.\nIf sync just finished, tap Refresh."
-            textSize = 14f
-            setTextColor(GRAY)
-            gravity = Gravity.CENTER
-            setPadding(dp(24), dp(48), dp(24), dp(24))
-            visibility = View.GONE
-        }
-        root.addView(emptyText, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-
-        // Game list
-        listView = ListView(this).apply {
-            setBackgroundColor(BG)
-            divider = null
-            dividerHeight = dp(1)
-            setOnItemClickListener { _, _, pos, _ ->
-                val game = games.getOrNull(pos) ?: return@setOnItemClickListener
-                startActivity(Intent(this@SteamGamesActivity, SteamGameDetailActivity::class.java)
-                    .putExtra(SteamGameDetailActivity.EXTRA_APP_ID, game.appId))
-            }
-        }
-        root.addView(listView, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-
-        return root
-    }
-
-    /** Build a card row: [portrait art | name / developer / genres / size / metacritic] */
-    private fun buildRow(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        setBackgroundColor(CARD_BG)
-        setPadding(0, 0, 0, 0)
-
-        // Portrait art thumbnail (approx 2:3 ratio)
-        val artWidth  = dp(80)
-        val artHeight = dp(140)
-        val artView = ImageView(this@SteamGamesActivity).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            setBackgroundColor(Color.parseColor("#2A2A2A"))
-        }
-        addView(artView, LinearLayout.LayoutParams(artWidth, artHeight))
-
-        // Right side: name + metadata stack
-        val infoLayout = LinearLayout(this@SteamGamesActivity).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(8), dp(8), dp(8))
-        }
-
-        fun smallText() = TextView(this@SteamGamesActivity).apply {
-            textSize = 11f
-            setTextColor(GRAY)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(0, dp(2), 0, 0)
-        }
-
-        // child 0: game name
-        val nameView = TextView(this@SteamGamesActivity).apply {
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            maxLines = 2
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }
-        // child 1: developer
-        val developerView = smallText()
-        // child 2: genres
-        val genresView = smallText()
-        // child 3: install size
-        val sizeView = smallText()
-        // child 4: metacritic score (color set dynamically)
-        val metaView = smallText()
-
-        // child 5: installed indicator
-        val installedLabel = TextView(this@SteamGamesActivity).apply {
-            text = "● Installed"
-            textSize = 11f
-            setTextColor(0xFF4CAF50.toInt())  // green
-            setPadding(0, dp(3), 0, 0)
-            visibility = View.GONE
-        }
-
-        // child 6: uninstall button
-        val uninstallBtn = Button(this@SteamGamesActivity).apply {
-            text = "Uninstall"
-            textSize = 11f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(0xFFB71C1C.toInt())
-            setPadding(dp(8), dp(2), dp(8), dp(2))
-            visibility = View.GONE
-        }
-
-        // child 7: launch button (choose container + add to shortcuts)
-        val launchBtn = Button(this@SteamGamesActivity).apply {
-            text = "Launch / Add to Shortcuts"
-            textSize = 11f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(0xFF2E7D32.toInt())  // green
-            setPadding(dp(8), dp(2), dp(8), dp(2))
-            visibility = View.GONE
-        }
-
-        val wrapLp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        val actionLp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(30)).apply { topMargin = dp(3) }
-        infoLayout.addView(nameView,       wrapLp)
-        infoLayout.addView(developerView,  wrapLp)
-        infoLayout.addView(genresView,     wrapLp)
-        infoLayout.addView(sizeView,       wrapLp)
-        infoLayout.addView(metaView,       wrapLp)
-        infoLayout.addView(installedLabel, wrapLp)
-        infoLayout.addView(uninstallBtn,   actionLp)
-        infoLayout.addView(launchBtn,      actionLp)
-
-        addView(infoLayout, LinearLayout.LayoutParams(0, artHeight, 1f))
-
-        // Row bottom margin (acts as divider)
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).also { it.bottomMargin = dp(2) }
-    }
-
-    // -------------------------------------------------------------------------
-    // Launch helper — choose exe then pick container via StarLaunchBridge
-    // -------------------------------------------------------------------------
-
     private fun launchInstalledGame(game: SteamGame) {
         if (game.installDir.isEmpty()) {
-            Toast.makeText(this, "Install directory not set", Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(this, "Install directory not set", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         val installDir = java.io.File(game.installDir)
@@ -466,8 +205,8 @@ class SteamGamesActivity : Activity(), SteamRepository.SteamEventListener {
             val exeFiles = mutableListOf<java.io.File>()
             AmazonLaunchHelper.collectExe(installDir, exeFiles)
             if (exeFiles.isEmpty()) {
-                ui.post {
-                    Toast.makeText(this, "No .exe found in install directory", Toast.LENGTH_LONG).show()
+                runOnUiThread {
+                    android.widget.Toast.makeText(this, "No .exe found in install directory", android.widget.Toast.LENGTH_LONG).show()
                 }
                 return@Thread
             }
@@ -475,49 +214,279 @@ class SteamGamesActivity : Activity(), SteamRepository.SteamEventListener {
             exeFiles.sortWith { a, b ->
                 AmazonLaunchHelper.scoreExe(b, lowerTitle) - AmazonLaunchHelper.scoreExe(a, lowerTitle)
             }
-            // Use Steam CDN portrait cover (600x900) — StarLaunchBridge downloads it
             val coverUrl = "https://shared.steamstatic.com/store_item_assets/steam/apps/${game.appId}/library_600x900.jpg"
 
             if (exeFiles.size == 1) {
-                ui.post { StarLaunchBridge.addToLauncher(this, game.name, exeFiles[0].absolutePath, coverUrl) }
+                runOnUiThread { StarLaunchBridge.addToLauncher(this, game.name, exeFiles[0].absolutePath, coverUrl) }
                 return@Thread
             }
-            // Multiple exes — let user pick
             val candidates = exeFiles.map { it.absolutePath }
-            val labels = candidates.map { path ->
-                val f = java.io.File(path)
-                val parent = f.parentFile
-                if (parent != null) "${parent.name}/${f.name}" else f.name
-            }.toTypedArray()
-            ui.post {
-                android.app.AlertDialog.Builder(this)
-                    .setTitle("Select executable for \"${game.name}\"")
-                    .setItems(labels) { _, which ->
-                        StarLaunchBridge.addToLauncher(this, game.name, candidates[which], coverUrl)
-                    }
-                    .setCancelable(true)
-                    .show()
+            runOnUiThread {
+                showExePicker = ExePickerData(game.name, candidates, coverUrl)
             }
         }.start()
     }
+}
 
+private data class ExePickerData(
+    val gameName: String,
+    val candidates: List<String>,
+    val coverUrl: String,
+)
 
-    private fun fmtSize(bytes: Long): String = when {
-        bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
-        bytes >= 1_048_576L     -> "%.1f MB".format(bytes / 1_048_576.0)
-        else                    -> "%.0f KB".format(bytes / 1024.0)
+@Composable
+private fun SteamGamesScreen(
+    games: List<SteamGame>,
+    statusText: String,
+    isLoading: Boolean,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+    onLogout: () -> Unit,
+    onGameClick: (SteamGame) -> Unit,
+    onUninstall: (SteamGame) -> Unit,
+    onLaunch: (SteamGame) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF1B1B1B))) {
+        // Header bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF212121))
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onBack) { Text("\u2190", color = Color.White, fontSize = 18.sp) }
+            Text(
+                text = "Steam Library",
+                fontSize = 18.sp,
+                color = Color.White,
+                modifier = Modifier.weight(1f).padding(start = 8.dp),
+            )
+            Button(
+                onClick = onRefresh,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FC3F7)),
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) { Text("Refresh", color = Color.White, fontSize = 13.sp) }
+            Spacer(Modifier.width(6.dp))
+            Button(
+                onClick = onLogout,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C)),
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) { Text("Logout", color = Color.White, fontSize = 13.sp) }
+        }
+
+        // Status bar
+        Text(
+            text = statusText,
+            fontSize = 12.sp,
+            color = Color(0xFFAAAAAA),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF1A1A2E))
+                .padding(horizontal = 12.dp, vertical = 5.dp),
+        )
+
+        // Content
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            if (games.isEmpty() && !isLoading) {
+                Text(
+                    text = "No games found.\nIf sync just finished, tap Refresh.",
+                    fontSize = 14.sp,
+                    color = Color(0xFFAAAAAA),
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                )
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(games, key = { it.appId }) { game ->
+                        GameListItem(
+                            game = game,
+                            onClick = { onGameClick(game) },
+                            onUninstall = { onUninstall(game) },
+                            onLaunch = { onLaunch(game) },
+                        )
+                    }
+                }
+            }
+
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color(0xFFBB86FC),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameListItem(
+    game: SteamGame,
+    onClick: () -> Unit,
+    onUninstall: () -> Unit,
+    onLaunch: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(Color(0xFF252525))
+            .padding(bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Cover art
+        GameCoverArt(
+            appId = game.appId,
+            modifier = Modifier.width(80.dp).height(140.dp),
+        )
+
+        // Info
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = game.name.ifEmpty { "App ${game.appId}" },
+                fontSize = 14.sp,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (game.developer.isNotEmpty()) {
+                Text(game.developer, fontSize = 11.sp, color = Color(0xFFAAAAAA), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp))
+            }
+            if (game.genres.isNotEmpty()) {
+                Text(game.genres, fontSize = 11.sp, color = Color(0xFFAAAAAA), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp))
+            }
+            if (game.sizeBytes > 0) {
+                Text(fmtSize(game.sizeBytes), fontSize = 11.sp, color = Color(0xFFAAAAAA),
+                    modifier = Modifier.padding(top = 2.dp))
+            }
+            if (game.metacriticScore > 0) {
+                Text(
+                    text = "Metacritic: ${game.metacriticScore}",
+                    fontSize = 11.sp,
+                    color = when {
+                        game.metacriticScore >= 75 -> Color(0xFF4CAF50)
+                        game.metacriticScore >= 50 -> Color(0xFFFFC107)
+                        else -> Color(0xFFF44336)
+                    },
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            if (game.isInstalled) {
+                Text(
+                    text = "\u25CF Installed",
+                    fontSize = 11.sp,
+                    color = Color(0xFF4CAF50),
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                Spacer(Modifier.height(3.dp))
+                Button(
+                    onClick = onUninstall,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C)),
+                    modifier = Modifier.fillMaxWidth().height(30.dp),
+                    shape = RoundedCornerShape(2.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                ) { Text("Uninstall", color = Color.White, fontSize = 11.sp) }
+                Spacer(Modifier.height(3.dp))
+                Button(
+                    onClick = onLaunch,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    modifier = Modifier.fillMaxWidth().height(30.dp),
+                    shape = RoundedCornerShape(2.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                ) { Text("Launch / Add to Shortcuts", color = Color.White, fontSize = 11.sp) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameCoverArt(appId: Int, modifier: Modifier = Modifier) {
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(appId) {
+        loaded = false
+        bitmap = withContext(Dispatchers.IO) {
+            tryBitmap("https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/library_600x900.jpg")
+                ?: tryBitmap("https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg")
+        }
+        loaded = true
     }
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density + 0.5f).toInt()
-
-    companion object {
-        private val BG      = Color.parseColor("#1B1B1B")
-        private val CARD_BG = Color.parseColor("#252525")
-        private val GRAY    = Color.parseColor("#AAAAAA")
-        private val BLUE    = Color.parseColor("#4FC3F7")
-
-        // Shared LRU image cache (4 MB cap) and fixed thread pool across instances
-        private val imageCache = LruCache<Int, Bitmap>(4 * 1024 * 1024)
-        private val imageExecutor = Executors.newFixedThreadPool(4)
+    Box(
+        modifier = modifier.background(Color(0xFF2A2A2A)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else if (loaded) {
+            Text("\u00d7", color = Color(0xFF666666), fontSize = 24.sp)
+        } else {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = Color(0xFFBB86FC),
+                strokeWidth = 2.dp,
+            )
+        }
     }
+}
+
+private suspend fun tryBitmap(url: String): Bitmap? = withContext(Dispatchers.IO) {
+    try {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.connectTimeout = 6_000
+        conn.readTimeout = 10_000
+        conn.connect()
+        if (conn.responseCode == 200)
+            BitmapFactory.decodeStream(conn.inputStream)
+        else null
+    } catch (_: Exception) { null }
+}
+
+@Composable
+private fun ExePickerDialog(
+    title: String,
+    candidates: List<String>,
+    onDismiss: () -> Unit,
+    onSelected: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                candidates.forEach { path ->
+                    val f = java.io.File(path)
+                    val parent = f.parentFile
+                    val label = if (parent != null) "${parent.name}/${f.name}" else f.name
+                    TextButton(
+                        onClick = { onSelected(path) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(label, modifier = Modifier.weight(1f)) }
+                }
+            }
+        },
+        confirmButton = {},
+    )
+}
+
+private fun fmtSize(bytes: Long): String = when {
+    bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L     -> "%.1f MB".format(bytes / 1_048_576.0)
+    else                    -> "%.0f KB".format(bytes / 1024.0)
 }

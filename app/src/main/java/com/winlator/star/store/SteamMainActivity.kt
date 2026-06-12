@@ -1,23 +1,23 @@
 package com.winlator.star.store
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.winlator.star.ui.theme.WinlatorTheme
 
-/**
- * Entry point for the Steam store tab.
- *
- * On Android 13+ (API 33) POST_NOTIFICATIONS requires a runtime grant before
- * we can start the foreground service. We request it here and proceed in
- * onRequestPermissionsResult (or immediately if already granted / pre-API 33).
- *
- * The notification prompt appears at a natural checkpoint — after the user
- * consciously opened the Steam tab — rather than interrupting first-run setup.
- */
-class SteamMainActivity : Activity() {
+class SteamMainActivity : ComponentActivity() {
 
     companion object {
         private const val REQ_NOTIFICATIONS = 1001
@@ -27,12 +27,15 @@ class SteamMainActivity : Activity() {
         super.onCreate(savedInstanceState)
         SteamPrefs.init(this)
 
+        setContent {
+            WinlatorTheme { SteamMainContent() }
+        }
+
         if (needsNotificationPermission()) {
             requestPermissions(
                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 REQ_NOTIFICATIONS,
             )
-            // proceed in onRequestPermissionsResult
         } else {
             proceed()
         }
@@ -45,14 +48,9 @@ class SteamMainActivity : Activity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_NOTIFICATIONS) {
-            // Proceed regardless of whether the user granted or denied —
-            // the service will start but just won't show a persistent notification
-            // if denied (Android silently suppresses it; no crash).
             proceed()
         }
     }
-
-    // -------------------------------------------------------------------------
 
     private fun needsNotificationPermission(): Boolean {
         if (Build.VERSION.SDK_INT < 33) return false
@@ -68,5 +66,17 @@ class SteamMainActivity : Activity() {
             startActivity(Intent(this, SteamLoginActivity::class.java))
         }
         finish()
+    }
+}
+
+@Composable
+private fun SteamMainContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1B1B1B)),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = Color(0xFFBB86FC))
     }
 }

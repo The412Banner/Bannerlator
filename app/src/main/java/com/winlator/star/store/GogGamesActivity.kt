@@ -1109,7 +1109,7 @@ private fun GameGridTile(
                         .align(Alignment.TopStart)
                         .padding(start = 4.dp, top = 4.dp)
                         .background(
-                            if (game.generation == 2) Color(0xCC0277BD) else Color(0xCCE65100),
+                            if (game.generation == 2) Color(0xCCBB86FC) else Color(0xCC9C5CFF),
                             RoundedCornerShape(3.dp),
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp),
@@ -1194,7 +1194,7 @@ private fun GenBadge(generation: Int) {
         color = Color.White,
         modifier = Modifier
             .background(
-                if (generation == 2) Color(0xFF4FC3F7) else Color(0xFFFF9800),
+                if (generation == 2) Color(0xFFBB86FC) else Color(0xFF9C5CFF),
                 RoundedCornerShape(3.dp),
             )
             .padding(horizontal = 5.dp, vertical = 2.dp),

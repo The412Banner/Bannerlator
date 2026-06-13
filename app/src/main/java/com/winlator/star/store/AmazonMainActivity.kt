@@ -88,7 +88,7 @@ private fun AmazonMainScreen(
     onSignOut: () -> Unit,
 ) {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D0D)),
+        modifier = Modifier.fillMaxSize().background(Color.Black),
         contentAlignment = Alignment.Center,
     ) {
         if (isLoggedIn) {
@@ -104,11 +104,11 @@ private fun AmazonLoginCard(onLoginClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1410))
+            .background(Color.Black)
             .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Amazon Games", fontSize = 32.sp, color = Color(0xFFFF9900), fontWeight = FontWeight.Bold)
+        Text("Amazon Games", fontSize = 32.sp, color = Color(0xFFBB86FC), fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text(
             "Sign in to access your Amazon game library",
@@ -118,10 +118,10 @@ private fun AmazonLoginCard(onLoginClick: () -> Unit) {
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onLoginClick,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9900)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
             modifier = Modifier.height(48.dp),
-            shape = RoundedCornerShape(4.dp),
-        ) { Text("Login with Amazon", color = Color.Black) }
+            shape = RoundedCornerShape(8.dp),
+        ) { Text("Login with Amazon", color = Color.White) }
     }
 }
 
@@ -134,26 +134,26 @@ private fun AmazonLoggedInCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1410))
+            .background(Color.Black)
             .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Amazon Games", fontSize = 32.sp, color = Color(0xFFFF9900), fontWeight = FontWeight.Bold)
+        Text("Amazon Games", fontSize = 32.sp, color = Color(0xFFBB86FC), fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text(statusText, fontSize = 13.sp, color = Color(0xFFCCCCCC))
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onViewLibrary,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9900)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
             modifier = Modifier.height(48.dp),
-            shape = RoundedCornerShape(4.dp),
-        ) { Text("View Game Library", color = Color.Black) }
+            shape = RoundedCornerShape(8.dp),
+        ) { Text("View Game Library", color = Color.White) }
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onSignOut,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444444)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
             modifier = Modifier.height(48.dp),
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(8.dp),
         ) { Text("Sign Out", color = Color.White) }
     }
 }

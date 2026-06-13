@@ -84,7 +84,7 @@ private fun EpicMainScreen(
     onSignOut: () -> Unit,
 ) {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D0D)),
+        modifier = Modifier.fillMaxSize().background(Color.Black),
         contentAlignment = Alignment.Center,
     ) {
         if (isLoggedIn) {
@@ -100,11 +100,11 @@ private fun EpicLoginCard(onLoginClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0F1117))
+            .background(Color.Black)
             .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Epic Games", fontSize = 32.sp, color = Color(0xFF0078F0), fontWeight = FontWeight.Bold)
+        Text("Epic Games", fontSize = 32.sp, color = Color(0xFFBB86FC), fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text(
             "Sign in to access your Epic game library",
@@ -114,9 +114,9 @@ private fun EpicLoginCard(onLoginClick: () -> Unit) {
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onLoginClick,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0078F0)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
             modifier = Modifier.height(48.dp),
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(8.dp),
         ) { Text("Login with Epic Games", color = Color.White) }
     }
 }
@@ -130,26 +130,26 @@ private fun EpicLoggedInCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0F1117))
+            .background(Color.Black)
             .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Epic Games", fontSize = 32.sp, color = Color(0xFF0078F0), fontWeight = FontWeight.Bold)
+        Text("Epic Games", fontSize = 32.sp, color = Color(0xFFBB86FC), fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text(statusText, fontSize = 13.sp, color = Color(0xFFCCCCCC))
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onViewLibrary,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0078F0)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
             modifier = Modifier.height(48.dp),
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(8.dp),
         ) { Text("View Game Library", color = Color.White) }
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onSignOut,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF444444)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
             modifier = Modifier.height(48.dp),
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(8.dp),
         ) { Text("Sign Out", color = Color.White) }
     }
 }

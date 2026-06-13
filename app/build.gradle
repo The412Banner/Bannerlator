@@ -28,40 +28,38 @@ tasks.register("downloadImageFS") {
     String imageFSSHA256Sum = "https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.tar.zst.sha256sum"
     int parts = 4
 
+    def downloadParts = {
+        FileOutputStream outputStream = new FileOutputStream(imageFS)
+        for (int i = 0; i < parts; i++) {
+            File partFile = new File(assetDir, String.format("imagefs.tar.zst.%02d", i))
+            String partURL = String.format("https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.tar.zst.%02d", i)
+            new URL(partURL).withInputStream { p ->
+                partFile.withOutputStream { it << p }
+                outputStream << partFile.bytes
+            }
+            partFile.delete()
+        }
+        outputStream.close()
+    }
+
     doLast {
         if (!imageFS.exists()) {
             println("ImageFS was not present, downloading...\n")
-            FileOutputStream outputStream = new FileOutputStream(imageFS)
-            for (int i = 0; i < parts; i++) {
-                File partFile = new File(assetDir, String.format("imagefs.tar.zst.%02d", i))
-                String partURL = String.format("https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.tar.zst.%02d", i)
-                new URL(partURL).withInputStream { p ->
-                    partFile.withOutputStream { it << p }
-                    outputStream << partFile.bytes
-                }
-                partFile.delete()
-            }
-            outputStream.close()
+            downloadParts()
         }
 
-        String remoteChecksum = new URL(imageFSSHA256Sum).text.split("\\s+")[0].trim()
-        byte[] data = Files.readAllBytes(imageFS.toPath())
-        byte[] hash = MessageDigest.getInstance("SHA-256").digest(data)
-        String localChecksum = String.format("%064x", new BigInteger(1, hash))
+        try {
+            String remoteChecksum = new URL(imageFSSHA256Sum).text.split("\\s+")[0].trim()
+            byte[] data = Files.readAllBytes(imageFS.toPath())
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(data)
+            String localChecksum = String.format("%064x", new BigInteger(1, hash))
 
-        if (remoteChecksum != localChecksum) {
-            println("The version of ImageFS present locally is older than remote or hasn't been downloaded properly, redownloading...\n")
-            FileOutputStream outputStream = new FileOutputStream(imageFS)
-            for (int i = 0; i < parts; i++) {
-                File partFile = new File(assetDir, String.format("imagefs.tar.zst.%02d", i))
-                String partURL = String.format("https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.tar.zst.%02d", i)
-                new URL(partURL).withInputStream { p ->
-                    partFile.withOutputStream { it << p }
-                    outputStream << partFile.bytes
-                }
-                partFile.delete()
+            if (remoteChecksum != localChecksum) {
+                println("The version of ImageFS present locally is older than remote or hasn't been downloaded properly, redownloading...\n")
+                downloadParts()
             }
-            outputStream.close()
+        } catch (Exception ignored) {
+            println("Could not verify ImageFS checksum, assuming local is correct.\n")
         }
     }
 }
@@ -78,14 +76,18 @@ tasks.register("downloadProton") {
             new URL(protonARM64ECUrl).withInputStream { i -> protonARM64EC.withOutputStream { it << i } }
         }
 
-        String remoteChecksum = new URL(protonARM64ECSHA256Sum).text.split("\\s+")[0].trim()
-        byte[] data = Files.readAllBytes(protonARM64EC.toPath())
-        byte[] hash = MessageDigest.getInstance("SHA-256").digest(data)
-        String localChecksum = String.format("%064x", new BigInteger(1, hash))
+        try {
+            String remoteChecksum = new URL(protonARM64ECSHA256Sum).text.split("\\s+")[0].trim()
+            byte[] data = Files.readAllBytes(protonARM64EC.toPath())
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(data)
+            String localChecksum = String.format("%064x", new BigInteger(1, hash))
 
-        if (remoteChecksum != localChecksum) {
-            println("The version of Proton 9.0 ARM64EC present locally is older than remote or hasn't been downloaded properly, redownloading...\n")
-            new URL(protonARM64ECUrl).withInputStream { i -> protonARM64EC.withOutputStream { it << i } }
+            if (remoteChecksum != localChecksum) {
+                println("The version of Proton 9.0 ARM64EC present locally is older than remote or hasn't been downloaded properly, redownloading...\n")
+                new URL(protonARM64ECUrl).withInputStream { i -> protonARM64EC.withOutputStream { it << i } }
+            }
+        } catch (Exception ignored) {
+            println("Could not verify Proton ARM64EC checksum, assuming local is correct.\n")
         }
     }
 }

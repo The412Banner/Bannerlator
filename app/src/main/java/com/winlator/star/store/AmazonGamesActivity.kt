@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -112,8 +113,11 @@ class AmazonGamesActivity : ComponentActivity() {
                     statusText = statusText,
                     gamesVisible = gamesVisible,
                     refreshEnabled = refreshEnabled,
-                    downloadStates = downloadStates,
                     expandedProductId = expandedProductId,
+                    onToggleExpansion = { game ->
+                        expandedProductId = if (expandedProductId == game.productId) null
+                        else game.productId
+                    },
                     onSearchChange = { q ->
                         searchQuery = q
                         applyFilter()
@@ -752,6 +756,7 @@ private fun AmazonGamesScreen(
     onSearchChange: (String) -> Unit,
     onViewModeToggle: () -> Unit,
     onRefresh: () -> Unit,
+    onToggleExpansion: (AmazonGame) -> Unit,
     onBack: () -> Unit,
     onCardClick: (AmazonGame) -> Unit,
     onArrowClick: () -> Unit,
@@ -766,12 +771,12 @@ private fun AmazonGamesScreen(
         else games.filter { it.title.contains(searchQuery, ignoreCase = true) }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(Color(COLOR_ROOT_BG))) {
+    Column(modifier = Modifier.fillMaxSize().background(Color(AmazonGamesActivity.COLOR_ROOT_BG))) {
         // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(COLOR_HDR_BG))
+                .background(Color(AmazonGamesActivity.COLOR_HDR_BG))
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -786,7 +791,7 @@ private fun AmazonGamesScreen(
             Text(
                 text = "Amazon Games",
                 fontSize = 18.sp,
-                color = Color(COLOR_ACCENT),
+                color = Color(AmazonGamesActivity.COLOR_ACCENT),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f).padding(start = 12.dp),
             )
@@ -799,7 +804,7 @@ private fun AmazonGamesScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) {
                 Text(
-                    text = viewModeIcon(viewMode),
+                    text = AmazonGamesActivity.viewModeIcon(viewMode),
                     color = Color.White,
                     fontSize = 16.sp,
                 )
@@ -879,10 +884,7 @@ private fun AmazonGamesScreen(
                         columns = 5,
                         downloadStates = downloadStates,
                         expandedProductId = expandedProductId,
-                        onToggleExpansion = { game ->
-                            expandedProductId = if (expandedProductId == game.productId) null
-                            else game.productId
-                        },
+                        onToggleExpansion = onToggleExpansion,
                         onInstallOrLaunch = onInstallOrLaunch,
                         onLaunchAdd = onLaunchAdd,
                         onCancel = onCancel,
@@ -894,10 +896,7 @@ private fun AmazonGamesScreen(
                         columns = 5,
                         downloadStates = downloadStates,
                         expandedProductId = expandedProductId,
-                        onToggleExpansion = { game ->
-                            expandedProductId = if (expandedProductId == game.productId) null
-                            else game.productId
-                        },
+                        onToggleExpansion = onToggleExpansion,
                         onInstallOrLaunch = onInstallOrLaunch,
                         onLaunchAdd = onLaunchAdd,
                         onCancel = onCancel,
@@ -975,7 +974,7 @@ private fun GameCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(COLOR_CARD_BG), RoundedCornerShape(6.dp))
+            .background(Color(AmazonGamesActivity.COLOR_CARD_BG), RoundedCornerShape(6.dp))
             .clickable(onClick = onCardClick)
             .padding(10.dp),
     ) {
@@ -1082,14 +1081,14 @@ private fun GameCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .padding(top = 6.dp),
-                    color = Color(COLOR_ACCENT),
+                    color = Color(AmazonGamesActivity.COLOR_ACCENT),
                     trackColor = Color(0xFF333333),
                 )
                 if (!ds.isComplete) {
                     Text(
                         text = "${ds.progress}%",
                         fontSize = 12.sp,
-                        color = Color(COLOR_ACCENT),
+                        color = Color(AmazonGamesActivity.COLOR_ACCENT),
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -1124,9 +1123,9 @@ private fun GameCard(
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = when {
-                        ds != null && ds.isVisible -> Color(COLOR_CANCEL)
-                        isInstalled -> Color(COLOR_ADD)
-                        else -> Color(COLOR_ACCENT)
+                        ds != null && ds.isVisible -> Color(AmazonGamesActivity.COLOR_CANCEL)
+                        isInstalled -> Color(AmazonGamesActivity.COLOR_ADD)
+                        else -> Color(AmazonGamesActivity.COLOR_ACCENT)
                     },
                 ),
                 modifier = Modifier.fillMaxWidth().height(40.dp),
@@ -1184,6 +1183,7 @@ private fun GameGridView(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GameGridTile(
     game: AmazonGame,
@@ -1273,7 +1273,7 @@ private fun GameGridTile(
                     LinearProgressIndicator(
                         progress = { ds.progress / 100f },
                         modifier = Modifier.fillMaxWidth().height(3.dp),
-                        color = Color(COLOR_ACCENT),
+                        color = Color(AmazonGamesActivity.COLOR_ACCENT),
                         trackColor = Color(0xFF333333),
                     )
                 }
@@ -1286,9 +1286,9 @@ private fun GameGridTile(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = when {
-                            ds != null && ds.isVisible -> Color(COLOR_CANCEL)
-                            isInstalled -> Color(COLOR_ADD)
-                            else -> Color(COLOR_ACCENT)
+                            ds != null && ds.isVisible -> Color(AmazonGamesActivity.COLOR_CANCEL)
+                            isInstalled -> Color(AmazonGamesActivity.COLOR_ADD)
+                            else -> Color(AmazonGamesActivity.COLOR_ACCENT)
                         },
                     ),
                     modifier = Modifier.fillMaxWidth().height(30.dp),

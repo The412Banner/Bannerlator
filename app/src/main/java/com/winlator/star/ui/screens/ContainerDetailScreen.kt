@@ -82,11 +82,10 @@ fun ContainerDetailScreen(
 
     val tabTitles = listOf(
         "GENERAL",
-        stringResource(R.string.win_components),
-        stringResource(R.string.environment_variables),
-        stringResource(R.string.drives),
-        stringResource(R.string.advanced),
-        stringResource(R.string.xr)
+        "ENVIROMENT",
+        "DRIVES",
+        "WIN COMPONENTS",
+        "ADVANCED"
     )
 
     Scaffold(
@@ -149,17 +148,20 @@ fun ContainerDetailScreen(
                         )
                         WineConfigTab(viewModel, colorPickerViewRef)
                     }
-                    1 -> WinComponentsTab(viewModel)
-                    2 -> EnvVarsTab(viewModel, envVarsViewRef)
-                    3 -> DrivesTab(viewModel)
-                    4 -> AdvancedTab(
-                        viewModel,
-                        cpuListViewRef,
-                        cpuListWoW64Ref,
-                        onShowBox64DownloadSheet = { showBox64DownloadSheet = true },
-                        onShowFexCoreDownloadSheet = { showFexCoreDownloadSheet = true },
-                    )
-                    5 -> XRTab(viewModel)
+                    1 -> EnvVarsTab(viewModel, envVarsViewRef)
+                    2 -> DrivesTab(viewModel)
+                    3 -> WinComponentsTab(viewModel)
+                    4 -> Column {
+                        AdvancedTab(
+                            viewModel,
+                            cpuListViewRef,
+                            cpuListWoW64Ref,
+                            onShowBox64DownloadSheet = { showBox64DownloadSheet = true },
+                            onShowFexCoreDownloadSheet = { showFexCoreDownloadSheet = true },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        XRTab(viewModel)
+                    }
                 }
             }
 

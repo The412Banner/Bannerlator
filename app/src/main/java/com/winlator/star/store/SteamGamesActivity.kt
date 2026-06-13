@@ -436,17 +436,17 @@ private fun GameListItem(
                 Spacer(Modifier.height(3.dp))
                 Button(
                     onClick = onUninstall,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                     modifier = Modifier.fillMaxWidth().height(30.dp),
-                    shape = RoundedCornerShape(2.dp),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                 ) { Text("Uninstall", color = Color.White, fontSize = 11.sp) }
                 Spacer(Modifier.height(3.dp))
                 Button(
                     onClick = onLaunch,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                     modifier = Modifier.fillMaxWidth().height(30.dp),
-                    shape = RoundedCornerShape(2.dp),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                 ) { Text("Launch / Add to Shortcuts", color = Color.White, fontSize = 11.sp) }
             }
@@ -469,7 +469,7 @@ private fun GameCoverArt(appId: Int, modifier: Modifier = Modifier) {
     }
 
     Box(
-        modifier = modifier.background(Color(0xFF1E1A2E)),
+        modifier = modifier.background(Color.Black),
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {

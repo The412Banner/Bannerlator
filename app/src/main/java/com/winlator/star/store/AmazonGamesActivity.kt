@@ -701,7 +701,7 @@ class AmazonGamesActivity : ComponentActivity() {
         private const val VIEW_MODE_KEY = "amazon_view_mode"
 
         val COLOR_ACCENT = 0xFFBB86FC.toInt()
-        val COLOR_ADD = 0xFF2E7D32.toInt()
+        val COLOR_ADD = 0xFFBB86FC.toInt()
         val COLOR_CANCEL = 0xFFCC3333.toInt()
         val COLOR_CARD_BG = 0xFF000000.toInt()
         val COLOR_HDR_BG = 0xFF000000.toInt()

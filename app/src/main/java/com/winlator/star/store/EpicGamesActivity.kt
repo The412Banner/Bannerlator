@@ -852,12 +852,12 @@ private fun GameListCard(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = when {
                             downloadState.isActive -> Color(0xFFCC3333)
-                            downloadState.installed -> Color(0xFF2E7D32)
+                            downloadState.installed -> Color(0xFFBB86FC)
                             else -> Color(0xFFBB86FC)
                         },
                     ),
                     modifier = Modifier.fillMaxWidth().height(40.dp).padding(top = 8.dp),
-                    shape = RoundedCornerShape(0.dp),
+                    shape = RoundedCornerShape(8.dp),
                 ) {
                     Text(
                         when {
@@ -962,7 +962,7 @@ private fun GameGridTile(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = when {
                             downloadState.isActive -> Color(0xFFCC3333)
-                            downloadState.installed -> Color(0xFF2E7D32)
+                            downloadState.installed -> Color(0xFFBB86FC)
                             else -> Color(0xFFBB86FC)
                         },
                     ),

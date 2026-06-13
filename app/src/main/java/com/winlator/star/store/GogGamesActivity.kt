@@ -551,7 +551,7 @@ class GogGamesActivity : ComponentActivity() {
                         status = "Installed",
                         isInstalled = true,
                         buttonText = "Add Game",
-                        buttonColor = 0xFF2E7D32.toInt(),
+                        buttonColor = 0xFFBB86FC.toInt(),
                         progressVisible = true,
                     )
                     applyFilter(searchQuery)
@@ -698,7 +698,7 @@ private data class GameDownloadState(
     val status: String = "",
     val progressVisible: Boolean = false,
     val buttonText: String = "Install",
-    val buttonColor: Int = 0xFF7033FF.toInt(),
+    val buttonColor: Int = 0xFFBB86FC.toInt(),
     val isInstalled: Boolean = false,
     val cancelRunnable: Runnable? = null,
 )
@@ -1048,7 +1048,7 @@ private fun ExpandedSection(
         val btnText = downloadState?.buttonText
             ?: if (isInstalled) "Add to Launcher" else "Install"
         val btnColor = downloadState?.buttonColor
-            ?: if (isInstalled) 0xFF2E7D32.toInt() else 0xFF7033FF.toInt()
+            ?: if (isInstalled) 0xFFBB86FC.toInt() else 0xFFBB86FC.toInt()
 
         Button(
             onClick = {
@@ -1152,7 +1152,7 @@ private fun GameGridTile(
             val btnText = downloadState?.buttonText
                 ?: if (isInstalled) "Add to Launcher" else "Install"
             val btnColor = downloadState?.buttonColor
-                ?: if (isInstalled) 0xFF2E7D32.toInt() else 0xFFBB86FC.toInt()
+                ?: 0xFFBB86FC.toInt()
 
             Column(
                 modifier = Modifier

@@ -64,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import com.winlator.star.R
 import com.winlator.star.ui.theme.GlowPurple
 import com.winlator.star.ui.theme.Primary
@@ -413,43 +414,22 @@ private fun GraphicsContent(state: XServerDrawerState) {
     Spacer(Modifier.height(4.dp))
     HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-    // FSR section
-    val initFsrEnabled by XServerDialogState.fsrEnabled.collectAsState()
-    val initFsrMode by XServerDialogState.fsrMode.collectAsState()
-    val initFsrLevel by XServerDialogState.fsrLevel.collectAsState()
-    val initHdrEnabled by XServerDialogState.hdrEnabled.collectAsState()
-    var fsrEnabled by remember(initFsrEnabled) { mutableStateOf(initFsrEnabled) }
-    var fsrMode by remember(initFsrMode) { mutableIntStateOf(initFsrMode) }
-    var fsrLevel by remember(initFsrLevel) { mutableFloatStateOf(initFsrLevel) }
-    var hdrEnabled by remember(initHdrEnabled) { mutableStateOf(initHdrEnabled) }
-    var modeDropdownExpanded by remember { mutableStateOf(false) }
-    val modeNames = listOf("Super Resolution", "DLS (Color Boost)")
+    // SGSR section
+    val initSgsrEnabled   by XServerDialogState.sgsrEnabled.collectAsState()
+    val initSgsrSharpness by XServerDialogState.sgsrSharpness.collectAsState()
+    val initHdrEnabled    by XServerDialogState.hdrEnabled.collectAsState()
+    var sgsrEnabled   by remember(initSgsrEnabled)   { mutableStateOf(initSgsrEnabled) }
+    var sgsrSharpness by remember(initSgsrSharpness)  { mutableIntStateOf(initSgsrSharpness) }
+    var hdrEnabled    by remember(initHdrEnabled)     { mutableStateOf(initHdrEnabled) }
 
-    ToggleRow("FSR", fsrEnabled) { fsrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
+    ToggleRow("SGSR", sgsrEnabled) { sgsrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
 
-    if (fsrEnabled) {
+    if (sgsrEnabled) {
         Spacer(Modifier.height(4.dp))
-        ExposedDropdownMenuBox(expanded = modeDropdownExpanded, onExpandedChange = { modeDropdownExpanded = it }) {
-            OutlinedTextField(
-                value = modeNames.getOrElse(fsrMode) { modeNames[0] },
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Mode", color = MutedWhite) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeDropdownExpanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                singleLine = true,
-            )
-            ExposedDropdownMenu(expanded = modeDropdownExpanded, onDismissRequest = { modeDropdownExpanded = false }) {
-                modeNames.forEachIndexed { i, name ->
-                    DropdownMenuItem(text = { Text(name) }, onClick = { fsrMode = i; modeDropdownExpanded = false; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) })
-                }
-            }
-        }
-
-        LabeledSlider("Strength", fsrLevel, 1f..5f, { fsrLevel = it }, { pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }, steps = 3)
+        IntSlider("Sharpness", sgsrSharpness, 0..100, { sgsrSharpness = it }, { pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) })
     }
 
-    ToggleRow("HDR", hdrEnabled) { hdrEnabled = it; pushFsrUpdate(fsrEnabled, fsrMode, fsrLevel, hdrEnabled) }
+    ToggleRow("HDR", hdrEnabled) { hdrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
 
     HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
@@ -510,8 +490,30 @@ private fun GraphicsContent(state: XServerDrawerState) {
     }
 }
 
-private fun pushFsrUpdate(enabled: Boolean, mode: Int, level: Float, hdr: Boolean) {
-    XServerDialogState.onFsrUpdate?.invoke(enabled, mode, level, hdr)
+private fun pushSgsrUpdate(enabled: Boolean, sharpness: Int, hdr: Boolean) {
+    XServerDialogState.onSgsrUpdate?.invoke(enabled, sharpness, hdr)
+}
+
+@Composable
+private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueChange: (Int) -> Unit, onValueChangeFinished: (() -> Unit)? = null) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = label, style = MaterialTheme.typography.bodySmall, color = DimWhite)
+            Text(text = "$value", style = MaterialTheme.typography.bodySmall, color = Primary, fontWeight = FontWeight.Medium)
+        }
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValueChange(it.roundToInt()) },
+            onValueChangeFinished = { onValueChangeFinished?.invoke() },
+            valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
+            steps = valueRange.last - valueRange.first - 1,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable

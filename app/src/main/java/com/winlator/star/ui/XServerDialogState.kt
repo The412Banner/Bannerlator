@@ -36,31 +36,27 @@ object XServerDialogState {
     @JvmField var onMagnifierHide: Runnable? = null
 
     // -------------------------------------------------------------------------
-    // FSR overlay
+    // SGSR overlay
     // -------------------------------------------------------------------------
-    private val _fsrVisible  = MutableStateFlow(false)
-    val fsrVisible: StateFlow<Boolean> = _fsrVisible
+    private val _sgsrVisible   = MutableStateFlow(false)
+    val sgsrVisible: StateFlow<Boolean> = _sgsrVisible
 
-    private val _fsrEnabled  = MutableStateFlow(false)
-    val fsrEnabled: StateFlow<Boolean> = _fsrEnabled
+    private val _sgsrEnabled   = MutableStateFlow(false)
+    val sgsrEnabled: StateFlow<Boolean> = _sgsrEnabled
 
-    private val _fsrMode     = MutableStateFlow(0)   // 0 = Super Resolution, 1 = DLS
-    val fsrMode: StateFlow<Int> = _fsrMode
+    private val _sgsrSharpness = MutableStateFlow(50)
+    val sgsrSharpness: StateFlow<Int> = _sgsrSharpness
 
-    private val _fsrLevel    = MutableStateFlow(1.0f)
-    val fsrLevel: StateFlow<Float> = _fsrLevel
-
-    private val _hdrEnabled  = MutableStateFlow(false)
+    private val _hdrEnabled    = MutableStateFlow(false)
     val hdrEnabled: StateFlow<Boolean> = _hdrEnabled
 
-    fun setFsrVisible(v: Boolean)  { _fsrVisible.value = v }
-    fun setFsrEnabled(v: Boolean)  { _fsrEnabled.value = v }
-    fun setFsrMode(v: Int)         { _fsrMode.value = v }
-    fun setFsrLevel(v: Float)      { _fsrLevel.value = v }
-    fun setHdrEnabled(v: Boolean)  { _hdrEnabled.value = v }
+    fun setSgsrVisible(v: Boolean)    { _sgsrVisible.value = v }
+    fun setSgsrEnabled(v: Boolean)    { _sgsrEnabled.value = v }
+    fun setSgsrSharpness(v: Int)      { _sgsrSharpness.value = v }
+    fun setHdrEnabled(v: Boolean)     { _hdrEnabled.value = v }
 
-    fun interface FsrUpdateCallback { fun invoke(enabled: Boolean, mode: Int, level: Float, hdr: Boolean) }
-    @JvmField var onFsrUpdate: FsrUpdateCallback? = null
+    fun interface SgsrUpdateCallback { fun invoke(enabled: Boolean, sharpness: Int, hdr: Boolean) }
+    @JvmField var onSgsrUpdate: SgsrUpdateCallback? = null
 
     // -------------------------------------------------------------------------
     // Vibration dialog
@@ -263,10 +259,9 @@ object XServerDialogState {
         _activeDialog.value    = ActiveDialog.NONE
         _magnifierVisible.value = false
         _magnifierZoom.value   = 1.0f
-        _fsrVisible.value      = false
-        _fsrEnabled.value      = false
-        _fsrMode.value         = 0
-        _fsrLevel.value        = 1.0f
+        _sgsrVisible.value     = false
+        _sgsrEnabled.value     = false
+        _sgsrSharpness.value   = 50
         _hdrEnabled.value      = false
         _vibrationSlots.value  = emptyList()
         _logLines.value        = emptyList()
@@ -293,7 +288,7 @@ object XServerDialogState {
         _tmMemInfo.value       = ""
         _tmCount.value         = 0
         onMagnifierZoom = null; onMagnifierHide = null
-        onFsrUpdate = null
+        onSgsrUpdate = null
         onVibrationSlotChanged = null
         onInputControlsConfirm = null; onInputControlsSettings = null
         onScreenEffectsApply = null; onSeAddProfile = null; onSeRemoveProfile = null

@@ -9,7 +9,7 @@ import com.winlator.star.ui.dialogs.DebugDialogContent
 import com.winlator.star.ui.dialogs.InputControlsDialog
 import com.winlator.star.ui.dialogs.ScreenEffectsDialog
 import com.winlator.star.ui.dialogs.VibrationDialog
-import com.winlator.star.ui.overlays.FSROverlay
+import com.winlator.star.ui.overlays.SgsrOverlay
 import com.winlator.star.ui.overlays.MagnifierOverlay
 import com.winlator.star.ui.theme.WinlatorTheme
 
@@ -26,7 +26,7 @@ fun XServerDialogHost() {
     val state = XServerDialogState
     val activeDialog     by state.activeDialog.collectAsState()
     val magnifierVisible by state.magnifierVisible.collectAsState()
-    val fsrVisible       by state.fsrVisible.collectAsState()
+    val sgsrVisible      by state.sgsrVisible.collectAsState()
 
     when (activeDialog) {
         XServerDialogState.ActiveDialog.VIBRATION      -> VibrationDialog(state)
@@ -38,5 +38,5 @@ fun XServerDialogHost() {
     }
 
     if (magnifierVisible) MagnifierOverlay(state)
-    if (fsrVisible) FSROverlay(state)
+    if (sgsrVisible) SgsrOverlay(state)
 }

@@ -102,38 +102,7 @@ fun AppDrawerContent(
             .background(PureBlack)
             .verticalScroll(rememberScrollState()),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(PureBlack)
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-        ) {
-            Image(
-                painter = painterResource(R.mipmap.ic_launcher_foreground),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "Star Bionic",
-                style = MaterialTheme.typography.titleMedium,
-                color = DimWhite,
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.4f)
-                .padding(start = 20.dp)
-                .height(2.dp)
-                .background(
-                    Brush.horizontalGradient(listOf(GlowPurple, GlowPurple.copy(alpha = 0.1f))),
-                    RoundedCornerShape(1.dp)
-                )
-        )
-
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(12.dp))
 
         DrawerSection("Emulation")
         DrawerItem(Screen.Games,         currentRoute, onNavigate)

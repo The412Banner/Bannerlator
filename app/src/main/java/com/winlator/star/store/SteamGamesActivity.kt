@@ -8,6 +8,7 @@ import android.util.LruCache
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -496,16 +497,16 @@ private fun GameGridTile(
 ) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF1A1A2E))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+            .border(1.dp, Color(0xFFBB86FC).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
-                    .background(Color(0xFF1E1A2E)),
+                    .height(140.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 GameCoverArt(
@@ -522,7 +523,7 @@ private fun GameGridTile(
                             listOf(Color(0x44000000), Color(0xEE000000)),
                         ),
                     )
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
             ) {
                 Text(
                     text = game.name.ifEmpty { "App ${game.appId}" },

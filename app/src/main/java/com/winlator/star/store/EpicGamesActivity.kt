@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -888,8 +889,9 @@ private fun GameGridTile(
 
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(5.dp))
-            .background(Color(0xFF1E1A2E))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+            .border(1.dp, Color(0xFFBB86FC).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clickable {
                 showAction = if (showAction) false else true
             },
@@ -898,8 +900,7 @@ private fun GameGridTile(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(artHeightDp.dp)
-                    .background(Color(0xFF1A1A2E)),
+                    .height(artHeightDp.dp),
             ) {
                 val imageUrl = if (game.artCover.isNotEmpty()) game.artCover else game.artSquare
                 if (imageUrl.isNotEmpty()) {
@@ -920,12 +921,12 @@ private fun GameGridTile(
                             listOf(Color(0x44000000), Color(0xEE000000)),
                         ),
                     )
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = game.title,
-                    fontSize = 9.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 1,
@@ -933,7 +934,7 @@ private fun GameGridTile(
                     modifier = Modifier.weight(1f),
                 )
                 if (downloadState.installed) {
-                    Text(" \u2713", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF66BB6A))
+                    Text(" \u2713", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF66BB6A))
                 }
             }
         }
@@ -942,8 +943,8 @@ private fun GameGridTile(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1A1A2E))
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
+                    .background(Color(0xFF0D0D0D))
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
             ) {
                 if (downloadState.showProgress) {
                     LinearProgressIndicator(
@@ -966,8 +967,8 @@ private fun GameGridTile(
                             else -> Color(0xFFBB86FC)
                         },
                     ),
-                    modifier = Modifier.fillMaxWidth().height(30.dp).padding(top = 2.dp),
-                    shape = RoundedCornerShape(0.dp),
+                    modifier = Modifier.fillMaxWidth().height(32.dp).padding(top = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(
@@ -977,7 +978,7 @@ private fun GameGridTile(
                             else -> "Install"
                         },
                         color = Color.White,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                     )
                 }
             }

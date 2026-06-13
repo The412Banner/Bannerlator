@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -1076,8 +1078,9 @@ private fun GameGridTile(
 ) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(5.dp))
-            .background(Color(0xFF1A1A2E))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+            .border(1.dp, Color(0xFFBB86FC).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
     ) {
         // Art area
@@ -1085,8 +1088,7 @@ private fun GameGridTile(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(artHeightDp.dp)
-                    .background(Color(0xFF1A1A2E)),
+                    .height(artHeightDp.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 if (game.imageUrl.isNotEmpty()) {
@@ -1121,16 +1123,16 @@ private fun GameGridTile(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(Color(0x44000000), Color(0xEE000000)),
                         ),
                     )
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = game.title,
-                    fontSize = 9.sp,
+                    fontSize = 11.sp,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1138,7 +1140,7 @@ private fun GameGridTile(
                     modifier = Modifier.weight(1f),
                 )
                 if (downloadState?.isInstalled == true) {
-                    Text(" \u2713", fontSize = 10.sp, color = Color(0xFF66BB6A), fontWeight = FontWeight.Bold)
+                    Text(" \u2713", fontSize = 11.sp, color = Color(0xFF66BB6A), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1149,13 +1151,13 @@ private fun GameGridTile(
             val btnText = downloadState?.buttonText
                 ?: if (isInstalled) "Add to Launcher" else "Install"
             val btnColor = downloadState?.buttonColor
-                ?: if (isInstalled) 0xFF2E7D32.toInt() else 0xFF5533CC.toInt()
+                ?: if (isInstalled) 0xFF2E7D32.toInt() else 0xFFBB86FC.toInt()
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF0D0D1A))
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
+                    .background(Color(0xFF0D0D0D))
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
             ) {
                 if (downloadState?.progressVisible == true) {
                     LinearProgressIndicator(
@@ -1174,10 +1176,10 @@ private fun GameGridTile(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(btnColor)),
-                    modifier = Modifier.fillMaxWidth().height(30.dp),
-                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(0.dp),
-                ) { Text(btnText, color = Color.White, fontSize = 10.sp) }
+                ) { Text(btnText, color = Color.White, fontSize = 11.sp) }
             }
         }
     }

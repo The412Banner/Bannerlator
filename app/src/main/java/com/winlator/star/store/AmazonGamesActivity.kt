@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -48,6 +49,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -1204,7 +1207,9 @@ private fun GameGridTile(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1A2E), RoundedCornerShape(5.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black)
+            .border(1.dp, Color(0xFFBB86FC).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = onToggleExpansion,
                 onLongClick = onLongPress,
@@ -1220,8 +1225,7 @@ private fun GameGridTile(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(tileHeightDp.dp)
-                    .background(Color(0xFF1A1208)),
+                    .height(tileHeightDp.dp),
                 contentScale = ContentScale.Crop,
             )
 
@@ -1231,19 +1235,19 @@ private fun GameGridTile(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color(0x44000000),
                                 Color(0xEE000000),
                             ),
                         ),
                     )
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = game.title,
-                    fontSize = 9.sp,
+                    fontSize = 11.sp,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1253,7 +1257,7 @@ private fun GameGridTile(
                 if (isInstalled) {
                     Text(
                         text = " \u2713",
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         color = Color(0xFF66BB6A),
                         fontWeight = FontWeight.Bold,
                     )
@@ -1266,8 +1270,8 @@ private fun GameGridTile(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1A1208))
-                    .padding(horizontal = 4.dp, vertical = 3.dp),
+                    .background(Color(0xFF0D0D0D))
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
             ) {
                 val ds = downloadState
                 if (ds != null && ds.isVisible) {
@@ -1292,8 +1296,8 @@ private fun GameGridTile(
                             else -> Color(AmazonGamesActivity.COLOR_ACCENT)
                         },
                     ),
-                    modifier = Modifier.fillMaxWidth().height(30.dp),
-                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(
@@ -1303,7 +1307,7 @@ private fun GameGridTile(
                             else -> "Install"
                         },
                         color = Color.White,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                     )
                 }
             }

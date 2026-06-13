@@ -94,7 +94,7 @@ public class BigPictureActivity extends AppCompatActivity {
     private Shortcut currentShortcut;
     private int lastFocusedItemIndex = RecyclerView.NO_POSITION;
 
-    private static String API_KEY = "0324c52513634547a7b32d6d323635d0";
+    private static String API_KEY = ""; // Set via Settings → SteamGridDB API Key
     private static final String BASE_URL = "https://www.steamgriddb.com/api/v2/";
 
     private static final int REQUEST_CODE_UPLOAD_CUSTOM_COVER = 1069;

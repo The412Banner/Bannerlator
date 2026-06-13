@@ -2,8 +2,6 @@ package com.winlator.star.xenvironment;
 
 import android.content.Context;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.winlator.star.MainActivity;
 import com.winlator.star.R;
 import com.winlator.star.SettingsFragment;
@@ -13,16 +11,10 @@ import com.winlator.star.contents.AdrenotoolsManager;
 import com.winlator.star.core.AppUtils;
 import com.winlator.star.core.DownloadProgressDialog;
 import com.winlator.star.core.FileUtils;
-import com.winlator.star.core.PreloaderDialog;
 import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.core.WineInfo;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.File;
-import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntConsumer;
@@ -50,7 +42,7 @@ public abstract class ImageFsInstaller {
         for (String version : versions) {
             File outFile = new File(rootDir, "/opt/" + version);
             outFile.mkdirs();
-            TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, activity, version + ".txz", outFile);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, activity, version + ".tar.zst", outFile);
         }
     }
 
@@ -74,10 +66,10 @@ public abstract class ImageFsInstaller {
         Executors.newSingleThreadExecutor().execute(() -> {
             clearRootDir(rootDir);
             final byte compressionRatio = 22;
-            final long contentLength = (long)(FileUtils.getSize(activity, "imagefs.txz") * (100.0f / compressionRatio));
+            final long contentLength = (long)(FileUtils.getSize(activity, "imagefs.tar.zst") * (100.0f / compressionRatio));
             AtomicLong totalSizeRef = new AtomicLong();
 
-            boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, activity, "imagefs.txz", rootDir, (file, size) -> {
+            boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, activity, "imagefs.tar.zst", rootDir, (file, size) -> {
                 if (size > 0) {
                     long totalSize = totalSizeRef.addAndGet(size);
                     final int progress = (int)(((float)totalSize / contentLength) * 100);
@@ -117,11 +109,11 @@ public abstract class ImageFsInstaller {
         Executors.newSingleThreadExecutor().execute(() -> {
             clearRootDir(rootDir);
             final byte compressionRatio = 22;
-            final long contentLength = (long)(FileUtils.getSize(activity, "imagefs.txz") * (100.0f / compressionRatio));
+            final long contentLength = (long)(FileUtils.getSize(activity, "imagefs.tar.zst") * (100.0f / compressionRatio));
             AtomicLong totalSizeRef = new AtomicLong();
 
             boolean success = TarCompressorUtils.extract(
-                TarCompressorUtils.Type.XZ, activity, "imagefs.txz", rootDir,
+                TarCompressorUtils.Type.ZSTD, activity, "imagefs.tar.zst", rootDir,
                 (file, size) -> {
                     if (size > 0) {
                         long totalSize = totalSizeRef.addAndGet(size);

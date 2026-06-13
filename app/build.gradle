@@ -218,6 +218,8 @@ dependencies {
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
     implementation files('libs/MidiSynth/MidiSynth.jar')
     implementation fileTree(dir: 'libs/steam', include: ['*.jar'])
+    implementation 'in.dragonbra:javasteam:1.8.0'
+    implementation 'in.dragonbra:javasteam-depotdownloader:1.8.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'androidx.recyclerview:recyclerview:1.2.0'

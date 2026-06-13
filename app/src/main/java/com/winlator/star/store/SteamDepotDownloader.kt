@@ -209,13 +209,15 @@ object SteamDepotDownloader {
         dlog("Constructing DepotDownloader(androidEmulation=true, maxDownloads=$threads, maxDecompress=$threads, debug=true)")
         val downloader = try {
             DepotDownloader(
-                steamClient = steamClient,
-                licenses = licenses,
-                debug = true,
-                androidEmulation = true,   // forces Windows OS filter — essential for games
-                maxDownloads = threads,
-                maxDecompress = threads,
-                autoStartDownload = false,
+                steamClient,
+                licenses,
+                true,    // debug
+                false,   // useLanCache
+                threads, // maxDownloads
+                threads, // maxDecompress
+                100,     // progressUpdateInterval
+                true,    // androidEmulation
+                null,    // parentJob
             )
         } catch (e: Exception) {
             dlog("FAIL: DepotDownloader constructor threw")
@@ -310,17 +312,7 @@ object SteamDepotDownloader {
         downloader.add(item)
         downloader.finishAdding()
 
-        dlog("Calling startDownloading()...")
-        try {
-            downloader.startDownloading()
-            dlog("startDownloading() returned (download loop running in background)")
-        } catch (e: Exception) {
-            dlog("FAIL: startDownloading() threw")
-            dlogError("startDownloading", e)
-            emitFailed(appId, "startDownloading failed: ${e.message}")
-            try { downloader.close() } catch (_: Exception) {}
-            return
-        }
+        dlog("Items added, download auto-starts via getCompletion()")
 
         dlog("Blocking on getCompletion().get()...")
         var completedNormally = false

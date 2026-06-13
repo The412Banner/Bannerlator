@@ -703,8 +703,8 @@ class AmazonGamesActivity : ComponentActivity() {
         val COLOR_ACCENT = 0xFFBB86FC.toInt()
         val COLOR_ADD = 0xFF2E7D32.toInt()
         val COLOR_CANCEL = 0xFFCC3333.toInt()
-        val COLOR_CARD_BG = 0xFF1A1A2E.toInt()
-        val COLOR_HDR_BG = 0xFF0D0D1A.toInt()
+        val COLOR_CARD_BG = 0xFF000000.toInt()
+        val COLOR_HDR_BG = 0xFF000000.toInt()
         val COLOR_ROOT_BG = 0xFF000000.toInt()
 
         fun viewModeIcon(mode: String): String = when (mode) {
@@ -786,9 +786,9 @@ private fun AmazonGamesScreen(
         ) {
             Button(
                 onClick = onBack,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) { Text("\u2190", color = Color.White, fontSize = 16.sp) }
 
@@ -802,9 +802,9 @@ private fun AmazonGamesScreen(
 
             Button(
                 onClick = onViewModeToggle,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) {
                 Text(
@@ -820,10 +820,10 @@ private fun AmazonGamesScreen(
                 onClick = onRefresh,
                 enabled = refreshEnabled,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (refreshEnabled) Color(0xFF333333) else Color(0xFF222222),
+                    containerColor = if (refreshEnabled) Color(0xFFBB86FC) else Color(0xFF555555),
                 ),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) { Text("\u21BA", color = Color.White, fontSize = 16.sp) }
         }
@@ -843,8 +843,8 @@ private fun AmazonGamesScreen(
                 focusedBorderColor = Color(0xFFBB86FC),
                 unfocusedBorderColor = Color(0xFF333333),
                 cursorColor = Color(0xFFBB86FC),
-                focusedContainerColor = Color(0xFF1A1A2E),
-                unfocusedContainerColor = Color(0xFF1A1A2E),
+                focusedContainerColor = Color.Black,
+                unfocusedContainerColor = Color.Black,
             ),
         )
 
@@ -863,7 +863,7 @@ private fun AmazonGamesScreen(
             color = statusColor,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF111111))
+                .background(Color.Black)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         )
 
@@ -978,7 +978,7 @@ private fun GameCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(AmazonGamesActivity.COLOR_CARD_BG), RoundedCornerShape(6.dp))
+            .background(Color(AmazonGamesActivity.COLOR_CARD_BG), RoundedCornerShape(12.dp))
             .clickable(onClick = onCardClick)
             .padding(10.dp),
     ) {
@@ -995,7 +995,7 @@ private fun GameCard(
                 contentDescription = null,
                 modifier = Modifier
                     .size(width = 60.dp, height = 60.dp)
-                    .background(Color(0xFF1A1A2E), RoundedCornerShape(4.dp)),
+                    .background(Color.Black, RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop,
             )
 
@@ -1133,7 +1133,7 @@ private fun GameCard(
                     },
                 ),
                 modifier = Modifier.fillMaxWidth().height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
             ) {
                 Text(
                     text = when {

@@ -751,15 +751,15 @@ private fun GogGamesScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0D0D1A))
+                .background(Color.Black)
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(
                 onClick = onBack,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) { Text("\u2190", color = Color.White, fontSize = 16.sp) }
             Spacer(Modifier.width(8.dp))
@@ -772,9 +772,9 @@ private fun GogGamesScreen(
             )
             Button(
                 onClick = onViewToggle,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) {
                 Text(
@@ -790,9 +790,9 @@ private fun GogGamesScreen(
             Button(
                 onClick = onRefresh,
                 enabled = !isSyncing,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) { Text("\u21ba", color = Color.White, fontSize = 16.sp) }
         }
@@ -809,9 +809,11 @@ private fun GogGamesScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                focusedBorderColor = Color(0x00000000),
-                unfocusedBorderColor = Color(0x00000000),
+                focusedBorderColor = Color(0xFFBB86FC),
+                unfocusedBorderColor = Color(0xFF333333),
                 cursorColor = Color.White,
+                focusedContainerColor = Color.Black,
+                unfocusedContainerColor = Color.Black,
                 focusedPlaceholderColor = Color(0xFF666666),
                 unfocusedPlaceholderColor = Color(0xFF666666),
             ),
@@ -824,7 +826,7 @@ private fun GogGamesScreen(
             color = Color(syncTextColor),
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0D0D1A))
+                .background(Color.Black)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         )
 
@@ -910,12 +912,11 @@ private fun GameListCard(
     onCancelClick: () -> Unit,
     onAddToLauncher: () -> Unit,
 ) {
-    val bgColor = if (isExpanded) Color(0xFF2A2A4E) else Color(0xFF1A1A2E)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(bgColor)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isExpanded) Color(0xFF0D0D0D) else Color.Black)
             .clickable(onClick = onClick)
             .padding(10.dp),
     ) {
@@ -923,7 +924,7 @@ private fun GameListCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Cover
             Box(
-                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF111122)),
+                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black),
             ) {
                 if (game.imageUrl.isNotEmpty()) {
                     AsyncImage(
@@ -1059,7 +1060,7 @@ private fun ExpandedSection(
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(btnColor)),
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(8.dp),
         ) { Text(btnText, color = Color.White, fontSize = 13.sp) }
     }
 }

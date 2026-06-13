@@ -265,22 +265,23 @@ private fun SteamGamesScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1A1A2E))
+                .background(Color.Black)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onBack) { Text("\u2190", color = Color.White, fontSize = 18.sp) }
+            TextButton(onClick = onBack) { Text("\u2190", color = Color(0xFFBB86FC), fontSize = 18.sp) }
             Text(
                 text = "Steam Library",
                 fontSize = 18.sp,
-                color = Color.White,
+                color = Color(0xFFBB86FC),
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f).padding(start = 8.dp),
             )
             Button(
                 onClick = onViewToggle,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) {
                 Text(
@@ -293,15 +294,15 @@ private fun SteamGamesScreen(
                 onClick = onRefresh,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) { Text("Refresh", color = Color.White, fontSize = 13.sp) }
             Spacer(Modifier.width(6.dp))
             Button(
                 onClick = onLogout,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) { Text("Logout", color = Color.White, fontSize = 13.sp) }
         }
@@ -310,10 +311,10 @@ private fun SteamGamesScreen(
         Text(
             text = statusText,
             fontSize = 12.sp,
-            color = Color(0xFFAAAAAA),
+            color = Color(0xFFBB86FC),
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0D0D1A))
+                .background(Color.Black)
                 .padding(horizontal = 12.dp, vertical = 5.dp),
         )
 
@@ -377,7 +378,7 @@ private fun GameListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(Color(0xFF1A1A2E))
+            .background(Color.Black)
             .padding(bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

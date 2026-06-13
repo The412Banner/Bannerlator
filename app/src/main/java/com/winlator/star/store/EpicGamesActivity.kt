@@ -570,14 +570,14 @@ private fun EpicGamesScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1A1A2E))
+                .background(Color.Black)
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(
                 onClick = onBack,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                shape = RoundedCornerShape(4.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u2190", color = Color.White, fontSize = 16.sp) }
             Text(
@@ -589,26 +589,25 @@ private fun EpicGamesScreen(
             )
             Button(
                 onClick = onViewToggle,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                shape = RoundedCornerShape(4.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u25A6", color = Color.White, fontSize = 16.sp) }
             Spacer(Modifier.width(4.dp))
             Button(
                 onClick = onRefresh,
                 enabled = refreshEnabled,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                shape = RoundedCornerShape(4.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u21ba", color = Color.White, fontSize = 16.sp) }
             Spacer(Modifier.width(4.dp))
             Button(
                 onClick = onFreeGames,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00330F)),
-                shape = RoundedCornerShape(4.dp),
-                border = BorderStroke(1.dp, Color(0xFF00C853)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(40.dp),
-            ) { Text("FREE", color = Color(0xFF00C853), fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            ) { Text("FREE", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
         }
 
         OutlinedTextField(
@@ -621,10 +620,10 @@ private fun EpicGamesScreen(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
                 cursorColor = Color.White,
-                focusedContainerColor = Color(0xFF1A1A2E),
-                unfocusedContainerColor = Color(0xFF1A1A2E),
+                focusedContainerColor = Color.Black,
+                unfocusedContainerColor = Color.Black,
                 focusedBorderColor = Color(0xFFBB86FC),
-                unfocusedBorderColor = Color(0xFF1A1A2E),
+                unfocusedBorderColor = Color(0xFF333333),
             ),
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
         )
@@ -635,11 +634,11 @@ private fun EpicGamesScreen(
             color = when {
                 syncText.startsWith("Error") || syncText.startsWith("Not logged in") || syncText.startsWith("No games") -> Color(0xFFFF6B6B)
                 syncText.contains("game") && (syncText.contains("tap") || syncText.contains("cached")) -> Color(0xFF81C784)
-                else -> Color(0xFFCCCCCC)
+                else -> Color(0xFFBB86FC)
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0D0D1A))
+                .background(Color.Black)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
         )
 
@@ -750,8 +749,8 @@ private fun GameListCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
-        shape = RoundedCornerShape(6.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Black),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
@@ -764,8 +763,8 @@ private fun GameListCard(
                 Box(
                     modifier = Modifier
                         .size(60.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFF1E1A2E)),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black),
                 ) {
                     val imageUrl = if (game.artCover.isNotEmpty()) game.artCover else game.artSquare
                     if (imageUrl.isNotEmpty()) {

@@ -22,23 +22,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,17 +57,17 @@ private val MutedWhite = Color(0xFF999999)
 private val GlowBlue = Color(0xFF0055FF)
 private val PrimaryDim = Color(0xFF002277)
 
-private fun iconFor(screen: Screen): ImageVector = when (screen) {
-    Screen.Containers    -> Icons.Filled.FolderOpen
-    Screen.Games         -> Icons.Filled.OpenInNew
-    Screen.InputControls -> Icons.Filled.SportsEsports
-    Screen.AdrenoTools   -> Icons.Filled.Memory
-    Screen.Saves         -> Icons.Filled.Save
-    Screen.FileManager   -> Icons.Filled.FolderOpen
-    Screen.Settings      -> Icons.Filled.Settings
-    Screen.Appearance    -> Icons.Filled.Palette
-    Screen.LsfgSettings  -> Icons.Filled.Settings
-    else                 -> Icons.Filled.Storefront
+private fun iconFor(screen: Screen): Int = when (screen) {
+    Screen.Containers    -> R.drawable.icon_menu_container
+    Screen.Games         -> R.drawable.icon_menu_contents
+    Screen.InputControls -> R.drawable.icon_input_controls
+    Screen.AdrenoTools   -> R.drawable.icon_menu_gpu
+    Screen.Saves         -> R.drawable.icon_save
+    Screen.FileManager   -> R.drawable.icon_menu_file_manager
+    Screen.Settings      -> R.drawable.icon_settings
+    Screen.Appearance    -> R.drawable.icon_settings
+    Screen.LsfgSettings  -> R.drawable.icon_settings
+    else                 -> R.drawable.icon_container
 }
 
 @Composable
@@ -197,7 +191,7 @@ private fun DrawerItem(screen: Screen, currentRoute: String, onNavigate: (Screen
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
         ) {
             Icon(
-                imageVector = iconFor(screen),
+                painter = painterResource(iconFor(screen)),
                 contentDescription = null,
                 tint = if (selected) Color.White else MutedWhite,
                 modifier = Modifier.size(20.dp),

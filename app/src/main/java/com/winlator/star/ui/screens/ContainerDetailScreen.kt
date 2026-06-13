@@ -81,7 +81,7 @@ fun ContainerDetailScreen(
     val colorPickerViewRef  = remember { mutableStateOf<ColorPickerView?>(null)  }
 
     val tabTitles = listOf(
-        stringResource(R.string.wine_configuration),
+        "GENERAL",
         stringResource(R.string.win_components),
         stringResource(R.string.environment_variables),
         stringResource(R.string.drives),
@@ -119,16 +119,6 @@ fun ContainerDetailScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // ── Top-level fields ───────────────────────────────────────────────
-            TopLevelFields(
-                viewModel = viewModel,
-                onShowGfxConfig = { showGraphicsDriverConfig = true },
-                onShowDxvkConfig = { showDxvkConfig = true },
-                onShowWineD3DConfig = { showWineD3DConfig = true },
-                onShowFpsConfig = { showFpsConfig = true },
-                onShowWineDownloadSheet = { showWineDownloadSheet = true },
-            )
-
             // ── Tabs ───────────────────────────────────────────────────────────
             ScrollableTabRow(
                 selectedTabIndex = viewModel.selectedTab,
@@ -148,7 +138,17 @@ fun ContainerDetailScreen(
             // ── Tab content ────────────────────────────────────────────────────
             Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
                 when (viewModel.selectedTab) {
-                    0 -> WineConfigTab(viewModel, colorPickerViewRef)
+                    0 -> Column {
+                        TopLevelFields(
+                            viewModel = viewModel,
+                            onShowGfxConfig = { showGraphicsDriverConfig = true },
+                            onShowDxvkConfig = { showDxvkConfig = true },
+                            onShowWineD3DConfig = { showWineD3DConfig = true },
+                            onShowFpsConfig = { showFpsConfig = true },
+                            onShowWineDownloadSheet = { showWineDownloadSheet = true },
+                        )
+                        WineConfigTab(viewModel, colorPickerViewRef)
+                    }
                     1 -> WinComponentsTab(viewModel)
                     2 -> EnvVarsTab(viewModel, envVarsViewRef)
                     3 -> DrivesTab(viewModel)

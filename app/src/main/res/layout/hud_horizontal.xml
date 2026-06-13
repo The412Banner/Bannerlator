@@ -10,11 +10,9 @@
     android:paddingBottom="5dp"
     android:gravity="center_vertical">
 
-    <!-- Renderer: VEGAS | {renderer} -->
+    <!-- Renderer: {renderer} -->
     <LinearLayout android:id="@+id/GroupRenderer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
         <TextView android:id="@+id/SepRenderer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="|" android:textColor="#ffffff" android:textSize="14sp" android:layout_marginRight="6dp" android:layout_marginLeft="6dp"/>
-        <TextView android:id="@+id/TVVegasTag" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VEGAS" android:textColor="#ffeb3b" android:textStyle="bold" android:textSize="14sp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="|" android:textColor="#ffffff" android:textSize="14sp" android:layout_marginRight="6dp" android:layout_marginLeft="6dp"/>
         <TextView android:id="@+id/TVRenderer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ffeb3b" android:textStyle="bold" android:textSize="14sp"/>
     </LinearLayout>
 

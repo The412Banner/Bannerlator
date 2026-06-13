@@ -32,7 +32,7 @@ public class Container {
     public static final String DEFAULT_GRAPHICS_DRIVER = "wrapper";
     public static final String DEFAULT_AUDIO_DRIVER = "alsa";
     public static final String DEFAULT_EMULATOR = "FEXCore";
-    public static final String DEFAULT_DXWRAPPER = "vegas+vkd3d";
+    public static final String DEFAULT_DXWRAPPER = "dxvk+vkd3d";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.getVegasDefault() + ",framerate=0,async=0,asyncCache=0" + ",vkd3dVersion=2.8" + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG =
             "vulkanVersion=1.3" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device" + ";fdDevFeatures=0";
@@ -82,6 +82,7 @@ public class Container {
     private String controllerMapping = new String(new char[XrControllerMapping.values().length]);
     private String box64Version;
     private String emulator;
+    private String renderer = "opengl";
     private boolean exclusiveXInput = true;
     private boolean lsfgEnabled = DEFAULT_LSFG_ENABLED;
     private int lsfgMultiplier = DEFAULT_LSFG_MULTIPLIER;
@@ -437,6 +438,9 @@ public Container(int id) {
     public String getLsfgGpuArch() { return lsfgGpuArch; }
     public void setLsfgGpuArch(String lsfgGpuArch) { this.lsfgGpuArch = lsfgGpuArch; }
 
+    public String getRenderer() { return renderer; }
+    public void setRenderer(String renderer) { this.renderer = renderer; }
+
     public Iterable<String[]> drivesIterator() {
         return drivesIterator(drives);
     }
@@ -500,6 +504,7 @@ public Container(int id) {
             data.put("lsfgFlowScale", lsfgFlowScale);
             data.put("lsfgMaxLatency", lsfgMaxLatency);
             data.put("lsfgGpuArch", lsfgGpuArch);
+            data.put("renderer", renderer);
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -626,6 +631,9 @@ public Container(int id) {
                 case "lsfgGpuArch" :
                     setLsfgGpuArch(data.getString(key));
                     break;
+                case "renderer" :
+                    setRenderer(data.getString(key));
+                    break;
             }
         }
     }
@@ -645,6 +653,7 @@ public Container(int id) {
                 else if (dxwrapper.startsWith("d8vk-") || dxwrapper.startsWith("dxvk-")) {
                     data.put("dxwrapper", dxwrapper);
                 }
+
             }
 
             if (data.has("graphicsDriver")) {

@@ -1399,6 +1399,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 frameRating.setVisibility(View.GONE);
                 rootView.addView(frameRating);
             }
+
+            String rendererMode = container != null && "vulkan".equals(container.getRenderer()) ? "Vulkan" : "OpenGL";
+            if (frameRatingHorizontal != null) frameRatingHorizontal.setRenderer(rendererMode);
+            if (frameRating != null) frameRating.setRenderer(rendererMode);
         }
 
         // Get the fullscreen stretched extra from the shortcut if available
@@ -2348,12 +2352,6 @@ return true;
 
                 if (frameRating != null) frameRating.update();
                 if (frameRatingHorizontal != null) frameRatingHorizontal.update();
-            }
-            if (property.nameAsString().contains("_MESA_DRV_ENGINE_NAME")) {
-                runOnUiThread(() -> {
-                    if (frameRating != null) frameRating.setRenderer(property.toString());
-                    if (frameRatingHorizontal != null) frameRatingHorizontal.setRenderer(property.toString());
-                });
             }
             if (property.nameAsString().contains("_MESA_DRV_GPU_NAME")) {
                 runOnUiThread(() -> {

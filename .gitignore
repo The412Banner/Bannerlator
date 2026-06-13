@@ -10,3 +10,4 @@
 .kotlin/
 
 
+*.tar.zst

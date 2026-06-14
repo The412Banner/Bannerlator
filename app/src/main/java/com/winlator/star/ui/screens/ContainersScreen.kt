@@ -27,8 +27,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.filled.Settings
 import java.io.File
@@ -294,7 +294,7 @@ private fun ContainerItem(
         ) {
             // Container logo
             Icon(
-                imageVector = Icons.Filled.FolderOpen,
+                painter = painterResource(R.drawable.icon_container),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(44.dp),

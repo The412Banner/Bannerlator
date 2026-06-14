@@ -361,15 +361,13 @@ private fun TopLevelFields(
         }
         Spacer(Modifier.height(8.dp))
 
-        // LSFG (Lossless Scaling Frame Generation)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(
-                checked = viewModel.lsfgEnabled,
-                onCheckedChange = { viewModel.lsfgEnabled = it }
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.lsfg_enabled), modifier = Modifier.weight(1f))
-        }
+        // Renderer
+        LabeledDropdown(
+            label = stringResource(R.string.renderer),
+            options = viewModel.rendererEntries,
+            selectedOption = viewModel.selectedRenderer,
+            onSelect = { viewModel.selectedRenderer = it }
+        )
         Spacer(Modifier.height(8.dp))
 
         // Audio Driver

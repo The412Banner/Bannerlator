@@ -15,7 +15,7 @@
                     <com.winlator.star.widget.SeekBar
                         android:id="@+id/SBGamma" android:layout_width="fill_parent" android:layout_height="60dp" app:maxValue="3.0" app:minValue="0.5" app:step="0.01" />
                 </LinearLayout>
-                <TextView android:background="#ffffffff" android:text="@string/color_adjustment" style="@style/FieldSetLabel" android:id="@+id/LBLColorAdjustment" />
+                <TextView android:background="@color/window_background_color" android:text="@string/color_adjustment" style="@style/FieldSetLabel" android:id="@+id/LBLColorAdjustment" />
             </FrameLayout>
         </LinearLayout>
         <View style="@style/VerticalLine" />

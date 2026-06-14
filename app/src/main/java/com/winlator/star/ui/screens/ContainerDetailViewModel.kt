@@ -90,16 +90,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var fpsCounterConfig by mutableStateOf(Container.DEFAULT_FPS_COUNTER_CONFIG)
     var fullscreenStretched by mutableStateOf(false)
 
-    // ── LSFG (Lossless Scaling Frame Generation) ─────────────────────────────
-    var lsfgEnabled by mutableStateOf(false)
-    var lsfgMultiplierEntries by mutableStateOf(emptyList<String>()); private set
-    var selectedLsfgMultiplier by mutableStateOf(Container.DEFAULT_LSFG_MULTIPLIER)
-    var lsfgQualityEntries by mutableStateOf(emptyList<String>()); private set
-    var selectedLsfgQuality by mutableStateOf(Container.DEFAULT_LSFG_QUALITY)
-    var lsfgFlowScale by mutableStateOf(Container.DEFAULT_LSFG_FLOW_SCALE)
-    var lsfgMaxLatency by mutableStateOf(Container.DEFAULT_LSFG_MAX_LATENCY)
-    var lsfgGpuArchEntries by mutableStateOf(emptyList<String>()); private set
-    var selectedLsfgGpuArch by mutableStateOf(Container.DEFAULT_LSFG_GPU_ARCH)
+    // ── Renderer ──────────────────────────────────────────────────────────────
+    var rendererEntries by mutableStateOf(emptyList<String>()); private set
+    var selectedRenderer by mutableStateOf("opengl")
 
     var lcAll by mutableStateOf("")
     var lcAllEntries by mutableStateOf(emptyList<String>()); private set
@@ -211,17 +204,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         dxWrapperEntries  = res.getStringArray(R.array.dxwrapper_entries).toList()
         audioDriverEntries = res.getStringArray(R.array.audio_driver_entries).toList()
         emulatorEntries   = res.getStringArray(R.array.emulator_entries).toList()
-        lsfgMultiplierEntries = listOf("2x", "3x", "4x")
-        lsfgQualityEntries = listOf(
-            context.getString(R.string.lsfg_quality_performance),
-            context.getString(R.string.lsfg_quality_balanced),
-            context.getString(R.string.lsfg_quality_quality)
-        )
-        lsfgGpuArchEntries = listOf(
-            context.getString(R.string.lsfg_gpu_arch_auto),
-            context.getString(R.string.lsfg_gpu_arch_mali),
-            context.getString(R.string.lsfg_gpu_arch_adreno)
-        )
+        rendererEntries = listOf("OpenGL", "Vulkan")
         lcAllEntries      = res.getStringArray(R.array.some_lc_all).toList()
         startupSelectionEntries = res.getStringArray(R.array.startup_selection_entries).toList()
         mouseWarpEntries  = listOf(
@@ -303,14 +286,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         fpsCounterConfig  = c?.getFPSCounterConfig() ?: Container.DEFAULT_FPS_COUNTER_CONFIG
         fullscreenStretched = c?.isFullscreenStretched == true
 
-        // LSFG — seed GPU-aware defaults for new containers
-        val lsfgDefaults = if (c == null) Container.getLsfgDefaults() else null
-        lsfgEnabled      = c?.isLsfgEnabled ?: Container.DEFAULT_LSFG_ENABLED
-        selectedLsfgMultiplier = c?.lsfgMultiplier ?: lsfgDefaults?.multiplier ?: Container.DEFAULT_LSFG_MULTIPLIER
-        selectedLsfgQuality    = c?.lsfgQuality ?: lsfgDefaults?.quality ?: Container.DEFAULT_LSFG_QUALITY
-        lsfgFlowScale    = c?.lsfgFlowScale ?: lsfgDefaults?.flowScale ?: Container.DEFAULT_LSFG_FLOW_SCALE
-        lsfgMaxLatency   = c?.lsfgMaxLatency ?: lsfgDefaults?.maxLatency ?: Container.DEFAULT_LSFG_MAX_LATENCY
-        selectedLsfgGpuArch = c?.lsfgGpuArch ?: lsfgDefaults?.gpuArch ?: Container.DEFAULT_LSFG_GPU_ARCH
+        // Renderer
+        selectedRenderer = c?.renderer ?: "opengl"
 
         val locale = java.util.Locale.getDefault()
         lcAll = c?.getLC_ALL() ?: "${locale.language}_${locale.country}.UTF-8"
@@ -569,12 +546,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setFPSCounterConfig(fpsConfig)
             c.setFullscreenStretched(fullscreenStretched)
             c.setExclusiveXInput(exclusiveXInput)
-            c.setLsfgEnabled(lsfgEnabled)
-            c.setLsfgMultiplier(selectedLsfgMultiplier)
-            c.setLsfgQuality(selectedLsfgQuality)
-            c.setLsfgFlowScale(lsfgFlowScale)
-            c.setLsfgMaxLatency(lsfgMaxLatency)
-            c.setLsfgGpuArch(selectedLsfgGpuArch)
+            c.setRenderer(StringUtils.parseIdentifier(selectedRenderer))
             c.setInputType(inputType)
             c.setStartupSelection(selectedStartupSelection.toByte())
             c.setBox64Version(selectedBox64Version)
@@ -609,12 +581,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                 put("fpsCounterConfig", fpsConfig)
                 put("fullscreenStretched", fullscreenStretched)
                 put("exclusiveXInput", exclusiveXInput)
-                put("lsfgEnabled", lsfgEnabled)
-                put("lsfgMultiplier", selectedLsfgMultiplier)
-                put("lsfgQuality", selectedLsfgQuality)
-                put("lsfgFlowScale", lsfgFlowScale)
-                put("lsfgMaxLatency", lsfgMaxLatency)
-                put("lsfgGpuArch", selectedLsfgGpuArch)
+                put("renderer", StringUtils.parseIdentifier(selectedRenderer))
                 put("inputType", inputType)
                 put("startupSelection", selectedStartupSelection)
                 put("box64Version", selectedBox64Version)

@@ -613,17 +613,13 @@ private fun launchInstall(
             } else {
                 activity.runOnUiThread {
                     onDone()
-                    onDialog(InstallDialogState.Alert(
-                        message   = context.getString(R.string.content_installed_success),
-                        onDismiss = {
-                            vm.manager.syncContents()
-                            vm.setFilter(profile.type)
-                            vm.refreshList()
-                        },
-                    ))
                     vm.manager.syncContents()
                     vm.setFilter(profile.type)
                     vm.refreshList()
+                    onDialog(InstallDialogState.Alert(
+                        message   = context.getString(R.string.content_installed_success),
+                        onDismiss = {},
+                    ))
                 }
             }
         }

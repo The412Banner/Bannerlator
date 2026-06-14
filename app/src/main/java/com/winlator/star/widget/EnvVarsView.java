@@ -144,7 +144,7 @@ public class EnvVarsView extends FrameLayout {
                 ((EditText) view).setTextColor(Color.WHITE);
                 ((EditText) view).setHintTextColor(Color.GRAY);
             } else if (view instanceof Spinner) {
-                ((Spinner) view).setPopupBackgroundResource(R.drawable.content_dialog_background_dark);
+                ((Spinner) view).setPopupBackgroundResource(R.drawable.dialog_background_dark_blue);
             } else if (view instanceof ToggleButton) {
                 applyAccentTint(view);
             }

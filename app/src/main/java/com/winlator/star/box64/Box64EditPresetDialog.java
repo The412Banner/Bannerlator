@@ -127,7 +127,7 @@ public class Box64EditPresetDialog extends ContentDialog {
                     if (readonly) toggleButton.setAlpha(0.5f);
                 }
                 else {
-                    spinner.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+                    spinner.setPopupBackgroundResource(isDarkMode ? R.drawable.dialog_background_dark_blue : R.drawable.content_dialog_background);
                     spinner.setVisibility(View.VISIBLE);
                     spinner.setEnabled(!readonly);
                     spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, values));

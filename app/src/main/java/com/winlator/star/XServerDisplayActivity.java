@@ -1401,8 +1401,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
 
             String rendererMode = container != null && "vulkan".equals(container.getRenderer()) ? "Vulkan" : "OpenGL";
-            if (frameRatingHorizontal != null) frameRatingHorizontal.setRenderer(rendererMode);
-            if (frameRating != null) frameRating.setRenderer(rendererMode);
+            String dxName = dxwrapper.contains("dxvk") ? "DXVK" : dxwrapper.contains("vegas") ? "VEGAS" : "WineD3D";
+            String hudRenderer = dxName + " (" + rendererMode + ")";
+            if (frameRatingHorizontal != null) frameRatingHorizontal.setRenderer(hudRenderer);
+            if (frameRating != null) frameRating.setRenderer(hudRenderer);
         }
 
         // Get the fullscreen stretched extra from the shortcut if available

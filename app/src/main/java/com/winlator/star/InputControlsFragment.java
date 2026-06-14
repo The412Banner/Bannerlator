@@ -124,7 +124,7 @@ public class InputControlsFragment extends Fragment {
 
         final Spinner sProfile = view.findViewById(R.id.SProfile);
 
-        sProfile.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        sProfile.setPopupBackgroundResource(isDarkMode ? R.drawable.dialog_background_dark_blue : R.drawable.content_dialog_background);
 
         loadProfileSpinner(sProfile);
 

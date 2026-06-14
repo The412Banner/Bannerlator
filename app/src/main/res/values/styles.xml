@@ -105,7 +105,7 @@
 
 
     <style name="ListPopupWindow.Dark" parent="ListPopupWindow">
-        <item name="android:popupBackground">@drawable/content_dialog_background_dark</item>
+        <item name="android:popupBackground">@drawable/dialog_background_dark_blue</item>
     </style>
 
     <style name="PopupWindow" parent="@android:style/Widget.PopupWindow">
@@ -114,7 +114,7 @@
     </style>
 
     <style name="PopupWindow.Dark" parent="PopupWindow">
-        <item name="android:popupBackground">@drawable/content_dialog_background_dark</item>
+        <item name="android:popupBackground">@drawable/dialog_background_dark_blue</item>
     </style>
 
     <style name="PopupMenu" parent="@android:style/Widget.PopupMenu">
@@ -122,7 +122,7 @@
     </style>
 
     <style name="PopupMenu.Dark" parent="PopupMenu">
-        <item name="android:popupBackground">@drawable/content_dialog_background_dark</item>
+        <item name="android:popupBackground">@drawable/dialog_background_dark_blue</item>
     </style>
 
     <style name="ContentDialog" parent="@android:style/Theme.Dialog">
@@ -134,7 +134,7 @@
 
 
     <style name="ContentDialog.Dark" parent="ContentDialog">
-        <item name="android:windowBackground">@drawable/content_dialog_background_dark</item>
+        <item name="android:windowBackground">@drawable/dialog_background_dark_blue</item>
     </style>
 
     <!-- EditText Styles -->

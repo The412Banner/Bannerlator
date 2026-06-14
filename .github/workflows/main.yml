@@ -136,10 +136,6 @@ jobs:
         yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;26.1.10909125" "cmake;3.22.1"
         echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
-    - name: Grant execute permission for build script
-      run: chmod +x build-lsfg-android.sh
-    - name: Build LSFG native library
-      run: ./build-lsfg-android.sh
     - name: Build with Gradle
       run: ./gradlew assembleDebug
 

@@ -465,13 +465,6 @@
     <string name="disable_xinput_for_shortcut">Disable Xinput (For Exclusive M/KB Control)</string>
     <string name="num_controllers">Number of Controllers</string>
     <string name="fullscreen_stretched">Enable Fullscreen (Stretched)</string>
-    <string name="lsfg_enabled">Vegas FrameGen</string>
-    <string name="lsfg_quality_performance">Performance</string>
-    <string name="lsfg_quality_balanced">Balanced</string>
-    <string name="lsfg_quality_quality">Quality</string>
-    <string name="lsfg_gpu_arch_auto">Auto</string>
-    <string name="lsfg_gpu_arch_mali">Mali</string>
-    <string name="lsfg_gpu_arch_adreno">Adreno</string>
     <string name="export_container">Export Container</string>
     <string name="exporting_container">Exporting Container...</string>
     <string name="importing_container">Importing Container...</string>
@@ -658,20 +651,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="shortcuticon">ShortcutIcon</string>
     <string name="active_windows">Active Windows</string>
     <string name="contact_us">Help and Support</string>
-    <string name="lsfg_multiplier">Frame Multiplier</string>
-    <string name="lsfg_quality">Quality</string>
-    <string name="lsfg_flow_scale">Flow Scale</string>
-    <string name="lsfg_max_latency">Max Input Latency</string>
-    <string name="lsfg_gpu_arch">GPU Architecture</string>
-    <string name="lsfg_advanced_settings">Advanced Vegas FrameGen Settings</string>
-    <string name="lsfg_settings">Vegas FrameGen Settings</string>
-    <string name="lsfg_multiplier_desc">How many interpolated frames between real frames. 2x = double FPS.</string>
-    <string name="lsfg_quality_desc">Performance: fastest, lighter artifacts. Balanced: good tradeoff. Quality: best visual.</string>
-    <string name="lsfg_flow_scale_desc">Motion estimation sensitivity. Higher = smoother but may ghost. 100%% is default.</string>
-    <string name="lsfg_max_latency_desc">Wait time for next real frame. Lower = more responsive, higher = smoother.</string>
-    <string name="lsfg_gpu_arch_desc">Optimizes compute for your GPU. Auto detects from device info.</string>
-    <string name="lsfg_close">Close</string>
-
     <string name="graphics_driver_show_incompatible">Show incompatible drivers</string>
 </resources>
 

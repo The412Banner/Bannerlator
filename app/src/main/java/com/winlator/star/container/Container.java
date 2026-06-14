@@ -41,12 +41,6 @@ public class Container {
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=0,directmusic=0,directshow=0,directplay=0,xaudio=0,vcrun2010=1";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,xaudio=1,vcrun2010=1";
     public static final String DEFAULT_DRIVES = "F:"+Environment.getExternalStorageDirectory().getAbsolutePath()+"D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-    public static final boolean DEFAULT_LSFG_ENABLED = false;
-    public static final int DEFAULT_LSFG_MULTIPLIER = 2;
-    public static final String DEFAULT_LSFG_QUALITY = "balanced";
-    public static final int DEFAULT_LSFG_FLOW_SCALE = 100;
-    public static final int DEFAULT_LSFG_MAX_LATENCY = 16;
-    public static final String DEFAULT_LSFG_GPU_ARCH = "auto";
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
@@ -84,12 +78,6 @@ public class Container {
     private String emulator;
     private String renderer = "opengl";
     private boolean exclusiveXInput = true;
-    private boolean lsfgEnabled = DEFAULT_LSFG_ENABLED;
-    private int lsfgMultiplier = DEFAULT_LSFG_MULTIPLIER;
-    private String lsfgQuality = DEFAULT_LSFG_QUALITY;
-    private int lsfgFlowScale = DEFAULT_LSFG_FLOW_SCALE;
-    private int lsfgMaxLatency = DEFAULT_LSFG_MAX_LATENCY;
-    private String lsfgGpuArch = DEFAULT_LSFG_GPU_ARCH;
     private ContainerManager containerManager;
 
 
@@ -104,33 +92,7 @@ public class Container {
         }
     }
 
-    public static ContainerDefaults getLsfgDefaults() {
-        boolean isMali = isMaliGPU();
-        int multiplier = 2;
-        String quality = isMali ? "performance" : "balanced";
-        int flowScale = isMali ? 50 : 100;
-        int maxLatency = isMali ? 8 : 16;
-        String gpuArch = isMali ? "mali" : "auto";
-        return new ContainerDefaults(multiplier, quality, flowScale, maxLatency, gpuArch);
-    }
-
-    public static class ContainerDefaults {
-        public final int multiplier;
-        public final String quality;
-        public final int flowScale;
-        public final int maxLatency;
-        public final String gpuArch;
-
-        public ContainerDefaults(int multiplier, String quality, int flowScale, int maxLatency, String gpuArch) {
-            this.multiplier = multiplier;
-            this.quality = quality;
-            this.flowScale = flowScale;
-            this.maxLatency = maxLatency;
-            this.gpuArch = gpuArch;
-        }
-    }
-
-public Container(int id) {
+    public Container(int id) {
         this.id = id;
         this.name = "Container-"+id;
     }
@@ -425,18 +387,7 @@ public Container(int id) {
         this.exclusiveXInput = exclusiveXInput;
     }
 
-    public boolean isLsfgEnabled() { return lsfgEnabled; }
-    public void setLsfgEnabled(boolean lsfgEnabled) { this.lsfgEnabled = lsfgEnabled; }
-    public int getLsfgMultiplier() { return lsfgMultiplier; }
-    public void setLsfgMultiplier(int lsfgMultiplier) { this.lsfgMultiplier = lsfgMultiplier; }
-    public String getLsfgQuality() { return lsfgQuality; }
-    public void setLsfgQuality(String lsfgQuality) { this.lsfgQuality = lsfgQuality; }
-    public int getLsfgFlowScale() { return lsfgFlowScale; }
-    public void setLsfgFlowScale(int lsfgFlowScale) { this.lsfgFlowScale = lsfgFlowScale; }
-    public int getLsfgMaxLatency() { return lsfgMaxLatency; }
-    public void setLsfgMaxLatency(int lsfgMaxLatency) { this.lsfgMaxLatency = lsfgMaxLatency; }
-    public String getLsfgGpuArch() { return lsfgGpuArch; }
-    public void setLsfgGpuArch(String lsfgGpuArch) { this.lsfgGpuArch = lsfgGpuArch; }
+
 
     public String getRenderer() { return renderer; }
     public void setRenderer(String renderer) { this.renderer = renderer; }
@@ -498,12 +449,6 @@ public Container(int id) {
             data.put("primaryController", primaryController);
             data.put("controllerMapping", controllerMapping);
             data.put("exclusiveXInput", exclusiveXInput);
-            data.put("lsfgEnabled", lsfgEnabled);
-            data.put("lsfgMultiplier", lsfgMultiplier);
-            data.put("lsfgQuality", lsfgQuality);
-            data.put("lsfgFlowScale", lsfgFlowScale);
-            data.put("lsfgMaxLatency", lsfgMaxLatency);
-            data.put("lsfgGpuArch", lsfgGpuArch);
             data.put("renderer", renderer);
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -612,24 +557,6 @@ public Container(int id) {
                     break;
                 case "exclusiveXInput" :
                     setExclusiveXInput(data.getBoolean(key));
-                    break;
-                case "lsfgEnabled" :
-                    setLsfgEnabled(data.getBoolean(key));
-                    break;
-                case "lsfgMultiplier" :
-                    setLsfgMultiplier(data.getInt(key));
-                    break;
-                case "lsfgQuality" :
-                    setLsfgQuality(data.getString(key));
-                    break;
-                case "lsfgFlowScale" :
-                    setLsfgFlowScale(data.getInt(key));
-                    break;
-                case "lsfgMaxLatency" :
-                    setLsfgMaxLatency(data.getInt(key));
-                    break;
-                case "lsfgGpuArch" :
-                    setLsfgGpuArch(data.getString(key));
                     break;
                 case "renderer" :
                     setRenderer(data.getString(key));

@@ -385,8 +385,6 @@ private fun AccentButton(text: String, modifier: Modifier = Modifier, onClick: (
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GraphicsContent(state: XServerDrawerState) {
-    val lsfgEnabled by state.lsfgEnabled.collectAsState()
-
     LaunchedEffect(Unit) {
         XServerDialogState.onInitGraphicsTab?.run()
     }
@@ -468,26 +466,6 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
     val nativeRenderingEnabled by state.nativeRenderingEnabled.collectAsState()
     ToggleRow("Native Rendering", nativeRenderingEnabled) { state.onNativeRenderingToggle?.run() }
-
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
-
-    ToggleRow("Vegas FrameGen", lsfgEnabled) { state.onLsfgToggle?.run() }
-
-    if (lsfgEnabled) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            LsfgInlineDropdown("Multiplier", listOf("2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x"), "${state.getLsfgMultiplier()}x") { opt ->
-                val num = opt.removeSuffix("x").toIntOrNull() ?: 2
-                state.setLsfgMultiplier(num); state.onApplyLsfg?.run()
-            }
-            LsfgInlineDropdown("Quality", listOf("performance", "balanced", "quality"), state.getLsfgQuality()) { opt ->
-                state.setLsfgQuality(opt); state.onApplyLsfg?.run()
-            }
-            LabeledSlider("Flow Scale", state.getLsfgFlowScale().toFloat(), 50f..200f, { state.setLsfgFlowScale(it.toInt()) }, { state.onApplyLsfg?.run() }, steps = 14, format = { "${it.toInt()}%" })
-            LabeledSlider("Max Input Latency", state.getLsfgMaxLatency().toFloat(), 0f..33f, { state.setLsfgMaxLatency(it.toInt()) }, { state.onApplyLsfg?.run() }, steps = 32, format = { "${it.toInt()}ms" })
-
-            AccentButton("Reset to GPU Defaults") { state.onResetLsfg?.run(); Unit }
-        }
-    }
 }
 
 private fun pushSgsrUpdate(enabled: Boolean, sharpness: Int, hdr: Boolean) {
@@ -542,23 +520,6 @@ private fun SeShaderToggle(label: String, checked: Boolean, onCheckedChange: (Bo
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LsfgInlineDropdown(label: String, options: List<String>, selectedOption: String, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = selectedOption, onValueChange = {}, readOnly = true,
-            label = { Text(label, color = MutedWhite) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
-            singleLine = true,
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { opt -> DropdownMenuItem(text = { Text(opt) }, onClick = { onSelect(opt); expanded = false }) }
-        }
-    }
-}
-
 // ───── HUD Tab ─────
 
 @Composable

@@ -66,7 +66,6 @@ private fun iconFor(screen: Screen): Int = when (screen) {
     Screen.FileManager   -> R.drawable.icon_menu_file_manager
     Screen.Settings      -> R.drawable.icon_settings
     Screen.Appearance    -> R.drawable.icon_settings
-    Screen.LsfgSettings  -> R.drawable.icon_settings
     else                 -> R.drawable.icon_container
 }
 
@@ -98,28 +97,23 @@ fun AppDrawerContent(
     ) {
         Spacer(Modifier.height(12.dp))
 
-        DrawerSection("Emulation")
         DrawerItem(Screen.Games,         currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
+        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
 
-        DrawerSection("Tools")
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
         DrawerItem(Screen.AdrenoTools,   currentRoute, onNavigate)
-        DrawerItem(Screen.LsfgSettings,  currentRoute, onNavigate)
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
+        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
 
-        DrawerSection("Game Stores")
         Screen.storeItems.forEach { screen ->
             DrawerStoreItem(screen, onLaunchStore)
         }
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
+        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
 
-        DrawerSection("About And Support")
         DrawerIconItem(
             label = "About",
             icon = Icons.Filled.Info,
@@ -131,28 +125,7 @@ fun AppDrawerContent(
             onClick = { showHelp = true },
         )
 
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun DrawerSection(title: String) {
-    Column(modifier = Modifier.padding(start = 20.dp, top = 10.dp, bottom = 6.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-            color = DimWhite,
-        )
-        Spacer(Modifier.height(6.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.3f)
-                .height(2.dp)
-                .background(
-                    Brush.horizontalGradient(listOf(GlowBlue, GlowBlue.copy(alpha = 0.1f))),
-                    RoundedCornerShape(1.dp)
-                )
-        )
+        Spacer(Modifier.height(60.dp))
     }
 }
 

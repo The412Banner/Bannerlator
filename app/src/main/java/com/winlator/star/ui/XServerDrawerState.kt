@@ -61,6 +61,7 @@ object XServerDrawerState {
     @JvmField var onTaskManager:            Runnable? = null
     @JvmField var onMagnifier:              Runnable? = null
     @JvmField var onLogs:                   Runnable? = null
+    @JvmField var onExit:                   Runnable? = null
     @JvmField var onMoveCursorToTouchpoint: Runnable? = null
     @JvmField var onRelativeMouseMovement:  Runnable? = null
     @JvmField var onDisableMouse:           Runnable? = null

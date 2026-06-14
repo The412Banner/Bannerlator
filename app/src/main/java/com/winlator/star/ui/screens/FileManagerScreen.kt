@@ -88,7 +88,7 @@ private val FileTypeIcon: Map<String, ImageVector> = mapOf(
 )
 
 private val CardFill = Color(0xFF0A0A0A)
-private val CardStroke = Color(0xFF0055FF)
+private val CardStroke = Color(0xFF242424)
 private val DividerColor = Color(0xFF333333)
 
 @Composable

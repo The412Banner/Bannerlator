@@ -294,7 +294,7 @@ private fun ContainerItem(
         ) {
             // Container logo
             Icon(
-                painter = painterResource(R.drawable.icon_container),
+                painter = painterResource(R.drawable.icon_menu_container),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(44.dp),

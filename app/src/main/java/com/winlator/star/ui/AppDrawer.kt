@@ -60,7 +60,7 @@ private val PrimaryDim = Color(0xFF002277)
 private fun iconFor(screen: Screen): Int = when (screen) {
     Screen.Containers    -> R.drawable.icon_menu_container
     Screen.Games         -> R.drawable.icon_menu_contents
-    Screen.InputControls -> R.drawable.icon_input_controls
+    Screen.InputControls -> R.drawable.icon_gamepad
     Screen.AdrenoTools   -> R.drawable.icon_menu_gpu
     Screen.Saves         -> R.drawable.icon_save
     Screen.FileManager   -> R.drawable.icon_menu_file_manager
@@ -193,7 +193,7 @@ private fun DrawerItem(screen: Screen, currentRoute: String, onNavigate: (Screen
             Icon(
                 painter = painterResource(iconFor(screen)),
                 contentDescription = null,
-                tint = Color.Unspecified,
+                tint = GlowBlue,
                 modifier = Modifier.size(26.dp),
             )
             Spacer(Modifier.width(14.dp))
@@ -218,7 +218,7 @@ private fun DrawerStoreItem(screen: Screen, onLaunchStore: (Screen) -> Unit) {
         Icon(
             imageVector = Icons.Filled.Storefront,
             contentDescription = null,
-            tint = MutedWhite,
+            tint = GlowBlue,
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.width(14.dp))
@@ -242,7 +242,7 @@ private fun DrawerIconItem(label: String, icon: ImageVector, onClick: () -> Unit
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MutedWhite,
+            tint = GlowBlue,
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.width(14.dp))

@@ -3,6 +3,7 @@ package com.winlator.star.ui.screens
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
@@ -138,65 +140,72 @@ fun ContentDownloadSheet(
     }
 
     // Main dialog
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF2A2A2A),
-        title = {
-            Text("${contentTypes.joinToString(" + ") { it.toString() }} Downloads", color = Color.White)
-        },
-        text = {
-            if (isLoadingRemote) {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            } else if (profiles.isEmpty()) {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    Text("No content available.", color = Color(0xFFCCCCCC))
-                }
-            } else {
-                LazyColumn(Modifier.fillMaxWidth()) {
-                    items(profiles, key = { ContentsManager.getEntryName(it) }) { profile ->
-                        val key = ContentsManager.getEntryName(profile)
-                        val isLocal = profile.remoteUrl == null
-                        val isDownloading = key in downloadingKeys
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            color = Color.Black,
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFF555555)),
+            tonalElevation = 0.dp,
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("${contentTypes.joinToString(" + ") { it.toString() }} Downloads", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(12.dp))
+                if (isLoadingRemote) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                } else if (profiles.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text("No content available.", color = Color(0xFFCCCCCC))
+                    }
+                } else {
+                    LazyColumn(Modifier.fillMaxWidth()) {
+                        items(profiles, key = { ContentsManager.getEntryName(it) }) { profile ->
+                            val key = ContentsManager.getEntryName(profile)
+                            val isLocal = profile.remoteUrl == null
+                            val isDownloading = key in downloadingKeys
 
-                        DownloadContentItem(
-                            profile = profile,
-                            isLocal = isLocal,
-                            isDownloading = isDownloading,
-                            onDownload = {
-                                downloadingKeys = downloadingKeys + key
-                                scope.launch {
-                                    val uri = withContext(Dispatchers.IO) {
-                                        downloadToCache(context, profile)
-                                    }
-                                    downloadingKeys = downloadingKeys - key
-                                    if (uri != null) {
-                                        installing = true
-                                        installContent(context, cm, uri) { ok ->
-                                            installing = false
-                                            if (ok) {
-                                                loadProfiles(cm, contentTypes) { profiles = it }
-                                                onContentChanged()
-                                            } else {
-                                                errorMsg = "Install failed."
-                                            }
+                            DownloadContentItem(
+                                profile = profile,
+                                isLocal = isLocal,
+                                isDownloading = isDownloading,
+                                onDownload = {
+                                    downloadingKeys = downloadingKeys + key
+                                    scope.launch {
+                                        val uri = withContext(Dispatchers.IO) {
+                                            downloadToCache(context, profile)
                                         }
-                                    } else {
-                                        errorMsg = "Download failed."
+                                        downloadingKeys = downloadingKeys - key
+                                        if (uri != null) {
+                                            installing = true
+                                            installContent(context, cm, uri) { ok ->
+                                                installing = false
+                                                if (ok) {
+                                                    loadProfiles(cm, contentTypes) { profiles = it }
+                                                    onContentChanged()
+                                                } else {
+                                                    errorMsg = "Install failed."
+                                                }
+                                            }
+                                        } else {
+                                            errorMsg = "Download failed."
+                                        }
                                     }
-                                }
-                            },
-                            onInfo = { showInfoProfile = profile },
-                            onRemove = { confirmRemoveProfile = profile },
-                        )
-                        Divider(color = DividerColor)
+                                },
+                                onInfo = { showInfoProfile = profile },
+                                onRemove = { confirmRemoveProfile = profile },
+                            )
+                            Divider(color = DividerColor)
+                        }
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Close", color = MaterialTheme.colorScheme.primary) }
+                }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-    )
+        }
+    }
 }
 
 // ── Content download sheet for a single type ──────────────────────────────────

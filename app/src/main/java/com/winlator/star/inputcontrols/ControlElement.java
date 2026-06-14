@@ -717,7 +717,7 @@ public class ControlElement {
     private void drawGameHub(Canvas canvas) {
         int snappingSize = inputControlsView.getSnappingSize();
         Paint paint = inputControlsView.getPaint();
-        float effectiveOpacity = inputControlsView.isEditMode() ? Math.max(0.15f, 0.4f) : 0.4f;
+        float effectiveOpacity = inputControlsView.isEditMode() ? Math.max(0.15f, 1.0f) : 1.0f;
         float overlayOpacity = inputControlsView.getOverlayOpacity();
         boolean engaged = isEngaged();
         Rect boundingBox = getBoundingBox();
@@ -1052,10 +1052,13 @@ public class ControlElement {
         if (icon == null) return;
 
         Paint paint = inputControlsView.getPaint();
-        // Only tint system icons. Custom icons (ID >= 100) are drawn as-is.
         if (iconId < CustomIconManager.CUSTOM_ICON_ID_OFFSET) {
             boolean pressed = type == Type.BUTTON && states[0];
-            paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xff64ddff : 0xff0277bd, PorterDuff.Mode.SRC_IN));
+            if (inputControlsView.getVisualStyle() == VisualStyle.GAMEHUB) {
+                paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xffcccccc : 0xffffffff, PorterDuff.Mode.SRC_IN));
+            } else {
+                paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xff64ddff : 0xff0277bd, PorterDuff.Mode.SRC_IN));
+            }
         }
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);

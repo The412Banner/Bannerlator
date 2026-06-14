@@ -243,7 +243,8 @@ object XServerDialogState {
 
     fun interface FpsConfigCallback { fun invoke(config: String) }
 
-    @JvmField var onVisualStyleChanged: ((String) -> Unit)? = null
+    fun interface VisualStyleCallback { fun invoke(style: String) }
+    @JvmField var onVisualStyleChanged: VisualStyleCallback? = null
 
     // -------------------------------------------------------------------------
     // Inline tab initialization callbacks

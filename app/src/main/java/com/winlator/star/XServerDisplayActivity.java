@@ -394,6 +394,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setFpsConfig(fpsCfg);
         state.onFpsConfigApply = (newConfig) -> {
             if (newConfig == null) return;
+            state.setFpsConfig(newConfig);
             runOnUiThread(() -> {
                 if (frameRating != null) frameRating.applyConfig(newConfig);
                 if (frameRatingHorizontal != null) frameRatingHorizontal.applyConfig(newConfig);

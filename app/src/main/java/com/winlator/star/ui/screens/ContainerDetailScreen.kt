@@ -1664,8 +1664,14 @@ private fun ContentInstallGear(
             onDismissRequest = {},
             containerColor = Color(0xFF2A2A2A),
             title = { Text("Installing", color = Color.White) },
-            text = { Text("Please wait...", color = Color(0xFFCCCCCC)) },
-            confirmButton = {},
+            text = { Text("Please wait\u2026", color = Color(0xFFCCCCCC)) },
+            confirmButton = {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
         )
     }
 }

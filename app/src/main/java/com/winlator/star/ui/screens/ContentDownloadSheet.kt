@@ -151,7 +151,7 @@ fun ContentDownloadSheet(
                 }
             } else if (profiles.isEmpty()) {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    Text("No content available.", color = OnSurfaceVariant)
+                    Text("No content available.", color = Color(0xFFCCCCCC))
                 }
             } else {
                 LazyColumn(Modifier.fillMaxWidth()) {
@@ -220,7 +220,7 @@ private fun DownloadContentItem(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().background(SurfaceColor).padding(horizontal = 8.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().background(Color(0xFF1A1A1A), shape = RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
         Icon(
             imageVector = Icons.Filled.Settings,
@@ -229,8 +229,8 @@ private fun DownloadContentItem(
             modifier = Modifier.size(32.dp),
         )
         Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
-            Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = OnSurface)
-            Text("Code: ${profile.verCode}", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+            Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+            Text("Code: ${profile.verCode}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFCCCCCC))
         }
         if (!isLocal) {
             if (isDownloading) {
@@ -242,7 +242,7 @@ private fun DownloadContentItem(
             }
         } else {
             IconButton(onClick = onInfo) {
-                Icon(Icons.Filled.Info, contentDescription = "Info", tint = OnSurfaceVariant)
+                Icon(Icons.Filled.Info, contentDescription = "Info", tint = Color(0xFFCCCCCC))
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350))

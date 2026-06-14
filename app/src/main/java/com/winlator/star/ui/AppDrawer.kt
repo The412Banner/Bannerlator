@@ -102,6 +102,7 @@ fun AppDrawerContent(
 
         DrawerItem(Screen.Games,         currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
+        DrawerItem(Screen.FileManager,   currentRoute, onNavigate)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
 
         HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))

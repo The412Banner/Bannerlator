@@ -736,15 +736,15 @@ public class ControlElement {
         int fillColor = Color.argb(fillAlpha, 0, 0, 0);
         int strokeColor = hasAccent
                 ? Color.argb(Math.max(strokeAlpha, 110), Color.red(accent), Color.green(accent), Color.blue(accent))
-                : Color.argb(strokeAlpha, 255, 255, 255);
-        int pressedFillBase = hasAccent ? accent : Color.WHITE;
+                : Color.argb(strokeAlpha, 0x1C, 0x85, 0xFE);
+        int pressedFillBase = hasAccent ? accent : 0xFF1C85FE;
         int pressedFillColor = Color.argb(pressedFillAlpha, Color.red(pressedFillBase), Color.green(pressedFillBase), Color.blue(pressedFillBase));
         int pressedStrokeColor = hasAccent
                 ? Color.argb(Math.max(pressedStrokeAlpha, 160), Color.red(accent), Color.green(accent), Color.blue(accent))
-                : Color.argb(pressedStrokeAlpha, 255, 255, 255);
+                : Color.argb(pressedStrokeAlpha, 0x64, 0xDD, 0xFF);
         int textColor = hasAccent
                 ? Color.argb(textAlpha, Color.red(accent), Color.green(accent), Color.blue(accent))
-                : Color.argb(textAlpha, 255, 255, 255);
+                : Color.argb(textAlpha, 0x1C, 0x85, 0xFE);
 
         if (selected && !hasAccent) {
             int highlightAlpha = (int) (255 * overlayOpacity);
@@ -767,9 +767,11 @@ public class ControlElement {
                     GameHubLayout.buildTriggerPath(
                             path, triggerShape,
                             boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom);
+                    paint.setShadowLayer(snappingSize * 0.08f, 0, snappingSize * 0.04f, 0x40001C85FE);
                     paint.setStyle(Paint.Style.FILL);
                     paint.setColor(fillColor);
                     canvas.drawPath(path, paint);
+                    paint.setShadowLayer(0f, 0f, 0f, 0);
                     if (engaged) {
                         paint.setColor(pressedFillColor);
                         canvas.drawPath(path, paint);
@@ -781,7 +783,9 @@ public class ControlElement {
                     paint.setColor(engaged ? pressedStrokeColor : strokeColor);
                     canvas.drawPath(path, paint);
                 } else {
+                    paint.setShadowLayer(snappingSize * 0.08f, 0, snappingSize * 0.04f, 0x40001C85FE);
                     drawGameHubShape(canvas, paint, boundingBox, fillColor, true);
+                    paint.setShadowLayer(0f, 0f, 0f, 0);
                     if (engaged) drawGameHubShape(canvas, paint, boundingBox, pressedFillColor, true);
                     drawGameHubGlassShape(canvas, paint, boundingBox, glassEdgeAlpha);
                     paint.setStyle(Paint.Style.STROKE);
@@ -837,7 +841,7 @@ public class ControlElement {
                 int thumbFillAlpha = (int) ((engaged ? 100 : 77) * gameHubDim * effectiveOpacity);
                 int thumbFill = hasAccent
                         ? Color.argb(thumbFillAlpha, Color.red(accent), Color.green(accent), Color.blue(accent))
-                        : Color.argb(thumbFillAlpha, 255, 255, 255);
+                        : Color.argb(thumbFillAlpha, 0x1C, 0x85, 0xFE);
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(thumbFill);
                 canvas.drawCircle(thumbX, thumbY, thumbRadius, paint);
@@ -1055,7 +1059,7 @@ public class ControlElement {
         if (iconId < CustomIconManager.CUSTOM_ICON_ID_OFFSET) {
             boolean pressed = type == Type.BUTTON && states[0];
             if (inputControlsView.getVisualStyle() == VisualStyle.GAMEHUB) {
-                paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xffcccccc : 0xffffffff, PorterDuff.Mode.SRC_IN));
+                paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xff64ddff : 0xff1C85FE, PorterDuff.Mode.SRC_IN));
             } else {
                 paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xff64ddff : 0xff0277bd, PorterDuff.Mode.SRC_IN));
             }
@@ -1111,6 +1115,7 @@ public class ControlElement {
             currentPointerId = pointerId;
             if (type == Type.BUTTON) {
                 states[0] = true;
+                inputControlsView.invalidate();
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) {
                     inputControlsView.handleInputEvent(getBindingAt(0), true);
@@ -1294,6 +1299,7 @@ public class ControlElement {
         if (pointerId == currentPointerId) {
             if (type == Type.BUTTON) {
                 states[0] = false;
+                inputControlsView.invalidate();
                 if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
                     if (!selected) {
@@ -1301,7 +1307,6 @@ public class ControlElement {
                         inputControlsView.handleInputEvent(getBindingAt(1), false);
                     }
                     touchTime = null;
-                    inputControlsView.invalidate();
                 }
                 else if (!toggleSwitch || selected) {
                     inputControlsView.handleInputEvent(getBindingAt(0), false);
@@ -1310,7 +1315,6 @@ public class ControlElement {
 
                 if (toggleSwitch) {
                     selected = !selected;
-                    inputControlsView.invalidate();
                 }
             }
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {

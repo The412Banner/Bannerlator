@@ -282,7 +282,7 @@ private fun ContainerItem(
             .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A1A),
+            containerColor = Color(0xFF0A0A0A),
         ),
         border = BorderStroke(1.dp, Color(0xFF0055FF)),
     ) {

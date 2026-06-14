@@ -406,15 +406,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         };
 
-        XServerDialogState.INSTANCE.onVisualStyleChanged = (styleName) -> {
-            VisualStyle style = VisualStyle.fromPreference(styleName);
-            if (inputControlsView != null) inputControlsView.setVisualStyle(style);
-            preferences.edit().putString("input_visual_style", style.name()).apply();
-        };
-
-        String savedStyle = preferences.getString("input_visual_style", VisualStyle.GAMEHUB.name());
-        state.setVisualStyle(savedStyle);
-        if (inputControlsView != null) inputControlsView.setVisualStyle(VisualStyle.fromPreference(savedStyle));
+        if (inputControlsView != null) inputControlsView.setVisualStyle(VisualStyle.GAMEHUB);
 
         ComposeView drawerComposeView = findViewById(R.id.XServerDrawerComposeView);
         XServerDrawerKt.setupComposeView(drawerComposeView);
@@ -1343,8 +1335,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         inputControlsView.setVisibility(View.GONE);
         rootView.addView(inputControlsView);
 
-        String savedVisualStyle = preferences.getString("input_visual_style", VisualStyle.GAMEHUB.name());
-        inputControlsView.setVisualStyle(VisualStyle.fromPreference(savedVisualStyle));
+        inputControlsView.setVisualStyle(VisualStyle.GAMEHUB);
 
 
         startTouchscreenTimeout();

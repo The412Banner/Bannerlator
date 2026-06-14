@@ -87,7 +87,7 @@ private val FileTypeIcon: Map<String, ImageVector> = mapOf(
     "folder" to Icons.Filled.Folder,
 )
 
-private val CardFill = Color(0xFF1A1A1A)
+private val CardFill = Color(0xFF0A0A0A)
 private val CardStroke = Color(0xFF0055FF)
 private val DividerColor = Color(0xFF333333)
 
@@ -319,7 +319,7 @@ fun FileManagerScreen() {
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF1A1A1A))
+                    .background(Color(0xFF0A0A0A))
                     .clickable { /* drive selector */ }
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             )
@@ -342,7 +342,7 @@ fun FileManagerScreen() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0D0D0D))
+                .background(Color(0xFF0A0A0A))
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -353,7 +353,7 @@ fun FileManagerScreen() {
                         containerColor = if (currentDir.absolutePath.startsWith(dir.absolutePath))
                             CardStroke.copy(alpha = 0.2f)
                         else
-                            Color(0xFF1A1A1A)
+                            Color(0xFF0A0A0A)
                     ),
                     modifier = Modifier.height(32.dp),
                 ) {
@@ -397,7 +397,7 @@ fun FileManagerScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1A1A1A))
+                    .background(Color(0xFF0A0A0A))
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(operationLabel, color = OnSurfaceVariant, fontSize = 12.sp)

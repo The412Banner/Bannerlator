@@ -156,7 +156,7 @@ private fun StorageWidget() {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF1A1A1A))
+            .background(Color(0xFF0A0A0A))
             .border(1.dp, GlowBlue, RoundedCornerShape(10.dp))
             .padding(12.dp)
     ) {

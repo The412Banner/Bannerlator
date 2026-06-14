@@ -2,8 +2,9 @@ package com.winlator.star.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
+import android.os.StatFs
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,11 +30,12 @@ import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -125,7 +128,73 @@ fun AppDrawerContent(
             onClick = { showHelp = true },
         )
 
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(8.dp))
+        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
+        StorageWidget()
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun StorageWidget() {
+    var usedBytes by remember { mutableStateOf(0L) }
+    var totalBytes by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val path = Environment.getExternalStorageDirectory().path
+            val stat = StatFs(path)
+            val total = stat.totalBytes
+            val available = stat.availableBytes
+            usedBytes = total - available
+            totalBytes = total
+        } catch (_: Exception) {}
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Storage",
+                color = DimWhite,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (totalBytes > 0) {
+                Text(
+                    text = "${formatBytes(usedBytes)} / ${formatBytes(totalBytes)}",
+                    color = MutedWhite,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = if (totalBytes > 0) usedBytes.toFloat() / totalBytes else 0f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = GlowBlue,
+            trackColor = Color(0xFF1A1A1A),
+        )
+    }
+}
+
+private fun formatBytes(bytes: Long): String {
+    return when {
+        bytes >= 1_000_000_000_000L -> "%.1f TB".format(bytes / 1_000_000_000_000.0)
+        bytes >= 1_000_000_000L -> "%.1f GB".format(bytes / 1_000_000_000.0)
+        bytes >= 1_000_000L -> "%.1f MB".format(bytes / 1_000_000.0)
+        bytes >= 1_000L -> "%.1f KB".format(bytes / 1_000.0)
+        else -> "$bytes B"
     }
 }
 

@@ -6,6 +6,8 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 
 import com.winlator.star.core.CubicBezierInterpolator;
@@ -372,6 +374,8 @@ public class ControlElement {
                 float cy = boundingBox.centerY();
                 int oldColor = paint.getColor();
                 Shape effectiveShape = isShoulderButton ? Shape.ROUND_RECT : shape;
+                boolean pressed = states[0];
+                int activeColor = pressed ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor;
 
                 if (isL3R3) {
                     // Render L3/R3 like joystick circles
@@ -380,7 +384,7 @@ public class ControlElement {
                     paint.setColor(blackFill);
                     canvas.drawCircle(cx, cy, radius, paint);
                     paint.setStyle(Paint.Style.STROKE);
-                    paint.setColor(secondaryColor);
+                    paint.setColor(activeColor);
                     paint.setStrokeWidth(strokeWidth);
                     canvas.drawCircle(cx, cy, radius, paint);
 
@@ -391,7 +395,7 @@ public class ControlElement {
                         paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                         paint.setTextAlign(Paint.Align.CENTER);
                         paint.setStyle(Paint.Style.FILL);
-                        paint.setColor(secondaryColor);
+                        paint.setColor(activeColor);
                         canvas.drawText(text, x, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                     }
                     paint.setColor(oldColor);
@@ -416,9 +420,9 @@ public class ControlElement {
                     }
                 }
 
-                // Stroke - light blue
+                // Stroke - glow blue when pressed
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(secondaryColor);
+                paint.setColor(activeColor);
                 paint.setStrokeWidth(strokeWidth);
                 switch (effectiveShape) {
                     case CIRCLE:
@@ -435,7 +439,7 @@ public class ControlElement {
                     }
                 }
 
-                // Text - light blue
+                // Text/Icon - glow blue when pressed
                 if (iconId > 0) {
                     drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
                 }
@@ -444,7 +448,7 @@ public class ControlElement {
                     paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(secondaryColor);
+                    paint.setColor(activeColor);
                     canvas.drawText(text, x, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                 }
                 paint.setColor(oldColor);
@@ -453,69 +457,109 @@ public class ControlElement {
             case D_PAD: {
                 float cx = boundingBox.centerX();
                 float cy = boundingBox.centerY();
-                float offsetX = snappingSize * 2 * scale;
-                float offsetY = snappingSize * 3 * scale;
-                float start = snappingSize * scale;
                 int oldColor = paint.getColor();
                 Path path = inputControlsView.getPath();
                 path.reset();
 
-                // Background - rounded square with black fill
-                float dpadRadius = snappingSize * scale;
+                // 4 separate rounded rectangle buttons with arrows
+                float btnSize = snappingSize * 2.5f * scale;
+                float gap = snappingSize * 0.8f * scale;
+                float arrowSize = snappingSize * 0.6f * scale;
+                float arrowStem = snappingSize * 1.2f * scale;
+                float btnRadius = snappingSize * 0.5f * scale;
+
+                // Draw each directional button: up, down, left, right
+                // Each button is a rounded rect with an arrow inside
+
+                // Helper: draw one direction button
+                // [up]
+                float upCx = cx;
+                float upCy = boundingBox.top + btnSize * 0.5f;
+                // fill
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(blackFill);
-                canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, dpadRadius, dpadRadius, paint);
-
-                // Border - light blue stroke
+                canvas.drawRoundRect(upCx - btnSize * 0.5f, upCy - btnSize * 0.5f, upCx + btnSize * 0.5f, upCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                // stroke
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(secondaryColor);
+                paint.setColor(states[0] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
                 paint.setStrokeWidth(strokeWidth);
-                canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, dpadRadius, dpadRadius, paint);
+                canvas.drawRoundRect(upCx - btnSize * 0.5f, upCy - btnSize * 0.5f, upCx + btnSize * 0.5f, upCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                // up arrow
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(states[0] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
+                paint.setStrokeWidth(strokeWidth * 1.2f);
+                path.moveTo(upCx, upCy - arrowStem);
+                path.lineTo(upCx - arrowSize, upCy - arrowStem + arrowSize);
+                path.lineTo(upCx + arrowSize, upCy - arrowStem + arrowSize);
+                path.close();
+                canvas.drawPath(path, paint);
 
-                // Center square - small blue square
-                float centerSize = snappingSize * 0.6f * scale;
+                // [down]
+                float downCx = cx;
+                float downCy = boundingBox.bottom - btnSize * 0.5f;
+                path.reset();
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(blackFill);
+                canvas.drawRoundRect(downCx - btnSize * 0.5f, downCy - btnSize * 0.5f, downCx + btnSize * 0.5f, downCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(states[2] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
+                canvas.drawRoundRect(downCx - btnSize * 0.5f, downCy - btnSize * 0.5f, downCx + btnSize * 0.5f, downCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(states[2] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
+                paint.setStrokeWidth(strokeWidth * 1.2f);
+                path.moveTo(downCx, downCy + arrowStem);
+                path.lineTo(downCx - arrowSize, downCy + arrowStem - arrowSize);
+                path.lineTo(downCx + arrowSize, downCy + arrowStem - arrowSize);
+                path.close();
+                canvas.drawPath(path, paint);
+
+                // [left]
+                float leftCx = boundingBox.left + btnSize * 0.5f;
+                float leftCy = cy;
+                path.reset();
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(blackFill);
+                canvas.drawRoundRect(leftCx - btnSize * 0.5f, leftCy - btnSize * 0.5f, leftCx + btnSize * 0.5f, leftCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(states[3] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
+                canvas.drawRoundRect(leftCx - btnSize * 0.5f, leftCy - btnSize * 0.5f, leftCx + btnSize * 0.5f, leftCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(states[3] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
+                paint.setStrokeWidth(strokeWidth * 1.2f);
+                path.moveTo(leftCx - arrowStem, leftCy);
+                path.lineTo(leftCx - arrowStem + arrowSize, leftCy - arrowSize);
+                path.lineTo(leftCx - arrowStem + arrowSize, leftCy + arrowSize);
+                path.close();
+                canvas.drawPath(path, paint);
+
+                // [right]
+                float rightCx = boundingBox.right - btnSize * 0.5f;
+                float rightCy = cy;
+                path.reset();
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(blackFill);
+                canvas.drawRoundRect(rightCx - btnSize * 0.5f, rightCy - btnSize * 0.5f, rightCx + btnSize * 0.5f, rightCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(states[1] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
+                canvas.drawRoundRect(rightCx - btnSize * 0.5f, rightCy - btnSize * 0.5f, rightCx + btnSize * 0.5f, rightCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(states[1] ? Color.argb(overlayAlpha, 100, 200, 255) : secondaryColor);
+                paint.setStrokeWidth(strokeWidth * 1.2f);
+                path.moveTo(rightCx + arrowStem, rightCy);
+                path.lineTo(rightCx + arrowStem - arrowSize, rightCy - arrowSize);
+                path.lineTo(rightCx + arrowStem - arrowSize, rightCy + arrowSize);
+                path.close();
+                canvas.drawPath(path, paint);
+
+                // Rounded center square
+                float centerSize = snappingSize * 0.5f * scale;
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(secondaryColor);
-                canvas.drawRect(cx - centerSize, cy - centerSize, cx + centerSize, cy + centerSize, paint);
+                canvas.drawRoundRect(cx - centerSize, cy - centerSize, cx + centerSize, cy + centerSize, centerSize * 0.3f, centerSize * 0.3f, paint);
 
-                // Arrows - blue
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(secondaryColor);
-                paint.setStrokeWidth(strokeWidth);
-
-                // Up arrow
-                path.moveTo(cx, cy - start);
-                path.lineTo(cx - offsetX, cy - offsetY);
-                path.lineTo(cx - offsetX, boundingBox.top);
-                path.lineTo(cx + offsetX, boundingBox.top);
-                path.lineTo(cx + offsetX, cy - offsetY);
-                path.close();
-
-                // Left arrow
-                path.moveTo(cx - start, cy);
-                path.lineTo(cx - offsetY, cy - offsetX);
-                path.lineTo(boundingBox.left, cy - offsetX);
-                path.lineTo(boundingBox.left, cy + offsetX);
-                path.lineTo(cx - offsetY, cy + offsetX);
-                path.close();
-
-                // Down arrow
-                path.moveTo(cx, cy + start);
-                path.lineTo(cx - offsetX, cy + offsetY);
-                path.lineTo(cx - offsetX, boundingBox.bottom);
-                path.lineTo(cx + offsetX, boundingBox.bottom);
-                path.lineTo(cx + offsetX, cy + offsetY);
-                path.close();
-
-                // Right arrow
-                path.moveTo(cx + start, cy);
-                path.lineTo(cx + offsetY, cy - offsetX);
-                path.lineTo(boundingBox.right, cy - offsetX);
-                path.lineTo(boundingBox.right, cy + offsetX);
-                path.lineTo(cx + offsetY, cy + offsetX);
-                path.close();
-
-                canvas.drawPath(path, paint);
                 paint.setColor(oldColor);
                 break;
             }
@@ -653,8 +697,11 @@ public class ControlElement {
         if (icon == null) return;
 
         Paint paint = inputControlsView.getPaint();
-        // Only tint system icons. Custom icons (ID >= 100) are drawn as-is to prevent "white screen" blocks.
-        if (iconId < CustomIconManager.CUSTOM_ICON_ID_OFFSET) paint.setColorFilter(inputControlsView.getColorFilter());
+        // Only tint system icons. Custom icons (ID >= 100) are drawn as-is.
+        if (iconId < CustomIconManager.CUSTOM_ICON_ID_OFFSET) {
+            boolean pressed = type == Type.BUTTON && states[0];
+            paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xff64ddff : 0xff0277bd, PorterDuff.Mode.SRC_IN));
+        }
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
 

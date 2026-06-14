@@ -463,8 +463,8 @@ public class ControlElement {
                 // 4 separate rounded rectangle buttons with arrows
                 float btnSize = snappingSize * 3.5f * scale;
                 float gap = snappingSize * 0.75f * scale;
-                float arrowSize = snappingSize * 0.7f * scale;
-                float arrowStem = snappingSize * 1.6f * scale;
+                float arrowW = btnSize * 0.35f;
+                float arrowH = btnSize * 0.5f;
                 float btnRadius = snappingSize * 0.5f * scale;
 
                 // Draw each directional button: up, down, left, right
@@ -487,9 +487,9 @@ public class ControlElement {
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(states[0] ? 0xff64ddff : 0xff0277bd);
                 paint.setStrokeWidth(strokeWidth * 1.2f);
-                path.moveTo(upCx, upCy - arrowStem);
-                path.lineTo(upCx - arrowSize, upCy - arrowStem + arrowSize);
-                path.lineTo(upCx + arrowSize, upCy - arrowStem + arrowSize);
+                path.moveTo(upCx, upCy - arrowH * 0.5f);
+                path.lineTo(upCx - arrowW * 0.5f, upCy + arrowH * 0.5f);
+                path.lineTo(upCx + arrowW * 0.5f, upCy + arrowH * 0.5f);
                 path.close();
                 canvas.drawPath(path, paint);
 
@@ -507,9 +507,9 @@ public class ControlElement {
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(states[2] ? 0xff64ddff : 0xff0277bd);
                 paint.setStrokeWidth(strokeWidth * 1.2f);
-                path.moveTo(downCx, downCy + arrowStem);
-                path.lineTo(downCx - arrowSize, downCy + arrowStem - arrowSize);
-                path.lineTo(downCx + arrowSize, downCy + arrowStem - arrowSize);
+                path.moveTo(downCx, downCy + arrowH * 0.5f);
+                path.lineTo(downCx - arrowW * 0.5f, downCy - arrowH * 0.5f);
+                path.lineTo(downCx + arrowW * 0.5f, downCy - arrowH * 0.5f);
                 path.close();
                 canvas.drawPath(path, paint);
 
@@ -527,9 +527,9 @@ public class ControlElement {
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(states[3] ? 0xff64ddff : 0xff0277bd);
                 paint.setStrokeWidth(strokeWidth * 1.2f);
-                path.moveTo(leftCx - arrowStem, leftCy);
-                path.lineTo(leftCx - arrowStem + arrowSize, leftCy - arrowSize);
-                path.lineTo(leftCx - arrowStem + arrowSize, leftCy + arrowSize);
+                path.moveTo(leftCx - arrowH * 0.5f, leftCy);
+                path.lineTo(leftCx + arrowH * 0.5f, leftCy - arrowW * 0.5f);
+                path.lineTo(leftCx + arrowH * 0.5f, leftCy + arrowW * 0.5f);
                 path.close();
                 canvas.drawPath(path, paint);
 
@@ -547,16 +547,20 @@ public class ControlElement {
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(states[1] ? 0xff64ddff : 0xff0277bd);
                 paint.setStrokeWidth(strokeWidth * 1.2f);
-                path.moveTo(rightCx + arrowStem, rightCy);
-                path.lineTo(rightCx + arrowStem - arrowSize, rightCy - arrowSize);
-                path.lineTo(rightCx + arrowStem - arrowSize, rightCy + arrowSize);
+                path.moveTo(rightCx + arrowH * 0.5f, rightCy);
+                path.lineTo(rightCx - arrowH * 0.5f, rightCy - arrowW * 0.5f);
+                path.lineTo(rightCx - arrowH * 0.5f, rightCy + arrowW * 0.5f);
                 path.close();
                 canvas.drawPath(path, paint);
 
-                // Rounded center square
+                // Rounded center square - black fill + blue stroke
                 float centerSize = snappingSize * 1.2f * scale;
                 paint.setStyle(Paint.Style.FILL);
+                paint.setColor(blackFill);
+                canvas.drawRoundRect(cx - centerSize, cy - centerSize, cx + centerSize, cy + centerSize, centerSize * 0.3f, centerSize * 0.3f, paint);
+                paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(0xff0277bd);
+                paint.setStrokeWidth(strokeWidth);
                 canvas.drawRoundRect(cx - centerSize, cy - centerSize, cx + centerSize, cy + centerSize, centerSize * 0.3f, centerSize * 0.3f, paint);
 
                 paint.setColor(oldColor);

@@ -2,12 +2,11 @@ package com.winlator.star.inputcontrols;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.Rect;
-
-import androidx.core.graphics.ColorUtils;
 
 import com.winlator.star.core.CubicBezierInterpolator;
 import com.winlator.star.math.Mathf;
@@ -354,37 +353,89 @@ public class ControlElement {
         int snappingSize = inputControlsView.getSnappingSize();
         Paint paint = inputControlsView.getPaint();
         int primaryColor = inputControlsView.getPrimaryColor();
+        int secondaryColor = inputControlsView.getSecondaryColor();
+        int overlayAlpha = Color.alpha(primaryColor);
+        int blackFill = Color.argb(overlayAlpha, 0, 0, 0);
 
-        paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
+        paint.setColor(selected ? secondaryColor : primaryColor);
         paint.setStyle(Paint.Style.STROKE);
         float strokeWidth = snappingSize * 0.25f;
         paint.setStrokeWidth(strokeWidth);
         Rect boundingBox = getBoundingBox();
 
+        boolean isL3R3 = type == Type.BUTTON && (getBindingAt(0) == Binding.GAMEPAD_BUTTON_L3 || getBindingAt(0) == Binding.GAMEPAD_BUTTON_R3);
+        boolean isShoulderButton = type == Type.BUTTON && (getBindingAt(0) == Binding.GAMEPAD_BUTTON_L1 || getBindingAt(0) == Binding.GAMEPAD_BUTTON_R1 || getBindingAt(0) == Binding.GAMEPAD_BUTTON_L2 || getBindingAt(0) == Binding.GAMEPAD_BUTTON_R2);
+
         switch (type) {
             case BUTTON: {
                 float cx = boundingBox.centerX();
                 float cy = boundingBox.centerY();
+                int oldColor = paint.getColor();
+                Shape effectiveShape = isShoulderButton ? Shape.ROUND_RECT : shape;
 
-                switch (shape) {
+                if (isL3R3) {
+                    // Render L3/R3 like joystick circles
+                    float radius = boundingBox.width() * 0.5f;
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(blackFill);
+                    canvas.drawCircle(cx, cy, radius, paint);
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setColor(secondaryColor);
+                    paint.setStrokeWidth(strokeWidth);
+                    canvas.drawCircle(cx, cy, radius, paint);
+
+                    if (iconId > 0) {
+                        drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
+                    } else {
+                        String text = getDisplayText();
+                        paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
+                        paint.setTextAlign(Paint.Align.CENTER);
+                        paint.setStyle(Paint.Style.FILL);
+                        paint.setColor(secondaryColor);
+                        canvas.drawText(text, x, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
+                    }
+                    paint.setColor(oldColor);
+                    break;
+                }
+
+                // Fill - black with opacity
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(blackFill);
+                switch (effectiveShape) {
                     case CIRCLE:
                         canvas.drawCircle(cx, cy, boundingBox.width() * 0.5f, paint);
                         break;
                     case RECT:
                         canvas.drawRect(boundingBox, paint);
                         break;
-                    case ROUND_RECT: {
-                        float radius = boundingBox.height() * 0.5f;
-                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
-                        break;
-                    }
+                    case ROUND_RECT:
                     case SQUARE: {
-                        float radius = snappingSize * 0.75f * scale;
+                        float radius = effectiveShape == Shape.ROUND_RECT ? boundingBox.height() * 0.5f : snappingSize * 0.75f * scale;
                         canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
                         break;
                     }
                 }
 
+                // Stroke - light blue
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
+                switch (effectiveShape) {
+                    case CIRCLE:
+                        canvas.drawCircle(cx, cy, boundingBox.width() * 0.5f, paint);
+                        break;
+                    case RECT:
+                        canvas.drawRect(boundingBox, paint);
+                        break;
+                    case ROUND_RECT:
+                    case SQUARE: {
+                        float radius = effectiveShape == Shape.ROUND_RECT ? boundingBox.height() * 0.5f : snappingSize * 0.75f * scale;
+                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                        break;
+                    }
+                }
+
+                // Text - light blue
                 if (iconId > 0) {
                     drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
                 }
@@ -393,9 +444,10 @@ public class ControlElement {
                     paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(primaryColor);
+                    paint.setColor(secondaryColor);
                     canvas.drawText(text, x, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                 }
+                paint.setColor(oldColor);
                 break;
             }
             case D_PAD: {
@@ -404,9 +456,34 @@ public class ControlElement {
                 float offsetX = snappingSize * 2 * scale;
                 float offsetY = snappingSize * 3 * scale;
                 float start = snappingSize * scale;
+                int oldColor = paint.getColor();
                 Path path = inputControlsView.getPath();
                 path.reset();
 
+                // Background - rounded square with black fill
+                float dpadRadius = snappingSize * scale;
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(blackFill);
+                canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, dpadRadius, dpadRadius, paint);
+
+                // Border - light blue stroke
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
+                canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, dpadRadius, dpadRadius, paint);
+
+                // Center square - small blue square
+                float centerSize = snappingSize * 0.6f * scale;
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(secondaryColor);
+                canvas.drawRect(cx - centerSize, cy - centerSize, cx + centerSize, cy + centerSize, paint);
+
+                // Arrows - blue
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
+
+                // Up arrow
                 path.moveTo(cx, cy - start);
                 path.lineTo(cx - offsetX, cy - offsetY);
                 path.lineTo(cx - offsetX, boundingBox.top);
@@ -414,6 +491,7 @@ public class ControlElement {
                 path.lineTo(cx + offsetX, cy - offsetY);
                 path.close();
 
+                // Left arrow
                 path.moveTo(cx - start, cy);
                 path.lineTo(cx - offsetY, cy - offsetX);
                 path.lineTo(boundingBox.left, cy - offsetX);
@@ -421,6 +499,7 @@ public class ControlElement {
                 path.lineTo(cx - offsetY, cy + offsetX);
                 path.close();
 
+                // Down arrow
                 path.moveTo(cx, cy + start);
                 path.lineTo(cx - offsetX, cy + offsetY);
                 path.lineTo(cx - offsetX, boundingBox.bottom);
@@ -428,6 +507,7 @@ public class ControlElement {
                 path.lineTo(cx + offsetX, cy + offsetY);
                 path.close();
 
+                // Right arrow
                 path.moveTo(cx + start, cy);
                 path.lineTo(cx + offsetY, cy - offsetX);
                 path.lineTo(boundingBox.right, cy - offsetX);
@@ -436,6 +516,7 @@ public class ControlElement {
                 path.close();
 
                 canvas.drawPath(path, paint);
+                paint.setColor(oldColor);
                 break;
             }
             case RANGE_BUTTON: {
@@ -517,26 +598,39 @@ public class ControlElement {
                 break;
             }
             case STICK: {
-                int cx = boundingBox.centerX();  // Fixed outer circle center
-                int cy = boundingBox.centerY();  // Fixed outer circle center
+                int cx = boundingBox.centerX();
+                int cy = boundingBox.centerY();
                 int oldColor = paint.getColor();
+                float outerRadius = boundingBox.height() * 0.5f;
 
-                // Draw the outer circle (base of the stick)
-                canvas.drawCircle(cx, cy, boundingBox.height() * 0.5f, paint);
+                // Outer circle - black fill
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(blackFill);
+                canvas.drawCircle(cx, cy, outerRadius, paint);
 
-                // Draw the inner thumbstick (current position based on gyroscope movement)
+                // Outer circle - light blue stroke
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
+                canvas.drawCircle(cx, cy, outerRadius, paint);
+
+                // Inner thumbstick
                 float thumbstickX = getCurrentPosition().x;
                 float thumbstickY = getCurrentPosition().y;
+                short thumbRadius = (short) (snappingSize * 3.5f * scale);
 
-                short thumbRadius = (short) (snappingSize * 3.5f * scale); // Radius of the thumbstick
+                // Thumb - black fill
                 paint.setStyle(Paint.Style.FILL);
-                paint.setColor(ColorUtils.setAlphaComponent(primaryColor, 50)); // Semi-transparent fill for thumbstick
-                canvas.drawCircle(thumbstickX, thumbstickY, thumbRadius, paint); // Draw thumbstick
+                paint.setColor(blackFill);
+                canvas.drawCircle(thumbstickX, thumbstickY, thumbRadius, paint);
 
-                // Draw the thumbstick border
+                // Thumb - light blue stroke
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(oldColor);
+                paint.setColor(secondaryColor);
+                paint.setStrokeWidth(strokeWidth);
                 canvas.drawCircle(thumbstickX, thumbstickY, thumbRadius + strokeWidth * 0.5f, paint);
+
+                paint.setColor(oldColor);
                 break;
             }
 

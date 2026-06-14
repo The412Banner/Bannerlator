@@ -45,6 +45,9 @@ object XServerDrawerState {
     private val _fpsConfig = MutableStateFlow("")
     val fpsConfig: StateFlow<String> = _fpsConfig
 
+    private val _visualStyle = MutableStateFlow("GAMEHUB")
+    val visualStyle: StateFlow<String> = _visualStyle
+
     // Callbacks wired by XServerDisplayActivity.
     // @JvmField exposes these as public fields so Java can assign them directly.
     // Runnable avoids the kotlin.Unit return-type mismatch for Java void lambdas.
@@ -89,6 +92,7 @@ object XServerDrawerState {
 
     fun setFpsExpanded(v: Boolean) { _fpsExpanded.value = v }
     fun setFpsConfig(v: String) { _fpsConfig.value = v }
+    fun setVisualStyle(v: String) { _visualStyle.value = v }
     fun toggleFpsExpanded() { _fpsExpanded.value = !_fpsExpanded.value }
 
     fun reset() {
@@ -103,6 +107,7 @@ object XServerDrawerState {
         _cursorExpanded.value = false
         _fpsExpanded.value = false
         _fpsConfig.value = ""
+        _visualStyle.value = "GAMEHUB"
         onClose = null; onKeyboard = null; onInputControls = null
         onScreenEffects = null; onGraphicEngine = null; onVibration = null
         onToggleFullscreen = null; onPauseResume = null; onPipMode = null

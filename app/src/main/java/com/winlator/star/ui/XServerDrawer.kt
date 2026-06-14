@@ -642,6 +642,13 @@ private fun ControlsContent(state: XServerDrawerState) {
         XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
     }
 
+    val visualStyleName by state.visualStyle.collectAsState()
+    ToggleRow("Glass Style", visualStyleName == "GAMEHUB") { enabled ->
+        val newStyle = if (enabled) "GAMEHUB" else "ORIGINAL"
+        state.setVisualStyle(newStyle)
+        XServerDialogState.onVisualStyleChanged?.invoke(newStyle)
+    }
+
     Spacer(Modifier.height(8.dp))
 
     OutlinedButton(

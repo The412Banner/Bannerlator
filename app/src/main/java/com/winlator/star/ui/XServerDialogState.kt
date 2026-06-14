@@ -243,6 +243,8 @@ object XServerDialogState {
 
     fun interface FpsConfigCallback { fun invoke(config: String) }
 
+    @JvmField var onVisualStyleChanged: ((String) -> Unit)? = null
+
     // -------------------------------------------------------------------------
     // Inline tab initialization callbacks
     // -------------------------------------------------------------------------
@@ -285,6 +287,7 @@ object XServerDialogState {
         onMagnifierZoom = null; onMagnifierHide = null
         onSgsrUpdate = null
         onVibrationSlotChanged = null
+        onVisualStyleChanged = null
         onInputControlsConfirm = null; onInputControlsSettings = null
         onScreenEffectsApply = null; onSeAddProfile = null; onSeRemoveProfile = null
         onWindowClick = null

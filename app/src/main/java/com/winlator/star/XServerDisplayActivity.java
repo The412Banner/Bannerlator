@@ -79,6 +79,7 @@ import com.winlator.star.core.WineUtils;
 import com.winlator.star.inputcontrols.ControlsProfile;
 import com.winlator.star.inputcontrols.ExternalController;
 import com.winlator.star.inputcontrols.InputControlsManager;
+import com.winlator.star.inputcontrols.VisualStyle;
 import com.winlator.star.math.Mathf;
 import com.winlator.star.math.XForm;
 import com.winlator.star.midi.MidiHandler;
@@ -404,6 +405,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 container.saveData();
             }
         };
+
+        XServerDialogState.INSTANCE.onVisualStyleChanged = (styleName) -> {
+            VisualStyle style = VisualStyle.fromPreference(styleName);
+            if (inputControlsView != null) inputControlsView.setVisualStyle(style);
+            preferences.edit().putString("input_visual_style", style.name()).apply();
+        };
+
+        String savedStyle = preferences.getString("input_visual_style", VisualStyle.GAMEHUB.name());
+        state.setVisualStyle(savedStyle);
+        if (inputControlsView != null) inputControlsView.setVisualStyle(VisualStyle.fromPreference(savedStyle));
 
         ComposeView drawerComposeView = findViewById(R.id.XServerDrawerComposeView);
         XServerDrawerKt.setupComposeView(drawerComposeView);

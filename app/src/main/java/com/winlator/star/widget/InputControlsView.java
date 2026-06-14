@@ -36,6 +36,7 @@ import com.winlator.star.inputcontrols.CustomIconManager;
 import com.winlator.star.inputcontrols.ExternalController;
 import com.winlator.star.inputcontrols.ExternalControllerBinding;
 import com.winlator.star.inputcontrols.GamepadState;
+import com.winlator.star.inputcontrols.VisualStyle;
 import com.winlator.star.math.Mathf;
 import com.winlator.star.winhandler.MouseEventFlags;
 import com.winlator.star.winhandler.WinHandler;
@@ -62,6 +63,7 @@ public class InputControlsView extends View {
     private ControlElement selectedElement;
     private ControlsProfile profile;
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
+    private VisualStyle visualStyle = VisualStyle.GAMEHUB;
     private TouchpadView touchpadView;
     private XServer xServer;
     private final Bitmap[] icons = new Bitmap[1024]; // Increased size for custom icons
@@ -134,6 +136,22 @@ public class InputControlsView extends View {
 
     public void setOverlayOpacity(float overlayOpacity) {
         this.overlayOpacity = overlayOpacity;
+    }
+
+    public float getOverlayOpacity() {
+        return overlayOpacity;
+    }
+
+    public boolean isEditMode() {
+        return editMode;
+    }
+
+    public VisualStyle getVisualStyle() {
+        return visualStyle;
+    }
+
+    public void setVisualStyle(VisualStyle style) {
+        visualStyle = style != null ? style : VisualStyle.GAMEHUB;
     }
 
     public int getSnappingSize() {

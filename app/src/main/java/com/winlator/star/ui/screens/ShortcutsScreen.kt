@@ -539,6 +539,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                             if (full != null) {
                                                 sc.saveCustomCoverArt(full)
                                                 sc.icon = full
+                                                val iconsDir = sc.container.getIconsDir(64)
+                                                if (iconsDir != null) {
+                                                    if (!iconsDir.exists()) iconsDir.mkdirs()
+                                                    FileUtils.saveBitmapToFile(full, File(iconsDir, sc.name + ".png"))
+                                                }
                                             }
                                             withContext(Dispatchers.Main) {
                                                 scrapeTarget = null

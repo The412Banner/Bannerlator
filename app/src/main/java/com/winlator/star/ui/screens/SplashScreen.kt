@@ -167,13 +167,13 @@ fun SplashScreen(
             Spacer(Modifier.height(20.dp))
 
             Text(
-                text = "Star Bionic",
+                text = "Star Marcescence",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
             )
             Text(
-                text = "v1.3-vegas",
+                text = "v1.4-marcescence",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFFAAAAAA),

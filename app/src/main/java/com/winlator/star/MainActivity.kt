@@ -417,13 +417,13 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                     modifier = androidx.compose.ui.Modifier.size(72.dp)
                 )
                 Text(
-                    text = "Star Bionic",
+                    text = "Star Marcescence",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "v1.3-vegas",
+                    text = "v1.4-marcescence",
                     fontSize = 13.sp,
                     color = com.winlator.star.ui.theme.OnSurfaceVariant
                 )
@@ -448,7 +448,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                 AboutSection(title = "Credits") {
                     AboutRow("brunodev85",      "Winlator — original project")
                     AboutRow("MishaMixXx",      "Winlator Bionic")
-                    AboutRow("The412Banner",    "Star-Compose / Star Bionic")
+                    AboutRow("The412Banner",    "Star-Compose / Star Marcescence")
                     AboutRow("ptitSeb",         "Box64")
                     AboutRow("WineHQ",          "Wine project")
                     AboutRow("Mesa / Freedreno","Turnip Vulkan driver")

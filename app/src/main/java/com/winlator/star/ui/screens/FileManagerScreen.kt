@@ -63,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -478,6 +479,7 @@ private fun FileItemRow(
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val isDir = file.isDirectory
     val canRun = isDir || file.name.lowercase().let { it.endsWith(".exe") || it.endsWith(".bat") || it.endsWith(".msi") || it.endsWith(".sh") }
+    val isExe = !isDir && file.name.lowercase().let { it.endsWith(".exe") || it.endsWith(".bat") || it.endsWith(".msi") || it.endsWith(".sh") }
 
     Card(
         modifier = Modifier
@@ -492,12 +494,22 @@ private fun FileItemRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            Icon(
-                imageVector = if (isDir) Icons.Filled.Folder else Icons.Filled.InsertDriveFile,
-                contentDescription = null,
-                tint = IconBlue,
-                modifier = Modifier.size(36.dp),
-            )
+            if (isExe) {
+                Icon(
+                    painter = painterResource(R.drawable.icon_menu_container),
+                    contentDescription = null,
+                    tint = IconBlue,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+            else {
+                Icon(
+                    imageVector = if (isDir) Icons.Filled.Folder else Icons.Filled.InsertDriveFile,
+                    contentDescription = null,
+                    tint = IconBlue,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

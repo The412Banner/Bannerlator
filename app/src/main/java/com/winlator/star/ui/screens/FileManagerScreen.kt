@@ -90,6 +90,7 @@ private val FileTypeIcon: Map<String, ImageVector> = mapOf(
 private val CardFill = Color(0xFF0A0A0A)
 private val CardStroke = Color(0xFF242424)
 private val DividerColor = Color(0xFF333333)
+private val IconBlue = Color(0xFF1C85FE)
 
 @Composable
 fun FileManagerScreen() {
@@ -306,7 +307,7 @@ fun FileManagerScreen() {
                 val parent = currentDir.parentFile
                 if (parent != null && parent.exists()) loadDirectory(parent)
             }, enabled = currentDir != rootDir) {
-                Icon(Icons.Filled.ArrowBack, "Back", tint = CardStroke)
+                Icon(Icons.Filled.ArrowBack, "Back", tint = IconBlue)
             }
 
             val currentDriveLabel = drives.firstOrNull { (_, d) ->
@@ -361,6 +362,7 @@ fun FileManagerScreen() {
                         imageVector = if (label.startsWith("Drive")) Icons.Filled.SdStorage else Icons.Filled.Storage,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
+                        tint = IconBlue,
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(label, fontSize = 11.sp)
@@ -380,7 +382,7 @@ fun FileManagerScreen() {
                     .clickable { performPaste() }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                Icon(Icons.Filled.ContentPaste, "Paste", tint = CardStroke, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.ContentPaste, "Paste", tint = IconBlue, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Paste ${clipboardFile?.name}${if (isCutOperation) " (move)" else ""} here",
@@ -452,7 +454,7 @@ fun FileManagerScreen() {
                 onClick = { showNewFolderDialog = true },
                 border = BorderStroke(1.dp, CardStroke),
             ) {
-                Icon(Icons.Filled.CreateNewFolder, null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.CreateNewFolder, null, modifier = Modifier.size(18.dp), tint = IconBlue)
                 Spacer(Modifier.width(6.dp))
                 Text("New Folder", color = Color.White)
             }
@@ -493,7 +495,7 @@ private fun FileItemRow(
             Icon(
                 imageVector = if (isDir) Icons.Filled.Folder else Icons.Filled.InsertDriveFile,
                 contentDescription = null,
-                tint = if (isDir) Color(0xFFFFA726) else CardStroke,
+                tint = IconBlue,
                 modifier = Modifier.size(36.dp),
             )
             Spacer(Modifier.width(10.dp))
@@ -517,34 +519,34 @@ private fun FileItemRow(
             }
             Box {
                 IconButton(onClick = onMenu) {
-                    Icon(Icons.Filled.MoreVert, "Actions", tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.MoreVert, "Actions", tint = IconBlue, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = onDismissMenu) {
                     if (canRun) {
                         DropdownMenuItem(
                             text = { Text("Run") },
-                            leadingIcon = { Icon(Icons.Filled.PlayArrow, null) },
+                            leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = IconBlue) },
                             onClick = { onDismissMenu(); onRun() },
                         )
                     }
                     DropdownMenuItem(
                         text = { Text("Rename") },
-                        leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                        leadingIcon = { Icon(Icons.Filled.Edit, null, tint = IconBlue) },
                         onClick = { onDismissMenu(); onRename() },
                     )
                     DropdownMenuItem(
                         text = { Text("Copy") },
-                        leadingIcon = { Icon(Icons.Filled.FileCopy, null) },
+                        leadingIcon = { Icon(Icons.Filled.FileCopy, null, tint = IconBlue) },
                         onClick = { onDismissMenu(); onCopy() },
                     )
                     DropdownMenuItem(
                         text = { Text("Cut") },
-                        leadingIcon = { Icon(Icons.Filled.ContentCut, null) },
+                        leadingIcon = { Icon(Icons.Filled.ContentCut, null, tint = IconBlue) },
                         onClick = { onDismissMenu(); onCut() },
                     )
                     DropdownMenuItem(
                         text = { Text("Delete") },
-                        leadingIcon = { Icon(Icons.Filled.Delete, null) },
+                        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = IconBlue) },
                         onClick = { onDismissMenu(); onDelete() },
                     )
                 }

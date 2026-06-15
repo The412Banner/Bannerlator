@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
@@ -86,6 +87,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.winlator.star.ui.LocalTopBarActions
 import androidx.compose.ui.Alignment
@@ -131,6 +133,7 @@ import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.InputControlsManager
 import com.winlator.star.midi.MidiManager
+import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.ui.theme.Divider as DividerColor
 import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
@@ -141,6 +144,7 @@ import com.winlator.star.winhandler.WinHandler
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -149,6 +153,8 @@ import java.io.BufferedReader
 import java.io.FileReader
 import java.io.IOException
 import java.lang.reflect.Field
+import org.json.JSONArray
+import org.json.JSONObject
 
 @Composable
 fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
@@ -168,6 +174,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameDialogName by remember { mutableStateOf("") }
     var renameDialogContainerIndex by remember { mutableStateOf(-1) }
+    var scrapeTarget by remember { mutableStateOf<Shortcut?>(null) }
+    val scrapeCovers = remember { mutableStateListOf<Pair<Bitmap, String>>() }
+    var scrapeLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val importFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
@@ -267,6 +277,36 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onAddToHome = { addToHomeScreen(context, shortcut) },
                                     onExport = { exportShortcut(context, shortcut) },
                                     onProperties = { propertiesShortcut = shortcut },
+                                    onScrapeCover = {
+                                        scrapeTarget = shortcut
+                                        scrapeCovers.clear()
+                                        scrapeLoading = true
+                                        scope.launch(Dispatchers.IO) {
+                                            val json = StarLaunchBridge.sgdbFetchGridsJson(shortcut.name)
+                                            val covers = mutableListOf<Pair<Bitmap, String>>()
+                                            try {
+                                                val arr = JSONArray(json)
+                                                for (i in 0 until arr.length()) {
+                                                    val obj = arr.getJSONObject(i)
+                                                    val thumbUrl = obj.optString("thumb", "")
+                                                    val fullUrl = obj.optString("url", "")
+                                                    if (thumbUrl.isNotEmpty() && fullUrl.isNotEmpty()) {
+                                                        val conn = java.net.URL(thumbUrl).openConnection() as java.net.HttpURLConnection
+                                                        conn.connectTimeout = 10000
+                                                        conn.readTimeout = 10000
+                                                        val bmp = BitmapFactory.decodeStream(conn.inputStream)
+                                                        conn.disconnect()
+                                                        if (bmp != null) covers.add(bmp to fullUrl)
+                                                    }
+                                                }
+                                            } catch (_: Exception) {}
+                                            withContext(Dispatchers.Main) {
+                                                scrapeCovers.clear()
+                                                scrapeCovers.addAll(covers)
+                                                scrapeLoading = false
+                                            }
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -465,6 +505,67 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         )
     }
 
+    // Scrape cover dialog
+    val sc = scrapeTarget
+    if (sc != null) {
+        AlertDialog(
+            onDismissRequest = { scrapeTarget = null },
+            title = { Text("Scrape cover for \"${sc.name}\"") },
+            text = {
+                if (scrapeLoading) {
+                    Text("Searching SteamGridDB...", color = OnSurfaceVariant)
+                } else if (scrapeCovers.isEmpty()) {
+                    Text("No covers found.", color = OnSurfaceVariant)
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        scrapeCovers.forEach { (bmp, url) ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        scope.launch(Dispatchers.IO) {
+                                            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                                            conn.connectTimeout = 15000
+                                            conn.readTimeout = 20000
+                                            val full = BitmapFactory.decodeStream(conn.inputStream)
+                                            conn.disconnect()
+                                            if (full != null) {
+                                                sc.saveCustomCoverArt(full)
+                                                sc.icon = full
+                                            }
+                                            withContext(Dispatchers.Main) {
+                                                scrapeTarget = null
+                                                vm.refresh()
+                                                Toast.makeText(context, "Cover saved.", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                            ) {
+                                Image(
+                                    bitmap = bmp.asImageBitmap(),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 120.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { scrapeTarget = null }) { Text("Cancel") } },
+        )
+    }
+
     // Compose shortcut settings dialog
     settingsShortcut?.let { s ->
         ShortcutSettingsDialogScreen(
@@ -604,6 +705,7 @@ private fun ShortcutGridItem(
     onAddToHome: () -> Unit,
     onExport: () -> Unit,
     onProperties: () -> Unit,
+    onScrapeCover: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -680,6 +782,7 @@ private fun ShortcutGridItem(
             DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
             DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
             DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
+            DropdownMenuItem(text = { Text("Scrape cover") }, leadingIcon = { Icon(Icons.Filled.Search, null, tint = Color(0xFF1C85FE)) }, onClick = { menuExpanded = false; onScrapeCover() })
             DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
         }
     }

@@ -316,6 +316,43 @@ public final class StarLaunchBridge {
         }
     }
 
+    /**
+     * Searches SteamGridDB for all available covers matching {@code title}
+     * and returns a JSON array of {thumb, url} objects, or "[]" on failure.
+     */
+    public static String sgdbFetchGridsJson(String title) {
+        try {
+            String encoded = java.net.URLEncoder.encode(title, "UTF-8");
+            String searchJson = httpGet(
+                    "https://www.steamgriddb.com/api/v2/search/autocomplete/" + encoded);
+            if (searchJson == null) return "[]";
+            JSONArray results = new JSONObject(searchJson).optJSONArray("data");
+            if (results == null || results.length() == 0) return "[]";
+            int gameId = results.getJSONObject(0).getInt("id");
+
+            String gridsJson = httpGet(
+                    "https://www.steamgriddb.com/api/v2/grids/game/" + gameId
+                            + "?dimensions=600x900&mimes=image/jpeg,image/png");
+            if (gridsJson == null) return "[]";
+            JSONArray grids = new JSONObject(gridsJson).optJSONArray("data");
+            if (grids == null || grids.length() == 0) return "[]";
+
+            JSONArray out = new JSONArray();
+            for (int i = 0; i < grids.length(); i++) {
+                JSONObject g = grids.getJSONObject(i);
+                JSONObject entry = new JSONObject();
+                entry.put("thumb", g.optString("thumb", ""));
+                entry.put("url", g.optString("url", ""));
+                out.put(entry);
+            }
+            Log.d(TAG, "SteamGridDB found " + out.length() + " covers for \"" + title + "\"");
+            return out.toString();
+        } catch (Exception e) {
+            Log.w(TAG, "sgdbFetchGridsJson failed for \"" + title + "\": " + e.getMessage());
+            return "[]";
+        }
+    }
+
     private static String httpGet(String url) {
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();

@@ -19,6 +19,9 @@ Windows applications and games on Android.</h1>
 
 - **Upstream lineage:** Winlator → cmod → Bionic Nightly → star Bionic**
 
+## Frontends Workaround
+Sadly star doesnt work by itself on frontends, but you can check [this](https://github.com/star-emu/star/blob/marcescence/marcescence-frontends.md) workaround guide to make it work!
+
 ---
 
 # Links

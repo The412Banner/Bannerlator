@@ -542,7 +542,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                                 val iconsDir = sc.container.getIconsDir(64)
                                                 if (iconsDir != null) {
                                                     if (!iconsDir.exists()) iconsDir.mkdirs()
-                                                    FileUtils.saveBitmapToFile(full, File(iconsDir, sc.name + ".png"))
+                                                    val iconName = kotlin.runCatching { sc.file.readLines().firstOrNull { it.startsWith("Icon=") }?.substringAfter("Icon=")?.trim() }.getOrNull() ?: sc.name
+                                                    FileUtils.saveBitmapToFile(full, File(iconsDir, iconName + ".png"))
                                                 }
                                             }
                                             withContext(Dispatchers.Main) {

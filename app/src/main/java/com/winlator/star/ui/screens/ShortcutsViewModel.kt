@@ -3,6 +3,7 @@ package com.winlator.star.ui.screens
 import android.app.Application
 import android.content.Context
 import android.content.pm.ShortcutManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Environment
 import android.provider.DocumentsContract
@@ -276,6 +277,17 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         val raw = manager.loadShortcuts()
         // filter out corrupted entries (matches original Fragment logic)
         _shortcuts.value = raw.filter { it != null && it.file != null && it.file.name.isNotEmpty() }
+    }
+
+    /** Replaces a shortcut in the live list, optionally applying a specific icon. */
+    fun reloadShortcut(filePath: String, icon: Bitmap? = null) {
+        _shortcuts.value = _shortcuts.value.map { s ->
+            if (s.file.path == filePath) {
+                val loaded = Shortcut(s.container, s.file)
+                loaded.icon = icon ?: loaded.icon ?: s.icon
+                loaded
+            } else s
+        }
     }
 
     fun remove(shortcut: Shortcut, context: Context): Boolean {

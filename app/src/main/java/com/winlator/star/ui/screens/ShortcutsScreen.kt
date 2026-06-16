@@ -547,7 +547,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                             }
                                             withContext(Dispatchers.Main) {
                                                 scrapeTarget = null
-                                                vm.refresh()
+                                                vm.reloadShortcut(sc.file.path, full)
                                                 Toast.makeText(context, "Cover saved.", Toast.LENGTH_SHORT).show()
                                             }
                                         }

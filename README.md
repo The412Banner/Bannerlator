@@ -1,61 +1,83 @@
 <p align="center">
-<img src="logo.jpg" width="1245" height="602" alt="bannerlators" />
+  <img src="logo.jpg" width="820" alt="Bannerlator" />
+</p>
+
+<h1 align="center">Bannerlator</h1>
+<p align="center"><b>Windows applications and games on Android.</b></p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/downloads/The412Banner/bannerlators/total?style=for-the-badge&label=Downloads&color=ff2d9b" alt="Total Downloads">
+  <img src="https://img.shields.io/badge/Platform-Android%208.0%2B-7a4cff?style=for-the-badge" alt="Platform">
+  <img src="https://img.shields.io/badge/License-GPL--3.0-2d9bff?style=for-the-badge" alt="License">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/downloads/The412Banner/bannerlators/total" alt="Total Downloads" width="150">
+  <a href="https://discord.gg/n8S4G2WZQ4">Discord</a> •
+  <a href="https://t.me/The412BannerGaming">Telegram</a> •
+  <a href="#building">Builds</a> •
+  <a href="#credits">Credits</a>
 </p>
 
-<h1 align="center"> bannerlators -
-Windows applications and games on Android.</h1>
+---
 
-**bannerlators** is an application that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
+## ⭐ About
 
-**Informations:**
-- **Package:** `com.winlator.star` (standard), `com.tencent.ig` (pubg), `com.ludashi.benchmark` (ludashi)
+**Bannerlator** lets you play PC games on Android with the best performance possible — bringing your **Steam, Amazon, GOG and Epic Games** libraries with you on the go.
 
-- **Version:** `v1.3-vegas` (build identifier `7.1.4x-cmod`, versionCode `20`)
-
-- **Android SDK:** `compileSdk 34`, `targetSdk 28`, `minSdk 26` (Android 8.0+)
-
-- **Upstream lineage:** Winlator → cmod → Bionic Nightly → star Bionic**
-
-## Frontends Workaround
-Sadly bannerlators doesnt work by itself on frontends, but you can check [this](https://github.com/star-emu/star/blob/marcescence/marcescence-frontends.md) workaround guide to make it work!
+It is a **personal continuation** of the Winlator *Star Bionic* line, carried forward with a full Jetpack Compose UI, restored controller support, and a streamlined CI/release pipeline.
 
 ---
 
-# Links
+## 📌 Project Notice
 
-- [Discord server](https://discord.gg/n8S4G2WZQ4)
-    
-- [Telegram](https://t.me/The412BannerGaming)
-
----
-
-## Building
-
-This project is built via **GitHub Actions only**. Local builds are not supported.
-
-
-Artifacts are published as workflow artifacts; tagged stable builds are also published as GitHub Releases.
+> **Bannerlator is a personal continuation of the Winlator *Star Bionic* project, which was recently discontinued and archived.**
+>
+> **None of the original developers are involved except me ([The412Banner](https://github.com/The412Banner)).** This project would not be possible without their hard work up to this point, together with cherry-picked commits from other open-source projects across the community — all credited below.
+>
+> This is **my personal build.** As always, it is **free for anyone to use as they see fit, or to share.**
 
 ---
 
-## Credits
+## ℹ️ Information
 
-This fork stands on a long chain of prior work. Credit, in lineage order:
+| | |
+|---|---|
+| **Packages** | `com.winlator.star` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) |
+| **Version** | `v1.3-vegas` — build identifier `7.1.4x-cmod`, versionCode `20` |
+| **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
+| **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **Bannerlator** |
+
+---
+
+## 🎮 Frontends Workaround
+
+Bannerlator does not work by itself on frontends out of the box. See the [frontends workaround guide](https://github.com/star-emu/star/blob/marcescence/marcescence-frontends.md) to get it running.
+
+---
+
+## 🛠️ Building
+
+This project is built via **GitHub Actions only** — local builds are not supported.
+
+- **Action builds** — every fix is compiled and published as a downloadable workflow artifact.
+- **Releases** — tagged stable builds are published as GitHub Releases.
+
+---
+
+## 🙏 Credits
+
+This build stands on a long chain of prior work. Credit, in lineage order:
 
 | Contributor | Contribution |
 |---|---|
 | **brunodev85** | Original [Winlator](https://github.com/brunodev85/winlator) — Wine + Box64 + Turnip on Android. Foundation of every fork below. Also serves the `input_controls` profiles consumed by this fork: <https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/> |
 | **coffincolors** | [`cmod` Winlator fork](https://github.com/coffincolors/winlator) — package `com.winlator.cmod` and the customization layer this codebase is built on. |
 | **Pipetto-crypto** | [Winlator Bionic fork](https://github.com/Pipetto-crypto/winlator) (the "Bionic" half of *Star Bionic*) and the upstream [Box64 fix branch](https://github.com/Pipetto-crypto/box64). Co-credited on cmod. |
-| **jacojayy** | Maintainer of the [Star](https://github.com/jacojayy/star) line. Timeline Semaphore patches in the bundled Turnip driver for newer DXVK compatibility. Official site developer and mantainer. |
+| **jacojayy** | Maintainer of the [Star](https://github.com/jacojayy/star) line. Timeline Semaphore patches in the bundled Turnip driver for newer DXVK compatibility. Official site developer and maintainer. |
 | **vivsi** | Controller support contributions. |
 | **The412Banner** | Full Jetpack Compose UI migration, in-game overlay rewrite, controller-support restore (SDL2 SoName fix + four event files), Box64 edit-dialog fix, theme system, and CI/release infrastructure. Also maintains the [Nightlies WCP Hub](https://github.com/The412Banner/Nightlies) and [Banners-Turnip](https://github.com/The412Banner/Banners-Turnip). |
 
-### Sibling forks (not in this fork's direct lineage, but worth knowing)
+### Sibling forks
 
 - **StevenMXZ** — [Winlator-Ludashi](https://github.com/StevenMXZ/Winlator-Ludashi): Bionic-based fork with `dev-vanilla`, `ludashi` (renamed package for Xiaomi performance-mode detection), and `redmagic` (Genshin Impact package name for RedMagic frame-gen) build variants.
 
@@ -63,31 +85,33 @@ This fork stands on a long chain of prior work. Credit, in lineage order:
 
 The Wine/translation stack this app bundles or downloads:
 
-- **Wine** — [WineHQ](https://www.winehq.org/)
-- **Box64 / Box86** — [ptitSeb](https://github.com/ptitSeb)
-- **FEXCore** — [FEX-Emu](https://github.com/FEX-Emu)
-- **DXVK** — [doitsujin / Philip Rebohle](https://github.com/doitsujin)
-- **DXVK-GPLAsync patch** — [Ph42oN](https://gitlab.com/Ph42oN)
-- **DXVK-Sarek** — [pythonlover02](https://github.com/pythonlover02)
-- **VKD3D-Proton** — [Hans-Kristian Arntzen](https://github.com/HansKristian-Work)
-- **Turnip / Mesa** — [Freedreno team @ Mesa](https://gitlab.freedesktop.org/mesa/mesa)
-- **Proton layers (bionic)** — [GameNative](https://github.com/utkarshdalal/GameNative)
+| Component | Author |
+|---|---|
+| **Wine** | [WineHQ](https://www.winehq.org/) |
+| **Box64 / Box86** | [ptitSeb](https://github.com/ptitSeb) |
+| **FEXCore** | [FEX-Emu](https://github.com/FEX-Emu) |
+| **DXVK** | [doitsujin / Philip Rebohle](https://github.com/doitsujin) |
+| **DXVK-GPLAsync patch** | [Ph42oN](https://gitlab.com/Ph42oN) |
+| **DXVK-Sarek** | [pythonlover02](https://github.com/pythonlover02) |
+| **VKD3D-Proton** | [Hans-Kristian Arntzen](https://github.com/HansKristian-Work) |
+| **Turnip / Mesa** | [Freedreno team @ Mesa](https://gitlab.freedesktop.org/mesa/mesa) |
+| **Proton layers (bionic)** | [GameNative](https://github.com/utkarshdalal/GameNative) |
 
-Credits surfaced in the **star Bionic REVAMPED** project (`star.bionic-revamp`):
+Additional credits surfaced in the **Star Bionic REVAMPED** project (`star.bionic-revamp`):
 
 - **@The412Banner** — Converting the UI to Jetpack Compose and rewriting the controller implementation.
 - **@jacojayy** — Timeline Semaphore patches in Turnip.
 
-If you have contributed and are not listed, open a PR — this list is intended to be complete.
+> If you have contributed and are not listed, open a PR — this list is intended to be complete.
 
 ---
 
-## Disclaimer
+## ⚖️ Disclaimer
 
-Winlator and its forks are unofficial community projects. They are not affiliated with or endorsed by Microsoft, Wine, the Mesa project, Qualcomm, or any game publisher. Compatibility varies by device GPU, Android version, and individual game.
+Winlator and its forks are unofficial community projects. They are **not** affiliated with or endorsed by Microsoft, Wine, the Mesa project, Qualcomm, or any game publisher. Compatibility varies by device GPU, Android version, and individual game.
 
 ---
 
-## License
+## 📄 License
 
-Inherits the license of the upstream Winlator project (GPL-3.0). See `LICENSE` for the full text.
+Inherits the license of the upstream Winlator project (**GPL-3.0**). See [`LICENSE`](LICENSE) for the full text.

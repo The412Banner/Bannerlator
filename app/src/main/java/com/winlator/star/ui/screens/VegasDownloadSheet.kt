@@ -1,6 +1,5 @@
 package com.winlator.star.ui.screens
 
-import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.layout.*
@@ -18,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
+import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.Divider as DividerColor
 import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
@@ -49,7 +49,6 @@ fun VegasDownloadSheet(
     onContentChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as Activity
     val cm = remember { ContentsManager(context) }
     val scope = rememberCoroutineScope()
 
@@ -211,7 +210,11 @@ private fun installWcp(
     uri: Uri,
     onDone: (Boolean) -> Unit,
 ) {
-    val activity = context as Activity
+    val activity = context.findActivity()
+    if (activity == null) {
+        onDone(false)
+        return
+    }
     Executors.newSingleThreadExecutor().execute {
         try {
             cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {

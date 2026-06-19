@@ -65,6 +65,7 @@ import com.winlator.star.R
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
+import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.Divider as DividerColor
 import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
@@ -97,7 +98,6 @@ private sealed class InstallDialogState {
 @Composable
 fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
     val context = LocalContext.current
-    val activity = context as Activity
 
     val filter by vm.filter.collectAsState()
     val profiles by vm.profiles.collectAsState()
@@ -574,7 +574,11 @@ private fun launchInstall(
     onDone: () -> Unit,
     onDialog: (InstallDialogState) -> Unit,
 ) {
-    val activity = context as Activity
+    val activity = context.findActivity()
+    if (activity == null) {
+        onDone()
+        return
+    }
     activity.runOnUiThread { onLoading(context.getString(R.string.installing_content)) }
 
     val callback = object : ContentsManager.OnInstallFinishedCallback {

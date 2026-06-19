@@ -1,6 +1,5 @@
 package com.winlator.star.ui.screens
 
-import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
@@ -27,6 +26,7 @@ import androidx.compose.ui.window.Dialog
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
+import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.Divider as DividerColor
 import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
@@ -49,7 +49,7 @@ fun ContentDownloadSheet(
     onContentChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as Activity
+    val activity = context.findActivity()
     val cm = remember { ContentsManager(context) }
     val scope = rememberCoroutineScope()
 
@@ -178,7 +178,7 @@ fun ContentDownloadSheet(
                                         scope.launch {
                                             val uri = withContext(Dispatchers.IO) {
                                                 downloadToCache(context, profile) { frac ->
-                                                    activity.runOnUiThread {
+                                                    activity?.runOnUiThread {
                                                         downloadProgress = downloadProgress + (key to frac)
                                                     }
                                                 }
@@ -360,7 +360,11 @@ private fun installContent(
     uri: Uri,
     onDone: (Boolean) -> Unit,
 ) {
-    val activity = context as Activity
+    val activity = context.findActivity()
+    if (activity == null) {
+        onDone(false)
+        return
+    }
     Executors.newSingleThreadExecutor().execute {
         try {
             cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {

@@ -3,7 +3,6 @@ package com.winlator.star.ui.screens
 
 import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.view.ContextThemeWrapper
@@ -36,6 +35,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.MainActivity
 import com.winlator.star.R
+import com.winlator.star.ui.findActivity
 import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.WineD3DConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
@@ -1675,16 +1675,6 @@ internal fun FpsCounterConfigDialog(
 // ─────────────────────────────────────────────────────────────────────────────
 // Inline install helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Compose's LocalContext is often a ContextThemeWrapper, not the Activity itself, so a
- * bare `context as Activity` cast throws ClassCastException. Walk the wrapper chain instead.
- */
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
 
 private fun installContentFromUri(activity: Activity, uri: Uri, onSuccess: () -> Unit) {
     val cm = ContentsManager(activity)

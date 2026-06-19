@@ -15,6 +15,41 @@ gh workflow run "Any branch compilation." --repo The412Banner/star-compose --ref
 
 ---
 
+## 2026-06-19 — Vulkan/DXVK/vkd3d BLACK-SCREEN FIX (✅ both renderers device-confirmed)
+
+**Symptom:** native Vulkan + DXVK(d3d8-11) + vkd3d(d3d12) rendered BLACK at full FPS on BOTH
+host renderers; OpenGL/DirectDraw/D3D7 fine.
+
+**Root cause:** marcescence shipped the native scanout machinery but left the AHB (DRI3 modifier
+1255) present path UNWIRED, and the GL renderer had NO AHB->GL (EGLImage) sampling at all
+(GPUImage textureId==0 -> black). Confirmed via device logcat (tag "Dri3": modifier 1255 ->
+AHB path taken; pixmaps imported fine -> not an import failure).
+
+**Fix (commit `7d5c9f8`, build label "vkfix3" run 27848179202):** ported proven wiring from
+GameNative (utkarshdalal/GameNative, local ~/GameNative):
+- `renderer/GPUImage.java` + `cpp/winlator/gpu_image.c`: GPUImage(int socketFd) now locks
+  (valid getStride + virtualData) and gained EGLImage support (createImageKHR =
+  eglGetNativeClientBufferANDROID + eglCreateImageKHR + glEGLImageTargetTexture2DOES). AHB
+  allocated BGRA_8888 (matches X depth-32 / GL_BGRA -> correct colors). unlock-before-release.
+- `xserver/extensions/DRI3Extension.java`: setDirectScanout(true) + getStride() width.
+- `xserver/extensions/PresentExtension.java`: 3-branch present (Vulkan native+scanout=FLIP /
+  Vulkan=COPY via onUpdateWindowContentDirect / GL+SHM=copyArea); relaxed depth 24<->32.
+- `XServerDisplayActivity.setupUI` + `VulkanRenderer.setInitialNativeMode`: wired the
+  previously-dead Vulkan toggles (native / presentMode / filterMode / swapRB).
+
+**Device results (vkfix3):** ✅ OpenGL host renderer (native Vulkan 1432fps + D3D12/vkd3d
+1748fps, correct colors). ✅ Vulkan host renderer (native Vulkan 1449fps, correct colors).
+⏳ Native-rendering toggle ON: not yet tested (user testing later).
+
+**Next:** test native toggle -> if good, cut a tagged release (pick a real version; vkfix3 is
+just a build label). Cleanup: graphicsDriverConfig has two competing dialog formats writing the
+same field.
+
+APKs delivered: `/sdcard/Download/Bannerlator-vkfix3-standard.apk` (md5 eebfe339…),
+`-pubg.apk` (md5 a7c0acb3…).
+
+---
+
 ## How to Resume a Session
 
 1. Read this file top to bottom

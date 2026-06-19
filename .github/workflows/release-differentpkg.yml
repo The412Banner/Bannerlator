@@ -1,12 +1,23 @@
 name: Nightly CI Release Build (different pkg)
 
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. 1.7, 1.8)'
+        required: true
+      release_title:
+        description: 'Release title (e.g. Star 1.7)'
+        required: true
+      release_number:
+        description: 'Release number for APK name (e.g. 1.7)'
+        required: true
+
+permissions:
+  contents: write
 
 concurrency:
-  group: release-differentpkg
+  group: release-differentpkg-${{ github.event.inputs.release_tag }}
   cancel-in-progress: false
 
 jobs:

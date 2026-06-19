@@ -9,8 +9,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.winlator.star.InputControlsFragment
-import com.winlator.star.SettingsFragment
+
+
 import com.winlator.star.ui.screens.AdrenoToolsScreen
 import com.winlator.star.ui.screens.AppearanceScreen
 import com.winlator.star.ui.screens.ContainerDetailScreen
@@ -18,6 +18,8 @@ import com.winlator.star.ui.screens.ContainersScreen
 import com.winlator.star.ui.screens.FileManagerScreen
 import com.winlator.star.ui.screens.FragmentScreen
 import com.winlator.star.ui.screens.SavesScreen
+import com.winlator.star.ui.screens.InputControlsScreen
+import com.winlator.star.ui.screens.SettingsScreen
 import com.winlator.star.ui.screens.ShortcutsScreen
 
 @Composable
@@ -66,7 +68,7 @@ fun AppNavGraph(
         }
 
         composable(Screen.InputControls.route) {
-            FragmentScreen(activity = activity) { InputControlsFragment(selectedInputProfileId) }
+            InputControlsScreen()
         }
 
         composable(Screen.AdrenoTools.route) {
@@ -78,7 +80,7 @@ fun AppNavGraph(
         }
 
         composable(Screen.Settings.route) {
-            FragmentScreen(activity = activity) { SettingsFragment() }
+            SettingsScreen()
         }
 
         composable(Screen.Appearance.route) {

@@ -54,9 +54,10 @@ fun ContentDownloadSheet(
 
     var profiles by remember { mutableStateOf<List<ContentProfile>>(emptyList()) }
     var downloadingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
+    var installingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showInfoProfile by remember { mutableStateOf<ContentProfile?>(null) }
     var confirmRemoveProfile by remember { mutableStateOf<ContentProfile?>(null) }
-    var installing by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var isLoadingRemote by remember { mutableStateOf(true) }
     var refreshKey by remember { mutableStateOf(0) }
@@ -117,19 +118,6 @@ fun ContentDownloadSheet(
         )
     }
 
-    // Installing overlay
-    if (installing) {
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)), contentAlignment = Alignment.Center) {
-            Surface(color = Color(0xFF2A2A2A), shape = RoundedCornerShape(12.dp)) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
-                    CircularProgressIndicator(color = Color(0xFF0055FF))
-                    Spacer(Modifier.height(16.dp))
-                    Text("Installing\u2026", color = Color.White)
-                }
-            }
-        }
-    }
-
     // Error toast sub-dialog
     errorMsg?.let { msg ->
         AlertDialog(
@@ -166,31 +154,43 @@ fun ContentDownloadSheet(
                                 val key = ContentsManager.getEntryName(profile)
                                 val isLocal = profile.remoteUrl == null
                                 val isDownloading = key in downloadingKeys
+                                val isInstalling = key in installingKeys
 
                                 DownloadContentItem(
                                     profile = profile,
                                     isLocal = isLocal,
                                     isDownloading = isDownloading,
+                                    isInstalling = isInstalling,
+                                    progress = downloadProgress[key],
                                     onDownload = {
                                         downloadingKeys = downloadingKeys + key
+                                        downloadProgress = downloadProgress + (key to 0f)
                                         scope.launch {
                                             val uri = withContext(Dispatchers.IO) {
-                                                downloadToCache(context, profile)
+                                                downloadToCache(context, profile) { frac ->
+                                                    activity.runOnUiThread {
+                                                        downloadProgress = downloadProgress + (key to frac)
+                                                    }
+                                                }
                                             }
-                                            downloadingKeys = downloadingKeys - key
                                             if (uri != null) {
-                                                installing = true
+                                                // Download done → restart the same bar as "installing".
+                                                installingKeys = installingKeys + key
+                                                downloadingKeys = downloadingKeys - key
+                                                downloadProgress = downloadProgress - key
                                                 installContent(context, cm, uri) { ok ->
-                                                installing = false
-                                                if (ok) {
-                                                    loadProfiles(cm, contentTypes) { profiles = it }
-                                                    refreshKey++
-                                                    onContentChanged()
+                                                    installingKeys = installingKeys - key
+                                                    if (ok) {
+                                                        loadProfiles(cm, contentTypes) { profiles = it }
+                                                        refreshKey++
+                                                        onContentChanged()
                                                     } else {
                                                         errorMsg = "Install failed."
                                                     }
                                                 }
                                             } else {
+                                                downloadingKeys = downloadingKeys - key
+                                                downloadProgress = downloadProgress - key
                                                 errorMsg = "Download failed."
                                             }
                                         }
@@ -199,16 +199,6 @@ fun ContentDownloadSheet(
                                     onRemove = { confirmRemoveProfile = profile },
                                 )
                                 Divider(color = DividerColor)
-                            }
-                        }
-
-                        if (installing) {
-                            Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.85f)), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                                    Spacer(Modifier.height(12.dp))
-                                    Text("Installing...", color = Color.White, style = MaterialTheme.typography.bodyLarge)
-                                }
                             }
                         }
                     }
@@ -237,38 +227,69 @@ private fun DownloadContentItem(
     profile: ContentProfile,
     isLocal: Boolean,
     isDownloading: Boolean,
+    isInstalling: Boolean,
+    progress: Float?,
     onDownload: () -> Unit,
     onInfo: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    val busy = isDownloading || isInstalling
+    Column(
         modifier = Modifier.fillMaxWidth().background(Color(0xFF1A1A1A), shape = RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
-        Icon(
-            imageVector = Icons.Filled.Settings,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(32.dp),
-        )
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
-            Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = Color.White)
-            Text("Code: ${profile.verCode}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFCCCCCC))
-        }
-        if (!isLocal) {
-            if (isDownloading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Settings,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp),
+            )
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                Text("Code: ${profile.verCode}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFCCCCCC))
+            }
+            if (!isLocal) {
+                if (busy) {
+                    // Small on-card spinner stays visible during both download and install.
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    IconButton(onClick = onDownload) {
+                        Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
             } else {
-                IconButton(onClick = onDownload) {
-                    Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+                IconButton(onClick = onInfo) {
+                    Icon(Icons.Filled.Info, contentDescription = "Info", tint = Color(0xFFCCCCCC))
+                }
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350))
                 }
             }
-        } else {
-            IconButton(onClick = onInfo) {
-                Icon(Icons.Filled.Info, contentDescription = "Info", tint = Color(0xFFCCCCCC))
-            }
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350))
+        }
+
+        // Progress bar across the bottom of the card: determinate while downloading,
+        // then restarts as an indeterminate "installing" bar (green) during install.
+        if (busy) {
+            Spacer(Modifier.height(6.dp))
+            val barColor = if (isInstalling) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+            val trackColor = Color(0xFF333333)
+            val barMod = Modifier.fillMaxWidth().height(3.dp)
+            if (!isInstalling && progress != null && progress >= 0f) {
+                LinearProgressIndicator(
+                    progress = progress.coerceIn(0f, 1f),
+                    modifier = barMod,
+                    color = barColor,
+                    trackColor = trackColor,
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = barMod,
+                    color = barColor,
+                    trackColor = trackColor,
+                )
             }
         }
     }
@@ -297,9 +318,9 @@ private fun loadProfiles(
     onResult(all.distinctBy { ContentsManager.getEntryName(it) })
 }
 
-private fun downloadToCache(context: Context, profile: ContentProfile): Uri? {
+private fun downloadToCache(context: Context, profile: ContentProfile, onProgress: (Float) -> Unit): Uri? {
     val f = File(context.cacheDir, "temp_${System.currentTimeMillis()}")
-    return if (Downloader.downloadFile(profile.remoteUrl, f)) Uri.fromFile(f) else null
+    return if (Downloader.downloadFile(profile.remoteUrl, f) { frac -> onProgress(frac) }) Uri.fromFile(f) else null
 }
 
 private fun installContent(

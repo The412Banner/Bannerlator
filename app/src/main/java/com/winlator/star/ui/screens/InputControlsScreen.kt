@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -277,18 +278,19 @@ fun InputControlsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Black)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ── Profile Section ─────────────────────────────────────────
-        Text("Profile", color = Color(0xFFCCCCCC), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text("Profile", color = Color(0xFF0055FF), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         FieldSet {
             Box {
                 val displayText = if (selectedProfileIdx > 0 && selectedProfileIdx - 1 < profiles.size)
                     profiles[selectedProfileIdx - 1].getName() else "-- Select Profile --"
                 Button(onClick = { showProfileDropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A3E)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
                     modifier = Modifier.fillMaxWidth()) {
                     Text(displayText, color = Color.White)
                 }
@@ -376,7 +378,7 @@ fun InputControlsScreen() {
                         builder.show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A4E)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
                 modifier = Modifier.weight(1f)
             ) { Text("Import Profile", color = Color.White, fontSize = 12.sp) }
             Button(
@@ -387,7 +389,7 @@ fun InputControlsScreen() {
                             "${context.getString(R.string.profile_exported_to)} ${exported.path}")
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A4E)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
                 modifier = Modifier.weight(1f)
             ) { Text("Export Profile", color = Color.White, fontSize = 12.sp) }
         }
@@ -405,23 +407,23 @@ fun InputControlsScreen() {
                     )
                 } else AppUtils.showToast(context, R.string.no_profile_selected)
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
             modifier = Modifier.fillMaxWidth()
         ) { Text("Controls Editor", color = Color.White) }
 
         // ── External Controllers ────────────────────────────────────
-        Text("External Controllers", color = Color(0xFFCCCCCC), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text("External Controllers", color = Color(0xFF0055FF), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         if (controllers.isEmpty()) {
             Text("No items to display", color = Color(0xFF888888), fontSize = 14.sp,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
         } else {
             for (controller in controllers) {
                 val bindingsCount = controller.getControllerBindingCount()
-                val tintColor = if (controller.isConnected()) Color(0xFF4CAF50) else Color(0xFFE57373)
-                val accentColor = AColor.parseColor("#4CAF50")
+                val tintColor = if (controller.isConnected()) Color(0xFF1976D2) else Color(0xFFE57373)
+                val accentColor = AColor.parseColor("#1976D2")
 
                 Box(
-                    modifier = Modifier.fillMaxWidth().background(Color(0xFF1A1A2E), RoundedCornerShape(8.dp)).clickable {
+                    modifier = Modifier.fillMaxWidth().background(Color.Black, RoundedCornerShape(10.dp)).border(1.dp, Color(0xFF222B36), RoundedCornerShape(10.dp)).clickable {
                         if (currentProfile != null) {
                             val intent = Intent(context, ExternalControllerBindingsActivity::class.java)
                             intent.putExtra("profile_id", currentProfile!!.id)
@@ -465,7 +467,8 @@ private fun FieldSet(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1A2E), RoundedCornerShape(8.dp))
+            .background(Color.Black, RoundedCornerShape(10.dp))
+            .border(1.dp, Color(0xFF222B36), RoundedCornerShape(10.dp))
             .padding(12.dp)
     ) {
         content()

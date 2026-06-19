@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -345,6 +346,7 @@ fun SettingsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Black)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -356,7 +358,7 @@ fun SettingsScreen() {
             Spacer(Modifier.height(8.dp))
             Box {
                 Button(onClick = { showBox64Dropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A3E)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
                     modifier = Modifier.fillMaxWidth()) {
                     val label = box64Presets.find { it.id == selectedBox64Preset }?.name ?: selectedBox64Preset
                     Text(label, color = Color.White)
@@ -416,7 +418,7 @@ fun SettingsScreen() {
             Spacer(Modifier.height(8.dp))
             Box {
                 Button(onClick = { showFEXCoreDropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A3E)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
                     modifier = Modifier.fillMaxWidth()) {
                     val label = fexcorePresets.find { it.id == selectedFEXCorePreset }?.name ?: selectedFEXCorePreset
                     Text(label, color = Color.White)
@@ -477,7 +479,7 @@ fun SettingsScreen() {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) {
                     Button(onClick = { showSFDropdown = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A3E)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
                         modifier = Modifier.fillMaxWidth()) {
                         Text(sfNames.getOrElse(selectedSF) { "Default" }, color = Color.White)
                     }
@@ -542,7 +544,7 @@ fun SettingsScreen() {
                 Text(winlatorPath, color = Color(0xFF888888), fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { winlatorPathLauncher.launch(null) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A4E))) {
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))) {
                     Text("Choose Path", color = Color.White, fontSize = 12.sp)
                 }
             }
@@ -553,7 +555,7 @@ fun SettingsScreen() {
                 Text(shortcutExportPath, color = Color(0xFF888888), fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { shortcutExportPathLauncher.launch(null) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A4E))) {
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))) {
                     Text("Choose Path", color = Color.White, fontSize = 12.sp)
                 }
             }
@@ -633,7 +635,7 @@ fun SettingsScreen() {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for ((i, channel) in wineDebugChannels.withIndex()) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.background(Color(0xFF2A2A3E), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        modifier = Modifier.background(Color(0xFF2A2A2A), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
                         Text(channel, color = Color(0xFFCCCCCC), fontSize = 12.sp)
                         IconButton(onClick = {
                             wineDebugChannels = wineDebugChannels.toMutableList().also { it.removeAt(i) }
@@ -698,17 +700,17 @@ fun SettingsScreen() {
                         activity?.let { ImageFsInstaller.installFromAssets(it) }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) { Text("Reinstall ImageFS", color = Color.White) }
             Button(
                 onClick = { showBackupDialog = true },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) { Text("Backup Data", color = Color.White) }
             Button(
                 onClick = { restoreFileLauncher.launch(arrayOf("*/*")) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) { Text("Restore Data", color = Color.White) }
         }
@@ -720,7 +722,7 @@ fun SettingsScreen() {
     Box(Modifier.fillMaxSize()) {
         FloatingActionButton(
             onClick = { saveSettings() },
-            containerColor = MaterialTheme.colorScheme.primary,
+            containerColor = Color(0xFF1976D2),
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         ) {
             Icon(Icons.Default.Check, "Save", tint = Color.White)
@@ -776,7 +778,7 @@ fun SettingsScreen() {
 
 @Composable
 private fun FieldSetLabel(text: String) {
-    Text(text, color = Color(0xFFCCCCCC), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    Text(text, color = Color(0xFF0055FF), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
 }
 
 @Composable
@@ -784,7 +786,8 @@ private fun FieldSet(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1A2E), RoundedCornerShape(8.dp))
+            .background(Color.Black, RoundedCornerShape(10.dp))
+            .border(1.dp, Color(0xFF222B36), RoundedCornerShape(10.dp))
             .padding(12.dp)
     ) {
         content()

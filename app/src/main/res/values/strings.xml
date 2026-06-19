@@ -9,7 +9,7 @@
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>
     <string name="add">Add</string>
-    <string name="shortcuts">Shortcuts</string>
+    <string name="shortcuts">Games</string>
     <string name="containers">Containers</string>
     <string name="input_controls">Input Controls</string>
     <string name="no_items_to_display">No items to display</string>
@@ -113,6 +113,7 @@
     <string name="xaudio">XAudio</string>
     <string name="vcrun2010">Visual C++ 2010</string>
     <string name="opengl">OpenGL</string>
+    <string name="renderer">Renderer</string>
     <string name="settings">Settings</string>
     <string name="exec_arguments">Exec Arguments</string>
     <string name="win_components">Win Components</string>
@@ -174,11 +175,17 @@
     <string name="compatibility">Compatibility</string>
     <string name="intermediate">Intermediate</string>
     <string name="performance">Performance</string>
+    <string name="performance_mali">Performance (Mali)</string>
+    <string name="extreme">Extreme</string>
+    <string name="unity">Unity</string>
+    <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
+    <string name="denuvo">Denuvo</string>
     <string name="preset">Preset</string>
     <string name="you_cannot_remove_this_preset">You cannot remove this preset</string>
     <string name="dxwrapper_help_content"><![CDATA[
         <i><b>WineD3D</b></i> is a translation layer for DirectX 1-11 to OpenGL.<br /><br />
         <i><b>DXVK</b></i> is a translation layer for Direct3D 9-11 to Vulkan.<br /><br />
+        <i><b>VEGAS</b></i> is a performance-tuned fork of DXVK with game-specific optimizations for Android/Adreno devices.<br /><br />
         <i><b>VKD3D</b></i> is a translation layer for Direct3D 12 API to Vulkan.<br /><br />
         <i><b>CNC DDraw</b></i> is an implementation of DirectDraw for better compatibility with classic games.
     ]]></string>
@@ -637,6 +644,19 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="vkbasalt_sharpness_effects">Sharpness Effect</string>
     <string name="vkbasalt_sharpness_level">Sharpness Level</string>
     <string name="vkbasalt_sharpness_denoise">Sharpeness Denoise</string>
+    <string name="vulkan_settings">Vulkan Settings</string>
+    <string name="renderer_native">Native Renderer</string>
+    <string name="renderer_present_mode">Present Mode</string>
+    <string name="renderer_driver_id">Renderer Driver</string>
+    <string name="renderer_filter_mode">Filter Mode</string>
+    <string name="renderer_swap_rb">Swap R/B</string>
+    <string name="renderer_present_mode_fifo">FIFO</string>
+    <string name="renderer_present_mode_mailbox">Mailbox</string>
+    <string name="renderer_present_mode_immediate">Immediate</string>
+    <string name="renderer_filter_mode_nearest">Nearest</string>
+    <string name="renderer_filter_mode_linear">Linear</string>
+    <string name="renderer_driver_system">System</string>
+    <string name="renderer_driver_turnip">Turnip</string>
     <string name="shutdown">Shutdown</string>
     <string name="disable_mouse">Toggle Mouse</string>
     <string name="custom_icon">Custom Icon</string>
@@ -644,7 +664,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="shortcuticon">ShortcutIcon</string>
     <string name="active_windows">Active Windows</string>
     <string name="contact_us">Help and Support</string>
+    <string name="graphics_driver_show_incompatible">Show incompatible drivers</string>
 </resources>
+
 
 
 

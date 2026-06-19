@@ -1,17 +1,24 @@
-
-
-name: Release build
+name: Nightly Manual Release Build
 
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Release tag (e.g. 1.4.1-fix)'
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        default: ''
+      release_tag:
+        description: 'Release tag (e.g. 1.7, 1.8)'
         required: true
-      prerelease:
-        description: 'Mark as prerelease'
-        type: boolean
-        default: true
+        default: '1.0'
+      release_title:
+        description: 'Release title (e.g. Star 1.7)'
+        required: true
+        default: 'Star Nightly'
+      release_number:
+        description: 'Release number for APK name (e.g. 1.7)'
+        required: true
+        default: '1.0'
 
 permissions:
   contents: write
@@ -19,31 +26,32 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Clone repository
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 20
 
     - name: set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y -q openjdk-17-jdk
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+        echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
     - name: Build JavaSteam and copy JARs to app/libs/steam
       run: |
         git clone --depth 1 -b gamenative-latest https://github.com/joshuatam/JavaSteam javasteam_src
         cd javasteam_src
 
-        # Patch HardwareUtils.java: SystemUtils.IS_OS_ANDROID missing in commons-lang3 3.14.0
         HW_FILE=$(find . -name "HardwareUtils.java" 2>/dev/null | head -1)
         if [ -n "$HW_FILE" ]; then
           sed -i 's/SystemUtils\.IS_OS_ANDROID/false/g' "$HW_FILE"
         fi
 
-        # Patch Utils.java: newer SystemUtils OS fields missing in older commons-lang3
         UTILS_FILE=$(find . -name "Utils.java" -path "*/javasteam/*" 2>/dev/null | head -1)
         if [ -n "$UTILS_FILE" ]; then
           sed -i \
@@ -57,7 +65,6 @@ jobs:
 
         ./gradlew jar --no-daemon 2>&1 | tail -20
 
-        # Find main JAR (contains SteamClient.class)
         MAIN_JAR=""
         for j in $(find . -name "*.jar" -path "*/build/libs/*" \
             | grep -v "sources\|javadoc\|test" | sort); do
@@ -72,22 +79,17 @@ jobs:
             | while read f; do echo "$(wc -c < "$f") $f"; done \
             | sort -rn | head -1 | cut -d' ' -f2-)
         fi
-        echo "Main JAR: $MAIN_JAR ($(du -sh "$MAIN_JAR" | cut -f1))"
 
-        # Find DepotDownloader JAR
         DD_JAR=$(find . -name "javasteam-depotdownloader-*.jar" -path "*/build/libs/*" \
           ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | head -1)
 
-        # Copy to app/libs/steam
         mkdir -p ../app/libs/steam
         cp "$MAIN_JAR" ../app/libs/steam/javasteam.jar
 
-        # protobuf-java
         PROTO_JAR=$(find ~/.gradle/caches -name "protobuf-java-*.jar" \
           ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | head -1)
         [ -n "$PROTO_JAR" ] && cp "$PROTO_JAR" ../app/libs/steam/protobuf-java.jar
 
-        # commons-lang3
         LANG3_JAR=$(find ~/.gradle/caches -name "commons-lang3-*.jar" \
           ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | sort -V | tail -1)
         if [ -n "$LANG3_JAR" ]; then
@@ -97,7 +99,6 @@ jobs:
             -O ../app/libs/steam/commons-lang3.jar
         fi
 
-        # DepotDownloader and its deps
         if [ -n "$DD_JAR" ] && [ -s "$DD_JAR" ]; then
           cp "$DD_JAR" ../app/libs/steam/javasteam-depotdownloader.jar
           GRADLE_CACHE=~/.gradle/caches/modules-2/files-2.1
@@ -106,7 +107,7 @@ jobs:
             local found
             found=$(find "$GRADLE_CACHE" -name "$pattern" \
               ! -name "*sources*" ! -name "*javadoc*" 2>/dev/null | sort -V | tail -1)
-            [ -n "$found" ] && cp "$found" "$dest" && echo "  ✓ $pattern"
+            [ -n "$found" ] && cp "$found" "$dest"
           }
           gather_jar "ktor-client-cio-jvm-*.jar"            "../app/libs/steam/ktor-client-cio.jar"
           gather_jar "ktor-client-core-jvm-*.jar"           "../app/libs/steam/ktor-client-core.jar"
@@ -118,40 +119,80 @@ jobs:
           gather_jar "kotlinx-serialization-json-jvm-*.jar" "../app/libs/steam/kotlinx-serialization-json.jar"
           gather_jar "kotlinx-serialization-core-jvm-*.jar" "../app/libs/steam/kotlinx-serialization-core.jar"
           gather_jar "kotlinx-io-core-jvm-*.jar"            "../app/libs/steam/kotlinx-io-core.jar"
-          # okio and okhttp are declared as Gradle deps in app/build.gradle;
-          # do NOT copy them here or checkDuplicateClasses will fail.
         fi
-
-        # kotlin-compat.jar is NOT needed: okio:3.16.0 in app/build.gradle
-        # transitively pulls kotlin-stdlib:2.2.0, which already contains SpillingKt.
-        # Do NOT extract SpillingKt here or checkDebugDuplicateClasses will fail.
-
-        echo "steam libs:"
-        ls -lh ../app/libs/steam/
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+
+    - name: Install NDK
+      run: |
+        SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+        mkdir -p "$SDK_ROOT"
+        if [ ! -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+          curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools/
+          mkdir -p "$SDK_ROOT/cmdline-tools"
+          mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
+          rm -f /tmp/cmdline-tools.zip
+        fi
+        yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;26.1.10909125" "cmake;3.22.1"
+        echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+
+    - name: Grant execute permission for build script
+      run: chmod +x build-lsfg-android.sh
+    - name: Build LSFG native library
+      run: ./build-lsfg-android.sh
+
     - name: Build with Gradle
       run: ./gradlew assembleDebug
 
-    - name: "Get Short SHA"
-      run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-    - name: "Get Version"
-      run: echo "VERSION=$(echo $(cat app/build.gradle | grep versionName | head -1 | cut -d '"' -f 2))" >> $GITHUB_ENV
-
-    - name: Rename APK with tag
+    - name: Get version info
       run: |
-        mkdir -p release-out
-        cp ./app/build/outputs/apk/debug/app-debug.apk \
-           "release-out/Bannerlator-${{ github.event.inputs.tag }}.apk"
-        ls -lh release-out
+        echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        echo "VERSION=$(grep versionName app/build.gradle | head -1 | cut -d '"' -f 2)" >> $GITHUB_ENV
+        echo "BUILD_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
 
-    - name: Publish GitHub Release
+    - name: Rename APKs
+      run: |
+        N="${{ github.event.inputs.release_number }}"
+        mv app/build/outputs/apk/standard/debug/app-standard-debug.apk \
+           app/build/outputs/apk/standard/debug/star-nightly-${N}-standard.apk
+        mv app/build/outputs/apk/ludashi/debug/app-ludashi-debug.apk \
+           app/build/outputs/apk/ludashi/debug/star-nightly-${N}-ludashi.apk
+        mv app/build/outputs/apk/pubg/debug/app-pubg-debug.apk \
+           app/build/outputs/apk/pubg/debug/star-nightly-${N}-pubg.apk
+
+    - name: Generate changelog table
+      run: |
+        {
+          echo "## Changelog"
+          echo ""
+          echo "| Commit | Title |"
+          echo "|--------|--------|"
+          git log -n 10 --pretty=format:"| \`%h\` | %s |"
+        } > changelog.md
+
+        {
+          echo "CHANGELOG<<__CHANGELOG_EOF__"
+          cat changelog.md
+          echo ""
+          echo "__CHANGELOG_EOF__"
+        } >> "$GITHUB_ENV"
+
+    - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.event.inputs.tag }}
-        name: ${{ github.event.inputs.tag }}
-        prerelease: ${{ github.event.inputs.prerelease }}
-        generate_release_notes: true
-        files: release-out/*.apk
+        tag_name: ${{ github.event.inputs.release_tag }}
+        name: ${{ github.event.inputs.release_title }}
+        body: |
+          <img src="https://github.com/jacojayy/star/blob/main/20260418_134945.png" width="1500" height="500" alt="star" />
+          </p>
+
+          ${{ env.CHANGELOG }}
+
+          ${{ github.event.inputs.release_notes }}
+        files: |
+          app/build/outputs/apk/standard/debug/star-nightly-${{ github.event.inputs.release_number }}-standard.apk
+          app/build/outputs/apk/ludashi/debug/star-nightly-${{ github.event.inputs.release_number }}-ludashi.apk
+          app/build/outputs/apk/pubg/debug/star-nightly-${{ github.event.inputs.release_number }}-pubg.apk
+        prerelease: true

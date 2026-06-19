@@ -584,7 +584,7 @@ int virgl_server_renderer_create_fence(struct virgl_client *client)
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_winlator_xenvironment_components_VirGLRendererComponent_getCurrentEGLContextPtr(JNIEnv *env, jobject obj) {
+Java_com_winlator_star_xenvironment_components_VirGLRendererComponent_getCurrentEGLContextPtr(JNIEnv *env, jobject obj) {
    EGLContext egl_ctx = eglGetCurrentContext();
    return egl_ctx != EGL_NO_CONTEXT ? (jlong)egl_ctx : 0;
 }

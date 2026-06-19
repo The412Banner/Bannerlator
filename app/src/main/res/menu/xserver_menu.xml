@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
         <item
             android:icon="@drawable/icon_keyboard"
             android:id="@+id/main_menu_keyboard"
@@ -31,6 +32,7 @@
             android:title="@string/screen_effect" />
         <item
             android:icon="@drawable/icon_settings"
+            app:iconTint="@color/colorAccent"
             android:id="@+id/main_menu_fsr_control"
             android:title="Graphic Engine"/>
         <item

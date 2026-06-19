@@ -31,7 +31,7 @@ void OXRCheckErrors(XrResult result, const char* file, int line) {
 }
 #endif
 
-JNIEXPORT void JNICALL Java_com_winlator_XrActivity_init(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_com_winlator_star_XrActivity_init(JNIEnv *env, jobject obj) {
 
     // Do not allow second initialization
     if (xr_initialized) {
@@ -62,24 +62,24 @@ JNIEXPORT void JNICALL Java_com_winlator_XrActivity_init(JNIEnv *env, jobject ob
     ALOGV("Init called");
 }
 
-JNIEXPORT void JNICALL Java_com_winlator_XrActivity_bindFramebuffer(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_com_winlator_star_XrActivity_bindFramebuffer(JNIEnv *env, jobject obj) {
     if (xr_initialized) {
         XrRendererBindFramebuffer(&xr_module_renderer);
     }
 }
 
-JNIEXPORT jint JNICALL Java_com_winlator_XrActivity_getWidth(JNIEnv *env, jobject obj) {
+JNIEXPORT jint JNICALL Java_com_winlator_star_XrActivity_getWidth(JNIEnv *env, jobject obj) {
     int w, h;
     XrRendererGetResolution(&xr_module_engine, &xr_module_renderer, &w, &h);
     return w;
 }
-JNIEXPORT jint JNICALL Java_com_winlator_XrActivity_getHeight(JNIEnv *env, jobject obj) {
+JNIEXPORT jint JNICALL Java_com_winlator_star_XrActivity_getHeight(JNIEnv *env, jobject obj) {
     int w, h;
     XrRendererGetResolution(&xr_module_engine, &xr_module_renderer, &w, &h);
     return h;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_winlator_XrActivity_beginFrame(JNIEnv *env, jobject obj, jboolean immersive, jboolean sbs) {
+JNIEXPORT jboolean JNICALL Java_com_winlator_star_XrActivity_beginFrame(JNIEnv *env, jobject obj, jboolean immersive, jboolean sbs) {
     if (XrRendererInitFrame(&xr_module_engine, &xr_module_renderer)) {
 
         // Set render canvas
@@ -107,12 +107,12 @@ JNIEXPORT jboolean JNICALL Java_com_winlator_XrActivity_beginFrame(JNIEnv *env, 
     return false;
 }
 
-JNIEXPORT void JNICALL Java_com_winlator_XrActivity_endFrame(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_com_winlator_star_XrActivity_endFrame(JNIEnv *env, jobject obj) {
     XrRendererEndFrame(&xr_module_renderer);
     XrRendererFinishFrame(&xr_module_engine, &xr_module_renderer);
 }
 
-JNIEXPORT jfloatArray JNICALL Java_com_winlator_XrActivity_getAxes(JNIEnv *env, jobject obj) {
+JNIEXPORT jfloatArray JNICALL Java_com_winlator_star_XrActivity_getAxes(JNIEnv *env, jobject obj) {
     XrPosef lPose = XrInputGetPose(&xr_module_input, 0);
     XrPosef rPose = XrInputGetPose(&xr_module_input, 1);
     XrVector2f lThumbstick = XrInputGetJoystickState(&xr_module_input, 0);
@@ -155,7 +155,7 @@ JNIEXPORT jfloatArray JNICALL Java_com_winlator_XrActivity_getAxes(JNIEnv *env, 
     return output;
 }
 
-JNIEXPORT jbooleanArray JNICALL Java_com_winlator_XrActivity_getButtons(JNIEnv *env, jobject obj) {
+JNIEXPORT jbooleanArray JNICALL Java_com_winlator_star_XrActivity_getButtons(JNIEnv *env, jobject obj) {
     uint32_t l = XrInputGetButtonState(&xr_module_input, 0);
     uint32_t r = XrInputGetButtonState(&xr_module_input, 1);
 

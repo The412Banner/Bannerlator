@@ -496,15 +496,24 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
         int flags = fcntl(fd, F_GETFL);
         bool isNonBlock = flags & O_NONBLOCK;
         bytes_read = syscall(SYS_read, fd, buf, count);
-        while(bytes_read == 0 && !isNonBlock) {
+        while(bytes_read == 0) {
+            struct stat statbuf;
+            if (!my_fstat) *(void **)&my_fstat = dlsym(RTLD_NEXT, "fstat");
+            if (my_fstat && my_fstat(fd, &statbuf) == 0 && statbuf.st_nlink == 0) {
+                errno = ENODEV;
+                return -1;
+            }
+            if (isNonBlock) {
+                break;
+            }
             setup_signal_handler();
             if (stop_flag) {
             	bytes_read = -1;
             	errno = EINTR;
             	return bytes_read;
             }
+            usleep(1000); // yield to prevent 100% CPU lockup
             bytes_read = syscall(SYS_read, fd, buf, count);
-        	continue;
         }
         
     	return bytes_read;

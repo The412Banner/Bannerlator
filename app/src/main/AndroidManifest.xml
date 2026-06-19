@@ -36,10 +36,9 @@
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="star Bionic"
+        android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme"
@@ -53,7 +52,7 @@
 
         <!-- Main activity -->
         <activity
-            android:name="com.winlator.cmod.MainActivity"
+            android:name="com.winlator.star.MainActivity"
             android:theme="@style/AppTheme.Dark"
             android:screenOrientation="sensor"
             android:exported="true"
@@ -65,13 +64,13 @@
         </activity>
 
         <activity
-            android:name="com.winlator.cmod.BigPictureActivity"
+            android:name="com.winlator.star.BigPictureActivity"
             android:theme="@style/Theme.AppCompat"
             android:exported="false" />
 
 
         <activity
-            android:name="com.winlator.cmod.XServerDisplayActivity"
+            android:name="com.winlator.star.XServerDisplayActivity"
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
@@ -80,7 +79,7 @@
             android:exported="true" />
 
         <activity
-            android:name="com.winlator.cmod.XrActivity"
+            android:name="com.winlator.star.XrActivity"
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"
             android:resizeableActivity="false"
@@ -96,13 +95,13 @@
         </activity>
 
         <activity
-            android:name="com.winlator.cmod.ControlsEditorActivity"
+            android:name="com.winlator.star.ControlsEditorActivity"
             android:theme="@style/AppThemeFullscreen"
             android:screenOrientation="sensorLandscape"
             android:exported="false" />
 
         <activity
-            android:name="com.winlator.cmod.ExternalControllerBindingsActivity"
+            android:name="com.winlator.star.ExternalControllerBindingsActivity"
             android:theme="@style/AppTheme"
             android:screenOrientation="sensor"
             android:exported="false" />
@@ -114,81 +113,81 @@
             android:exported="false" />
 
         <activity
-            android:name="com.winlator.cmod.ShortcutPickerActivity"
+            android:name="com.winlator.star.ShortcutPickerActivity"
             android:theme="@style/AppTheme"
             android:screenOrientation="sensor"
             android:exported="false" />
 
         <activity 
             android:exported="false"
-            android:name="com.winlator.cmod.store.GogMainActivity"
+            android:name="com.winlator.star.store.GogMainActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity 
             android:exported="false"
-            android:name="com.winlator.cmod.store.GogLoginActivity"
+            android:name="com.winlator.star.store.GogLoginActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity 
             android:exported="false"
-            android:name="com.winlator.cmod.store.GogGamesActivity"
+            android:name="com.winlator.star.store.GogGamesActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
 
         <activity 
             android:exported="false"
-            android:name="com.winlator.cmod.store.EpicMainActivity"
+            android:name="com.winlator.star.store.EpicMainActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.EpicLoginActivity"
+            android:name="com.winlator.star.store.EpicLoginActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.EpicGamesActivity"
+            android:name="com.winlator.star.store.EpicGamesActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
 
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.AmazonMainActivity"
+            android:name="com.winlator.star.store.AmazonMainActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity 
             android:exported="false"
-            android:name="com.winlator.cmod.store.AmazonLoginActivity"
+            android:name="com.winlator.star.store.AmazonLoginActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity 
             android:exported="false"
-            android:name="com.winlator.cmod.store.AmazonGamesActivity"
+            android:name="com.winlator.star.store.AmazonGamesActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.GogGameDetailActivity"
+            android:name="com.winlator.star.store.GogGameDetailActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.EpicGameDetailActivity"
+            android:name="com.winlator.star.store.EpicGameDetailActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.EpicFreeGamesActivity"
+            android:name="com.winlator.star.store.EpicFreeGamesActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.AmazonGameDetailActivity"
+            android:name="com.winlator.star.store.AmazonGameDetailActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
-            android:name="com.winlator.cmod.store.FolderPickerActivity"
+            android:name="com.winlator.star.store.FolderPickerActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
 
@@ -197,14 +196,14 @@
             android:name=".ShortcutBroadcastReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.winlator.cmod.SHORTCUT_ADDED" />
+                <action android:name="com.winlator.star.SHORTCUT_ADDED" />
             </intent-filter>
         </receiver>
 
         <!-- FileProvider for sharing files -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.winlator.cmod.tileprovider"
+            android:authorities="com.winlator.star.tileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
@@ -215,7 +214,7 @@
         <!-- Provider for Winlator’s DocumentProvider or similar usage -->
         <provider
             android:name=".core.WinlatorFilesProvider"
-            android:authorities="com.winlator.cmod.core.WinlatorFilesProvider"
+            android:authorities="com.winlator.star.core.WinlatorFilesProvider"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">
@@ -236,12 +235,12 @@
         <meta-data
             android:name="android.allow_multiple_resumed_activities"
             android:value="true" />
-        <activity android:name="com.winlator.cmod.store.SteamMainActivity" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
-        <activity android:name="com.winlator.cmod.store.SteamLoginActivity" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
-        <activity android:name="com.winlator.cmod.store.SteamGamesActivity" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
-        <activity android:name="com.winlator.cmod.store.SteamGameDetailActivity" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
-        <activity android:name="com.winlator.cmod.store.QrLoginActivity" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
-        <service android:name="com.winlator.cmod.store.SteamForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
+        <activity android:name="com.winlator.star.store.SteamMainActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity android:name="com.winlator.star.store.SteamLoginActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity android:name="com.winlator.star.store.SteamGamesActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity android:name="com.winlator.star.store.SteamGameDetailActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity android:name="com.winlator.star.store.QrLoginActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <service android:name="com.winlator.star.store.SteamForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
     </application>
 </manifest>
 

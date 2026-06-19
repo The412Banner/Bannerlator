@@ -123,7 +123,7 @@
             android:layout_height="wrap_content"
             android:textStyle="bold"
             android:text="@string/external_controllers"
-            android:textColor="#E6E6E6"
+            android:textColor="@color/colorPrimary"
             android:layout_marginTop="8dp" />
 
         <View style="@style/HorizontalLine" />

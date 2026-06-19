@@ -27,7 +27,7 @@
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>
         <item>v819</item>
-        <item>turnip25.1.0</item>
+        <item>turnip-sdk36</item>
     </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
@@ -41,6 +41,8 @@
     <string-array name="dxwrapper_entries">
         <item>WineD3D</item>
         <item>DXVK+VKD3D</item>
+        <item>VEGAS+VKD3D</item>
+        <item>VEGAS</item>
     </string-array>
     <string-array name="ddrawrapper_entries">
         <item>CnC-DDraw</item>
@@ -52,8 +54,18 @@
         <item>1.11.1-sarek</item>
         <item>1.10.3-arm64ec-async</item>
         <item>1.10.3</item>
-        <item>2.3.1</item>
+        <item>2.7.1.1-sdk36-arm64ec</item>
         <item>2.3.1-arm64ec-gplasync</item>
+    </string-array>
+    <string-array name="vegas_version_entries">
+        <item>2.7.3</item>
+    </string-array>
+    <string-array name="vegas_config_source_entries">
+        <item>None</item>
+        <item>/storage/emulated/0/dxvk.conf</item>
+        <item>/storage/emulated/0/starengine.ini</item>
+        <item>/storage/emulated/0/Download/dxvk.conf</item>
+        <item>/storage/emulated/0/Winlator/dxvk.conf</item>
     </string-array>
     <string-array name="dxvk_max_device_memory_entries">
         <item>0 (Default)</item>
@@ -323,7 +335,6 @@
         <item>Box64</item>
     </string-array>
     <string-array name="wine_entries">
-        <item>proton-9.0-x86_64</item>
         <item>proton-9.0-arm64ec</item>
     </string-array>
     <string-array name="vkbasalt_sharpness_entries">

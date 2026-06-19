@@ -1,9 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <com.winlator.cmod.bigpicture.TiledBackgroundView
+    <com.winlator.star.bigpicture.TiledBackgroundView
         android:id="@+id/parallaxBackgroundView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
@@ -264,12 +265,12 @@
             android:layout_height="match_parent"
             android:fillViewport="true">
 
-            <LinearLayout
-                android:id="@+id/settingsLayout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+        <LinearLayout
+            android:id="@+id/settingsContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
 
                 <!-- Field label for Settings -->
                 <TextView

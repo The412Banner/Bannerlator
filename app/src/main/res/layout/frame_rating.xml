@@ -20,6 +20,20 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/RowLatency"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="2dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="10dp"
+        android:gravity="center_vertical"
+        android:background="#33000000">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LTNCY:" android:textColor="#4fc3f7" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
+        <TextView android:id="@+id/TVLatency" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0ms" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/RowCPULoad"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -114,7 +128,7 @@
         android:gravity="center_vertical"
         android:background="#33000000">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Batt Volt:" android:textColor="#4caf50" android:textStyle="bold" android:textSize="12sp" android:layout_marginRight="5dp" />
-        <TextView android:id="@+id/TVBatteryVoltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.​0W" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
+        <TextView android:id="@+id/TVBatteryVoltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.0W" android:textColor="#ffffff" android:textStyle="bold" android:textSize="12sp" />
     </LinearLayout>
 
 </LinearLayout>

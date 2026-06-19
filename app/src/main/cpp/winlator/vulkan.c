@@ -9,6 +9,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include <android/api-level.h>
+#include <signal.h>
+#include <setjmp.h>
 #include "../adrenotools/include/adrenotools/driver.h"
 
 #define LOG_TAG "System.out"
@@ -23,12 +25,26 @@ PFN_vkDestroyInstance destroyInstance;
 
 static void *vulkan_handle = NULL;
 
+static sigjmp_buf sigill_jmp_buf;
+static struct sigaction saved_sigill_action;
+
+static void sigill_handler(int sig) {
+    siglongjmp(sigill_jmp_buf, 1);
+}
+
+static void cleanup_vulkan() {
+    if (vulkan_handle) {
+        dlclose(vulkan_handle);
+        vulkan_handle = NULL;
+    }
+}
+
 
 static char *get_native_library_dir(JNIEnv *env, jobject context) {
     char *native_libdir;
 
     if (context != NULL) {
-        jclass class_ = (*env)->FindClass(env,"com/winlator/cmod/core/AppUtils");
+        jclass class_ = (*env)->FindClass(env,"com/winlator/star/core/AppUtils");
         jmethodID getNativeLibraryDir = (*env)->GetStaticMethodID(env, class_, "getNativeLibDir",
                                                                "(Landroid/content/Context;)Ljava/lang/String;");
         jstring nativeLibDir = (jstring)(*env)->CallStaticObjectMethod(env, class_,
@@ -65,7 +81,7 @@ static char *get_driver_path(JNIEnv *env, jobject context, const char *driver_na
 static char *get_library_name(JNIEnv *env, jobject context, const char *driver_name) {
     char *library_name;
 
-    jclass adrenotoolsManager = (*env)->FindClass(env, "com/winlator/cmod/contents/AdrenotoolsManager");
+    jclass adrenotoolsManager = (*env)->FindClass(env, "com/winlator/star/contents/AdrenotoolsManager");
     jmethodID constructor = (*env)->GetMethodID(env, adrenotoolsManager, "<init>", "(Landroid/content/Context;)V");
     jobject  adrenotoolsManagerObj = (*env)->NewObject(env, adrenotoolsManager, constructor, context);
     jmethodID getLibraryName = (*env)->GetMethodID(env, adrenotoolsManager, "getLibraryName","(Ljava/lang/String;)Ljava/lang/String;");
@@ -188,132 +204,201 @@ static VkResult enumerate_physical_devices() {
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_winlator_cmod_core_GPUInformation_getVulkanVersion(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
-    VkPhysicalDeviceProperties props = {};
-    char *driverVersion;
+Java_com_winlator_star_core_GPUInformation_getVulkanVersion(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sigill_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGILL, &sa, &saved_sigill_action);
 
-    if  (create_instance(driverName, env, context) != VK_SUCCESS) {
-        printf("Failed to create instance");
-        return (*env)->NewStringUTF(env, "Unknown");
+    if (sigsetjmp(sigill_jmp_buf, 1) == 0) {
+        VkPhysicalDeviceProperties props = {};
+        char *driverVersion;
+
+        if (create_instance(driverName, env, context) != VK_SUCCESS) {
+            printf("Failed to create instance");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return (*env)->NewStringUTF(env, "Unknown");
+        }
+
+        if (enumerate_physical_devices() != VK_SUCCESS) {
+            printf("Failed to query physical devices");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return (*env)->NewStringUTF(env, "Unknown");
+        }
+
+        getPhysicalDeviceProperties(physicalDevice, &props);
+        uint32_t api_version_major = VK_VERSION_MAJOR(props.apiVersion);
+        uint32_t api_version_minor = VK_VERSION_MINOR(props.apiVersion);
+        uint32_t api_version_patch = VK_VERSION_PATCH(props.apiVersion);
+        asprintf(&driverVersion, "%d.%d.%d", api_version_major, api_version_minor, api_version_patch);
+
+        destroyInstance(instance, NULL);
+
+        sigaction(SIGILL, &saved_sigill_action, NULL);
+        cleanup_vulkan();
+        return (*env)->NewStringUTF(env, driverVersion);
     }
 
-    if (enumerate_physical_devices() != VK_SUCCESS) {
-        printf("Failed to query physical devices");
-        return (*env)->NewStringUTF(env, "Unknown");
-    }
-
-    getPhysicalDeviceProperties(physicalDevice, &props);
-    uint32_t api_version_major = VK_VERSION_MAJOR(props.apiVersion);
-    uint32_t api_version_minor = VK_VERSION_MINOR(props.apiVersion);
-    uint32_t api_version_patch = VK_VERSION_PATCH(props.apiVersion);
-    asprintf(&driverVersion, "%d.%d.%d", api_version_major, api_version_minor, api_version_patch);
-
-    destroyInstance(instance, NULL);
-
-    if (vulkan_handle)
-        dlclose(vulkan_handle);
-
-    return (*env)->NewStringUTF(env, driverVersion);
+    printf("SIGILL caught: driver incompatible");
+    sigaction(SIGILL, &saved_sigill_action, NULL);
+    cleanup_vulkan();
+    return (*env)->NewStringUTF(env, "Unknown");
 }
 
 JNIEXPORT jint JNICALL
-Java_com_winlator_cmod_core_GPUInformation_getVendorID(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
-    VkPhysicalDeviceProperties props = {};
-    uint32_t vendorID;
+Java_com_winlator_star_core_GPUInformation_getVendorID(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sigill_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGILL, &sa, &saved_sigill_action);
 
-    if  (create_instance(driverName, env, context) != VK_SUCCESS) {
-        printf("Failed to create instance");
-        return 0;
+    if (sigsetjmp(sigill_jmp_buf, 1) == 0) {
+        VkPhysicalDeviceProperties props = {};
+        uint32_t vendorID;
+
+        if (create_instance(driverName, env, context) != VK_SUCCESS) {
+            printf("Failed to create instance");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return 0;
+        }
+
+        if (enumerate_physical_devices() != VK_SUCCESS) {
+            printf("Failed to query physical devices");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return 0;
+        }
+
+        getPhysicalDeviceProperties(physicalDevice, &props);
+        vendorID = props.vendorID;
+
+        destroyInstance(instance, NULL);
+
+        sigaction(SIGILL, &saved_sigill_action, NULL);
+        cleanup_vulkan();
+        return vendorID;
     }
 
-    if (enumerate_physical_devices() != VK_SUCCESS) {
-        printf("Failed to query physical devices");
-        return 0;
-    }
-
-    getPhysicalDeviceProperties(physicalDevice, &props);
-    vendorID = props.vendorID;
-
-    destroyInstance(instance, NULL);
-
-    if (vulkan_handle)
-        dlclose(vulkan_handle);
-
-    return vendorID;
+    printf("SIGILL caught: driver incompatible");
+    sigaction(SIGILL, &saved_sigill_action, NULL);
+    cleanup_vulkan();
+    return 0;
 }
 
 
 JNIEXPORT jstring JNICALL
-Java_com_winlator_cmod_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
-    VkPhysicalDeviceProperties props = {};
-    char *renderer;
+Java_com_winlator_star_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sigill_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGILL, &sa, &saved_sigill_action);
 
+    if (sigsetjmp(sigill_jmp_buf, 1) == 0) {
+        VkPhysicalDeviceProperties props = {};
+        char *renderer;
 
-    if  (create_instance(driverName, env, context) != VK_SUCCESS) {
-        printf("Failed to create instance");
-        return (*env)->NewStringUTF(env, "Unknown");
+        if (create_instance(driverName, env, context) != VK_SUCCESS) {
+            printf("Failed to create instance");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return (*env)->NewStringUTF(env, "Unknown");
+        }
+
+        if (enumerate_physical_devices() != VK_SUCCESS) {
+            printf("Failed to query physical devices");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return (*env)->NewStringUTF(env, "Unknown");
+        }
+
+        getPhysicalDeviceProperties(physicalDevice, &props);
+        asprintf(&renderer, "%s", props.deviceName);
+
+        destroyInstance(instance, NULL);
+
+        sigaction(SIGILL, &saved_sigill_action, NULL);
+        cleanup_vulkan();
+        return (*env)->NewStringUTF(env, renderer);
     }
 
-    if (enumerate_physical_devices() != VK_SUCCESS) {
-        printf("Failed to query physical devices");
-        return (*env)->NewStringUTF(env, "Unknown");
-    }
-
-    getPhysicalDeviceProperties(physicalDevice, &props);
-    asprintf(&renderer, "%s", props.deviceName);
-
-    destroyInstance(instance, NULL);
-
-    if (vulkan_handle)
-        dlclose(vulkan_handle);
-
-    return (*env)->NewStringUTF(env, renderer);
+    printf("SIGILL caught: driver incompatible");
+    sigaction(SIGILL, &saved_sigill_action, NULL);
+    cleanup_vulkan();
+    return (*env)->NewStringUTF(env, "Unknown");
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_com_winlator_cmod_core_GPUInformation_enumerateExtensions(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
-    jobjectArray extensions;
-    VkResult result;
-    uint32_t extensionCount;
+Java_com_winlator_star_core_GPUInformation_enumerateExtensions(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sigill_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGILL, &sa, &saved_sigill_action);
 
-    if  (create_instance(driverName, env, context) != VK_SUCCESS) {
-        printf("Failed to create instance");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+    if (sigsetjmp(sigill_jmp_buf, 1) == 0) {
+        jobjectArray extensions;
+        VkResult result;
+        uint32_t extensionCount;
+
+        if (create_instance(driverName, env, context) != VK_SUCCESS) {
+            printf("Failed to create instance");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        }
+
+        if (enumerate_physical_devices() != VK_SUCCESS) {
+            printf("Failed to query physical devices");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        }
+
+        result = enumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL);
+
+        if (result != VK_SUCCESS || extensionCount < 1) {
+            printf("Failed to query extension count");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        }
+
+        VkExtensionProperties *extensionProperties = malloc(sizeof(VkExtensionProperties) * extensionCount);
+        enumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount,
+                                           extensionProperties);
+
+        if (result != VK_SUCCESS) {
+            printf("Failed to query extensions");
+            sigaction(SIGILL, &saved_sigill_action, NULL);
+            cleanup_vulkan();
+            if (extensionProperties) free(extensionProperties);
+            return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        }
+
+        extensions = (jobjectArray) (*env)->NewObjectArray(env, extensionCount,
+                                                           (*env)->FindClass(env, "java/lang/String"),
+                                                           NULL);
+        for (int i = 0; i < extensionCount; i++) {
+            (*env)->SetObjectArrayElement(env, extensions, i,
+                                          (*env)->NewStringUTF(env, extensionProperties[i].extensionName));
+        }
+
+        if (extensionProperties) free(extensionProperties);
+        destroyInstance(instance, NULL);
+
+        sigaction(SIGILL, &saved_sigill_action, NULL);
+        cleanup_vulkan();
+        return extensions;
     }
 
-    if (enumerate_physical_devices() != VK_SUCCESS) {
-        printf("Failed to query physical devices");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
-    }
-
-    result = enumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL);
-
-    if (result != VK_SUCCESS || extensionCount < 1) {
-        printf("Failed to query extension count");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
-    }    
-    
-    VkExtensionProperties *extensionProperties = malloc(sizeof(VkExtensionProperties) * extensionCount);
-    enumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount,
-                                       extensionProperties);
-
-    if (result != VK_SUCCESS) {
-        printf("Failed to query extensions");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
-    }
-
-    extensions = (jobjectArray) (*env)->NewObjectArray(env, extensionCount,
-                                                       (*env)->FindClass(env, "java/lang/String"),
-                                                       NULL);
-    for (int i = 0; i < extensionCount; i++) {
-        (*env)->SetObjectArrayElement(env, extensions, i,
-                                      (*env)->NewStringUTF(env, extensionProperties[i].extensionName));
-    }
-
-    destroyInstance(instance, NULL);
-
-    if (vulkan_handle)
-        dlclose(vulkan_handle);
-
-    return extensions;
+    printf("SIGILL caught: driver incompatible");
+    sigaction(SIGILL, &saved_sigill_action, NULL);
+    cleanup_vulkan();
+    return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
 }

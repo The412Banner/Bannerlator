@@ -81,6 +81,39 @@ Repo: https://github.com/The412Banner/bannerlators (public). Created 2026-06-18.
   branding work. **✅ SUCCESS** — artifact `compiled-debug` (~541 MB APK). Still awaiting
   device test (Settings fix + new splash).
 
+## 2026-06-19 — ⚠️ CRITICAL: source was star-compose, NOT marcescence → full re-import
+- **Bug found (user-reported):** the new builds were "not from marcescence." Investigation
+  proved the initial import (`60dce24`) was a snapshot of **`star-compose/main`**
+  (`versionName "7.1.4x-cmod"`, NO product flavors) — the star-compose *predecessor* of
+  marcescence, not the 1.4 line. Runs 27795368178 + 27797077384 therefore shipped
+  star-compose. Proof: bannerlator tree was 113 files off `star-compose/main` but **600**
+  files off `star@marcescence`; `app/build.gradle` was byte-identical to star-compose/main.
+- **Fix — full re-import** (commit `c55fe68`): replaced the entire app source with
+  **`The412Banner/star @ marcescence`** (`versionName "1.4-marcescene"`, `versionCode 20`,
+  **3 product flavors** standard `com.winlator.star` / ludashi `com.ludashi.benchmark` / pubg
+  `com.tencent.ig`, `cmod`→`star` package, Vulkan + Compose settings/input tabs + SteamGridDB
+  + drive/container pickers). marcescence lives at star@`marcescence` (tip `0139024`); also
+  mirrored in private `The412Banner/marcescence-backup`@`f112fd1`.
+- **Submodules vendored** as plain files (OpenXR-SDK, adrenotools + nested linkernsbypass);
+  `.gitmodules` removed; verified 0 gitlinks staged.
+- **CI switched to marcescence's flavor-aware workflows** (bannerlator's old flavor-less CI
+  could not build marcescence). Kept marcescence `main.yml` (workflow_dispatch; installs NDK
+  26.1.10909125 + cmake; uploads 3 artifacts `standard-debug`/`ludashi-debug`/`pubg-debug`) +
+  `release.yml` (workflow_dispatch, input `release_notes`). **Removed 5 extra marcescence
+  workflows incl. push-triggered `release-differentpkg.yml`** (would auto-release on push).
+- **Add-ons re-applied:** branded README + progress logs; Settings overlapping-rows fix
+  re-applied to marcescence `settings_fragment.xml` (all 11 `FieldSet.Dark` → `orientation="vertical"`).
+- **Re-import build run 27798743622 = ✅ SUCCESS** — 3 flavor APKs ~588 MB each. Standard APK
+  copied to `/sdcard/Download/Bannerlator-1.4-marcescene-standard.apk` (md5 `07c3034244…`).
+- **Splash branding port** (commit `ad67a6a`, build run 27799338372): marcescence's
+  `SplashScreen.kt` (star pkg) rendered `R.mipmap.ic_launcher_foreground` in a 120dp sparkle
+  box + a `"Star Marcescence"` title — so the earlier `splash_logo.jpg` image swap had NO
+  visible effect (this is why the user "didn't see" the logo/text change). Replaced the icon
+  with the banner logo (`R.drawable.splash_logo`, `fillMaxWidth`) and dropped the title text.
+  `SparkleCanvas`/`frameTime` now unused (harmless; no warnings-as-errors).
+- **OPEN branding choices (user to decide):** in-app name still marcescence's (`star Bionic` /
+  flavor IDs above), not "Bannerlator"; splash version line still reads `v1.4-marcescence`.
+
 ## Notes / TODO
 - Device-test the Settings screen after the action build (verify rows now stack vertically).
 - Dialog layouts (`shortcut_settings_dialog.xml`, `box64_edit_preset_dialog.xml`,

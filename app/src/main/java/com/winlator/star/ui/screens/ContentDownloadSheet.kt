@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
@@ -56,6 +57,7 @@ fun ContentDownloadSheet(
     var downloadingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
     var installingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var installedKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showInfoProfile by remember { mutableStateOf<ContentProfile?>(null) }
     var confirmRemoveProfile by remember { mutableStateOf<ContentProfile?>(null) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -155,10 +157,12 @@ fun ContentDownloadSheet(
                                 val isLocal = profile.remoteUrl == null
                                 val isDownloading = key in downloadingKeys
                                 val isInstalling = key in installingKeys
+                                val isInstalled = isLocal || key in installedKeys
 
                                 DownloadContentItem(
                                     profile = profile,
                                     isLocal = isLocal,
+                                    isInstalled = isInstalled,
                                     isDownloading = isDownloading,
                                     isInstalling = isInstalling,
                                     progress = downloadProgress[key],
@@ -181,6 +185,7 @@ fun ContentDownloadSheet(
                                                 installContent(context, cm, uri) { ok ->
                                                     installingKeys = installingKeys - key
                                                     if (ok) {
+                                                        installedKeys = installedKeys + key
                                                         loadProfiles(cm, contentTypes) { profiles = it }
                                                         refreshKey++
                                                         onContentChanged()
@@ -226,6 +231,7 @@ fun ContentDownloadSheet(
 private fun DownloadContentItem(
     profile: ContentProfile,
     isLocal: Boolean,
+    isInstalled: Boolean,
     isDownloading: Boolean,
     isInstalling: Boolean,
     progress: Float?,
@@ -234,6 +240,7 @@ private fun DownloadContentItem(
     onRemove: () -> Unit,
 ) {
     val busy = isDownloading || isInstalling
+    val installedBlue = Color(0xFF4FC3F7)
     Column(
         modifier = Modifier.fillMaxWidth().background(Color(0xFF1A1A1A), shape = RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
@@ -251,21 +258,39 @@ private fun DownloadContentItem(
                 Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = Color.White)
                 Text("Code: ${profile.verCode}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFCCCCCC))
             }
-            if (!isLocal) {
-                if (busy) {
+            when {
+                busy -> {
                     // Small on-card spinner stays visible during both download and install.
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                } else {
+                }
+                isLocal -> {
+                    // Already installed (detected on disk): light-blue check + info + remove.
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = "Installed",
+                        tint = installedBlue,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    IconButton(onClick = onInfo) {
+                        Icon(Icons.Filled.Info, contentDescription = "Info", tint = Color(0xFFCCCCCC))
+                    }
+                    IconButton(onClick = onRemove) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350))
+                    }
+                }
+                isInstalled -> {
+                    // Just installed this session — show the light-blue check straight away.
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = "Installed",
+                        tint = installedBlue,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                else -> {
                     IconButton(onClick = onDownload) {
                         Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
                     }
-                }
-            } else {
-                IconButton(onClick = onInfo) {
-                    Icon(Icons.Filled.Info, contentDescription = "Info", tint = Color(0xFFCCCCCC))
-                }
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350))
                 }
             }
         }

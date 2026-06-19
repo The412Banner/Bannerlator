@@ -400,6 +400,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF3A3A4E)),
             modifier = androidx.compose.ui.Modifier.fillMaxWidth()
         ) {
             Column(

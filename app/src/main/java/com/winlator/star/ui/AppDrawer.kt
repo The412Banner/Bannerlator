@@ -96,6 +96,7 @@ fun AppDrawerContent(
             .fillMaxHeight()
             .width(280.dp)
             .background(PureBlack)
+            .border(0.5.dp, Color(0xFF2E2E2E))
             .verticalScroll(rememberScrollState()),
     ) {
         Spacer(Modifier.height(12.dp))

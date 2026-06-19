@@ -46,6 +46,30 @@ Repo: https://github.com/The412Banner/bannerlators (public). Created 2026-06-18.
   `bordered_panel_dark`, a `<solid>` fill, no padding/insets) and cannot change child stacking.
 - **Status**: ⏳ awaiting device confirmation (CI green ≠ working). NOT yet device-tested.
 
+### 2026-06-18 — Splash screen rebrand (`SplashScreen.kt`)
+- First-run "Installing system files" overlay was hardcoded "Bionic Star" / "V1.2" + app icon.
+- **Change**: swapped `R.mipmap.ic_launcher_foreground` → repo banner logo
+  (`app/src/main/res/drawable/splash_logo.jpg`, copied from root `logo.jpg`), sized
+  `fillMaxWidth()` so the wide 1245×602 banner isn't squished; **removed** the title Text
+  (logo already carries the "Bannerlator" wordmark); version label → **`v1.0`**. Kept
+  "Installing system files", progress bar, Proceed button. Dropped unused `size` import.
+
+## Branding / repo housekeeping (2026-06-18)
+- **Repo renamed** `bannerlators` → **`Bannerlator`** (https://github.com/The412Banner/Bannerlator,
+  old URL redirects). Local git remote updated; download badge + release-APK name → `Bannerlator-<tag>.apk`.
+- **Logo**: replaced placeholder with neon **Bannerlator** banner (`logo.jpg`, 1245×602); old
+  `logo.png` removed.
+- **README**: professional rewrite (centered header, badges, quick-links nav, sectioned tables).
+  Added **Project Notice** = personal continuation of the discontinued/archived Winlator
+  *Star Bionic* ([star-emu/star](https://github.com/star-emu/star)); no original devs except
+  The412Banner; built on their work + cherry-picked community commits; free to use/share. About
+  section moved OUT of README into the GitHub repo "About" description. Discord
+  (`discord.gg/n8S4G2WZQ4`) + Telegram (`t.me/The412BannerGaming`) point to The412Banner.
+- **Credits expanded**: StevenMXZ (Winlator-Ludashi `ludashi`/`redmagic` variants),
+  GameNative (utkarshdalal, Proton bionic layers), Star/Frost dev team (star-emu),
+  leegao (BCn/ASTC/ETC Vulkan texture-compression layers), isygold (Star Engine / VEGAS
+  Adreno DXVK fork — the `vegas` in `v1.3-vegas`).
+
 ## Build/run history
 - 2026-06-18 ~23:21 UTC — first action build (run **27795368178**, "Any branch compilation."
   on `main`) for marcescence + orientation fix. **✅ SUCCESS** — artifact `compiled-debug`
@@ -53,6 +77,9 @@ Repo: https://github.com/The412Banner/bannerlators (public). Created 2026-06-18.
 - 2026-06-18 — README adopted from `The412Banner/star`, adapted for bannerlators (name, badge
   → The412Banner/bannerlators, banner → logo.png). External frontends-guide link left pointing
   at `star-emu/star` (doc not vendored here).
+- 2026-06-18 — second action build (run **27797077384**, on `main`) with splash rebrand +
+  branding work. **✅ SUCCESS** — artifact `compiled-debug` (~541 MB APK). Still awaiting
+  device test (Settings fix + new splash).
 
 ## Notes / TODO
 - Device-test the Settings screen after the action build (verify rows now stack vertically).

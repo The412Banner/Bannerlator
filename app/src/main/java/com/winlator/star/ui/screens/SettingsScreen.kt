@@ -781,7 +781,7 @@ private fun FieldSetLabel(text: String) {
 
 @Composable
 private fun FieldSet(content: @Composable () -> Unit) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF1A1A2E), RoundedCornerShape(8.dp))

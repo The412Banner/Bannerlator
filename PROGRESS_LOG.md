@@ -79,6 +79,31 @@ graphicsDriverConfig has two competing dialog formats writing the same field.
 
 ---
 
+## 2026-06-19 (PM) — New neon gamepad launcher icon (corner-clip fix)
+
+User supplied a new icon (neon gamepad + magenta chevron + white L-bracket + corner stars on
+black, white rounded border) — `/storage/emulated/0/Download/ADM/file_…588.jpg`, 1254×1254 — and
+reported the previously-installed icon had its **border corners clipped** by the launcher's
+round/squircle mask (device screenshot 20260619-194013, drawer): that old icon was **full-bleed**
+(art edge-to-edge) so adaptive masks cut the corners.
+
+**Done (commit `19d62f8`, all 15 files = 5 densities × ic_launcher + ic_launcher_round + adaptive
+foreground):**
+- Legacy `ic_launcher.png` / `ic_launcher_round.png` (mdpi 48 … xxxhdpi 192) = full image, exact.
+- Adaptive foreground (mdpi 108 … xxxhdpi 432) = full art fit into the **safe zone** (~66% of
+  canvas, centered, transparent pad) so the launcher mask only ever trims the black margin — the
+  white border + corner stars stay fully visible under ANY mask shape. Generated with ImageMagick.
+- Adaptive background was already `@color/ic_launcher_background` = `#000000` (matches art bg) → no
+  change needed; seamless (image black bg blends into adaptive black).
+- No per-flavor icon overrides → shared `main/res` applies to all 3 flavors (standard/ludashi/pubg).
+- User explicitly chose "full white border visible" over a bigger near-full-bleed (88%) variant.
+
+**Build:** `build-artifacts.yml` run `27853329322` (artifacts-only, label `neonicon`, off `main` @
+`19d62f8`). ⏳ standard APK → `/sdcard/Download/` when green. ⏳ icon device-unconfirmed (note:
+Android caches launcher icons — reboot / clear launcher cache if old clipped icon persists).
+
+---
+
 ## How to Resume a Session
 
 1. Read this file top to bottom

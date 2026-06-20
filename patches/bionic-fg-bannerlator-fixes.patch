@@ -1,0 +1,122 @@
+diff --git a/VkLayer_BIONIC_framegen.json b/VkLayer_BIONIC_framegen.json
+index 032a00e..d2879fa 100644
+--- a/VkLayer_BIONIC_framegen.json
++++ b/VkLayer_BIONIC_framegen.json
+@@ -13,6 +13,9 @@
+         },
+         "enable_environment": {
+             "BIONIC_FG_ENABLE": "1"
++        },
++        "disable_environment": {
++            "BIONIC_FG_DISABLE": "1"
+         }
+     }
+ }
+diff --git a/src/vk_layer/layer.cpp b/src/vk_layer/layer.cpp
+index 66d1934..ff5d59c 100644
+--- a/src/vk_layer/layer.cpp
++++ b/src/vk_layer/layer.cpp
+@@ -415,6 +415,7 @@ struct SwapState {
+ 
+     uint64_t frameCount = 0;
+     bool     inPresent  = false;
++    uint32_t fenceTimeouts = 0;   // consecutive cross-context fence timeouts; disables framegen past a threshold
+ 
+     void cleanup(const DeviceData& dd, VkDevice dev) {
+         if (dd.deviceWaitIdle) dd.deviceWaitIdle(dev);
+@@ -1031,6 +1032,27 @@ static VkResult acquireGeneratedImage(const DeviceData& dd, VkDevice device,
+ 
+ // ─── QueuePresentKHR ──────────────────────────────────────────────────────────
+ 
++// Bound the cross-context fence waits in the present path. The copy command
++// buffer is submitted waiting on the application's *own* present semaphores
++// (DXVK's, here), then we wait on its fence. On some ICDs that bridge to a
++// separate host driver (e.g. Winlator/Bannerlator's wrapper_icd -> Turnip via
++// adrenotools) the host queue/semaphore model differs and that fence never
++// signals, hanging the present thread forever (-> ANR/SIGQUIT; observed as a
++// 36s freeze on first interpolated frame). A bounded wait degrades to a normal
++// real-frame present instead of hanging, and after a few timeouts we disable
++// framegen for this swapchain entirely so the app runs at full speed.
++static constexpr uint64_t kFenceTimeoutNs   = 250000000ull; // 250 ms
++static constexpr uint32_t kMaxFenceTimeouts = 2;
++
++static void noteFenceTimeout(SwapState& st) {
++    if (++st.fenceTimeouts >= kMaxFenceTimeouts && st.conf.enabled) {
++        st.conf.enabled = false;
++        BFG_LAYER_E("disabling framegen for this swapchain after %u fence timeouts "
++                    "(present-path sync incompatible with this ICD); real frames only",
++                    st.fenceTimeouts);
++    }
++}
++
+ VKAPI_ATTR VkResult VKAPI_CALL BionicFG_QueuePresentKHR(
+         VkQueue queue,
+         const VkPresentInfoKHR* pPresentInfo) {
+@@ -1155,8 +1177,13 @@ VKAPI_ATTR VkResult VKAPI_CALL BionicFG_QueuePresentKHR(
+     // --- Step 1: Copy real swapchain image into current AHB input. The copy
+     // waits on the application's original present semaphores, so the final real
+     // present must not wait on those same binary semaphores again.
+-    if (dd.waitForFences(device, 1, &st.copyFences[fi], VK_TRUE, UINT64_MAX) != VK_SUCCESS ||
+-        dd.resetFences(device, 1, &st.copyFences[fi]) != VK_SUCCESS) {
++    VkResult copyPreWait = dd.waitForFences(device, 1, &st.copyFences[fi], VK_TRUE, kFenceTimeoutNs);
++    if (copyPreWait == VK_TIMEOUT) {
++        BFG_LAYER_E("copy fence (pre-submit) wait timed out; passing through");
++        noteFenceTimeout(st);
++        return callNextPresent(queue, pPresentInfo);
++    }
++    if (copyPreWait != VK_SUCCESS || dd.resetFences(device, 1, &st.copyFences[fi]) != VK_SUCCESS) {
+         BFG_LAYER_E("copy fence wait/reset failed; passing through");
+         return callNextPresent(queue, pPresentInfo);
+     }
+@@ -1234,11 +1261,17 @@ VKAPI_ATTR VkResult VKAPI_CALL BionicFG_QueuePresentKHR(
+         finalPresent.pWaitSemaphores = nullptr;
+     }
+ 
+-    VkResult copyWait = dd.waitForFences(device, 1, &st.copyFences[fi], VK_TRUE, UINT64_MAX);
++    VkResult copyWait = dd.waitForFences(device, 1, &st.copyFences[fi], VK_TRUE, kFenceTimeoutNs);
+     if (copyWait != VK_SUCCESS) {
+-        BFG_LAYER_E("copy fence wait failed after submit: %d", copyWait);
++        if (copyWait == VK_TIMEOUT) {
++            BFG_LAYER_E("copy fence (post-submit) wait timed out; presenting real frame only");
++            noteFenceTimeout(st);
++        } else {
++            BFG_LAYER_E("copy fence wait failed after submit: %d", copyWait);
++        }
+         return dd.queuePresent(queue, &finalPresent);
+     }
++    st.fenceTimeouts = 0;   // cross-context sync is working this frame
+ 
+     // --- Step 2: Run framegen after we have both previous and current inputs.
+     if (st.frameCount > 0) {
+@@ -1267,7 +1300,11 @@ VKAPI_ATTR VkResult VKAPI_CALL BionicFG_QueuePresentKHR(
+                 continue;
+             }
+ 
+-            dd.waitForFences(device, 1, &st.genFences[k], VK_TRUE, UINT64_MAX);
++            if (dd.waitForFences(device, 1, &st.genFences[k], VK_TRUE, kFenceTimeoutNs) != VK_SUCCESS) {
++                BFG_LAYER_E("generated-frame fence wait timed out; skipping injected frame %d", k);
++                noteFenceTimeout(st);
++                continue;
++            }
+             dd.resetFences(device, 1, &st.genFences[k]);
+             VkCommandBuffer genCmd = st.genCmds[k];
+             dd.resetCmdBuf(genCmd, 0);
+diff --git a/src/vulkan/vk_impl.cpp b/src/vulkan/vk_impl.cpp
+index 4f864eb..855bf2f 100644
+--- a/src/vulkan/vk_impl.cpp
++++ b/src/vulkan/vk_impl.cpp
+@@ -34,8 +34,12 @@ static const char* kRequiredDeviceExts[] = {
+     "VK_KHR_get_memory_requirements2",
+     "VK_KHR_bind_memory2",
+     "VK_KHR_maintenance1",
+-    "VK_KHR_external_memory_capabilities",
+-    "VK_KHR_get_physical_device_properties2",
++    // NOTE: VK_KHR_external_memory_capabilities and
++    // VK_KHR_get_physical_device_properties2 are *instance* extensions (and core
++    // since Vulkan 1.1) — they are enabled on the instance below, not the device.
++    // Listing them here made vkEnumerateDeviceExtensionProperties always report
++    // them missing ("Device ext not available"); harmless (they were filtered
++    // out before vkCreateDevice) but misleading, so they are removed.
+ #endif
+ };
+ 

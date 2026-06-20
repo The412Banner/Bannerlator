@@ -156,13 +156,53 @@ the frame-gen module from an imagefs path on the side that runs the driver. **Co
       ⚠️ **Strong hypothesis: our NDK/bionic `.so` won't load in the glibc guest loader** (links
       `libandroid`/`liblog`/Android `libvulkan` absent in imagefs) → will need a **glibc aarch64
       build** (Phase 1.5), mirroring MangoHud / GameHub `libGameScopeVK`.
-- [ ] **2.1** Drop the `.so` (`usr/lib/`) + manifest (`implicit_layer.d/`) into imagefs (runbook §2).
-- [ ] **2.2** Set `BIONIC_FG_ENABLE=1` + `VK_LOADER_DEBUG=all` in one container's Env Vars; write a
-      test `conf.toml` at guest `$HOME/.config/bionic-fg/` (runbook §3).
-- [ ] **2.3** Launch a real DXVK game; capture logcat to `/sdcard/Download/bionicfg_spike.txt`
-      (runbook §4). **[needs device — user runs]**
-- [ ] **2.4** Read the decision table (runbook §5): did the layer load? ABI error? swapchain seen?
-- [ ] **2.5** Record the real shape; if ABI mismatch → Phase 1.5 glibc build (runbook §7).
+- [x] **2.1** Dropped the `.so` (`usr/lib/`) + manifest (`implicit_layer.d/`) into imagefs.
+- [x] **2.2** Set `BIONIC_FG_ENABLE=1` + `VK_LOADER_DEBUG=all` in container Env Vars; wrote a
+      test `conf.toml` (mult=2) at guest `$HOME/.config/bionic-fg/`.
+- [x] **2.3** Launched Doomblade (DXVK); captured logcat to `/sdcard/Download/bionicfg_spike.txt`
+      (7 MB / 57,969 lines; session crashed on launch but capture survived + exited clean).
+- [x] **2.4 RESULT (2026-06-19):** Discovery **works** — glibc loader logged
+      `Found manifest file …/VkLayer_BIONIC_framegen.json` 12×. But the layer was **SKIPPED 10×**:
+      `Layer "VK_LAYER_BIONIC_framegen" doesn't contain required layer object disable_environment …,
+      skipping this layer`. **`libbionic_fg.so` was NEVER dlopen'd — zero load attempts, zero
+      ELF/ABI errors in the whole log.** → The ABI hypothesis (2.0a) was **never tested**; the loader
+      bailed at manifest parse.
+- [ ] **2.4a FIX (blocker):** upstream manifest is missing the spec-required `disable_environment`
+      key for implicit layers. Add `"disable_environment": {"BIONIC_FG_DISABLE":"1"}` to the manifest
+      (staged copy + imagefs copy + at source in `build-bionic-fg.yml`/submodule; propose PR upstream
+      per author terms). **Then re-spike** — only that run can answer load(ABI)/swapchain.
+- [x] **2.4b RE-SPIKE (2026-06-19, after manifest fix) — DE-RISK GATE PASSED:**
+  - ✅ Manifest fix worked: layer enabled via `BIONIC_FG_ENABLE`, `disable_environment` recognized.
+  - ✅ **Our NDK/bionic `libbionic_fg.so` LOADS in the glibc guest loader** (instance + device layer inserted), **zero ABI errors → NO Phase 1.5 glibc build needed.** (`libVkLayer_LSFGVK_*` lib-arm64 failure = old lsfg-vk stub, missing `libc++_shared.so`, unrelated/non-fatal.)
+  - ✅ Layer inits fully: device created, all embedded SPIR-V loaded, `FramegenContext ready 1280x720 mult=2 model=0`.
+  - ✅ **Real `VkSwapchainKHR` exists & is hooked** (the headline unknown): `SwapchainState ready 1280x720 mult=2 provisionedOutputs=3`. Frame-gen briefly ran (FPS 65→143 = mult=2 doubling) before crashing.
+  - 🔴 **Crash cause:** bionic-fg gates external-memory/AHB setup on the **extension strings** `VK_KHR_external_memory_capabilities` + `VK_KHR_get_physical_device_properties2`, which are **core since Vulkan 1.1** (instance is 1.3) → no string → check fails → AHB import misconfigured → crash on first interpolated present. Wrapper/Turnip side has AHB fine (`VK_ANDROID_external_memory_android_hardware_buffer` + DRI3 AHB pixmaps).
+  - Logs: `/sdcard/Download/bionicfg_spike_run1_manifestskip.txt` (manifest-skip) + `bionicfg_spike_run2_loaded_crash.txt` (load+crash).
+- [ ] **1.5 — NOT NEEDED** (ABI confirmed fine; struck from plan).
+- [x] **2.4c REAL CRASH CAUSE FOUND (it's a HANG, not a segfault):** process went silent right after
+      `SwapchainState ready` + `DXVK: Using 8 compiler threads`, froze ~36s, then `reacting to signal 3`
+      (SIGQUIT/ANR trace dump) → killed. No SIGSEGV/VkError. The present hook `BionicFG_QueuePresentKHR`
+      (`src/vk_layer/layer.cpp`) submits a copy cmd-buf waiting on the **application's own present
+      semaphores** (DXVK's) then does `vkWaitForFences(..., UINT64_MAX)` on its fence. On the
+      wrapper_icd→Turnip bridge that fence never signals → infinite wait → hang. (The
+      `Device ext not available` warnings are cosmetic — those instance exts were filtered out before
+      `vkCreateDevice`, which succeeded.)
+- [x] **2.5 PATCH WRITTEN** → `patches/bionic-fg-bannerlator-fixes.patch` (submodule stays pinned;
+      CI `build-bionic-fg.yml` applies it pre-build; manifest `jq` hack removed). This patch == the
+      upstream PR we owe xXJSONDeruloXx. Contents:
+      (a) **present-path fence waits `UINT64_MAX`→250ms** at all 3 cross-context sites (pre-copy, post-copy,
+          per-generated-frame) + new `SwapState::fenceTimeouts` counter + `noteFenceTimeout()`: on timeout,
+          degrade to a real-frame present; after 2 timeouts disable framegen for that swapchain (full speed,
+          no ANR). Distinct log lines per site → next spike pinpoints which wait stalls.
+      (b) **manifest** `disable_environment: BIONIC_FG_DISABLE` (Phase 2.4a fix, folded in).
+      (c) **vk_impl.cpp** remove the 2 instance exts wrongly listed in `kRequiredDeviceExts` (cosmetic).
+- [ ] **2.6 NEXT:** run `build-bionic-fg.yml` (workflow_dispatch) → new `libbionic_fg.so` → re-stage to
+      device → re-spike. EXPECTED: no hang. Either (i) sustained frame-gen (success!), or (ii) graceful
+      log `copy fence (post-submit) wait timed out` → `disabling framegen … real frames only` (game runs,
+      and we've localized the exact deadlock for a deeper present-path fix). Then Phase 3 (container UI).
+- [ ] **2.7 FOLLOW-UP:** `FramegenContext::present` (`framegen_context.cpp:829`) + `fgCtx->waitIdle()`
+      (`layer.cpp` step 2) also use infinite waits but on bionic-fg's OWN compute device (lower hang risk);
+      bound them too if (ii) shows the stall is compute-side, not the cross-context copy.
 
 ### Phase 3 — Container setting (only if Phase 2 passes)
 - [ ] **3.1** Add Frame-Gen config to `Container.java` (enable flag + multiplier/model/flow_scale,

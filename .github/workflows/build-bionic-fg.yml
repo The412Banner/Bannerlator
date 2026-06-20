@@ -34,6 +34,21 @@ jobs:
           yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;26.1.10909125" "cmake;3.22.1"
           echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
+      - name: Apply Bannerlator fixes to bionic-fg
+        run: |
+          # Keeps the submodule pinned to its upstream commit while building our
+          # fixes. This patch is the exact change we propose upstream as a PR
+          # (xXJSONDeruloXx/bionic-fg). It covers:
+          #   1. manifest: add spec-required `disable_environment` (else the
+          #      glibc Vulkan loader skips the implicit layer at parse time);
+          #   2. present path: bound the cross-context fence waits (UINT64_MAX ->
+          #      250ms) so a wrapper-ICD semaphore mismatch degrades to a real
+          #      present + disables framegen instead of hanging (ANR/SIGQUIT);
+          #   3. drop two instance exts wrongly listed as device exts.
+          # All verified on-device 2026-06-19; see BIONIC_FG_INTEGRATION_REPORT.md §2.
+          git -C app/src/main/cpp/bionic-fg apply --verbose \
+            "${GITHUB_WORKSPACE}/patches/bionic-fg-bannerlator-fixes.patch"
+
       - name: Configure (arm64-v8a, android-26)
         run: |
           cmake -S app/src/main/cpp/bionic-fg -B build/bionic-fg \
@@ -48,8 +63,10 @@ jobs:
         run: |
           mkdir -p out/bionic-fg
           cp build/bionic-fg/libbionic_fg.so out/bionic-fg/
+          # Manifest is already patched (disable_environment) by the apply step above.
           cp app/src/main/cpp/bionic-fg/VkLayer_BIONIC_framegen.json out/bionic-fg/
           ls -lh out/bionic-fg/
+          echo "--- staged manifest ---"; cat out/bionic-fg/VkLayer_BIONIC_framegen.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

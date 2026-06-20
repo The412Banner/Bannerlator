@@ -178,6 +178,24 @@ README credit; then the Phase 2 verification spike (gate the rest on it).
   `conf.toml`, launch a DXVK game, confirm via logcat whether the layer engages (wrapper exposes a
   `VkSwapchainKHR`?) BEFORE any UI work.
 
+### ✅ Phase 1 DONE (2026-06-19) — native build
+- `build-bionic-fg.yml` (standalone, NDK 26.1.10909125 + cmake 3.22.1, arm64-v8a/android-26). Run
+  **27854824786 ✅** → artifact `bionic-fg-arm64` (1.65 MB) = `libbionic_fg.so` (ELF aarch64,
+  Android 26, NDK r26b — matches our minSdk 26) + `VkLayer_BIONIC_framegen.json`. Workflow also added
+  to `main` (dispatch-only/inert) since workflow_dispatch requires the file on the default branch.
+- **Manifest insights (sharpen the spike):** layer is **IMPLICIT** (`enable_environment
+  BIONIC_FG_ENABLE=1`); `library_path ../../../lib/libbionic_fg.so` → manifest goes in
+  `…/share/vulkan/implicit_layer.d/`, .so in sibling `lib/`. Implicit layers are found via system
+  dirs / `VK_ADD_IMPLICIT_LAYER_PATH` (NOT `VK_LAYER_PATH`, which is explicit-only). Hooks
+  vkGetInstance/DeviceProcAddr → sits above the ICD.
+- **Refined crux:** bionic `.so` CANNOT load in the glibc guest (box64/Wine) → must load **host-side**
+  where the wrapper-ICD server runs Turnip via adrenotools. Spike must confirm (1) host loader honors
+  the implicit layer, (2) a real `VkSwapchainKHR` exists to hook (vs AHB-export = nothing to
+  intercept). Copy GameHub `libGameScopeVK` imagefs placement.
+- Artifact staged for device spike: `/sdcard/Download/bionic-fg/{libbionic_fg.so,VkLayer_BIONIC_framegen.json}`.
+- **Next:** Phase 2 spike (needs a device launch — log to crash-surviving `/sdcard/Download/*.txt`
+  per the device-launch rule; hold the actual launch for the user).
+
 ---
 
 ## How to Resume a Session

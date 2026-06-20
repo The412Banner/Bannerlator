@@ -80,14 +80,37 @@ toward. Good cross-pollination note for the author.
 
 **Where does the layer actually load, and is there a swapchain to hook?**
 
-- GameHub places its frame-gen engine in the **imagefs** (guest-reachable), implying the layer loads
-  in the **guest wrapper context**, not the app-side Android Vulkan loader.
-- A swapchain-intercepting layer needs a real `VkSwapchainKHR`. Winlator's wrapper may present via
-  **AHB export with no WSI swapchain** — in which case the layer has nothing to intercept.
+### Manifest facts (from the built artifact, run 27854824786)
+- `libbionic_fg.so` = **ELF aarch64, Android 26, NDK r26b** (bionic). 1.65 MB artifact.
+- Layer is **implicit**: `"enable_environment": { "BIONIC_FG_ENABLE": "1" }` → the Vulkan loader only
+  activates it when that env var is set, and only if the manifest is in an **`implicit_layer.d`**
+  search dir (NOTE: `VK_LAYER_PATH` is for *explicit* layers; implicit layers come from the system
+  dirs or `VK_ADD_IMPLICIT_LAYER_PATH` / `VK_IMPLICIT_LAYER_PATH`).
+- `"library_path": "../../../lib/libbionic_fg.so"` → manifest at `…/share/vulkan/implicit_layer.d/`
+  expects the `.so` at `…/lib/` (or rewrite to an absolute path).
+- Hooks `vkGetInstanceProcAddr` / `vkGetDeviceProcAddr` → inserts **above the ICD** in the chain.
 
-This is the single biggest risk. **Resolve it with a verification spike before any UI work**
-(Phase 2 below). Reference GameHub's `libGameScopeVK` wiring (decompiles noted in project memory) to
-copy its proven placement rather than rediscover it.
+### The real crux (refined)
+bionic-fg is a **bionic** `.so` — it **cannot** be `dlopen`'d by the **glibc** guest (box64/Wine in
+imagefs). So it must load on the **host (Android/bionic) side**, where Winlator's **wrapper ICD
+server** runs the real Turnip driver via adrenotools. Two things must both be true there:
+1. The host-side wrapper server creates its `VkInstance`/`VkDevice` through the **Android Vulkan
+   loader** (`libvulkan.so`), so an implicit layer can insert itself; **and**
+2. there is a real **`VkSwapchainKHR`** to intercept — but Winlator presents via **AHB export**
+   (the path we just wired), which may mean **no WSI swapchain exists** → nothing to hook.
+
+GameHub ships its engine (`libGameScopeVK.so`) in the **imagefs**, which suggests its wrapper loads
+the frame-gen module from an imagefs path on the side that runs the driver. **Copy that placement.**
+
+### Spike must answer (in order)
+1. Does the host-side wrapper/driver context honor an implicit layer at all? (set `BIONIC_FG_ENABLE=1`
+   + place the manifest where the host loader scans; watch `VK_LOADER_DEBUG=all` in logcat for
+   "insert instance layer VK_LAYER_BIONIC_framegen").
+2. If it loads, does it see a swapchain / queue-present to interpolate, or does it sit idle because
+   present is AHB-export?
+3. Cross-check against GameHub's `libGameScopeVK` placement + env (decompiles in project memory).
+
+**Do not build any UI until the spike answers #1 and #2.**
 
 ---
 
@@ -115,10 +138,13 @@ copy its proven placement rather than rediscover it.
 - [x] **0.3** **Credit** xXJSONDeruloXx / bionic-fg in the README Credits table + upstream-stack table.
 - ⚠️ Submodule still has **no LICENSE** — carry to Phase 5.2 (ask author before any release).
 
-### Phase 1 — Native build
-- [ ] **1.1** Wire bionic-fg into the NDK build for `arm64-v8a` (subdir or standalone workflow like
-      `build-lsfg-android.sh`); produce `libbionic_fg.so` + layer manifest as build artifacts.
-- [ ] **1.2** Decide ship location (app native-lib dir vs imagefs) — finalized by Phase 2.
+### Phase 1 — Native build — ✅ DONE
+- [x] **1.1** Standalone build workflow `build-bionic-fg.yml` (NDK 26.1.10909125 + cmake 3.22.1,
+      arm64-v8a / android-26). Run **27854824786 ✅** → artifact `bionic-fg-arm64` (1.65 MB):
+      `libbionic_fg.so` (ELF aarch64, Android 26, NDK r26b) + `VkLayer_BIONIC_framegen.json`.
+      Workflow added to `main` too (dispatch-only/inert) so it can be triggered against the branch.
+- [ ] **1.2** Decide ship location (app native-lib dir vs imagefs) — finalized by Phase 2 (implicit
+      layer → needs `implicit_layer.d` on whichever loader the host-side wrapper uses).
 
 ### Phase 2 — Verification spike (DE-RISK — gate the rest on this)
 - [ ] **2.1** Drop the `.so` + manifest into the candidate path (start with imagefs, mirroring

@@ -15,6 +15,42 @@ gh workflow run "Any branch compilation." --repo The412Banner/star-compose --ref
 
 ---
 
+## 2026-06-20 — 1.3 shipped public + upstream PR review cycle (in progress)
+
+**1.3 released (public).** Repo flipped public (secret-scanned first), `Bannerlator 1.3` release
+created (run 27878418873) with all 3 flavors; release notes credit xXJSONDeruloXx with links to
+[bionic-fg](https://github.com/xXJSONDeruloXx/bionic-fg) and [PR #6](https://github.com/xXJSONDeruloXx/bionic-fg/pull/6).
+README updated to 1.3 (fixed standard package id `com.winlator.banner`, version line, added the
+Frame Generation feature section).
+
+**Upstream PR #6 opened and reviewed.** Fork `The412Banner/bionic-fg` branch
+`bannerlator-android-wrapper-icd-fixes`. Jason (xXJSONDeruloXx) left 9 inline review comments;
+all 9 answered. He's constructive and wants it in with refinements. Work plan (layer fixes land on
+the fork branch → update the PR; app-side conf-key changes land on a new Bannerlator branch
+`feature/bionic-fg-pr-followups`):
+
+- **A — separate copy vs generated fence-timeout counters.** Real bug he found: the shared counter
+  reset on copy-fence success, so generated-frame timeouts could never reach the disable threshold.
+  **Done** (fork commit `4c259f8`): split into `copyFenceTimeouts` / `genFenceTimeouts`, each reset
+  only on its own fence type.
+- **B — timeout rework** (250 ms is arbitrary / could mis-fire on a legitimately slow frame) **+
+  split the generated-frame deadline from the sync-incompatibility recovery path.** *Next.*
+- **C — fps_limit ergonomics:** justify/relax the 10–200 clamp + add an `fps_limit_enabled` bool so
+  the value is remembered across toggles. (layer + app)
+- **D — optional even-pacing** of generated presents to `1s/(base×mult)` behind an opt-in flag,
+  off by default. (layer + app)
+- **E — document** ENABLE+DISABLE precedence in the manifest (disable wins). Trivial.
+- **Pinned:** an opt-in `single_device` flag (default off) to fully de-risk the device-creation
+  change for other consumers (e.g. GameNative) — pitched to Jason, awaiting his decision before
+  implementing.
+
+**Regression note (his main concern — the device-creation change):** the JNI/native path is
+unchanged (still `Device::create()`, owned + destroyed); only the Vulkan-layer path uses
+`Device::wrap()` of the app's device (not owned). Bannerlator uses the layer path; GameNative's path
+is to be confirmed. Regression test planned on GameNative [PR #1443](https://github.com/utkarshdalal/GameNative/pull/1443).
+
+---
+
 ## 2026-06-20 — bionic-fg FRAME GEN + FPS LIMITER: merged to main, version → 1.3
 
 **FPS-limiter pacing device-confirmed (Phase 4 complete).** The deferred pacer (built into

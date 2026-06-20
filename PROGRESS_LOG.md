@@ -196,6 +196,24 @@ README credit; then the Phase 2 verification spike (gate the rest on it).
 - **Next:** Phase 2 spike (needs a device launch — log to crash-surviving `/sdcard/Download/*.txt`
   per the device-launch rule; hold the actual launch for the user).
 
+### Phase 2 spike — runbook written + device recon (2026-06-19)
+- **`BIONIC_FG_SPIKE_RUNBOOK.md`** written: full device steps (place `.so` in `imagefs/usr/lib`,
+  manifest in `implicit_layer.d`, `BIONIC_FG_ENABLE=1` + `VK_LOADER_DEBUG=all` in container Env Vars,
+  conf.toml at guest `$HOME/.config/bionic-fg/`, logcat→`/sdcard/Download/bionicfg_spike.txt`) +
+  a decision table + cleanup.
+- **Device recon (root bridge):** guest uses its **own glibc Khronos loader**
+  `imagefs/usr/lib/libvulkan.so.1.4.315` and already loads **glibc** implicit layers — **MangoHud**
+  (`VK_LAYER_MANGOHUD_overlay_aarch64`) + `libutil_layer` — from `usr/share/vulkan/implicit_layer.d/`.
+  MangoHud's manifest is structurally identical to bionic-fg's (enable_environment, `../../../lib/…`,
+  same proc-addr hooks) → **discovery works**.
+- ⚠️ **KEY HYPOTHESIS:** our NDK/**bionic** `libbionic_fg.so` (links libandroid/liblog/Android
+  libvulkan) **will not load in the glibc guest loader** → real path is a **glibc aarch64 build**
+  (new Phase 1.5), mirroring how MangoHud + GameHub `libGameScopeVK` ship in imagefs. The spike's
+  Test A is designed to confirm this fast (expect a `cannot open shared object`/`libandroid` load
+  error), then pivot.
+- Standard pkg confirmed `com.winlator.banner` (pubg `com.tencent.ig`); both installed.
+- **Next (user):** run the spike launch per the runbook; report the log signals.
+
 ---
 
 ## How to Resume a Session

@@ -147,16 +147,22 @@ the frame-gen module from an imagefs path on the side that runs the driver. **Co
       layer → needs `implicit_layer.d` on whichever loader the host-side wrapper uses).
 
 ### Phase 2 — Verification spike (DE-RISK — gate the rest on this)
-- [ ] **2.1** Drop the `.so` + manifest into the candidate path (start with imagefs, mirroring
-      GameHub).
-- [ ] **2.2** Hand-set `BIONIC_FG_ENABLE=1` + `VK_LAYER_PATH` in one container's `envVars`; write a
-      test `conf.toml`.
-- [ ] **2.3** Launch a real DXVK game; capture logcat to a crash-surviving file
-      (`/sdcard/Download/*.txt`, per the device-launch rule).
-- [ ] **2.4** Confirm: layer initializes? sees a swapchain / queue present? frames actually
-      interpolate (FPS HUD shows the multiplier)?
-- [ ] **2.5** If it only engages guest-side / needs a swapchain shim, document the real shape before
-      proceeding.
+- [x] **2.0** **Runbook written** → `BIONIC_FG_SPIKE_RUNBOOK.md` (full device steps, decision table).
+- [x] **2.0a** **Device recon done:** guest has its own **glibc Khronos loader**
+      (`imagefs/usr/lib/libvulkan.so.1.4.315`) and already loads **glibc** implicit layers
+      (MangoHud `VK_LAYER_MANGOHUD_overlay_aarch64`, `libutil_layer`) from
+      `usr/share/vulkan/implicit_layer.d/`. bionic-fg's manifest is structurally identical to
+      MangoHud's → **discovery will work**; the open question is **load (ABI)**.
+      ⚠️ **Strong hypothesis: our NDK/bionic `.so` won't load in the glibc guest loader** (links
+      `libandroid`/`liblog`/Android `libvulkan` absent in imagefs) → will need a **glibc aarch64
+      build** (Phase 1.5), mirroring MangoHud / GameHub `libGameScopeVK`.
+- [ ] **2.1** Drop the `.so` (`usr/lib/`) + manifest (`implicit_layer.d/`) into imagefs (runbook §2).
+- [ ] **2.2** Set `BIONIC_FG_ENABLE=1` + `VK_LOADER_DEBUG=all` in one container's Env Vars; write a
+      test `conf.toml` at guest `$HOME/.config/bionic-fg/` (runbook §3).
+- [ ] **2.3** Launch a real DXVK game; capture logcat to `/sdcard/Download/bionicfg_spike.txt`
+      (runbook §4). **[needs device — user runs]**
+- [ ] **2.4** Read the decision table (runbook §5): did the layer load? ABI error? swapchain seen?
+- [ ] **2.5** Record the real shape; if ABI mismatch → Phase 1.5 glibc build (runbook §7).
 
 ### Phase 3 — Container setting (only if Phase 2 passes)
 - [ ] **3.1** Add Frame-Gen config to `Container.java` (enable flag + multiplier/model/flow_scale,

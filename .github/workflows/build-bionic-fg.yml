@@ -1,0 +1,58 @@
+name: Build bionic-fg (frame-gen layer)
+
+# Standalone NDK build of the bionic-fg Vulkan frame-generation layer
+# (app/src/main/cpp/bionic-fg submodule). Produces libbionic_fg.so +
+# the implicit-layer manifest as an artifact for the integration spike.
+# Kept separate from the main app build (same pattern as lsfg-vk).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install NDK + CMake
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          mkdir -p "$SDK_ROOT"
+          if [ ! -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools/
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
+            rm -f /tmp/cmdline-tools.zip
+          fi
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;26.1.10909125" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Configure (arm64-v8a, android-26)
+        run: |
+          cmake -S app/src/main/cpp/bionic-fg -B build/bionic-fg \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+
+      - name: Build
+        run: cmake --build build/bionic-fg -j"$(nproc)"
+
+      - name: Stage artifact (so + layer manifest)
+        run: |
+          mkdir -p out/bionic-fg
+          cp build/bionic-fg/libbionic_fg.so out/bionic-fg/
+          cp app/src/main/cpp/bionic-fg/VkLayer_BIONIC_framegen.json out/bionic-fg/
+          ls -lh out/bionic-fg/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bionic-fg-arm64
+          path: out/bionic-fg/

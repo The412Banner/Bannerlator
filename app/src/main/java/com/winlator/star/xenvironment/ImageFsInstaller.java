@@ -1,6 +1,7 @@
 package com.winlator.star.xenvironment;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.winlator.star.MainActivity;
 import com.winlator.star.R;
@@ -33,6 +34,29 @@ public abstract class ImageFsInstaller {
 
             container.putExtra("imgVersion", null);
             container.saveData();
+        }
+    }
+
+    // Stages the bundled bionic-fg Vulkan layer (.so + implicit-layer manifest) into imagefs so
+    // frame generation / the FPS limiter work without manually copying the .so after every
+    // (re)install. Idempotent: skips the .so copy when it is already present with the same size.
+    // The manifest's library_path is ../../../lib/libbionic_fg.so, so it must sit in
+    // usr/share/vulkan/implicit_layer.d/ with the .so in usr/lib/.
+    public static void installBionicFgLayer(Context context, ImageFs imageFs) {
+        try {
+            File soDst = new File(imageFs.getLibDir(), "libbionic_fg.so");
+            long assetSize = FileUtils.getSize(context, "bionic-fg/libbionic_fg.so");
+            if (!soDst.isFile() || soDst.length() != assetSize) {
+                FileUtils.copy(context, "bionic-fg/libbionic_fg.so", soDst);
+            }
+            File manifestDir = new File(imageFs.getRootDir(), "usr/share/vulkan/implicit_layer.d");
+            manifestDir.mkdirs();
+            File manifestDst = new File(manifestDir, "VkLayer_BIONIC_framegen.json");
+            if (!manifestDst.isFile()) {
+                FileUtils.copy(context, "bionic-fg/VkLayer_BIONIC_framegen.json", manifestDst);
+            }
+        } catch (Exception e) {
+            Log.e("ImageFsInstaller", "Failed to stage bionic-fg layer", e);
         }
     }
 
@@ -84,6 +108,7 @@ public abstract class ImageFsInstaller {
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 FileUtils.symlink("libSDL2-2.0.so", new File(imageFs.getLibDir(), "libSDL2-2.0.so.0").getAbsolutePath());
                 resetContainerImgVersions(activity);
+                installBionicFgLayer(activity, imageFs);
             }
             else AppUtils.showToast(activity, R.string.unable_to_install_system_files);
 
@@ -94,6 +119,9 @@ public abstract class ImageFsInstaller {
     public static void installIfNeeded(final MainActivity activity) {
         ImageFs imageFs = ImageFs.find(activity);
         if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION) installFromAssets(activity);
+        // imagefs already current -> just make sure the bundled bionic-fg layer is present
+        // (e.g. upgrading from a build that didn't bundle it, without an imagefs re-extract).
+        else installBionicFgLayer(activity, imageFs);
     }
 
     public static void installFromAssetsWithCallback(
@@ -130,6 +158,7 @@ public abstract class ImageFsInstaller {
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 FileUtils.symlink("libSDL2-2.0.so", new File(imageFs.getLibDir(), "libSDL2-2.0.so.0").getAbsolutePath());
                 resetContainerImgVersions(activity);
+                installBionicFgLayer(activity, imageFs);
             } else {
                 AppUtils.showToast(activity, R.string.unable_to_install_system_files);
             }

@@ -16,7 +16,7 @@ We split Phase 4 testing because the FPS limiter needs a bionic-fg `.so` rebuild
 ## ➡️ FOLLOW-UP after this test confirms (the `.so` rebuild)
 Build a new `libbionic_fg.so` WITH the `fps_limit` pacer (C++ edits already in `app/src/main/cpp/bionic-fg/src/vk_layer/layer.cpp`, uncommitted). CI `build-bionic-fg.yml` builds the PINNED submodule SHA → must commit submodule changes to a fork remote + bump pointer (his repo has NO license), OR point CI at the working tree, OR local NDK build. Then re-stage the new `.so` + re-test the FPS limiter (cap base 30 + FG 2× → HUD ~60). Also still pending: bundle `.so` into imagefs (Phase 5), strip CHK logging, commit stable keystore, upstream PR.
 
-⚠️ Install note: `build-artifacts.yml` uses an ephemeral CI debug key → reinstall needs uninstall → WIPES imagefs (and the staged `.so`). After installing, RE-STAGE the proven `.so` md5 `23f5bfda` from `/sdcard/Download/bionic-fg-staged/` into the fresh imagefs (chown new uid) before launching. Per [[feedback_save_before_device_launch]] capture logcat to a crash-surviving `/sdcard/Download/*.txt`.
+✅ Install note (UPDATED): the proven `.so` (md5 `23f5bfda`) + manifest are now **BUNDLED as APK assets** (`app/src/main/assets/bionic-fg/`) and **auto-staged into imagefs on extraction** by `ImageFsInstaller.installBionicFgLayer()` (called from both reinstall success blocks + the imagefs-valid branch of `installIfNeeded`, idempotent). **NO MORE manual `.so` staging** even after the debug-key wipe+reinstall. When the new fps_limit `.so` is built, just **swap `app/src/main/assets/bionic-fg/libbionic_fg.so`** and rebuild. Per [[feedback_save_before_device_launch]] still capture logcat to a crash-surviving `/sdcard/Download/*.txt`.
 
 ---
 

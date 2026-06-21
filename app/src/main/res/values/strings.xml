@@ -466,7 +466,11 @@
     <string name="num_controllers">Number of Controllers</string>
     <string name="fullscreen_stretched">Enable Fullscreen (Stretched)</string>
     <string name="frame_generation">Frame Generation (AI)</string>
+    <string name="frame_generation_off">Off</string>
+    <string name="frame_generation_bionic">bionic-fg</string>
+    <string name="frame_generation_lsfg">lsfg-vk (Lossless Scaling)</string>
     <string name="frame_generation_ingame_hint">Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
+    <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Multiplier is per-container.</string>
     <string name="fps_limiter">FPS Limiter</string>
     <string name="fps_limiter_ingame_hint">Loads the limiter; set the cap (10–200) live from the in-game FPS menu.</string>
     <string name="export_container">Export Container</string>

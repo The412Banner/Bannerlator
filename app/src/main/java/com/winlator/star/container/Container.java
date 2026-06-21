@@ -350,6 +350,26 @@ public class Container {
         putExtra("frameGenEnabled", enabled ? "1" : "0");
     }
 
+    // Frame-gen engine selection: "off" | "bionic" | "lsfg". bionic-fg and lsfg-vk are mutually
+    // exclusive. Default migrates the legacy boolean (frameGenEnabled=1 -> bionic).
+    public String getFrameGenEngine() {
+        String e = getExtra("frameGenEngine", "");
+        if (e.isEmpty()) return isFrameGenEnabled() ? "bionic" : "off";
+        return e;
+    }
+
+    public void setFrameGenEngine(String engine) {
+        if (engine == null || engine.isEmpty()) engine = "off";
+        putExtra("frameGenEngine", engine);
+        // Keep the legacy bionic flag in sync so the existing bionic-fg launch/drawer paths stay
+        // correct (bionic loads only when the bionic engine is chosen; lsfg uses its own gate).
+        setFrameGenEnabled(engine.equals("bionic"));
+    }
+
+    public boolean isLsfgEngine() {
+        return getFrameGenEngine().equals("lsfg");
+    }
+
     // Allowed values: 0 (Off, set live from the in-game menu) or 2-4. Anything else -> default.
     public int getFrameGenMultiplier() {
         try {

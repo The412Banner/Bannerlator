@@ -1272,18 +1272,38 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             envVars.putAll(container.getEnvVars());
 
-            // bionic-fg layer: load it if frame generation OR the fps limiter is enabled (both are
-            // implemented by the layer + hot-reloaded via conf.toml). multiplier=0 -> frame gen Off
-            // (layer loaded, paces only); fps_limit=0 -> no cap.
-            boolean fgOn = container.isFrameGenEnabled();
+            // Frame-gen engine: lsfg-vk or bionic-fg (mutually exclusive), or off.
             boolean limiterOn = container.isFpsLimiterEnabled();
-            if (fgOn || limiterOn) {
-                envVars.put("BIONIC_FG_ENABLE", "1");
-                writeBionicFgConfig(
-                        fgOn ? container.getFrameGenMultiplier() : 0,
-                        container.getFrameGenFlowScale(),
-                        limiterOn,
-                        container.getFpsLimiterValue());
+            if (container.isLsfgEngine()) {
+                // lsfg-vk engine (mutually exclusive with bionic-fg). Opt-in via ENABLE_LSFG so the
+                // staged layer stays inert elsewhere. It reads the user-imported Lossless.dll and
+                // HARD-EXITS (bricks the container) if it can't, so only enable when the imported
+                // copy actually exists. Multiplier/flow are launch-time (the layer reads them once).
+                File losslessDll = new File(getFilesDir(), "lsfg-vk/Lossless.dll");
+                if (losslessDll.isFile()) {
+                    int mult = container.getFrameGenMultiplier();
+                    if (mult < 2) mult = 2;
+                    envVars.put("ENABLE_LSFG", "1");
+                    envVars.put("LSFG_LEGACY", "1");
+                    envVars.put("LSFG_DLL_PATH", losslessDll.getAbsolutePath());
+                    envVars.put("LSFG_MULTIPLIER", String.valueOf(mult));
+                    envVars.put("LSFG_FLOW_SCALE", String.valueOf(container.getFrameGenFlowScale()));
+                } else {
+                    Log.w("XServerDisplayActivity", "lsfg-vk selected but no Lossless.dll imported (Settings) — leaving frame gen off");
+                }
+            } else {
+                // bionic-fg layer: load it if frame generation OR the fps limiter is enabled (both
+                // implemented by the layer + hot-reloaded via conf.toml). multiplier=0 -> frame gen
+                // Off (layer loaded, paces only); fps_limit=0 -> no cap.
+                boolean fgOn = container.isFrameGenEnabled();
+                if (fgOn || limiterOn) {
+                    envVars.put("BIONIC_FG_ENABLE", "1");
+                    writeBionicFgConfig(
+                            fgOn ? container.getFrameGenMultiplier() : 0,
+                            container.getFrameGenFlowScale(),
+                            limiterOn,
+                            container.getFpsLimiterValue());
+                }
             }
 
             if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));

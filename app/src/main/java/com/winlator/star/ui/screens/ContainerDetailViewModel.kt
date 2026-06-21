@@ -90,9 +90,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var fpsCounterConfig by mutableStateOf(Container.DEFAULT_FPS_COUNTER_CONFIG)
     var fullscreenStretched by mutableStateOf(false)
 
-    // bionic-fg frame generation (per-container). Only the on/off lives here;
-    // multiplier & flow scale are tuned live from the in-game side menu.
-    var frameGenEnabled by mutableStateOf(false)
+    // Frame-gen engine (per-container): "off" | "bionic" | "lsfg" (mutually exclusive).
+    // multiplier & flow scale are tuned live from the in-game side menu (bionic-fg).
+    var frameGenEngine by mutableStateOf("off")
     // FPS limiter on/off (loads the layer); the cap value is set live in-game.
     var fpsLimiterEnabled by mutableStateOf(false)
 
@@ -292,7 +292,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         fpsCounterConfig  = c?.getFPSCounterConfig() ?: Container.DEFAULT_FPS_COUNTER_CONFIG
         fullscreenStretched = c?.isFullscreenStretched == true
 
-        frameGenEnabled    = c?.isFrameGenEnabled == true
+        frameGenEngine     = c?.frameGenEngine ?: "off"
         fpsLimiterEnabled  = c?.isFpsLimiterEnabled == true
 
         // Renderer
@@ -554,7 +554,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setShowFPS(showFPS)
             c.setFPSCounterConfig(fpsConfig)
             c.setFullscreenStretched(fullscreenStretched)
-            c.setFrameGenEnabled(frameGenEnabled)
+            c.setFrameGenEngine(frameGenEngine)
             c.setFpsLimiterEnabled(fpsLimiterEnabled)
             c.setExclusiveXInput(exclusiveXInput)
             c.setRenderer(StringUtils.parseIdentifier(selectedRenderer))
@@ -610,7 +610,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             manager.createContainerAsync(data, contentsManager) { created ->
                 container = created
                 if (created != null) {
-                    created.setFrameGenEnabled(frameGenEnabled)
+                    created.setFrameGenEngine(frameGenEngine)
                     created.setFpsLimiterEnabled(fpsLimiterEnabled)
                     created.saveData()
                     saveMouseWarp(created)

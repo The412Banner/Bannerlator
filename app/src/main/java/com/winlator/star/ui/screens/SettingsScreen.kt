@@ -276,6 +276,32 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
     }
 
+    // lsfg-vk: the user picks their own Lossless Scaling DLL once; we COPY it into app files
+    // (filesDir/lsfg-vk/Lossless.dll) and load from that copy forever after — the SAF Uri grant
+    // can be revoked, so the local copy is the source of truth. The launch wiring points
+    // LSFG_DLL_PATH at this exact file.
+    val lsfgDllFile = remember { File(context.filesDir, "lsfg-vk/Lossless.dll") }
+    fun lsfgDllStatusText(): String =
+        if (lsfgDllFile.isFile && lsfgDllFile.length() > 0)
+            "Imported (" + (lsfgDllFile.length() / (1024 * 1024)) + " MB)"
+        else "Not set — lsfg-vk will stay off"
+    var lsfgDllStatus by remember { mutableStateOf(lsfgDllStatusText()) }
+    val importLosslessDllLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                lsfgDllFile.parentFile?.mkdirs()
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    lsfgDllFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                lsfgDllStatus = lsfgDllStatusText()
+            } catch (e: Exception) {
+                lsfgDllStatus = "Import failed: " + e.message
+            }
+        }
+    }
+
     if (isBackingUp) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -711,6 +737,33 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) { Text("Restore Data", color = Color.White) }
+        }
+
+        // ── Frame Generation: lsfg-vk (Lossless Scaling DLL) ─────────────
+        FieldSetLabel("Frame Generation — lsfg-vk")
+        FieldSet {
+            Text(
+                "lsfg-vk needs your own Lossless Scaling \"Lossless.dll\". Pick it once — it is copied " +
+                "into the app and reused by any container whose Frame Generation engine is set to lsfg-vk.",
+                color = Color(0xFFCCCCCC), fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Text(
+                "Status: " + lsfgDllStatus, color = Color.White, fontSize = 13.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Button(
+                onClick = { importLosslessDllLauncher.launch(arrayOf("*/*")) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) { Text("Import Lossless.dll", color = Color.White) }
+            if (lsfgDllFile.isFile) {
+                Button(
+                    onClick = { lsfgDllFile.delete(); lsfgDllStatus = lsfgDllStatusText() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB00020)),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) { Text("Remove", color = Color.White) }
+            }
         }
 
         Spacer(Modifier.height(72.dp))

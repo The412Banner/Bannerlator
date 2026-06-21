@@ -537,19 +537,33 @@ private fun TopLevelFields(
             Text(stringResource(R.string.fullscreen_stretched))
         }
 
-        // Frame Generation (bionic-fg) — just the on/off here; multiplier & flow scale
-        // are tuned live from the in-game side menu (they hot-reload).
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(
-                checked = viewModel.frameGenEnabled,
-                onCheckedChange = { viewModel.frameGenEnabled = it }
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.frame_generation), modifier = Modifier.weight(1f))
-        }
-        if (viewModel.frameGenEnabled) {
+        // Frame Generation engine: Off / bionic-fg / lsfg-vk (mutually exclusive). For bionic-fg
+        // the multiplier & flow scale are tuned live from the in-game side menu; lsfg-vk reads them
+        // once at launch and uses the Lossless.dll imported in Settings.
+        val fgEngines = listOf("off", "bionic", "lsfg")
+        val fgEngineLabels = listOf(
+            stringResource(R.string.frame_generation_off),
+            stringResource(R.string.frame_generation_bionic),
+            stringResource(R.string.frame_generation_lsfg)
+        )
+        val fgSelIdx = fgEngines.indexOf(viewModel.frameGenEngine).coerceAtLeast(0)
+        LabeledDropdown(
+            label = stringResource(R.string.frame_generation),
+            options = fgEngineLabels,
+            selectedOption = fgEngineLabels[fgSelIdx],
+            onSelect = { viewModel.frameGenEngine = fgEngines[fgEngineLabels.indexOf(it)] }
+        )
+        if (viewModel.frameGenEngine == "bionic") {
             Text(
                 text = stringResource(R.string.frame_generation_ingame_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+            )
+        }
+        if (viewModel.frameGenEngine == "lsfg") {
+            Text(
+                text = stringResource(R.string.frame_generation_lsfg_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)

@@ -376,12 +376,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int   mult     = fgOn ? s.getFrameGenMultiplier().getValue() : 0;
             float flow     = s.getFrameGenFlowScale().getValue();
             boolean limOn  = s.getFpsLimiterEnabled().getValue();
-            int   limit    = limOn ? s.getFpsLimit().getValue() : 0;
-            writeBionicFgConfig(mult, flow, limit);
+            int   limitVal = s.getFpsLimit().getValue();   // remembered slider value, kept across on/off
+            writeBionicFgConfig(mult, flow, limOn, limitVal);
             if (fgOn) container.setFrameGenMultiplier(mult);
             container.setFrameGenFlowScale(flow);
             container.setFpsLimiterEnabled(limOn);
-            if (limit > 0) container.setFpsLimiterValue(limit);
+            if (limitVal > 0) container.setFpsLimiterValue(limitVal);
             container.saveData();
         };
         state.onToggleFullscreen       = () -> {
@@ -910,16 +910,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // first swapchain present. The layer hot-reloads this file, so it doubles as the live-control
     // path (see in-game drawer). Keys: multiplier (2-4), flow_scale (0.2-1.0), model (0/1).
     // multiplier: 0 = frame gen off (Off in the menu), else 2-4. fpsLimit: 0 = no cap, else 10-200.
-    private void writeBionicFgConfig(int multiplier, float flowScale, int fpsLimit) {
+    private void writeBionicFgConfig(int multiplier, float flowScale, boolean fpsLimiterEnabled, int fpsLimitValue) {
         try {
             File configDir = new File(imageFs.home_path, ".config/bionic-fg");
             configDir.mkdirs();
             File confFile = new File(configDir, "conf.toml");
+            // conf.toml is self-describing: the enabled flag and the remembered cap
+            // value are written separately so toggling the limiter off in the UI does
+            // not throw away the chosen value (the layer keeps it as the remembered cap).
             String toml = "# Written by Bannerlator (per-container frame generation)\n"
                     + "multiplier = " + multiplier + "\n"
                     + "flow_scale = " + String.format(java.util.Locale.US, "%.2f", flowScale) + "\n"
                     + "model = 0\n"
-                    + "fps_limit = " + fpsLimit + "\n";
+                    + "fps_limit_enabled = " + (fpsLimiterEnabled ? "true" : "false") + "\n"
+                    + "fps_limit = " + fpsLimitValue + "\n";
             FileUtils.writeString(confFile, toml);
         }
         catch (Exception e) {
@@ -1278,7 +1282,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 writeBionicFgConfig(
                         fgOn ? container.getFrameGenMultiplier() : 0,
                         container.getFrameGenFlowScale(),
-                        limiterOn ? container.getFpsLimiterValue() : 0);
+                        limiterOn,
+                        container.getFpsLimiterValue());
             }
 
             if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));

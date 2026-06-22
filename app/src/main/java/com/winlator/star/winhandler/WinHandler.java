@@ -193,7 +193,9 @@ public class WinHandler {
             sendData.put(RequestCodes.LIST_PROCESSES);
             sendData.putInt(0);
 
-            if (!sendPacket(CLIENT_PORT) && onGetProcessInfoListener != null) {
+            boolean sentLP = sendPacket(CLIENT_PORT);
+            Log.d("WinHandlerTM", "listProcesses sent=" + sentLP + " initReceived=" + initReceived + " listener=" + (onGetProcessInfoListener != null));
+            if (!sentLP && onGetProcessInfoListener != null) {
                 onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
             }
         });
@@ -433,6 +435,7 @@ public class WinHandler {
         switch (requestCode) {
             case RequestCodes.INIT: {
                 initReceived = true;
+                Log.d("WinHandlerTM", "INIT received from guest");
 
                 preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
 
@@ -460,6 +463,7 @@ public class WinHandler {
                 receiveData.get(bytes);
                 String name = StringUtils.fromANSIString(bytes);
 
+                Log.d("WinHandlerTM", "GET_PROCESS idx=" + index + "/" + numProcesses + " name=" + name);
                 onGetProcessInfoListener.onGetProcessInfo(index, numProcesses,
                         new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process));
                 break;
@@ -515,6 +519,7 @@ public class WinHandler {
                     synchronized (actions) {
                         receiveData.rewind();
                         byte requestCode = receiveData.get();
+                        Log.d("WinHandlerTM", "recv code=" + requestCode + " from port " + receivePacket.getPort());
                         handleRequest(requestCode, receivePacket.getPort());
                     }
                 }

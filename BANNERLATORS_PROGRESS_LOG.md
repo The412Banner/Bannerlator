@@ -177,3 +177,18 @@ Repo: https://github.com/The412Banner/bannerlators (public). Created 2026-06-18.
 - Repo flipped PUBLIC again (was private during bionic-fg work).
 - Cut **1.5 release** via release.yml (run 27973731778): release builds + GOG login fix +
   start-menu apps (AIO Graphics Test / Game Controller Test) + WFM drive-icon fix.
+
+## 2026-06-22 (PM) — 1.5 release notes polish + ImageFS-reinstall warning + screenshot
+- Reworded the Performance note in BOTH the GitHub release body and README — dropped the
+  "debug Compose ran 2–10× slower" phrasing; now reads "implemented to reduce the
+  user-interface lag that some users had noticed."
+- ⚠️ **Added a crystal-clear "Updating from 1.4? You MUST reinstall imageFS" warning** to the
+  1.5 release body + README: open app **Settings → scroll to bottom → Reinstall ImageFS** after
+  updating over a 1.4 install (else broken/inconsistent state).
+- Committed user's screenshot `docs/imagefs-reinstall.jpg` (1080×1273, the Settings ImageFS
+  section) and embedded it in the release body as a **240px clickable thumbnail laid out
+  BESIDE the warning text** via a 2-column HTML `<table>` (text left / thumb right). Raw URL
+  `…/docs/imagefs-reinstall.jpg?raw=true` verified HTTP 200.
+- README also gained (earlier this session) "What's New in 1.5" + previously-undocumented
+  "🛒 Built-in GOG store" + "🧰 Bundled Start-menu utilities" sections; WFM credited to
+  StevenMXZ Winlator-Ludashi 3.1 hotfix in both README Credits and the release Credits block.

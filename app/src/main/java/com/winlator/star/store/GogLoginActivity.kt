@@ -1,31 +1,20 @@
 package com.winlator.star.store
 
-import android.content.SharedPreferences
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Bundle
 import android.util.Log
 import android.webkit.ConsoleMessage
-import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
-import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,17 +27,18 @@ class GogLoginActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "BH_GOG"
-        // NOTE: do NOT use layout=client2 here. That layout serves the GOG Galaxy
-        // *desktop client* login shell — its form is an iframe that posts host messages
-        // (firstIframeLoad / contentLoaded / registerGamepadSelectableElements) expecting
-        // a NATIVE Galaxy CEF host to acknowledge and position it. In a plain Android
-        // WebView there is no such host, so the form never renders -> white screen.
-        // Omitting layout makes GOG serve the standard self-rendering web login form.
+        // This config mirrors the proven-working star-compose store-integration
+        // GogLoginActivity (the version that rendered the GOG login fine). Keep it
+        // exactly: layout=client2 + the GOG Galaxy UA + a plain full-screen WebView
+        // (setContentView). The white screen was a regression from the marcescence
+        // Compose rewrite that hosted the WebView in a Compose AndroidView and then
+        // mutated these params (drop layout / change UA / third-party cookies) — all
+        // dead ends. Do NOT reintroduce those changes.
         const val AUTH_URL =
             "https://auth.gog.com/auth" +
             "?client_id=46899977096215655" +
             "&redirect_uri=https%3A%2F%2Fembed.gog.com%2Fon_login_success%3Forigin%3Dclient" +
-            "&response_type=token"
+            "&response_type=token&layout=client2"
 
         @JvmStatic
         fun parseJsonStringField(json: String?, key: String?): String? {
@@ -63,56 +53,28 @@ class GogLoginActivity : ComponentActivity() {
         }
     }
 
-    private var webViewRef by mutableStateOf<WebView?>(null)
+    private var webViewRef: WebView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            WinlatorTheme {
-                AndroidView(
-                    factory = {
-                        WebView(this@GogLoginActivity).apply {
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            settings.databaseEnabled = true
-                            // GOG's login form is an iframe served from a different origin
-                            // (login.gog.com / static-login.gog-statics.com) than the page
-                            // host. Android WebView blocks third-party cookies by default,
-                            // which leaves that iframe unable to establish its session -> the
-                            // page loads but renders blank (the "white screen"). Allow cookies
-                            // (incl. third-party for this WebView) so the form can initialize.
-                            CookieManager.getInstance().setAcceptCookie(true)
-                            CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                            settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-                            // CRITICAL: do NOT advertise "GOG Galaxy" in the UA. That token makes
-                            // GOG serve the Galaxy *desktop-client* login shell, whose form iframe
-                            // posts host messages (firstIframeLoad / contentLoaded /
-                            // registerGamepadSelectableElements) expecting a native Galaxy CEF host
-                            // to acknowledge and size it. A plain WebView is no such host, so the
-                            // iframe never expands -> white screen (confirmed via console logs).
-                            // A clean desktop Chrome UA makes GOG serve the standard, self-rendering
-                            // web login form.
-                            settings.userAgentString =
-                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                            webViewClient = GogWebViewClient()
-                            webChromeClient = object : WebChromeClient() {
-                                override fun onConsoleMessage(cm: ConsoleMessage): Boolean {
-                                    Log.d(TAG, "console[${cm.messageLevel()}] ${cm.message()} @${cm.sourceId()}:${cm.lineNumber()}")
-                                    return true
-                                }
-                                override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                                    Log.d(TAG, "progress=$newProgress")
-                                }
-                            }
-                            loadUrl(AUTH_URL)
-                            webViewRef = this
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
+        val webView = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GOG Galaxy/2.0"
+            webViewClient = GogWebViewClient()
+            webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(cm: ConsoleMessage): Boolean {
+                    Log.d(TAG, "console[${cm.messageLevel()}] ${cm.message()} @${cm.sourceId()}:${cm.lineNumber()}")
+                    return true
+                }
+                override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                    Log.d(TAG, "progress=$newProgress")
+                }
             }
         }
+        webViewRef = webView
+        setContentView(webView)
+        webView.loadUrl(AUTH_URL)
     }
 
     private inner class GogWebViewClient : WebViewClient() {

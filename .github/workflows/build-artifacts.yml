@@ -136,7 +136,7 @@ jobs:
       # parallel OOM-kills the runner (exit 143). --no-parallel + --max-workers=1
       # serialize the per-flavor package tasks so only one APK is packaged at a
       # time. Bump the Gradle JVM heap to keep R8/packaging headroom.
-      run: ./gradlew assembleStandardDebug assembleLudashiDebug assemblePubgDebug --no-parallel --max-workers=1 -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
+      run: ./gradlew assembleStandardRelease assembleLudashiRelease assemblePubgRelease --no-parallel --max-workers=1 -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
 
     - name: Get version info
       run: |
@@ -147,18 +147,18 @@ jobs:
     - name: Rename APKs
       run: |
         N="${{ github.event.inputs.release_number }}"
-        mv app/build/outputs/apk/standard/debug/app-standard-debug.apk \
-           app/build/outputs/apk/standard/debug/Bannerlator-${N}-standard.apk
-        mv app/build/outputs/apk/ludashi/debug/app-ludashi-debug.apk \
-           app/build/outputs/apk/ludashi/debug/Bannerlator-${N}-ludashi.apk
-        mv app/build/outputs/apk/pubg/debug/app-pubg-debug.apk \
-           app/build/outputs/apk/pubg/debug/Bannerlator-${N}-pubg.apk
+        mv app/build/outputs/apk/standard/release/app-standard-release.apk \
+           app/build/outputs/apk/standard/release/Bannerlator-${N}-standard.apk
+        mv app/build/outputs/apk/ludashi/release/app-ludashi-release.apk \
+           app/build/outputs/apk/ludashi/release/Bannerlator-${N}-ludashi.apk
+        mv app/build/outputs/apk/pubg/release/app-pubg-release.apk \
+           app/build/outputs/apk/pubg/release/Bannerlator-${N}-pubg.apk
 
     - name: Upload standard APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: Bannerlator-${{ github.event.inputs.release_number }}-standard
-        path: app/build/outputs/apk/standard/debug/Bannerlator-${{ github.event.inputs.release_number }}-standard.apk
+        path: app/build/outputs/apk/standard/release/Bannerlator-${{ github.event.inputs.release_number }}-standard.apk
         if-no-files-found: error
         retention-days: 7
 
@@ -166,7 +166,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Bannerlator-${{ github.event.inputs.release_number }}-ludashi
-        path: app/build/outputs/apk/ludashi/debug/Bannerlator-${{ github.event.inputs.release_number }}-ludashi.apk
+        path: app/build/outputs/apk/ludashi/release/Bannerlator-${{ github.event.inputs.release_number }}-ludashi.apk
         if-no-files-found: error
         retention-days: 7
 
@@ -174,6 +174,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Bannerlator-${{ github.event.inputs.release_number }}-pubg
-        path: app/build/outputs/apk/pubg/debug/Bannerlator-${{ github.event.inputs.release_number }}-pubg.apk
+        path: app/build/outputs/apk/pubg/release/Bannerlator-${{ github.event.inputs.release_number }}-pubg.apk
         if-no-files-found: error
         retention-days: 7

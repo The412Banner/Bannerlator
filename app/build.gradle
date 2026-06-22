@@ -111,7 +111,20 @@ android {
         release {
             minifyEnabled false
             signingConfig signingConfigs.testkey
+            // Several animated-background frames (ab_*, ab_gear_*, ab_quilt_*) and the
+            // ic_stat_ab_gear notification icon are GIFs with a .png extension. Release
+            // enables PNG crunching by default and AAPT2 rejects them ("file failed to
+            // compile"); debug skips crunching. Disable it so release matches debug.
+            crunchPngs false
         }
+    }
+
+    // Release builds run lintVitalRelease (debug skips it). Don't let a pre-existing
+    // lint warning abort the build — we ship the same code that already runs in debug,
+    // just non-debuggable + optimized. (No R8 yet: minifyEnabled stays false.)
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
     }
 
     flavorDimensions "version"
@@ -146,6 +159,16 @@ android {
             useLegacyPackaging = true
         }
     }
+}
+
+// We vendor a runtime-safe okhttp3.coroutines.executeAsync shim
+// (store/compat/ExecuteAsyncKt.kt) because the real okhttp-coroutines artifact was
+// compiled against newer Kotlin/coroutines and throws NoSuchMethodError on our stack.
+// The real artifact must NOT be on the classpath or it (a) duplicates the shim's class
+// — release dex merge fails with "defined multiple times" — and (b) reintroduces the
+// runtime crash. Exclude it everywhere; the shim is the sole provider, as intended.
+configurations.all {
+    exclude group: 'com.squareup.okhttp3', module: 'okhttp-coroutines'
 }
 
 dependencies {

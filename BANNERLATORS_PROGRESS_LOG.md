@@ -70,6 +70,34 @@ Repo: https://github.com/The412Banner/bannerlators (public). Created 2026-06-18.
   the app stays Compose. BH_GOG diagnostic logging retained. See the locked-in note in
   `GogLoginActivity.kt` companion comment — do NOT reintroduce the dead-end changes.
 
+### 2026-06-22 — Game Controller Test in Start menu + `.lnk` working-directory fix
+- Bundled **Game Controller Test** (`GameConTest.exe`, SDL3 gamepad tester + `GameConTest.000`,
+  `SDL3.dll`, 12 `.loc` files) into `container_pattern_common.tzst` at `C:\Game Controller Test\`
+  and added a top-level Start-menu shortcut. Pulled from device
+  `/storage/emulated/0/Winlator/Games/Game Controller Test/`; dropped runtime junk
+  (vkd3d cache, d3d/dxgi logs). Appended into the decompressed tar preserving archive
+  owner/perms (uid 10314 / gid 1023, setgid dirs, 660 files). Merge `4a3e974`.
+- **`.lnk` WorkingDir ("Start in") fix** (`403cd64`): GameConTest only ran from its own folder
+  (needs sibling files in cwd). The generated `.lnk` set no working dir. Added `WorkingDir`
+  (`HasWorkingDir` 0x10) to `MSLink` in MS-SHLLINK StringData order; optional `"workingDir"`
+  field in `wine_startmenu.json`. Device-confirmed working.
+
+### 2026-06-22 — Ship RELEASE builds, not debug (Compose-sluggishness root cause)
+- Users reported the Compose UI feels laggy vs the old XML/View UI. Root cause: **every CI
+  artifact was `assembleDebug`** (main.yml, build-artifacts.yml, even release.yml). Compose is
+  ~2–10× slower in debug; Views barely care → the gap reads as "Compose is sluggish."
+- Branch `chore/release-builds`: switched all workflows to `assemble*Release` + APK output
+  paths `/debug/`→`/release/`. Kept `minifyEnabled false` (NO R8 → no reflection/JNI risk);
+  release type already testkey-signed so updates still install over installs.
+- Release-only gotchas fixed: `lint { abortOnError false; checkReleaseBuilds false }`; and
+  `release { crunchPngs false }` — `ab_*`/`ab_gear_*`/`ab_quilt_*` animation frames +
+  `ic_stat_ab_gear*` are GIFs with a `.png` extension, which release's PNG cruncher rejects
+  (debug skips crunching). First release build failed on this, then fixed.
+- APK size audit (built APK ~564MB): imagefs 184MB + proton 91MB = ~49% (fetched at build by
+  `downloadProton`), dxwrapper 69MB, graphics_driver 63MB, dex 30MB. Found a few orphan
+  component `.tzst` (turnip25.1.0, dxvk-2.3.1) — **user chose to leave all assets as-is.** R8 +
+  baseline profiles + download-on-first-run (the real 275MB lever) deferred.
+
 ## Branding / repo housekeeping (2026-06-18)
 - **Repo renamed** `bannerlators` → **`Bannerlator`** (https://github.com/The412Banner/Bannerlator,
   old URL redirects). Local git remote updated; download badge + release-APK name → `Bannerlator-<tag>.apk`.

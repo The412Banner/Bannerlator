@@ -147,7 +147,7 @@ jobs:
       # Serialize per-flavor packaging: building all 3 ~588MB APKs in parallel
       # OOM-kills the runner (exit 143). --no-parallel + --max-workers=1 + a
       # larger Gradle heap package one at a time. (Mirrors build-artifacts.yml.)
-      run: ./gradlew assembleDebug --no-parallel --max-workers=1 -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
+      run: ./gradlew assembleRelease --no-parallel --max-workers=1 -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
 
     - name: Get version info
       run: |
@@ -158,12 +158,12 @@ jobs:
     - name: Rename APKs
       run: |
         N="${{ github.event.inputs.release_number }}"
-        mv app/build/outputs/apk/standard/debug/app-standard-debug.apk \
-           app/build/outputs/apk/standard/debug/Bannerlator-${N}-standard.apk
-        mv app/build/outputs/apk/ludashi/debug/app-ludashi-debug.apk \
-           app/build/outputs/apk/ludashi/debug/Bannerlator-${N}-ludashi.apk
-        mv app/build/outputs/apk/pubg/debug/app-pubg-debug.apk \
-           app/build/outputs/apk/pubg/debug/Bannerlator-${N}-pubg.apk
+        mv app/build/outputs/apk/standard/release/app-standard-release.apk \
+           app/build/outputs/apk/standard/release/Bannerlator-${N}-standard.apk
+        mv app/build/outputs/apk/ludashi/release/app-ludashi-release.apk \
+           app/build/outputs/apk/ludashi/release/Bannerlator-${N}-ludashi.apk
+        mv app/build/outputs/apk/pubg/release/app-pubg-release.apk \
+           app/build/outputs/apk/pubg/release/Bannerlator-${N}-pubg.apk
 
     - name: Generate changelog table
       run: |
@@ -195,8 +195,8 @@ jobs:
 
           ${{ github.event.inputs.release_notes }}
         files: |
-          app/build/outputs/apk/standard/debug/Bannerlator-${{ github.event.inputs.release_number }}-standard.apk
-          app/build/outputs/apk/ludashi/debug/Bannerlator-${{ github.event.inputs.release_number }}-ludashi.apk
-          app/build/outputs/apk/pubg/debug/Bannerlator-${{ github.event.inputs.release_number }}-pubg.apk
+          app/build/outputs/apk/standard/release/Bannerlator-${{ github.event.inputs.release_number }}-standard.apk
+          app/build/outputs/apk/ludashi/release/Bannerlator-${{ github.event.inputs.release_number }}-ludashi.apk
+          app/build/outputs/apk/pubg/release/Bannerlator-${{ github.event.inputs.release_number }}-pubg.apk
         prerelease: false
         make_latest: true

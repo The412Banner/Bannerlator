@@ -137,25 +137,25 @@ jobs:
         echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleRelease
 
     - name: Upload standard APK
       uses: actions/upload-artifact@v4
       with:
        name: standard-debug
-       path: ./app/build/outputs/apk/standard/debug/app-standard-debug.apk
+       path: ./app/build/outputs/apk/standard/release/app-standard-release.apk
 
     - name: Upload ludashi APK
       uses: actions/upload-artifact@v4
       with:
        name: ludashi-debug
-       path: ./app/build/outputs/apk/ludashi/debug/app-ludashi-debug.apk
+       path: ./app/build/outputs/apk/ludashi/release/app-ludashi-release.apk
 
     - name: Upload pubg APK
       uses: actions/upload-artifact@v4
       with:
        name: pubg-debug
-       path: ./app/build/outputs/apk/pubg/debug/app-pubg-debug.apk
+       path: ./app/build/outputs/apk/pubg/release/app-pubg-release.apk
 
     - name: "Get Short SHA"
       run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV

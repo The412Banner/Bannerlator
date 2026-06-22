@@ -84,7 +84,17 @@ class GogLoginActivity : ComponentActivity() {
                             CookieManager.getInstance().setAcceptCookie(true)
                             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                             settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-                            settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GOG Galaxy/2.0"
+                            // CRITICAL: do NOT advertise "GOG Galaxy" in the UA. That token makes
+                            // GOG serve the Galaxy *desktop-client* login shell, whose form iframe
+                            // posts host messages (firstIframeLoad / contentLoaded /
+                            // registerGamepadSelectableElements) expecting a native Galaxy CEF host
+                            // to acknowledge and size it. A plain WebView is no such host, so the
+                            // iframe never expands -> white screen (confirmed via console logs).
+                            // A clean desktop Chrome UA makes GOG serve the standard, self-rendering
+                            // web login form.
+                            settings.userAgentString =
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
                             webViewClient = GogWebViewClient()
                             webChromeClient = object : WebChromeClient() {
                                 override fun onConsoleMessage(cm: ConsoleMessage): Boolean {

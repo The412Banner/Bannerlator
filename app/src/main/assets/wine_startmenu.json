@@ -1,4 +1,17 @@
 [{
+    "name" : "AIO Graphics Test",
+    "children" : [
+        {
+            "name" : "AIO Graphics Test (32-bit)",
+            "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-32bit.exe"
+        },
+        {
+            "name" : "AIO Graphics Test (64-bit)",
+            "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-64bit.exe"
+        }
+        ]
+    },
+    {
     "name" : "Programs",
     "children" : [
         {

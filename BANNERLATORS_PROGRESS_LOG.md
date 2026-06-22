@@ -54,6 +54,22 @@ Repo: https://github.com/The412Banner/bannerlators (public). Created 2026-06-18.
   (logo already carries the "Bannerlator" wordmark); version label → **`v1.0`**. Kept
   "Installing system files", progress bar, Proceed button. Dropped unused `size` import.
 
+### 2026-06-22 — GOG login white screen — FIXED (candidate #5, device-confirmed)
+- **Symptom**: GOG store login WebView rendered a blank white screen; the OAuth login
+  iframe handshake never completed. Regression from the marcescence Compose rewrite that
+  hosted the login WebView inside a Compose `AndroidView` and mutated the auth params.
+- **Candidates tried on device** (branch `fix/gog-login-whitescreen`):
+  1. Enable third-party cookies for the login iframe (`b3cc94d`) — ❌
+  2. Drop `layout=client2` so the web form self-renders (`cce55d7`) — ❌
+  3. Plain Chrome UA instead of the Galaxy UA (`70ddcaa`) — ❌
+  4. (combinations of the above) — ❌
+  5. **Mirror the proven star-compose `GogLoginActivity` exactly** (`ef3d6df`) — ✅ **WORKED**
+- **The fix (#5)**: a plain `ComponentActivity` that hosts the WebView via `setContentView`
+  (NOT a Compose `AndroidView`), keeps `layout=client2` **and** the `GOG Galaxy/2.0` UA,
+  enables only JS + DOM storage. `ef3d6df` reverts the three dead-end attempts; the rest of
+  the app stays Compose. BH_GOG diagnostic logging retained. See the locked-in note in
+  `GogLoginActivity.kt` companion comment — do NOT reintroduce the dead-end changes.
+
 ## Branding / repo housekeeping (2026-06-18)
 - **Repo renamed** `bannerlators` → **`Bannerlator`** (https://github.com/The412Banner/Bannerlator,
   old URL redirects). Local git remote updated; download badge + release-APK name → `Bannerlator-<tag>.apk`.

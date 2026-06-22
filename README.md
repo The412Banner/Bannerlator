@@ -29,11 +29,17 @@
 
 ## 📌 Project Notice
 
-> **Bannerlator is a personal continuation of the Winlator *Star Bionic* project ([star-emu/star](https://github.com/star-emu/star)), which was recently discontinued and archived.**
+> **Bannerlator is a personal build — made by me ([The412Banner](https://github.com/The412Banner)), for my own device, my own needs, and my own use.**
 >
-> **None of the original developers are involved except me ([The412Banner](https://github.com/The412Banner)).** This project would not be possible without their hard work up to this point, together with cherry-picked commits from other open-source projects across the community — all credited below.
+> It's a personal continuation of the Winlator *Star Bionic* project ([star-emu/star](https://github.com/star-emu/star)) after it was discontinued and archived. None of the original developers are involved except me; it stands on their work plus cherry-picked commits from across the community — all credited below.
 >
-> This is **my personal build.** As always, it is **free for anyone to use as they see fit, or to share.**
+> **This is NOT an official or general-purpose Winlator release.** It is built and tuned for *my* hardware and *my* workflow, and published **as-is** purely in case it happens to be useful to someone else.
+>
+> - **No guarantee it works on any other device, GPU, or Android version.**
+> - **No support, and no commitment to fix anything that works for me but not for you.** If a feature works on my device, it isn't broken — for me, which is what this build is for.
+> - Bug reports / feature requests for setups I don't run may simply be closed. That's not personal; this just isn't a community-support project.
+>
+> You're **free to use, modify, fork, or share it** (GPL-3.0). If it doesn't work on your setup, that's expected — it wasn't built for it.
 
 ---
 
@@ -43,7 +49,7 @@
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) |
-| **Version** | Bannerlator **V 1.3** — built from Star **marcescence** (`versionName 1.3`, `versionCode 21`) |
+| **Version** | Bannerlator **V 1.4** — built from Star **marcescence** (`versionName 1.4`, `versionCode 22`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 

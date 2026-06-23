@@ -15,6 +15,24 @@ gh workflow run "Any branch compilation." --repo The412Banner/star-compose --ref
 
 ---
 
+## 1.6 RELEASE MANIFEST (in progress, since tag `1.5` / `dc74f67`) — NOT yet released
+
+Everything queued for the next release:
+
+**Merged to `main`** (device-confirmed):
+1. On-screen dpad/stick multi-touch freeze fix (`fba6080`, merged `d1356d8`) — GitHub issue #5, reporter-confirmed.
+2. In-app File Manager batch (`d086990`→`5521e0f`, +`ca26466`) — data-loss paste, silent Run, working dir, off-thread listing, copy-into-self guard, copy progress bar, PTR/scroll/file+exe icons, system-Back-up-one-dir, Run-executes-exe-in-container (`core/WinePath.kt`).
+3. Per-game (shortcut) overrides for Renderer + Frame-Gen engine + FPS limiter (`08878be`).
+4. Frame gen starts OFF in-game on every launch (`a669b8b`).
+
+**Pending merge** — branch `feat/standalone-fps-limiter`:
+5. Standalone FPS limiter — guest-side X11 Present IdleNotify pacing (`bd990b2`); caps fps with Off / bionic-fg / lsfg-vk, both host renderers, live. ✅ device-confirmed both renderers, all 3 modes.
+6. lsfg multiplier≥2 guard (`4909549`) — limiter steps aside while lsfg multiplies. CI `28046025979`; ⏳ device-spot-check pending.
+
+Next: guard CI green → merge branch → main → cut 1.6 (bump versionCode from 23 + splash).
+
+---
+
 ## 2026-06-23 — Standalone FPS limiter (guest-side IdleNotify pacing) DEVICE-CONFIRMED ✅
 
 Commit `bd990b2`, branch `feat/standalone-fps-limiter`, CI `28043133606` ✅ green.

@@ -627,10 +627,14 @@ fun FileManagerScreen() {
                     }
                 }
             }
-            PullToRefreshContainer(
-                state = pullState,
-                modifier = Modifier.align(Alignment.TopCenter),
-            )
+            // material3 1.2.0's PullToRefreshContainer draws its indicator even at rest;
+            // only show it while the user is actively pulling or a refresh is running.
+            if (pullState.verticalOffset > 0.5f || pullState.isRefreshing) {
+                PullToRefreshContainer(
+                    state = pullState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            }
         }
 
         // ── FAB area ──

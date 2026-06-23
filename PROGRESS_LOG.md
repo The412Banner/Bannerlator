@@ -15,6 +15,24 @@ gh workflow run "Any branch compilation." --repo The412Banner/star-compose --ref
 
 ---
 
+## 2026-06-23 — Standalone FPS limiter (guest-side IdleNotify pacing) DEVICE-CONFIRMED ✅
+
+Commit `bd990b2`, branch `feat/standalone-fps-limiter`, CI `28043133606` ✅ green.
+
+The reworked limiter — guest-side X11 Present `IdleNotify` pacing in `PresentExtension`
+(GameNative/Ludashi-3.1 mechanism: delay IdleNotify → DXVK blocks waiting for a free
+buffer → the GUEST throttles), decoupled from the frame-gen layers — **caps fps in all
+three FG modes: Off / bionic-fg / lsfg-vk.** Engine-agnostic, all-API, live in-game toggle.
+This succeeds where the earlier host-side nanosleep pacer (`f8d7598`) failed (that one only
+dropped frames at the compositor; the guest ran full-speed).
+
+**✅ Confirmed on BOTH host renderers** — all 3 modes (Off / bionic-fg / lsfg-vk) cap fps on
+the OpenGL host renderer AND the Vulkan host renderer. Remaining before merge: wire the last
+refinement (lsfg multiplier ≥2 → force limit 0, so lsfg's own pacing isn't double-capped),
+then merge `feat/standalone-fps-limiter` → main for 1.6.
+
+---
+
 ## 2026-06-22 — lsfg-vk live reload CONFIRMED ✅ + Off→passthrough fix + engine badge + Task-Manager-on-Vulkan bug (diagnosing)
 
 Session driven by live device questions ("which FG engine is running right now?").

@@ -403,6 +403,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (fgOn) container.setFrameGenMultiplier(mult);
                 container.setFrameGenFlowScale(flow);
                 container.saveData();
+                // lsfg multiplier may have crossed the >=2 threshold -> re-evaluate the limiter
+                // guard (lsfgGovernsFps) so the cap steps aside / resumes without extra user action.
+                reapplyFpsLimit();
                 return;
             }
             // FPS limiter is no longer part of frame gen — it's a standalone host pacer
@@ -2489,10 +2492,38 @@ return true;
         return container.isFpsLimiterEnabled();
     }
 
+    // lsfg-vk does its OWN frame pacing when it is multiplying (multiplier >= 2). Layering the
+    // standalone IdleNotify limiter on top double-paces the present stream: our pacer throttles
+    // lsfg's already-multiplied output, clamping the panel to the limiter value (killing the FG
+    // smoothness gain and wasting GPU on interpolated frames that then get blocked). So the limiter
+    // steps aside and lets lsfg govern whenever lsfg is active at mult >= 2.
+    //
+    // >>> IF USERS REPORT "THE FPS LIMITER DOESN'T WORK / NO CAP" ON lsfg-vk, THIS GUARD IS WHY:
+    //     the limiter is intentionally disabled while lsfg-vk multiplies (mult >= 2). It is NOT
+    //     disabled for bionic-fg, for Off, or for lsfg at 1x (passthrough) -- those still cap.
+    private boolean lsfgGovernsFps() {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        return "lsfg".equals(resolvedFrameGenEngine())
+            && s.getFrameGenEnabled().getValue()
+            && s.getFrameGenMultiplier().getValue() >= 2;
+    }
+
+    // Re-evaluate and re-apply the FPS cap from the remembered limiter state. Called when the
+    // frame-gen config changes live (e.g. switching lsfg multiplier) so the lsfgGovernsFps() guard
+    // takes effect immediately without the user touching the limiter toggle.
+    private void reapplyFpsLimit() {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        boolean limOn  = s.getFpsLimiterEnabled().getValue();
+        int   limitVal = s.getFpsLimit().getValue();
+        applyFpsLimit(limOn && limitVal > 0 ? limitVal : 0);
+    }
+
     // Apply the FPS cap (0 = off). The real limiter is the X11 Present extension, which throttles
     // the guest by pacing its IdleNotify (so the game itself slows -> in-game HUD reflects it, GPU
     // drops). Also feeds the renderer's SurfaceControl frame-rate hint (active in Vulkan native mode).
     private void applyFpsLimit(int fps) {
+        // Step aside while lsfg-vk is multiplying -- it paces itself (see lsfgGovernsFps()).
+        if (lsfgGovernsFps()) fps = 0;
         com.winlator.star.xserver.extensions.PresentExtension pe =
                 xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
         if (pe != null) pe.setFrameRateLimit(fps);

@@ -248,3 +248,31 @@ Games entry. Off-main-thread + failure toast.
 `ShortcutsViewModel` now delegates to it so Games-import and File-Manager-Run share one
 device-proven code path. Scope = `.exe` (`.msi`/`.bat`/`.sh` get plain `wine <path>`, not
 special-cased). NEXT: commit to `fix/file-manager-bugs` → CI build → device-test Back + Run.
+✅ Device-confirmed ("works great") + merged to main (ff `d1356d8`→`8e04e4f`, whole batch).
+
+## 2026-06-23 — Per-game Renderer + Frame-Gen engine + FPS limiter (branch `feat/per-game-render-framegen`)
+Lets users set Renderer + frame-gen per **game** (shortcut), not only per container. Uses the
+app's native override pattern `shortcut.getExtra(key, container.value)` = follow container by
+default, override per game, honored at launch. Commit `08878be`, CI build `28030816792`. ⏳ NOT
+device-confirmed.
+
+**Scope:** Renderer (OpenGL/Vulkan) + Frame Generation engine (off/bionic/lsfg) + FPS limiter.
+Graphics Driver + DXVK were already per-game. **Advanced Vulkan present options deferred** — they're
+non-functional today (container `VulkanSettingsDialog` discards its result `ContainerDetailScreen.kt:223`;
+launch reads them from `graphicsDriverConfig` via comma-split `KeyValueSet` while that string is
+semicolon-separated, so every read defaults) and touch the device-sensitive present path. Future fix
+= use the container's dedicated `renderer*` fields as source of truth + per-shortcut extras.
+
+**UI** (`ShortcutsScreen.kt` `ShortcutSettingsDialogScreen`, after DX Wrapper): Renderer dropdown,
+FG engine dropdown (lsfg grayed + hint without `filesDir/lsfg-vk/Lossless.dll`), FPS limiter switch.
+Each inited from `shortcut.getExtra(key, container.X)`; saved as extras `renderer`/`frameGenEngine`/
+`fpsLimiterEnabled` in the `with(shortcut){…}` block.
+
+**Launch** (`XServerDisplayActivity.java`): 3 read-only resolvers near `getExecutable()` —
+`resolvedRenderer`/`resolvedFrameGenEngine`/`resolvedFpsLimiterEnabled` (shortcut value if present,
+else container). Used at the drawer-state FG sync, the FG/limiter layer setup, renderer init +
+HUD label, and the in-game live-tune routing. Shortcut now constructed BEFORE the drawer sync so
+overrides resolve. **Read-only by design** — never written back, because the in-game FG/FPS toggle
+calls `container.saveData()`; mutating the container at launch would leak a per-game value into the
+container and break "follow container." Multiplier/flow stay live-tuned in-game + persisted on the
+container, unchanged. NEXT: CI build → device-test → merge to main.

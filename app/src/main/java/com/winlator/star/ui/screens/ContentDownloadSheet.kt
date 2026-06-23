@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,6 +34,7 @@ import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
 import com.winlator.star.ui.theme.Surface as SurfaceColor
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -56,7 +59,11 @@ fun ContentDownloadSheet(
     var profiles by remember { mutableStateOf<List<ContentProfile>>(emptyList()) }
     var downloadingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
+    // Install progress (0..1) — a time-based ramp, since tar streams don't expose a total size up front.
+    var installProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
     var installingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // When more than one content type is shown (Wine + Proton), chips at the top filter the list.
+    var selectedType by remember(contentTypes) { mutableStateOf(contentTypes.first()) }
     var installedKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showInfoProfile by remember { mutableStateOf<ContentProfile?>(null) }
     var confirmRemoveProfile by remember { mutableStateOf<ContentProfile?>(null) }
@@ -139,8 +146,39 @@ fun ContentDownloadSheet(
             tonalElevation = 0.dp,
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text("${contentTypes.joinToString(" + ") { it.toString() }} Downloads", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                val multiType = contentTypes.size > 1
+                Text(
+                    if (multiType) "Compatibility Layer" else "${contentTypes.first()} Downloads",
+                    color = Color.White, style = MaterialTheme.typography.titleLarge,
+                )
                 Spacer(Modifier.height(12.dp))
+                // Wine / Proton chips (only when more than one type is shown).
+                if (multiType) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        contentTypes.forEach { t ->
+                            val on = t == selectedType
+                            Box(
+                                Modifier
+                                    .background(
+                                        if (on) MaterialTheme.colorScheme.primary else Color(0xFF1C1C1C),
+                                        RoundedCornerShape(18.dp),
+                                    )
+                                    .clickable { selectedType = t }
+                                    .padding(horizontal = 16.dp, vertical = 7.dp),
+                            ) {
+                                Text(
+                                    t.toString(),
+                                    color = if (on) Color.White else Color(0xFFBDBDBD),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
                 if (isLoadingRemote) {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -151,10 +189,12 @@ fun ContentDownloadSheet(
                     }
                 } else {
                     // Installed items (on disk or just-installed this session) float to the top.
-                    val sortedProfiles = remember(profiles, installedKeys) {
-                        profiles.sortedByDescending { p ->
-                            if (p.remoteUrl == null || ContentsManager.getEntryName(p) in installedKeys) 1 else 0
-                        }
+                    val sortedProfiles = remember(profiles, installedKeys, selectedType, multiType) {
+                        profiles
+                            .filter { !multiType || it.type == selectedType }
+                            .sortedByDescending { p ->
+                                if (p.remoteUrl == null || ContentsManager.getEntryName(p) in installedKeys) 1 else 0
+                            }
                     }
                     Box(Modifier.fillMaxWidth().weight(1f)) {
                         LazyColumn(Modifier.fillMaxSize()) {
@@ -172,6 +212,7 @@ fun ContentDownloadSheet(
                                     isDownloading = isDownloading,
                                     isInstalling = isInstalling,
                                     progress = downloadProgress[key],
+                                    installProgress = installProgress[key],
                                     onDownload = {
                                         downloadingKeys = downloadingKeys + key
                                         downloadProgress = downloadProgress + (key to 0f)
@@ -184,12 +225,23 @@ fun ContentDownloadSheet(
                                                 }
                                             }
                                             if (uri != null) {
-                                                // Download done → restart the same bar as "installing".
+                                                // Download done → show a fresh 0→100 "installing" bar.
                                                 installingKeys = installingKeys + key
                                                 downloadingKeys = downloadingKeys - key
                                                 downloadProgress = downloadProgress - key
+                                                installProgress = installProgress + (key to 0f)
+                                                // Time-based ramp (a tar stream has no upfront total); snaps to 100% on finish.
+                                                scope.launch {
+                                                    var p = 0f
+                                                    while (key in installingKeys && p < 0.95f) {
+                                                        delay(70)
+                                                        p += 0.05f
+                                                        installProgress = installProgress + (key to p.coerceAtMost(0.95f))
+                                                    }
+                                                }
                                                 installContent(context, cm, uri) { ok ->
                                                     installingKeys = installingKeys - key
+                                                    installProgress = installProgress - key
                                                     if (ok) {
                                                         installedKeys = installedKeys + key
                                                         loadProfiles(cm, contentTypes) { profiles = it }
@@ -241,6 +293,7 @@ private fun DownloadContentItem(
     isDownloading: Boolean,
     isInstalling: Boolean,
     progress: Float?,
+    installProgress: Float?,
     onDownload: () -> Unit,
     onInfo: () -> Unit,
     onRemove: () -> Unit,
@@ -301,27 +354,29 @@ private fun DownloadContentItem(
             }
         }
 
-        // Progress bar across the bottom of the card: determinate while downloading,
-        // then restarts as an indeterminate "installing" bar (green) during install.
+        // Progress across the bottom of the card: a determinate 0→100 bar for BOTH phases —
+        // blue while downloading, green while installing, each with a % label.
         if (busy) {
             Spacer(Modifier.height(6.dp))
+            val frac = (if (isInstalling) installProgress else progress)?.coerceIn(0f, 1f) ?: 0f
             val barColor = if (isInstalling) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
-            val trackColor = Color(0xFF333333)
-            val barMod = Modifier.fillMaxWidth().height(3.dp)
-            if (!isInstalling && progress != null && progress >= 0f) {
-                LinearProgressIndicator(
-                    progress = progress.coerceIn(0f, 1f),
-                    modifier = barMod,
-                    color = barColor,
-                    trackColor = trackColor,
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    if (isInstalling) "Installing" else "Downloading",
+                    style = MaterialTheme.typography.bodySmall, color = Color(0xFFB0BEC5),
                 )
-            } else {
-                LinearProgressIndicator(
-                    modifier = barMod,
-                    color = barColor,
-                    trackColor = trackColor,
+                Text(
+                    "${(frac * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodySmall, color = Color(0xFFB0BEC5),
                 )
             }
+            Spacer(Modifier.height(3.dp))
+            LinearProgressIndicator(
+                progress = frac,
+                modifier = Modifier.fillMaxWidth().height(4.dp),
+                color = barColor,
+                trackColor = Color(0xFF333333),
+            )
         }
     }
 }

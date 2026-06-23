@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Help
@@ -1839,7 +1840,7 @@ private fun ContentInstallGear(
             contentPadding = PaddingValues(0.dp),
             shape = RoundedCornerShape(8.dp)
         ) {
-            Icon(Icons.Default.Settings, contentDescription = "Install", tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.CloudDownload, contentDescription = "Download / install", tint = MaterialTheme.colorScheme.primary)
         }
 
         DropdownMenu(

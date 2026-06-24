@@ -31,11 +31,19 @@ offer (Bottles "Type 6 — System Libraries", 114 components).
   (`raw.githubusercontent.com/The412Banner/winlator-contents/main/components.json`) — 114 components
   with full **Bottles-format install steps**, URLs rewritten to the mirror; `status` per component:
   **ready 97 / needs-upstream 14 / pending-manual 3**.
-- **App side NOT started.** Plan: a "Components" browser in container settings (reusing the 1.6
-  `ContentDownloadSheet` UI) + an in-app **Bottles step interpreter** installing into the container
-  prefix (`system32`/`syswow64` + registry overrides via `WineRegistryEditor`). Phase 2 = the ~97
-  file-drop components (no Wine execution); Phase 3 = `install_exe`/`install_msi` runtimes (.NET/vcredist).
-  Full plan in memory `project_bannerlator_components_installer`.
+- **App side: Phase 2 + Phase 3a DONE & MERGED to main** (`4c732b8`, build `28072511822`).
+  - **Phase 2** (`91ca6a3`): a "Components" browser in the Win Components tab (`ComponentsSheet`) +
+    `ComponentCatalog` (reads the live components.json) + `ComponentInstaller` (file-drop Bottles
+    steps → `system32`/`syswow64` + DLL overrides via `WineRegistryEditor`). **Device + root-verified:**
+    installed `d3dcompiler_43`/`_47` — correct 64-bit→system32 / 32-bit→syswow64 + overrides set.
+  - **Copy hardening** (`4c732b8`): `copy_dll` constrains source to the matching arch sub-tree.
+  - **Phase 3a (pre-bake, no app change):** extracted the cab contents build-side with `cabextract`,
+    hosted 12 components as `<name>__libs.tar.xz` on the `system-libraries-v1` release, and rewrote
+    their catalog steps to file-drop. **22 components now installable** (10 file-drop + 12 pre-baked
+    cab: d3dcompiler_42/46, xinput, xaudio2.7, msxml6, atmlib, riched20, vcredist6, winhttp, …).
+  - The app reads components.json at runtime, so catalog updates are live without an app rebuild.
+- **Still to do — Phase 3b:** the execute engine (`install_exe`/`install_msi` via launching the
+  container session) for the +54 .NET / vcredist runtimes. Plan in memory `project_bannerlator_components_installer`.
 
 ---
 

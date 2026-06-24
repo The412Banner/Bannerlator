@@ -71,11 +71,14 @@ object ComponentInstaller {
                 }
             }
             "copy_dll", "copy_file" -> {
-                val target = when (step.str("dest")) {
-                    "win64", "system32" -> system32
-                    else -> syswow64   // win32 / syswow64 / unspecified
+                // win64 DLLs -> system32, win32 DLLs -> syswow64. Constrain the SOURCE to the matching
+                // arch sub-tree so a 64-bit DLL never lands in syswow64 (and vice versa).
+                val (arch, target) = when (step.str("dest")) {
+                    "win64", "system32" -> "win64" to system32
+                    "win32", "syswow64" -> "win32" to syswow64
+                    else -> null to system32   // unspecified: 64-bit prefix default
                 }
-                copyMatching(tmp, step.str("file_name"), target)
+                copyMatching(tmp, step.str("file_name"), target, arch)
             }
             "override_dll" -> WineRegistryEditor(userReg).use { reg ->
                 val dll = step.str("dll")
@@ -117,12 +120,19 @@ object ComponentInstaller {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, file, dest)
     }
 
-    private fun copyMatching(srcRoot: File, pattern: String, dest: File) {
+    private fun copyMatching(srcRoot: File, pattern: String, dest: File, arch: String?) {
         if (pattern.isEmpty()) return
         dest.mkdirs()
         val rx = Regex("^" + Regex.escape(pattern).replace("\\*", ".*") + "$", RegexOption.IGNORE_CASE)
-        srcRoot.walkTopDown().filter { it.isFile && rx.matches(it.name) }.forEach { f ->
-            f.copyTo(File(dest, f.name), overwrite = true)
+        var matches = srcRoot.walkTopDown().filter { it.isFile && rx.matches(it.name) }.toList()
+        if (arch != null) {
+            // Prefer files under the matching arch sub-dir; otherwise just exclude the wrong arch.
+            val inArch = matches.filter { it.path.contains("${File.separator}$arch${File.separator}", true) }
+            matches = if (inArch.isNotEmpty()) inArch else {
+                val other = if (arch == "win64") "win32" else "win64"
+                matches.filterNot { it.path.contains("${File.separator}$other${File.separator}", true) }
+            }
         }
+        matches.forEach { f -> f.copyTo(File(dest, f.name), overwrite = true) }
     }
 }

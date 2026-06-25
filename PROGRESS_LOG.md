@@ -15,6 +15,27 @@ gh workflow run "Any branch compilation." --repo The412Banner/star-compose --ref
 
 ---
 
+## 2026-06-24 — Steam detail-page revamp — branch `feat/steam-detail-revamp` (stacked on launch branch)
+
+User asked to modernize the Steam game detail page. Picked all of: stored-info rows, last-played,
+real playtime hours, bigger sheets (DLC/branch/cloud/add-home), and more robust/fluid download buttons +
+accurate progress bars.
+
+- **Chunk 1 DONE** (`SteamGameDetailActivity.kt`, CI `28142516155`): renders **developer / genres /
+  metacritic** (already stored in our GameRow but previously hidden) + a **"Last played"** row from the
+  install-dir timestamp (`relativeTime()`); reworked the downloads UI — **animated rounded progress bar**
+  in a card with an **indeterminate "Preparing…" phase** and a separate %/bytes line; new
+  `DetailActionButton` (48dp, rounded, disabled dimming) + `DetailInfoRow`. Pure UI/Compose.
+- **TODO (follow-ups):** real **playtime hours** (fetch owned-games via JavaSteam
+  `IPlayerService.GetOwnedGames` → playtime_forever/rtime_last_played + new SteamDatabase columns);
+  **bigger sheets** — DLC/depot manager, beta branch picker, cloud-save export/import/sync,
+  add-to-home-screen (port from ref4ik `SteamLibrarySheets.kt` / `SteamGameActions.kt`).
+
+**imageFS reinstall?** No — for the Steam coldclient + detail revamp, updating 1.7 → next release needs
+NO imageFS reinstall. The coldclient loader is a separate bundled APK asset extracted at runtime into the
+existing imageFS (not baked into `imagefs.txz`), and the detail revamp is app-only. (Only carryover: if a
+user never reinstalled imageFS for 1.7's ffmpeg-8, that 1.7 recommendation still applies.)
+
 ## 2026-06-24 — Pluvia Steam: Phase 1 (Goldberg/coldclient launch) — branch `feat/steam-pluvia-launch`
 
 Implementing the recommended **Option A** from `docs/STEAM_PLUVIA_PORT_PLAN.md` — **UPGRADE the

@@ -1670,6 +1670,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             startTouchscreenTimeout();
         }
 
+        // Reseed the in-game drawer's HUD state from the now-loaded container config.
+        // The early seed in setupUI runs before `container` is assigned, so it defaults
+        // to classic; without this the drawer shows classic toggles even when the
+        // container (and the live overlay below) are configured for the GameHub HUD.
+        if (container != null) XServerDrawerState.INSTANCE.setFpsConfig(container.getFPSCounterConfig());
+
         if (container != null && container.isShowFPS()) {
             String fpsConfigString = container.getFPSCounterConfig();
             com.winlator.star.core.KeyValueSet fpsConfig = new com.winlator.star.core.KeyValueSet(fpsConfigString);

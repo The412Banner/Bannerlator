@@ -15,6 +15,47 @@ gh workflow run "Any branch compilation." --repo The412Banner/star-compose --ref
 
 ---
 
+## 2026-06-25 — GameHub HUD: device-test crash fix + full in-game drawer mirror (branch `feat/gamehub-perf-hud`)
+
+Continued the GameHub HUD port from P0–P4 (entry below) into on-device testing. Two follow-ups, neither merged.
+
+**1. First-launch crash FIXED (`4808d51`, build `28179250039` ✅ green).** Installing the correct P4
+build and enabling the GameHub HUD crashed the container + app the moment the overlay first refreshed.
+Logcat (pulled via the root bridge):
+```
+FATAL EXCEPTION: Thread-6
+android.view.ViewRootImpl$CalledFromWrongThreadException: Only the original thread that
+  created a view hierarchy can touch its views. Expected: main Calling: Thread-6
+    at com.winlator.star.widget.PerfHudView.update(PerfHudView.java:350)
+    at ...XServerDisplayActivity$6.onUpdateWindowContent(:798)   ← X-server epoll thread (PresentExtension)
+```
+Root cause: `PerfHudView.update()` runs on the X-server epoll thread and called `requestLayout()` /
+`invalidate()` directly — neither is thread-safe. `FrameRating` never hit this because it marshals via
+`post(this)`. Fix = `post(refreshOnUi)` where `refreshOnUi = () -> { requestLayout(); invalidate(); }`.
+The other two view-touching methods (`applyConfig`, `setVertical`) already run on the UI thread
+(`runOnUiThread` at `XServerDisplayActivity:561` / tap handler). **Gotcha for future HUD work: anything
+reached from `onUpdateWindowContent` is on the epoll thread → only `post()` / `postInvalidate()`.**
+
+**2. In-game side drawer now fully mirrors the container dialog (`7437c3d`).** User wanted the same
+settings/toggles in the in-game HUD tab. Before, `XServerDrawer.kt` → `HudContent` only had the classic
+subset (scale/opacity + 6 toggles) and its `buildConfig()` **omitted `hudStyle` and every gamehub-only
+key** — so changing anything in-game while the GameHub HUD was active stripped `hudStyle=gamehub` from the
+saved container config (persisted via `onFpsConfigApply` → `setFPSCounterConfig` + `saveData` at
+`XServerDisplayActivity:567`), reverting to the classic HUD on next launch. Rewrote `HudContent` to mirror
+`FpsCounterConfigDialog` exactly: GameHub-style switch, FPS-graph / Power / GPU-model / dual-battery
+toggles, skin/color/outline 3-stop chips (new drawer-styled `HudChipRow`, no FilterChip import), opacity
+slider, and the **identical key set** (emits both classic + gamehub metric key names) so the drawer and
+the pre-launch dialog are interchangeable. Metric/skin/scale/opacity changes apply **live** via
+`onFpsConfigApply` → `perfHud.applyConfig` (UI-thread safe). The classic↔gamehub **view swap** still
+applies on next launch only (the view is chosen at launch; a caption notes this) — live view-swap is a
+possible follow-up.
+
+Branch tip `7437c3d`. Combined build CI `28181338752` (in progress at time of writing). **NOT merged.**
+Next: device-test the `28181338752` build — (a) enable GameHub HUD (master **Show FPS** must also be on),
+launch → confirm renders without crash + tap flips orientation + metrics live; (b) open in-game drawer
+HUD tab → confirm all GameHub controls present, apply live, and no revert-to-classic → tune dims/colors →
+merge to main.
+
 ## 2026-06-25 — GameHub-style performance HUD port (branch `feat/gamehub-perf-hud`) — P0–P4 coded, device-test pending
 
 A second, **selectable** in-game performance HUD modeled on GameHub 6.0.9's overlay, alongside the

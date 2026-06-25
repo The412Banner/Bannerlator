@@ -1688,6 +1688,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             rootView.addView(frameRatingHorizontal);
 
             frameRating = new FrameRating(this, graphicsDriverConfig);
+            // Explicit WRAP_CONTENT params: without them, FrameLayout's default params are
+            // MATCH_PARENT x MATCH_PARENT, so the vertical HUD's view (and thus its tap-to-toggle
+            // hit area) covered the WHOLE screen — a tap far from the overlay flipped orientation.
+            // Mirror the horizontal HUD; top-left gravity keeps its existing default position.
+            FrameLayout.LayoutParams vlp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.TOP | android.view.Gravity.START
+            );
+            frameRating.setLayoutParams(vlp);
             frameRating.applyConfig(fpsConfigString);
             frameRating.setVisibility(View.GONE);
             frameRating.setOnTapListener(this::toggleFpsHudOrientation);

@@ -1655,6 +1655,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (wid == frameRatingWindowId) {
                     if (frameRating != null) frameRating.update();
                     if (frameRatingHorizontal != null) frameRatingHorizontal.update();
+                    if (perfHud != null) perfHud.update();
                 }
             });
         }
@@ -1666,6 +1667,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (wid == frameRatingWindowId) {
                     if (frameRating != null) frameRating.update();
                     if (frameRatingHorizontal != null) frameRatingHorizontal.update();
+                    if (perfHud != null) perfHud.update();
                 }
             });
         }

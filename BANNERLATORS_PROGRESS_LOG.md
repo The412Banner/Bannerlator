@@ -416,3 +416,37 @@ itself → in-game HUD reflects the cap + GPU drops. Live, all host renderers, a
 **Build:** commit `bd990b2`, CI run `28043133606` ✅ GREEN (PresentExtension IdleNotify pacer + wiring
 compile, full APK builds). ⏳ NEXT device-test: FG-off + Limit FPS 30 → DXVK HUD should drop to ~30 +
 GPU load drop (was pegged 98%); confirm live slider + bionic-fg case.
+
+## 2026-06-26 — 1.9.1 hotfix (per-flavor provider authorities) + GameNative SurfaceFlinger fixes recon
+**Bug:** the PUBG (`com.tencent.ig`) and Ludashi (`com.ludashi.benchmark`) flavors failed to install
+alongside the standard (`com.winlator.banner`) flavor with a package conflict
+(`INSTALL_FAILED_CONFLICTING_PROVIDER`). Root cause = both `<provider>` authorities in
+AndroidManifest were hardcoded to the `com.winlator.star.*` namespace, so all three flavors declared
+the SAME authorities; content-provider authorities must be globally unique per device.
+
+**Fix (branch `fix/per-flavor-provider-authorities` → merged ff to main `ca21dae`, branch deleted):**
+- `AndroidManifest.xml`: `tileprovider` + `WinlatorFilesProvider` authorities → `${applicationId}.*`.
+- `UpdateManager.kt`: derive FileProvider authority at runtime from `packageName` (was a fixed const →
+  would throw on ludashi/pubg).
+- `SavesViewModel.kt`: save-share used a stale, never-declared authority (`com.winlator.fileprovider`)
+  that threw on every flavor → pointed at the per-flavor `.tileprovider`.
+- CI `28254302439` ✅ GREEN; device-confirmed (pubg installs beside standard).
+
+**🏁 1.9.1 STABLE CUT 2026-06-26** (versionCode 29→**30**, versionName 1.9→**1.9.1**, main `3574cc2`).
+- `release.yml` run `28259384338` ✅ — tag `1.9.1`, prerelease:false, make_latest:true; `releases/latest`
+  → 1.9.1; 3 flavor APKs + `update.json` (vc30) attached. Per the versioning hard rule (plain numeric
+  tag = stable; patch `X.Y.Z` is fine on explicit user say-so).
+- Fixed a cosmetic `${applicationId}`→`()` shell-expansion in the `update.json` notes (re-uploaded via
+  `gh release upload --clobber`); release body was already correct.
+- Rewrote the 1.9.1 release body to the 1.9 layout + a "🩹 hotfix" callout.
+- README updated (`c3ff5ba` then `b5d1c13`): Version row → 1.9.1/vc30; "What's New" now shows ONLY the
+  latest release (dropped the "Previously in" 1.9/1.8/1.7/1.6 sections per user).
+
+**🔎 GameNative SurfaceFlinger (ASR) upstream-fixes recon (user asked):** nothing merged to GN `master`
+since the original ASR merge (#1582); 3 OPEN fix PRs — **#1620** (fences + color-format → prevent SF
+crash + lib rename; mergeable; top port candidate for our experimental reboot risk), **#1622** (R/B
+channel swap: alloc scanout AHBs RGBA not BGRA — Adreno HWC), **#1612** (setFrameRate refresh-rate
+match). #1620 nightly.link artifact = a full `app.gamenative` v1.1.0 test APK (carries the fixed
+`libasurface_renderer.so` + renamed `libahbimage.so`) → A/B-test only; `.so` not graftable into our
+tree (Java/JNI changed) — port from source. Details in memory
+`reference_gamenative_surfaceflinger_renderer.md`.

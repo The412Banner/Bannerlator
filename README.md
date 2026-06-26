@@ -65,46 +65,6 @@
 
 ---
 
-## Previously in 1.9
-
-- **SurfaceFlinger renderer (experimental).** A **third host renderer** joins OpenGL and Vulkan, handing game frames straight to Android's display hardware (one SurfaceControl layer per window) for lower latency and overhead. Selectable **per-container** and **per-game**, behind an opt-in warning. ⚠️ Experimental — validated mainly on recent **Adreno** GPUs.
-- **DXVK 3.0 support (Vulkan 1.4).** A **Vulkan 1.4** option in the Turnip / Wrapper Driver Configuration lets you run [DXVK 3.0](https://github.com/doitsujin/dxvk/releases/tag/v3.0). Needs a VK 1.4-capable driver (recent Mesa Turnip on Adreno 7xx/8xx); on Adreno 6xx, stay on DXVK 2.7.1.
-- **Per-game download menu fix** — the DXVK/VKD3D download sheet no longer opens behind the shortcut settings screen.
-
----
-
-## Previously in 1.8
-
-- **In-app updater.** Bannerlator can now **update itself** — a new **Updates** section in Settings (plus an About-dialog action and an app-wide banner) checks for releases, picks the correct flavor APK (Standard / PUBG / Ludashi), downloads and installs it. Includes an optional **"Include pre-releases"** beta channel and skip/notify controls.
-- **GameHub-style performance HUD.** A second selectable overlay alongside the classic FPS overlay — **Classic / Neon / Mono** skins, an FPS graph, and detailed metrics (FPS, CPU/GPU usage, RAM, temperature, power, engine & GPU model). Per-container config, **live-swap** mid-game, and every toggle mirrored in the in-game side drawer.
-
----
-
-## Previously in 1.7
-
-- **Steam store — downloads fixed.** Steam game downloads that failed with "Download failed: Unknown error" now work. Two bugs fixed: a **login race** during Steam connection cycling (downloads started before the session re-logged-on), and the full **BouncyCastle** provider not being registered, which crashed depot-manifest saving with a `SHA-1 for provider BC` error.
-- **Components installer (new).** A new in-container **Components** menu installs Wine dependencies — mono, gecko, .NET, vcredist, d3dx, and more — into a container's prefix from a browsable catalog. File-drop installs plus an execute engine for .NET/vcredist-style installers; includes a Win7/WinXP mode and a persisted **"Installed"** status per container.
-- **On-screen controls — overlay opacity.** The overlay-opacity slider moved into the **in-game side menu (Controls tab)**; it's now **live** and a true **0–100 %** (0 % = fully invisible).
-- **FPS overlay.** **Tap the overlay** to toggle **vertical / horizontal** orientation live, and it now shows a live **D3D API label** (VKD3D vs DXVK).
-- **Scrollable Advanced Vulkan dialogs.** The Advanced Vulkan / Graphics Driver config dialogs no longer cut off — they scroll.
-- **Video playback.** Bundled full **ffmpeg-8** libraries for winedmo, improving in-game video / FMV decode.
-  - **📦 Please reinstall imageFS after updating.** The ffmpeg-8 libraries live inside imageFS, so a normal app update won't add them — **reinstall imageFS** to get the improved video / FMV playback (and it's also the fix if a game fails to start after updating). Open the app's **Settings**, scroll to the **bottom**, and tap **Reinstall imageFS**.
-
----
-
-## Previously in 1.6
-
-- **New Compatibility Layers download menu.** Browse, download and install **Wine/Proton, DXVK, VKD3D, Box64/WOWBox64 and FEXCore** from one cloud menu on each row — with **Wine/Proton tabs**, an **"in use"** marker for the version the container is using, **install-from-file**, and **live download + install progress bars**. (The download UI follows the pattern of the built-in Adrenotools GPU-driver downloader.)
-- **Standalone FPS limiter.** The in-game FPS cap now works with **any** frame-generation engine — **Off / bionic-fg / lsfg-vk** — on **both** the OpenGL and Vulkan host renderers, live. (Pacing mechanism ported from **GameNative**; when lsfg-vk is multiplying ≥2×, the limiter steps aside so lsfg's own pacing governs.)
-- **Advanced Vulkan settings now apply.** Native Rendering+, present mode, filter and swap-R/B from the container's Vulkan Settings actually take effect now; the Renderer dropdown also shows the correct name and its settings button right away.
-- **Per-game overrides** for **Renderer**, **Frame-Gen engine** and **FPS limiter** — set them per game, falling back to the container default.
-- **File Manager fixes** — safe paste/move (no more data loss), run a `.exe` directly in its container, system **Back** goes up a folder, and accurate copy progress.
-- **On-screen controls fix** — the D-pad / analog stick no longer freezes on multi-touch.
-- **Frame generation now starts off** in-game on every launch; re-enable it any time from the in-game Graphics drawer.
-  - **⚠️ Updating from an older version?** If a game fails to start after updating, **reinstall imageFS** — open the app's **Settings**, scroll to the **bottom**, and tap **Reinstall imageFS**.
-
----
-
 ## ✨ Full Features
 
 Everything Bannerlator offers, at a glance. No PC and no root required — it runs Windows apps and games directly on your Android device.

@@ -48,7 +48,7 @@ static void sysvshm_connect() {
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_LOCAL;
     
-    strncpy(server_addr.sun_path, path, sizeof(server_addr.sun_path) - 1);
+    snprintf(server_addr.sun_path, sizeof(server_addr.sun_path), "%s", path);
     
     int res;
     do {

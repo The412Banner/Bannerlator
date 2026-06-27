@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-06-27 — #19 follow-up: Layout L wired + A/L card chooser
+
+**Status:** branch `fix/shortcut-name-overflow` (pushed). Commit `324bb4a` (L + chooser) +
+audio-drop follow-up edit. Compile CI `28300618235` (`main.yml`) running on `324bb4a`;
+audio-drop fix needs a re-run after its commit. NOT merged.
+
+**Ask:** user said "wire up L so I can choose between the two" — make the list-view card style
+user-selectable between the existing layout A and the chosen layout L.
+
+**Implementation:**
+- `ShortcutsViewModel.kt`: persisted `useLayoutL` pref (`shortcuts_prefs` / `list_card_layout_l`,
+  default `false` = A) mirroring `isGridView`; `setUseLayoutL()`.
+- `ShortcutsScreen.kt`:
+  - Top-bar **A/L toggle** — an "A"/"L" Text `IconButton`, shown only in list view (hidden in
+    grid). Keyed the top-bar-actions `LaunchedEffect` on `(isGridView, useLayoutL)` so the toggle
+    reflects live state (was `Unit` → captured stale values; the existing grid icon only updated
+    via content recompose).
+  - List branch now picks `ShortcutItemLayoutL` vs `ShortcutItem` on `useLayoutL`.
+  - New `ShortcutItemLayoutL`: same 48×64 poster cover; subtitle = `container · resolution`;
+    PRIMARY `FlowRow` of bright `CompChip`s — renderer (`ChipRendColor`), DXVK, frame-gen
+    (`ChipFgColor`, "Bionic-FG" / "LSFG-VK"); SECONDARY `FlowRow` of `SecondarySpec` (7dp colour
+    dot + dimmed `OnSurfaceVariant` 10sp label) — driver, VKD3D, backend (`ChipCpuColor`).
+  - Renderer / frame-gen / backend resolved via `shortcut.getExtra(key, container.getX())`
+    (`getRenderer` / `getFrameGenEngine` / `getEmulator`); backend name via
+    `R.array.emulator_entries` + `StringUtils.parseIdentifier`.
+  - **Refactor:** extracted the shared ⋮ menu into `ShortcutOverflowButton` (own `menuExpanded`),
+    now used by BOTH A and L so the menu can't drift.
+- **Audio dropped** from L's secondary (follow-up edit) to match `docs/shortcut_card_L_final.html`
+  — lets driver · VKD3D · backend sit on one row. First commit `324bb4a` wrongly included it.
+- **Deferred:** backend preset suffix ("FEXCore · TSO" / "Box64 · Perf" in the mockup) — needs the
+  async `Box64PresetManager` / `FEXCorePresetManager`, too heavy to resolve per list-card; backend
+  shows the emulator name only for now.
+
+**Next:** commit audio-drop fix → CI green → device-test (both layouts render + pref persists
+across the toggle and app restart) → merge → close #19. ⚠️ save-before-device-test rule.
+
+---
+
 ## 2026-06-27 — Issue #19 "Name of games is empty" + game-card redesign
 
 **Status:** branch `fix/shortcut-name-overflow` (pushed, NOT merged). Layout A build CI `28299970224` running.

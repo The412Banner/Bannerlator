@@ -763,14 +763,11 @@ private fun ShortcutItemLayoutL(
         "lsfg" -> "LSFG-VK"
         else -> ""
     }
+    // x86 backend (FEXCore / Box64). Preset suffix (e.g. "· TSO") deferred — it needs
+    // the async Box64/FEXCore preset managers, too heavy to resolve per list-card.
     val backendLabel = run {
         val id = shortcut.getExtra("emulator", container?.emulator ?: "")
         res.getStringArray(R.array.emulator_entries)
-            .firstOrNull { StringUtils.parseIdentifier(it) == id } ?: ""
-    }
-    val audioLabel = run {
-        val id = shortcut.getExtra("audioDriver", container?.audioDriver ?: "")
-        res.getStringArray(R.array.audio_driver_entries)
             .firstOrNull { StringUtils.parseIdentifier(it) == id } ?: ""
     }
 
@@ -839,12 +836,12 @@ private fun ShortcutItemLayoutL(
                     if (frameGenLabel.isNotEmpty()) CompChip(frameGenLabel, ChipFgColor)
                 }
             }
-            // Secondary: the rest — muted line with a colour dot each.
+            // Secondary: the rest — muted line with a colour dot each. Audio is dropped
+            // (user's final L) so driver · VKD3D · backend fit one row.
             val secondary = buildList {
                 if (driverLabel.isNotEmpty()) add(driverLabel to ChipDriverColor)
                 if (vkd3dVersion.isNotEmpty()) add("VKD3D $vkd3dVersion" to ChipVkd3dColor)
                 if (backendLabel.isNotEmpty()) add(backendLabel to ChipCpuColor)
-                if (audioLabel.isNotEmpty()) add(audioLabel to ChipAudColor)
             }
             if (secondary.isNotEmpty()) {
                 FlowRow(
@@ -875,7 +872,6 @@ private val ChipDxvkColor = Color(0xFF5BD6A6)
 private val ChipVkd3dColor = Color(0xFFC08CFF)
 private val ChipFgColor = Color(0xFFFF6FAE)
 private val ChipCpuColor = Color(0xFFFF8A5C)
-private val ChipAudColor = Color(0xFF9BB1FF)
 
 // A muted secondary spec (layout L): small colour dot + dimmed label.
 @Composable

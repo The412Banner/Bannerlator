@@ -1079,7 +1079,11 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     const VkRect2D   fullSc{{0,0},swapchainExt};
 
     const bool hasScaling = (upFrame.mode>=3 && upFrame.mode<=6) || upFrame.mode==UPMODE_DOWNSCALE;
-    const bool fxOn       = upFrame.cas || upFrame.hdr;
+    // Must include EVERY chainable effect (matches planUpscaleFrame's fxOn) — else a
+    // scaling mode (SGSR/FSR/Sharpen/downscale) treats the scale as final and writes
+    // straight to the swapchain, skipping the effect chain (CRT/NTSC/etc. silently dropped).
+    const bool fxOn       = upFrame.cas || upFrame.hdr || upFrame.fxaa || upFrame.toon
+                          || upFrame.color || upFrame.ntsc || upFrame.crt;
 
     // Composite all game windows (+ cursor) into `fb` (an offscreenRenderPass target).
     // `identity` 1:1-maps each window into a W x H target (upscaler input at game res);

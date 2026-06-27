@@ -647,21 +647,22 @@ private fun ShortcutItem(
         val vkd3dVersion = cfgMap["vkd3dVersion"] ?: ""
         Column(
             horizontalAlignment = Alignment.End,
-            // Cap + ellipsize so long DXVK/VKD3D version strings (e.g. nightlies with a
+            // Bound the width so a long DXVK/VKD3D version string (e.g. a nightly with a
             // commit id) can't grow unbounded, squeeze the weighted name column to 0
-            // ("name is empty") and shove the overflow menu off-screen (issue #19).
-            modifier = Modifier.widthIn(max = 120.dp).padding(end = 4.dp),
+            // ("name is empty") and shove the overflow menu off-screen (issue #19). But
+            // rather than clipping the version, give each component its own line and let
+            // it wrap to two lines — the row grows taller and everything stays readable.
+            modifier = Modifier.widthIn(max = 140.dp).padding(end = 4.dp),
         ) {
             val topLine = listOf(resolution, driverLabel).filter { it.isNotEmpty() }.joinToString(" · ")
             if (topLine.isNotEmpty()) {
-                Text(topLine, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(topLine, fontSize = 10.sp, color = OnSurfaceVariant, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            val bottomLine = listOfNotNull(
-                if (dxvkVersion.isNotEmpty()) "DXVK $dxvkVersion" else null,
-                if (vkd3dVersion.isNotEmpty()) "VKD3D $vkd3dVersion" else null,
-            ).joinToString(" · ")
-            if (bottomLine.isNotEmpty()) {
-                Text(bottomLine, fontSize = 10.sp, color = OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (dxvkVersion.isNotEmpty()) {
+                Text("DXVK $dxvkVersion", fontSize = 10.sp, color = OnSurfaceVariant, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            if (vkd3dVersion.isNotEmpty()) {
+                Text("VKD3D $vkd3dVersion", fontSize = 10.sp, color = OnSurfaceVariant, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         Box {

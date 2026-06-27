@@ -27,9 +27,15 @@ durable checkpoint; the live session is volatile.
 
 ## 2026-06-27 (latest) — Phase 2: remaining GL screen effects → Vulkan post chain
 
-**Branch `feat/vulkan-effects-p2`** (off `main` `71dceca`), commit `5dfcdbf`. Artifacts build `28289166484`.
-NOT merged; device-test pending (frozen-frame A/B on the AIO space scene). Builds on the now-merged P1/P1c
-Vulkan post-process framework.
+**Branch `feat/vulkan-effects-p2`** (off `main` `71dceca`), commit `5dfcdbf` + fix `77c6b76`. Builds on the
+now-merged P1/P1c Vulkan post-process framework. NOT merged.
+
+**Device test (space scene):** all 5 effects work individually — Color/Brightness (washes out at 95), Toon
+(edge outlines + posterized), CRT (RGB chromatic-aberration on stars), NTSC (horizontal chroma bleed). NTSC+CRT
+2-effect combo renders clean. **Bug found + fixed (`77c6b76`):** with a *scaling* mode (SGSR/FSR/Sharpen/downscale)
+active, the screen effects were silently dropped (toggles on, image clean) — `recordUpscalePasses`' local `fxOn`
+only checked `cas||hdr`, so the scale pass treated itself as final and skipped the chain. Now includes all 7 effects.
+(This also fixes P1c CAS/HDR, which had the same gap on the scaling path.) Rebuild + re-verify SGSR+effects pending.
 
 Ported the 5 remaining GL-only screen effects onto the **same** Vulkan post chain as composable controls,
 at full GL parity:

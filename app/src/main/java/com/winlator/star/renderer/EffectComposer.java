@@ -1,6 +1,7 @@
 package com.winlator.star.renderer;
 
 import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import com.winlator.star.renderer.effects.Effect;
@@ -120,6 +121,19 @@ public class EffectComposer {
             boolean renderToScreen = effect == effects.get(effects.size() - 1);
             int targetFramebuffer = renderToScreen ? 0 : writeBuffer.getFramebuffer();
 
+            // Trivial pure-copy stage: an effect with no shader material is not a real effect, so a
+            // single full-frame glBlitFramebuffer (GLES30, LINEAR) of the read buffer replaces the
+            // program-bind + clear + textured-quad. This is also strictly more correct than before:
+            // the old path cleared the target then renderEffect() early-returned on the null
+            // material, leaving the stage black. Real shader effects (Color/FXAA/Toon/CRT/NTSC/CAS)
+            // all carry a material and take the unchanged renderEffect() path below, so their
+            // output is bit-for-bit identical.
+            if (effect.getMaterial() == null) {
+                blitReadBufferTo(targetFramebuffer);
+                swapBuffers();
+                continue;
+            }
+
             // Bind appropriate framebuffer
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, targetFramebuffer);
 //            Log.d(TAG, "Binding to " + (renderToScreen ? "screen" : "writeBuffer") + " framebuffer: " + targetFramebuffer);
@@ -175,6 +189,23 @@ public class EffectComposer {
         // Unbind the texture
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
 //        Log.d(TAG, "Texture unbound");
+    }
+
+    // Pure copy/scale of the read buffer into the given framebuffer using glBlitFramebuffer
+    // (GLES30), avoiding a shader program bind + full-screen quad for trivial copy stages. Source
+    // and dest are both the surface size today; LINEAR is chosen so a future size mismatch (the
+    // deferred low-res render-scale step) resolves cleanly. Used only for material-less passes, so
+    // it never touches a real shader effect.
+    private void blitReadBufferTo(int targetFramebuffer) {
+        int w = renderer.surfaceWidth;
+        int h = renderer.surfaceHeight;
+        GLES30.glBindFramebuffer(GLES30.GL_READ_FRAMEBUFFER, readBuffer.getFramebuffer());
+        GLES30.glBindFramebuffer(GLES30.GL_DRAW_FRAMEBUFFER, targetFramebuffer);
+        // glBlitFramebuffer honors the scissor box; drawFrame() may have left it enabled, so clear
+        // it for the full-frame copy.
+        GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
+        GLES30.glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GLES20.GL_COLOR_BUFFER_BIT, GLES20.GL_LINEAR);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
     }
 
     // Swaps the read and write buffers

@@ -38,8 +38,8 @@ BSD-3), FSR1 EASU+RCAS (AMD, MIT), Lanczos downscale. Approach for FSR-in-compos
 **HDR deferred** (Android WSI rarely exposes an HDR10 surface; revisit later).
 
 **Commits:** `5f5a4a0` native upscaler + drawer · `28ab22d` per-renderer tab · `c3cbe49` Phase 1b sharpen+supersampling
-· docs `33ad5f4`. **CI:** Phase 1 GREEN (`28276691564`, `28277238762`); full Phase-1b build `28277821185` running
-(compile gate). **DEVICE-UNTESTED** — next step is on-device: sub-native upscale modes, native-res sharpen, 1.5x
+· docs `33ad5f4`. **CI:** Phase 1 GREEN (`28276691564`, `28277238762`); full Phase-1b build `28277821185` ✅ GREEN
+(all 3 flavors). **DEVICE-UNTESTED** — next step is on-device: sub-native upscale modes, native-res sharpen, 1.5x
 supersampling, and per-renderer tab. Then **Phase 2** = port GL effects (FXAA/CRT/Toon/NTSC/color) to Vulkan.
 
 CI for this repo is MANUAL: `gh workflow run build-artifacts.yml --ref <branch>`.

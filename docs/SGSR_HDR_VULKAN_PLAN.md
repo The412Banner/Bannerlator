@@ -255,7 +255,7 @@ source comments without copying their code.
 - 2026-06-27 — ✅ **CI `28276691564` GREEN** (commit `5f5a4a0`) — native upscaler + drawer compiles across all 3 flavors. THEN
   UX follow-up `28ab22d`: Graphics tab now shows ONLY the active renderer's controls (OpenGL→SGSR/HDR+ScreenEffects;
   Vulkan→Scaling mode; SurfaceFlinger→"no enhancements" note) instead of greying out the rest. ✅ CI `28277238762` GREEN.
-- 2026-06-27 — **Phase 1b committed `c3cbe49`** (full build CI `28277821185` running). Adds: (a) **Sharpen-only** = Scaling-mode
+- 2026-06-27 — **Phase 1b committed `c3cbe49`** (full build CI `28277821185` ✅ GREEN — Phase 1 + 1b compile across all 3 flavors). Adds: (a) **Sharpen-only** = Scaling-mode
   **6** (FSR RCAS, no upscale, works at NATIVE res, live drawer; 7 chips now in a 4+3 layout); (b) **Supersampling "Render scale"**
   = pre-launch container+shortcut setting Off/1.25x/1.5x/2x via `renderScale` extra (no DB migration). Launch multiplies the X11
   render res (aspect-preserving, clamp 7680x4320, even dims) → compositor runs new Lanczos-2 `downscale.frag` via

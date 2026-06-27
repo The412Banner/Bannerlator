@@ -477,7 +477,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // scanout) only exists on the Vulkan renderer.
             HostRenderer r = xServerView.getRenderer();
             if (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer) {
-                ((com.winlator.star.renderer.vulkan.VulkanRenderer) r).setNativeMode(next);
+                com.winlator.star.renderer.vulkan.VulkanRenderer vkr =
+                    (com.winlator.star.renderer.vulkan.VulkanRenderer) r;
+                vkr.setNativeMode(next);
+                // Direction B: native (direct scanout) bypasses the compositor post pass, where ALL
+                // the Vulkan presets live. Turning native ON resets every preset so the drawer is
+                // truthful (no toggles left "on" doing nothing). Only sets renderer + StateFlows —
+                // never invokes the preset apply callbacks, so there's no feedback loop.
+                if (next) resetVulkanPresets(vkr);
             }
         };
         // bionic-fg live controls (frame gen multiplier/flow + fps limiter). Each in-menu slider
@@ -1843,6 +1850,33 @@ public class XServerDisplayActivity extends AppCompatActivity {
         initInlineTabStates(renderer);
     }
 
+    // Vulkan preset <-> Native Rendering mutual exclusion (the two presets cannot coexist: native
+    // direct scanout bypasses the compositor post pass where all presets live).
+
+    /** Direction A: a preset was enabled, so turn Native Rendering off. Guarded — no-op (and no
+     *  repeated toast) when native is already off, since screen-effect sliders fire continuously. */
+    private void disableNativeRenderingForPreset() {
+        if (!XServerDrawerState.INSTANCE.getNativeRenderingEnabled()) return;
+        HostRenderer r = xServerView.getRenderer();
+        if (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer)
+            ((com.winlator.star.renderer.vulkan.VulkanRenderer) r).setNativeMode(false);
+        XServerDrawerState.INSTANCE.setNativeRenderingEnabled(false); // flips the toggle UI off
+        showToast(this, "Native Rendering off — needed for post-processing");
+    }
+
+    /** Direction B: Native Rendering was enabled, so reset every Vulkan preset to neutral so the
+     *  drawer is truthful. Only touches renderer setters + StateFlows — never the apply callbacks,
+     *  so this cannot re-enter disableNativeRenderingForPreset(). */
+    private void resetVulkanPresets(com.winlator.star.renderer.vulkan.VulkanRenderer vkr) {
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+        vkr.setUpscaler(0);                          ds.setUpscalerMode(0);
+        vkr.setCas(false, ds.getCasSharpness().getValue()); ds.setCasEnabled(false);
+        vkr.setHdr(false);                           ds.setHdrVkEnabled(false);
+        vkr.setScreenEffects(0f, 0f, 1.0f, false, false, false, false);
+        ds.setVkBrightness(0f); ds.setVkContrast(0f); ds.setVkGamma(1.0f);
+        ds.setVkFxaa(false); ds.setVkToon(false); ds.setVkCrt(false); ds.setVkNtsc(false);
+    }
+
     private void initInlineTabStates(HostRenderer renderer) {
         // SGSR/HDR/screen-effect shaders are GL EffectComposer features; the Vulkan renderer has no
         // post-process pipeline, so their callbacks below are never set. Flag it so the drawer grays
@@ -1859,12 +1893,29 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (vulkanActive) {
             com.winlator.star.renderer.vulkan.VulkanRenderer vkr =
                 (com.winlator.star.renderer.vulkan.VulkanRenderer) renderer;
-            ds.onUpscalerApply = (mode) -> vkr.setUpscaler(mode);
-            ds.onCasApply = (enabled, sharpness) -> vkr.setCas(enabled, sharpness);
-            ds.onHdrApply = (enabled) -> vkr.setHdr(enabled);
+            // Direction A: enabling any preset that lives in the compositor post pass turns Native
+            // Rendering OFF (it bypasses that pass). disableNativeRenderingForPreset() is guarded so
+            // it's a no-op (and no repeated toast) when native is already off — important because
+            // onVulkanScreenEffectsApply fires continuously during slider drags.
+            ds.onUpscalerApply = (mode) -> {
+                if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen
+                vkr.setUpscaler(mode);
+            };
+            ds.onCasApply = (enabled, sharpness) -> {
+                if (enabled) disableNativeRenderingForPreset();
+                vkr.setCas(enabled, sharpness);
+            };
+            ds.onHdrApply = (enabled) -> {
+                if (enabled) disableNativeRenderingForPreset();
+                vkr.setHdr(enabled);
+            };
             ds.onUpscaleSharpnessApply = (sharpness) -> vkr.setUpscaleSharpness(sharpness);
-            ds.onVulkanScreenEffectsApply = (brightness, contrast, gamma, fxaa, toon, crt, ntsc) ->
+            ds.onVulkanScreenEffectsApply = (brightness, contrast, gamma, fxaa, toon, crt, ntsc) -> {
+                // color grade neutral = brightness 0 / contrast 0 / gamma 1.0
+                if (fxaa || toon || crt || ntsc || brightness != 0f || contrast != 0f || gamma != 1.0f)
+                    disableNativeRenderingForPreset();
                 vkr.setScreenEffects(brightness, contrast, gamma, fxaa, toon, crt, ntsc);
+            };
         } else {
             ds.onUpscalerApply = null;
             ds.onCasApply = null;

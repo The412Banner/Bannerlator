@@ -23,16 +23,23 @@ call sites mapped slider straight onto level. Fix: `EffectComposer.buildPickerCa
 `level=(100-sharpness)/25+1`. SGSR (EdgeSharpness=1+s*1.333) and FSR RCAS (stops=1-s) were
 already correct → untouched. CI `28307366153` triggered then cancelled (superseded below).
 
-**🚧 In progress (graphics-vulkan-engineer agent, GL + Vulkan):** per user — make every
-sharpness slider span **0 = nothing (neutral, no sharpening; upscale still runs) → 100 = max**.
-(A) GL SGSR range DOUBLED `1.0+s*2.666` (0→1.0, 100→3.67). (B) GL FSR RCAS remap so 0=identity
-(today 0→scale 0.5 still sharpens). (C) GL Sharpen mode = SNAP slider to 5 stops {0,25,50,75,
-100}, 0=CAS off (only in Sharpen mode; SGSR/FSR stay continuous) + same on standalone
-Sharpen(CAS) toggle. (D) Vulkan mirror — SGSR edge `0.5+(1-stops)*4.0` (doubled), FSR/CAS
-0=off→100=max, Vulkan Sharpen stays continuous (no snap; it's RCAS not 5-level CAS). SGSR
-doubled (clean headroom); FSR/CAS = full 0→ceiling, no over-drive past spec. Agent to commit +
-trigger CI; then device-test (drawer-open + crop-right method to dodge BACK-key drawer drift) →
-merge.
+**✅ Slider-effectiveness tuning DONE + committed (graphics-vulkan-engineer, GL + Vulkan):**
+every sharpness slider now spans **0 = nothing (neutral, no sharpening; upscale still runs)
+→ 100 = max**, ZERO shader recompiles (all host-side push-constant / pass-gating math).
+Final effective values, slider 0/50/100:
+- GL SGSR EdgeSharpness **1.0 / 2.33 / 3.67** (`1.0+s*2.666` — span doubled, neutral floor 1.0)
+- GL FSR RCAS lobe scale **0.0 / 0.5 / 1.0** (`clamp(sharpness,0,1)` — 0 = true passthrough)
+- GL Sharpen mode 6 (snapped {0,25,50,75,100}) **OFF / CAS 0.50 / CAS 0.90** (0 = no CAS pass)
+- GL "Sharpen (CAS)" toggle (snapped) **OFF / 0.50 / 0.90**
+- Vulkan SGSR edge **0.5 / 2.5 / 4.5** (`0.5+s01*4.0` — span doubled)
+- Vulkan FSR/Sharpen RCAS con.x **0.0 / 0.5 / 1.0** (`upscaleSharpness01` linear, 0 = passthrough)
+- Vulkan CAS toggle **OFF / 0.5 / 1.0** (`casOn = casEnabled && casSharpness>0`)
+Snap = `XServerDrawer.kt` IntSlider `steps` override (5 stops only in mode 6 + always for the
+Sharpen(CAS) toggle; SGSR/FSR/Vulkan-Sharpen stay continuous). No over-drive past RCAS/CAS
+ceiling → no ringing. Commits `beebb17` (GL SGSR-double + FSR 0=neutral) · `fac47ed` (GL Sharpen
+5-stop snap + 0=OFF) · `0718c39` (Vulkan mirror). CI build **`28307792454`** in progress.
+NEXT: device-test on AIO space scene (drawer-open + crop-right method to dodge the BACK-key
+drawer toggle drift) confirming each slider sweeps 0→max cleanly, then merge gl-parity to main.
 
 **❌ Dropped per user:** a persisted per-shortcut "upscaling on/off" toggle. Clarified that
 720p→1080p plain stretch is ~free (final-blit sampler); only opt-in SGSR/FSR cost GPU and are

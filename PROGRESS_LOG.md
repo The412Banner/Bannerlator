@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-06-28 (s4) — 🆕 Manual refresh-rate picker built (unified Auto + manual control)
+
+On top of the verified VRR, added a unified "Refresh rate" drawer control: the match-refresh toggle is now
+"Auto (match FPS)" + a chip row of the panel's supported rates (auto-detected via `getSupportedRefreshRates`).
+Auto ON → chips greyed (VRR drives it); Auto OFF → pick a rate and the panel locks to it regardless of the FPS
+cap; whole group greys on incapable devices. `applyVrr` extended with an additive manual branch (auto path
+byte-identical, reviewed). New state manualRefreshRate/supportedRefreshRates/onManualRefreshChange + Container
+`manualRefreshRate` extra + resolver + editor FilterChip row. Commit `fa77da6`, CI run `28333613335`.
+Device-test owed: Auto-off + pick 90 → panel locks 90 regardless of cap; chips greyed when Auto on; auto path
+4/4 regression. Then merge the whole `feat/vrr-refresh-rate` (VRR + manual picker) to main.
+
+---
+
 ## 2026-06-28 (s4) — ✅✅ VRR device-test #3: WORKING (+ clear-path verified) — panel drops 144→60 to match the FPS cap
 
 Build `28332650876` (seamless fix `c29acc0` + capability gating `83da657` + window-pin fix `35dd636`). On

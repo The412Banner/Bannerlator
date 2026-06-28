@@ -673,11 +673,12 @@ private fun TopLevelFields(
         // Match refresh rate to FPS (VRR). Greyed out on displays that can't do it (single refresh
         // rate or pre-Android-11); otherwise safe to leave on (no-op unless the FPS limiter is capping).
         val vrrCtx = LocalContext.current
-        val vrrCapable = remember {
-            val disp = if (android.os.Build.VERSION.SDK_INT >= 30) vrrCtx.display
-                       else (vrrCtx.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager).defaultDisplay
-            com.winlator.star.widget.XServerView.isDisplayVrrCapable(disp)
+        val vrrDisplay = remember {
+            if (android.os.Build.VERSION.SDK_INT >= 30) vrrCtx.display
+            else (vrrCtx.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager).defaultDisplay
         }
+        val vrrCapable = remember { com.winlator.star.widget.XServerView.isDisplayVrrCapable(vrrDisplay) }
+        val supportedRates = remember { com.winlator.star.widget.XServerView.getSupportedRefreshRates(vrrDisplay) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(
                 checked = viewModel.matchRefreshRate && vrrCapable,
@@ -685,7 +686,7 @@ private fun TopLevelFields(
                 onCheckedChange = { viewModel.matchRefreshRate = it }
             )
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.match_refresh_rate), modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.auto_match_fps), modifier = Modifier.weight(1f))
         }
         Text(
             text = if (vrrCapable) stringResource(R.string.match_refresh_rate_hint)
@@ -694,6 +695,41 @@ private fun TopLevelFields(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
         )
+        // Manual refresh-rate lock (Auto OFF). Persists viewModel.manualRefreshRate (0 = free).
+        if (vrrCapable && supportedRates.isNotEmpty()) {
+            val manualEnabled = !viewModel.matchRefreshRate
+            Text(
+                stringResource(R.string.manual_refresh_rate),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (manualEnabled) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp)
+            )
+            Row(modifier = Modifier.padding(start = 52.dp, top = 2.dp)) {
+                FilterChip(
+                    selected = viewModel.manualRefreshRate == 0,
+                    enabled = manualEnabled,
+                    onClick = { viewModel.manualRefreshRate = 0 },
+                    label = { Text("Off") },
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+                supportedRates.forEach { rate ->
+                    FilterChip(
+                        selected = viewModel.manualRefreshRate == rate,
+                        enabled = manualEnabled,
+                        onClick = { viewModel.manualRefreshRate = rate },
+                        label = { Text("$rate") },
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.manual_refresh_rate_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+            )
+        }
 
         // LC_ALL
         Row(verticalAlignment = Alignment.CenterVertically) {

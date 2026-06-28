@@ -109,6 +109,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // VRR: match the display panel refresh rate to the game's FPS. Default ON (safe — no-op unless
     // the FPS limiter is actually capping).
     var matchRefreshRate by mutableStateOf(true)
+    // Manual refresh-rate lock (Hz) used when Auto (matchRefreshRate) is OFF. 0 = none/native.
+    var manualRefreshRate by mutableStateOf(0)
 
     // ── Renderer ──────────────────────────────────────────────────────────────
     var rendererEntries by mutableStateOf(emptyList<String>()); private set
@@ -316,6 +318,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         frameGenEngine     = c?.frameGenEngine ?: "off"
         fpsLimiterEnabled  = c?.isFpsLimiterEnabled == true
         matchRefreshRate   = c?.isMatchRefreshRate != false   // default ON for new/unset containers
+        manualRefreshRate  = c?.manualRefreshRate ?: 0
 
         // Renderer
         // Map the stored identifier ("opengl"/"vulkan") to its display label ("OpenGL"/"Vulkan") so
@@ -582,6 +585,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setFrameGenEngine(frameGenEngine)
             c.setFpsLimiterEnabled(fpsLimiterEnabled)
             c.setMatchRefreshRate(matchRefreshRate)
+            c.setManualRefreshRate(manualRefreshRate)
             c.setExclusiveXInput(exclusiveXInput)
             c.setRenderer(StringUtils.parseIdentifier(selectedRenderer))
             c.setRendererNative(rendererNative)
@@ -651,6 +655,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                     created.setFrameGenEngine(frameGenEngine)
                     created.setFpsLimiterEnabled(fpsLimiterEnabled)
                     created.setMatchRefreshRate(matchRefreshRate)
+                    created.setManualRefreshRate(manualRefreshRate)
                     if (renderScale != "1.0") created.putExtra("renderScale", renderScale)
                     if (!autoCloseOnExit) created.putExtra("autoCloseOnExit", "0")  // default ON
                     created.saveData()

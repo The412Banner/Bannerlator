@@ -479,6 +479,9 @@
     <string name="match_refresh_rate">Match refresh rate to FPS</string>
     <string name="match_refresh_rate_hint">Votes the display refresh rate to follow the game\'s FPS (smoother motion + power saving). Only acts while the FPS limiter is capping; otherwise the panel runs free.</string>
     <string name="match_refresh_rate_unsupported">Unavailable on this display (single refresh rate or Android 10 or older).</string>
+    <string name="auto_match_fps">Auto (match FPS)</string>
+    <string name="manual_refresh_rate">Manual refresh rate</string>
+    <string name="manual_refresh_rate_hint">When Auto is off, lock the display panel to a chosen rate (independent of the FPS cap). Off = panel runs free.</string>
     <string name="export_container">Export Container</string>
     <string name="exporting_container">Exporting Container...</string>
     <string name="importing_container">Importing Container...</string>

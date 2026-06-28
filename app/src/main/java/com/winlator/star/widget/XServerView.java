@@ -211,4 +211,12 @@ public class XServerView extends FrameLayout {
         for (android.view.Display.Mode m : display.getSupportedModes()) rates.add(Math.round(m.getRefreshRate()));
         return rates.size() > 1;
     }
+
+    /** Distinct supported refresh rates (rounded, ascending). Empty if <2 (nothing to pick). */
+    public static java.util.List<Integer> getSupportedRefreshRates(android.view.Display display) {
+        java.util.TreeSet<Integer> rates = new java.util.TreeSet<>();
+        if (Build.VERSION.SDK_INT >= 30 && display != null)
+            for (android.view.Display.Mode m : display.getSupportedModes()) rates.add(Math.round(m.getRefreshRate()));
+        return rates.size() > 1 ? new java.util.ArrayList<>(rates) : new java.util.ArrayList<>();
+    }
 }

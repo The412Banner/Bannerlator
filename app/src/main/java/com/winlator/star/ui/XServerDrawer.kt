@@ -842,6 +842,51 @@ private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int)
     }
 }
 
+// Manual refresh-rate chips (mirrors UpscalerModeButtons' visual style). Greyed when disabled
+// (Auto on or display not VRR-capable). Highlights the chip whose rate == selected.
+@Composable
+private fun RefreshRateChips(rates: List<Int>, selected: Int, enabled: Boolean, onSelect: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        rates.chunked(4).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                row.forEach { rate ->
+                    val isSel = selected == rate
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSel && enabled) Primary else Color.Black)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSel && enabled) Primary else PrimaryDim,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clickable(enabled = enabled) { onSelect(rate) }
+                            .padding(vertical = 9.dp)
+                    ) {
+                        Text(
+                            "$rate",
+                            color = when {
+                                !enabled -> DimWhite.copy(alpha = 0.4f)
+                                isSel    -> Color.Black
+                                else     -> Primary
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = if (isSel && enabled) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                }
+                // Keep chip width consistent when the final row has < 4 rates.
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueChange: (Int) -> Unit, onValueChangeFinished: (() -> Unit)? = null, steps: Int = -1) {
     // steps < 0 -> continuous (one stop per integer); steps >= 0 -> snap to that many
@@ -933,21 +978,41 @@ private fun HudContent(state: XServerDrawerState) {
         )
     }
 
-    // ── VRR: match the display panel's refresh rate to the on-screen FPS ──
+    // ── Refresh rate: Auto (match FPS / VRR) + manual snap to a supported panel rate ──
     val matchRefreshRate by state.matchRefreshRate.collectAsState()
     val vrrSupported by state.vrrSupported.collectAsState()
+    val manualRefreshRate by state.manualRefreshRate.collectAsState()
+    val supportedRefreshRates by state.supportedRefreshRates.collectAsState()
     var matchRefreshOn by remember(matchRefreshRate) { mutableStateOf(matchRefreshRate) }
-    ToggleRow("Match refresh rate to FPS", matchRefreshOn && vrrSupported, enabled = vrrSupported) {
+
+    Text("Refresh rate", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Spacer(Modifier.height(4.dp))
+
+    // Auto (match FPS) == the existing VRR toggle; behavior unchanged.
+    ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported, enabled = vrrSupported) {
         matchRefreshOn = it
         state.setMatchRefreshRate(it)
         state.onMatchRefreshChange?.run()
     }
+    // Manual rate chips: selectable only when Auto is OFF and the panel can switch rates.
+    if (supportedRefreshRates.isNotEmpty()) {
+        Spacer(Modifier.height(6.dp))
+        RefreshRateChips(supportedRefreshRates, manualRefreshRate, vrrSupported && !matchRefreshOn) { rate ->
+            state.setManualRefreshRate(rate)
+            state.onManualRefreshChange?.run()
+        }
+    }
     Text(
-        if (vrrSupported)
-            "Votes the display refresh rate to follow the game's FPS (smoother + power saving). " +
-                "Only acts while the FPS limiter is capping."
-        else
-            "Unavailable — this display has a single refresh rate, so there's nothing to match.",
+        when {
+            !vrrSupported ->
+                "Unavailable — this display has a single refresh rate, so there's nothing to match."
+            matchRefreshOn ->
+                "Auto is on — the panel follows your FPS."
+            manualRefreshRate > 0 ->
+                "Panel locked to ${manualRefreshRate} Hz."
+            else ->
+                "Pick a rate to lock the panel, or turn Auto on to follow your FPS."
+        },
         color = DimWhite.copy(alpha = 0.5f),
         fontSize = 11.sp,
         modifier = Modifier.padding(start = 4.dp, top = 2.dp)

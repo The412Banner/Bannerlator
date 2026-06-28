@@ -77,6 +77,15 @@ object XServerDrawerState {
     private val _vrrSupported = MutableStateFlow(true)
     val vrrSupported: StateFlow<Boolean> = _vrrSupported
 
+    // Manual refresh-rate lock (Hz), used when matchRefreshRate (Auto) is OFF. 0 = none/native.
+    private val _manualRefreshRate = MutableStateFlow(0)
+    val manualRefreshRate: StateFlow<Int> = _manualRefreshRate
+
+    // Distinct refresh rates the active display supports (ascending). Empty = nothing to pick (the
+    // panel has a single rate); seeded by the activity in setupUI.
+    private val _supportedRefreshRates = MutableStateFlow<List<Int>>(emptyList())
+    val supportedRefreshRates: StateFlow<List<Int>> = _supportedRefreshRates
+
     private val _fpsExpanded = MutableStateFlow(false)
     val fpsExpanded: StateFlow<Boolean> = _fpsExpanded
 
@@ -119,6 +128,9 @@ object XServerDrawerState {
     // Fired when the in-game "Match refresh rate to FPS" toggle changes; the activity persists it
     // and re-applies the panel refresh-rate vote (applyVrr) live.
     @JvmField var onMatchRefreshChange: Runnable? = null
+    // Fired when the in-game manual refresh-rate chip selection changes (Auto OFF); the activity
+    // persists it and re-applies the panel refresh-rate vote (reapplyVrr) live.
+    @JvmField var onManualRefreshChange: Runnable? = null
     // Fired when the Controls-tab opacity slider moves; the activity reads overlayOpacity,
     // applies it to the live InputControlsView and persists the pref.
     @JvmField var onOverlayOpacityChange: Runnable? = null
@@ -152,6 +164,8 @@ object XServerDrawerState {
     fun setFpsLimit(v: Int)                { _fpsLimit.value = v }
     fun setMatchRefreshRate(v: Boolean)    { _matchRefreshRate.value = v }
     fun setVrrSupported(v: Boolean)        { _vrrSupported.value = v }
+    fun setManualRefreshRate(v: Int)       { _manualRefreshRate.value = v }
+    fun setSupportedRefreshRates(v: List<Int>) { _supportedRefreshRates.value = v }
 
     fun setFpsExpanded(v: Boolean) { _fpsExpanded.value = v }
     fun setFpsConfig(v: String) { _fpsConfig.value = v }
@@ -177,6 +191,8 @@ object XServerDrawerState {
         _fpsLimit.value = 60
         _matchRefreshRate.value = true
         _vrrSupported.value = true
+        _manualRefreshRate.value = 0
+        _supportedRefreshRates.value = emptyList()
         _cursorExpanded.value = false
         _fpsExpanded.value = false
         _fpsConfig.value = ""
@@ -190,6 +206,7 @@ object XServerDrawerState {
         onNativeRenderingToggle = null; onFpsConfigApply = null
         onBionicFgConfigChange = null; onFpsLimitChange = null
         onMatchRefreshChange = null
+        onManualRefreshChange = null
         onOverlayOpacityChange = null
         onCursorExpandedChanged = null
     }

@@ -438,6 +438,17 @@ public class Container {
         putExtra("matchRefreshRate", enabled ? "1" : "0");
     }
 
+    // Manual refresh-rate lock (Hz). Used when "Auto (match FPS)" is OFF: the panel is pinned to this
+    // rate regardless of the FPS cap. 0 = no manual lock (panel runs free / native).
+    public int getManualRefreshRate() {
+        try { return Integer.parseInt(getExtra("manualRefreshRate", "0")); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    public void setManualRefreshRate(int rate) {
+        putExtra("manualRefreshRate", String.valueOf(rate));
+    }
+
     public String getWineVersion() {
         return wineVersion;
     }

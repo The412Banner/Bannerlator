@@ -574,6 +574,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             container.saveData();
             reapplyVrr();
         };
+        // Manual refresh-rate lock (Auto OFF). Persists the chosen rate and re-applies the panel vote
+        // live (reapplyVrr reads the limiter state; applyVrr uses the manual rate when Auto is off).
+        state.onManualRefreshChange = () -> {
+            int rate = XServerDrawerState.INSTANCE.getManualRefreshRate().getValue();
+            container.setManualRefreshRate(rate);
+            container.saveData();
+            reapplyVrr();
+        };
         state.onToggleFullscreen       = () -> {
             xServerView.getRenderer().toggleFullscreen();
             touchpadView.toggleFullscreen();
@@ -752,6 +760,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         XServerDrawerState.INSTANCE.setMatchRefreshRate(resolvedMatchRefreshRate());
         XServerDrawerState.INSTANCE.setVrrSupported(
             com.winlator.star.widget.XServerView.isDisplayVrrCapable(getWindowManager().getDefaultDisplay()));
+        XServerDrawerState.INSTANCE.setSupportedRefreshRates(
+            com.winlator.star.widget.XServerView.getSupportedRefreshRates(getWindowManager().getDefaultDisplay()));
+        XServerDrawerState.INSTANCE.setManualRefreshRate(resolvedManualRefreshRate());
 
         containerManager.activateContainer(container);
 
@@ -2954,6 +2965,21 @@ return true;
         return container.isMatchRefreshRate();
     }
 
+    // Per-game override for the manual refresh-rate lock (shortcut wins over the container default).
+    // Mirrors resolvedMatchRefreshRate(). 0 = no manual lock. Null-safe for early calls.
+    private int resolvedManualRefreshRate() {
+        if (container == null) return 0;
+        if (shortcut != null) {
+            try {
+                return Integer.parseInt(shortcut.getExtra("manualRefreshRate",
+                    String.valueOf(container.getManualRefreshRate())));
+            } catch (NumberFormatException e) {
+                return container.getManualRefreshRate();
+            }
+        }
+        return container.getManualRefreshRate();
+    }
+
     // lsfg-vk does its OWN frame pacing when it is multiplying (multiplier >= 2). Layering the
     // standalone IdleNotify limiter on top double-paces the present stream: our pacer throttles
     // lsfg's already-multiplied output, clamping the panel to the limiter value (killing the FG
@@ -3011,20 +3037,28 @@ return true;
     // Vote a panel refresh rate that matches the DISPLAYED frame rate (VRR / refresh-rate matching).
     // Complementary to the FPS limiter: the limiter caps the producer/render rate, this matches the
     // display/panel rate so the panel cadence follows render cadence (smoother + power savings).
-    //   cap == 0 (limiter off / uncapped)  -> vote 0f (clear; panel runs free)
-    //   matchRefreshRate OFF               -> vote 0f (never vote)
-    //   normal / bionic-fg                 -> vote cap
-    //   lsfg multiplying (mult >= 2)       -> vote cap x mult (the displayed rate)
+    //   Auto ON, cap == 0 (limiter off)    -> vote 0f (clear; panel runs free)
+    //   Auto ON, normal / bionic-fg        -> vote cap
+    //   Auto ON, lsfg multiplying (>= 2)   -> vote cap x mult (the displayed rate)
+    //   Auto OFF, manual rate > 0          -> vote that rate (lock, independent of the FPS cap)
+    //   Auto OFF, manual rate == 0         -> vote 0f (no lock; panel runs free)
     private void applyVrr(int cap) {
         if (xServerView == null) return;
         float vrrRate = 0.0f;
-        if (container != null && resolvedMatchRefreshRate() && cap > 0) {
-            if (lsfgGovernsFps()) {
-                int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
-                vrrRate = (float) cap * (mult >= 2 ? mult : 1);
-            } else {
-                vrrRate = (float) cap;
+        if (container != null && resolvedMatchRefreshRate()) {
+            // Auto (match FPS): vote the panel cadence to follow the displayed FPS while capping.
+            if (cap > 0) {
+                if (lsfgGovernsFps()) {
+                    int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
+                    vrrRate = (float) cap * (mult >= 2 ? mult : 1);
+                } else {
+                    vrrRate = (float) cap;
+                }
             }
+        } else if (container != null) {
+            // Manual: lock the panel to the chosen rate, independent of the FPS cap. 0 = no lock.
+            int manual = resolvedManualRefreshRate();
+            if (manual > 0) vrrRate = (float) manual;
         }
         xServerView.setDisplayFrameRate(vrrRate, VRR_FRAME_RATE_COMPATIBILITY);
         // onCreate pins the window's preferredRefreshRate to the panel max (for smooth UI). That

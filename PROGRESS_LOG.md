@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-06-28 (s4) — 🐛➡️✅ VRR device-test #2: surface fix confirmed, fixed a 2nd blocker (window pins max refresh)
+
+Re-tested with the seamless fix (`c29acc0`) + capability gating (`83da657`). Our game-surface vote is now correct —
+`60.00 Hz Default SeamedAndSeamless` (the force-switch worked; was OnlySeamless). But the panel still held 144
+because a 2nd layer voted 144: `XServerDisplayActivity.onCreate` pins `window.preferredRefreshRate = max` (144)
+for smooth UI, and that window-level request out-votes the surface vote. **Fix `35dd636`:** new
+`applyWindowPreferredRefreshRate(vrrRate)` (called from applyVrr) lowers the window preference to the matched
+rate when VRR is capping, restores max otherwise. CI run `28332650876`. Retest: expect activeMode 144→60.
+Lesson: an emulator that force-pins preferredRefreshRate to max blocks ANY app VRR vote — keep it in step.
+
+---
+
 ## 2026-06-28 (s4) — 🐛➡️✅ VRR device-test #1: found + fixed the "panel won't drop" bug
 
 Tested VRR on-device (AIO, OpenGL renderer, FPS cap 60, Match-refresh ON, game@60). Panel stayed at 144 Hz —

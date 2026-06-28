@@ -1837,3 +1837,23 @@ Each job: implement → commit → push both remotes → trigger CI → wait for
 
 Last commit: `546d25e`  
 Last CI: `24577265773` ✅ green
+
+---
+
+## 2026-06-28 — NIS device-test checkpoint (feat/deband-nis)
+
+**Status:** Vulkan NIS ✅ device-proven by user ("it works on Vulkan"). OpenGL/GL NIS ⏳ device-test in progress (Adreno runtime-compile risk = the open question).
+
+**NIS sharpness slider (resolved from committed source, this session):**
+- CONTINUOUS on BOTH renderers — every value 0–100 is live (GL `XServerDrawer.kt:463` steps=-1 for mode 7; VK `:547` no steps arg). Not notched.
+- GL & VK share the SAME NVIDIA `NVScalerUpdateConfig` constants (stock, untuned) → identical strength on both:
+  - slider 0 ≈ OFF (max USM strength ~0.03, overshoot limit ±20%)
+  - slider 50 = NVIDIA neutral default (1.6, ±50%)
+  - slider 75 = our seeded default (~2.16, ±69%)
+  - slider 100 = hard max (~2.73, ±87% — halo onset)
+- Input is `clamp(sharpness,0,1)`; 100 cannot be exceeded without editing shader constants. Curve is piecewise-linear with one slope kink at 50 (steeper above), plus soft floors ~17 & ~37 at the low end.
+
+**Side-finding (NOT NIS — cleanup candidate, UNFIXED):** CAS/Sharpen slider snapping is inconsistent across renderers.
+- OpenGL: Scaling-mode "Sharpen" (mode 6, `glUpscaleSharpness` steps=3) + standalone "Sharpen (CAS)" toggle (`sgsrSharpness` steps=3) → snap to 5 notches {0,25,50,75,100}.
+- Vulkan: "Sharpen" mode 6 (`upscaleSharpness` :547) + standalone "CAS" toggle (`casSharpness` :568) → continuous.
+- Fix later: add `steps=3` to the two VK sliders, or drop `steps` on the two GL ones (lean continuous-everywhere; GL keeps notches only for the "stop 0 = OFF" guarantee).

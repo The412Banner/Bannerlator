@@ -66,9 +66,16 @@ Final effective values, slider 0/50/100:
 Snap = `XServerDrawer.kt` IntSlider `steps` override (5 stops only in mode 6 + always for the
 Sharpen(CAS) toggle; SGSR/FSR/Vulkan-Sharpen stay continuous). No over-drive past RCAS/CAS
 ceiling → no ringing. Commits `beebb17` (GL SGSR-double + FSR 0=neutral) · `fac47ed` (GL Sharpen
-5-stop snap + 0=OFF) · `0718c39` (Vulkan mirror). CI build **`28307792454`** in progress.
-NEXT: device-test on AIO space scene (drawer-open + crop-right method to dodge the BACK-key
-drawer toggle drift) confirming each slider sweeps 0→max cleanly, then merge gl-parity to main.
+5-stop snap + 0=OFF) · `0718c39` (Vulkan mirror). CI build **`28307792454`** ✅ green all 3 flavors.
+
+**✅ GL device-test PASSED (AIO space scene, OpenGL|DXVK Adreno 750, live drawer-open method):**
+Sharpen slider **snaps to 0/25/50/75/100** (tap ~38% → snapped to 50). FSR slider **0 = true
+passthrough** (crop png 218 KB, softer than None's 245 KB, no sharpening) → **100 = strongly
+sharp** (420 KB, +92%). SGSR **0→100 = +18% png**, montage shows visibly crisper limb/coastlines
+(doubled range). 0 = neutral confirmed. Vulkan mirror = code-verified (shared host logic) but
+not device-tested this session (AIO shortcut is OpenGL). Note for next time: this AIO test
+**exits the scene on BACK while paused**, so the frozen method was abandoned — open the drawer
+once via BACK while running, then switch chips live without pause/BACK. NEXT: merge gl-parity to main.
 
 **❌ Dropped per user:** a persisted per-shortcut "upscaling on/off" toggle. Clarified that
 720p→1080p plain stretch is ~free (final-blit sampler); only opt-in SGSR/FSR cost GPU and are

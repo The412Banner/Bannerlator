@@ -2,6 +2,130 @@
 
 ---
 
+## 2026-06-28 — 🛠️ BUILT: Debanding + NIS upscaler (branch `feat/deband-nis`, CI pending, NOT device-tested)
+
+Implemented Track-1 step 1 from the master plan below. **Branch `feat/deband-nis` off main, 6 commits
+`194b7b9`→`cc3e0e7`, NOT merged, NOT pushed-then-merged, NOT device-tested.** Shaders compile clean
+(glslangValidator), all cross-layer contracts reviewed+consistent. Awaiting CI + on-device A/B.
+
+**DEBANDING** — terminal TPDF/IGN dither pass (float-only hash, Adreno-safe), `deband.frag`+header,
+appended LAST as `FX_DEBAND`, registered in fxOn in BOTH planUpscaleFrame AND recordUpscalePasses
+(known "scaling drops chain" bug avoided). `setDeband(bool,int strength)` JNI↔C++↔Java; GL `DebandEffect`
++ dedicated terminal slot in EffectComposer (render() + renderUpscaled()). strength 0..200 → /100 LSBs
+(default 100 = ±1/255). Session-live (not persisted).
+
+**NIS** — new upscaler mode int **7**. Faithful NVScaler port from authentic NVIDIA reference (MIT)
+into single-pass `nis.frag` (edge map + 6-tap scale/USM + directional filters + CalcLTI + luma recolor);
+**exact fp32 coef_scale/coef_usm baked as `const float[384]`** (transcribed programmatically from
+NIS_Config.h, NOT hand-typed, first-row verified); fp32 path (no fp16/bitwise); NO 2nd descriptor binding.
+Reuses existing sharpness slider. GL `NISEffect` + EffectComposer `case 7`. Engages only when render
+res < display (like SGSR mode 3). Drawer: `7 to "NIS"` + mode-7 sharpness in both GL+Vulkan blocks.
+
+**⚠️ Needs device-verification (agent's honest flags):** (1) NIS math not pixel-compared to a reference
+NIS — A/B on the high-freq SPACE scene 720p→1080p, GL AND Vulkan. (2) GL NISEffect runtime-compiles a
+heavy unrolled NVScaler + 2×384 const arrays on the Adreno GLES driver = the runtime-compile-crash class
+the roadmap flags — DEVICE-TEST GL NIS specifically (Vulkan NIS is precompiled SPIR-V, safer). (3) NIS =
+37 texture fetches/fragment, perf untested. (4) CI is the first real compile of the non-shader code.
+Files: `cpp/winlator/{deband,nis}.frag`+headers+`gen_shaders.sh`, `VulkanRendererContext.{cpp,h}`,
+`vulkan_jni.cpp`, `renderer/vulkan/VulkanRenderer.java`, `renderer/EffectComposer.java`,
+`renderer/effects/{DebandEffect,NISEffect}.java`, `ui/XServerDrawer.kt`, `ui/XServerDialogState.kt`,
+`XServerDisplayActivity.java`.
+
+---
+
+## 2026-06-28 — 🗺️ MASTER PLAN: Graphics smoothness/sharpness roadmap + App theming/icons
+
+> **STATUS: RESEARCH + RECON + 1 HTML MOCKUP + CODE-GROUNDED PLANS ONLY. NOTHING CODED, NOTHING
+> COMMITTED, NOTHING DEVICE-TESTED.** This entry consolidates a full session of exploration into one
+> plan. Deep detail (every file:line touchpoint) lives in the two memory files:
+> `project_bannerlator_smooth_sharp_render_roadmap.md` + `project_bannerlator_theming_icons.md`.
+
+Two parallel tracks scoped this session. Recommended first build = **debanding + NIS** (Track 1, small/visible/low-risk).
+
+---
+
+### TRACK 1 — SMOOTHNESS + SHARPNESS RENDERING
+
+**User goal:** keep games EXTREMELY SMOOTH, NO FPS loss (ideally gain), + clarity/sharpness.
+
+**Core principle (the answer):** it's a STACK, not one effect →
+**render a bit lower → spatial upscaler (sharp) → VRR refresh-match (smooth) → debanding (clarity).**
+That gains real FPS, cuts heat/power, adds sharpness, zero added latency.
+**Myth busted:** frame-gen does NOT give free FPS — it inflates the HUD number while costing GPU + latency
+(a perceived-smoothness layer, optional cherry-on-top for single-player base≥45fps).
+
+**Recommended build order:**
+1. **Debanding + NIS** ← START HERE (ready, ~6 commits, low-risk)
+2. **VRR / `setFrameRate`** (refresh-rate matching; biggest smoothness-per-effort; SurfaceFlinger path best home)
+3. **Curated shader-loader platform** (force-multiplier; compile `.spv` OFFLINE in CI = Adreno-crash-safe; permissive-licensed shaders only)
+4. **Moonshot: DXVK depth → true SGSR2 on TAA/FSR2 games** (XL, staged, multi-repo)
+5. Keep frame-gen (`bionic-fg`) gated/off-by-default, labeled as a latency trade.
+**DROP:** BFI, Anime4K-CNN, pixel-art scalers, heavy CRT (royale), NPU/AI super-res — each costs FPS or doesn't fit.
+
+**Scorecard (vs goal):** SGSR1/NIS/FSR1 ★★★★★ · CAS / shader-loader-platform ★★★★ · 3D-LUT / panel-calibration / estimated-MV-temporal ★★★ · Anime4K(CNN heavy) / pixel-art / adaptive-sharpen(already have CAS+RCAS) / heavy-CRT ★★ · BFI ★½ skip.
+
+**READY-TO-BUILD PLAN — Debanding + NIS (GL + native Vulkan; ASR path runs neither chain):**
+Shared plumbing: Vk post shaders `cpp/winlator/*.frag` + committed `*_frag.h` SPIR-V (gen via
+`glslangValidator -V x.frag --vn x_code -o x_frag.h`, NO CI compile step). `VulkanRendererContext.cpp`
+`createPostPipelines`~:552 / `recordUpscalePasses`:1074 / `planUpscaleFrame`:1235 / locked effect-chain
+:1204-1229 / SINGLE-sampler `createDSLayout`:402-407 (don't add a 2nd binding) / PC range 88B.
+**Whole chain = R8G8B8A8_UNORM 8-bit** end-to-end. GL = `renderer/EffectComposer.java` + `renderer/effects/*.java`.
+Drawer `ui/XServerDrawer.kt` (options :772-775, sharpness slider :815-838). Effects SESSION-LIVE (not persisted).
+⚠️known bug: an effect silently no-ops under scaling unless added to fxOn in BOTH planUpscaleFrame:1250 AND recordUpscalePasses:1087.
+- **Debanding:** new `deband.frag` = terminal dither (IGN/TPDF, float-only hash, ~1 LSB, display space, no texture taps, Adreno-safe). Last effect-chain entry `FX_DEBAND` (always→swapchain). Vk pipeline + push-const + `setDeband` JNI/Java. GL `DebandEffect` + dedicated TERMINAL slot in EffectComposer (GL has no fixed order). Toggle + optional strength slider. Optional SEPARATE gated commit: bump offscreenFmt→A2B10G10R10/R16F (then off↔swap cross-bind needs split pipelines) — ship dither-only first.
+- **NIS:** upscaler mode int=7. new `nis.frag` single-pass NVScaler, BAKE coef tables as `const float[]` in shader (no 2nd descriptor binding; fp32 not fp16). Reuse sharpness slider. Vk pipeline + planUpscaleFrame mode-7 branch (like SGSR mode3) + recordUpscalePasses single-pass; no new JNI. GL `NISEffect` + setUpscaler `case 7`. Drawer add `7 to "NIS"`. MIT ©NVIDIA.
+- **Commits:** 1)shaders+headers+gen_shaders.sh 2)NIS-Vk 3)deband-Vk+JNI 4)NIS-GL 5)deband-GL 6)drawer+wiring 7)opt fmt-bump 8)opt persist. **Device-test SPACE scene 720p→1080p, GL AND Vulkan, A/B, confirm no FPS drop + composes with upscalers.**
+
+**STAGED MOONSHOT — SGSR2 (XL, MULTI-REPO):** VERDICT — shipping a patched DXVK is mechanically fine
+(we build/ship own DXVK `.tzst` in `assets/dxwrapper/`, extract `XServerDisplayActivity.java:2582`). REAL WALL =
+guest→host transport: today only 1 buffer (color) crosses via DRI3 1-AHB=1-FD (`DRI3Extension.java:141`
+`modifiers==1255`); the SENDER of extra buffers lives in the guest Wine/WSI build (NOT this repo → wine-compat +
+guest build). PREREQ A.0: add a sub-1.0 internal-res lever (renderScale only supersamples ≥1.0 today). **Stage A
+depth** (med, useful alone → unlocks DoF/SSAO): patch DXVK to export chosen depth as **R32F** AHB (sidesteps Adreno
+depth-AHB limits), new DRI3 `modifiers==1256`, depth import variant, prove via depth-grayscale DEBUG pass. **Stage B
+SGSR2** on TAA/FSR2 games (they give MV+jitter free): new 2-pass-FS shaders, persistent history buffer, 4-binding
+descriptor for SGSR2 only, per-title jitter profile, auto-fallback SGSR2→SGSR1→passthrough, Vulkan-compositor-only
+(ASR can't). **Stage C generic = research wall** (jitter can't be generically injected) — spike only.
+**Smallest prototype:** 1 FSR2/TAA game → DXVK export depth-only R32F → accept 1256 → grayscale debug overlay;
+if frame-aligned depth correct, transport PROVEN, rest is shader math; else STOP.
+
+**SurfaceFlinger/ASR renderer (the 3rd host renderer) findings:** it hands the guest buffer STRAIGHT to the system
+compositor — NO programmable pass, so the upscaler/effect shaders CAN'T live there (by design = its speed/battery win).
+What it CAN uniquely add: `setFrameRate`/VRR (best home for #2 above), present-fence timing into the HUD, scaling/aspect
+geometry modes, true HDR10 passthrough (speculative), layer alpha/damage. Already wired: setBuffer/geometry/visibility/zorder.
+
+---
+
+### TRACK 2 — APP THEMING + BUTTON ICONS
+
+**Deliverable in hand:** interactive HTML preview (live theme switch, dark/light, accent slider, typography
+before/after, 4 screens with icon fixes, offline-safe inline SVG) at device
+`/sdcard/Download/bannerlator_theme_icons_preview.html` (+ scratchpad + `~/Downloads/`).
+
+**Finding:** the app ALREADY has a theme engine (`ui/theme/Theme.kt`/`ThemePreset.kt` = 8 presets + HSV picker
+`AppearanceScreen.kt`) → this is POLISH not a rebuild. Brand accent `#0055FF` (`Color.kt:8`).
+**3 weaknesses:** light mode is DEAD CODE (`toLightColorScheme` exists, `_isDarkMode` hardcoded true, no toggle);
+no Material You; ~730 hardcoded color literals bypass the theme (custom accent only paints PART of app until centralized).
+
+**Proposals:**
+- 3 new themes (live in the HTML): **★Midnight Cobalt** (rec, evolves brand blue; primary `#2F6DFF`/accent `#6FA8FF`/bg `#0E1117`) · **Phosphor Terminal** (retro CRT amber+green, dark-only) · **Carbon & Ember** (graphite+orange `#FF7A33`). Rec: ship Midnight Cobalt default + keep AMOLED + add Phosphor preset.
+- **Typography ramp** (high ROI, ~10 lines `Theme.kt`): app forces weight 600 on ALL text → give head700/body400/label500.
+- Un-disable light mode (setter+toggle); optional Material You preset API31+.
+- **Icon gaps:** store detail pages (`store/{Steam,Epic,Gog,Amazon}GameDetailActivity.kt`) are TEXT-ONLY buttons → add `Icons.Filled.{PlayArrow,Download,Update,Delete,InsertDriveFile,CloudUpload}`; text "←"→`ArrowBack`; Epic "✓ Installed"→`CheckCircle`; game-card placeholder `OpenInNew`→`SportsEsports`; magnifier "✕"→`Close`. `material-icons-extended` already a dep. **Highest-ROI = store action-button icons (pure additive).**
+
+**3-bucket app-wide reach verdict:** (a) AUTO once colors centralized = all out-of-game Compose UI + in-game magnifier;
+(b) small recolor fix = in-game DRAWER `XServerDrawer.kt` (wrapped in theme, inherits fonts, but ~40 hardcoded colors → stays blue under a custom accent);
+(c) feed accent MANUALLY = FPS/perf HUD (`widget/FrameRating*.java`, `PerfHudView.java`), on-screen controls (`InputControlsView.java`), legacy XML editors — via existing bridge `AppThemeState.getCurrentAccentArgb()`.
+
+**Theming sequencing:** 1) typography ramp 2) store-button icons + back-arrows 3) centralize ~730 colors per-screen 4) Midnight Cobalt + Phosphor 5) light-mode toggle + optional Material You.
+
+---
+
+### NEXT MOVE
+Start coding **Track 1 → debanding + NIS** (commits 1-6, CI-green, then user device-tests on the SPACE scene before SGSR2 spike). Everything above is durable in the two memory files; this log entry is the master index.
+
+---
+
 ## 2026-06-27 — 🏷️ 2.0 STABLE RELEASE CUT
 
 Merged the #18 turnip-ICD branch to main, bumped to **2.0 (versionCode 32)**, rewrote the README

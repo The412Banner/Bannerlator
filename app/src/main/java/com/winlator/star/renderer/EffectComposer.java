@@ -322,8 +322,15 @@ public class EffectComposer {
         // Mode 6 (Sharpen) reuses the existing AMD CAS post-effect; every other mode drops
         // the picker's CAS. Tracked separately so the parallel "Sharpen (CAS)" toggle is
         // never disturbed (both manage their own FSREffect instance).
+        // Sharpen is snapped to 5 stops {0,25,50,75,100} in the drawer; stop 0 = OFF
+        // (no CAS pass, passthrough) so only sharpness > 0 builds the picker's CAS.
         if (mode == 6) {
-            if (pickerCasEffect == null) pickerCasEffect = buildPickerCas();
+            if (upscaleSharpness > 0f) {
+                if (pickerCasEffect == null) pickerCasEffect = buildPickerCas();
+            } else if (pickerCasEffect != null) {
+                removeEffect(pickerCasEffect);
+                pickerCasEffect = null;
+            }
         } else if (pickerCasEffect != null) {
             removeEffect(pickerCasEffect);
             pickerCasEffect = null;
@@ -345,10 +352,14 @@ public class EffectComposer {
     public synchronized void setUpscaleSharpness(float sharpness01) {
         this.upscaleSharpness = sharpness01;
         // SGSR/FSR read sharpness as a live uniform (no rebuild). The CAS shader bakes its
-        // level at compile time, so rebuild the picker's CAS effect to apply a new level.
-        if (pickerCasEffect != null) {
-            removeEffect(pickerCasEffect);
-            pickerCasEffect = buildPickerCas();
+        // level at compile time, so for Sharpen mode (6) rebuild the picker's CAS effect to
+        // apply the new snapped level -- and treat the 0 stop as OFF (no CAS pass).
+        if (upscalerMode == 6) {
+            if (pickerCasEffect != null) {
+                removeEffect(pickerCasEffect);
+                pickerCasEffect = null;
+            }
+            if (sharpness01 > 0f) pickerCasEffect = buildPickerCas();
         }
         renderer.xServerView.requestRender();
     }

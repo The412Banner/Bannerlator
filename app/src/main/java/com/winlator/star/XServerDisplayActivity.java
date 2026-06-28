@@ -2083,7 +2083,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (glRenderer == null) return;
             com.winlator.star.renderer.effects.FSREffect cur = (com.winlator.star.renderer.effects.FSREffect) glRenderer.getEffectComposer().getEffect(com.winlator.star.renderer.effects.FSREffect.class);
             if (cur != null) glRenderer.getEffectComposer().removeEffect(cur);
-            if (enabled) {
+            // The drawer snaps this slider to 5 stops {0,25,50,75,100}; stop 0 = OFF (no CAS
+            // pass, passthrough), so only sharpness > 0 adds the effect.
+            if (enabled && sharpness > 0) {
                 com.winlator.star.renderer.effects.FSREffect newFsr = new com.winlator.star.renderer.effects.FSREffect();
                 // FSREffect level scale is inverted (level 1 = sharpest, level 5 = softest);
                 // map the 0..100 "Sharpness" slider so higher = sharper -> lower level.

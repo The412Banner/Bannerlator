@@ -453,9 +453,14 @@ private fun GraphicsContent(state: XServerDrawerState) {
             val initGlUpscaleSharpness by XServerDialogState.glUpscaleSharpness.collectAsState()
             var glUpscaleSharpness by remember(initGlUpscaleSharpness) { mutableIntStateOf(initGlUpscaleSharpness) }
             Spacer(Modifier.height(4.dp))
-            IntSlider("Sharpness", glUpscaleSharpness, 0..100, { glUpscaleSharpness = it }, {
-                XServerDialogState.onGlUpscaleSharpnessApply?.invoke(glUpscaleSharpness)
-            })
+            // Continuous for SGSR/FSR (3/4/5); snapped to 5 stops {0,25,50,75,100} for
+            // Sharpen mode (6), where stop 0 = OFF (no CAS pass).
+            IntSlider("Sharpness", glUpscaleSharpness, 0..100,
+                onValueChange = { glUpscaleSharpness = it },
+                onValueChangeFinished = {
+                    XServerDialogState.onGlUpscaleSharpnessApply?.invoke(glUpscaleSharpness)
+                },
+                steps = if (glUpscalerMode == 6) 3 else -1)
         }
 
         HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
@@ -471,7 +476,11 @@ private fun GraphicsContent(state: XServerDrawerState) {
         ToggleRow("Sharpen (CAS)", sgsrEnabled, true) { sgsrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
         if (sgsrEnabled) {
             Spacer(Modifier.height(4.dp))
-            IntSlider("Sharpness", sgsrSharpness, 0..100, { sgsrSharpness = it }, { pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) })
+            // Standalone CAS sharpen: always snapped to 5 stops {0,25,50,75,100}, stop 0 = OFF.
+            IntSlider("Sharpness", sgsrSharpness, 0..100,
+                onValueChange = { sgsrSharpness = it },
+                onValueChangeFinished = { pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) },
+                steps = 3)
         }
         ToggleRow("HDR", hdrEnabled, true) { hdrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
 
@@ -804,7 +813,10 @@ private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int)
 }
 
 @Composable
-private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueChange: (Int) -> Unit, onValueChangeFinished: (() -> Unit)? = null) {
+private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueChange: (Int) -> Unit, onValueChangeFinished: (() -> Unit)? = null, steps: Int = -1) {
+    // steps < 0 -> continuous (one stop per integer); steps >= 0 -> snap to that many
+    // interior stops (e.g. steps = 3 over 0..100 yields the 5 positions {0,25,50,75,100}).
+    val sliderSteps = if (steps >= 0) steps else (valueRange.last - valueRange.first - 1)
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -819,7 +831,7 @@ private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueCh
             onValueChange = { onValueChange(it.roundToInt()) },
             onValueChangeFinished = { onValueChangeFinished?.invoke() },
             valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
-            steps = valueRange.last - valueRange.first - 1,
+            steps = sliderSteps,
             modifier = Modifier.fillMaxWidth()
         )
     }

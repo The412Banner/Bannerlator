@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-06-28 — 🎨 `feat/deband-nis` FULLY DEVICE-PROVEN (NIS both renderers + Debanding) → MERGE-READY
+
+**Branch `feat/deband-nis` (tip `cc3361f`, off main, PUSHED, NOT merged).** Detail memory =
+`project_bannerlator_smooth_sharp_render_roadmap.md` (STEP 1). Device test driven via root bridge on the
+SAME device (Adreno 750), AIO graphics test app, renderer = **OpenGL | DXVK**.
+
+**NIS (NVIDIA Image Scaling, upscaler mode 7) — re-confirmed on GL (Space scene 720p→1080p):**
+- ✅ **NO Adreno runtime-compile crash** selecting NIS on the GL renderer — the one big open risk (heavy
+  unrolled NIS shader) is definitively cleared; scene keeps rendering. (Already proven on Vulkan in s2.)
+- ✅ **Perf cost now measured** (was unbenchmarked): **290fps → 200fps (~31%)**, GPU load 72%→~86%. Still smooth.
+- ✅ **Quality** (clean frozen-frame montage None/Nearest/Linear/NIS): NIS = crisp edges + detail preserved,
+  distinct from blocky Nearest & soft Linear, no artifacts → NVScaler math correct. RMSE vs `none`: NIS 0.54%.
+- ✅ **Sharpness slider** present, continuous, seeds 75, registers 0/100. Modulation confirmed qualitatively
+  (clean pixel-delta elusive — the AIO Pause releases on a slider drag; first 4.9%/0.6% numbers were motion-contaminated, discarded).
+
+**Debanding (terminal TPDF dither pass) — device-verified on GL Space scene (frozen-frame A/B):**
+- ✅ Toggle works (drawer, below HDR); ON reveals "Dither strength" slider (seeds 100).
+- ✅ **Max pixel diff = EXACTLY 1/255 (one 8-bit LSB)**, mean ~0.04/255 — textbook dither magnitude.
+- ✅ **Mean brightness perfectly preserved** (0.282483→0.282532) — no bias/tint (hallmark of correct dither).
+- ✅ Diff footprint = fine uniform noise across gradients (atmosphere/planet/moon), ~zero in black sky/saturated.
+- ⚠️ **CAVEAT:** no dramatic "bands→smooth" before/after on Space — its gradients are dark/shallow + broken by
+  stars/detail, so little gross banding to dramatize. Dither provably correct at LSB level; Space ≠ a showcase.
+  **For a striking visual demo → AIO "Detailed Nebula" scene (next test).**
+
+**🔎 SIDE-FINDING (cleanup candidate, unfixed):** in this build **None ≡ Linear EXACTLY** (RMSE 0) — base "None"
+is doing bilinear; base-sampler labels (None/Linear/Nearest) worth a look. Pairs with the known CAS/Sharpen
+slider-snapping inconsistency (GL 5-notch vs VK continuous).
+
+**▶️ NEXT:** (a) test debanding on **Detailed Nebula** for the visual showcase, then (b) MERGE `feat/deband-nis`
+to main (no device tests outstanding), then (c) START STEP 2 = VRR / refresh-rate matching (plan in detail memory).
+
+---
+
 ## 2026-06-28 — 🧩 BIONIC-FG: Track-3 FSR3 Optical Flow built + `.so` delivered for manual injection (NOT device-tested)
 
 **Resume context for the bionic-fg frame-gen shader-pool / model-expansion effort.** Detail memory =

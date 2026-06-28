@@ -16,6 +16,8 @@ overload — which **also defaults to ONLY_IF_SEAMLESS**, so the "force" path wa
 (expect override→cap, activeMode drop). Notes: 40 fps is an awkward cap for a 144 panel (144/40=3.6) — use 60;
 container was GL, also test Vulkan; if ALWAYS still won't drop it's device display policy, not our code.
 
+**➕ Capability gating (`83da657`, CI `28332020195`):** the "Match refresh rate to FPS" toggle is now **greyed out** on devices that can't do VRR — `XServerView.isDisplayVrrCapable(display)` = SDK>=30 AND >1 distinct refresh rate among supported modes; gated in the in-game drawer (XServerDrawerState.vrrSupported, seeded at launch) + the ContainerDetail editor (probes the default display), with an "Unavailable on this display" hint. Single-mode/60Hz-only + pre-Android-11 → disabled. Build 28332020195 includes BOTH this AND the seamless-only fix `c29acc0`, so it supersedes 28331250229 — install THIS one for the retest. User's 144/120/90/60 panel = capable → toggle stays enabled.
+
 **Same-device test protocol (1-thing-at-a-time):** VRR releases its vote on background (onStop→0), so measure
 while the game is foreground — user stays in game, sends "go", switches back; I fire `sleep 12; dumpsys` to
 capture with the vote reapplied. Confirm foreground via topResumedActivity.

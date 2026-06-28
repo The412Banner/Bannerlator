@@ -273,6 +273,13 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetHdr(JNIEnv*, jobj
     if (r) r->setHdr(enabled == JNI_TRUE);
 }
 
+// Terminal debanding / dither pass (TPDF/IGN). strength 0..200 -> strength/100 LSBs.
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetDeband(JNIEnv*, jobject, jlong handle, jboolean enabled, jint strength) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setDeband(enabled == JNI_TRUE, (int)strength);
+}
+
 // Real upscaler sharpness (RCAS stops + SGSR EdgeSharpness) from a 0..100 slider.
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetUpscaleSharpness(JNIEnv*, jobject, jlong handle, jint sharpness) {

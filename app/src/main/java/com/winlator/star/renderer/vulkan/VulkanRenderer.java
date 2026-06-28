@@ -109,6 +109,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetHqDownscale(long handle, boolean enabled);
     private native void nativeSetCas(long handle, boolean enabled, int sharpness);
     private native void nativeSetHdr(long handle, boolean enabled);
+    private native void nativeSetDeband(long handle, boolean enabled, int strength);
     private native void nativeSetUpscaleSharpness(long handle, int sharpness);
     private native void nativeSetFxaa(long handle, boolean enabled);
     private native void nativeSetToon(long handle, boolean enabled);
@@ -155,6 +156,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetUpscaleSharpness(nativeHandle, pendingUpscaleSharpness);
                     nativeSetCas(nativeHandle, pendingCasEnabled, pendingCasSharpness);
                     nativeSetHdr(nativeHandle, pendingHdrEnabled);
+                    nativeSetDeband(nativeHandle, pendingDebandEnabled, pendingDebandStrength);
                     nativeSetFxaa(nativeHandle, pendingFxaaEnabled);
                     nativeSetToon(nativeHandle, pendingToonEnabled);
                     nativeSetCrt(nativeHandle, pendingCrtEnabled);
@@ -737,6 +739,14 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         synchronized (lock) { if (nativeHandle != 0) nativeSetHdr(nativeHandle, enabled); }
     }
 
+    // Terminal debanding / dither. strength 0..200 -> strength/100 LSBs (100 = 1 LSB,
+    // the default). Drawer-only / session-live, mirrors setCas/setHdr.
+    public void setDeband(boolean enabled, int strength) {
+        pendingDebandEnabled = enabled;
+        pendingDebandStrength = strength;
+        synchronized (lock) { if (nativeHandle != 0) nativeSetDeband(nativeHandle, enabled, strength); }
+    }
+
     // Real upscaler sharpness (RCAS stops + SGSR EdgeSharpness) from a 0..100 slider.
     // Default 75 == the previously hard-coded 0.25 RCAS stops. Drawer-only / session-live.
     public void setUpscaleSharpness(int sharpness) {
@@ -823,6 +833,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private boolean pendingCasEnabled     = false;
     private int     pendingCasSharpness   = 60;
     private boolean pendingHdrEnabled     = false;
+    private boolean pendingDebandEnabled  = false;
+    private int     pendingDebandStrength = 100;    // slider 100 -> 1.0 LSB dither (default)
     private int     pendingUpscaleSharpness = 75;   // 75 -> 0.25 RCAS stops (legacy default)
     private boolean pendingFxaaEnabled    = false;
     private boolean pendingToonEnabled    = false;

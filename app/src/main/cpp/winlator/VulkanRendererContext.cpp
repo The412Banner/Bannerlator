@@ -23,6 +23,7 @@
 #include "color_frag.h"
 #include "ntsc_frag.h"
 #include "crt_frag.h"
+#include "deband_frag.h"
 
 // Internal sentinel for upFrame.mode: high-quality supersampling downscale.
 // (Not a user-selectable upscalerMode; gated by the hqDownscale flag.)
@@ -119,6 +120,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     if (ntscPipelineSwap  != VK_NULL_HANDLE) vk_.DestroyPipeline(device, ntscPipelineSwap, nullptr);
     if (crtPipelineOff    != VK_NULL_HANDLE) vk_.DestroyPipeline(device, crtPipelineOff, nullptr);
     if (crtPipelineSwap   != VK_NULL_HANDLE) vk_.DestroyPipeline(device, crtPipelineSwap, nullptr);
+    if (debandPipelineSwap!= VK_NULL_HANDLE) vk_.DestroyPipeline(device, debandPipelineSwap, nullptr);
     if (postPipeLayout    != VK_NULL_HANDLE) vk_.DestroyPipelineLayout(device, postPipeLayout, nullptr);
     if (offscreenRenderPass != VK_NULL_HANDLE) vk_.DestroyRenderPass(device, offscreenRenderPass, nullptr);
     if (upscaleSampler    != VK_NULL_HANDLE) vk_.DestroySampler(device, upscaleSampler, nullptr);
@@ -584,6 +586,9 @@ void VulkanRendererContext::createPostPipelines() {
     ntscPipelineSwap  = createPostPipeline(ntsc_code,  sizeof(ntsc_code),  renderPass);
     crtPipelineOff    = createPostPipeline(crt_code,   sizeof(crt_code),   offscreenRenderPass);
     crtPipelineSwap   = createPostPipeline(crt_code,   sizeof(crt_code),   renderPass);
+    // Debanding is the terminal dither pass: always last -> always writes the
+    // swapchain, so only the renderPass (swap) variant is needed.
+    debandPipelineSwap = createPostPipeline(deband_code, sizeof(deband_code), renderPass);
 }
 
 bool VulkanRendererContext::createColorTarget(int w, int h, VkImage& img, VkDeviceMemory& mem,
@@ -1089,7 +1094,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     // scaling mode (SGSR/FSR/Sharpen/downscale) treats the scale as final and writes
     // straight to the swapchain, skipping the effect chain (CRT/NTSC/etc. silently dropped).
     const bool fxOn       = upFrame.cas || upFrame.hdr || upFrame.fxaa || upFrame.toon
-                          || upFrame.color || upFrame.ntsc || upFrame.crt;
+                          || upFrame.color || upFrame.ntsc || upFrame.crt || upFrame.deband;
 
     // Composite all game windows (+ cursor) into `fb` (an offscreenRenderPass target).
     // `identity` 1:1-maps each window into a W x H target (upscaler input at game res);
@@ -1207,8 +1212,11 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     //       output-medium emulation last: analog NTSC signal, then the CRT tube.)
     //      The last active effect writes the swapchain; earlier ones ping-pong
     //      between fx1 and fx2 (2 buffers suffice for any chain length).
-    enum { FX_FXAA=0, FX_TOON, FX_COLOR, FX_CAS, FX_HDR, FX_NTSC, FX_CRT };
-    int effects[7]; int n=0;
+    //      Debanding is the TERMINAL pass: appended LAST so it always ends the
+    //      chain and writes the swapchain (the dither must match the display
+    //      quantizer, after every other effect has produced final pixels).
+    enum { FX_FXAA=0, FX_TOON, FX_COLOR, FX_CAS, FX_HDR, FX_NTSC, FX_CRT, FX_DEBAND };
+    int effects[8]; int n=0;
     if (upFrame.fxaa)  effects[n++]=FX_FXAA;
     if (upFrame.toon)  effects[n++]=FX_TOON;
     if (upFrame.color) effects[n++]=FX_COLOR;
@@ -1216,6 +1224,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     if (upFrame.hdr)   effects[n++]=FX_HDR;
     if (upFrame.ntsc)  effects[n++]=FX_NTSC;
     if (upFrame.crt)   effects[n++]=FX_CRT;
+    if (upFrame.deband)effects[n++]=FX_DEBAND;
     for (int i=0;i<n;i++) {
         const bool toSwap = (i==n-1);
         VkFramebuffer tgtFB; VkDescriptorSet tgtDS;
@@ -1230,6 +1239,8 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
             case FX_HDR:   postPass(toSwap?hdrPipelineSwap  :hdrPipelineOff,   tgtFB, toSwap, curDS, &upFrame.hdrPC,   sizeof(upFrame.hdrPC));   break;
             case FX_NTSC:  postPass(toSwap?ntscPipelineSwap :ntscPipelineOff,  tgtFB, toSwap, curDS, &upFrame.ntscPC,  sizeof(upFrame.ntscPC));  break;
             case FX_CRT:   postPass(toSwap?crtPipelineSwap  :crtPipelineOff,   tgtFB, toSwap, curDS, &upFrame.crtPC,   sizeof(upFrame.crtPC));   break;
+            // Deband is always last (toSwap == true here) -> swap-only pipeline.
+            case FX_DEBAND:postPass(debandPipelineSwap,                        tgtFB, toSwap, curDS, &upFrame.debandPC,sizeof(upFrame.debandPC));break;
         }
         if (!toSwap) curDS = tgtDS;
     }
@@ -1249,12 +1260,13 @@ void VulkanRendererContext::planUpscaleFrame() {
     upFrame.color= colorEnabled;
     upFrame.ntsc = ntscEnabled;
     upFrame.crt  = crtEnabled;
+    upFrame.deband = debandEnabled;
     if (containerWidth<=0 || containerHeight<=0) return;
     if (swapchain==VK_NULL_HANDLE) return;
 
     // Any of the 7 composable effects engages the post chain (even at mode 0/1/2).
     const bool fxOn = casOn || hdrEnabled || fxaaEnabled || toonEnabled ||
-                      colorEnabled || ntscEnabled || crtEnabled;
+                      colorEnabled || ntscEnabled || crtEnabled || debandEnabled;
     const float scW=(float)swapchainExt.width, scH=(float)swapchainExt.height;
     const bool renderAboveDisplay =
         ((int)swapchainExt.width<containerWidth || (int)swapchainExt.height<containerHeight);
@@ -1364,13 +1376,14 @@ void VulkanRendererContext::planUpscaleFrame() {
     if (fxOn && upFrame.active) {
         const int fw=(int)swapchainExt.width, fh=(int)swapchainExt.height;
         const int nEffects=(int)fxaaEnabled+(int)toonEnabled+(int)colorEnabled+
-                           (int)casOn+(int)hdrEnabled+(int)ntscEnabled+(int)crtEnabled;
+                           (int)casOn+(int)hdrEnabled+(int)ntscEnabled+(int)crtEnabled+
+                           (int)debandEnabled;
         bool ok = ensureFx1(fw,fh) && (nEffects<2 || ensureFx2(fw,fh));
         if (!ok) {
             // Out of memory for the fx targets: skip effects this frame. Keep the
             // scaling pass if there was one; otherwise fall back to the direct path.
             upFrame.cas=upFrame.hdr=upFrame.fxaa=upFrame.toon=
-                upFrame.color=upFrame.ntsc=upFrame.crt=false;
+                upFrame.color=upFrame.ntsc=upFrame.crt=upFrame.deband=false;
             if (!scaling) upFrame.active=false;
             return;
         }
@@ -1417,6 +1430,13 @@ void VulkanRendererContext::planUpscaleFrame() {
             CrtPushConstants& cr=upFrame.crtPC;
             cr.ndc[0]=full[0]; cr.ndc[1]=full[1]; cr.ndc[2]=full[2]; cr.ndc[3]=full[3];
             cr.resolution[0]=(float)fw; cr.resolution[1]=(float)fh;
+        }
+        if (debandEnabled) {
+            DebandPushConstants& d=upFrame.debandPC;
+            d.ndc[0]=full[0]; d.ndc[1]=full[1]; d.ndc[2]=full[2]; d.ndc[3]=full[3];
+            d.resolution[0]=(float)fw; d.resolution[1]=(float)fh;
+            int s = debandStrength; if (s<0) s=0; if (s>200) s=200;
+            d.strength = (float)s / 100.0f;      // slider 100 -> 1.0 LSB (default)
         }
     }
 }
@@ -1881,6 +1901,14 @@ void VulkanRendererContext::setHdr(bool enabled) {
     if (hdrEnabled==enabled) return;
     RLOG("setHdr: %d -> %d", (int)hdrEnabled, (int)enabled);
     hdrEnabled=enabled;
+    needsRender.store(true); dirtyCV.notify_one();
+}
+
+void VulkanRendererContext::setDeband(bool enabled, int strength) {
+    if (strength<0) strength=0; if (strength>200) strength=200;
+    if (debandEnabled==enabled && debandStrength==strength) return;
+    RLOG("setDeband: %d/%d -> %d/%d", (int)debandEnabled, debandStrength, (int)enabled, strength);
+    debandEnabled=enabled; debandStrength=strength;
     needsRender.store(true); dirtyCV.notify_one();
 }
 

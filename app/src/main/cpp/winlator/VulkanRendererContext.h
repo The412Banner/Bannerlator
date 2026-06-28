@@ -178,6 +178,11 @@ struct CrtPushConstants {                  // 24 bytes
     float ndc[4];
     float resolution[2];                   // input texture size in px (unused by shader)
 };
+struct DebandPushConstants {               // 28 bytes
+    float ndc[4];
+    float resolution[2];                   // input texture size in px (layout parity)
+    float strength;                        // dither amplitude in LSBs (1.0 = +/-1/255)
+};
 
 class VulkanRendererContext {
 public:
@@ -231,6 +236,7 @@ public:
     void setHqDownscale(bool enabled);
     void setCas(bool enabled, int sharpness);
     void setHdr(bool enabled);
+    void setDeband(bool enabled, int strength);
     void setUpscaleSharpness(int sharpness);
     void setFxaa(bool enabled);
     void setToon(bool enabled);
@@ -400,6 +406,9 @@ private:
     int               casSharpness      = 60;     // slider 0..100 -> CAS SHARPNESS
     bool              hdrEnabled        = false;
     float             upscaleSharpness01 = 0.75f; // slider/100; RCAS lobe scale, SGSR edge derived
+    // Debanding: terminal TPDF/IGN dither pass before the 8-bit swapchain quantize.
+    bool              debandEnabled     = false;
+    int               debandStrength    = 100;    // slider 0..200 -> strength/100 LSBs
 
     // Phase 2 screen effects (GL EffectComposer parity). FXAA/Toon/CRT/NTSC are
     // binary; Color is the brightness/contrast/gamma grade (always-applied via the
@@ -441,6 +450,8 @@ private:
     VkPipeline        ntscPipelineSwap  = VK_NULL_HANDLE;
     VkPipeline        crtPipelineOff    = VK_NULL_HANDLE;
     VkPipeline        crtPipelineSwap   = VK_NULL_HANDLE;
+    // Debanding is always the LAST effect (terminal) -> only a swapchain variant.
+    VkPipeline        debandPipelineSwap = VK_NULL_HANDLE;
 
     // offscreen composite target @ game/container resolution
     VkImage           offscreenImg  = VK_NULL_HANDLE;
@@ -488,6 +499,7 @@ private:
         bool color = false; // snapshot of colorEnabled (non-neutral grade)
         bool ntsc = false;  // snapshot of ntscEnabled
         bool crt = false;   // snapshot of crtEnabled
+        bool deband = false;// snapshot of debandEnabled (terminal dither)
         SgsrPushConstants      sgsrPC{};
         NisPushConstants       nisPC{};
         EasuPushConstants      easuPC{};
@@ -500,6 +512,7 @@ private:
         ColorPushConstants     colorPC{};
         NtscPushConstants      ntscPC{};
         CrtPushConstants       crtPC{};
+        DebandPushConstants    debandPC{};
     } upFrame;
 
     VkCommandPool                cmdPool = VK_NULL_HANDLE;

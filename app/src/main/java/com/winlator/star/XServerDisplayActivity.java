@@ -2079,8 +2079,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // so End Process / Bring to Front "do nothing" (the process list still populates because
         // startTmPolling() registers its own listener). This was the root cause of the Vulkan/ASR
         // Task Manager bug.
-        Log.d("TMDBG", "initInlineTabStates: wiring TM callbacks (renderer=" +
-            (renderer != null ? renderer.getClass().getSimpleName() : "null") + ")");
         setupTmCallbacks();
 
         // Screen Effects / SGSR / HDR are GL EffectComposer features; the Vulkan renderer has no
@@ -3724,30 +3722,24 @@ return true;
         // DesktopHelper.setFocusedWindow / GameNative). Falls back to a plain by-name UDP send if
         // we can't resolve the window.
         ds.onTmBringToFront = (name, pid) -> {
-            Log.d("TMDBG", "onTmBringToFront cb: name=" + name + " pid=" + pid + " winHandler=" + (winHandler != null));
             if (winHandler == null) return;
             Window target = null;
             try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                 target = xServer.windowManager.findWindowWithProcessId(pid);
-            } catch (Exception e) {
-                Log.d("TMDBG", "onTmBringToFront window lookup failed: " + e);
-            }
+            } catch (Exception ignored) {}
             if (target != null) {
                 final Window window = target;
-                Log.d("TMDBG", "onTmBringToFront found window handle=" + window.getHandle() + " class=" + window.getClassName());
                 try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                     Window parent = window.getParent();
                     boolean parentIsRoot = parent != null && parent == xServer.windowManager.rootWindow;
                     xServer.windowManager.setFocus(window,
                         parentIsRoot ? WindowManager.FocusRevertTo.POINTER_ROOT : WindowManager.FocusRevertTo.PARENT);
-                } catch (Exception e) {
-                    Log.d("TMDBG", "onTmBringToFront setFocus failed: " + e);
-                }
+                } catch (Exception ignored) {}
                 winHandler.bringToFront(window.getClassName(), window.getHandle());
                 // Force a recomposite so the restack is visible on the native Vulkan/ASR path too.
                 try { xServerView.requestRender(); } catch (Exception ignored) {}
             } else {
-                Log.d("TMDBG", "onTmBringToFront no window for pid=" + pid + ", falling back to by-name UDP");
+                // Couldn't resolve the window host-side; fall back to a plain by-name UDP raise.
                 winHandler.bringToFront(name);
             }
         };
@@ -3759,7 +3751,6 @@ return true;
         // cause of the Vulkan/ASR breakage was this whole method bailing before the callbacks were
         // wired — now fixed by calling setupTmCallbacks() ahead of the GL-only early return.)
         ds.onTmKillProcess = name -> {
-            Log.d("TMDBG", "onTmKillProcess cb: name=" + name + " winHandler=" + (winHandler != null));
             if (winHandler != null) winHandler.killProcess(name);
         };
 

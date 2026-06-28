@@ -177,15 +177,13 @@ public class WinHandler {
     }
 
     public void killProcess(final String processName) {
-        Log.d("TMDBG", "killProcess enqueued: name=" + processName + " initReceived=" + initReceived);
         addAction(() -> {
             sendData.rewind();
             sendData.put(RequestCodes.KILL_PROCESS);
             byte[] bytes = processName.getBytes();
             sendData.putInt(bytes.length);
             sendData.put(bytes);
-            boolean sent = sendPacket(CLIENT_PORT);
-            Log.d("TMDBG", "killProcess packet sent=" + sent + " name=" + processName);
+            sendPacket(CLIENT_PORT);
         });
     }
 
@@ -262,7 +260,6 @@ public class WinHandler {
     }
 
     public void bringToFront(final String processName, final long handle) {
-        Log.d("TMDBG", "bringToFront enqueued: name=" + processName + " handle=" + handle + " initReceived=" + initReceived);
         addAction(() -> {
             sendData.rewind();
             try {
@@ -277,8 +274,7 @@ public class WinHandler {
                 e.printStackTrace();
                 sendData.rewind();
             }
-            boolean sent = sendPacket(CLIENT_PORT);
-            Log.d("TMDBG", "bringToFront packet sent=" + sent + " name=" + processName + " handle=" + handle);
+            sendPacket(CLIENT_PORT);
         });
     }
 

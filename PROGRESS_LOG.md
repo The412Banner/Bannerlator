@@ -5,8 +5,9 @@
 ## 2026-06-28 — 🛠️ BUILT: Debanding + NIS upscaler (branch `feat/deband-nis`, CI pending, NOT device-tested)
 
 Implemented Track-1 step 1 from the master plan below. **Branch `feat/deband-nis` off main, 6 commits
-`194b7b9`→`cc3e0e7`, NOT merged, NOT pushed-then-merged, NOT device-tested.** Shaders compile clean
-(glslangValidator), all cross-layer contracts reviewed+consistent. Awaiting CI + on-device A/B.
+`194b7b9`→`cc3e0e7` (+log `a53a226`), PUSHED, NOT merged, NOT device-tested.** Shaders compile clean
+(glslangValidator), all cross-layer contracts reviewed+consistent. **CI dispatched: run `28319416413`
+(build-artifacts.yml — CI is manual workflow_dispatch, not auto-on-push).** Awaiting CI result + on-device A/B.
 
 **DEBANDING** — terminal TPDF/IGN dither pass (float-only hash, Adreno-safe), `deband.frag`+header,
 appended LAST as `FX_DEBAND`, registered in fxOn in BOTH planUpscaleFrame AND recordUpscalePasses

@@ -49,32 +49,32 @@
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) |
-| **Version** | Bannerlator **V 1.9.2** — built from Star **marcescence** (`versionName 1.9.2`, `versionCode 31`) |
+| **Version** | Bannerlator **V 2.0** — built from Star **marcescence** (`versionName 2.0`, `versionCode 32`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 
 ---
 
-## 🆕 What's New in 1.9.2
+## 🆕 What's New in 2.0
 
-A graphics-focused release: the default **Vulkan** renderer gains real spatial upscaling **and** the full screen-effect chain — both were previously limited to the OpenGL renderer / unavailable on the Vulkan path.
+The graphics-enhancement program is now **complete across both renderers**. Version 1.9.2 brought real spatial upscaling and the full effect chain to the **Vulkan** renderer; **2.0 brings the same upscaler suite to the OpenGL renderer**, retunes every sharpness slider, fixes the magnifier, adds a FEXCore TSO preset, and **adds Turnip support for Android 10 / older devices**.
 
-**🖼️ Vulkan upscalers (new) — live in the in-game drawer.** Pick a **Scaling mode** that engages whenever a game renders below your screen resolution:
-- **SGSR** — Snapdragon Game Super Resolution 1.0 (single-pass, edge-adaptive)
-- **FSR** / **FSR-Fit** — AMD FidelityFX Super Resolution 1.0 (EASU + RCAS), fill or aspect-preserving
-- **Sharpen** — RCAS-only sharpening at native resolution, plus **Linear** / **Nearest** and an adjustable **Sharpness** slider
+**🖼️ OpenGL renderer upscalers (new) — full parity with Vulkan.** The same **Scaling mode** picker is now live in the in-game drawer on the **OpenGL** renderer too: **SGSR**, **FSR** / **FSR-Fit**, **Sharpen**, plus **Linear** / **Nearest**. The OpenGL path renders the scene at a reduced internal resolution and reconstructs it back up — so you can get a sharper image *and* a performance headroom on the OpenGL renderer, not just Vulkan.
 
-**🔍 Supersampling (new) — set before launch.** **Render scale** (Off / 1.25× / 1.5× / 2×) is a per-container / per-shortcut setting (chosen before launch, since it changes render resolution): the game renders *above* your screen resolution and the Vulkan compositor downsamples it with a Lanczos-2 filter for DSR / OGSSAA-style anti-aliasing — the opposite direction to the upscalers.
+**🎚️ Retuned sharpness sliders (both renderers).** Every sharpness slider now spans a clean, useful range — **0 = off (no sharpening at all)** through **100 = maximum**:
+- **SGSR** sharpness range **doubled** for a much stronger effect at the top end.
+- **FSR / Sharpen** now pass through completely untouched at 0 (previously they always added a little sharpening).
+- The **Sharpen** mode snaps to **5 clear steps** (0 / 25 / 50 / 75 / 100), since its sharpening has five discrete levels — no more dead slider travel.
 
-**🎨 Vulkan post-processing effects (new) — live in the in-game drawer.** Composable on top of any scaling mode: **CAS** (Contrast-Adaptive Sharpening) with a sharpness slider, **fake HDR**, **FXAA**, **Toon**, **CRT**, **NTSC**, and **Color** grading (brightness / contrast / gamma). These previously only ran on the OpenGL renderer.
+**🔍 Magnifier fixed.** The in-game **Magnifier** (zoom) overlay now works on the **default Vulkan renderer** (and the others) — previously its +/− buttons did nothing unless you were on OpenGL.
 
-**⚙️ Behaviour & fixes.**
-- **Native Rendering** and the post-processing presets are now **mutually exclusive** — Native does a direct scanout that bypasses the compositor (where the presets live), so enabling one cleanly disables the other.
-- **Linear** is now the default scaling mode.
-- **On-screen controls opacity fixed** — at low Overlay Opacity the filled "key" buttons (MRB / BKSP / SPACE / ENTER) kept a solid blue background while everything else faded; the button drop-shadow now tracks opacity, so 0% truly hides every control.
-- Fixed an invisible black-on-black **"Native Rendering"** toast.
+**⚙️ FEXCore "Performance (TSO)" preset (new).** A new built-in FEXCore preset: Performance settings with **Total Store Ordering** enabled — for the many games that need correct memory ordering without paying the full TSO cost.
 
-> ℹ️ Credit: FSR1-on-the-Vulkan-compositor was pioneered by **[GameNative](https://github.com/utkarshdalal/GameNative)** (the blueprint we built on), and SGSR appears on the Vulkan path of other Pluvia-based forks too; Bannerlator brings **both** upscalers together on the default path. The SGSR (BSD-3, Qualcomm) and FSR / CAS (MIT, AMD GPUOpen) shaders are bundled with their upstream license headers. See [Credits](#-credits).
+**📱 Turnip on Android 10 / older devices (new).** A new **`turnip-26.1.0`** graphics-driver option loads Mesa Turnip as a **direct system Vulkan ICD** instead of through the adrenotools hook, so it works on **Android versions below 11** (e.g. Snapdragon 845) where the hook-based drivers silently fall back to the system driver. The existing adrenotools drivers are unchanged; this is an additional option in the graphics-driver list.
+
+> ⚠️ **Updating from a previous release? Reinstall imageFS to get the new Turnip driver.** The `turnip-26.1.0` driver is installed into imageFS, so a plain app update won't add it on its own. Open the app's **Settings → scroll to the bottom → Reinstall ImageFS**. (A **fresh** install of 2.0 already includes it — no action needed.)
+
+> ℹ️ The OpenGL upscalers reuse the same SGSR (BSD-3, Qualcomm) and FSR / CAS (MIT, AMD GPUOpen) shader code as the Vulkan path, ported to the GLES effect pipeline. The Android-10 Turnip driver is Mesa's open-source **Turnip 26.1.0** (Freedreno team), packaged in the same direct-ICD form Winlator ships. See [Credits](#-credits).
 
 ---
 
@@ -95,13 +95,13 @@ Everything Bannerlator offers, at a glance. No PC and no root required — it ru
 - **WineD3D / DirectDraw** OpenGL fallback paths for older titles.
 - **Proton bionic** translation layers (via GameNative).
 - **VEGAS** — Adreno-optimized DXVK for reduced stutter and real-time upscaling on mobile GPUs.
-- **Turnip / Mesa** open-source Adreno Vulkan drivers, with Timeline Semaphore patches for newer DXVK; bundled and downloadable driver options.
+- **Turnip / Mesa** open-source Adreno Vulkan drivers, with Timeline Semaphore patches for newer DXVK; bundled and downloadable driver options. A **`turnip-26.1.0`** option loads Turnip as a direct system Vulkan ICD (no adrenotools hook) so it works on **Android 10 / pre-11 devices** too.
 
 ### 🖥️ Renderers
 - Multiple host renderers — **Vulkan**, **OpenGL**, and **VirGL**.
 - > ℹ️ The **Vulkan host renderer** uses the rendering path from **[StevenMXZ](https://github.com/StevenMXZ/Winlator-Ludashi)** (Winlator-Ludashi); its `AHardwareBuffer` present path — what makes Vulkan / DXVK / VKD3D content actually display correctly — was ported from / cross-examined against **[GameNative](https://github.com/utkarshdalal/GameNative)**. See [Credits](#-credits).
 - **Native Rendering+** — low-latency direct-scanout presentation on the Vulkan renderer (mutually exclusive with the Vulkan post-processing presets below, since it bypasses the compositor).
-- **Spatial upscalers on the Vulkan renderer** — **SGSR** (Snapdragon GSR 1.0) and **FSR / FSR-Fit** (AMD FidelityFX Super Resolution 1.0), plus a **Sharpen** (RCAS) mode and Linear / Nearest, all switchable live in the in-game drawer. Engages when a game renders below display resolution.
+- **Spatial upscalers on *both* the Vulkan *and* OpenGL renderers** — **SGSR** (Snapdragon GSR 1.0) and **FSR / FSR-Fit** (AMD FidelityFX Super Resolution 1.0), plus a **Sharpen** (RCAS) mode and Linear / Nearest, all switchable live in the in-game drawer. On Vulkan it engages when a game renders below display resolution; on OpenGL it renders the scene at a reduced internal resolution and reconstructs it back up. Every sharpness slider runs 0 (off) → 100 (max).
 - **Supersampling (Render scale)** — render above display resolution (1.25× / 1.5× / 2×) and downsample with a Lanczos-2 filter for DSR / OGSSAA-style anti-aliasing; set per container / per shortcut.
 - **Screen effects on both the OpenGL *and* Vulkan renderers** — FXAA, Toon, CRT, NTSC, Color grading, **CAS** sharpening, and fake-HDR (the Vulkan path runs them through a new post-processing pipeline; previously they were OpenGL-only).
 - Adjustable resolution and frame-rate limit.

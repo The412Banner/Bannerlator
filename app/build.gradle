@@ -57,7 +57,7 @@ android {
     defaultConfig {
         minSdkVersion 26
         targetSdkVersion 28
-        versionCode 32
+        versionCode 33
         versionName "2.0"
 
         externalNativeBuild {

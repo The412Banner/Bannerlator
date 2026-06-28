@@ -1131,6 +1131,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         startTime = System.currentTimeMillis();
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
         ProcessHelper.resumeAllWineProcesses();
+        // Re-assert the VRR vote — onStop() released it when backgrounded.
+        reapplyVrr();
     }
 
     @Override
@@ -1286,6 +1288,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         super.onStop();
         savePlaytimeData();
         handler.removeCallbacks(savePlaytimeRunnable);
+        // Release the panel refresh-rate vote while backgrounded so we don't pin the display rate
+        // for whatever is composited on top. onResume() re-asserts it.
+        if (xServerView != null) xServerView.setDisplayFrameRate(0f, VRR_FRAME_RATE_COMPATIBILITY);
     }
 
     private void releasePointerCaptureIfNeeded(String reason) {
@@ -2961,6 +2966,10 @@ return true;
     // the guest by pacing its IdleNotify (so the game itself slows -> in-game HUD reflects it, GPU
     // drops). Also feeds the renderer's SurfaceControl frame-rate hint (active in Vulkan native mode).
     private void applyFpsLimit(int fps) {
+        // Capture the un-guarded cap (the limiter value, 0 = uncapped) BEFORE the lsfg guard zeroes
+        // the local `fps`. VRR votes the DISPLAYED rate, which in the lsfg-governs case is cap x mult
+        // even though the present pacer steps aside (fps -> 0). This is the only place the two diverge.
+        int vrrCap = fps;
         // Step aside while lsfg-vk is multiplying -- it paces itself (see lsfgGovernsFps()).
         if (lsfgGovernsFps()) fps = 0;
         com.winlator.star.xserver.extensions.PresentExtension pe =
@@ -2970,6 +2979,42 @@ return true;
             HostRenderer r = xServerView.getRenderer();
             if (r != null) r.setFpsLimit(fps);
         }
+        // VRR / refresh-rate matching: vote the panel cadence to match the displayed FPS.
+        applyVrr(vrrCap);
+    }
+
+    // Surface.FRAME_RATE_COMPATIBILITY_DEFAULT (== 0). Referenced as a literal so the call site is not
+    // an API-30 field access; the real API call is guarded inside XServerView.setDisplayFrameRate.
+    private static final int VRR_FRAME_RATE_COMPATIBILITY = 0;
+
+    // Vote a panel refresh rate that matches the DISPLAYED frame rate (VRR / refresh-rate matching).
+    // Complementary to the FPS limiter: the limiter caps the producer/render rate, this matches the
+    // display/panel rate so the panel cadence follows render cadence (smoother + power savings).
+    //   cap == 0 (limiter off / uncapped)  -> vote 0f (clear; panel runs free)
+    //   matchRefreshRate OFF               -> vote 0f (never vote)
+    //   normal / bionic-fg                 -> vote cap
+    //   lsfg multiplying (mult >= 2)       -> vote cap x mult (the displayed rate)
+    private void applyVrr(int cap) {
+        if (xServerView == null) return;
+        float vrrRate = 0.0f;
+        if (container != null && resolvedMatchRefreshRate() && cap > 0) {
+            if (lsfgGovernsFps()) {
+                int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
+                vrrRate = (float) cap * (mult >= 2 ? mult : 1);
+            } else {
+                vrrRate = (float) cap;
+            }
+        }
+        xServerView.setDisplayFrameRate(vrrRate, VRR_FRAME_RATE_COMPATIBILITY);
+    }
+
+    // Re-apply the VRR vote from the current remembered limiter state (used on resume and when the
+    // match-refresh toggle changes live, without re-poking the present pacer / renderer).
+    private void reapplyVrr() {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        boolean limOn  = s.getFpsLimiterEnabled().getValue();
+        int   limitVal = s.getFpsLimit().getValue();
+        applyVrr(limOn && limitVal > 0 ? limitVal : 0);
     }
 
 

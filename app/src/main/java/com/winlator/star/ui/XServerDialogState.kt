@@ -131,6 +131,19 @@ object XServerDialogState {
     fun interface UpscaleSharpnessCallback { fun invoke(sharpness: Int) }
     @JvmField var onUpscaleSharpnessApply: UpscaleSharpnessCallback? = null
 
+    // Terminal debanding / dither. strength 0..200 -> strength/100 LSBs (100 = 1 LSB,
+    // the default). Drawer-only / session-live, same lifecycle as CAS/HDR.
+    private val _debandEnabled = MutableStateFlow(false)
+    val debandEnabled: StateFlow<Boolean> = _debandEnabled
+    fun setDebandEnabled(v: Boolean) { _debandEnabled.value = v }
+
+    private val _debandStrength = MutableStateFlow(100)
+    val debandStrength: StateFlow<Int> = _debandStrength
+    fun setDebandStrength(v: Int) { _debandStrength.value = v }
+
+    fun interface DebandApplyCallback { fun invoke(enabled: Boolean, strength: Int) }
+    @JvmField var onDebandApply: DebandApplyCallback? = null
+
     // -------------------------------------------------------------------------
     // Vulkan Phase 2 screen effects (GL EffectComposer parity): Color grade
     // (brightness/contrast/gamma sliders) + FXAA/Toon/CRT/NTSC toggles. Drawer-only
@@ -381,6 +394,8 @@ object XServerDialogState {
         _casSharpness.value    = 60
         _hdrVkEnabled.value    = false
         _upscaleSharpness.value = 75
+        _debandEnabled.value   = false
+        _debandStrength.value  = 100
         _vkBrightness.value    = 0f
         _vkContrast.value      = 0f
         _vkGamma.value         = 1.0f
@@ -416,6 +431,7 @@ object XServerDialogState {
         onSgsrUpdate = null
         onUpscalerApply = null
         onCasApply = null; onHdrApply = null; onUpscaleSharpnessApply = null
+        onDebandApply = null
         onVulkanScreenEffectsApply = null
         onVibrationSlotChanged = null
         onInputControlsConfirm = null; onInputControlsSettings = null

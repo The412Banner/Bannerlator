@@ -448,8 +448,8 @@ private fun GraphicsContent(state: XServerDrawerState) {
             glUpscalerMode = it
             XServerDialogState.onGlUpscalerApply?.invoke(it)
         }
-        // "Sharpness" drives SGSR EdgeSharpness / FSR RCAS / CAS, for the sharpening modes.
-        if (glUpscalerMode == 3 || glUpscalerMode == 4 || glUpscalerMode == 5 || glUpscalerMode == 6) {
+        // "Sharpness" drives SGSR EdgeSharpness / FSR RCAS / CAS / NIS, for the sharpening modes.
+        if (glUpscalerMode == 3 || glUpscalerMode == 4 || glUpscalerMode == 5 || glUpscalerMode == 6 || glUpscalerMode == 7) {
             val initGlUpscaleSharpness by XServerDialogState.glUpscaleSharpness.collectAsState()
             var glUpscaleSharpness by remember(initGlUpscaleSharpness) { mutableIntStateOf(initGlUpscaleSharpness) }
             Spacer(Modifier.height(4.dp))
@@ -483,6 +483,9 @@ private fun GraphicsContent(state: XServerDrawerState) {
                 steps = 3)
         }
         ToggleRow("HDR", hdrEnabled, true) { hdrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
+
+        // Terminal debanding (TPDF dither) — kills 8-bit gradient banding. Drawer-only / session-live.
+        DebandControls()
 
         HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
@@ -535,9 +538,9 @@ private fun GraphicsContent(state: XServerDrawerState) {
             XServerDialogState.onUpscalerApply?.invoke(it)
         }
 
-        // "Sharpness" controls the REAL upscaler sharpness (RCAS stops / SGSR EdgeSharpness)
-        // and only applies to the sharpening scaling modes (SGSR/FSR/FSR-Fit/Sharpen).
-        if (upscalerMode == 3 || upscalerMode == 4 || upscalerMode == 5 || upscalerMode == 6) {
+        // "Sharpness" controls the REAL upscaler sharpness (RCAS stops / SGSR EdgeSharpness /
+        // NIS sharpness) and only applies to the sharpening scaling modes (SGSR/FSR/FSR-Fit/Sharpen/NIS).
+        if (upscalerMode == 3 || upscalerMode == 4 || upscalerMode == 5 || upscalerMode == 6 || upscalerMode == 7) {
             val initUpscaleSharpness by XServerDialogState.upscaleSharpness.collectAsState()
             var upscaleSharpness by remember(initUpscaleSharpness) { mutableIntStateOf(initUpscaleSharpness) }
             Spacer(Modifier.height(4.dp))
@@ -570,6 +573,9 @@ private fun GraphicsContent(state: XServerDrawerState) {
             hdrVkEnabled = it
             XServerDialogState.onHdrApply?.invoke(hdrVkEnabled)
         }
+
+        // Terminal debanding (TPDF dither) — kills 8-bit gradient banding. Drawer-only / session-live.
+        DebandControls()
 
         HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
@@ -767,11 +773,35 @@ private fun pushSgsrUpdate(enabled: Boolean, sharpness: Int, hdr: Boolean) {
 // Scaling-mode picker: 7 options (0=None 1=Linear 2=Nearest 3=SGSR 4=FSR 5=FSR Fit
 // 6=Sharpen) laid out as rows of four segmented chips (same box-chip idiom as
 // FgMultiplierButtons). Grayed out when the active host renderer is not Vulkan.
+// Terminal debanding controls (toggle + optional dither-strength slider), shared by the
+// GL and Vulkan graphics blocks. Reads/writes the single _debandEnabled/_debandStrength
+// state and fires onDebandApply; only one renderer block is shown per session, so the
+// shared state never conflicts. strength 0..200 (CPU maps /100 to LSBs, default 100 = 1 LSB).
+@Composable
+private fun DebandControls() {
+    val initDebandEnabled  by XServerDialogState.debandEnabled.collectAsState()
+    val initDebandStrength by XServerDialogState.debandStrength.collectAsState()
+    var debandEnabled  by remember(initDebandEnabled)  { mutableStateOf(initDebandEnabled) }
+    var debandStrength by remember(initDebandStrength) { mutableIntStateOf(initDebandStrength) }
+    ToggleRow("Debanding", debandEnabled, true) {
+        debandEnabled = it
+        XServerDialogState.onDebandApply?.invoke(debandEnabled, debandStrength)
+    }
+    if (debandEnabled) {
+        Spacer(Modifier.height(4.dp))
+        IntSlider("Dither strength", debandStrength, 0..200,
+            onValueChange = { debandStrength = it },
+            onValueChangeFinished = {
+                XServerDialogState.onDebandApply?.invoke(debandEnabled, debandStrength)
+            })
+    }
+}
+
 @Composable
 private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int) -> Unit) {
     val options = listOf(
         0 to "None", 1 to "Linear", 2 to "Nearest",
-        3 to "SGSR", 4 to "FSR", 5 to "FSR (Fit)", 6 to "Sharpen"
+        3 to "SGSR", 4 to "FSR", 5 to "FSR (Fit)", 6 to "Sharpen", 7 to "NIS"
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         options.chunked(4).forEach { row ->

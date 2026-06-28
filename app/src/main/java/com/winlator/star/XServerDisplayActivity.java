@@ -1958,6 +1958,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (enabled) disableNativeRenderingForPreset();
                 vkr.setHdr(enabled);
             };
+            // Terminal debanding (TPDF dither) — runs in the compositor post pass, so enabling
+            // it (like CAS/HDR) turns Native Rendering off. Default off; seed the drawer state.
+            ds.setDebandEnabled(false);
+            ds.setDebandStrength(100);
+            ds.onDebandApply = (enabled, strength) -> {
+                if (enabled) disableNativeRenderingForPreset();
+                vkr.setDeband(enabled, strength);
+            };
             ds.onUpscaleSharpnessApply = (sharpness) -> vkr.setUpscaleSharpness(sharpness);
             ds.onVulkanScreenEffectsApply = (brightness, contrast, gamma, fxaa, toon, crt, ntsc) -> {
                 // color grade neutral = brightness 0 / contrast 0 / gamma 1.0
@@ -1969,6 +1977,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ds.onUpscalerApply = null;
             ds.onCasApply = null;
             ds.onHdrApply = null;
+            ds.onDebandApply = null;
             ds.onUpscaleSharpnessApply = null;
             ds.onVulkanScreenEffectsApply = null;
         }
@@ -2121,6 +2130,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         ds.onGlUpscaleSharpnessApply = (sharpness) -> {
             if (glRenderer == null) return;
             glRenderer.getEffectComposer().setUpscaleSharpness(sharpness / 100.0f);
+        };
+
+        // GL terminal debanding (TPDF dither) — drawer-only / session-live, default off.
+        ds.setDebandEnabled(false);
+        ds.setDebandStrength(100);
+        ds.onDebandApply = (enabled, strength) -> {
+            if (glRenderer == null) return;
+            glRenderer.getEffectComposer().setDeband(enabled, strength);
         };
 
         setupTmCallbacks();

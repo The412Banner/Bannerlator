@@ -2364,3 +2364,15 @@ User forced the whole Android system to landscape, ran AIO cube on GL|DXVK, Nati
 **CONCLUSION: landscape long-shot = DEAD END on this device with current code.** The overlay still doesn't engage. The blocker (rotated game buffer, overlay-ineligible on this Adreno DPU) is confirmed and is baked into the scanout handoff.
 
 **One UNTESTED lever this surfaces (speculative, code change):** make the scanout transform ORIENTATION-AWARE — deliver the game buffer at transform 0 when the display is genuinely landscape-native (and ensure buffer dims match), so no rotated layer is in the stack. MIGHT promote + still display correctly IF the guest render orientation is adjusted to match. Risky (orientation/fit), unproven, and GameHub doesn't do it. NOT recommended without the engineer validating it's even coherent. The safe path remains: re-scope native = latency (B) feature, salvage P4+P5, and confirm the true overlay win on a genuinely landscape-native panel where the buffer naturally needs no rotation.
+
+---
+
+## ✅ SALVAGE MERGE 2026-06-29 — P4+P5 landed on main as "GL Native Rendering (Low-Latency Mode)"; dead overlay-fix reverted.
+
+Per user direction ("give me P4 and P5 with a solid explanation for the next release"), after today's findings (overlay/C-win unattainable on this portrait device for ANY renderer; native = latency/B-win feature):
+- **Reverted `7aaacaf`** (overlay-fix #2 translucent base — was the ONLY overlay-fix code that had reached main; proven dead/counterproductive on device today). Revert `ee63ab1` (-43 lines, restores clean P3 base).
+- **Cherry-picked P4 (`d44b560`→`fcaf104`)** per-frame game push + **P5 (`64b7cfb`→`ba0d35d`)** effect/scaling grey-out onto the clean base (authored against 2fe3f10 = post-revert state → applied with ZERO conflicts). Verified: GLRenderer.presentScanout present, XServerDrawer glEnabled present.
+- main now = P0+P1+P2+P3+P4+P5, NO overlay-fix code. P4+P5 were device-proven FUNCTIONAL (native active, game renders correct, P5 grey-out works) — only the overlay promotion failed, which we're no longer claiming.
+- **NOT cutting a release** (per versioning rule — no tag/make_latest without explicit say-so). Release notes prepared at `docs/release_notes/gl_native_rendering.md` (paste-ready, honest: latency feature, effects mutually exclusive, power/overlay win is device/orientation-dependent).
+- Dropped (NOT merged, stay on branch `feat/gl-scanout-overlay-fix`): overlay-fix #1 idle base (`b418e53`), overlay-fix #2 translucent (`e036124`) — both chase the unattainable C-win.
+- ▶️ NEXT: CI build to confirm green on main; (optional, when available) confirm the overlay/power win on a landscape-native device (AYANEO).

@@ -762,23 +762,52 @@ private fun TopLevelFields(
             val params = viewModel.reshadeEffects.firstOrNull { it.name == viewModel.reshadeEffect }?.params ?: emptyList()
             params.forEach { p ->
                 val value = viewModel.reshadeParamValues[p.name] ?: p.defaultValue
-                if (p.type == com.winlator.star.reshade.ReshadeManager.ParamType.BOOL) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 52.dp)) {
-                        Switch(checked = value >= 0.5f, onCheckedChange = { viewModel.reshadeParamValues[p.name] = if (it) 1f else 0f })
-                        Spacer(Modifier.width(8.dp))
-                        Text(p.label, style = MaterialTheme.typography.bodySmall)
+                when (p.type) {
+                    com.winlator.star.reshade.ReshadeManager.ParamType.BOOL -> {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 52.dp)) {
+                            Switch(checked = value >= 0.5f, onCheckedChange = { viewModel.reshadeParamValues[p.name] = if (it) 1f else 0f })
+                            Spacer(Modifier.width(8.dp))
+                            Text(p.label, style = MaterialTheme.typography.bodySmall)
+                        }
                     }
-                } else {
-                    val display = if (p.type == com.winlator.star.reshade.ReshadeManager.ParamType.INT)
-                        value.toInt().toString() else "%.2f".format(value)
-                    Text("${p.label}: $display", style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 52.dp, top = 2.dp))
-                    Slider(
-                        value = value.coerceIn(p.min, p.max),
-                        onValueChange = { viewModel.reshadeParamValues[p.name] = it },
-                        valueRange = p.min..p.max,
-                        modifier = Modifier.padding(start = 52.dp)
-                    )
+                    com.winlator.star.reshade.ReshadeManager.ParamType.COMBO -> {
+                        val options = p.options ?: emptyList()
+                        LabeledDropdown(
+                            label = p.label,
+                            options = options,
+                            selectedOption = options.getOrElse(value.toInt()) { options.firstOrNull() ?: "" },
+                            onSelect = { sel -> viewModel.reshadeParamValues[p.name] = options.indexOf(sel).coerceAtLeast(0).toFloat() }
+                        )
+                    }
+                    com.winlator.star.reshade.ReshadeManager.ParamType.COLOR -> {
+                        Text(p.label, style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 52.dp, top = 2.dp))
+                        val comp = listOf("R", "G", "B", "A")
+                        for (c in 0 until p.components) {
+                            val k = "${p.name}_$c"
+                            val cv = viewModel.reshadeParamValues[k] ?: p.componentDefaults?.getOrNull(c) ?: 0f
+                            Text("${comp.getOrElse(c) { "$c" }}: ${"%.2f".format(cv)}",
+                                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 52.dp))
+                            Slider(
+                                value = cv.coerceIn(0f, 1f),
+                                onValueChange = { viewModel.reshadeParamValues[k] = it },
+                                valueRange = 0f..1f,
+                                modifier = Modifier.padding(start = 52.dp)
+                            )
+                        }
+                    }
+                    else -> {
+                        val display = if (p.type == com.winlator.star.reshade.ReshadeManager.ParamType.INT)
+                            value.toInt().toString() else "%.2f".format(value)
+                        Text("${p.label}: $display", style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 52.dp, top = 2.dp))
+                        Slider(
+                            value = value.coerceIn(p.min, p.max),
+                            onValueChange = { viewModel.reshadeParamValues[p.name] = it },
+                            valueRange = p.min..p.max,
+                            modifier = Modifier.padding(start = 52.dp)
+                        )
+                    }
                 }
             }
         }

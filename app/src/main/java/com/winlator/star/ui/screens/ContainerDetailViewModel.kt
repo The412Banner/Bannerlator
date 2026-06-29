@@ -124,11 +124,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         reshadeParamValues.clear()
         val effect = reshadeEffects.firstOrNull { it.name == name } ?: return
         val saved = runCatching { if (savedJson.isNotEmpty()) JSONObject(savedJson) else null }.getOrNull()
-        for (p in effect.params) {
-            reshadeParamValues[p.name] =
-                if (saved != null && saved.has(p.name)) saved.optDouble(p.name, p.defaultValue.toDouble()).toFloat()
-                else p.defaultValue
-        }
+        // seedValues writes the value-map key scheme (one entry per uniform; per-component for COLOR).
+        for (p in effect.params) com.winlator.star.reshade.ReshadeManager.seedValues(p, saved, reshadeParamValues)
     }
     fun reshadeParamsJsonOrNull(): String? =
         if (reshadeEffect == "None" || reshadeParamValues.isEmpty()) null

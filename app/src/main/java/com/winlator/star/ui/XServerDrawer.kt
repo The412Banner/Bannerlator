@@ -10,6 +10,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,9 +24,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -65,6 +69,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import com.winlator.star.R
+import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.ui.theme.GlowPurple
 import com.winlator.star.ui.theme.Primary
 import com.winlator.star.ui.theme.PrimaryDim
@@ -129,6 +136,10 @@ fun XServerDrawer() {
                 handleTabClick(TabType.HUD, state)
             }
             Spacer(Modifier.height(6.dp))
+            TabIconButton(R.drawable.icon_screen_effect, selectedTab == TabType.RESHADE) {
+                handleTabClick(TabType.RESHADE, state)
+            }
+            Spacer(Modifier.height(6.dp))
             TabIconButton(R.drawable.icon_input_controls, selectedTab == TabType.CONTROLS) {
                 handleTabClick(TabType.CONTROLS, state)
             }
@@ -174,6 +185,7 @@ fun XServerDrawer() {
             when (selectedTab) {
                 TabType.GRAPHICS -> GraphicsContent(state)
                 TabType.HUD -> HudContent(state)
+                TabType.RESHADE -> ReshadeContent(state)
                 TabType.CONTROLS -> ControlsContent(state)
                 TabType.ADVANCED -> AdvancedContent(state)
                 TabType.TASK_MANAGER -> TmContent()
@@ -402,11 +414,6 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
     // Frame Generation pinned to the top of the Graphics tab.
     FrameGenSection(state)
-
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
-
-    // ReShade (vkBasalt) — renderer-agnostic, gated to DXVK/VKD3D games (reshadeSupported).
-    ReshadeSection()
 
     HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
@@ -786,31 +793,35 @@ private fun pushSgsrUpdate(enabled: Boolean, sharpness: Int, hdr: Boolean) {
     XServerDialogState.onSgsrUpdate?.invoke(enabled, sharpness, hdr)
 }
 
-// ───── ReShade section (Graphics tab) ─────
-// Active effect name + master on/off (frame-gen-style) + one slider/switch per uniform reflected
-// from the .fx. Hidden on non-DXVK/VKD3D games (reshadeSupported false). Effect SELECTION is
-// pre-launch (shortcut/container editor); this only tunes the loaded effect. Until the live config-
-// watch / X11-inject mechanism lands, the toggle/sliders write the config and take effect on the
-// next launch — all behind the single onReshadeApply seam (-> applyReshadeLive in the activity).
+// ───── ReShade tab ─────
+// First-class drawer tab (peer to Graphics/FPS). Header + the ReShade section body.
+@Composable
+private fun ReshadeContent(state: XServerDrawerState) {
+    SectionHeader("ReShade")
+    ReshadeSection()
+}
+
+// Active effect name + master on/off + a typed control per uniform reflected from the .fx:
+// BOOL -> toggle, COMBO/RADIO/LIST -> dropdown (ui_items labels), COLOR (floatN) -> HSV picker,
+// FLOAT/INT (slider|drag) -> slider. Shows a placeholder on non-DXVK/VKD3D games or when no effect
+// is selected. "Reset" restores every tunable param to its .fx default (leaves on/off as-is).
+// Effect SELECTION is pre-launch (shortcut/container editor); this only tunes the loaded effect.
+// Every change rides the single onReshadeApply seam (-> applyReshadeLive: conf rewrite that the
+// patched libvkbasalt's mtime-watch picks up live, and persists to Container/shortcut reshadeParams).
 @Composable
 private fun ReshadeSection() {
     val supported by XServerDialogState.reshadeSupported.collectAsState()
-    if (!supported) return  // gated like SGSR/HDR — DXVK/VKD3D (Vulkan) games only
-
     val effectName by XServerDialogState.reshadeEffectName.collectAsState()
     val params by XServerDialogState.reshadeParams.collectAsState()
     val initEnabled by XServerDialogState.reshadeEnabled.collectAsState()
     val initValues by XServerDialogState.reshadeValues.collectAsState()
 
-    Text("ReShade", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-    Spacer(Modifier.height(4.dp))
-
-    if (effectName == "None" || effectName.isEmpty()) {
+    if (!supported || effectName == "None" || effectName.isEmpty()) {
         Text(
             "No ReShade effect selected. Pick one in this game's settings (or the container's) to tune it here.",
             color = DimWhite.copy(alpha = 0.5f),
             fontSize = 11.sp,
-            modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            modifier = Modifier.padding(start = 4.dp, top = 6.dp)
         )
         return
     }
@@ -818,6 +829,10 @@ private fun ReshadeSection() {
     // Keyed on the live config so the controls reflect the seeded/launch values and don't drift.
     var enabled by remember(initEnabled) { mutableStateOf(initEnabled) }
     val values = remember(initValues) { mutableStateMapOf<String, Float>().apply { putAll(initValues) } }
+    // Bumped on Reset (and on a fresh seed) so COLOR pickers, which hold internal HSV state,
+    // re-seed from `values`. Sliders/toggles/dropdowns read `values` each recomposition already.
+    var resetNonce by remember(initValues) { mutableIntStateOf(0) }
+    val colorSeed = remember(initValues, resetNonce) { Any() }
 
     fun apply() {
         XServerDialogState.setReshadeEnabled(enabled)
@@ -825,28 +840,213 @@ private fun ReshadeSection() {
         XServerDialogState.onReshadeApply?.invoke(enabled, values.toMap())
     }
 
-    Text(effectName, color = DimWhite, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+    fun resetDefaults() {
+        values.clear()
+        params.forEach { p -> ReshadeManager.seedValues(p, null, values) }
+        resetNonce++
+        apply()
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            effectName, color = DimWhite, fontSize = 12.sp,
+            modifier = Modifier.weight(1f).padding(start = 4.dp)
+        )
+        TextButton(onClick = { resetDefaults() }, enabled = params.isNotEmpty()) {
+            Text("Reset", color = Primary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
     ToggleRow("Effect", enabled, true) { enabled = it; apply() }
 
     if (enabled) {
         params.forEach { p ->
-            val v = values[p.name] ?: p.defaultValue
             when (p.type) {
-                com.winlator.star.reshade.ReshadeManager.ParamType.BOOL -> {
+                ReshadeManager.ParamType.BOOL -> {
+                    val v = values[p.name] ?: p.defaultValue
+                    Spacer(Modifier.height(4.dp))
                     ToggleRow(p.label, v >= 0.5f, true) {
                         values[p.name] = if (it) 1f else 0f; apply()
                     }
                 }
+                ReshadeManager.ParamType.COMBO -> {
+                    val idx = (values[p.name] ?: p.defaultValue).roundToInt()
+                    ReshadeDropdown(p.label, p.options ?: emptyList(), idx) { sel ->
+                        values[p.name] = sel.toFloat(); apply()
+                    }
+                }
+                ReshadeManager.ParamType.COLOR -> {
+                    ReshadeColorControl(
+                        label = p.label,
+                        components = p.components,
+                        seedKey = colorSeed,
+                        component = { c -> values["${p.name}_$c"] ?: p.componentDefaults?.getOrNull(c) ?: 0f },
+                        onChange = { comps ->
+                            comps.forEachIndexed { c, value -> values["${p.name}_$c"] = value }
+                            apply()
+                        }
+                    )
+                }
                 else -> {
+                    val v = (values[p.name] ?: p.defaultValue).coerceIn(p.min, p.max)
                     Spacer(Modifier.height(4.dp))
                     LabeledSlider(
                         p.label, v, p.min..p.max,
                         { values[p.name] = it },
                         { apply() },
                         format = {
-                            if (p.type == com.winlator.star.reshade.ReshadeManager.ParamType.INT)
-                                it.toInt().toString() else "%.2f".format(it)
+                            if (p.type == ReshadeManager.ParamType.INT) it.toInt().toString()
+                            else "%.2f".format(it)
                         }
+                    )
+                }
+            }
+        }
+    }
+}
+
+// COMBO/RADIO/LIST dropdown — shows the ui_items labels; reports the selected index.
+@Composable
+private fun ReshadeDropdown(label: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = DimWhite)
+        Box {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(DarkSurface)
+                    .clickable { expanded = true }
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    options.getOrElse(selected) { options.firstOrNull() ?: "" },
+                    color = Primary, fontWeight = FontWeight.Medium, fontSize = 12.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MutedWhite)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEachIndexed { i, opt ->
+                    DropdownMenuItem(text = { Text(opt) }, onClick = { onSelect(i); expanded = false })
+                }
+            }
+        }
+    }
+}
+
+// COLOR (float3/float4) — full HSV color picker: preview swatch + hue/saturation/brightness (and
+// alpha for float4) gradient sliders. Emits the RGB(A) components as 0..1 floats. Internal HSV state
+// is keyed on [seedKey] so a Reset (or fresh seed) snaps the widget back to the resolved values.
+@Composable
+private fun ReshadeColorControl(
+    label: String,
+    components: Int,
+    seedKey: Any,
+    component: (Int) -> Float,
+    onChange: (FloatArray) -> Unit
+) {
+    val initHsv = remember(seedKey) {
+        val r = (component(0).coerceIn(0f, 1f) * 255f).roundToInt()
+        val g = (component(1).coerceIn(0f, 1f) * 255f).roundToInt()
+        val b = (component(2).coerceIn(0f, 1f) * 255f).roundToInt()
+        FloatArray(3).also { android.graphics.Color.colorToHSV(android.graphics.Color.rgb(r, g, b), it) }
+    }
+    var hue by remember(seedKey) { mutableFloatStateOf(initHsv[0]) }
+    var sat by remember(seedKey) { mutableFloatStateOf(initHsv[1]) }
+    var valv by remember(seedKey) { mutableFloatStateOf(initHsv[2]) }
+    var alpha by remember(seedKey) { mutableFloatStateOf(if (components >= 4) component(3).coerceIn(0f, 1f) else 1f) }
+
+    fun rgbInt() = android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, valv))
+    fun emit() {
+        val c = rgbInt()
+        val out = FloatArray(components)
+        if (components >= 1) out[0] = android.graphics.Color.red(c) / 255f
+        if (components >= 2) out[1] = android.graphics.Color.green(c) / 255f
+        if (components >= 3) out[2] = android.graphics.Color.blue(c) / 255f
+        if (components >= 4) out[3] = alpha
+        onChange(out)
+    }
+
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = DimWhite, modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(rgbInt()))
+                    .border(1.dp, MutedWhite, RoundedCornerShape(6.dp))
+            )
+        }
+        GradientSlider(
+            "Hue", hue, 0f..360f,
+            Brush.horizontalGradient((0..12).map { Color(android.graphics.Color.HSVToColor(floatArrayOf(it * 30f, 1f, 1f))) }),
+            { hue = it; emit() }
+        )
+        GradientSlider(
+            "Saturation", sat, 0f..1f,
+            Brush.horizontalGradient(listOf(
+                Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0f, valv))),
+                Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, valv)))
+            )),
+            { sat = it; emit() }
+        )
+        GradientSlider(
+            "Brightness", valv, 0f..1f,
+            Brush.horizontalGradient(listOf(Color.Black, Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, 1f))))),
+            { valv = it; emit() }
+        )
+        if (components >= 4) {
+            GradientSlider(
+                "Alpha", alpha, 0f..1f,
+                Brush.horizontalGradient(listOf(Color.Black, Color(rgbInt()))),
+                { alpha = it; emit() }
+            )
+        }
+    }
+}
+
+// Tappable/draggable gradient track slider (drawer dark idiom) used by the color picker.
+@Composable
+private fun GradientSlider(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    track: Brush,
+    onValueChange: (Float) -> Unit
+) {
+    var width by remember { mutableIntStateOf(0) }
+    fun pick(x: Float) {
+        if (width > 0) {
+            val frac = (x / width).coerceIn(0f, 1f)
+            onValueChange(range.start + frac * (range.endInclusive - range.start))
+        }
+    }
+    Column(modifier = Modifier.padding(vertical = 3.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MutedWhite)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(22.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(track)
+                .border(1.dp, ToggleTrackOff, RoundedCornerShape(11.dp))
+                .onSizeChanged { width = it.width }
+                .pointerInput(range) { detectTapGestures { pick(it.x) } }
+                .pointerInput(range) { detectHorizontalDragGestures { ch, _ -> pick(ch.position.x) } }
+        ) {
+            val frac = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+            Box(Modifier.fillMaxSize().padding(horizontal = 3.dp), contentAlignment = Alignment.CenterStart) {
+                Box(Modifier.fillMaxWidth(frac)) {
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(1.dp, PureBlack, CircleShape)
                     )
                 }
             }

@@ -7,9 +7,11 @@ import com.winlator.star.core.FileUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,19 +36,33 @@ public class ReshadeManager {
     // (they run as the app UID — this fork does NOT proot). Mirrors the wine_debug.log location.
     public static final String FOLDER_NAME = "ReShade";
 
-    public enum ParamType { FLOAT, INT, BOOL }
+    // FLOAT/INT -> slider (ui_type slider|drag). BOOL -> toggle. COMBO -> dropdown (radio/list too;
+    // value = selected index). COLOR -> color picker (floatN; value = N components).
+    public enum ParamType { FLOAT, INT, BOOL, COMBO, COLOR }
 
     // One tunable uniform reflected from a .fx. Float/int carry min/max/step; bool ignores them.
+    // COMBO carries `options` (the ui_items labels; value is the selected index). COLOR carries
+    // `components` (3 for float3, 4 for float4) + `componentDefaults` (per-component .fx default).
     public static class ReshadeParam {
         public final String name;          // the uniform identifier (what we write into vkBasalt.conf)
         public final ParamType type;
         public final float min, max, step;
-        public final float defaultValue;   // bool default carried as 0.0 / 1.0
+        public final float defaultValue;   // bool default carried as 0.0/1.0; combo default = index; color = component 0
         public final String label;         // ui_label, else the uniform name
         public final String uiType;        // ui_type ("slider"/"drag"/"combo"/"color"/...), may be ""
+        public final List<String> options; // COMBO/RADIO/LIST item labels (else null)
+        public final int components;        // COLOR component count (3/4); 1 otherwise
+        public final float[] componentDefaults; // COLOR per-component defaults (else null)
 
+        // Scalar/bool params (FLOAT/INT/BOOL): no options, single component.
         public ReshadeParam(String name, ParamType type, float min, float max, float step,
                             float defaultValue, String label, String uiType) {
+            this(name, type, min, max, step, defaultValue, label, uiType, null, 1, null);
+        }
+
+        public ReshadeParam(String name, ParamType type, float min, float max, float step,
+                            float defaultValue, String label, String uiType,
+                            List<String> options, int components, float[] componentDefaults) {
             this.name = name;
             this.type = type;
             this.min = min;
@@ -55,6 +71,9 @@ public class ReshadeManager {
             this.defaultValue = defaultValue;
             this.label = label;
             this.uiType = uiType;
+            this.options = options;
+            this.components = components;
+            this.componentDefaults = componentDefaults;
         }
     }
 
@@ -152,47 +171,131 @@ public class ReshadeManager {
             String ann = m.group(3) != null ? m.group(3) : "";
             String defExpr = m.group(4);
 
-            // Only scalar float/int/bool drive a single slider/switch. Skip vectors (floatN/intN),
-            // colors, textures, samplers — the overlay scaffold handles scalars; richer controls
-            // (color pickers, combos) are a later refinement.
-            ParamType type;
-            if (typeStr.equals("bool")) type = ParamType.BOOL;
-            else if (typeStr.equals("int") || typeStr.equals("uint")) type = ParamType.INT;
-            else if (typeStr.equals("float")) type = ParamType.FLOAT;
-            else continue;
+            // Base scalar type + component count (float3 -> base "float", components 3). Matrices
+            // (e.g. float3x3) keep an "x" in baseType and fall through the family check below.
+            String baseType = typeStr.replaceAll("[0-9]+$", "");
+            int components = parseComponents(typeStr);
+            if (!baseType.equals("float") && !baseType.equals("int")
+                    && !baseType.equals("uint") && !baseType.equals("bool")) continue;
 
-            // ui_type — skip explicit non-scalar UI hints that we can't represent as one slider.
             String uiType = unquote(annValue(ann, "ui_type"));
-            if (uiType != null && (uiType.equals("color") || uiType.equals("radio")
-                    || uiType.equals("list") || uiType.equals("combo"))) {
-                // combo/list/radio map poorly to a slider; keep INT ones as a clamped slider but
-                // drop color (a 3/4-component value can't ride one scalar slider).
-                if (uiType.equals("color")) continue;
-            }
             if (uiType == null) uiType = "";
+            String uiTypeLc = uiType.toLowerCase(Locale.US);
 
             String label = unquote(annValue(ann, "ui_label"));
             if (label == null || label.isEmpty()) label = name;
 
-            float min = parseFloat(annValue(ann, "ui_min"), type == ParamType.BOOL ? 0f
-                    : (type == ParamType.INT ? 0f : 0f));
+            // ── bool -> toggle ──
+            if (baseType.equals("bool")) {
+                float def = (defExpr != null && defExpr.trim().equalsIgnoreCase("true")) ? 1f : 0f;
+                params.add(new ReshadeParam(name, ParamType.BOOL, 0f, 1f, 1f, def, label, uiType));
+                continue;
+            }
+
+            // ── combo / radio / list -> dropdown (index-backed) ──
+            if (uiTypeLc.equals("combo") || uiTypeLc.equals("radio") || uiTypeLc.equals("list")) {
+                List<String> options = parseUiItems(unquote(annValue(ann, "ui_items")));
+                if (options.size() >= 2) {
+                    int def = Math.round(parseFloat(defExpr, 0f));
+                    if (def < 0) def = 0;
+                    if (def > options.size() - 1) def = options.size() - 1;
+                    params.add(new ReshadeParam(name, ParamType.COMBO, 0f, options.size() - 1f, 1f,
+                            def, label, uiType, options, 1, null));
+                    continue;
+                }
+                // No usable ui_items -> fall through to a numeric slider.
+            }
+
+            // ── color (floatN) -> color picker ──
+            if (uiTypeLc.equals("color") && baseType.equals("float")) {
+                int comp = Math.max(1, components);
+                float[] defs = parseFloatList(defExpr, comp, 0f);
+                params.add(new ReshadeParam(name, ParamType.COLOR, 0f, 1f, 0.01f,
+                        defs.length > 0 ? defs[0] : 0f, label, uiType, null, comp, defs));
+                continue;
+            }
+
+            // ── scalar float/int (ui_type slider | drag) -> slider ──
+            // Non-color vectors (e.g. a float2 drag) have no single widget here -> skip, as before.
+            if (components != 1) continue;
+            ParamType type = baseType.equals("float") ? ParamType.FLOAT : ParamType.INT;
+
+            float min = parseFloat(annValue(ann, "ui_min"), 0f);
             float max = parseFloat(annValue(ann, "ui_max"), type == ParamType.INT ? 100f : 1f);
             float step = parseFloat(annValue(ann, "ui_step"),
                     type == ParamType.INT ? 1f : (Math.max(0.0001f, (max - min) / 100f)));
-            if (max <= min) max = min + (type == ParamType.INT ? 1f : 1f);
+            if (max <= min) max = min + 1f;
 
-            float def;
-            if (type == ParamType.BOOL) {
-                def = (defExpr != null && defExpr.trim().equalsIgnoreCase("true")) ? 1f : 0f;
-            } else {
-                def = parseFloat(defExpr, min);
-                if (def < min) def = min;
-                if (def > max) def = max;
-            }
+            float def = parseFloat(defExpr, min);
+            if (def < min) def = min;
+            if (def > max) def = max;
 
             params.add(new ReshadeParam(name, type, min, max, step, def, label, uiType));
         }
         return params;
+    }
+
+    // Value-map key scheme, shared by the in-game drawer, both pre-launch editors, and the conf
+    // writer. COLOR seeds one entry per component under "<name>_<c>"; everything else seeds a
+    // single "<name>" entry. Saved JSON (per-game/container override) wins over the .fx default.
+    public static void seedValues(ReshadeParam p, org.json.JSONObject saved, Map<String, Float> out) {
+        if (p.type == ParamType.COLOR) {
+            for (int c = 0; c < p.components; c++) {
+                String k = p.name + "_" + c;
+                float def = (p.componentDefaults != null && c < p.componentDefaults.length)
+                        ? p.componentDefaults[c] : 0f;
+                float v = def;
+                if (saved != null && saved.has(k)) v = (float) saved.optDouble(k, def);
+                out.put(k, v);
+            }
+        } else {
+            float v = p.defaultValue;
+            if (saved != null && saved.has(p.name)) v = (float) saved.optDouble(p.name, v);
+            out.put(p.name, v);
+        }
+    }
+
+    // Trailing component count of a vector type (float3 -> 3, float -> 1), clamped to 1..4.
+    private static int parseComponents(String typeStr) {
+        Matcher m = Pattern.compile("([0-9]+)$").matcher(typeStr);
+        if (m.find()) {
+            try {
+                int n = Integer.parseInt(m.group(1));
+                if (n >= 1 && n <= 4) return n;
+            } catch (NumberFormatException ignored) {}
+        }
+        return 1;
+    }
+
+    // Split a ui_items string ("A\0B\0C\0") on the literal "\0" escape (two chars: backslash + '0',
+    // how the .fx source carries them) or a real NUL, dropping the terminating trailing empty.
+    private static List<String> parseUiItems(String raw) {
+        ArrayList<String> out = new ArrayList<>();
+        if (raw == null) return out;
+        String[] parts = raw.split("\\\\0|\\x00", -1);
+        Collections.addAll(out, parts);
+        while (!out.isEmpty() && out.get(out.size() - 1).trim().isEmpty()) out.remove(out.size() - 1);
+        return out;
+    }
+
+    // Parse up to [count] leading floats from a constructor/initializer ("float3(0.5, 0.2, 0.1)",
+    // "{1.0, 0.0, 0.0}", or a scalar "0.5" which is broadcast to all components). A single leading
+    // "floatN"/"intN" constructor name is skipped so its digit isn't read as a component value.
+    private static float[] parseFloatList(String s, int count, float fallback) {
+        float[] out = new float[count];
+        Arrays.fill(out, fallback);
+        if (s == null) return out;
+        String body = s;
+        int paren = s.indexOf('(');
+        if (paren >= 0) body = s.substring(paren); // drop a "floatN(" / "intN(" constructor name
+        Matcher m = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+").matcher(body);
+        ArrayList<Float> nums = new ArrayList<>();
+        while (m.find() && nums.size() < count) {
+            try { nums.add(Float.parseFloat(m.group())); } catch (NumberFormatException ignored) {}
+        }
+        if (nums.size() == 1) { Arrays.fill(out, nums.get(0)); return out; } // float3(0.5) broadcast
+        for (int i = 0; i < nums.size(); i++) out[i] = nums.get(i);
+        return out;
     }
 
     // Pull `key = value` from an annotation block; value runs to the next `;` or end. Returns the

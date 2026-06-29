@@ -1030,11 +1030,8 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
         val effect = reshadeEffects.firstOrNull { it.name == selectedReshadeEffect } ?: return@LaunchedEffect
         val savedRaw = shortcut.getExtra("reshadeParams", shortcut.container.getReshadeParams())
         val saved = runCatching { if (savedRaw.isNotEmpty()) JSONObject(savedRaw) else null }.getOrNull()
-        for (p in effect.params) {
-            reshadeParamValues[p.name] =
-                if (saved != null && saved.has(p.name)) saved.optDouble(p.name, p.defaultValue.toDouble()).toFloat()
-                else p.defaultValue
-        }
+        // seedValues writes the value-map key scheme (one entry per uniform; per-component for COLOR).
+        for (p in effect.params) ReshadeManager.seedValues(p, saved, reshadeParamValues)
     }
 
     // Win components
@@ -1926,6 +1923,29 @@ private fun ScAdvancedTab(
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(p.label, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        ReshadeManager.ParamType.COMBO -> {
+                            val options = p.options ?: emptyList()
+                            LabeledDropdown(
+                                label = p.label,
+                                options = options,
+                                selectedOption = options.getOrElse(value.toInt()) { options.firstOrNull() ?: "" },
+                                onSelect = { sel -> onReshadeParamChange(p.name, options.indexOf(sel).coerceAtLeast(0).toFloat()) }
+                            )
+                        }
+                        ReshadeManager.ParamType.COLOR -> {
+                            Text(p.label, style = MaterialTheme.typography.bodySmall)
+                            val comp = listOf("R", "G", "B", "A")
+                            for (c in 0 until p.components) {
+                                val k = "${p.name}_$c"
+                                val cv = reshadeParamValues[k] ?: p.componentDefaults?.getOrNull(c) ?: 0f
+                                Text("${comp.getOrElse(c) { "$c" }}: ${"%.2f".format(cv)}", style = MaterialTheme.typography.bodySmall)
+                                Slider(
+                                    value = cv.coerceIn(0f, 1f),
+                                    onValueChange = { onReshadeParamChange(k, it) },
+                                    valueRange = 0f..1f
+                                )
                             }
                         }
                         else -> {

@@ -1320,15 +1320,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             // Reflected uniform values (defaults, overridden by the saved per-game/container JSON).
             // vkBasalt reads `.fx` shaders (NOT ReShade preset .ini), so we materialize the values as
-            // top-level conf keys named after each uniform. NB (open question / clean seam): the exact
-            // key form the bundled libvkbasalt expects for uniform overrides is device-unverified —
-            // formatUniformLine() is the single place to adjust it if needed.
+            // top-level conf keys named after each uniform. seedValues() resolves the value-map (one
+            // entry per uniform, or per-component for COLOR); formatUniformLine() is the single place
+            // that maps those to the "<effectKey>_<uniform>[_c]" conf keys our patched libvkbasalt reads.
+            HashMap<String, Float> resolved = new HashMap<>();
             for (com.winlator.star.reshade.ReshadeManager.ReshadeParam p : effect.params) {
-                float value = p.defaultValue;
-                if (paramJson != null && paramJson.has(p.name)) {
-                    value = (float) paramJson.optDouble(p.name, value);
-                }
-                sb.append(formatUniformLine(effectKey, p, value));
+                com.winlator.star.reshade.ReshadeManager.seedValues(p, paramJson, resolved);
+            }
+            for (com.winlator.star.reshade.ReshadeManager.ReshadeParam p : effect.params) {
+                sb.append(formatUniformLine(effectKey, p, resolved));
             }
 
             sb.append("toggleKey = Home\n");
@@ -1364,20 +1364,45 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     // Single source of truth for how a reflected uniform value is written into vkBasalt.conf.
-    // Our patched libvkbasalt (patches/vkbasalt-reshade-livereload.patch) reads per-uniform overrides
-    // under the key "<effectKey>_<uniform>" (the same effectKey used in `effects = <effectKey>`), so the
-    // value lands in the live UBO. Key form is device-verified against that patch.
-    private String formatUniformLine(String effectKey, com.winlator.star.reshade.ReshadeManager.ReshadeParam p, float value) {
-        String key = effectKey + "_" + p.name;
+    // Our patched libvkbasalt (patches/vkbasalt-reshade-livereload.patch, ReshadeUniform::setFromConfig)
+    // reads per-uniform overrides under "<effectKey>_<uniform>" for single-component uniforms and
+    // "<effectKey>_<uniform>_<c>" for each component of a multi-component one (the SAME effectKey used
+    // in `effects = <effectKey>`), pushing the value into the live UBO. `values` is the resolved
+    // value-map from ReshadeManager.seedValues (keys "<uniform>" or, for COLOR, "<uniform>_<c>").
+    //   BOOL  -> <effectKey>_<uniform> = 0|1          (read as getOption<bool>)
+    //   COMBO -> <effectKey>_<uniform> = <index>      (read as getOption<int32_t>)
+    //   INT   -> <effectKey>_<uniform> = <int>
+    //   COLOR -> <effectKey>_<uniform>_0..N-1 = <f>   (read per-component as getOption<float>)
+    //   FLOAT -> <effectKey>_<uniform> = <f>
+    private String formatUniformLine(String effectKey, com.winlator.star.reshade.ReshadeManager.ReshadeParam p,
+                                     Map<String, Float> values) {
+        String base = effectKey + "_" + p.name;
         switch (p.type) {
             case BOOL:
-                return key + " = " + (value >= 0.5f ? "1" : "0") + "\n";
+                return base + " = " + (getF(values, p.name, p.defaultValue) >= 0.5f ? "1" : "0") + "\n";
+            case COMBO:
             case INT:
-                return key + " = " + Math.round(value) + "\n";
+                return base + " = " + Math.round(getF(values, p.name, p.defaultValue)) + "\n";
+            case COLOR: {
+                StringBuilder sb = new StringBuilder();
+                for (int c = 0; c < p.components; c++) {
+                    String k = p.name + "_" + c;
+                    float def = (p.componentDefaults != null && c < p.componentDefaults.length)
+                            ? p.componentDefaults[c] : 0f;
+                    sb.append(base).append("_").append(c).append(" = ")
+                      .append(String.format(java.util.Locale.US, "%.4f", getF(values, k, def))).append("\n");
+                }
+                return sb.toString();
+            }
             case FLOAT:
             default:
-                return key + " = " + String.format(java.util.Locale.US, "%.4f", value) + "\n";
+                return base + " = " + String.format(java.util.Locale.US, "%.4f", getF(values, p.name, p.defaultValue)) + "\n";
         }
+    }
+
+    private static float getF(Map<String, Float> values, String key, float fallback) {
+        Float v = values != null ? values.get(key) : null;
+        return v != null ? v : fallback;
     }
 
     // Seed the in-game ReShade drawer controls from the resolved launch config. Runs in setupUI
@@ -1405,6 +1430,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         ds.setReshadeParams(effect.params);
         // Values: saved JSON (shortcut override -> container default) layered over the .fx defaults.
+        // seedValues handles the value-map key scheme (one entry per uniform; per-component for COLOR).
         org.json.JSONObject saved = null;
         String raw = resolvedReshadeParams();
         if (raw != null && !raw.isEmpty()) {
@@ -1412,9 +1438,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         HashMap<String, Float> values = new HashMap<>();
         for (com.winlator.star.reshade.ReshadeManager.ReshadeParam p : effect.params) {
-            float v = p.defaultValue;
-            if (saved != null && saved.has(p.name)) v = (float) saved.optDouble(p.name, v);
-            values.put(p.name, v);
+            com.winlator.star.reshade.ReshadeManager.seedValues(p, saved, values);
         }
         ds.setReshadeValues(values);
     }

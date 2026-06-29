@@ -2348,3 +2348,19 @@ Captured OUR Bannerlator **Vulkan|DXVK** native-ON dumpsys (same Adreno750/SD8Ge
 - **Salvage the GL work:** merge P4+P5 (the functional per-frame push + effect grey-out) as "GL native rendering (latency parity)", DROP the failed overlay-fix commits (#1 idle, #2 translucent) — they targeted C. Reconcile branch PROGRESS_LOG.
 - **Two confirmations worth doing (cheap):** (1) capture native-ON on a **landscape-native device** (AYANEO) — if game buf = transform 0 → DEVICE, the rotation theory is proven and C works there. (2) optional: try forcing this container/display to landscape-native orientation and re-capture — if it promotes, we have a per-device path.
 ⚠️ Vulkan container left Native ON.
+
+---
+
+## 🔁 LANDSCAPE LONG-SHOT DEVICE-TESTED 2026-06-29 — DID NOT help; but revealed the ROT_90 is applied by the SCANOUT CODE, not system orientation.
+
+User forced the whole Android system to landscape, ran AIO cube on GL|DXVK, Native ON, drawer closed. (Note: forcing orientation RESTARTS the XServerDisplayActivity → reloads container; came back OpenGL/Native-off, re-enabled Native.) dumpsys (composition | format | transform):
+- base `SurfaceView[…XServerDisplayActivity]#2` z0 = DEVICE/**CLIENT** ❌, RGBA_8888_UBWC, **transform 0** (now 0 because the activity surface follows the landscape system)
+- game `AHardwareBuffer pid[17795]` z1 = DEVICE/**CLIENT** ❌, BGRA_8888, **transform 90** ← STILL ROTATED even though system is landscape
+- cursor `AHardwareBuffer pid[17527]` z2 = DEVICE/**CLIENT** ❌, RGBA_8888, transform 90
+- VRI z3 = DEVICE/**CLIENT** ❌, UBWC, transform 0
+
+**KEY NEW INSIGHT:** the base surface went transform 0 in landscape (follows system), but the **GAME scanout buffer is STILL transform 90**. So the 90° rotation on the game buffer is applied by the **native-rendering handoff itself** (ScanoutContext/DirectScanout sets the buffer's transform), NOT by the global display orientation as previously assumed. Forcing landscape therefore could NOT remove it → still a rotated layer in the stack → HWC still rejects the WHOLE frame to CLIENT (the transform-0 UBWC base + VRI get dragged to CLIENT too, exactly as the pattern predicts). The cube still displays CORRECTLY with ROT_90+landscape (so the rotation is currently part of producing the right image — naively removing it would likely break orientation).
+
+**CONCLUSION: landscape long-shot = DEAD END on this device with current code.** The overlay still doesn't engage. The blocker (rotated game buffer, overlay-ineligible on this Adreno DPU) is confirmed and is baked into the scanout handoff.
+
+**One UNTESTED lever this surfaces (speculative, code change):** make the scanout transform ORIENTATION-AWARE — deliver the game buffer at transform 0 when the display is genuinely landscape-native (and ensure buffer dims match), so no rotated layer is in the stack. MIGHT promote + still display correctly IF the guest render orientation is adjusted to match. Risky (orientation/fit), unproven, and GameHub doesn't do it. NOT recommended without the engineer validating it's even coherent. The safe path remains: re-scope native = latency (B) feature, salvage P4+P5, and confirm the true overlay win on a genuinely landscape-native panel where the buffer naturally needs no rotation.

@@ -2436,3 +2436,13 @@ Screenshot (scratchpad/eb1.png) = image produced, not black (Wine window chrome 
 **Exp B is a DIAGNOSTIC THROWAWAY (branch `exp/gl-scanout-prerotate-panelres` `8b20b96`, do-NOT-merge as-is):** hardcoded 90° UV-transpose one direction; cursor/HUD/input/aspect intentionally wrong; extra full-frame GPU blit + GL-thread roundtrip per frame; portrait-lock hack.
 
 **Next (decision pending with user) — productionize C-win on portrait vs. ship latency-only:** orientation-aware correct pre-rotation (all 4 rotations, right handedness/flip), fix cursor/HUD/input mapping under the rotated present, weigh the host-blit cost (extra blit + roundtrip + possible base double-buffer) against the overlay/GPU-idle win — vs. just keeping the already-merged latency-only P4+P5. Container left Native ON, exp-B build installed, Claude/Termux session brought back to foreground.
+
+## ⏸️ PHASE 0 (GL native overlay portrait — power/perf A/B) STARTED then PAUSED by user (2026-06-29) — SETUP ONLY, NO NUMBERS. Resume when home.
+User chose to run P0 (measure-first), then stopped it (about to lose Wi-Fi). Reached SETUP only; no OFF/ON numbers captured. Partial log: `scratchpad/p0_results.md`.
+
+Resume state:
+- Test container = `xuser-3` "P11 x86-64" (renderer=opengl, rendererNative=false). exp-B build (`exp/gl-scanout-prerotate-panelres` `8b20b96`) is the installed/active APK.
+- **Container config WAS MODIFIED:** DXVK `dxwrapperConfig` framerate `0`->`60` (maxFrameRate, guest-side cap for matched-FPS A/B). **Backup at `<imagefs>/home/xuser-3/.container.p0bak`.** Keep the 60 cap to resume P0, or restore from backup to abandon.
+- Termux/Claude session brought back to foreground.
+
+Resume recipe: launch GL container xuser-3 -> AIO DX11 cube -> enable perf HUD -> State A Native OFF (dwell ~30s, 3+ samples) -> State B Native ON (toggle in drawer, dwell ~30s, same samples). Sample {`/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage`, `gpuclk`, `/sys/class/power_supply/battery/current_now` uA, thermal_zone temp, displayed FPS}. Confirm overlay via dumpsys SDE pipe table (ON: game AHB DEVICE/DEVICE on SDE pipe + GPU_TARGET empty; OFF: base SurfaceView DEVICE/DEVICE, no game AHB). VERDICT: ON lower GPU% AND power at equal FPS -> portrait worth productionizing; flat/worse -> drop portrait, headline the free landscape-native win.

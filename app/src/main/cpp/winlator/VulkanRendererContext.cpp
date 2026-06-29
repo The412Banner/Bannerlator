@@ -68,6 +68,12 @@ VulkanRendererContext::VulkanRendererContext(ANativeWindow* win, int cW, int cH,
     : window(win), surfaceWidth(cW), surfaceHeight(cH), containerWidth(cW), containerHeight(cH),
       adrenotoolsHandle(aHandle)
 {
+    // Seed the renderer-neutral scanout impl with the owner's window/sizes.
+    scanout.setFallbackWindow(window);
+    scanout.setContainerSize(containerWidth, containerHeight);
+    scanout.setSurfaceSize(surfaceWidth, surfaceHeight);
+    scanout.setVerboseLog(verboseLog);
+
     createInstance(); createSurface(); pickPhysicalDevice(); createLogicalDevice();
     createSwapchain(); createRenderPass(); createDSLayout();
     createPipeline(true, pipeline);
@@ -1619,7 +1625,7 @@ ok=true;}catch(...){}
 void VulkanRendererContext::onSurfaceResized(int w, int h) {
     std::lock_guard<std::mutex> lk(renderMutex);
     if (w==0||h==0) return;
-    surfaceWidth=w; surfaceHeight=h; fbResized.store(true); dirtyCV.notify_one();
+    surfaceWidth=w; surfaceHeight=h; scanout.setSurfaceSize(w, h); fbResized.store(true); dirtyCV.notify_one();
 }
 
 void VulkanRendererContext::detachSurface() {
@@ -1837,7 +1843,7 @@ void VulkanRendererContext::dumpRendererInfo() {
         "Filter: mode=%d (%s)", filterMode, filterMode==2?(cubicSupported?"CUBIC":"LINEAR"):filterMode==1?"NEAREST":"LINEAR");
     __android_log_print(ANDROID_LOG_DEBUG,WLOG_TAG,
         "Scanout: active=%d gameFrameDelivered=%d scanoutGameSC=%p",
-        (int)scanoutActive.load(),(int)gameFrameDelivered.load(),scanoutGameSC);
+        (int)scanoutActive.load(),(int)gameFrameDelivered.load(),scanout.debugGameSC());
     __android_log_print(ANDROID_LOG_DEBUG,WLOG_TAG,
         "Surface: %dx%d container: %dx%d",
         surfaceWidth,surfaceHeight,containerWidth,containerHeight);

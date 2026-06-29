@@ -190,18 +190,16 @@ every answer yourself. It never guesses — if the answer isn't in the code, it 
    *You'll need a free GitHub account to post.*
 2. **Type your question** in the form. Be specific — name the feature, setting, or
    file you're asking about (see the examples below).
-3. **Submit it.** Your question is created as an Issue.
-4. **Wait for a maintainer to approve it.** To stop spam and abuse, the bot only
-   runs after a maintainer adds the **`question`** label to your issue. (Newly
-   submitted questions start with the `ama-request` label while they wait.)
-5. **Read the answer.** About **1–2 minutes** after approval, the bot posts its
-   answer as a comment on your issue, with the exact files it used, and marks the
-   issue **`answered`**.
-6. **Follow-up?** Open a new question — one question per issue.
+3. **Submit it.** Your question is created as an Issue and the bot starts working
+   automatically — no approval step.
+4. **Read the answer.** About **1–2 minutes** later, the bot posts its answer as a
+   comment on your issue, with the exact files it used, and marks it **`answered`**.
+5. **Follow-up?** Open a new question — one question per issue.
 
-> ⏳ **Why isn't it instant?** A maintainer has to wave each question through
-> first. If yours hasn't been answered yet, it's just waiting in the queue — you
-> don't need to do anything.
+> ⏳ **Nothing happened after a couple of minutes?** A few questions per person per
+> day are free; past that, or if the monthly limit is reached, the bot will post a
+> short notice asking you to try again later. It also only answers questions sent
+> through the form above — not regular bug reports or feature requests.
 
 ### Tips for a good question
 
@@ -244,12 +242,14 @@ The bot runs on the **opencode/big-pickle** model via your opencode credentials
 1. Locally run `cat ~/.local/share/opencode/auth.json` and copy the whole JSON.
 2. Add it as a repository secret named **`OPENCODE_AUTH`** under
    **Settings → Secrets and variables → Actions**.
-3. Make sure the `question`, `ama-request`, and `answered` labels exist.
+3. Make sure the `ama-request`, `answered`, and `question` labels exist.
 
-Approve a question by adding the **`question`** label to its issue — on a public
-repo only maintainers can add labels, which is what keeps the bot from being
-triggered (and billed) by anyone. Without the secret, the bot posts a notice
-explaining what's missing.
+Questions sent through the form (labeled `ama-request`) are answered
+automatically, bounded by a per-user daily limit and a monthly cap — tune both
+at the top of `.github/workflows/ama-answer.yml` (`PER_USER_PER_DAY`,
+`MONTHLY_CAP`; maintainers are exempt from the daily limit). You can also force a
+run on any issue by adding the **`question`** label. Without the secret, the bot
+posts a notice explaining what's missing.
 </details>
 
 ---

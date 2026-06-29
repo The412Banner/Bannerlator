@@ -1,21 +1,20 @@
 name: "🤖 AMA — Answer the AI"
 
-# SECURITY MODEL (public repo):
-# - Trigger is `labeled`, gated to the `question` label. On a public repo only
-#   users with triage/write/maintain/admin can add labels, so this is a
-#   human-in-the-loop approval gate — a random visitor cannot self-trigger a run
-#   (the issue template deliberately does NOT auto-apply `question`).
-# - All untrusted text (issue body, derived question, model answer) is passed via
-#   `env:` and referenced as a quoted variable. It is NEVER inlined into a `run:`
-#   or `script:` body with ${{ }} — that would be a shell/JS injection vector.
-# - opencode runs with bash/write/edit/webfetch disabled (see .claude/agents/
-#   ama-agent.md), so a prompt-injected question cannot shell out, write files, or
-#   exfiltrate over the network. The answer is also scrubbed of key-like strings
-#   before posting as a defense-in-depth backstop.
+# SECURITY + COST MODEL (public repo):
+# - Auto-answers questions submitted via the Ask-the-AI form (they carry the
+#   `ama-request` label). Normal bug reports / feature requests do NOT trigger it.
+# - Guardrails cap spend: a per-user daily limit (maintainers exempt) and a
+#   repo-wide monthly cap. Over either limit, the bot posts a friendly notice
+#   instead of running.
+# - A maintainer can force a run on any issue by adding the `question` label.
+# - All untrusted text (issue body, question, model answer) is passed via `env:`
+#   and referenced as quoted variables — never inlined into a run:/script: body.
+# - opencode runs sandboxed (bash/write/edit/webfetch off — see ama-agent.md);
+#   the token is contents:read only and not persisted, so nothing can edit code.
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled]
 
 permissions:
   issues: write
@@ -27,22 +26,74 @@ concurrency:
 
 jobs:
   answer:
-    if: github.event.label.name == 'question'
+    # Run for: a form-submitted question (opened + ama-request label), OR a
+    # maintainer-forced run (question label added). Nothing else.
+    if: >
+      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'ama-request')) ||
+      (github.event.action == 'labeled' && github.event.label.name == 'question')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
 
     steps:
+    - name: Guardrails — rate limit & monthly cap
+      id: gate
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Tune these two numbers to taste.
+          const PER_USER_PER_DAY = 5;
+          const MONTHLY_CAP = 200;
+
+          const { owner, repo } = context.repo;
+          const issue = context.payload.issue;
+          const issue_number = issue.number;
+          const author = issue.user.login;
+          const isMaintainer = ['OWNER', 'MEMBER', 'COLLABORATOR']
+            .includes(issue.author_association);
+
+          const count = async (q) =>
+            (await github.rest.search.issuesAndPullRequests({ q, per_page: 1 }))
+              .data.total_count;
+
+          const d = new Date();
+          const dayAgo = new Date(d.getTime() - 86400000).toISOString().slice(0, 10);
+          const monthStart = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`;
+
+          let proceed = true, reason = '';
+
+          // Monthly cap applies to everyone (approximate: counts answered issues
+          // this month — a soft budget guard, not exact billing).
+          if (await count(`repo:${owner}/${repo} label:answered created:>=${monthStart}`) >= MONTHLY_CAP) {
+            proceed = false; reason = 'monthly-cap';
+          }
+
+          // Per-user daily limit (maintainers exempt).
+          if (proceed && !isMaintainer) {
+            const used = await count(
+              `repo:${owner}/${repo} type:issue author:${author} label:ama-request created:>=${dayAgo}`);
+            if (used > PER_USER_PER_DAY) { proceed = false; reason = 'rate-limit'; }
+          }
+
+          core.setOutput('proceed', String(proceed));
+
+          if (!proceed) {
+            const body = reason === 'monthly-cap'
+              ? "## 🤖 Bannerlator AI\n\n⚠️ The AI has reached its question limit for this month. Please try again next month."
+              : `## 🤖 Bannerlator AI\n\n⚠️ You've reached the limit of ${PER_USER_PER_DAY} questions per day. Please try again tomorrow.`;
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
+
     - name: Check out repo
+      if: steps.gate.outputs.proceed == 'true'
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
-        # Don't leave the GITHUB_TOKEN in the runner's local .git/config. opencode
-        # never needs to push, and this removes the only place a sandbox escape
-        # could even read the (already read-only-on-code) token.
+        # Don't leave the GITHUB_TOKEN in the runner's local .git/config.
         persist-credentials: false
 
     - name: Extract question from issue
       id: question
+      if: steps.gate.outputs.proceed == 'true'
       env:
         # Untrusted. Only ever referenced as the quoted shell var "$BODY".
         BODY: ${{ github.event.issue.body }}
@@ -61,12 +112,13 @@ jobs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Install opencode
+      if: steps.gate.outputs.proceed == 'true'
       # The npm package is `opencode-ai` (it installs an `opencode` binary).
-      # `opencode@latest` 404s — that was why the first test produced no answer.
       run: npm install -g opencode-ai@latest 2>&1 | tail -3
 
     - name: Configure opencode credentials
       id: creds
+      if: steps.gate.outputs.proceed == 'true'
       env:
         OPENCODE_AUTH: ${{ secrets.OPENCODE_AUTH }}
       run: |
@@ -80,7 +132,7 @@ jobs:
 
     - name: Answer via opencode big-pickle
       id: answer
-      if: steps.creds.outputs.status == 'ok'
+      if: steps.gate.outputs.proceed == 'true' && steps.creds.outputs.status == 'ok'
       env:
         # Untrusted. Passed only as a single quoted argument to opencode.
         Q: ${{ steps.question.outputs.q }}
@@ -101,8 +153,7 @@ jobs:
           ANSWER="⚠️ No answer generated. The AI may have timed out or hit an error."
         fi
 
-        # Defense in depth: scrub anything that looks like a secret key before it
-        # can reach a public comment, in case a prompt injection coaxed one out.
+        # Defense in depth: scrub anything that looks like a secret key.
         ANSWER=$(printf '%s' "$ANSWER" | sed -E 's/sk-[A-Za-z0-9_-]{16,}/[redacted]/g')
 
         {
@@ -116,10 +167,9 @@ jobs:
       run: rm -f ~/.local/share/opencode/auth.json
 
     - name: Post answer as comment
-      if: always()
+      if: steps.gate.outputs.proceed == 'true'
       uses: actions/github-script@v7
       env:
-        # Passed as env data, not interpolated into the script body.
         STATUS: ${{ steps.creds.outputs.status }}
         ANSWER: ${{ steps.answer.outputs.ans }}
       with:
@@ -141,8 +191,6 @@ jobs:
                 '2. Copy the entire JSON object',
                 '3. **Settings → Secrets and variables → Actions → New repository secret**',
                 '4. Name it `OPENCODE_AUTH`, paste the JSON, save',
-                '',
-                'Then remove and re-add the `question` label to retry.',
               ].join('\n'),
             });
             return;
@@ -157,12 +205,8 @@ jobs:
               answer,
               '',
               '---',
-              `_Cited from the [Bannerlator codebase](https://github.com/${owner}/${repo}). For a follow-up, a maintainer removes and re-adds the \`question\` label to re-run._`,
+              `_Cited from the [Bannerlator codebase](https://github.com/${owner}/${repo}). For a follow-up, open a new question._`,
             ].join('\n'),
           });
 
-          // Reset state so re-adding `question` triggers a fresh run.
-          try {
-            await github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'question' });
-          } catch (e) { /* label may already be gone */ }
           await github.rest.issues.addLabels({ owner, repo, issue_number, labels: ['answered'] });

@@ -2,6 +2,42 @@
 
 ---
 
+## 2026-06-29 — GL Native Rendering overlay-promotion fix (P4.5) — branch `feat/gl-scanout-overlay-fix`
+
+**Bug (device-proven, Adreno 750/SD8Gen3, GL|DXVK):** GL Native ON renders the game correctly through
+the scanout path but `winlator_game_buf` stays `composition: DEVICE/CLIENT` (HWC rejects the overlay)
+AND the GL `SurfaceView` is also CLIENT — zero power/latency win. Vulkan native gets `game_buf` = DEVICE
+on the SAME device/scene/scale/rotation.
+
+**Investigation (root cause = competing base layer, not geometry):**
+- ASR's base SurfaceView is a pure *bufferless* host — all pixels go to child SCs
+  (`ASurfaceRendererContext.cpp:394-395`); SF trivially skips it -> child game SC promoted.
+- Vulkan's base swapchain goes *idle*: once scanout activates `renderFrame()` draws exactly one
+  clearing frame then early-returns every subsequent frame (`VulkanRendererContext.cpp:1486-1496`).
+  Idle opaque base + opaque full-screen game child SC -> SF occlusion-culls the base -> HWC overlay.
+- GL's base GLSurfaceView kept *actively* re-compositing the opaque game content every frame
+  (`drawFrame` drew the windows on each `requestRender`, and `onPointerMove` woke it constantly) ->
+  live opaque competitor -> HWC plane budget exceeded -> game-SC DEVICE request rejected -> CLIENT.
+- Coordinator's "blocker #2 = SC-level ROT_90+scale" RULED OUT: `ScanoutContext::setBuffer` calls
+  `ST_SETGEO(...&src,&dst, 0)` — transform = identity (0), scale only; the ROT_90 in dumpsys is the
+  global display orientation SF applies to every layer. This geometry code is *shared* (Vulkan's
+  `VulkanRendererScanout.cpp:29` forwards to the same `ScanoutContext`), so Vulkan & GL emit identical
+  SC geometry — yet Vulkan gets DEVICE. So geometry is not the GL-specific differentiator.
+
+**Fix (mirror Vulkan's idle base — `GLRenderer.java`):** on the first delivered scanout frame,
+`onDrawFrame` takes a blank-base path (disable scissor + `glClear` only, no windows/cursor) and returns,
+so the base GLSurfaceView is left holding a single cleared frame; `presentScanout` flushes that one
+frame; `onPointerMove` no longer wakes the GL surface while scanout is live (cursor still moves via its
+own SC). `xRenderingPausedForScanout` made `volatile` (epoll writes / GL-thread reads). Non-native GL
+path byte-for-byte unchanged (all guards are `nativeMode && xRenderingPausedForScanout`).
+
+**Status:** CI-green pending; DEVICE-UNPROVEN (device-only behavior). PRIMARY pass criterion =
+`winlator_game_buf` flips CLIENT->DEVICE with the GL SurfaceView skipped. Documented FALLBACK lever if
+still CLIENT: switch the GLSurfaceView base to a translucent format (hole-punch) + transparent clear
+(matches ASR's non-opaque/non-competing base) — held back to keep this a single-variable change.
+
+---
+
 ## 2026-06-28 (s4) — ▶️ RESUME / CURRENT STATUS: VRR + manual picker built & verified; pacing tweak pending
 
 **Where things stand on the graphics roadmap:**

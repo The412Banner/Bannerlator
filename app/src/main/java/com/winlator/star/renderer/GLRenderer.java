@@ -71,7 +71,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     // does not occlude the GL frame.
     private DirectScanout scanout;
     private boolean nativeMode = false;
-    private boolean xRenderingPausedForScanout = false;
+    // Written on the X11/epoll thread (presentScanout first-delivery), read on the GL draw thread
+    // (onDrawFrame blank-base path) -> volatile for cross-thread visibility.
+    private volatile boolean xRenderingPausedForScanout = false;
     private boolean swapRB = false;
     private Cursor lastScanoutCursor = null;
 
@@ -260,6 +262,27 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             if (nativeMode) updateScanoutDst();
         }
 
+        // GL Native Rendering overlay-promotion fix. Once the first game frame has reached the game
+        // SurfaceControl we leave the base GLSurfaceView holding a single CLEARED frame and stop
+        // compositing the game through GL. This mirrors the Vulkan render loop, which after scanout
+        // activates renders exactly one clearing frame then early-returns every subsequent frame
+        // (VulkanRendererContext.cpp:1486-1496), and ASR, whose base SurfaceView is a pure bufferless
+        // host (ASurfaceRendererContext.cpp:394-395). An IDLE base layer is what lets SurfaceFlinger
+        // occlusion-cull/skip it so HWC can promote the opaque full-screen game SurfaceControl to a
+        // DEVICE overlay. Previously GL kept actively re-compositing the opaque game content (drawFrame
+        // drew the windows every requestRender), so the base stayed a live opaque competitor and HWC
+        // rejected the game-SC overlay -> CLIENT/CLIENT (the device-observed regression). Clear-only
+        // (no windows, no cursor): the game is shown by the game SC, the cursor by the cursor SC. Clear
+        // color (0,0,0,0) is black on the current opaque surface (== Vulkan's opaque-black idle base)
+        // and would be transparent if the base were ever switched to a translucent format (see report
+        // for that fallback lever). Idempotent: safe to run on every draw the surface is woken for.
+        if (nativeMode && xRenderingPausedForScanout) {
+            GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
+            GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+            return;
+        }
+
         if (effectComposer != null && effectComposer.isActive() && surfaceWidth > 0 && surfaceHeight > 0) {
             try {
                 effectComposer.render();
@@ -364,7 +387,12 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             if (cursor != null) { hotX = (short) cursor.hotSpotX; hotY = (short) cursor.hotSpotY; }
             scanout.setCursorPos(x, y, hotX, hotY);
         }
-        xServerView.requestRender();
+        // While scanout is live the base is blanked/idle and the cursor is composited by its own
+        // SurfaceControl (updated just above), so do NOT wake the GL surface on pointer motion. Keeping
+        // the base idle is what lets SurfaceFlinger keep the game SC on a DEVICE overlay; a requestRender
+        // here would re-arm the base layer with another buffer post. Rendering resumes the moment native
+        // mode / scanout is disabled (xRenderingPausedForScanout=false).
+        if (!(nativeMode && xRenderingPausedForScanout)) xServerView.requestRender();
     }
 
     private void renderDrawable(Drawable drawable, int x, int y, ShaderMaterial material) {
@@ -714,6 +742,12 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             if (!xRenderingPausedForScanout && !wasDelivered && delivered) {
                 xServer.setRenderingEnabled(false);
                 xRenderingPausedForScanout = true;
+                // Flush exactly one more GL frame: onDrawFrame now takes the blank-base path (clear
+                // only) so the base GLSurfaceView is left holding a single cleared frame, after which it
+                // idles (onPointerMove no longer wakes it). This is the GL equivalent of the Vulkan
+                // render loop's single post-scanout clearing frame -> idle base -> the opaque game SC
+                // becomes promotable to an HWC DEVICE overlay (SurfaceFlinger can skip the idle base).
+                xServerView.requestRender();
             }
             if (hudFrameTick != null) hudFrameTick.accept(window.id);
         }

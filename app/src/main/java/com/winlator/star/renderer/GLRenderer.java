@@ -14,6 +14,7 @@ import com.winlator.star.math.Mathf;
 import com.winlator.star.math.XForm;
 import com.winlator.star.renderer.material.CursorMaterial;
 import com.winlator.star.renderer.material.ScanoutBlitMaterial;
+import com.winlator.star.renderer.material.ScanoutBlitRot90Material;
 import com.winlator.star.renderer.material.ShaderMaterial;
 import com.winlator.star.renderer.material.WindowMaterial;
 import com.winlator.star.widget.XServerView;
@@ -98,6 +99,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private boolean hostScanoutFailed = false;    // sticky: once setup fails, stop trying (just fall back)
     private int hostScanoutTimeouts = 0;          // GL-thread round-trip timeouts -> disable after a few
     private final ScanoutBlitMaterial scanoutBlitMaterial = new ScanoutBlitMaterial();
+    // EXPERIMENT B: rotate the guest frame 90° into a PANEL-RES host AHB (transform 0, src==dst, no
+    // SC-scale), with the activity locked to the panel's native portrait orientation so nothing forces
+    // a per-layer transform back on. Neutralizes rotation + scale together, isolating UBWC.
+    private final ScanoutBlitRot90Material scanoutBlitRot90Material = new ScanoutBlitRot90Material();
     private final float[] scanoutBlitXForm = XForm.getInstance();
 
     // Selectable sampler filter for window/content drawables only (the cursor stays LINEAR so the
@@ -602,6 +607,23 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     public boolean isNativeMode() { return nativeMode; }
 
+    // EXPERIMENT B: force the activity to the panel's native (portrait) orientation while scanout is
+    // active so the window/base surface and the panel agree -> nothing forces a per-layer ROT_90 back
+    // onto the (pre-rotated, panel-res) game SC. The activity declares orientation|screenSize in
+    // configChanges, so this reconfigures in place (GL surfaceChanged) without an activity recreation.
+    // Restored to the manifest default (sensorLandscape) on native-off / teardown. UI thread.
+    private void setProbeOrientation(boolean portrait) {
+        android.content.Context ctx = xServerView.getContext();
+        if (!(ctx instanceof android.app.Activity)) return;
+        try {
+            ((android.app.Activity) ctx).setRequestedOrientation(portrait
+                    ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        } catch (Exception e) {
+            Log.w("GLRenderer", "EXP-B: setRequestedOrientation failed: " + e);
+        }
+    }
+
     // Set the desired native (direct-scanout) mode BEFORE the surface is created. onSurfaceCreated
     // builds the scanout SurfaceControls when nativeMode is already true, so this is the correct
     // entry point for applying the container's "native" toggle at launch (setNativeMode() is for
@@ -620,6 +642,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         } else {
             disableScanout();
             xServerView.post(() -> {
+                setProbeOrientation(false);   // EXPERIMENT B: restore landscape
                 xServer.setRenderingEnabled(true);
                 xServerView.requestRender();
             });
@@ -638,6 +661,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if (android.os.Build.VERSION.SDK_INT < 29) return;
         xServerView.post(() -> {
             try {
+                // EXPERIMENT B: lock to the panel's native portrait orientation so the pre-rotated,
+                // panel-res game SC needs neither a per-layer rotation nor a scale.
+                setProbeOrientation(true);
                 android.view.SurfaceControl parent =
                     (android.view.SurfaceControl) xServerView.getSurfaceControl();
                 if (parent == null) {
@@ -793,15 +819,23 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     /**
-     * EXPERIMENT A — GL thread only. Blit the guest game texture into the host overlay-eligible AHB
-     * (same size/orientation/scale; passthrough + vertical flip to preserve the image), then present
-     * that buffer to the game SurfaceControl. Returns true if the host buffer was presented; false if
-     * setup failed (caller then falls back to a direct guest-buffer present). Must run with the EGL
-     * context current (queued via xServerView.queueEvent, like captureScreenshot).
+     * EXPERIMENT B — GL thread only. Blit the guest game texture into a PANEL-RESOLUTION host
+     * overlay-eligible AHB while rotating it 90° (UV transpose), then present src==dst==full-panel at
+     * transform 0 (no SC-scale; combined with the portrait activity lock, no per-layer rotation either).
+     * Returns true if the host buffer was presented; false if setup failed (caller then falls back to a
+     * direct guest-buffer present). DIAGNOSTIC: orientation/aspect of the visible image are accepted as
+     * wrong. Must run with the EGL context current (queued via xServerView.queueEvent, like captureScreenshot).
      */
     private boolean blitGuestIntoHostScanoutAndPresent(GPUImage g, Drawable content,
                                                         int rx, int ry, int w, int h) {
-        if (!ensureHostScanout(w, h)) return false;
+        // EXPERIMENT B: the host scanout buffer is allocated at PANEL resolution (the activity is locked
+        // to the panel's native portrait orientation, so surfaceWidth x surfaceHeight == the panel), and
+        // the guest landscape frame is rotated 90° to fill it. We then present src==dst==full-panel with
+        // transform 0 -> no SC-level scale, and (because window+panel agree) no per-layer rotation. This
+        // neutralizes the ROT_90 and the scale at once, leaving UBWC as the last variable.
+        final int pw = surfaceWidth, ph = surfaceHeight;
+        if (pw <= 0 || ph <= 0) return false;
+        if (!ensureHostScanout(pw, ph)) return false;
 
         // Ensure the guest GPUImage has its EGLImage-backed GL texture (native FLIP mode never renders
         // it through renderWindows, so it may not be allocated yet). allocateTexture is idempotent.
@@ -817,20 +851,23 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, hostScanoutFbo);
         GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
         GLES20.glDisable(GLES20.GL_BLEND);
-        GLES20.glViewport(0, 0, w, h);
+        GLES20.glViewport(0, 0, pw, ph);
 
-        scanoutBlitMaterial.use();
-        quadVertices.bind(scanoutBlitMaterial.programId);
-        GLES20.glUniform2f(scanoutBlitMaterial.getUniformLocation("viewSize"), w, h);
-        XForm.set(scanoutBlitXForm, 0, 0, w, h);
-        GLES20.glUniform1fv(scanoutBlitMaterial.getUniformLocation("xform"),
+        scanoutBlitRot90Material.use();
+        quadVertices.bind(scanoutBlitRot90Material.programId);
+        GLES20.glUniform2f(scanoutBlitRot90Material.getUniformLocation("viewSize"), pw, ph);
+        XForm.set(scanoutBlitXForm, 0, 0, pw, ph);
+        GLES20.glUniform1fv(scanoutBlitRot90Material.getUniformLocation("xform"),
                 scanoutBlitXForm.length, scanoutBlitXForm, 0);
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, srcTex);
+        // Rotated UVs ride the [0,1] edges -> clamp so we never wrap-sample the opposite edge.
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glUniform1i(scanoutBlitMaterial.getUniformLocation("texture"), 0);
+        GLES20.glUniform1i(scanoutBlitRot90Material.getUniformLocation("texture"), 0);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
 
         quadVertices.disable();
@@ -844,7 +881,11 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         // The probe favors simplicity/correctness over throughput: make sure the GPU has finished
         // writing the host buffer before SurfaceFlinger reads it, then present with no fence (-1).
         GLES20.glFinish();
-        scanout.present(hostScanoutImage.getHardwareBufferPtr(), rx, ry, w, h, -1);
+        // src == dst == full panel: tell the scanout context the buffer is panel-sized and the dst is
+        // the whole panel, so ScanoutContext::setGeometry emits src==dst (no scale) at transform 0.
+        scanout.setContainerSize(pw, ph);
+        scanout.setDst(0, 0, pw, ph);
+        scanout.present(hostScanoutImage.getHardwareBufferPtr(), 0, 0, pw, ph, -1);
 
         // Restore the guest buffer's CPU lock (mirrors the direct path's g.lock() + refresh).
         g.lock();

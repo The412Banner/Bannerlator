@@ -22,5 +22,5 @@ body:
       label: "Your question"
       description: "Be specific — mention feature names, settings, files, or behaviors you're asking about."
       placeholder: "How does the FPS limiter work? Which files implement GOG store support? What does the Native Rendering+ setting do?"
-    validation:
+    validations:
       required: true

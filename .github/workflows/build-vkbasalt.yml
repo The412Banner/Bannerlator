@@ -1,0 +1,128 @@
+name: Build vkBasalt (ReShade live-reload layer)
+
+# Standalone NDK build of the patched vkBasalt Vulkan post-processing layer
+# (app/src/main/cpp/vkbasalt submodule, pinned to DadSchoorse/vkBasalt @4f97f09).
+# Produces libvkbasalt.so for arm64-v8a as an artifact for the ReShade STEP 3
+# spike. Kept separate from the main app build (same pattern as build-bionic-fg).
+#
+# Unlike bionic-fg/lsfg-vk (cmake), upstream vkBasalt uses meson+ninja, so this
+# workflow cross-compiles with a meson cross-file (app/src/main/cpp/
+# vkbasalt-android-arm64.cross) targeting the NDK aarch64 clang (API 24), matching
+# the shipped libvkbasalt.so (NDK r27c). The patch drops the libX11 dependency
+# (Android builds X11-free; see the patch + src/meson.build) so the only external
+# headers needed are Vulkan-Headers (vk_layer.h is not in the NDK sysroot).
+
+on:
+  workflow_dispatch:
+  # Also run on push to the build branch. A workflow_dispatch-only workflow that
+  # is not on the default branch can't be triggered via the API/gh; a push
+  # trigger scoped to this throwaway build branch guarantees the run fires from
+  # the branch itself (and gives us a run id to watch).
+  push:
+    branches:
+      - feat/reshade-vkbasalt-build
+
+permissions:
+  contents: read
+
+env:
+  # NDK r27c — matches the build that produced the currently-shipped libvkbasalt.so.
+  NDK_PKG: "ndk;27.2.12479018"
+  NDK_VER: "27.2.12479018"
+  # Pinned Vulkan-Headers (Vulkan 1.4.x SDK tag) for vulkan.h + vk_layer.h.
+  VULKAN_HEADERS_TAG: "vulkan-sdk-1.4.309.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install NDK
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          mkdir -p "$SDK_ROOT"
+          if [ ! -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools/
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
+            rm -f /tmp/cmdline-tools.zip
+          fi
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "${NDK_PKG}"
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/${NDK_VER}" >> $GITHUB_ENV
+
+      - name: Install meson, ninja, glslang
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build glslang-tools python3-pip
+          sudo pip3 install --upgrade "meson>=1.1"
+          meson --version
+          ninja --version
+          glslangValidator --version | head -1 || true
+
+      - name: Fetch Vulkan-Headers + SPIRV-Headers
+        run: |
+          # vulkan.h + vk_layer.h (not in the NDK sysroot)
+          git clone --depth 1 --branch "${VULKAN_HEADERS_TAG}" \
+            https://github.com/KhronosGroup/Vulkan-Headers.git "$RUNNER_TEMP/Vulkan-Headers"
+          test -f "$RUNNER_TEMP/Vulkan-Headers/include/vulkan/vk_layer.h"
+          echo "VK_HEADERS_INC=$RUNNER_TEMP/Vulkan-Headers/include" >> $GITHUB_ENV
+          # spirv/unified1/spirv.hpp — needed by vkBasalt's embedded reshade SPIR-V codegen
+          git clone --depth 1 --branch "${VULKAN_HEADERS_TAG}" \
+            https://github.com/KhronosGroup/SPIRV-Headers.git "$RUNNER_TEMP/SPIRV-Headers"
+          test -f "$RUNNER_TEMP/SPIRV-Headers/include/spirv/unified1/spirv.hpp"
+          echo "SPIRV_HEADERS_INC=$RUNNER_TEMP/SPIRV-Headers/include" >> $GITHUB_ENV
+
+      - name: Apply Bannerlator ReShade live-reload patch to vkBasalt
+        run: |
+          # Patch the pinned submodule (kept at upstream @4f97f09). This is the
+          # change we carry: Part A = config-file mtime watch in the present hook
+          # (live ReShade on/off, mirrors the lsfg-vk conf.toml watch); Part B =
+          # GenericUniform + ReshadeEffect::updateUniformsFromConfig (uniforms in
+          # the UBO instead of spec constants -> live sliders via per-frame
+          # memcpy, no recompile); plus the Android X11-free build switch.
+          git -C app/src/main/cpp/vkbasalt apply --verbose \
+            "${GITHUB_WORKSPACE}/patches/vkbasalt-reshade-livereload.patch"
+
+      - name: Prepare meson cross-file (inject NDK toolchain path)
+        run: |
+          NDK_BIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -x "${NDK_BIN}/aarch64-linux-android24-clang" \
+            || { echo "NDK clang not found at ${NDK_BIN}"; ls "${NDK_BIN}" | head; exit 1; }
+          sed "s#__NDK_BIN__#${NDK_BIN}#g" \
+            app/src/main/cpp/vkbasalt-android-arm64.cross > "$RUNNER_TEMP/vkbasalt-arm64.cross"
+          echo "----- cross file -----"; cat "$RUNNER_TEMP/vkbasalt-arm64.cross"
+
+      - name: Configure (meson, arm64-v8a, android-24)
+        run: |
+          meson setup build/vkbasalt app/src/main/cpp/vkbasalt \
+            --cross-file "$RUNNER_TEMP/vkbasalt-arm64.cross" \
+            --buildtype release \
+            -Dwith_json=true \
+            -Dc_args="-I${VK_HEADERS_INC} -I${SPIRV_HEADERS_INC}" \
+            -Dcpp_args="-I${VK_HEADERS_INC} -I${SPIRV_HEADERS_INC}"
+
+      - name: Build
+        run: ninja -C build/vkbasalt -v
+
+      - name: Stage artifact
+        run: |
+          mkdir -p out/vkbasalt
+          SO=$(find build/vkbasalt -name 'libvkbasalt.so' -type f | head -1)
+          test -n "$SO" || { echo "libvkbasalt.so not found"; find build/vkbasalt -name '*.so'; exit 1; }
+          cp "$SO" out/vkbasalt/
+          # The vkBasalt.json manifest is generated by the with_json target.
+          JSON=$(find build/vkbasalt -name 'vkBasalt.json' -type f | head -1)
+          [ -n "$JSON" ] && cp "$JSON" out/vkbasalt/ || echo "(no vkBasalt.json generated)"
+          ls -lh out/vkbasalt/
+          file out/vkbasalt/libvkbasalt.so
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vkbasalt-arm64
+          path: out/vkbasalt/

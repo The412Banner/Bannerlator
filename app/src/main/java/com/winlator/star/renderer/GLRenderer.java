@@ -13,6 +13,7 @@ import com.winlator.star.XrActivity;
 import com.winlator.star.math.Mathf;
 import com.winlator.star.math.XForm;
 import com.winlator.star.renderer.material.CursorMaterial;
+import com.winlator.star.renderer.material.ScanoutBlitMaterial;
 import com.winlator.star.renderer.material.ShaderMaterial;
 import com.winlator.star.renderer.material.WindowMaterial;
 import com.winlator.star.widget.XServerView;
@@ -81,6 +82,23 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     // Mirrors VulkanRenderer.setHudFrameTick / ASurfaceRenderer.setHudFrameTick.
     private java.util.function.IntConsumer hudFrameTick = null;
     public void setHudFrameTick(java.util.function.IntConsumer c) { hudFrameTick = c; }
+
+    // ---- EXPERIMENT A: COMPOSER_OVERLAY host-AHB blit (diagnostic, branch-only) ----
+    // Probe whether the Adreno DPU rejects the game scanout layer because the guest buffer lacks the
+    // COMPOSER_OVERLAY usage flag / is non-UBWC (renderer-agnostic) rather than because of its ROT_90.
+    // Instead of presenting the guest GPUImage AHB directly, we blit it (one passthrough quad, SAME
+    // size + orientation + scale — NO pre-rotation, NO geometry change) into this host-allocated AHB
+    // that carries GPU_FRAMEBUFFER | GPU_SAMPLED | COMPOSER_OVERLAY, then present THAT. All GL work runs
+    // on the GL thread (mirrors captureScreenshot's queueEvent+FBO pattern). If any step fails the path
+    // falls back to the original direct guest-buffer present, so native rendering never breaks.
+    // These GL objects are owned by the GL thread.
+    private GPUImage hostScanoutImage;            // host overlay-eligible AHB (GL render target)
+    private int hostScanoutFbo = 0;
+    private int hostScanoutW = 0, hostScanoutH = 0;
+    private boolean hostScanoutFailed = false;    // sticky: once setup fails, stop trying (just fall back)
+    private int hostScanoutTimeouts = 0;          // GL-thread round-trip timeouts -> disable after a few
+    private final ScanoutBlitMaterial scanoutBlitMaterial = new ScanoutBlitMaterial();
+    private final float[] scanoutBlitXForm = XForm.getInstance();
 
     // Selectable sampler filter for window/content drawables only (the cursor stays LINEAR so the
     // pointer never goes blocky). Mirrors the Vulkan filter-int convention used by setUpscaler:
@@ -553,6 +571,14 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     @Override public void setRenderingEnabled(boolean enabled) { xServer.setRenderingEnabled(enabled); }
     @Override public void requestRender() { xServerView.requestRender(); }
     @Override public void forceCleanup() {
+        // EXPERIMENT A: best-effort GL-thread release of the host overlay AHB/FBO (process may be tearing
+        // down; if the GL thread is already gone the queued event simply won't run and the buffer dies
+        // with the EGL context).
+        xServerView.queueEvent(() -> {
+            releaseHostScanout();
+            hostScanoutFailed = false;
+            hostScanoutTimeouts = 0;
+        });
         if (scanout != null) scanout.disable();
         xServer.setRenderingEnabled(true);
         xRenderingPausedForScanout = false;
@@ -634,6 +660,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     private void disableScanout() {
+        // EXPERIMENT A: free the host overlay AHB/FBO on the GL thread and reset the sticky guards so a
+        // later re-enable retries the probe. Queue this before tearing down the scanout SCs.
+        xServerView.queueEvent(() -> {
+            releaseHostScanout();
+            hostScanoutFailed = false;
+            hostScanoutTimeouts = 0;
+        });
         if (scanout == null) return;
         final DirectScanout s = scanout;
         xServerView.post(s::disable);
@@ -680,13 +713,16 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     /**
      * Per-frame game-AHB push for GL Native Rendering (P4). Called from PresentExtension's GL-native
-     * FLIP branch on the X11/epoll thread (NOT the GL draw thread). This is the lift of the
-     * AHB-scanout body of {@code VulkanRenderer.onUpdateWindowContent}: unlock the GPUImage to get
-     * its fence, hand the {@code AHardwareBuffer} to the game SurfaceControl (DirectScanout applies
-     * the transaction inline, the GL model), then re-lock + refresh. On the FIRST delivered frame it
+     * FLIP branch on the X11/epoll thread (NOT the GL draw thread). On the FIRST delivered frame it
      * pauses X rendering so the GLSurfaceView idles and the opaque game SC can be promoted to an HWC
      * overlay (the whole point — SurfaceFlinger skips GL composition). The FLIP path bypasses the GL
      * effect chain and the HUD's copyArea driver, so tick the HUD here too or FPS freezes.
+     *
+     * <p><b>EXPERIMENT A (this branch only):</b> instead of presenting the GUEST buffer directly, blit
+     * it into a host AHB carrying {@code COMPOSER_OVERLAY | GPU_FRAMEBUFFER} (same size/orientation/scale,
+     * NO pre-rotation) and present THAT — to test whether the Adreno DPU rejects the layer for usage/UBWC
+     * reasons rather than its ROT_90. The blit runs on the GL thread; on any failure/timeout this falls
+     * back to the original direct guest-buffer present, so native rendering is never broken.
      *
      * <p>The caller (PresentExtension) already holds {@code content.renderLock}; the re-entrant
      * synchronize mirrors the Vulkan path and is harmless. {@code content.getTexture()} is the
@@ -695,20 +731,57 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     public void presentScanout(Window window, Drawable content) {
         if (scanout == null || !nativeMode || content == null) return;
         if (!window.attributes.isMapped()) return;
-        int rx = window.getRootX(), ry = window.getRootY();
+        final int rx = window.getRootX(), ry = window.getRootY();
         synchronized (content.renderLock) {
             if (!(content.getTexture() instanceof GPUImage)) return;
-            GPUImage g = (GPUImage) content.getTexture();
-            long ahbPtr = g.getHardwareBufferPtr();
-            if (ahbPtr == 0) return;
+            final GPUImage g = (GPUImage) content.getTexture();
+            final long guestAhb = g.getHardwareBufferPtr();
+            if (guestAhb == 0) return;
+            final int w = content.width, h = content.height;
 
-            boolean wasDelivered = scanout.isGameFrameDelivered();
-            int fence = g.unlock();
-            scanout.present(ahbPtr, rx, ry, content.width, content.height, fence);
-            g.lock();
-            content.refreshDataFromTexture();
-            boolean delivered = scanout.isGameFrameDelivered();
+            final boolean wasDelivered = scanout.isGameFrameDelivered();
 
+            // EXPERIMENT A: try the COMPOSER_OVERLAY host-AHB blit on the GL thread; if it cannot run
+            // (sticky failure / repeated timeouts) present the guest buffer directly (original P4 path).
+            // The GL blit MUST run on the GL thread (this method is on the X11/epoll thread, which has no
+            // GL context), so we marshal it via queueEvent and block here (briefly) for the result — the
+            // epoll thread already holds content.renderLock for the whole present, so the guest buffer
+            // stays valid while the GL thread samples it. The GL runnable does NOT re-take renderLock.
+            boolean handled = false;
+            if (!hostScanoutFailed && hostScanoutTimeouts < 3) {
+                final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+                final boolean[] ok = { false };
+                xServerView.queueEvent(() -> {
+                    try { ok[0] = blitGuestIntoHostScanoutAndPresent(g, content, rx, ry, w, h); }
+                    catch (Throwable t) { ok[0] = false; Log.w("GLRenderer", "scanout host-AHB blit threw: " + t); }
+                    finally { latch.countDown(); }
+                });
+                try {
+                    if (latch.await(500, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                        handled = ok[0];
+                        hostScanoutTimeouts = 0;
+                    } else {
+                        // GL thread didn't complete in time; skip the fallback for THIS frame to avoid a
+                        // double present (the queued runnable may still present later). Count it so a
+                        // persistently stuck GL thread disables the experiment and we return to direct present.
+                        hostScanoutTimeouts++;
+                        handled = true;
+                    }
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    handled = true; // don't fall through to a second present
+                }
+            }
+
+            if (!handled) {
+                // Fallback / control path: present the guest buffer directly (original behavior).
+                int fence = g.unlock();
+                scanout.present(guestAhb, rx, ry, w, h, fence);
+                g.lock();
+                content.refreshDataFromTexture();
+            }
+
+            final boolean delivered = scanout.isGameFrameDelivered();
             // First delivered frame: stop guest content updates so GLSurfaceView stops redrawing and
             // the opaque top game SC occludes the stale GL frame -> SurfaceFlinger can HWC-overlay it.
             if (!xRenderingPausedForScanout && !wasDelivered && delivered) {
@@ -717,6 +790,122 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             }
             if (hudFrameTick != null) hudFrameTick.accept(window.id);
         }
+    }
+
+    /**
+     * EXPERIMENT A — GL thread only. Blit the guest game texture into the host overlay-eligible AHB
+     * (same size/orientation/scale; passthrough + vertical flip to preserve the image), then present
+     * that buffer to the game SurfaceControl. Returns true if the host buffer was presented; false if
+     * setup failed (caller then falls back to a direct guest-buffer present). Must run with the EGL
+     * context current (queued via xServerView.queueEvent, like captureScreenshot).
+     */
+    private boolean blitGuestIntoHostScanoutAndPresent(GPUImage g, Drawable content,
+                                                        int rx, int ry, int w, int h) {
+        if (!ensureHostScanout(w, h)) return false;
+
+        // Ensure the guest GPUImage has its EGLImage-backed GL texture (native FLIP mode never renders
+        // it through renderWindows, so it may not be allocated yet). allocateTexture is idempotent.
+        g.updateFromDrawable(content);
+        int srcTex = g.getTextureId();
+        if (srcTex == 0) return false;
+
+        // Preserve the guest buffer's lock lifecycle (matches the direct path: unlock for the consumer
+        // to read coherently, re-lock + refresh afterward). The texture is the zero-copy EGLImage, so it
+        // stays valid across the CPU unlock.
+        g.unlock();
+
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, hostScanoutFbo);
+        GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
+        GLES20.glDisable(GLES20.GL_BLEND);
+        GLES20.glViewport(0, 0, w, h);
+
+        scanoutBlitMaterial.use();
+        quadVertices.bind(scanoutBlitMaterial.programId);
+        GLES20.glUniform2f(scanoutBlitMaterial.getUniformLocation("viewSize"), w, h);
+        XForm.set(scanoutBlitXForm, 0, 0, w, h);
+        GLES20.glUniform1fv(scanoutBlitMaterial.getUniformLocation("xform"),
+                scanoutBlitXForm.length, scanoutBlitXForm, 0);
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, srcTex);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glUniform1i(scanoutBlitMaterial.getUniformLocation("texture"), 0);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
+
+        quadVertices.disable();
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+        // Restore the blend state the base path expects (set once in onSurfaceCreated).
+        GLES20.glEnable(GLES20.GL_BLEND);
+        // The base GLSurfaceView viewport may have been clobbered; force a recompute next base frame.
+        viewportNeedsUpdate = true;
+
+        // The probe favors simplicity/correctness over throughput: make sure the GPU has finished
+        // writing the host buffer before SurfaceFlinger reads it, then present with no fence (-1).
+        GLES20.glFinish();
+        scanout.present(hostScanoutImage.getHardwareBufferPtr(), rx, ry, w, h, -1);
+
+        // Restore the guest buffer's CPU lock (mirrors the direct path's g.lock() + refresh).
+        g.lock();
+        content.refreshDataFromTexture();
+        return true;
+    }
+
+    /** EXPERIMENT A — GL thread only. (Re)allocate the host overlay AHB + its FBO on first use / size
+     *  change. Sticky-fails (so we stop retrying and fall back) if allocation or FBO completeness fails. */
+    private boolean ensureHostScanout(int w, int h) {
+        if (hostScanoutFailed) return false;
+        if (w <= 0 || h <= 0) return false;
+        if (hostScanoutImage != null && hostScanoutFbo != 0 && hostScanoutW == w && hostScanoutH == h)
+            return true;
+
+        releaseHostScanout();
+
+        GPUImage img = new GPUImage((short) w, (short) h, true);
+        img.allocateTexture((short) w, (short) h, null);
+        if (img.getHardwareBufferPtr() == 0 || img.getTextureId() == 0) {
+            Log.w("GLRenderer", "EXP-A: host scanout AHB/texture alloc failed; falling back to direct present");
+            img.destroy();
+            hostScanoutFailed = true;
+            return false;
+        }
+
+        int[] fbo = new int[1];
+        GLES20.glGenFramebuffers(1, fbo, 0);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo[0]);
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, img.getTextureId(), 0);
+        int status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+        if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            Log.w("GLRenderer", "EXP-A: host scanout FBO incomplete (0x" + Integer.toHexString(status)
+                    + "); falling back to direct present");
+            GLES20.glDeleteFramebuffers(1, fbo, 0);
+            img.destroy();
+            hostScanoutFailed = true;
+            return false;
+        }
+
+        hostScanoutImage = img;
+        hostScanoutFbo = fbo[0];
+        hostScanoutW = w;
+        hostScanoutH = h;
+        Log.d("GLRenderer", "EXP-A: host overlay scanout AHB ready " + w + "x" + h);
+        return true;
+    }
+
+    /** EXPERIMENT A — GL thread only. Free the host overlay AHB + FBO. */
+    private void releaseHostScanout() {
+        if (hostScanoutFbo != 0) {
+            GLES20.glDeleteFramebuffers(1, new int[]{ hostScanoutFbo }, 0);
+            hostScanoutFbo = 0;
+        }
+        if (hostScanoutImage != null) {
+            hostScanoutImage.destroy();
+            hostScanoutImage = null;
+        }
+        hostScanoutW = hostScanoutH = 0;
     }
 
     private static class RenderableWindow {

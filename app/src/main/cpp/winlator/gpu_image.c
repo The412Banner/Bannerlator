@@ -103,6 +103,33 @@ Java_com_winlator_star_renderer_GPUImage_createHardwareBuffer(JNIEnv *env, jclas
     return (jlong)ahb;
 }
 
+// EXPERIMENT A (GL direct-scanout COMPOSER_OVERLAY probe): allocate a HOST AHardwareBuffer that is
+// both (a) a GL render target and (b) eligible for an HWC overlay plane. The guest game buffer
+// (received over the DRI3 socket, hardwareBufferFromSocket) is allocated by Mesa/turnip WITHOUT
+// COMPOSER_OVERLAY and as a CPU_WRITE_OFTEN/linear BGRA buffer, which the Adreno DPU appears to
+// refuse for overlay scanout. This buffer is GPU_FRAMEBUFFER (so GL can render the guest texture
+// into it) + GPU_SAMPLED + COMPOSER_OVERLAY (so SurfaceFlinger/HWC may promote it). Format stays
+// BGRA_8888 to match the guest buffer byte-for-byte, so the existing swapRB color transform and the
+// passthrough blit preserve the image. NOT CPU-locked (pure GPU buffer; no virtualData).
+JNIEXPORT jlong JNICALL
+Java_com_winlator_star_renderer_GPUImage_createScanoutHardwareBuffer(JNIEnv *env, jclass obj, jshort width, jshort height) {
+    AHardwareBuffer_Desc desc = {
+        .width  = (uint32_t)width,
+        .height = (uint32_t)height,
+        .layers = 1,
+        .usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
+                | AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER
+                | AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY,
+        .format = HAL_PIXEL_FORMAT_BGRA_8888,
+    };
+    AHardwareBuffer *ahb = NULL;
+    if (AHardwareBuffer_allocate(&desc, &ahb) != 0) {
+        LOGE("createScanoutHardwareBuffer: alloc failed");
+        return 0;
+    }
+    return (jlong)ahb;
+}
+
 JNIEXPORT jlong JNICALL
 Java_com_winlator_star_renderer_GPUImage_createImageKHR(JNIEnv *env, jclass obj, jlong hardwareBufferPtr, jint textureId) {
     AHardwareBuffer *hardwareBuffer = (AHardwareBuffer *)hardwareBufferPtr;

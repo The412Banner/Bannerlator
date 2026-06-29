@@ -26,6 +26,18 @@ public class GPUImage extends Texture {
         }
     }
 
+    /**
+     * EXPERIMENT A: host-allocated, overlay-eligible scanout buffer (COMPOSER_OVERLAY + GPU_FRAMEBUFFER).
+     * Used as a GL render target that the guest game frame is blitted into, then handed to the scanout
+     * SurfaceControl. Unlike the other constructors this is a pure GPU buffer — it is NOT CPU-locked
+     * (no virtualData), so {@link #getVirtualData()} stays null and the CPU upload paths skip it.
+     * {@code scanout} must be true; the boolean param distinguishes this from {@link #GPUImage(short, short)}.
+     */
+    public GPUImage(short width, short height, boolean scanout) {
+        hardwareBufferPtr = scanout ? createScanoutHardwareBuffer(width, height)
+                                    : createHardwareBuffer(width, height);
+    }
+
     public GPUImage(int socketFd) {
         hardwareBufferPtr = hardwareBufferFromSocket(socketFd);
         if (hardwareBufferPtr != 0) {
@@ -117,6 +129,7 @@ public class GPUImage extends Texture {
 
     private native long hardwareBufferFromSocket(int fd);
     private native long createHardwareBuffer(short width, short height);
+    private native long createScanoutHardwareBuffer(short width, short height);
     private native void destroyHardwareBuffer(long hardwareBufferPtr);
     private native int  unlockHardwareBuffer(long hardwareBufferPtr);
     private native ByteBuffer lockHardwareBuffer(long hardwareBufferPtr);

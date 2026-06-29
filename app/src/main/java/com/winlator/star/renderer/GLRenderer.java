@@ -549,6 +549,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if (scanout != null) scanout.disable();
         xServer.setRenderingEnabled(true);
         xRenderingPausedForScanout = false;
+        xServerView.setGlSurfaceTranslucent(false);
     }
     @Override public void setFilterMode(int mode) {
         // Convention shared with the Vulkan side (setUpscaler modes 1/2): 2 == Nearest (point),
@@ -586,6 +587,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             enableScanout();
         } else {
             disableScanout();
+            // Restore the opaque base so the non-native GL path is byte-for-byte unchanged (recreates
+            // the GL surface once; nativeMode is already false so onSurfaceCreated won't re-enable scanout).
+            xServerView.setGlSurfaceTranslucent(false);
             xServerView.post(() -> {
                 xServer.setRenderingEnabled(true);
                 xServerView.requestRender();
@@ -603,6 +607,19 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     // so this posts to the view; getSurfaceControl() is non-null for GL since P2.
     private void enableScanout() {
         if (android.os.Build.VERSION.SDK_INT < 29) return;
+        // Make the GLSurfaceView base layer NON-OPAQUE for the duration of scanout. The game/cursor are
+        // composited by child SurfaceControls ABOVE this layer; the base itself is cleared transparent
+        // (onDrawFrame blank-base path) and idled. A translucent + transparent + idle base is
+        // non-competing, so SurfaceFlinger can skip it -- the same end state as the Vulkan path's idle
+        // plain-SurfaceView swapchain and ASR's bufferless host SurfaceView. That frees the HWC plane
+        // budget to promote the (rotate+scale) game SC to a DEVICE overlay. The earlier idle-but-OPAQUE
+        // base was still composited as a CLIENT plane and starved the game overlay -> CLIENT (device-
+        // proven). The game-SC geometry (src 1280x702 -> dst fullscreen, transform 0; the ROT_90 is the
+        // global display orientation) is shared byte-for-byte with the working Vulkan path, so it is NOT
+        // the GL-specific blocker and is deliberately left unchanged. setFormat recreates the GL surface
+        // once; onSurfaceCreated re-enters here (format now unchanged -> no second recreation) to build
+        // the child SCs. Restored to OPAQUE on native-off / teardown.
+        xServerView.setGlSurfaceTranslucent(true);
         xServerView.post(() -> {
             try {
                 android.view.SurfaceControl parent =

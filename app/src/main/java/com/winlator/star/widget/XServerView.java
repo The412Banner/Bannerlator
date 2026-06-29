@@ -2,6 +2,7 @@ package com.winlator.star.widget;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.PixelFormat;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.view.Surface;
@@ -152,6 +153,31 @@ public class XServerView extends FrameLayout {
 
     public void onResume() {
         if (glSurfaceView != null) glSurfaceView.onResume();
+    }
+
+    // Requested holder format for the GL base surface (GL Native Rendering overlay-promotion fix).
+    // OPAQUE in the normal/non-native GL path; flipped to TRANSLUCENT while direct scanout is active so
+    // SurfaceFlinger can skip the (transparent, idle) GLSurfaceView base layer and hand the opaque
+    // game child SurfaceControl an HWC DEVICE overlay. Tracked so we only call setFormat() when it
+    // actually changes (setFormat recreates the GL surface, so redundant calls = needless churn).
+    private int glRequestedFormat = PixelFormat.OPAQUE;
+
+    /** GL Native Rendering: make the GLSurfaceView base layer non-opaque (translucent/hole-punch) while
+     *  scanout is active, or opaque again on disable. No-op for the Vulkan/ASR (plain SurfaceView) paths
+     *  — those bases are already non-competing (idle swapchain / bufferless host). UI-thread only. */
+    public void setGlSurfaceTranslucent(boolean translucent) {
+        if (glSurfaceView == null) return;
+        final int fmt = translucent ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE;
+        if (fmt == glRequestedFormat) return;
+        glRequestedFormat = fmt;
+        post(() -> {
+            try {
+                // Translucent base needs Z below the (child) game SC, which it already is; just flip the
+                // surface format. This recreates the EGL surface once -> GLRenderer.onSurfaceCreated
+                // rebuilds the scanout SurfaceControls.
+                glSurfaceView.getHolder().setFormat(fmt);
+            } catch (Exception ignored) {}
+        });
     }
 
     public Object getSurfaceControl() {

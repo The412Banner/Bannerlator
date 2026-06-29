@@ -2234,3 +2234,26 @@ Corrected an earlier overstatement ("pointless/regression"): B is a legitimate b
 **Interpretation reminder (A/B/C):** user feels a real latency/FPS diff Native ON vs OFF = the **B** win (GL compositor pass skipped) which happens regardless of overlay; **C** (the DEVICE overlay) is the missing big win. Verify C via capped-FPS GPU/power, NOT raw FPS. dumpsys DEVICE/CLIENT = authoritative.
 
 **Bridge test recipe (from this session):** `getlog --exec` (PATH +=/data/data/com.termux/files/usr/bin). Graphics tab icon tap (70,138); Native Rendering toggle (765,968); close drawer keyevent 4; dumpsys → `/sdcard/Download/_x.txt`; check `grep -iE "HWC layers" -A18 | grep -iE "winlator_game|SurfaceView\[com.winlator|DEVICE|CLIENT"`; SCcount `grep -icE "winlator_game|winlator_cursor"` (0=native off, ~14=on). Foreground session: `monkey -p com.termux -c android.intent.category.LAUNCHER 1`. ⚠️ Native left toggled ON on test container (container 2 / the AIO test container).
+
+---
+
+## ❌ overlay-fix #2 (TRANSLUCENT base) DEVICE-TESTED 2026-06-29 — STILL CLIENT, base regressed. Translucent approach backfired.
+
+Build `e036124` (CI `28378890898` green, manually installed by user). Device = Adreno 750/SD8Gen3, GL|DXVK, AIO DX11 cube, drawer closed. Driven via root bridge (toggle 765,968; dumpsys OFF vs ON).
+
+**THE GATE = FAIL.** dumpsys SurfaceFlinger composition (requested/actual):
+- **Native OFF baseline:** base `SurfaceView[…XServerDisplayActivity]` = `composition: DEVICE/DEVICE` ✅ — ONE clean fullscreen HWC overlay, 0 scanout SCs. (FPS 750 / GPU 26% / CPU 90.7°C)
+- **Native ON (fix #2):** SC count 0→14 (scanout built, native active, P5 grey-out confirmed, cube renders correct/right colors). BUT:
+  - base `SurfaceView` = `composition: DEVICE/CLIENT` ❌ (was DEVICE/DEVICE off — **REGRESSED**, making it translucent did NOT get SF to cull it; it stays in the stack at z:0 and now forces GPU comp)
+  - `winlator_game_buf#781` AHB = `DEVICE/CLIENT` ❌ — ROT_90, src 1280×702 → dst 1080×1920 (rotate + 1.5× scale)
+  - `winlator_cursor_buf#782` AHB = `DEVICE/CLIENT` ❌
+  - VRI + ScreenDecor also CLIENT → **EVERY layer GPU-composited.** (FPS 704 / GPU 28% / CPU 93.1°C = slightly WORSE than off)
+
+**VERDICT:** translucent base = INSUFFICIENT and counterproductive. It didn't make SF skip the base (base still composited, just now blended/CLIENT instead of a clean opaque DEVICE overlay), and the whole frame fell to GPU. So the checkpoint's "opaque competing base is the GL-specific blocker" hypothesis is NOT confirmed by making it translucent — the base being *present at all* (not its opacity) plus the rotate+scale game buffer is what's blocking. **C (HWC overlay) still not happening; only the B win (skipped GL compositor pass) remains, and it's marginal here.**
+
+**▶️ NEXT HYPOTHESES (not yet tried, ranked):**
+1. **Make the base GLSurfaceView genuinely BUFFERLESS/absent when scanout active** (like ASR's bufferless base), not merely translucent — currently it's still a composited layer at z:0. If SF still can't drop it, the GLSurfaceView architecture itself may be the wall (can't host children AND vanish).
+2. **Drop the SC-level SCALE on the game buffer** — set the game SC to display size via setBuffersGeometry/setGeometry so it carries ONLY ROT_90 (the global display transform), matching GameHub/libwinemu (zero SC-level geometry). The 1280×702→1080×1920 rotate+scale combo is a known Adreno overlay-rejection trigger. (Re-opens old "blocker #2"; checkpoint thought it was wrong but this run keeps it live.)
+3. **DECISIVE DIAGNOSTIC: capture Vulkan-native ON dumpsys on the SAME device/scene** and diff layer-for-layer vs this GL one — Vulkan promotes to DEVICE here, so the diff (layer count? base swapchain state? is the Vulkan base even present? buffer geometry/transform?) points straight at the real GL-specific blocker instead of guessing.
+
+⚠️ Container left with Native toggled ON after this test. fix #2 NOT merged (still on branch `feat/gl-scanout-overlay-fix` tip `e036124`).

@@ -731,6 +731,58 @@ private fun TopLevelFields(
             )
         }
 
+        // ReShade effect (vkBasalt drop-in), per-container default. The per-game shortcut editor has
+        // the same picker and overrides this. Only applies to DXVK/VKD3D (Vulkan) games.
+        val reshadeWrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "")
+        val reshadeSupported = reshadeWrapper.contains("dxvk") || reshadeWrapper.contains("vegas")
+        LabeledDropdown(
+            label = "ReShade effect",
+            options = viewModel.reshadeEffectNames,
+            selectedOption = viewModel.reshadeEffect,
+            onSelect = { viewModel.selectReshadeEffect(it, viewModel.container?.getReshadeParams() ?: "") }
+        )
+        if (viewModel.reshadeEffectNames.size <= 1) {
+            Text(
+                "Drop ReShade effects into the app's ReShade folder " +
+                    "(Android/data/.../files/ReShade), one subfolder per effect.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+            )
+        }
+        if (!reshadeSupported && viewModel.reshadeEffect != "None") {
+            Text(
+                "ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DX wrapper.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+            )
+        }
+        if (viewModel.reshadeEffect != "None") {
+            val params = viewModel.reshadeEffects.firstOrNull { it.name == viewModel.reshadeEffect }?.params ?: emptyList()
+            params.forEach { p ->
+                val value = viewModel.reshadeParamValues[p.name] ?: p.defaultValue
+                if (p.type == com.winlator.star.reshade.ReshadeManager.ParamType.BOOL) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 52.dp)) {
+                        Switch(checked = value >= 0.5f, onCheckedChange = { viewModel.reshadeParamValues[p.name] = if (it) 1f else 0f })
+                        Spacer(Modifier.width(8.dp))
+                        Text(p.label, style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    val display = if (p.type == com.winlator.star.reshade.ReshadeManager.ParamType.INT)
+                        value.toInt().toString() else "%.2f".format(value)
+                    Text("${p.label}: $display", style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 52.dp, top = 2.dp))
+                    Slider(
+                        value = value.coerceIn(p.min, p.max),
+                        onValueChange = { viewModel.reshadeParamValues[p.name] = it },
+                        valueRange = p.min..p.max,
+                        modifier = Modifier.padding(start = 52.dp)
+                    )
+                }
+            }
+        }
+
         // LC_ALL
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(

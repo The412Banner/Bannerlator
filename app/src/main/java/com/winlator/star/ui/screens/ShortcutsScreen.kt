@@ -86,6 +86,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -121,6 +122,7 @@ import com.winlator.star.box64.Box64Preset
 import com.winlator.star.box64.Box64PresetManager
 import com.winlator.star.container.Container
 import com.winlator.star.container.Shortcut
+import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
@@ -1012,6 +1014,29 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
         mutableIntStateOf(shortcut.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100)
     }
 
+    // ReShade effect (vkBasalt drop-in). Scan the user folder once; "None" + each effect subfolder.
+    // Per-uniform values are seeded from the saved JSON (shortcut override → container default) and,
+    // when the effect changes, from the reflected .fx defaults. Serialized back to a JSON extra on save.
+    val reshadeEffects = remember { ReshadeManager.scanEffects(context) }
+    val reshadeEffectNames = remember(reshadeEffects) { listOf("None") + reshadeEffects.map { it.name } }
+    var selectedReshadeEffect by remember {
+        val v = shortcut.getExtra("reshadeEffect", shortcut.container.getReshadeEffect())
+        mutableStateOf(reshadeEffectNames.firstOrNull { it == v } ?: "None")
+    }
+    val reshadeParamValues = remember { mutableStateMapOf<String, Float>() }
+    // Seed values: saved JSON wins; otherwise the .fx-reflected defaults for the selected effect.
+    LaunchedEffect(selectedReshadeEffect) {
+        reshadeParamValues.clear()
+        val effect = reshadeEffects.firstOrNull { it.name == selectedReshadeEffect } ?: return@LaunchedEffect
+        val savedRaw = shortcut.getExtra("reshadeParams", shortcut.container.getReshadeParams())
+        val saved = runCatching { if (savedRaw.isNotEmpty()) JSONObject(savedRaw) else null }.getOrNull()
+        for (p in effect.params) {
+            reshadeParamValues[p.name] =
+                if (saved != null && saved.has(p.name)) saved.optDouble(p.name, p.defaultValue.toDouble()).toFloat()
+                else p.defaultValue
+        }
+    }
+
     // Win components
     val winComponents = remember {
         val raw = shortcut.getExtra("wincomponents", shortcut.container.getWinComponents())
@@ -1185,6 +1210,12 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             putExtra("sharpnessEffect", selectedSharpnessEffect)
             putExtra("sharpnessLevel", sharpnessLevel.toString())
             putExtra("sharpnessDenoise", sharpnessDenoise.toString())
+            putExtra("reshadeEffect", selectedReshadeEffect)
+            putExtra("reshadeParams",
+                if (selectedReshadeEffect == "None" || reshadeParamValues.isEmpty()) null
+                else JSONObject().apply {
+                    reshadeParamValues.forEach { (k, v) -> put(k, v.toDouble()) }
+                }.toString())
             putExtra("wincomponents", wincomps)
             putExtra("envVars", envVars.ifEmpty { null })
             putExtra("cpuList", cpuList)
@@ -1510,6 +1541,13 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             onSharpnessLevelChange = { sharpnessLevel = it },
             sharpnessDenoise = sharpnessDenoise,
             onSharpnessDenoiseChange = { sharpnessDenoise = it },
+            reshadeEffectNames = reshadeEffectNames,
+            selectedReshadeEffect = selectedReshadeEffect,
+            onReshadeEffectChange = { selectedReshadeEffect = it },
+            reshadeParams = reshadeEffects.firstOrNull { it.name == selectedReshadeEffect }?.params ?: emptyList(),
+            reshadeParamValues = reshadeParamValues,
+            onReshadeParamChange = { name, v -> reshadeParamValues[name] = v },
+            reshadeSupported = StringUtils.parseIdentifier(selectedDxWrapper).let { it.contains("dxvk") || it.contains("vegas") },
             onShowBox64DownloadSheet = { showBox64DownloadSheet = true },
             onShowFexCoreDownloadSheet = { showFexCoreDownloadSheet = true }
         )
@@ -1717,6 +1755,13 @@ private fun ScAdvancedTab(
     onSharpnessLevelChange: (Int) -> Unit,
     sharpnessDenoise: Int,
     onSharpnessDenoiseChange: (Int) -> Unit,
+    reshadeEffectNames: List<String> = listOf("None"),
+    selectedReshadeEffect: String = "None",
+    onReshadeEffectChange: (String) -> Unit = {},
+    reshadeParams: List<ReshadeManager.ReshadeParam> = emptyList(),
+    reshadeParamValues: Map<String, Float> = emptyMap(),
+    onReshadeParamChange: (String, Float) -> Unit = { _, _ -> },
+    reshadeSupported: Boolean = true,
     onShowBox64DownloadSheet: () -> Unit = {},
     onShowFexCoreDownloadSheet: () -> Unit = {},
 ) {
@@ -1839,6 +1884,63 @@ private fun ScAdvancedTab(
                 valueRange = 0f..100f,
                 steps = 99
             )
+        }
+
+        // ReShade effect (vkBasalt drop-in). Mirrors the Sharpness (VKBasalt) section above: an
+        // effect picker (None + scanned drop-in folders) plus a slider/switch per uniform reflected
+        // from the .fx. Only applies to DXVK/VKD3D (Vulkan) games — a hint shows otherwise.
+        SectionBox(title = "ReShade effect") {
+            LabeledDropdown(
+                label = "Effect",
+                options = reshadeEffectNames,
+                selectedOption = selectedReshadeEffect,
+                onSelect = onReshadeEffectChange
+            )
+            if (reshadeEffectNames.size <= 1) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Drop ReShade effects into the app's ReShade folder " +
+                        "(Android/data/.../files/ReShade), one subfolder per effect.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (!reshadeSupported && selectedReshadeEffect != "None") {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DX wrapper.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            if (selectedReshadeEffect != "None" && reshadeParams.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                reshadeParams.forEach { p ->
+                    val value = reshadeParamValues[p.name] ?: p.defaultValue
+                    when (p.type) {
+                        ReshadeManager.ParamType.BOOL -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                androidx.compose.material3.Switch(
+                                    checked = value >= 0.5f,
+                                    onCheckedChange = { onReshadeParamChange(p.name, if (it) 1f else 0f) }
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(p.label, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        else -> {
+                            val display = if (p.type == ReshadeManager.ParamType.INT)
+                                value.toInt().toString() else "%.2f".format(value)
+                            Text("${p.label}: $display", style = MaterialTheme.typography.bodySmall)
+                            Slider(
+                                value = value.coerceIn(p.min, p.max),
+                                onValueChange = { onReshadeParamChange(p.name, it) },
+                                valueRange = p.min..p.max
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

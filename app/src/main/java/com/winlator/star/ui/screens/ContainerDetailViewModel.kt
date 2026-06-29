@@ -112,6 +112,28 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // Manual refresh-rate lock (Hz) used when Auto (matchRefreshRate) is OFF. 0 = none/native.
     var manualRefreshRate by mutableStateOf(0)
 
+    // ReShade effect (vkBasalt drop-in), per-container default. The per-game shortcut can override.
+    // "None" = no effect. Param values are reflected from the .fx and seeded on selection change.
+    var reshadeEffect by mutableStateOf("None")
+    val reshadeParamValues = androidx.compose.runtime.mutableStateMapOf<String, Float>()
+    var reshadeEffects by mutableStateOf<List<com.winlator.star.reshade.ReshadeManager.ReshadeEffect>>(emptyList()); private set
+    val reshadeEffectNames: List<String> get() = listOf("None") + reshadeEffects.map { it.name }
+    // Seed param values for the selected effect: saved JSON wins, else the .fx defaults.
+    fun selectReshadeEffect(name: String, savedJson: String) {
+        reshadeEffect = name
+        reshadeParamValues.clear()
+        val effect = reshadeEffects.firstOrNull { it.name == name } ?: return
+        val saved = runCatching { if (savedJson.isNotEmpty()) JSONObject(savedJson) else null }.getOrNull()
+        for (p in effect.params) {
+            reshadeParamValues[p.name] =
+                if (saved != null && saved.has(p.name)) saved.optDouble(p.name, p.defaultValue.toDouble()).toFloat()
+                else p.defaultValue
+        }
+    }
+    fun reshadeParamsJsonOrNull(): String? =
+        if (reshadeEffect == "None" || reshadeParamValues.isEmpty()) null
+        else JSONObject().apply { reshadeParamValues.forEach { (k, v) -> put(k, v.toDouble()) } }.toString()
+
     // ── Renderer ──────────────────────────────────────────────────────────────
     var rendererEntries by mutableStateOf(emptyList<String>()); private set
     var selectedRenderer by mutableStateOf("OpenGL")
@@ -319,6 +341,14 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         fpsLimiterEnabled  = c?.isFpsLimiterEnabled == true
         matchRefreshRate   = c?.isMatchRefreshRate != false   // default ON for new/unset containers
         manualRefreshRate  = c?.manualRefreshRate ?: 0
+
+        // ReShade: scan the drop-in folder, then seed the selected effect + its param values.
+        reshadeEffects = com.winlator.star.reshade.ReshadeManager.scanEffects(context)
+        val savedEffect = c?.getReshadeEffect() ?: "None"
+        selectReshadeEffect(
+            if (reshadeEffectNames.contains(savedEffect)) savedEffect else "None",
+            c?.getReshadeParams() ?: ""
+        )
 
         // Renderer
         // Map the stored identifier ("opengl"/"vulkan") to its display label ("OpenGL"/"Vulkan") so
@@ -586,6 +616,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setFpsLimiterEnabled(fpsLimiterEnabled)
             c.setMatchRefreshRate(matchRefreshRate)
             c.setManualRefreshRate(manualRefreshRate)
+            c.setReshadeEffect(reshadeEffect)
+            c.setReshadeParams(reshadeParamsJsonOrNull())
             c.setExclusiveXInput(exclusiveXInput)
             c.setRenderer(StringUtils.parseIdentifier(selectedRenderer))
             c.setRendererNative(rendererNative)
@@ -656,6 +688,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                     created.setFpsLimiterEnabled(fpsLimiterEnabled)
                     created.setMatchRefreshRate(matchRefreshRate)
                     created.setManualRefreshRate(manualRefreshRate)
+                    created.setReshadeEffect(reshadeEffect)
+                    created.setReshadeParams(reshadeParamsJsonOrNull())
                     if (renderScale != "1.0") created.putExtra("renderScale", renderScale)
                     if (!autoCloseOnExit) created.putExtra("autoCloseOnExit", "0")  // default ON
                     created.saveData()

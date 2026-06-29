@@ -2410,3 +2410,29 @@ GL container, Native ON, drawer closed, Adreno750. dumpsys: game `AHardwareBuffe
 
 ## 🧪 EXPERIMENT B BUILT (graphics-vulkan-engineer, 2026-06-29) — branch `exp/gl-scanout-prerotate-panelres` (`8b20b96`, stacked on Exp A `75115bb`, NOT merged). CI run `28392607613`.
 Extends Exp A: host scanout AHB allocated at PANEL res (1080×1920, portrait-locked), blit ROTATES guest frame 90° into it (new `ScanoutBlitRot90Material`, UV transpose) so content is display-oriented, then presents at **transform 0, src==dst (no SC scale)** via setContainerSize/setDst(0,0,pw,ph). Activity portrait-locked during native (`setProbeOrientation(true)` in enableScanout, restore sensorLandscape on native-off; configChanges has orientation|screenSize → reconfigure in place, NO activity recreation). Keeps COMPOSER_OVERLAY usage + the sticky fallback (alloc/FBO/roundtrip fail or 3 timeouts → direct guest present, never black). Files: NEW `ScanoutBlitRot90Material.java`; `GLRenderer.java` (blitGuestIntoHostScanoutAndPresent → panel-res+rotate+transform0/src==dst, setProbeOrientation, portrait lock wiring). DIAGNOSTIC: cursor/HUD/input + image orientation intentionally WRONG — only the dumpsys reading + not-black matter. **DEVICE GATE: GL+Native ON, dumpsys winlator_game_buf = `DEVICE/DEVICE` at transform 0? DEVICE→rotation/scale was the blocker (path exists w/ cursor/orientation plumbing). STILL CLIENT→UBWC/compression or fundamental→gate GL-native overlay unsupported on portrait; landscape-native device = the win.** Confirm cube image present (rotated/odd = fine, just not black).
+
+## 🟢🟢 EXPERIMENT B DEVICE-TESTED (2026-06-29, post-crash resume) — PROMOTES! TRUE HWC OVERLAY ON THE PORTRAIT DEVICE. The "C-win unattainable on portrait" bombshell is OVERTURNED.
+Device "Pocket FIT" Adreno750/SD8Gen3, GL|DXVK, AIO DX11 cube, Native ON (game already foreground after the session crash; 14 scanout SCs alive; captured with drawer open — promotion holds with drawer up).
+
+**DPU/SDM hardware composition pipe table (ground truth — the Snapdragon Display Engine's actual scanout plan, NOT a requested-hint column, so immune to the earlier requested-vs-actual misread):**
+- idx0 base SurfaceView  RGBA_8888_UBWC  = SDE  (overlay)
+- idx1 **GAME  BGRA_8888  = SDE pipe149, src 0 0 1080 1920 -> dst 0 0 1080 1920 (NO SCALE), Transform 0**
+- idx2 cursor  RGBA_8888 16x16  = SDE
+- idx3 VRI  RGBA_8888_UBWC  = SDE
+- idx5 GPU_TARGET = **NO layers assigned = GPU does ZERO composition**
+
+Raw HWC `layer:` list corroborates (game/cursor are named `AHardwareBuffer pid[15581]` = the app process = exp-B host-blit AHB, NOT `winlator_*` — that's why the first grep missed them):
+- game  z1  `composition: DEVICE/DEVICE`  BGRA_8888  transform 0/0/0
+- cursor z2 `composition: DEVICE/DEVICE`  RGBA_8888  transform 0/0/0
+- base + VRI  `composition: DEVICE/DEVICE`  RGBA_8888_UBWC  transform 0/0/0
+- count of `DEVICE/CLIENT` + `CLIENT/CLIENT` across the whole dump = **0**
+
+Screenshot (scratchpad/eb1.png) = image produced, not black (Wine window chrome visible on the strip beside the open drawer; orientation/aspect intentionally wrong per the diagnostic design).
+
+**VERDICT: the HWC-overlay blocker was ROTATION (transform 90) + SCALE (src != dst) TOGETHER — NOT UBWC, NOT GLSurfaceView, NOT portrait-orientation-per-se.** Pre-rotating the guest frame 90° into a panel-res (1080x1920) host AHB (so it's display-oriented = transform 0) + presenting src==dst (no SC-level scale) + portrait-locking the activity => this Adreno DPU accepts a **plain non-UBWC BGRA_8888** buffer on a hardware overlay pipe.
+
+**Overturns:** (a) bombshell "C-win unattainable on this portrait device for ANY renderer" = FALSE — C IS attainable, you must hand the DPU a transform-0, unscaled buffer; (b) the "UBWC required" hypothesis (Exp A's last suspect) = FALSE (game promoted as plain BGRA_8888); (c) the landscape long-shot finding (ROT_90 applied by the scanout handoff, not the display orientation) = CONFIRMED as the cause, and Exp B's pre-rotation is the fix.
+
+**Exp B is a DIAGNOSTIC THROWAWAY (branch `exp/gl-scanout-prerotate-panelres` `8b20b96`, do-NOT-merge as-is):** hardcoded 90° UV-transpose one direction; cursor/HUD/input/aspect intentionally wrong; extra full-frame GPU blit + GL-thread roundtrip per frame; portrait-lock hack.
+
+**Next (decision pending with user) — productionize C-win on portrait vs. ship latency-only:** orientation-aware correct pre-rotation (all 4 rotations, right handedness/flip), fix cursor/HUD/input mapping under the rotated present, weigh the host-blit cost (extra blit + roundtrip + possible base double-buffer) against the overlay/GPU-idle win — vs. just keeping the already-merged latency-only P4+P5. Container left Native ON, exp-B build installed, Claude/Termux session brought back to foreground.

@@ -434,6 +434,15 @@ private fun GraphicsContent(state: XServerDrawerState) {
     val effectsSupported by XServerDialogState.effectsSupported.collectAsState() // OpenGL renderer
     val vulkanSupported  by XServerDialogState.vulkanSupported.collectAsState()  // Vulkan renderer
 
+    // P5: GL Native Rendering (direct scanout) bypasses the entire EffectComposer chain + the GL
+    // scaling/upscaler modes, so grey those controls out while native is on (they'd be dead toggles).
+    // Reactive — flipping the Native Rendering toggle below recomposes this and updates the grey-out
+    // live without reopening the drawer. (Only the GL block is gated; the Vulkan block uses its own
+    // reset-on-enable mutual exclusion and stays interactive.)
+    val nativeRenderingEnabled by state.nativeRenderingEnabled.collectAsState()
+    val glEnabled = !nativeRenderingEnabled
+    val glHeaderColor = if (glEnabled) Primary else Primary.copy(alpha = 0.4f)
+
     if (effectsSupported) {
         // ---- OpenGL: Scaling mode (real SGSR / FSR1 spatial upscalers; parity with the
         //      Vulkan picker). Modes 0/1/2 drive the base sampler filter; 3/4/5 engage the
@@ -442,9 +451,9 @@ private fun GraphicsContent(state: XServerDrawerState) {
         val initGlUpscalerMode by XServerDialogState.glUpscalerMode.collectAsState()
         var glUpscalerMode by remember(initGlUpscalerMode) { mutableIntStateOf(initGlUpscalerMode) }
 
-        Text("Scaling mode", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text("Scaling mode", color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
-        UpscalerModeButtons(glUpscalerMode, true) {
+        UpscalerModeButtons(glUpscalerMode, glEnabled) {
             glUpscalerMode = it
             XServerDialogState.onGlUpscalerApply?.invoke(it)
         }
@@ -460,7 +469,8 @@ private fun GraphicsContent(state: XServerDrawerState) {
                 onValueChangeFinished = {
                     XServerDialogState.onGlUpscaleSharpnessApply?.invoke(glUpscaleSharpness)
                 },
-                steps = if (glUpscalerMode == 6) 3 else -1)
+                steps = if (glUpscalerMode == 6) 3 else -1,
+                enabled = glEnabled)
         }
 
         HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
@@ -473,23 +483,23 @@ private fun GraphicsContent(state: XServerDrawerState) {
         var sgsrSharpness by remember(initSgsrSharpness) { mutableIntStateOf(initSgsrSharpness) }
         var hdrEnabled    by remember(initHdrEnabled)    { mutableStateOf(initHdrEnabled) }
 
-        ToggleRow("Sharpen (CAS)", sgsrEnabled, true) { sgsrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
+        ToggleRow("Sharpen (CAS)", sgsrEnabled, glEnabled) { sgsrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
         if (sgsrEnabled) {
             Spacer(Modifier.height(4.dp))
             // Standalone CAS sharpen: always snapped to 5 stops {0,25,50,75,100}, stop 0 = OFF.
             IntSlider("Sharpness", sgsrSharpness, 0..100,
                 onValueChange = { sgsrSharpness = it },
                 onValueChangeFinished = { pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) },
-                steps = 3)
+                steps = 3, enabled = glEnabled)
         }
-        ToggleRow("HDR", hdrEnabled, true) { hdrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
+        ToggleRow("HDR", hdrEnabled, glEnabled) { hdrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
 
         // Terminal debanding (TPDF dither) — kills 8-bit gradient banding. Drawer-only / session-live.
-        DebandControls()
+        DebandControls(glEnabled)
 
         HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
 
-        Text("Screen Effects", color = Primary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text("Screen Effects", color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
 
         val seBrightness by XServerDialogState.seBrightness.collectAsState()
@@ -511,14 +521,14 @@ private fun GraphicsContent(state: XServerDrawerState) {
             XServerDialogState.onScreenEffectsApply?.invoke(localBrightness, localContrast, localGamma, localFxaa, localCrt, localToon, localNtsc, 0)
         }
 
-        LabeledSlider("Brightness", localBrightness, -100f..100f, { localBrightness = it; applySe() }, enabled = true)
-        LabeledSlider("Contrast", localContrast, -100f..100f, { localContrast = it; applySe() }, enabled = true)
-        LabeledSlider("Gamma", localGamma, 0.5f..3.0f, { localGamma = it; applySe() }, enabled = true, format = { "%.2f".format(it) })
+        LabeledSlider("Brightness", localBrightness, -100f..100f, { localBrightness = it; applySe() }, enabled = glEnabled)
+        LabeledSlider("Contrast", localContrast, -100f..100f, { localContrast = it; applySe() }, enabled = glEnabled)
+        LabeledSlider("Gamma", localGamma, 0.5f..3.0f, { localGamma = it; applySe() }, enabled = glEnabled, format = { "%.2f".format(it) })
 
-        SeShaderToggle("FXAA", localFxaa, true) { localFxaa = it; applySe() }
-        SeShaderToggle("CRT", localCrt, true) { localCrt = it; applySe() }
-        SeShaderToggle("Toon", localToon, true) { localToon = it; applySe() }
-        SeShaderToggle("NTSC", localNtsc, true) { localNtsc = it; applySe() }
+        SeShaderToggle("FXAA", localFxaa, glEnabled) { localFxaa = it; applySe() }
+        SeShaderToggle("CRT", localCrt, glEnabled) { localCrt = it; applySe() }
+        SeShaderToggle("Toon", localToon, glEnabled) { localToon = it; applySe() }
+        SeShaderToggle("NTSC", localNtsc, glEnabled) { localNtsc = it; applySe() }
 
         HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
     }
@@ -629,7 +639,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
     }
 
-    val nativeRenderingEnabled by state.nativeRenderingEnabled.collectAsState()
+    // nativeRenderingEnabled is collected once at the top of GraphicsContent (drives the GL grey-out).
     ToggleRow("Native Rendering", nativeRenderingEnabled) { state.onNativeRenderingToggle?.run() }
 
 }
@@ -778,12 +788,12 @@ private fun pushSgsrUpdate(enabled: Boolean, sharpness: Int, hdr: Boolean) {
 // state and fires onDebandApply; only one renderer block is shown per session, so the
 // shared state never conflicts. strength 0..200 (CPU maps /100 to LSBs, default 100 = 1 LSB).
 @Composable
-private fun DebandControls() {
+private fun DebandControls(enabled: Boolean = true) {
     val initDebandEnabled  by XServerDialogState.debandEnabled.collectAsState()
     val initDebandStrength by XServerDialogState.debandStrength.collectAsState()
     var debandEnabled  by remember(initDebandEnabled)  { mutableStateOf(initDebandEnabled) }
     var debandStrength by remember(initDebandStrength) { mutableIntStateOf(initDebandStrength) }
-    ToggleRow("Debanding", debandEnabled, true) {
+    ToggleRow("Debanding", debandEnabled, enabled) {
         debandEnabled = it
         XServerDialogState.onDebandApply?.invoke(debandEnabled, debandStrength)
     }
@@ -793,7 +803,8 @@ private fun DebandControls() {
             onValueChange = { debandStrength = it },
             onValueChangeFinished = {
                 XServerDialogState.onDebandApply?.invoke(debandEnabled, debandStrength)
-            })
+            },
+            enabled = enabled)
     }
 }
 
@@ -900,11 +911,11 @@ private fun RefreshRateSlider(rates: List<Int>, selected: Int, enabled: Boolean,
 }
 
 @Composable
-private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueChange: (Int) -> Unit, onValueChangeFinished: (() -> Unit)? = null, steps: Int = -1) {
+private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueChange: (Int) -> Unit, onValueChangeFinished: (() -> Unit)? = null, steps: Int = -1, enabled: Boolean = true) {
     // steps < 0 -> continuous (one stop per integer); steps >= 0 -> snap to that many
     // interior stops (e.g. steps = 3 over 0..100 yields the 5 positions {0,25,50,75,100}).
     val sliderSteps = if (steps >= 0) steps else (valueRange.last - valueRange.first - 1)
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(vertical = 4.dp).then(if (enabled) Modifier else Modifier.alpha(0.4f))) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -919,6 +930,7 @@ private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueCh
             onValueChangeFinished = { onValueChangeFinished?.invoke() },
             valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
             steps = sliderSteps,
+            enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
     }

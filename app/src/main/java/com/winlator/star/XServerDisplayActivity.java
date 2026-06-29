@@ -84,6 +84,7 @@ import com.winlator.star.math.Mathf;
 import com.winlator.star.math.XForm;
 import com.winlator.star.midi.MidiHandler;
 import com.winlator.star.midi.MidiManager;
+import com.winlator.star.renderer.EffectComposer;
 import com.winlator.star.renderer.GLRenderer;
 import com.winlator.star.renderer.HostRenderer;
 import com.winlator.star.renderer.effects.CRTEffect;
@@ -518,9 +519,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (next) resetVulkanPresets(vkr);
             } else if (r instanceof GLRenderer) {
                 // GL Native Rendering (direct scanout) — P3 lifecycle. Builds/tears down the child
-                // game/cursor SurfaceControls under the GLSurfaceView's SC. The GL EffectComposer
-                // effects are bypassed in native mode; resetting them in the drawer is P5 polish.
-                ((GLRenderer) r).setNativeMode(next);
+                // game/cursor SurfaceControls under the GLSurfaceView's SC.
+                GLRenderer glr = (GLRenderer) r;
+                glr.setNativeMode(next);
+                // Direction B (P5): GL native bypasses the entire EffectComposer chain + the GL
+                // scaling/upscaler modes. Turning native ON resets every GL effect so the drawer is
+                // truthful (no toggles left "on" doing nothing). Only sets EffectComposer + StateFlows
+                // — never invokes the apply callbacks, so there's no feedback loop. While native stays
+                // on, the GraphicsContent composable greys the GL effect/scaling controls out.
+                if (next) resetGlEffectsForNative(glr);
             }
         };
         // bionic-fg live controls (frame gen multiplier/flow + fps limiter). Each in-menu slider
@@ -1965,6 +1972,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         HostRenderer r = xServerView.getRenderer();
         if (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer)
             ((com.winlator.star.renderer.vulkan.VulkanRenderer) r).setNativeMode(false);
+        else if (r instanceof GLRenderer)
+            ((GLRenderer) r).setNativeMode(false); // GL direct scanout bypasses the EffectComposer too
         XServerDrawerState.INSTANCE.setNativeRenderingEnabled(false); // flips the toggle UI off
         showToast(this, "Native Rendering off — needed for post-processing");
     }
@@ -1980,6 +1989,35 @@ public class XServerDisplayActivity extends AppCompatActivity {
         vkr.setScreenEffects(0f, 0f, 1.0f, false, false, false, false);
         ds.setVkBrightness(0f); ds.setVkContrast(0f); ds.setVkGamma(1.0f);
         ds.setVkFxaa(false); ds.setVkToon(false); ds.setVkCrt(false); ds.setVkNtsc(false);
+    }
+
+    /** Direction B (GL): GL Native Rendering (direct scanout) bypasses the entire GL EffectComposer
+     *  chain + the GL spatial upscalers/scaling modes, so enabling native resets every GL effect to
+     *  neutral so the drawer is truthful (no toggles left "on" doing nothing while bypassed). Mirrors
+     *  resetVulkanPresets(): only touches the EffectComposer + StateFlows — never the apply callbacks,
+     *  so this cannot re-enter disableNativeRenderingForPreset(). */
+    private void resetGlEffectsForNative(GLRenderer glr) {
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+        EffectComposer comp = glr.getEffectComposer();
+        // Scaling mode -> None (linear base sampler), default sharpness.
+        glr.setFilterMode(1);
+        comp.setUpscaler(0);
+        ds.setGlUpscalerMode(0);
+        ds.setGlUpscaleSharpness(75);
+        // SGSR/CAS sharpen (FSREffect) + HDR off — remove the effects (mirrors onSgsrUpdate teardown).
+        com.winlator.star.renderer.effects.FSREffect fsr =
+            comp.getEffect(com.winlator.star.renderer.effects.FSREffect.class);
+        if (fsr != null) comp.removeEffect(fsr);
+        HDREffect hdr = comp.getEffect(HDREffect.class);
+        if (hdr != null) comp.removeEffect(hdr);
+        ds.setSgsrEnabled(false); ds.setSgsrSharpness(50); ds.setHdrEnabled(false);
+        // Screen effects: color grade neutral + FXAA/CRT/Toon/NTSC off.
+        applyScreenEffects(glr, 0f, 0f, 1.0f, false, false, false, false);
+        ds.setSeBrightness(0f); ds.setSeContrast(0f); ds.setSeGamma(1.0f);
+        ds.setSeFxaa(false); ds.setSeCrt(false); ds.setSeToon(false); ds.setSeNtsc(false);
+        // Terminal debanding off.
+        comp.setDeband(false, 100);
+        ds.setDebandEnabled(false); ds.setDebandStrength(100);
     }
 
     private void initInlineTabStates(HostRenderer renderer) {
@@ -2137,6 +2175,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         ds.onScreenEffectsApply = (brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn, profileIndex) -> {
             if (glRenderer == null) return;
+            // Direction A: any non-neutral screen effect runs in the EffectComposer, which GL native
+            // bypasses — so engaging one turns Native Rendering off (guarded; no-op when already off).
+            if (fxaaEn || crtEn || toonEn || ntscEn || brightness != 0f || contrast != 0f || gamma != 1.0f)
+                disableNativeRenderingForPreset();
             applyScreenEffects(glRenderer, brightness, contrast, gamma, fxaaEn, crtEn, toonEn, ntscEn);
             if (profileIndex > 0 && profileIndex - 1 < seProfileNames.size()) {
                 String name = seProfileNames.get(profileIndex - 1);
@@ -2155,6 +2197,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         ds.onSgsrUpdate = (enabled, sharpness, hdrEn) -> {
             if (glRenderer == null) return;
+            // Direction A: CAS sharpen / HDR are EffectComposer post passes that GL native bypasses.
+            if (enabled || hdrEn) disableNativeRenderingForPreset();
             com.winlator.star.renderer.effects.FSREffect cur = (com.winlator.star.renderer.effects.FSREffect) glRenderer.getEffectComposer().getEffect(com.winlator.star.renderer.effects.FSREffect.class);
             if (cur != null) glRenderer.getEffectComposer().removeEffect(cur);
             // The drawer snaps this slider to 5 stops {0,25,50,75,100}; stop 0 = OFF (no CAS
@@ -2188,6 +2232,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         glRenderer.getEffectComposer().setUpscaler(glSeedMode, 0.75f);
         ds.onGlUpscalerApply = (mode) -> {
             if (glRenderer == null) return;
+            // Direction A: a spatial scaling mode lives in the EffectComposer low-res stage, which
+            // GL native (direct scanout) bypasses — so engaging one turns Native Rendering off.
+            // Guarded inside disableNativeRenderingForPreset(), so this no-ops when native is already
+            // off (and the drawer greys these controls out while native is on, so it rarely fires).
+            if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS
             // None/Linear/spatial/sharpen -> linear base sampler; Nearest -> point.
             glRenderer.setFilterMode(mode == 2 ? 2 : 1);
             glRenderer.getEffectComposer().setUpscaler(mode); // keeps the current sharpness
@@ -2202,6 +2251,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         ds.setDebandStrength(100);
         ds.onDebandApply = (enabled, strength) -> {
             if (glRenderer == null) return;
+            // Direction A: terminal debanding is a final EffectComposer pass that GL native bypasses.
+            if (enabled) disableNativeRenderingForPreset();
             glRenderer.getEffectComposer().setDeband(enabled, strength);
         };
 

@@ -179,34 +179,46 @@ This project is built via **GitHub Actions only** — local builds are not suppo
 
 ## 🤖 Ask Me Anything
 
-Got a question about Bannerlator? **Ask the codebase directly** and get an answer
-from an AI that searches the actual source code, docs, configs, and commit history —
-every answer includes file paths and line numbers so you can verify it yourself.
+Got a question about Bannerlator? **Ask the codebase directly.** An AI reads the
+actual source code and answers with file paths and line numbers, so you can verify
+every answer yourself. It never guesses — if the answer isn't in the code, it says so.
 
-### Live dialogue box (GitHub Issues)
+### How to submit a question
 
-[Open a new question](https://github.com/The412Banner/Bannerlator/issues/new?template=ask-the-ai.yml)
-→ type your question into the form → submit. A maintainer gives it a quick look,
-and the bot reads the codebase and posts the answer as a comment on your issue,
-citing the exact files. For a follow-up, open another question.
+1. **[Click here to open a new question →](https://github.com/The412Banner/Bannerlator/issues/new?template=ask-the-ai.yml)**
+   (or go to the **Issues** tab → **New issue** → **🤖 Ask the AI**).
+   *You'll need a free GitHub account to post.*
+2. **Type your question** in the form. Be specific — name the feature, setting, or
+   file you're asking about (see the examples below).
+3. **Submit it.** Your question is created as an Issue.
+4. **Wait for a maintainer to approve it.** To stop spam and abuse, the bot only
+   runs after a maintainer adds the **`question`** label to your issue. (Newly
+   submitted questions start with the `ama-request` label while they wait.)
+5. **Read the answer.** About **1–2 minutes** after approval, the bot posts its
+   answer as a comment on your issue, with the exact files it used, and marks the
+   issue **`answered`**.
+6. **Follow-up?** Open a new question — one question per issue.
 
-> ⚙️ **One-time setup:** The repo owner needs to add their opencode auth as a
-> secret. Run `cat ~/.local/share/opencode/auth.json` locally, copy the entire
-> JSON object, and add it as `OPENCODE_AUTH` in **Settings → Secrets and
-> variables → Actions**. This uses the same **opencode/big-pickle** model
-> powering this session — your existing opencode credentials, not a separate
-> API key. Without it, the bot will post a notice explaining what's needed.
+> ⏳ **Why isn't it instant?** A maintainer has to wave each question through
+> first. If yours hasn't been answered yet, it's just waiting in the queue — you
+> don't need to do anything.
 
-### CLI (opencode)
+### Tips for a good question
 
-If you have [opencode](https://github.com/anomalyco/opencode) set up locally,
-you can run the agent directly:
+- ✅ *"How does the FPS limiter throttle the game?"* — specific, names a feature.
+- ✅ *"Which file builds the container card layout?"* — asks for a concrete location.
+- ❌ *"Why is my game slow?"* — the bot answers what the **code** says, not how a
+  specific game runs on your device. Ask about how a feature works, where something
+  lives, or what a setting does.
+
+### Prefer the command line?
+
+If you have [opencode](https://opencode.ai) installed (`npm install -g opencode-ai`),
+you can run the same agent locally against a clone of this repo, no waiting:
 
 ```
 opencode run "your question" --agent ama-agent --model opencode/big-pickle
 ```
-
-The agent searches the full repo and answers with file-cited facts.
 
 ### What you can ask
 
@@ -218,11 +230,27 @@ The agent searches the full repo and answers with file-cited facts.
 | Which file controls Y? | *"Which file controls the container card layout?"* |
 | Build & release questions | *"How are release builds signed and distributed?"* |
 | Compatibility questions | *"Why does Turnip on Android 10 use a different driver path?"* |
-| What changed in version Z? | *"What changed between 1.9.2 and 2.0?"* |
 
 <p align="center">
   <i>The AI never guesses. If the answer isn't in the codebase, it says so.</i>
 </p>
+
+<details>
+<summary><b>Maintainers / forks — one-time setup</b></summary>
+
+The bot runs on the **opencode/big-pickle** model via your opencode credentials
+(not a separate API key). To enable it on a fork:
+
+1. Locally run `cat ~/.local/share/opencode/auth.json` and copy the whole JSON.
+2. Add it as a repository secret named **`OPENCODE_AUTH`** under
+   **Settings → Secrets and variables → Actions**.
+3. Make sure the `question`, `ama-request`, and `answered` labels exist.
+
+Approve a question by adding the **`question`** label to its issue — on a public
+repo only maintainers can add labels, which is what keeps the bot from being
+triggered (and billed) by anyone. Without the secret, the bot posts a notice
+explaining what's missing.
+</details>
 
 ---
 

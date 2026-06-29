@@ -75,6 +75,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private boolean swapRB = false;
     private Cursor lastScanoutCursor = null;
 
+    // Per-present HUD driver (P4). The GL-native FLIP path bypasses onDrawFrame AND copyArea, so the
+    // perf HUD is never ticked in native mode unless we drive it from presentScanout. Decoupled from
+    // any specific HUD widget (works for FrameRating classic + horizontal + GameHub PerfHud).
+    // Mirrors VulkanRenderer.setHudFrameTick / ASurfaceRenderer.setHudFrameTick.
+    private java.util.function.IntConsumer hudFrameTick = null;
+    public void setHudFrameTick(java.util.function.IntConsumer c) { hudFrameTick = c; }
+
     // Selectable sampler filter for window/content drawables only (the cursor stays LINEAR so the
     // pointer never goes blocky). Mirrors the Vulkan filter-int convention used by setUpscaler:
     //   0/default & 1 -> GL_LINEAR (bilinear), 2 -> GL_NEAREST (point). Applied per-frame in
@@ -668,6 +675,47 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                 short stride = (short) (buf.capacity() / (cd.height * 4));
                 scanout.setCursorImage(buf, cd.width, cd.height, stride);
             }
+        }
+    }
+
+    /**
+     * Per-frame game-AHB push for GL Native Rendering (P4). Called from PresentExtension's GL-native
+     * FLIP branch on the X11/epoll thread (NOT the GL draw thread). This is the lift of the
+     * AHB-scanout body of {@code VulkanRenderer.onUpdateWindowContent}: unlock the GPUImage to get
+     * its fence, hand the {@code AHardwareBuffer} to the game SurfaceControl (DirectScanout applies
+     * the transaction inline, the GL model), then re-lock + refresh. On the FIRST delivered frame it
+     * pauses X rendering so the GLSurfaceView idles and the opaque game SC can be promoted to an HWC
+     * overlay (the whole point — SurfaceFlinger skips GL composition). The FLIP path bypasses the GL
+     * effect chain and the HUD's copyArea driver, so tick the HUD here too or FPS freezes.
+     *
+     * <p>The caller (PresentExtension) already holds {@code content.renderLock}; the re-entrant
+     * synchronize mirrors the Vulkan path and is harmless. {@code content.getTexture()} is the
+     * pixmap's GPUImage (the branch swaps it in before calling this).
+     */
+    public void presentScanout(Window window, Drawable content) {
+        if (scanout == null || !nativeMode || content == null) return;
+        if (!window.attributes.isMapped()) return;
+        int rx = window.getRootX(), ry = window.getRootY();
+        synchronized (content.renderLock) {
+            if (!(content.getTexture() instanceof GPUImage)) return;
+            GPUImage g = (GPUImage) content.getTexture();
+            long ahbPtr = g.getHardwareBufferPtr();
+            if (ahbPtr == 0) return;
+
+            boolean wasDelivered = scanout.isGameFrameDelivered();
+            int fence = g.unlock();
+            scanout.present(ahbPtr, rx, ry, content.width, content.height, fence);
+            g.lock();
+            content.refreshDataFromTexture();
+            boolean delivered = scanout.isGameFrameDelivered();
+
+            // First delivered frame: stop guest content updates so GLSurfaceView stops redrawing and
+            // the opaque top game SC occludes the stale GL frame -> SurfaceFlinger can HWC-overlay it.
+            if (!xRenderingPausedForScanout && !wasDelivered && delivered) {
+                xServer.setRenderingEnabled(false);
+                xRenderingPausedForScanout = true;
+            }
+            if (hudFrameTick != null) hudFrameTick.accept(window.id);
         }
     }
 

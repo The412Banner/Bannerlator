@@ -1830,6 +1830,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean glNativeOn = container.isRendererNative();
             glr.setInitialNativeMode(glNativeOn);
             XServerDrawerState.INSTANCE.setNativeRenderingEnabled(glNativeOn); // keep the toggle in sync
+            // GL native (FLIP/scanout) bypasses both onDrawFrame and copyArea, so drive the perf HUD
+            // per present here (same as the Vulkan/ASR ticks) — otherwise the HUD freezes in native mode.
+            glr.setHudFrameTick(wid -> {
+                if (wid == frameRatingWindowId) {
+                    if (frameRating != null) frameRating.update();
+                    if (frameRatingHorizontal != null) frameRatingHorizontal.update();
+                    if (perfHud != null) perfHud.update();
+                }
+            });
         }
 
         // ASR has no compositor copyArea path either, so drive the perf HUD per present (same as

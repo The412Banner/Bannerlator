@@ -297,6 +297,19 @@ public class PresentExtension implements Extension {
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
                 vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
                 emitIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
+            } else if (xr instanceof com.winlator.star.renderer.GLRenderer
+                    && ((com.winlator.star.renderer.GLRenderer) xr).isNativeMode()
+                    && pixmap.drawable.getTexture() instanceof GPUImage
+                    && ((GPUImage) pixmap.drawable.getTexture()).getHardwareBufferPtr() != 0) {
+                // GL Native Rendering (direct scanout): swap the content texture to the pixmap's
+                // GPUImage and scan its AHB out through the game SurfaceControl (zero copy, FLIP),
+                // mirroring the Vulkan isNative branch above. The GL effect chain + copyArea are
+                // bypassed; presentScanout drives the HUD + first-frame X-rendering pause.
+                content.setTexture(pixmap.drawable.getTexture());
+                content.setDirectScanout(true);
+                sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
+                ((com.winlator.star.renderer.GLRenderer) xr).presentScanout(window, content);
+                emitIdleNotify(window, pixmap, serial, idleFence, targetFps, null);
             } else {
                 content.copyArea((short)0, (short)0, xOff, yOff, pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);

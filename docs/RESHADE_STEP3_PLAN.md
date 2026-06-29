@@ -1,6 +1,6 @@
 # STEP 3 — In-Game ReShade Effects (vkBasalt drop-in) — Design Doc & User Report
 
-**Status:** DESIGN — spike complete, no feature code yet.
+**Status:** DESIGN — **spike DEVICE-PROVEN ✅** (on-device `.fx` compile + apply confirmed on real hardware), no feature code yet.
 **Date opened:** 2026-06-29
 **Branch (spike, throwaway):** `spike/vkbasalt-reshade` (`1400d06`)
 **Roadmap slot:** STEP 3 of the smooth + sharp graphics roadmap (after STEP 1 debanding/NIS and STEP 2 VRR).
@@ -46,6 +46,26 @@ blockers.** This is the key finding that makes STEP 3 real:
 | 2 | On-device compile = Adreno GLSL-compiler crash class | ✅ **GONE** | vkBasalt emits **SPIR-V** and feeds **Turnip** — it never touches Adreno's fragile GLSL compiler. |
 | 3 | Many ReShade effects need the depth buffer | ⚠️ **STANDS** | `depthCapture` exists but DXVK/mobile depth is flaky/costly. **Color effects work now; depth effects (SSAO/DOF/MXAO) are STEP 4.** |
 
+### 1.1 ✅ DEVICE-PROVEN (2026-06-29) — the spike actually ran on hardware
+
+The throwaway spike (one hardcoded CC0 **sepia** `.fx`, force-enabled at launch) was run on the real test device:
+**The Saboteur (DXVK) launched fully sepia-tinted.** That single fact closes the whole risk question — an
+arbitrary ReShade `.fx` was **parsed → compiled to SPIR-V → fed to Turnip → applied to a live DXVK swapchain**,
+on this Adreno, with no crash. Blockers #1 and #2 are now *empirically* dead, not just dead on paper.
+
+Live `/proc/<pid>/environ` of `Saboteur.exe` (and the whole wine tree) confirmed the wiring the feature will reuse:
+`ENABLE_VKBASALT=1`, `VKBASALT_CONFIG_FILE=…/xuser/.config/vkBasalt/vkBasalt.conf`,
+`VK_LAYER_PATH=…/implicit_layer.d:…/explicit_layer.d`, `LD_LIBRARY_PATH=…/usr/lib:/system/lib64`, DXVK active.
+
+**Two real lessons from getting it to run** (both fold into the plan below):
+- **The layer only extracts on a container's FIRST boot.** `extra_libs.tzst` (which carries `libvkbasalt.so` +
+  `vkBasalt.json`) is unpacked only under `if (firstTimeBoot)` (`XServerDisplayActivity.java:~2511`). Existing
+  containers created before the vkBasalt bundle never get it → the layer silently isn't there → no effect. **Fix
+  for the feature: extract on version-change OR when a ReShade effect is selected, not just first boot** (see §6).
+- **The built-in HOME `toggleKey` does NOT work from the on-screen keyboard.** vkBasalt grabs the X11 Home keysym
+  on our X server, but the on-screen keyboard's Home key never reaches that grab. ⇒ **we must not rely on
+  vkBasalt's hotkey for on/off** — drive enable/disable from our own UI (see §5.1).
+
 ---
 
 ## 2. Hard constraints found by the spike (these shape the whole design)
@@ -56,8 +76,10 @@ blockers.** This is the key finding that makes STEP 3 real:
    must say so.
 2. **No live config-watch in the shipped build.** Binary recon found **no inotify/mtime/reload** strings.
    vkBasalt reads its config **once at swapchain create** (game launch). The only built-in live control is the
-   `toggleKey` (HOME) which flips the **whole effect on/off** — *not* per-parameter. **⇒ Live sliders require a
-   vkBasalt patch (Section 5).** This is the single real engineering unknown.
+   `toggleKey` (HOME) which flips the **whole effect on/off** — *not* per-parameter (and the HOME key doesn't
+   reach the layer from the on-screen keyboard anyway). **⇒ Live on/off + live sliders require a vkBasalt
+   config-watch patch (Section 5)** — the same patch the fork already applied to lsfg-vk for frame-gen, so it's a
+   proven pattern, not an unknown.
 3. **Color effects only (for now).** No depth → SSAO/DOF/MXAO and depth-aware AA are out until STEP 4. The
    effects people actually want here — **color grading / LUT / tonemap / sharpen / film grain / vignette / CRT /
    sepia / curves** — all work without depth.
@@ -168,11 +190,39 @@ GAME SHORTCUT EDITOR                 IN-GAME SIDE MENU (drawer)
 
 ---
 
-## 5. The one real unknown — live parameter updates (vkBasalt patch)
+## 5. Live on/off + live sliders — the vkBasalt config-watch patch
 
-The shipped vkBasalt reads config once and never re-reads. To make the overlay's sliders **live**, patch
-vkBasalt (zlib, source available — same class of patch we already did to lsfg for live reload). Crucial
-distinction in cost:
+### 5.1 The in-game "ReShade" toggle under Graphics — works exactly like Frame Generation
+
+The target UX (user-requested): a **ReShade on/off toggle in the in-game drawer's Graphics tab**, flipping the
+effect **live** — the same feel as the existing Frame Generation toggle. The mental model is correct, and so is
+the reason it works:
+
+> **Frame Generation toggles live because its layer was *patched* to.** The fork patched lsfg-vk to **watch its
+> `conf.toml` mtime in its present hook and hot-reload** (`XServerDisplayActivity.java:~547` / `~1224`:
+> *"the fork layer watches the file mtime and reloads … re-applies live"*). The in-game toggle just rewrites the
+> conf; the layer notices and reloads — no relaunch.
+
+**The vkBasalt build we ship has no such watch** (binary recon: no inotify/mtime/reload). So a drawer toggle that
+only rewrites `vkBasalt.conf` would do nothing until next launch. To get true frame-gen-style live behavior we
+give vkBasalt **the same treatment we already gave lsfg** — add a config-file watch to its present hook. This is
+a known, repeated pattern in our tree, not new ground. **That one patch delivers both the live on/off toggle AND
+the live sliders (§4.4).**
+
+**Cheaper on/off-only fallback (no patch):** because we *own* the X server (pure-Java X11) and vkBasalt's HOME
+`toggleKey` listens for an X11 Home keysym on it, the drawer toggle can **inject that Home keysym from our side**
+to drive vkBasalt's *existing* toggle. Gives live on/off with zero patching (the on-screen keyboard's Home
+doesn't reach the grab, but a deliberate inject would). Does **not** give live sliders. Useful as an interim
+toggle while the config-watch patch lands.
+
+| Route | Live on/off (drawer toggle) | Live sliders | Effort | When |
+|---|---|---|---|---|
+| Inject X11 Home keysym from our X server | ✅ | ❌ | Low | interim, if we want a toggle before the patch |
+| **vkBasalt config-watch patch (mirror lsfg)** | ✅ | ✅ | Medium | **the real Phase 2 — recommended** |
+
+### 5.2 Cost of each live change (informs what the patch must do)
+
+To make the overlay's sliders **live**, the config-watch patch re-reads the conf on change. Crucial cost split:
 
 | Live action | Cost | Plan |
 |---|---|---|
@@ -193,14 +243,19 @@ the overlay live.
 
 ## 6. Phased delivery
 
-- **Phase 0 — close the spike (YELLOW → GREEN).** Dispatch CI + device-test the existing `spike/vkbasalt-reshade`
-  branch: confirm the hardcoded sepia `.fx` compiles on-device and visibly applies to a DXVK game at launch, and
-  that HOME toggles it. This validates compile-at-launch before we build UI. *(Outcome gates everything below.)*
-- **Phase 1 — selection + pre-launch sliders (no patch).** Effect folder scan + reflection (4.1), shortcut
-  picker, conf generation merged with CAS (4.2), persistence (4.3). Sliders live in the **shortcut editor**, applied
-  at launch. In-game drawer gets on/off + HOME. **Ships real value with zero vkBasalt changes.**
-- **Phase 2 — live overlay.** The vkBasalt uniform-live-reload patch (Section 5) + the in-game **ReShade** button
-  and slider overlay (4.4). This is the headline experience.
+- **Phase 0 — close the spike. ✅ DONE (DEVICE-PROVEN 2026-06-29).** Sepia `.fx` compiled on-device and applied
+  to a live DXVK game (The Saboteur). On-device `.fx`→SPIR-V→apply confirmed. (HOME toggle found unreliable from
+  the on-screen keyboard → §5.1 handles it.) *Risk retired — everything below is now build work, not research.*
+- **Phase 1 — selection + pre-launch sliders + reliable extraction (no patch).**
+  - **Fix the extraction gate (prerequisite):** stop unpacking `extra_libs.tzst` only on `firstTimeBoot` — extract
+    on app version-change, or when a ReShade effect (or CAS) is selected, so the layer is present on existing
+    containers too. Without this, the feature silently no-ops on any pre-existing container.
+  - Effect folder scan + reflection (4.1), shortcut picker, conf generation merged with CAS (4.2), persistence
+    (4.3). Sliders live in the **shortcut editor**, applied at launch. **Ships real value with zero vkBasalt
+    changes.** (Optional interim: the X11-Home-inject on/off in the drawer, §5.1.)
+- **Phase 2 — live drawer toggle + slider overlay (headline).** The vkBasalt **config-watch patch** (§5.1, mirrors
+  the lsfg live-reload), the in-game **ReShade on/off toggle under Graphics** (frame-gen-style, live), and the
+  **slider overlay** (4.4) with live uniform updates. This is the experience the user asked for.
 - **Phase 3 (optional/back-burner) — depth + presets.** STEP 4 depth extraction unlocks SSAO/DOF; optional
   ReShade `.ini` preset import; optional live effect-switch with a recompile hitch.
 

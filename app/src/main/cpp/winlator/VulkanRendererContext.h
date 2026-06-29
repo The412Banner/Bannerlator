@@ -109,6 +109,10 @@ struct VkTable {
 #include <shared_mutex>
 #include <condition_variable>
 
+// Renderer-neutral direct-scanout impl (owns the SurfaceControl/AHB state).
+// Included after SCANOUT_LOG is defined above; its own definition is guarded.
+#include "../scanout/ScanoutContext.h"
+
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 struct WindowPushConstants { float ndcX0, ndcY0, ndcX1, ndcY1; int useTexAlpha; };
@@ -209,15 +213,22 @@ public:
     void scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1);
     void scanoutSetCursorImage(void* pixels, short w, short h, short stride);
     void scanoutSetCursorPos(short x, short y, short hotX, short hotY);
-    std::atomic<bool> scanoutActive{false};
-    std::atomic<bool> gameFrameDelivered{false};
+    // The renderer-neutral scanout implementation. The scanout methods above are
+    // thin forwarders to this (see VulkanRendererScanout.cpp); the cursor render-
+    // thread signalling stays in the forwarders, not in ScanoutContext.
+    ScanoutContext scanout;
+    // Bound to scanout's atomics so the existing JNI ABI (r->scanoutActive /
+    // r->gameFrameDelivered direct member access) keeps compiling against a
+    // single source of truth. Must be declared after `scanout`.
+    std::atomic<bool>& scanoutActive = scanout.scanoutActive;
+    std::atomic<bool>& gameFrameDelivered = scanout.gameFrameDelivered;
     std::atomic<bool> surfaceDetached{false};
 
     void detachSurface();
     bool reattachSurface(ANativeWindow* newWindow);
 
     bool verboseLog = true;
-    void setVerboseLog(bool v) { verboseLog = v; }
+    void setVerboseLog(bool v) { verboseLog = v; scanout.setVerboseLog(v); }
     void dumpRendererInfo();
 
     std::string adrenoDriverPath;
@@ -300,44 +311,9 @@ private:
     std::vector<VkImageMemoryBarrier>  framePreUpload;
     std::vector<VkImageMemoryBarrier>  framePostUpload;
 
-    void*  scanoutGameSC      = nullptr;
-    void*  scanoutCursorSC    = nullptr;
-    void*  scanoutCursorBuf   = nullptr;
-    int32_t scanoutCursorBufW = 0;
-    int32_t scanoutCursorBufH = 0;
-
-    void*  scanoutTx          = nullptr;
-    void*  scanoutGameTx      = nullptr;
-
-    ARect  scanoutLastSrc{}, scanoutLastDst{};
-    bool   scanoutGeoDirty    = true;
-    bool   scanoutVisShown    = false;
-    bool   scanoutApiLoaded   = false;
-    void*  fnSCCreateFromWin  = nullptr;
-    void*  fnSCRelease        = nullptr;
-    void*  fnSTCreate         = nullptr;
-    void*  fnSTDelete         = nullptr;
-    void*  fnSTApply          = nullptr;
-    void*  fnSTSetBuffer      = nullptr;
-    void*  fnSTSetZOrder      = nullptr;
-    void*  fnSTSetVisibility  = nullptr;
-    void*  fnSTSetGeometry    = nullptr;
-    void*  fnSTSetBackPressure = nullptr;
-    bool   loadScanoutApi();
-
-    int32_t scanoutDstX=0, scanoutDstY=0, scanoutDstW=0, scanoutDstH=0;
-
-    int32_t lastDstX=0, lastDstY=0, lastDstW=0, lastDstH=0;
-    bool    gameScVisible      = false;
-
-    struct ScanoutPending { AHardwareBuffer* ahb=nullptr; int x=0,y=0,w=0,h=0; int fenceFd=-1; };
-    std::mutex        scanoutMutex;
-    ScanoutPending    scanoutPending{};
-    std::atomic<bool> scanoutPendingDirty{false};
-
-    short  pendingCursorX=0, pendingCursorY=0, pendingCursorHotX=0, pendingCursorHotY=0;
-    bool   cursorPosDirty=false;
-    bool   cursorImageDirty=false;
+    // [P0] All SurfaceControl / AHardwareBuffer scanout state moved to
+    // ScanoutContext (member `scanout` above). Dead members (lastDst*,
+    // ScanoutPending/scanoutPending*, fnSTSetBackPressure) were dropped.
 
     std::atomic<int>  pointerX{0}, pointerY{0};
     float sceneOffsetX=0.f, sceneOffsetY=0.f, sceneScaleX=1.f, sceneScaleY=1.f;

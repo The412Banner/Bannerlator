@@ -516,6 +516,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // truthful (no toggles left "on" doing nothing). Only sets renderer + StateFlows —
                 // never invokes the preset apply callbacks, so there's no feedback loop.
                 if (next) resetVulkanPresets(vkr);
+            } else if (r instanceof GLRenderer) {
+                // GL Native Rendering (direct scanout) — P3 lifecycle. Builds/tears down the child
+                // game/cursor SurfaceControls under the GLSurfaceView's SC. The GL EffectComposer
+                // effects are bypassed in native mode; resetting them in the drawer is P5 polish.
+                ((GLRenderer) r).setNativeMode(next);
             }
         };
         // bionic-fg live controls (frame gen multiplier/flow + fps limiter). Each in-menu slider
@@ -1816,7 +1821,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // is the single source of truth. Gated to GLRenderer so it stays a no-op on Vulkan/ASR.
         // (filterMode: 0=default -> Linear, 1=linear -> Linear, 2=nearest -> Nearest.)
         if (renderer instanceof GLRenderer) {
-            renderer.setFilterMode(container.getRendererFilterMode());
+            GLRenderer glr = (GLRenderer) renderer;
+            glr.setFilterMode(container.getRendererFilterMode());
+            // GL Native Rendering (direct scanout) lifecycle — mirror the Vulkan launch wiring. Must
+            // run before the surface is created so GLRenderer.onSurfaceCreated builds the scanout
+            // SurfaceControls when native is on. swapRB feeds the game SC color transform.
+            glr.setSwapRB(container.getRendererSwapRB());
+            boolean glNativeOn = container.isRendererNative();
+            glr.setInitialNativeMode(glNativeOn);
+            XServerDrawerState.INSTANCE.setNativeRenderingEnabled(glNativeOn); // keep the toggle in sync
         }
 
         // ASR has no compositor copyArea path either, so drive the perf HUD per present (same as

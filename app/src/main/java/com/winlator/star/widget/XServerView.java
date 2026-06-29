@@ -104,12 +104,14 @@ public class XServerView extends FrameLayout {
             glSurfaceView.setEGLContextClientVersion(3);
             glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 0, 0);
             glSurfaceView.setPreserveEGLContextOnPause(true);
-            GLRenderer glRenderer = new GLRenderer(this, xServer);
+            final GLRenderer glRenderer = new GLRenderer(this, xServer);
             renderer = glRenderer;
             glSurfaceView.setRenderer(glRenderer);
             glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-            // GLSurfaceView manages its own SurfaceHolder.Callback for EGL; we add an extra one
-            // purely to re-assert the VRR frame-rate vote when the surface is (re)created.
+            // GLSurfaceView manages its own SurfaceHolder.Callback for EGL; we add an extra one to
+            // re-assert the VRR frame-rate vote when the surface is (re)created, and to tear down the
+            // GL native-rendering scanout SurfaceControls when the surface goes away (rotation,
+            // app-switch). The scanout SCs are rebuilt in GLRenderer.onSurfaceCreated.
             glSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
                 @Override
                 public void surfaceCreated(SurfaceHolder holder) {}
@@ -118,7 +120,9 @@ public class XServerView extends FrameLayout {
                     reassertFrameRate();
                 }
                 @Override
-                public void surfaceDestroyed(SurfaceHolder holder) {}
+                public void surfaceDestroyed(SurfaceHolder holder) {
+                    glRenderer.onSurfaceDestroyed();
+                }
             });
             addView(glSurfaceView);
         }

@@ -62,6 +62,19 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     public int surfaceWidth;
     public int surfaceHeight;
 
+    // ---- GL Native Rendering (direct scanout via SurfaceControl / SurfaceFlinger) ----
+    // P3: lifecycle only. Mirrors VulkanRenderer's nativeMode model, adapted to GL's pull loop.
+    // When nativeMode is on we build the sibling game + cursor SurfaceControls (z-order > 0 so they
+    // composite ABOVE the GLSurfaceView's EGL content) and route the cursor through the cursor SC.
+    // The per-frame game AHB push (PresentExtension FLIP branch + first-delivery X-rendering pause)
+    // is P4 — until then the game is still composited by GL; the opaque game SC is bufferless so it
+    // does not occlude the GL frame.
+    private DirectScanout scanout;
+    private boolean nativeMode = false;
+    private boolean xRenderingPausedForScanout = false;
+    private boolean swapRB = false;
+    private Cursor lastScanoutCursor = null;
+
     // Selectable sampler filter for window/content drawables only (the cursor stays LINEAR so the
     // pointer never goes blocky). Mirrors the Vulkan filter-int convention used by setUpscaler:
     //   0/default & 1 -> GL_LINEAR (bilinear), 2 -> GL_NEAREST (point). Applied per-frame in
@@ -205,6 +218,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        // Rebuild the scanout SurfaceControls on a (re)created GL surface (rotation, app-switch) when
+        // native mode is active — mirrors VulkanRenderer.onSurfaceCreated's nativeMode restore block.
+        if (nativeMode) enableScanout();
     }
 
     @Override
@@ -222,6 +238,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         surfaceHeight = height;
         viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height);
         viewportNeedsUpdate = true;
+        if (nativeMode && scanout != null) {
+            scanout.setSurfaceSize(surfaceWidth, surfaceHeight);
+            updateScanoutDst();
+        }
     }
 
     @Override
@@ -230,6 +250,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             fullscreen = !fullscreen;
             toggleFullscreen = false;
             viewportNeedsUpdate = true;
+            if (nativeMode) updateScanoutDst();
         }
 
         if (effectComposer != null && effectComposer.isActive() && surfaceWidth > 0 && surfaceHeight > 0) {
@@ -298,7 +319,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
         renderWindows();
 
-        if (cursorVisible) renderCursor();
+        // In native mode the pointer is composited by the cursor SurfaceControl (above the GL
+        // content), so skip the GL cursor pass to avoid a double-drawn cursor.
+        if (cursorVisible && !nativeMode) renderCursor();
 
         if (!magnifierEnabled && !fullscreen) {
             GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
@@ -316,8 +339,26 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     @Override public void onChangeWindowZOrder(Window window) { xServerView.queueEvent(this::updateScene); xServerView.requestRender(); }
     @Override public void onUpdateWindowContent(Window window) { xServerView.requestRender(); }
     @Override public void onUpdateWindowGeometry(final Window window, boolean resized) { if (resized) xServerView.queueEvent(this::updateScene); else xServerView.queueEvent(() -> updateWindowPosition(window)); xServerView.requestRender(); }
-    @Override public void onUpdateWindowAttributes(Window window, Bitmask mask) { if (mask.isSet(WindowAttributes.FLAG_CURSOR)) xServerView.requestRender(); }
-    @Override public void onPointerMove(short x, short y) { xServerView.requestRender(); }
+    @Override public void onUpdateWindowAttributes(Window window, Bitmask mask) {
+        if (mask.isSet(WindowAttributes.FLAG_CURSOR)) {
+            if (nativeMode && scanout != null) {
+                Window pw = xServer.inputDeviceManager.getPointWindow();
+                if (pw == window) { lastScanoutCursor = window.attributes.getCursor(); sendCursorToScanout(lastScanoutCursor); }
+            }
+            xServerView.requestRender();
+        }
+    }
+    @Override public void onPointerMove(short x, short y) {
+        if (nativeMode && scanout != null) {
+            Window pw = xServer.inputDeviceManager.getPointWindow();
+            Cursor cursor = pw != null ? pw.attributes.getCursor() : null;
+            if (cursor != lastScanoutCursor) { lastScanoutCursor = cursor; sendCursorToScanout(cursor); }
+            short hotX = 0, hotY = 0;
+            if (cursor != null) { hotX = (short) cursor.hotSpotX; hotY = (short) cursor.hotSpotY; }
+            scanout.setCursorPos(x, y, hotX, hotY);
+        }
+        xServerView.requestRender();
+    }
 
     private void renderDrawable(Drawable drawable, int x, int y, ShaderMaterial material) {
         if (drawable == null) return;
@@ -500,9 +541,15 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     // HostRenderer implementation
     @Override public XServerView getXServerView() { return xServerView; }
-    @Override public void setRenderingEnabled(boolean enabled) {}
+    // Forward to the X server so the direct-scanout first-frame pause (P4) can stop guest content
+    // updates; was a no-op before native rendering came to GL. Mirrors VulkanRenderer.setRenderingEnabled.
+    @Override public void setRenderingEnabled(boolean enabled) { xServer.setRenderingEnabled(enabled); }
     @Override public void requestRender() { xServerView.requestRender(); }
-    @Override public void forceCleanup() {}
+    @Override public void forceCleanup() {
+        if (scanout != null) scanout.disable();
+        xServer.setRenderingEnabled(true);
+        xRenderingPausedForScanout = false;
+    }
     @Override public void setFilterMode(int mode) {
         // Convention shared with the Vulkan side (setUpscaler modes 1/2): 2 == Nearest (point),
         // everything else (0=default, 1=linear) == Linear (bilinear). Window/content drawables only.
@@ -513,6 +560,116 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     @Override public void setFrameRating(Object fr) {}
     @Override public int getFpsLimit() { return 0; }
     @Override public void setFpsLimit(int limit) {}
+
+    // ---- GL Native Rendering (direct scanout) lifecycle — mirrors VulkanRenderer ----
+
+    /** R/B-swap hint for the game SurfaceControl color transform. Seeded at launch from the
+     *  container's renderer swap-R/B setting; consumed by {@link DirectScanout#enable}. */
+    public void setSwapRB(boolean enabled) { this.swapRB = enabled; }
+
+    public boolean isNativeMode() { return nativeMode; }
+
+    // Set the desired native (direct-scanout) mode BEFORE the surface is created. onSurfaceCreated
+    // builds the scanout SurfaceControls when nativeMode is already true, so this is the correct
+    // entry point for applying the container's "native" toggle at launch (setNativeMode() is for
+    // toggling at runtime, with the full SurfaceControl rebuild + toast). Mirrors VulkanRenderer.
+    public void setInitialNativeMode(boolean v) { this.nativeMode = v; }
+
+    /** Runtime toggle of native rendering: builds/tears down the scanout SurfaceControls and shows a
+     *  toast. Mirrors VulkanRenderer.setNativeMode (minus the per-frame scanout push, which is P4). */
+    public void setNativeMode(boolean mode) {
+        if (this.nativeMode == mode) return;
+        this.nativeMode = mode;
+        xRenderingPausedForScanout = false;
+        if (mode) {
+            xServer.setRenderingEnabled(true);
+            enableScanout();
+        } else {
+            disableScanout();
+            xServerView.post(() -> {
+                xServer.setRenderingEnabled(true);
+                xServerView.requestRender();
+            });
+        }
+        xServerView.queueEvent(this::updateScene);
+        final String msg = mode ? "Native Rendering+ Enabled" : "Native Rendering+ Disabled";
+        // Use the app's styled toast (white text on a custom background); a raw Toast here would
+        // inherit the dark app theme and render as a black box with invisible text.
+        xServerView.post(() -> com.winlator.star.core.AppUtils.showToast(xServerView.getContext(), msg));
+    }
+
+    // Build the sibling game + cursor SurfaceControls under the GLSurfaceView's SurfaceControl. The SC
+    // ops must run on the UI thread AFTER the surface is created (same constraint as the Vulkan path),
+    // so this posts to the view; getSurfaceControl() is non-null for GL since P2.
+    private void enableScanout() {
+        if (android.os.Build.VERSION.SDK_INT < 29) return;
+        xServerView.post(() -> {
+            try {
+                android.view.SurfaceControl parent =
+                    (android.view.SurfaceControl) xServerView.getSurfaceControl();
+                if (parent == null) {
+                    Log.w("GLRenderer", "Native Rendering: GL SurfaceControl is null; cannot enable scanout");
+                    return;
+                }
+                if (scanout == null) scanout = new DirectScanout();
+                float targetFps = xServerView.getDisplay() != null
+                    ? xServerView.getDisplay().getRefreshRate() : 60f;
+                // DirectScanout builds the child game (layer 1) + cursor (layer 2) SCs, both above the
+                // GL surface content; the opaque game SC stays bufferless until the P4 per-frame push.
+                scanout.enable(parent, xServer.screenInfo.width, xServer.screenInfo.height, targetFps, swapRB);
+                scanout.setSurfaceSize(surfaceWidth, surfaceHeight);
+                updateScanoutDst();
+                sendCursorToScanout(lastScanoutCursor);
+            } catch (Exception e) {
+                Log.w("GLRenderer", "GL scanout enable failed: " + e);
+            }
+        });
+    }
+
+    private void disableScanout() {
+        if (scanout == null) return;
+        final DirectScanout s = scanout;
+        xServerView.post(s::disable);
+    }
+
+    /** Called by XServerView when the GL surface is destroyed (rotation, app-switch): release the
+     *  scanout SurfaceControls so they don't leak/orphan against the dead GL surface. They are rebuilt
+     *  in onSurfaceCreated when nativeMode is still on. */
+    public void onSurfaceDestroyed() {
+        disableScanout();
+    }
+
+    // Feed the destination (on-screen) rect to the scanout context — the letterbox/fullscreen mapping
+    // the GL pass uses for its glViewport. Same data the Vulkan updateTransform feeds nativeScanoutSetDst.
+    private void updateScanoutDst() {
+        if (scanout == null || !nativeMode) return;
+        if (fullscreen) {
+            scanout.setDst(0, 0, surfaceWidth, surfaceHeight);
+        } else {
+            scanout.setDst(viewTransformation.viewOffsetX, viewTransformation.viewOffsetY,
+                           viewTransformation.viewWidth, viewTransformation.viewHeight);
+        }
+    }
+
+    // Push the current cursor image to the cursor SurfaceControl (applies inline in the native lib).
+    // Mirrors VulkanRenderer.sendCursorToNative's scanout cursor path. Runs on the epoll thread.
+    private void sendCursorToScanout(Cursor cursor) {
+        if (scanout == null || !nativeMode) return;
+        Drawable cd;
+        if (cursor != null) {
+            if (!cursor.isVisible()) return;
+            cd = cursor.cursorImage;
+        } else {
+            cd = rootCursorDrawable;
+        }
+        if (cd != null && cd.getBuffer() != null) {
+            synchronized (cd.renderLock) {
+                ByteBuffer buf = cd.getBuffer();
+                short stride = (short) (buf.capacity() / (cd.height * 4));
+                scanout.setCursorImage(buf, cd.width, cd.height, stride);
+            }
+        }
+    }
 
     private static class RenderableWindow {
         public final Drawable content;

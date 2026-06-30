@@ -54,6 +54,16 @@ object AppThemeState {
     fun init(context: Context) {
         themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
 
+        // One-time migration: before 2026-06-30 there were 8 presets and "Custom" was index 7.
+        // New named presets are inserted before Custom, pushing it to the new last index, so any
+        // user previously on Custom (the only thing index 7 could mean back then) is remapped.
+        if (!themePrefs.getBoolean("preset_schema_v2", false)) {
+            if (themePrefs.getInt("preset_index", 1) == 7 && CUSTOM_PRESET_INDEX != 7) {
+                themePrefs.edit().putInt("preset_index", CUSTOM_PRESET_INDEX).apply()
+            }
+            themePrefs.edit().putBoolean("preset_schema_v2", true).apply()
+        }
+
         _presetIndex.value = themePrefs.getInt("preset_index", 1).coerceIn(0, themePresets.size - 1)
         val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF0055FF).toArgb())
         _customAccent.value = Color(savedAccent)

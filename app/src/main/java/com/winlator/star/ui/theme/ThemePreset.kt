@@ -145,6 +145,80 @@ val themePresets: List<ThemePreset> = listOf(
         surfaceVariant= Color(0xFF252630),
         primary       = Color(0xFF64748B),
     ),
+    // ── Extended preset selection (added 2026-06-30; all opt-in, AMOLED stays the default) ──
+    // Each carries only its core shades; the elevation ramp (surfaceContainer family) and
+    // accentDim derive automatically. onPrimary is forced dark on light/bright accents
+    // (phosphor green, gold, frost cyan, near-white mono) so on-accent text/icons stay legible.
+    ThemePreset(
+        name          = "Midnight Cobalt",
+        background    = Color(0xFF0A0E1A),
+        surface       = Color(0xFF111A2E),
+        surfaceVariant= Color(0xFF18243F),
+        primary       = Color(0xFF2D6BFF),
+    ),
+    ThemePreset(
+        name          = "Phosphor",
+        background    = Color(0xFF000000),
+        surface       = Color(0xFF07120A),
+        surfaceVariant= Color(0xFF0C1E14),
+        primary       = Color(0xFF2BE05B),
+        onSurface     = Color(0xFFC8F5D2),
+        onSurfaceVariant = Color(0xFF6FA37C),
+        onPrimary     = Color(0xFF001505),
+    ),
+    ThemePreset(
+        name          = "Carbon & Ember",
+        background    = Color(0xFF121212),
+        surface       = Color(0xFF1C1A18),
+        surfaceVariant= Color(0xFF2A2522),
+        primary       = Color(0xFFFF6A2C),
+    ),
+    ThemePreset(
+        name          = "Amethyst",
+        background    = Color(0xFF140D1F),
+        surface       = Color(0xFF1E1430),
+        surfaceVariant= Color(0xFF2A1C42),
+        primary       = Color(0xFFA855F7),
+    ),
+    ThemePreset(
+        name          = "Crimson",
+        background    = Color(0xFF160A0C),
+        surface       = Color(0xFF221012),
+        surfaceVariant= Color(0xFF301619),
+        primary       = Color(0xFFEF4444),
+    ),
+    ThemePreset(
+        name          = "Synthwave",
+        background    = Color(0xFF14081E),
+        surface       = Color(0xFF1E0F2E),
+        surfaceVariant= Color(0xFF2A1640),
+        primary       = Color(0xFFFF2D95),
+    ),
+    ThemePreset(
+        name          = "Royal Gold",
+        background    = Color(0xFF14110A),
+        surface       = Color(0xFF1E1810),
+        surfaceVariant= Color(0xFF2A2216),
+        primary       = Color(0xFFE0A82E),
+        onPrimary     = Color(0xFF1A1305),
+    ),
+    ThemePreset(
+        name          = "Frost",
+        background    = Color(0xFF11141A),
+        surface       = Color(0xFF1A2029),
+        surfaceVariant= Color(0xFF252E3B),
+        primary       = Color(0xFF88C0D0),
+        onPrimary     = Color(0xFF08141A),
+    ),
+    ThemePreset(
+        name          = "Monochrome",
+        background    = Color(0xFF000000),
+        surface       = Color(0xFF0D0D0D),
+        surfaceVariant= Color(0xFF1A1A1A),
+        primary       = Color(0xFFE5E5E5),
+        onSurface     = Color(0xFFEDEDED),
+        onPrimary     = Color(0xFF000000),
+    ),
     ThemePreset(
         name          = "Custom",
         background    = Color(0xFF121212),
@@ -154,4 +228,6 @@ val themePresets: List<ThemePreset> = listOf(
     ),
 )
 
+// "Custom" is always the last entry, so its index tracks the list size. New named presets
+// are inserted *before* it, so existing saved indices 0..6 keep pointing at the same preset.
 val CUSTOM_PRESET_INDEX = themePresets.size - 1

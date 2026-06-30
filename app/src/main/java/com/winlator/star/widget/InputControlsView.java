@@ -345,9 +345,12 @@ public class InputControlsView extends View {
 
     // Base accent for the on-screen controls: the active profile's custom accent when it opted in,
     // otherwise the live app theme accent. The accent getters below all derive from this so a
-    // per-profile override (set in the editor / in-game drawer) takes precedence over the theme.
+    // per-profile override takes precedence over the theme — but only IN-GAME. In the controls
+    // EDITOR (editMode) we always use the app theme accent: a user's dark in-game custom colour
+    // would otherwise render the editor's buttons/labels unreadable, and the editor should track
+    // the app theme, not the per-profile in-game colour.
     private int resolveBaseAccentArgb() {
-        if (profile != null && profile.isCustomAccentEnabled()) return profile.getCustomAccentColor();
+        if (!editMode && profile != null && profile.isCustomAccentEnabled()) return profile.getCustomAccentColor();
         return AppThemeState.getCurrentAccentArgb();
     }
 

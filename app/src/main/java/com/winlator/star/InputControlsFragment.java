@@ -52,6 +52,7 @@ import com.winlator.star.inputcontrols.ControlsProfile;
 import com.winlator.star.inputcontrols.ExternalController;
 import com.winlator.star.inputcontrols.InputControlsManager;
 import com.winlator.star.math.Mathf;
+import com.winlator.star.ui.theme.AppThemeState;
 import com.winlator.star.contentdialog.ContentDialog;
 import com.winlator.star.widget.InputControlsView;
 import org.json.JSONException;
@@ -124,6 +125,12 @@ public class InputControlsFragment extends Fragment {
         final Context context = getContext();
 
         currentProfile = selectedProfileId > 0 ? manager.getProfile(selectedProfileId) : null;
+
+        // "External Controllers" section header bakes textColor="@color/colorPrimary" at
+        // inflation; route to the runtime theme accent.
+        TextView tvExternalControllersHeader = view.findViewById(R.id.TVExternalControllersHeader);
+        if (tvExternalControllersHeader != null)
+            tvExternalControllersHeader.setTextColor(AppThemeState.getCurrentAccentArgb());
 
         final Spinner sProfile = view.findViewById(R.id.SProfile);
 

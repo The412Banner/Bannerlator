@@ -15,12 +15,16 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import android.content.res.ColorStateList;
+
 import androidx.annotation.NonNull;
+import androidx.core.widget.ImageViewCompat;
 import androidx.preference.PreferenceManager;
 
 import com.winlator.star.R;
 import com.winlator.star.core.AppUtils;
 import com.winlator.star.core.Callback;
+import com.winlator.star.ui.theme.AppThemeState;
 
 import java.util.ArrayList;
 
@@ -98,12 +102,16 @@ public class ContentDialog extends Dialog {
     public void setIcon(int iconResId) {
         ImageView imageView = findViewById(R.id.IVIcon);
         imageView.setImageResource(iconResId);
+        // XML bakes app:tint="@color/colorPrimary" at inflation; route to runtime accent.
+        ImageViewCompat.setImageTintList(imageView, ColorStateList.valueOf(AppThemeState.getCurrentAccentArgb()));
         imageView.setVisibility(View.VISIBLE);
     }
 
     public void setTitle(String title) {
         LinearLayout titleBar = findViewById(R.id.LLTitleBar);
         TextView tvTitle = findViewById(R.id.TVTitle);
+        // XML bakes textColor="@color/colorPrimary" at inflation; route to runtime accent.
+        tvTitle.setTextColor(AppThemeState.getCurrentAccentArgb());
 
         if (title != null && !title.isEmpty()) {
             tvTitle.setText(title);
@@ -117,6 +125,8 @@ public class ContentDialog extends Dialog {
 
     public void setBottomBarText(String bottomBarText) {
         TextView tvBottomBarText = findViewById(R.id.TVBottomBarText);
+        // XML bakes textColor="@color/colorPrimary" at inflation; route to runtime accent.
+        tvBottomBarText.setTextColor(AppThemeState.getCurrentAccentArgb());
 
         if (bottomBarText != null && !bottomBarText.isEmpty()) {
             tvBottomBarText.setText(bottomBarText);

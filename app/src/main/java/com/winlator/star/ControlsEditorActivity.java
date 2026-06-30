@@ -36,6 +36,7 @@ import com.winlator.star.math.Mathf;
 import com.winlator.star.core.AppUtils;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.UnitUtils;
+import com.winlator.star.widget.AccentArrayAdapter;
 import com.winlator.star.widget.InputControlsView;
 import com.winlator.star.widget.NumberPicker;
 
@@ -333,8 +334,10 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
 
         // Set the binding-type adapter in code (was android:entries in XML) so it uses
         // our blue-text item layouts and stays readable on a black background.
-        ArrayAdapter<CharSequence> typeAdapter = ArrayAdapter.createFromResource(
-                this, R.array.binding_type_entries, R.layout.binding_spinner_item);
+        // AccentArrayAdapter routes binding_spinner_item's colorPrimary text to the
+        // runtime theme accent (was static #0055FF baked at inflation).
+        AccentArrayAdapter<CharSequence> typeAdapter = new AccentArrayAdapter<>(
+                this, R.layout.binding_spinner_item, getResources().getTextArray(R.array.binding_type_entries));
         typeAdapter.setDropDownViewResource(R.layout.binding_spinner_dropdown_item);
         sBindingType.setAdapter(typeAdapter);
 
@@ -345,8 +348,8 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
                 case 1: bindingEntries = Binding.mouseBindingLabels(); break;
                 case 2: bindingEntries = Binding.gamepadBindingLabels(); break;
             }
-            ArrayAdapter<String> bindingAdapter =
-                    new ArrayAdapter<>(this, R.layout.binding_spinner_item, bindingEntries);
+            AccentArrayAdapter<String> bindingAdapter =
+                    new AccentArrayAdapter<>(this, R.layout.binding_spinner_item, bindingEntries);
             bindingAdapter.setDropDownViewResource(R.layout.binding_spinner_dropdown_item);
             sBinding.setAdapter(bindingAdapter);
             AppUtils.setSpinnerSelectionFromValue(sBinding, element.getBindingAt(index).toString());

@@ -15,7 +15,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -38,6 +37,8 @@ import com.winlator.star.inputcontrols.ExternalController;
 import com.winlator.star.inputcontrols.ExternalControllerBinding;
 import com.winlator.star.inputcontrols.InputControlsManager;
 import com.winlator.star.math.Mathf;
+import com.winlator.star.ui.theme.AppThemeState;
+import com.winlator.star.widget.AccentArrayAdapter;
 
 public class ExternalControllerBindingsActivity extends AppCompatActivity {
     private TextView emptyTextView;
@@ -69,6 +70,9 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.Toolbar);
         toolbar.setTitle(controller.getName());
         setSupportActionBar(toolbar);
+        // XML bakes android:background="@color/colorPrimary" (static #0055FF) at inflation;
+        // route the header bar to the runtime theme accent (white title text stays).
+        toolbar.setBackgroundColor(AppThemeState.getCurrentAccentArgb());
 
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
@@ -303,8 +307,10 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             // The binding-type spinner used android:entries in XML, which would resolve
             // to the framework item layout (dark text on this black screen). Set the
             // adapter in code with our blue-text item layouts instead.
-            ArrayAdapter<CharSequence> typeAdapter = ArrayAdapter.createFromResource(
-                    $this, R.array.binding_type_entries, R.layout.binding_spinner_item);
+            // AccentArrayAdapter routes binding_spinner_item's colorPrimary text to the
+            // runtime theme accent (was static #0055FF baked at inflation).
+            AccentArrayAdapter<CharSequence> typeAdapter = new AccentArrayAdapter<>(
+                    $this, R.layout.binding_spinner_item, $this.getResources().getTextArray(R.array.binding_type_entries));
             typeAdapter.setDropDownViewResource(R.layout.binding_spinner_dropdown_item);
             holder.bindingType.setAdapter(typeAdapter);
 
@@ -322,8 +328,8 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
                         break;
                 }
 
-                ArrayAdapter<String> bindingAdapter =
-                        new ArrayAdapter<>($this, R.layout.binding_spinner_item, bindingEntries);
+                AccentArrayAdapter<String> bindingAdapter =
+                        new AccentArrayAdapter<>($this, R.layout.binding_spinner_item, bindingEntries);
                 bindingAdapter.setDropDownViewResource(R.layout.binding_spinner_dropdown_item);
                 holder.binding.setAdapter(bindingAdapter);
                 AppUtils.setSpinnerSelectionFromValue(holder.binding, item.getBinding().toString());

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Outline gamepad for the Games library entry. Distinct from icon_gamepad (the filled
+     controller used by Input Controls). Tinted in code, so the literal colors below are
+     placeholders that the Compose Icon tint overrides. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- controller body -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8,6 L16,6 A6,6 0 0 1 22,12 A6,6 0 0 1 16,18 L8,18 A6,6 0 0 1 2,12 A6,6 0 0 1 8,6 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- d-pad -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M6,11 L10,11 M8,9 L8,13"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- action buttons -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15,12 m-1.1,0 a1.1,1.1 0 1,0 2.2,0 a1.1,1.1 0 1,0 -2.2,0 M18,10 m-1.1,0 a1.1,1.1 0 1,0 2.2,0 a1.1,1.1 0 1,0 -2.2,0" />
+</vector>

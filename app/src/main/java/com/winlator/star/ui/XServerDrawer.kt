@@ -137,7 +137,7 @@ fun XServerDrawer() {
         ) {
             Spacer(Modifier.weight(1f))
 
-            TabIconButton(R.drawable.icon_settings, selectedTab == TabType.GRAPHICS) {
+            TabIconButton(R.drawable.icon_display, selectedTab == TabType.GRAPHICS) {
                 handleTabClick(TabType.GRAPHICS, state)
             }
             Spacer(Modifier.height(6.dp))
@@ -213,8 +213,9 @@ private fun handleTabClick(tab: TabType, state: XServerDrawerState) {
 private fun TabIconButton(iconRes: Int, isSelected: Boolean, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
+    // Selected = filled accent pill (accent → dim), matching the rebuild preview.
     val bgBrush = if (isSelected)
-        Brush.verticalGradient(listOf(accentDim, accent.copy(alpha = 0.3f)))
+        Brush.verticalGradient(listOf(accent, accentDim))
     else
         Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
 
@@ -254,8 +255,9 @@ private fun TabIconButton(iconRes: Int, isSelected: Boolean, onClick: () -> Unit
 private fun FpsTabButton(isSelected: Boolean, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
+    // Selected = filled accent pill (accent → dim), matching the rebuild preview.
     val bgBrush = if (isSelected)
-        Brush.verticalGradient(listOf(accentDim, accent.copy(alpha = 0.3f)))
+        Brush.verticalGradient(listOf(accent, accentDim))
     else
         Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
 
@@ -1484,19 +1486,20 @@ private fun HudContent(state: XServerDrawerState) {
 
 @Composable
 private fun HudChipRow(label: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
-    val accentDim = LocalAccentDim.current
+    val accent = MaterialTheme.colorScheme.primary
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = DimWhite)
         Spacer(Modifier.height(4.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { idx, opt ->
                 val sel = idx == selected
+                // Selected = accent fill / black text, matching the scaling + frame-gen buttons.
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = if (idx < options.lastIndex) 6.dp else 0.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (sel) accentDim else DarkSurface)
+                        .background(if (sel) accent else DarkSurface)
                         .clickable { onSelect(idx) }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
@@ -1504,7 +1507,7 @@ private fun HudChipRow(label: String, options: List<String>, selected: Int, onSe
                     Text(
                         opt,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (sel) Color.White else DimWhite,
+                        color = if (sel) Color.Black else DimWhite,
                         fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal
                     )
                 }

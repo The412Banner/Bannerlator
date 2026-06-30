@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-06-30 — File Manager FAVORITES — CODE DONE + CI ✅GREEN (preview signed off)
+
+**Status:** implemented on `feat/ui-rebuild` — commits `bd57830` (feature) + `34247eb` (Back closes Favorites first) + `c06a397` (toasts on add/remove). CI `28467705193` ✅GREEN (pre-toast); toast commit CI `28469094380` ✅GREEN (tip `c06a397`). NOT merged (umbrella hold). Decisions: both pin entry points + global/absolute-path scope. ▶️ At device-test gate.
+
+- `app/src/main/java/com/winlator/star/util/FavoritesStore.kt` (new) — SharedPreferences, ordered JSON array of absolute paths (`list/isFavorite/add/remove/toggle`). Stores only the path; the card label is derived live.
+- `FileManagerScreen.kt` — `describeLocation()`/`FavLocation`/`FavStorage`/`badgeColors`; ⭐ toggle in the path bar (this screen has no top bar — New-Folder is a bottom FAB); content-swap (favorites list REPLACES the file list, path shows "★ Favorites", drive chip dims); `FavoritesList`+`FavoriteCard` (FileItemRow card style + drive badge + container/source line + mono path line + unpin star); row ⋮ "Add to/Remove from Favorites"; "Pin current folder" header action; system Back closes favorites before navigating up. `favTick` drives recompute on pin/unpin.
+- ▶️ NEXT: CI green → device test (dedicated list swap; full origin labels incl. container name; jump; both pin paths; persist across relaunch; dead-path drop; Back closes favorites; no FM regressions).
+
+### (prior) DESIGN + HTML PREVIEW
+
+A Discord user asked for favorite/bookmarked directories in the File Manager. After clarification the design is:
+- A **⭐ star button** in the top bar that **toggles** a favorites strip directly under the path/drive bar (slides in/out; zero vertical cost when collapsed).
+- Favorites render as File-Manager-style cards (`surfaceContainer` + outline), each with a **colour-coded LOCATION badge** showing where it lives — Internal (blue) / SD card (green) / `C:` + container name (amber) / `Z:` imagefs (purple). One-tap jump.
+- **Pin** via each folder row's ⋮ menu ("Add to Favorites") + a "Pin current folder" header action; **unpin** via the card's filled ★. Empty-state prompt.
+- Theme-follows-accent; badges keep semantic identity colours.
+
+**Why it's cheap:** the "go there" mechanism already exists — `FileManagerScreen.kt:168 openDrive(File)` is a generic jump-to-any-dir. Favorites = persisted `(path)` entries fed into it. Generalize the existing `currentDriveLabel` (`:498-503`) into a `describeLocation(path)` helper for the badges (add container name for `C:` paths via `containers` at `:123` + `Container.getName()`). Pin item goes in the row ⋮ (`:779-807`). Persistence = SharedPreferences/DataStore string-set, global/absolute paths v1, dead paths filtered by the existing `exists()` pattern (`:358`). Pure app-layer (Compose + prefs).
+
+**Open decisions (blocking Kotlin):** (1) container-drive badge text — letter / container name / both; (2) one vs both pin entry points; (3) scope global/absolute (recommended) vs per-container.
+
+**Preview:** `bannerlator_fm_favorites_preview.html` (scratchpad + `~/Downloads`; not pushed to device — no adb this session).
+
+---
+
 ## 2026-06-30 — In-game Task Manager rows as cards (match File Manager) + 2 P4 fixes bundled (CODE DONE + CI building)
 
 **TL;DR:** Task Manager processes in the in-game drawer now render as cards like the app File Manager

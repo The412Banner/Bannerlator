@@ -38,6 +38,10 @@ data class ThemePreset(
             onSurface            = onSurface,
             surfaceVariant       = surfaceVariant,
             onSurfaceVariant     = onSurfaceVariant,
+            // Themed divider/hairline token. Previously unset -> fell through to Material's
+            // light-mauve default; now follows the preset's `divider` so drawer dividers stay
+            // near-black on AMOLED (matches the legacy look) and recolor with other presets.
+            outline              = divider,
             error                = error,
         )
     }
@@ -57,6 +61,7 @@ data class ThemePreset(
             onSurface            = Color(0xFF1A1A1A),
             surfaceVariant       = Color(0xFFEAEAEA),
             onSurfaceVariant     = Color(0xFF555555),
+            outline              = Color(0xFFCCCCCC),
             error                = Color(0xFFB00020),
         )
     }

@@ -30,6 +30,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlipToFront
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
@@ -90,12 +92,13 @@ import com.winlator.star.ui.theme.WinlatorTheme
 // follows the user's theme preset / custom accent. The dim accent (low-emphasis fills/borders/
 // tracks) routes to LocalAccentDim.current — AMOLED maps that to the exact legacy #002277 so the
 // default look stays identical, while other presets/custom accents recolor it.
+// Phase 2: the neutral surface/text/divider constants are gone — call sites read
+// MaterialTheme.colorScheme directly (surface / onSurface / onSurfaceVariant / outline) so the
+// whole drawer (every tab) follows the theme. AMOLED's tokens match the legacy neutrals closely,
+// so the default look stays near-identical.
 // PureBlack is kept only for spots that need a true literal black that must NOT theme (the
 // color-picker knob outline); panel/rail backgrounds route to colorScheme.surface instead.
 private val PureBlack = Color(0xFF000000)
-private val DarkSurface = Color(0xFF0D0D0D)
-private val DimWhite = Color(0xFFE8E8E8)
-private val MutedWhite = Color(0xFF999999)
 private val ToggleTrackOff = Color(0xFF333333)
 private val ToggleThumbOff = Color(0xFF666666)
 
@@ -128,7 +131,7 @@ fun XServerDrawer() {
                 .fillMaxHeight()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(surface, DarkSurface, surface),
+                        colors = listOf(surface, MaterialTheme.colorScheme.surface, surface),
                         startY = 0f,
                         endY = Float.POSITIVE_INFINITY
                     )
@@ -220,7 +223,7 @@ private fun TabIconButton(iconRes: Int, isSelected: Boolean, onClick: () -> Unit
         Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
 
     val borderColor = if (isSelected) accent.copy(alpha = 0.6f) else Color(0xFF333333)
-    val tintColor = if (isSelected) Color.White else MutedWhite
+    val tintColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
 
     Box(
         modifier = Modifier
@@ -302,7 +305,7 @@ private fun SectionHeader(title: String) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold),
-            color = DimWhite,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(4.dp))
         Box(
@@ -328,14 +331,14 @@ private fun ToggleRow(label: String, checked: Boolean, enabled: Boolean = true, 
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .then(if (enabled) Modifier.clickable { onCheckedChange(!checked) } else Modifier.alpha(0.4f))
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = DimWhite,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
         Switch(
@@ -375,7 +378,7 @@ private fun LabeledSlider(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
-                color = DimWhite,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = format(value),
@@ -436,18 +439,18 @@ private fun GraphicsContent(state: XServerDrawerState) {
     // Frame Generation pinned to the top of the Graphics tab.
     FrameGenSection(state)
 
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .clickable { state.onToggleFullscreen?.run(); state.onClose?.run() }
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Text("Toggle Fullscreen", color = DimWhite, modifier = Modifier.weight(1f))
+        Text("Toggle Fullscreen", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
         Icon(
             painter = painterResource(R.drawable.icon_fullscreen),
             contentDescription = null,
@@ -457,7 +460,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
     }
 
     Spacer(Modifier.height(4.dp))
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
     // Renderer-specific graphics controls. Each host renderer has its own set, so
     // show ONLY the set that applies to the active renderer instead of packing the
@@ -507,7 +510,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
                 enabled = glEnabled)
         }
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
         // ---- OpenGL: SGSR / HDR + Screen Effects (GL EffectComposer features) ----
         val initSgsrEnabled   by XServerDialogState.sgsrEnabled.collectAsState()
@@ -531,7 +534,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         // Terminal debanding (TPDF dither) — kills 8-bit gradient banding. Drawer-only / session-live.
         DebandControls(glEnabled)
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
         Text("Screen Effects", color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
@@ -564,7 +567,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         SeShaderToggle("Toon", localToon, glEnabled) { localToon = it; applySe() }
         SeShaderToggle("NTSC", localNtsc, glEnabled) { localNtsc = it; applySe() }
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
     }
 
     if (vulkanSupported) {
@@ -621,7 +624,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         // Terminal debanding (TPDF dither) — kills 8-bit gradient banding. Drawer-only / session-live.
         DebandControls()
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
         // ---- Screen Effects (GL EffectComposer parity, ported to the Vulkan post
         //      chain). Color grade is always-applied via the sliders (neutral = no-op);
@@ -658,7 +661,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         ToggleRow("CRT", vkCrt, true) { vkCrt = it; applyVkSe() }
         ToggleRow("NTSC", vkNtsc, true) { vkNtsc = it; applyVkSe() }
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
     }
 
     if (!effectsSupported && !vulkanSupported) {
@@ -666,11 +669,11 @@ private fun GraphicsContent(state: XServerDrawerState) {
         //      post-process / scaling controls apply. ----
         Text(
             "No graphics enhancements are available with the SurfaceFlinger renderer.",
-            color = DimWhite.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             fontSize = 12.sp,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
         )
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
     }
 
     // nativeRenderingEnabled is collected once at the top of GraphicsContent (drives the GL grey-out).
@@ -720,12 +723,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 Modifier
                     .size(7.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(if (isRunning) Color(0xFF4CAF50) else DimWhite.copy(alpha = 0.35f))
+                    .background(if (isRunning) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f))
             )
             Spacer(Modifier.width(5.dp))
             Text(
                 engineLabel,
-                color = if (isRunning) DimWhite else DimWhite.copy(alpha = 0.6f),
+                color = if (isRunning) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -759,7 +762,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 )
                 Text(
                     "Higher flow scale = smoother motion estimate, more GPU cost.",
-                    color = DimWhite.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     fontSize = 11.sp,
                     modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                 )
@@ -768,7 +771,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     } else {
         Text(
             "Enable Frame Generation in this container's settings to tune it here.",
-            color = DimWhite.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 4.dp, top = 2.dp)
         )
@@ -844,7 +847,7 @@ private fun ReshadeSection() {
     if (!supported || effectName == "None" || effectName.isEmpty()) {
         Text(
             "No ReShade effect selected. Pick one in this game's settings (or the container's) to tune it here.",
-            color = DimWhite.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 4.dp, top = 6.dp)
         )
@@ -874,7 +877,7 @@ private fun ReshadeSection() {
 
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(
-            effectName, color = DimWhite, fontSize = 12.sp,
+            effectName, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
             modifier = Modifier.weight(1f).padding(start = 4.dp)
         )
         TextButton(onClick = { resetDefaults() }, enabled = params.isNotEmpty()) {
@@ -935,14 +938,14 @@ private fun ReshadeDropdown(label: String, options: List<String>, selected: Int,
     val accent = MaterialTheme.colorScheme.primary
     var expanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = DimWhite)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
         Box {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DarkSurface)
+                    .background(MaterialTheme.colorScheme.surface)
                     .clickable { expanded = true }
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
@@ -951,7 +954,7 @@ private fun ReshadeDropdown(label: String, options: List<String>, selected: Int,
                     color = accent, fontWeight = FontWeight.Medium, fontSize = 12.sp,
                     modifier = Modifier.weight(1f)
                 )
-                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MutedWhite)
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 options.forEachIndexed { i, opt ->
@@ -1008,17 +1011,17 @@ private fun ReshadeColorControl(
                 .clickable { expanded = !expanded }
                 .padding(vertical = 2.dp)
         ) {
-            Text(label, style = MaterialTheme.typography.bodySmall, color = DimWhite, modifier = Modifier.weight(1f))
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
             Box(
                 modifier = Modifier
                     .size(22.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color(rgbInt()))
-                    .border(1.dp, MutedWhite, RoundedCornerShape(6.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(6.dp))
             )
             Icon(
                 if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null, tint = MutedWhite,
+                contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp)
             )
         }
@@ -1069,7 +1072,7 @@ private fun GradientSlider(
         }
     }
     Column(modifier = Modifier.padding(vertical = 3.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MutedWhite)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1159,7 +1162,7 @@ private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int)
                         Text(
                             label,
                             color = when {
-                                !enabled -> DimWhite.copy(alpha = 0.4f)
+                                !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                                 isSel    -> Color.Black
                                 else     -> accent
                             },
@@ -1182,7 +1185,7 @@ private fun RefreshRateSlider(rates: List<Int>, selected: Int, enabled: Boolean,
     val accent = MaterialTheme.colorScheme.primary
     val stops = remember(rates) { listOf(0) + rates }
     var idx by remember(selected, stops) { mutableStateOf(stops.indexOf(selected).coerceAtLeast(0)) }
-    val dim = DimWhite.copy(alpha = 0.4f)
+    val dim = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
     // When the slider is disabled by Auto, the manual selection is meaningless — show the live actual
     // display rate instead, kept in normal blue so it reads as a real value, not a greyed leftover.
     val showAuto = !enabled && autoRate > 0
@@ -1197,7 +1200,7 @@ private fun RefreshRateSlider(rates: List<Int>, selected: Int, enabled: Boolean,
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Rate", style = MaterialTheme.typography.bodySmall, color = if (enabled) DimWhite else dim)
+            Text("Rate", style = MaterialTheme.typography.bodySmall, color = if (enabled) MaterialTheme.colorScheme.onSurface else dim)
             Text(
                 rightText,
                 style = MaterialTheme.typography.bodySmall,
@@ -1224,7 +1227,7 @@ private fun RefreshRateSlider(rates: List<Int>, selected: Int, enabled: Boolean,
                 Text(
                     if (s == 0) "Off" else "$s",
                     fontSize = 10.sp,
-                    color = if (enabled) DimWhite else dim
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else dim
                 )
             }
         }
@@ -1243,7 +1246,7 @@ private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueCh
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = label, style = MaterialTheme.typography.bodySmall, color = DimWhite)
+            Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
             Text(text = "$value", style = MaterialTheme.typography.bodySmall, color = accent, fontWeight = FontWeight.Medium)
         }
         Slider(
@@ -1266,7 +1269,7 @@ private fun SeShaderToggle(label: String, checked: Boolean, enabled: Boolean = t
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .then(if (enabled) Modifier.clickable { onCheckedChange(!checked) } else Modifier.alpha(0.4f))
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
@@ -1281,7 +1284,7 @@ private fun SeShaderToggle(label: String, checked: Boolean, enabled: Boolean = t
             )
         )
         Spacer(Modifier.width(4.dp))
-        Text(label, color = DimWhite, fontSize = 13.sp)
+        Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
     }
 }
 
@@ -1324,7 +1327,7 @@ private fun HudContent(state: XServerDrawerState) {
         )
         Text(
             "Caps on-screen FPS. Works with any frame-gen engine or none.",
-            color = DimWhite.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 4.dp, top = 2.dp)
         )
@@ -1366,12 +1369,12 @@ private fun HudContent(state: XServerDrawerState) {
             else ->
                 "Pick a rate to lock the display, or turn Auto on to follow your FPS."
         },
-        color = DimWhite.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
         fontSize = 11.sp,
         modifier = Modifier.padding(start = 4.dp, top = 2.dp)
     )
 
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
     fun parseConfig(s: String): Map<String, String> {
         if (s.isEmpty()) return emptyMap()
@@ -1451,17 +1454,17 @@ private fun HudContent(state: XServerDrawerState) {
     Text(
         if (gameHub) "Rich overlay: skins, colored fields, live FPS graph. Style change applies on next launch."
         else "Classic Bannerlator overlay.",
-        color = DimWhite.copy(alpha = 0.5f), fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), fontSize = 11.sp,
         modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 4.dp)
     )
 
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
     LabeledSlider("HUD Scale", scaleValue, 50f..150f, { scaleValue = it }, { apply() }, format = { "${it.toInt()}%" })
     if (gameHub) LabeledSlider("HUD Opacity", opacityValue, 0f..100f, { opacityValue = it }, { apply() }, format = { "${it.toInt()}%" })
     else LabeledSlider("HUD Transparency", transValue, 0f..50f, { transValue = it }, { apply() }, format = { "${it.toInt()}" })
 
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
     ToggleRow("Frame rate (FPS)", showFPS) { showFPS = !showFPS; apply() }
     if (gameHub) ToggleRow("FPS graph", showGraph) { showGraph = !showGraph; apply() }
@@ -1475,7 +1478,7 @@ private fun HudContent(state: XServerDrawerState) {
         ToggleRow("GPU model", showGpuModel) { showGpuModel = !showGpuModel; apply() }
         ToggleRow("Dual-battery power fix", dualBattery) { dualBattery = !dualBattery; apply() }
 
-        HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
         HudChipRow("HUD skin", listOf("Classic", "Neon", "Mono"), skins.indexOf(skin)) { skin = skins[it]; apply() }
         HudChipRow("HUD color", listOf("Soft", "Mid", "Vivid"), colors.indexOf(color)) { color = colors[it]; apply() }
         HudChipRow("HUD outline", listOf("Off", "Soft", "Strong"), outlines.indexOf(outline)) { outline = outlines[it]; apply() }
@@ -1488,7 +1491,7 @@ private fun HudContent(state: XServerDrawerState) {
 private fun HudChipRow(label: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = DimWhite)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(4.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { idx, opt ->
@@ -1499,7 +1502,7 @@ private fun HudChipRow(label: String, options: List<String>, selected: Int, onSe
                         .weight(1f)
                         .padding(end = if (idx < options.lastIndex) 6.dp else 0.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (sel) accent else DarkSurface)
+                        .background(if (sel) accent else MaterialTheme.colorScheme.surface)
                         .clickable { onSelect(idx) }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
@@ -1507,7 +1510,7 @@ private fun HudChipRow(label: String, options: List<String>, selected: Int, onSe
                     Text(
                         opt,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (sel) Color.Black else DimWhite,
+                        color = if (sel) Color.Black else MaterialTheme.colorScheme.onSurface,
                         fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal
                     )
                 }
@@ -1550,7 +1553,7 @@ private fun ControlsContent(state: XServerDrawerState) {
         OutlinedTextField(
             value = allItems.getOrElse(selectedIdx) { "-- Disabled --" },
             onValueChange = {}, readOnly = true,
-            label = { Text("Profile", color = MutedWhite) },
+            label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(),
             singleLine = true,
@@ -1614,7 +1617,7 @@ private fun ControlsContent(state: XServerDrawerState) {
         Unit
     }
 
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
     // Mouse & Cursor section
     Text("Mouse & Cursor", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
@@ -1630,7 +1633,7 @@ private fun ControlsContent(state: XServerDrawerState) {
         state.onDisableMouse?.run(); state.onClose?.run()
     }
 
-    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(vertical = 6.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
     // Vibration section
     Text("Vibration", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
@@ -1673,7 +1676,7 @@ private fun AdvancedActionRow(label: String, iconRes: Int, onClick: () -> Unit) 
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
@@ -1684,7 +1687,7 @@ private fun AdvancedActionRow(label: String, iconRes: Int, onClick: () -> Unit) 
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.width(10.dp))
-        Text(label, color = DimWhite, modifier = Modifier.weight(1f))
+        Text(label, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
     }
 }
 
@@ -1716,7 +1719,7 @@ private fun TmContent() {
 
     Text(
         text = "Processes: $count",
-        color = MutedWhite,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 12.sp,
     )
 
@@ -1727,24 +1730,24 @@ private fun TmContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(DarkSurface)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("No processes", color = MutedWhite, fontSize = 13.sp)
+            Text("No processes", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         }
     } else {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(DarkSurface)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(4.dp)
         ) {
             processes.forEach { proc ->
                 TmProcessRow(proc)
                 if (proc != processes.last()) {
-                    HorizontalDivider(color = Color(0xFF1A1A1A), modifier = Modifier.padding(horizontal = 8.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(horizontal = 8.dp))
                 }
             }
         }
@@ -1759,11 +1762,11 @@ private fun TmContent() {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(10.dp)
     ) {
         cpuCores.forEach { core ->
-            Text(core, color = MutedWhite, fontSize = 11.sp, modifier = Modifier.padding(vertical = 1.dp))
+            Text(core, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(vertical = 1.dp))
         }
     }
 
@@ -1776,10 +1779,10 @@ private fun TmContent() {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(10.dp)
     ) {
-        Text(memInfo, color = MutedWhite, fontSize = 11.sp)
+        Text(memInfo, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
     }
 
     Spacer(Modifier.height(10.dp))
@@ -1792,7 +1795,7 @@ private fun TmContent() {
             }
         ) { Text("New Task\u2026", color = accent) }
         Spacer(Modifier.weight(1f))
-        TextButton(onClick = { XServerDialogState.onTmDismissed?.run() }) { Text("Clear", color = MutedWhite) }
+        TextButton(onClick = { XServerDialogState.onTmDismissed?.run() }) { Text("Clear", color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -1829,21 +1832,21 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = proc.name + if (proc.wow64) " *32" else "",
-                color = DimWhite,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "PID ${proc.pid}  \u2022  ${proc.formattedMemory}",
-                color = MutedWhite,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp,
             )
         }
 
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MutedWhite)
+                Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             DropdownMenu(
                 expanded = menuExpanded,
@@ -1851,13 +1854,27 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
             ) {
                 DropdownMenuItem(
                     text = { Text("Bring to Front") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.FlipToFront,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                     onClick = {
                         menuExpanded = false
                         XServerDialogState.onTmBringToFront?.invoke(proc.name, proc.pid)
                     },
                 )
                 DropdownMenuItem(
-                    text = { Text("End Process") },
+                    text = { Text("End Process", color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    },
                     onClick = {
                         menuExpanded = false
                         XServerDialogState.onTmKillProcess?.invoke(proc.name)

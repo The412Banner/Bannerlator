@@ -4057,8 +4057,11 @@ return true;
 
         ds.onTmDismissed = () -> stopTmPolling();
 
-        ds.onTmNewTask = () -> ContentDialog.prompt(this, R.string.new_task, "taskmgr.exe",
-            command -> { if (winHandler != null) winHandler.exec(command); });
+        // Show the Compose New Task dialog instead of the native ContentDialog.prompt — the native
+        // prompt is invisible over the Vulkan/ASR fullscreen SurfaceView (same class of bug that
+        // killed the old Task Manager confirm). The submit path is unchanged: OK runs winHandler.exec.
+        ds.onTmNewTask = () -> ds.show(XServerDialogState.ActiveDialog.NEW_TASK);
+        ds.onTmNewTaskSubmit = command -> { if (winHandler != null) winHandler.exec(command); };
 
         // Bring to Front: drive it host-side (renderer-agnostic). Look up the real X window for the
         // target Windows pid, set X-server input focus on it, and send bringToFront with the REAL

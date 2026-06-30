@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.ComposeView
 import com.winlator.star.ui.dialogs.ActiveWindowsDialog
 import com.winlator.star.ui.dialogs.DebugDialogContent
 import com.winlator.star.ui.dialogs.InputControlsDialog
+import com.winlator.star.ui.dialogs.NewTaskDialog
 import com.winlator.star.ui.dialogs.ScreenEffectsDialog
 import com.winlator.star.ui.dialogs.VibrationDialog
 import com.winlator.star.ui.overlays.MagnifierOverlay
@@ -31,6 +32,7 @@ fun XServerDialogHost() {
         XServerDialogState.ActiveDialog.INPUT_CONTROLS -> InputControlsDialog(state)
         XServerDialogState.ActiveDialog.SCREEN_EFFECTS -> ScreenEffectsDialog(state)
         XServerDialogState.ActiveDialog.ACTIVE_WINDOWS -> ActiveWindowsDialog(state)
+        XServerDialogState.ActiveDialog.NEW_TASK       -> NewTaskDialog(state)
         XServerDialogState.ActiveDialog.NONE           -> Unit
     }
 

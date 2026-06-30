@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 object XServerDialogState {
 
     enum class ActiveDialog {
-        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS
+        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK
     }
 
     // -------------------------------------------------------------------------
@@ -398,7 +398,12 @@ object XServerDialogState {
 
     @JvmField var onTmRefresh: Runnable? = null
     @JvmField var onTmDismissed: Runnable? = null
+    // Opens the New Task prompt. Wired to show the Compose NEW_TASK dialog (it used to fire a native
+    // ContentDialog.prompt, which is invisible over the Vulkan/ASR fullscreen SurfaceView).
     @JvmField var onTmNewTask: Runnable? = null
+    // Runs the command entered in the New Task dialog (same path the native prompt's OK ran:
+    // winHandler.exec(command)).
+    @JvmField var onTmNewTaskSubmit: TmStringCallback? = null
 
     fun interface TmStringCallback { fun invoke(name: String) }
     fun interface TmFrontCallback { fun invoke(name: String, pid: Int) }
@@ -481,7 +486,7 @@ object XServerDialogState {
         onInputControlsConfirm = null; onInputControlsSettings = null
         onScreenEffectsApply = null; onSeAddProfile = null; onSeRemoveProfile = null
         onWindowClick = null
-        onTmRefresh = null; onTmDismissed = null; onTmNewTask = null
+        onTmRefresh = null; onTmDismissed = null; onTmNewTask = null; onTmNewTaskSubmit = null
         onTmBringToFront = null; onTmKillProcess = null; onTmSetAffinity = null
         onInitGraphicsTab = null
     }

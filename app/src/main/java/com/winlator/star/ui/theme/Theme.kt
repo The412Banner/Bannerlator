@@ -24,6 +24,7 @@ private val DefaultColorScheme = darkColorScheme(
     onSurface        = OnSurface,
     surfaceVariant   = SurfaceVariant,
     onSurfaceVariant = OnSurfaceVariant,
+    outline          = Divider,
     error            = Error,
 )
 

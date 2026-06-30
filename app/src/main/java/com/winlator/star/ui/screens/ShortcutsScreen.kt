@@ -1017,7 +1017,8 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
     // ReShade effect (vkBasalt drop-in). Scan the user folder once; "None" + each effect subfolder.
     // Per-uniform values are seeded from the saved JSON (shortcut override → container default) and,
     // when the effect changes, from the reflected .fx defaults. Serialized back to a JSON extra on save.
-    val reshadeEffects = remember { ReshadeManager.scanEffects(context) }
+    // Mutable so a catalog download can rescan the drop-in folder and surface the new effect.
+    var reshadeEffects by remember { mutableStateOf(ReshadeManager.scanEffects(context)) }
     val reshadeEffectNames = remember(reshadeEffects) { listOf("None") + reshadeEffects.map { it.name } }
     var selectedReshadeEffect by remember {
         val v = shortcut.getExtra("reshadeEffect", shortcut.container.getReshadeEffect())
@@ -1025,7 +1026,8 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
     }
     val reshadeParamValues = remember { mutableStateMapOf<String, Float>() }
     // Seed values: saved JSON wins; otherwise the .fx-reflected defaults for the selected effect.
-    LaunchedEffect(selectedReshadeEffect) {
+    // Keyed on reshadeEffects too, so a rescan (post-download) re-seeds with newly-available params.
+    LaunchedEffect(selectedReshadeEffect, reshadeEffects) {
         reshadeParamValues.clear()
         val effect = reshadeEffects.firstOrNull { it.name == selectedReshadeEffect } ?: return@LaunchedEffect
         val savedRaw = shortcut.getExtra("reshadeParams", shortcut.container.getReshadeParams())
@@ -1541,6 +1543,7 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             reshadeEffectNames = reshadeEffectNames,
             selectedReshadeEffect = selectedReshadeEffect,
             onReshadeEffectChange = { selectedReshadeEffect = it },
+            onReshadeCatalogChanged = { reshadeEffects = ReshadeManager.scanEffects(context) },
             reshadeParams = reshadeEffects.firstOrNull { it.name == selectedReshadeEffect }?.params ?: emptyList(),
             reshadeParamValues = reshadeParamValues,
             onReshadeParamChange = { name, v -> reshadeParamValues[name] = v },
@@ -1755,6 +1758,7 @@ private fun ScAdvancedTab(
     reshadeEffectNames: List<String> = listOf("None"),
     selectedReshadeEffect: String = "None",
     onReshadeEffectChange: (String) -> Unit = {},
+    onReshadeCatalogChanged: () -> Unit = {},
     reshadeParams: List<ReshadeManager.ReshadeParam> = emptyList(),
     reshadeParamValues: Map<String, Float> = emptyMap(),
     onReshadeParamChange: (String, Float) -> Unit = { _, _ -> },
@@ -1887,29 +1891,13 @@ private fun ScAdvancedTab(
         // effect picker (None + scanned drop-in folders) plus a slider/switch per uniform reflected
         // from the .fx. Only applies to DXVK/VKD3D (Vulkan) games — a hint shows otherwise.
         SectionBox(title = "ReShade effect") {
-            LabeledDropdown(
-                label = "Effect",
-                options = reshadeEffectNames,
-                selectedOption = selectedReshadeEffect,
-                onSelect = onReshadeEffectChange
+            // Catalog picker: browse/download effects from reshade.json; installed ones are selectable.
+            ReshadeEffectPicker(
+                selected = selectedReshadeEffect,
+                supported = reshadeSupported,
+                onSelect = onReshadeEffectChange,
+                onCatalogChanged = onReshadeCatalogChanged,
             )
-            if (reshadeEffectNames.size <= 1) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Drop ReShade effects into the app's ReShade folder " +
-                        "(Android/data/.../files/ReShade), one subfolder per effect.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (!reshadeSupported && selectedReshadeEffect != "None") {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DX wrapper.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
             if (selectedReshadeEffect != "None" && reshadeParams.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 reshadeParams.forEach { p ->

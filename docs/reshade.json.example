@@ -1,0 +1,45 @@
+{
+  "_comment": "Example Bannerlator ReShade catalog. Publish the real file as reshade.json at the repo root of The412Banner/winlator-contents (raw URL .../main/reshade.json). Each effect's archive is a .tzst (zstd tar) holding ONE self-contained effect (the .fx + co-located .fxh includes + textures), placed at .../main/<archive>. The archive's contents may sit at the tar root OR inside a single <id>/ folder; the installer normalizes both into getExternalFilesDir/ReShade/<id>/.",
+  "version": 1,
+  "reshade": [
+    {
+      "id": "Technicolor",
+      "name": "Technicolor",
+      "description": "Cinematic two-strip/three-strip Technicolor look.",
+      "category": "Color",
+      "author": "Marty McFly (CeeJay.dk port)",
+      "license": "MIT",
+      "archive": "reshade/Technicolor.tzst",
+      "size": 18432,
+      "version": "1.0",
+      "sha256": "",
+      "fx": "Technicolor.fx"
+    },
+    {
+      "id": "ArcaneBloom",
+      "name": "Arcane Bloom",
+      "description": "Adaptive HDR-style bloom with debug view.",
+      "category": "Bloom",
+      "author": "luluco250 / prod80",
+      "license": "MIT",
+      "archive": "reshade/ArcaneBloom.tzst",
+      "size": 40960,
+      "version": "1.2",
+      "sha256": "",
+      "fx": "ArcaneBloom.fx"
+    },
+    {
+      "id": "FakeHDR",
+      "name": "Fake HDR",
+      "description": "Pseudo-HDR tonemap that lifts contrast and local detail.",
+      "category": "Tonemap",
+      "author": "CeeJay.dk",
+      "license": "MIT",
+      "archive": "reshade/FakeHDR.tzst",
+      "size": 8192,
+      "version": "1.0",
+      "sha256": "",
+      "fx": "FakeHDR.fx"
+    }
+  ]
+}

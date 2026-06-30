@@ -735,29 +735,13 @@ private fun TopLevelFields(
         // the same picker and overrides this. Only applies to DXVK/VKD3D (Vulkan) games.
         val reshadeWrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "")
         val reshadeSupported = reshadeWrapper.contains("dxvk") || reshadeWrapper.contains("vegas")
-        LabeledDropdown(
-            label = "ReShade effect",
-            options = viewModel.reshadeEffectNames,
-            selectedOption = viewModel.reshadeEffect,
-            onSelect = { viewModel.selectReshadeEffect(it, viewModel.container?.getReshadeParams() ?: "") }
+        // Catalog picker: browse/download effects from reshade.json; installed ones are selectable.
+        ReshadeEffectPicker(
+            selected = viewModel.reshadeEffect,
+            supported = reshadeSupported,
+            onSelect = { viewModel.selectReshadeEffect(it, viewModel.container?.getReshadeParams() ?: "") },
+            onCatalogChanged = { viewModel.rescanReshadeEffects() },
         )
-        if (viewModel.reshadeEffectNames.size <= 1) {
-            Text(
-                "Drop ReShade effects into the app's ReShade folder " +
-                    "(Android/data/.../files/ReShade), one subfolder per effect.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-        }
-        if (!reshadeSupported && viewModel.reshadeEffect != "None") {
-            Text(
-                "ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DX wrapper.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-        }
         if (viewModel.reshadeEffect != "None") {
             val params = viewModel.reshadeEffects.firstOrNull { it.name == viewModel.reshadeEffect }?.params ?: emptyList()
             params.forEach { p ->

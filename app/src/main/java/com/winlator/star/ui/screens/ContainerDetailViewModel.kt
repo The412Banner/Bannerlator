@@ -131,6 +131,16 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         if (reshadeEffect == "None" || reshadeParamValues.isEmpty()) null
         else JSONObject().apply { reshadeParamValues.forEach { (k, v) -> put(k, v.toDouble()) } }.toString()
 
+    /** Re-scan the drop-in folder (e.g. after a catalog download) and re-seed the selected effect's
+     *  params, preserving any saved overrides. Drops the selection only if its folder vanished. */
+    fun rescanReshadeEffects() {
+        reshadeEffects = com.winlator.star.reshade.ReshadeManager.scanEffects(context)
+        selectReshadeEffect(
+            if (reshadeEffectNames.contains(reshadeEffect)) reshadeEffect else "None",
+            container?.getReshadeParams() ?: ""
+        )
+    }
+
     // ── Renderer ──────────────────────────────────────────────────────────────
     var rendererEntries by mutableStateOf(emptyList<String>()); private set
     var selectedRenderer by mutableStateOf("OpenGL")

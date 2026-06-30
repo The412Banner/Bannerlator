@@ -131,7 +131,7 @@ public class ReshadeManager {
         return null;
     }
 
-    private static File findFxFile(File dir) {
+    public static File findFxFile(File dir) {
         File[] files = dir.listFiles();
         if (files == null) return null;
         File first = null;

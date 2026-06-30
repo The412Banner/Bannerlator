@@ -1,7 +1,10 @@
 package com.winlator.star.reshade
 
+import android.content.Context
+import android.util.Log
 import com.winlator.star.contents.Downloader
 import org.json.JSONObject
+import java.io.File
 
 /**
  * One downloadable ReShade effect from the LIVE catalog (reshade.json) hosted on the winlator-contents
@@ -55,13 +58,45 @@ data class ReshadeCatalogEntry(
 )
 
 object ReshadeCatalog {
+    private const val TAG = "ReshadeCatalog"
     const val URL = "https://raw.githubusercontent.com/The412Banner/winlator-contents/main/reshade.json"
+    private const val CACHE_FILE = "reshade_catalog.json"
 
-    /** Fetch + parse the catalog. Returns an empty list on any network/parse failure (caller falls
-     *  back to whatever is already in the drop-in folder). Mirrors ComponentCatalog.load(). */
-    fun load(): List<ReshadeCatalogEntry> {
-        val json = Downloader.downloadString(URL) ?: return emptyList()
-        val root = JSONObject(json)
+    /** Result of an offline-aware catalog load: the parsed entries + where they came from, so the UI
+     *  can tell the user whether they're seeing a live or a cached/offline list. */
+    enum class Source { NETWORK, CACHE, NONE }
+    data class Result(val entries: List<ReshadeCatalogEntry>, val source: Source)
+
+    private fun cacheFile(context: Context) = File(context.filesDir, CACHE_FILE)
+
+    /** Network-first, then offline cache. On a successful fetch the raw JSON is cached to
+     *  filesDir/reshade_catalog.json for next time. On network failure the cached JSON (if any) is
+     *  parsed instead, so the full list still renders offline. Returns NONE (empty) only when there's
+     *  neither network nor a cache — the picker then falls back to scanning the drop-in folder. */
+    fun loadCached(context: Context): Result {
+        val json = Downloader.downloadString(URL)
+        if (json != null) {
+            val parsed = parse(json)
+            if (parsed.isNotEmpty()) {
+                runCatching { cacheFile(context).writeText(json) }
+                    .onFailure { Log.w(TAG, "failed to cache catalog", it) }
+                return Result(parsed, Source.NETWORK)
+            }
+        }
+        val cache = cacheFile(context)
+        if (cache.isFile) {
+            val cached = runCatching { parse(cache.readText()) }.getOrNull()
+            if (!cached.isNullOrEmpty()) return Result(cached, Source.CACHE)
+        }
+        return Result(emptyList(), Source.NONE)
+    }
+
+    /** Fetch + parse the catalog (network only). Empty list on failure. Mirrors ComponentCatalog.load(). */
+    fun load(): List<ReshadeCatalogEntry> =
+        Downloader.downloadString(URL)?.let { parse(it) } ?: emptyList()
+
+    private fun parse(json: String): List<ReshadeCatalogEntry> {
+        val root = runCatching { JSONObject(json) }.getOrNull() ?: return emptyList()
         val mirrorBase = root.optString("mirrorBase")
         val arr = root.optJSONArray("effects") ?: return emptyList()
         val out = ArrayList<ReshadeCatalogEntry>(arr.length())

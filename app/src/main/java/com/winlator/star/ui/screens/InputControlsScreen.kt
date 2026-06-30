@@ -42,6 +42,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -279,15 +280,15 @@ fun InputControlsScreen() {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ── Profile Section ─────────────────────────────────────────
-        Text("Profile", color = Color(0xFFCCCCCC), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text("Profile", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         FieldSet {
             Box {
                 val displayText = if (selectedProfileIdx > 0 && selectedProfileIdx - 1 < profiles.size)
                     profiles[selectedProfileIdx - 1].getName() else "-- Select Profile --"
                 Button(onClick = { showProfileDropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A3E)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier.fillMaxWidth()) {
-                    Text(displayText, color = Color.White)
+                    Text(displayText, color = MaterialTheme.colorScheme.onBackground)
                 }
                 DropdownMenu(expanded = showProfileDropdown, onDismissRequest = { showProfileDropdown = false }) {
                     DropdownMenuItem(text = { Text("-- Select Profile --") }, onClick = {
@@ -302,11 +303,11 @@ fun InputControlsScreen() {
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = { promptCreateName = true }) { Icon(Icons.Default.Add, "Add", tint = Color(0xFFCCCCCC)) }
+                IconButton(onClick = { promptCreateName = true }) { Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     if (currentProfile != null) promptRenameOldName = currentProfile?.getName()
                     else AppUtils.showToast(context, R.string.no_profile_selected)
-                }) { Icon(Icons.Default.Edit, "Edit", tint = Color(0xFFCCCCCC)) }
+                }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     if (currentProfile != null) {
                         ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_profile) {
@@ -315,7 +316,7 @@ fun InputControlsScreen() {
                             refreshControllers()
                         }
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
-                }) { Icon(Icons.Default.ContentCopy, "Duplicate", tint = Color(0xFFCCCCCC)) }
+                }) { Icon(Icons.Default.ContentCopy, "Duplicate", tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     if (currentProfile != null) {
                         ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_profile) {
@@ -325,7 +326,7 @@ fun InputControlsScreen() {
                             refreshControllers()
                         }
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
-                }) { Icon(Icons.Default.Delete, "Remove", tint = Color(0xFFCCCCCC)) }
+                }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurface) }
             }
         }
 
@@ -358,9 +359,9 @@ fun InputControlsScreen() {
                         builder.show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A4E)),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
-            ) { Text("Import Profile", color = Color.White, fontSize = 12.sp) }
+            ) { Text("Import Profile", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
             Button(
                 onClick = {
                     if (currentProfile != null) {
@@ -369,9 +370,9 @@ fun InputControlsScreen() {
                             "${context.getString(R.string.profile_exported_to)} ${exported.path}")
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A4E)),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
-            ) { Text("Export Profile", color = Color.White, fontSize = 12.sp) }
+            ) { Text("Export Profile", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
         }
 
         // ── Controls Editor ─────────────────────────────────────────
@@ -387,23 +388,25 @@ fun InputControlsScreen() {
                     )
                 } else AppUtils.showToast(context, R.string.no_profile_selected)
             },
+            // intentional: success green signals the primary "go/edit" action; kept off-theme by design
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
             modifier = Modifier.fillMaxWidth()
-        ) { Text("Controls Editor", color = Color.White) }
+        ) { Text("Controls Editor", color = Color.White) } // intentional: white kept for contrast on the green fill
 
         // ── External Controllers ────────────────────────────────────
-        Text("External Controllers", color = Color(0xFFCCCCCC), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text("External Controllers", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         if (controllers.isEmpty()) {
-            Text("No items to display", color = Color(0xFF888888), fontSize = 14.sp,
+            Text("No items to display", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
         } else {
             for (controller in controllers) {
                 val bindingsCount = controller.getControllerBindingCount()
+                // intentional: connected (green) / disconnected (red) are distinct status colors, kept off-theme
                 val tintColor = if (controller.isConnected()) Color(0xFF4CAF50) else Color(0xFFE57373)
                 val accentColor = AColor.parseColor("#4CAF50")
 
                 Box(
-                    modifier = Modifier.fillMaxWidth().background(Color(0xFF1A1A2E), RoundedCornerShape(8.dp)).clickable {
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp)).clickable {
                         if (currentProfile != null) {
                             val intent = Intent(context, ExternalControllerBindingsActivity::class.java)
                             intent.putExtra("profile_id", currentProfile!!.id)
@@ -420,8 +423,8 @@ fun InputControlsScreen() {
                         Icon(Icons.Default.Gamepad, null, tint = tintColor, modifier = Modifier.size(32.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(controller.getName(), color = Color(0xFFCCCCCC), fontSize = 14.sp)
-                            Text("$bindingsCount Bindings", color = Color(0xFF888888), fontSize = 12.sp)
+                            Text(controller.getName(), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                            Text("$bindingsCount Bindings", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         }
                         if (bindingsCount > 0) {
                             IconButton(onClick = {
@@ -430,7 +433,7 @@ fun InputControlsScreen() {
                                     currentProfile?.save()
                                     refreshControllers()
                                 }
-                            }) { Icon(Icons.Default.Delete, "Remove", tint = Color(0xFF888888)) }
+                            }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                     }
                 }
@@ -447,7 +450,7 @@ private fun FieldSet(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1A2E), RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp))
             .padding(12.dp)
     ) {
         content()

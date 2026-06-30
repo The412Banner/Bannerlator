@@ -12,11 +12,14 @@ import android.graphics.drawable.Icon
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -138,6 +141,7 @@ import com.winlator.star.inputcontrols.InputControlsManager
 import com.winlator.star.midi.MidiManager
 import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.ui.theme.Divider as DividerColor
+import com.winlator.star.ui.theme.LocalAccentDim
 import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
 import com.winlator.star.ui.theme.Surface as SurfaceColor
@@ -334,7 +338,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onExport = itemExport,
                                     onProperties = itemProperties,
                                 )
-                                Divider(color = DividerColor)
                             }
                         }
                     }
@@ -346,15 +349,15 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     .padding(16.dp)
                     .size(56.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .border(1.5.dp, Color(0xFF0055FF), RoundedCornerShape(12.dp))
-                    .background(Color.Black)
+                    .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface)
                     .clickable { showImportContainerPicker = true },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Filled.Add,
                     contentDescription = "Add Shortcut",
-                    tint = Color(0xFF0055FF),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp),
                 )
             }
@@ -629,13 +632,24 @@ private fun ShortcutItemLayoutL(
 
     val subtitle = listOf(container?.name ?: "", resolution).filter { it.isNotEmpty() }.joinToString(" · ")
 
-    Row(
+    // Floating card to match the Containers list (rounded surfaceVariant panel + outline
+    // border + side margins) instead of a flat edge-to-edge row.
+    Card(
+        onClick = onRun,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+      Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(SurfaceColor)
-            .clickable(onClick = onRun)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
     ) {
         // 3:4 poster cover (same as layout A); fall back to a glyph tile.
         Box(
@@ -698,6 +712,7 @@ private fun ShortcutItemLayoutL(
             onExport = onExport,
             onProperties = onProperties,
         )
+      }
     }
 }
 
@@ -774,7 +789,8 @@ private fun ShortcutGridItem(
             .border(
                 width = 2.dp,
                 brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF0033AA), Color(0xFF0055FF), Color(0xFF4488FF)),
+                    // accent-family gradient: dim → accent → accent, so the grid-tile border follows the theme
+                    colors = listOf(LocalAccentDim.current, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                 ),
                 shape = RoundedCornerShape(8.dp),
             )
@@ -839,7 +855,7 @@ private fun ShortcutGridItem(
             DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
             DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
             DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
-            DropdownMenuItem(text = { Text("Scrape cover") }, leadingIcon = { Icon(Icons.Filled.Search, null, tint = Color(0xFF1C85FE)) }, onClick = { menuExpanded = false; onScrapeCover() })
+            DropdownMenuItem(text = { Text("Scrape cover") }, leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onScrapeCover() })
             DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
         }
     }

@@ -18,9 +18,6 @@ import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
 import com.winlator.star.ui.findActivity
-import com.winlator.star.ui.theme.Divider as DividerColor
-import com.winlator.star.ui.theme.OnSurface
-import com.winlator.star.ui.theme.OnSurfaceVariant
 import com.winlator.star.ui.theme.Surface as SurfaceColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -103,14 +100,14 @@ fun VegasDownloadSheet(
     if (installing) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Surface(
-                color = Color(0xFF2A2A2A),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 8.dp
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                    CircularProgressIndicator(color = Color(0xFF0055FF))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(16.dp))
-                    Text("Installing VEGAS\u2026", color = Color.White)
+                    Text("Installing VEGAS\u2026", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -120,8 +117,8 @@ fun VegasDownloadSheet(
     errorMsg?.let { msg ->
         AlertDialog(
             onDismissRequest = { errorMsg = null },
-            title = { Text("Error", color = Color.White) },
-            text = { Text(msg, color = Color(0xFFCCCCCC)) },
+            title = { Text("Error", color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },
             confirmButton = { TextButton(onClick = { errorMsg = null }) { Text("OK") } }
         )
     }
@@ -129,7 +126,7 @@ fun VegasDownloadSheet(
     // Main dialog
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("VEGAS Downloads", color = Color.White) },
+        title = { Text("VEGAS Downloads", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             if (isLoading) {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -139,7 +136,7 @@ fun VegasDownloadSheet(
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                     Text(
                         if (errorMsg != null) "Could not load releases." else "No releases available.",
-                        color = OnSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -151,8 +148,8 @@ fun VegasDownloadSheet(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(release.displayName, style = MaterialTheme.typography.bodyMedium, color = OnSurface)
-                                Text(release.tagName, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                Text(release.displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                Text(release.tagName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             if (isDownloading) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -188,7 +185,7 @@ fun VegasDownloadSheet(
                                 }
                             }
                         }
-                        Divider(color = DividerColor)
+                        Divider(color = MaterialTheme.colorScheme.outline)
                     }
                 }
             }

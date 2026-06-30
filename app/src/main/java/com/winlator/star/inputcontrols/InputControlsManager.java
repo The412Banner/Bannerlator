@@ -215,7 +215,8 @@ public class InputControlsManager {
             int profileId = 0;
             String profileName = null;
             float cursorSpeed = Float.NaN;
-            int fieldsRead = 0;
+            boolean customAccentEnabled = false;
+            int customAccentColor = 0xFF0055FF;
 
             reader.beginObject();
             while (reader.hasNext()) {
@@ -223,25 +224,34 @@ public class InputControlsManager {
 
                 if (name.equals("id")) {
                     profileId = reader.nextInt();
-                    fieldsRead++;
                 }
                 else if (name.equals("name")) {
                     profileName = reader.nextString();
-                    fieldsRead++;
                 }
                 else if (name.equals("cursorSpeed")) {
                     cursorSpeed = (float) reader.nextDouble();
-                    fieldsRead++;
+                }
+                else if (name.equals("customAccentEnabled")) {
+                    customAccentEnabled = reader.nextBoolean();
+                }
+                else if (name.equals("customAccentColor")) {
+                    customAccentColor = reader.nextInt();
                 }
                 else {
-                    if (fieldsRead == 3) break;
-                    reader.skipValue();
+                    // Stop as soon as the heavy arrays are reached — they're always written after the
+                    // lightweight header, so the header fields are guaranteed read by now. Robust to
+                    // the optional accent fields appearing in any order (old profiles without them
+                    // simply keep the defaults). Skip any other unknown header field.
+                    if (name.equals("elements") || name.equals("controllers")) break;
+                    else reader.skipValue();
                 }
             }
 
             ControlsProfile profile = new ControlsProfile(context, profileId);
             profile.setName(profileName);
             profile.setCursorSpeed(cursorSpeed);
+            profile.setCustomAccentEnabled(customAccentEnabled);
+            profile.setCustomAccentColor(customAccentColor);
             return profile;
         }
         catch (IOException e) {

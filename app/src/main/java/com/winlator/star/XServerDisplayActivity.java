@@ -501,6 +501,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (inputControlsView != null) inputControlsView.setOverlayOpacity(v); // setter invalidates → live redraw
             preferences.edit().putFloat("overlay_opacity", v).apply();
         };
+        state.onControlsColorChange    = () -> {
+            // Per-profile on-screen controls accent. Write the two drawer values onto the ACTIVE
+            // profile (the one bound to the running game), persist, and invalidate for a live redraw.
+            // Toggling Follow-theme back ON also invalidates so the controls return to the theme accent.
+            ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+            if (profile != null) {
+                profile.setCustomAccentEnabled(!XServerDrawerState.INSTANCE.getControlsFollowThemeValue());
+                profile.setCustomAccentColor(XServerDrawerState.INSTANCE.getControlsAccentColorValue());
+                profile.save();
+            }
+            if (inputControlsView != null) inputControlsView.invalidate();
+        };
         state.onNativeRenderingToggle   = () -> {
             boolean next = !XServerDrawerState.INSTANCE.getNativeRenderingEnabled();
             XServerDrawerState.INSTANCE.setNativeRenderingEnabled(next);
@@ -2326,6 +2338,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         ds.setShowTouchscreen(inputControlsView.isShowTouchscreenControls());
         ds.setTimeoutEnabled(preferences.getBoolean("touchscreen_timeout_enabled", false));
         ds.setHapticsEnabled(preferences.getBoolean("touchscreen_haptics_enabled", false));
+        // Seed the Controls-tab accent toggle/picker from the ACTIVE profile (the one bound to the
+        // running game via showInputControls, set before this runs).
+        seedControlsColorState();
 
         ds.onInputControlsConfirm = (profileIndex, showTouchscreen, timeout, haptics) -> {
             inputControlsView.setShowTouchscreenControls(showTouchscreen);
@@ -2337,6 +2352,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             else touchpadView.setOnTouchListener(null);
             if (profileIndex > 0) showInputControls(inputControlsManager.getProfiles().get(profileIndex - 1));
             else hideInputControls();
+            // The active profile may have changed — re-seed the accent toggle/picker so the Controls
+            // tab reflects the newly-selected profile's saved accent.
+            seedControlsColorState();
         };
 
         ds.onInputControlsSettings = () -> {
@@ -2553,6 +2571,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         ds.setShowTouchscreen(inputControlsView.isShowTouchscreenControls());
         ds.setTimeoutEnabled(preferences.getBoolean("touchscreen_timeout_enabled", false));
         ds.setHapticsEnabled(preferences.getBoolean("touchscreen_haptics_enabled", false));
+        // Seed the Controls-tab accent toggle/picker from the ACTIVE profile (the one bound to the
+        // running game via showInputControls, set before this runs).
+        seedControlsColorState();
 
         ds.onInputControlsConfirm = (profileIndex, showTouchscreen, timeout, haptics) -> {
             inputControlsView.setShowTouchscreenControls(showTouchscreen);
@@ -2564,6 +2585,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             else touchpadView.setOnTouchListener(null);
             if (profileIndex > 0) showInputControls(inputControlsManager.getProfiles().get(profileIndex - 1));
             else hideInputControls();
+            // The active profile may have changed — re-seed the accent toggle/picker so the Controls
+            // tab reflects the newly-selected profile's saved accent.
+            seedControlsColorState();
         };
 
         ds.onInputControlsSettings = () -> {
@@ -2655,6 +2679,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
             inputControlsView.setVisibility(View.VISIBLE); // Ensure controls are visible
             timeoutHandler.removeCallbacks(hideControlsRunnable); // Remove any existing hide callbacks
             touchpadView.setOnTouchListener(null); // Remove the touch listener
+        }
+    }
+
+    // Push the active profile's per-profile controls accent (follow-theme + custom color) into the
+    // in-game drawer state so the Controls-tab toggle/picker reflect it. Defaults (follow theme,
+    // app blue) when no profile is active. The drawer's onControlsColorChange writes back.
+    private void seedControlsColorState() {
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        if (profile != null) {
+            XServerDrawerState.INSTANCE.setControlsFollowTheme(!profile.isCustomAccentEnabled());
+            XServerDrawerState.INSTANCE.setControlsAccentColor(profile.getCustomAccentColor());
+        }
+        else {
+            XServerDrawerState.INSTANCE.setControlsFollowTheme(true);
+            XServerDrawerState.INSTANCE.setControlsAccentColor(0xFF0055FF);
         }
     }
 
@@ -4057,8 +4096,11 @@ return true;
 
         ds.onTmDismissed = () -> stopTmPolling();
 
-        ds.onTmNewTask = () -> ContentDialog.prompt(this, R.string.new_task, "taskmgr.exe",
-            command -> { if (winHandler != null) winHandler.exec(command); });
+        // Show the Compose New Task dialog instead of the native ContentDialog.prompt — the native
+        // prompt is invisible over the Vulkan/ASR fullscreen SurfaceView (same class of bug that
+        // killed the old Task Manager confirm). The submit path is unchanged: OK runs winHandler.exec.
+        ds.onTmNewTask = () -> ds.show(XServerDialogState.ActiveDialog.NEW_TASK);
+        ds.onTmNewTaskSubmit = command -> { if (winHandler != null) winHandler.exec(command); };
 
         // Bring to Front: drive it host-side (renderer-agnostic). Look up the real X window for the
         // target Windows pid, set X-server input focus on it, and send bringToFront with the REAL

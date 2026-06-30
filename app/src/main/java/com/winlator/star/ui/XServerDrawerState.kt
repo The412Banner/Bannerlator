@@ -101,6 +101,15 @@ object XServerDrawerState {
     private val _overlayOpacity = MutableStateFlow(0.75f)
     val overlayOpacity: StateFlow<Float> = _overlayOpacity
 
+    // Per-profile on-screen controls accent. When controlsFollowTheme is true the controls follow
+    // the app theme accent; when false they use controlsAccentColor (ARGB). Both mirror the active
+    // ControlsProfile and are seeded/persisted by the activity (see onControlsColorChange).
+    private val _controlsFollowTheme = MutableStateFlow(true)
+    val controlsFollowTheme: StateFlow<Boolean> = _controlsFollowTheme
+
+    private val _controlsAccentColor = MutableStateFlow(0xFF0055FF.toInt())
+    val controlsAccentColor: StateFlow<Int> = _controlsAccentColor
+
     // Callbacks wired by XServerDisplayActivity.
     // @JvmField exposes these as public fields so Java can assign them directly.
     // Runnable avoids the kotlin.Unit return-type mismatch for Java void lambdas.
@@ -142,6 +151,10 @@ object XServerDrawerState {
     // Fired when the Controls-tab opacity slider moves; the activity reads overlayOpacity,
     // applies it to the live InputControlsView and persists the pref.
     @JvmField var onOverlayOpacityChange: Runnable? = null
+    // Fired when the Controls-tab "Follow app theme" toggle or custom color changes; the activity
+    // reads controlsFollowTheme/controlsAccentColor, writes them onto the ACTIVE ControlsProfile,
+    // saves it, and invalidates the InputControlsView for a live redraw.
+    @JvmField var onControlsColorChange: Runnable? = null
 
     var onCursorExpandedChanged: ((Boolean) -> Unit)? = null
 
@@ -180,6 +193,10 @@ object XServerDrawerState {
     fun setFpsConfig(v: String) { _fpsConfig.value = v }
     fun setOverlayOpacity(v: Float) { _overlayOpacity.value = v }
     fun getOverlayOpacityValue(): Float = _overlayOpacity.value
+    fun setControlsFollowTheme(v: Boolean) { _controlsFollowTheme.value = v }
+    fun getControlsFollowThemeValue(): Boolean = _controlsFollowTheme.value
+    fun setControlsAccentColor(v: Int) { _controlsAccentColor.value = v }
+    fun getControlsAccentColorValue(): Int = _controlsAccentColor.value
     fun toggleFpsExpanded() { _fpsExpanded.value = !_fpsExpanded.value }
 
     fun reset() {
@@ -207,6 +224,8 @@ object XServerDrawerState {
         _fpsExpanded.value = false
         _fpsConfig.value = ""
         _overlayOpacity.value = 0.75f
+        _controlsFollowTheme.value = true
+        _controlsAccentColor.value = 0xFF0055FF.toInt()
         onClose = null; onKeyboard = null; onInputControls = null
         onScreenEffects = null; onGraphicEngine = null; onVibration = null
         onToggleFullscreen = null; onPauseResume = null; onPipMode = null
@@ -219,6 +238,7 @@ object XServerDrawerState {
         onManualRefreshChange = null
         onRefreshRatePoll = null
         onOverlayOpacityChange = null
+        onControlsColorChange = null
         onCursorExpandedChanged = null
     }
 }

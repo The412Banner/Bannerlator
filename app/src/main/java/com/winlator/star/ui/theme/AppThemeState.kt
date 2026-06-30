@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,21 @@ object AppThemeState {
             if (dark) preset.toColorScheme(accentOverride = override)
             else      preset.toLightColorScheme(accentOverride = override)
         }
+
+    /** Dim accent paired with [colorScheme]. For real presets it's the preset's own
+     *  accentDim (AMOLED = exact #002277 so the default is unchanged); for a custom accent
+     *  it's derived from the live accent so dim fills/borders follow the picker too. */
+    val accentDim: kotlinx.coroutines.flow.Flow<Color> =
+        combine(_presetIndex, _customAccent) { index, accent ->
+            if (index == CUSTOM_PRESET_INDEX) lerp(accent, Color(0xFF000000), 0.55f)
+            else themePresets.getOrElse(index) { themePresets.first() }.accentDim
+        }
+
+    fun currentAccentDimSnapshot(): Color {
+        val index = _presetIndex.value
+        return if (index == CUSTOM_PRESET_INDEX) lerp(_customAccent.value, Color(0xFF000000), 0.55f)
+               else themePresets.getOrElse(index) { themePresets.first() }.accentDim
+    }
 
     fun init(context: Context) {
         themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)

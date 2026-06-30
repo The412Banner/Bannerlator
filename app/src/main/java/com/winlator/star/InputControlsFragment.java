@@ -52,6 +52,7 @@ import com.winlator.star.inputcontrols.ControlsProfile;
 import com.winlator.star.inputcontrols.ExternalController;
 import com.winlator.star.inputcontrols.InputControlsManager;
 import com.winlator.star.math.Mathf;
+import com.winlator.star.ui.theme.AppThemeState;
 import com.winlator.star.contentdialog.ContentDialog;
 import com.winlator.star.widget.InputControlsView;
 import org.json.JSONException;
@@ -66,6 +67,9 @@ public class InputControlsFragment extends Fragment {
     private static final String INPUT_CONTROLS_URL = "https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/%s";
     private InputControlsManager manager;
     private ControlsProfile currentProfile;
+    // Guards the follow-theme checkbox listener while we programmatically refresh it from the
+    // selected profile (so the refresh doesn't write back / loop).
+    private boolean updatingAccentUi = false;
     private Runnable updateLayout;
     private Callback<ControlsProfile> importProfileCallback;
     private final int selectedProfileId;
@@ -122,6 +126,12 @@ public class InputControlsFragment extends Fragment {
 
         currentProfile = selectedProfileId > 0 ? manager.getProfile(selectedProfileId) : null;
 
+        // "External Controllers" section header bakes textColor="@color/colorPrimary" at
+        // inflation; route to the runtime theme accent.
+        TextView tvExternalControllersHeader = view.findViewById(R.id.TVExternalControllersHeader);
+        if (tvExternalControllersHeader != null)
+            tvExternalControllersHeader.setTextColor(AppThemeState.getCurrentAccentArgb());
+
         final Spinner sProfile = view.findViewById(R.id.SProfile);
 
         sProfile.setPopupBackgroundResource(isDarkMode ? R.drawable.dialog_background_dark_blue : R.drawable.content_dialog_background);
@@ -130,6 +140,7 @@ public class InputControlsFragment extends Fragment {
 
         updateLayout = () -> {
             loadExternalControllers(view);
+            refreshControlsAccentUi(view);
         };
 
         updateLayout.run();
@@ -154,6 +165,27 @@ public class InputControlsFragment extends Fragment {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
         sbUiOpacity.setProgress((int)(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY) * 100));
+
+        // Per-profile on-screen controls accent: follow the app theme (default) or a custom color.
+        final CheckBox cbFollowTheme = view.findViewById(R.id.CBControlsFollowTheme);
+        final View vAccentSwatch = view.findViewById(R.id.VControlsAccentSwatch);
+        cbFollowTheme.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (updatingAccentUi || currentProfile == null) return;
+            currentProfile.setCustomAccentEnabled(!isChecked);
+            currentProfile.save();
+            refreshControlsAccentUi(view);
+        });
+        vAccentSwatch.setOnClickListener((v) -> {
+            if (currentProfile == null) return;
+            com.winlator.star.ui.components.ColorPickerDialogKt.showControlsColorPickerDialog(
+                requireActivity(), currentProfile.getCustomAccentColor(), (argb) -> {
+                    if (currentProfile == null) return;
+                    currentProfile.setCustomAccentColor(argb);
+                    currentProfile.save();
+                    vAccentSwatch.setBackgroundColor(argb);
+                });
+        });
+        refreshControlsAccentUi(view);
 
 
 
@@ -303,6 +335,25 @@ public class InputControlsFragment extends Fragment {
     public void onStart() {
         super.onStart();
         if (updateLayout != null) updateLayout.run();
+    }
+
+    // Sync the follow-theme checkbox + accent swatch with the selected profile. Disabled (dimmed)
+    // when no profile is selected; the swatch is only enabled when a custom (non-follow) accent is on.
+    private void refreshControlsAccentUi(View view) {
+        CheckBox cb = view.findViewById(R.id.CBControlsFollowTheme);
+        View swatch = view.findViewById(R.id.VControlsAccentSwatch);
+        if (cb == null || swatch == null) return;
+        boolean hasProfile = currentProfile != null;
+        boolean follow = !hasProfile || !currentProfile.isCustomAccentEnabled();
+        updatingAccentUi = true;
+        cb.setChecked(follow);
+        updatingAccentUi = false;
+        cb.setEnabled(hasProfile);
+        cb.setAlpha(hasProfile ? 1f : 0.4f);
+        swatch.setBackgroundColor(hasProfile ? currentProfile.getCustomAccentColor() : 0xFF0055FF);
+        boolean swatchEnabled = hasProfile && !follow;
+        swatch.setEnabled(swatchEnabled);
+        swatch.setAlpha(swatchEnabled ? 1f : 0.4f);
     }
 
     private void loadProfileSpinner(Spinner spinner) {

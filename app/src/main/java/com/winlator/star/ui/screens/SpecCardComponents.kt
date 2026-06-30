@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.winlator.star.ui.theme.OnSurfaceVariant
 
@@ -80,8 +81,11 @@ internal fun SpecChipRows(
             verticalArrangement = Arrangement.spacedBy(5.dp),
             modifier = Modifier.padding(top = 8.dp),
         ) {
-            if (rendererLabel.isNotEmpty()) CompChip(rendererLabel, ChipRendColor)
-            if (dxvkVersion.isNotEmpty()) CompChip("DXVK $dxvkVersion", ChipDxvkColor)
+            // Renderer + DXVK are the app's headline component chips: route them to the
+            // theme accent so a preset/custom accent recolors them app-wide. Frame-gen keeps
+            // its own pink identity (genuine "frame-gen active" status, not an accent surface).
+            if (rendererLabel.isNotEmpty()) CompChip(rendererLabel, MaterialTheme.colorScheme.primary)
+            if (dxvkVersion.isNotEmpty()) CompChip("DXVK $dxvkVersion", MaterialTheme.colorScheme.primary)
             if (frameGenLabel.isNotEmpty()) CompChip(frameGenLabel, ChipFgColor)
         }
     }

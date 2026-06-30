@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
+import com.winlator.star.ui.components.ColorPicker
 import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.theme.CUSTOM_PRESET_INDEX
 import com.winlator.star.ui.theme.Divider
@@ -173,178 +174,7 @@ private fun PresetSwatch(
     }
 }
 
-// ─── Color picker ────────────────────────────────────────────────────────────
-
-@Composable
-private fun ColorPicker(initialColor: Color, onColorChanged: (Color) -> Unit) {
-    // Decompose initial color into HSV
-    val hsv = remember(initialColor) {
-        val arr = FloatArray(3)
-        android.graphics.Color.colorToHSV(initialColor.toArgb(), arr)
-        arr
-    }
-    var hue        by remember { mutableFloatStateOf(hsv[0]) }
-    var saturation by remember { mutableFloatStateOf(hsv[1]) }
-    var value      by remember { mutableFloatStateOf(hsv[2]) }
-    var hexInput   by remember { mutableStateOf(initialColor.toHexString()) }
-    var hexError   by remember { mutableStateOf(false) }
-
-    fun currentColor() = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value)))
-
-    fun notifyChange() {
-        val c = currentColor()
-        hexInput = c.toHexString()
-        hexError = false
-        onColorChanged(c)
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-
-        // Preview swatch
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(currentColor())
-                    .border(1.dp, Divider, CircleShape)
-            )
-            Column {
-                Text("Preview", color = OnSurfaceVariant, fontSize = 12.sp)
-                Text(hexInput, color = OnSurface, fontFamily = FontFamily.Monospace, fontSize = 14.sp)
-            }
-        }
-
-        // Hue slider
-        SliderRow(
-            label = "Hue",
-            value = hue,
-            valueRange = 0f..360f,
-            trackBrush = Brush.horizontalGradient(
-                colors = (0..12).map { i ->
-                    Color(android.graphics.Color.HSVToColor(floatArrayOf(i * 30f, 1f, 1f)))
-                }
-            ),
-            onValueChange = { hue = it; notifyChange() }
-        )
-
-        // Saturation slider
-        SliderRow(
-            label = "Saturation",
-            value = saturation,
-            valueRange = 0f..1f,
-            trackBrush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0f, value))),
-                    Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, value)))
-                )
-            ),
-            onValueChange = { saturation = it; notifyChange() }
-        )
-
-        // Brightness slider
-        SliderRow(
-            label = "Brightness",
-            value = value,
-            valueRange = 0f..1f,
-            trackBrush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color.Black,
-                    Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, 1f)))
-                )
-            ),
-            onValueChange = { value = it; notifyChange() }
-        )
-
-        // Hex input
-        OutlinedTextField(
-            value = hexInput,
-            onValueChange = { raw ->
-                hexInput = raw
-                val clean = raw.trimStart('#')
-                if (clean.length == 6) {
-                    try {
-                        val parsed = android.graphics.Color.parseColor("#$clean")
-                        val arr = FloatArray(3)
-                        android.graphics.Color.colorToHSV(parsed, arr)
-                        hue = arr[0]; saturation = arr[1]; value = arr[2]
-                        hexError = false
-                        onColorChanged(Color(parsed))
-                    } catch (_: Exception) { hexError = true }
-                } else {
-                    hexError = clean.length > 6
-                }
-            },
-            label = { Text("Hex color (#RRGGBB)") },
-            isError = hexError,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            supportingText = if (hexError) {{ Text("Enter a valid 6-digit hex color") }} else null
-        )
-    }
-}
-
-@Composable
-private fun SliderRow(
-    label: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    trackBrush: Brush,
-    onValueChange: (Float) -> Unit
-) {
-    var sliderWidth by remember { mutableStateOf(0) }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, color = OnSurfaceVariant, fontSize = 12.sp)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(28.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(trackBrush)
-                .border(1.dp, Divider, RoundedCornerShape(14.dp))
-                .onSizeChanged { sliderWidth = it.width }
-                .pointerInput(valueRange) {
-                    detectTapGestures { offset ->
-                        if (sliderWidth > 0) {
-                            val fraction = (offset.x / sliderWidth).coerceIn(0f, 1f)
-                            onValueChange(valueRange.start + fraction * (valueRange.endInclusive - valueRange.start))
-                        }
-                    }
-                }
-                .pointerInput(valueRange) {
-                    detectHorizontalDragGestures { change, _ ->
-                        if (sliderWidth > 0) {
-                            val fraction = (change.position.x / sliderWidth).coerceIn(0f, 1f)
-                            onValueChange(valueRange.start + fraction * (valueRange.endInclusive - valueRange.start))
-                        }
-                    }
-                }
-        ) {
-            // Thumb indicator
-            val fraction = (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.9f))
-                            .border(2.dp, Color.Black.copy(alpha = 0.3f), CircleShape)
-                    )
-                }
-            }
-        }
-    }
-}
+// ─── Section label ───────────────────────────────────────────────────────────
 
 @Composable
 private fun SectionLabel(text: String) {
@@ -353,14 +183,5 @@ private fun SectionLabel(text: String) {
         color = OnSurface,
         fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold
-    )
-}
-
-private fun Color.toHexString(): String {
-    val argb = this.toArgb()
-    return "#%02X%02X%02X".format(
-        (argb shr 16) and 0xFF,
-        (argb shr 8) and 0xFF,
-        argb and 0xFF
     )
 }

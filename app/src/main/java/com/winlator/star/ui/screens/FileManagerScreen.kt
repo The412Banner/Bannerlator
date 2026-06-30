@@ -36,6 +36,9 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SdStorage
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -59,6 +62,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,6 +77,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -85,7 +90,7 @@ import com.winlator.star.core.FileUtils
 import com.winlator.star.core.PeIconExtractor
 import com.winlator.star.core.StringUtils
 import com.winlator.star.core.WinePath
-import com.winlator.star.ui.theme.OnSurfaceVariant
+import com.winlator.star.util.FavoritesStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -98,17 +103,84 @@ private val FileTypeIcon: Map<String, ImageVector> = mapOf(
     "folder" to Icons.Filled.Folder,
 )
 
-private val CardFill = Color(0xFF0A0A0A)
-private val CardStroke = Color(0xFF242424)
-private val DividerColor = Color(0xFF333333)
-private val IconBlue = Color(0xFF1C85FE)
-private val IconWhite = Color(0xFFECECEC)
+// Color-only sweep: the former card-fill / card-stroke / divider / icon-blue / icon-white
+// constants were rerouted onto MaterialTheme.colorScheme tokens (surface / outline / primary /
+// onSurface) at their use sites so a theme preset/accent recolors them.
 
 // True when [child] is [ancestor] itself or lives anywhere inside it.
 private fun isWithin(child: File, ancestor: File): Boolean {
     val c = runCatching { child.canonicalPath }.getOrDefault(child.absolutePath)
     val a = runCatching { ancestor.canonicalPath }.getOrDefault(ancestor.absolutePath)
     return c == a || c.startsWith(a + File.separator)
+}
+
+// ── Favorites: origin resolution ──
+
+enum class FavStorage { INTERNAL, SD, CONTAINER, OTHER }
+
+data class FavLocation(
+    val storage: FavStorage,
+    val containerName: String?,   // non-null only for a container's Drive C:
+    val driveLabel: String,       // "Drive C:", "Drive Z:", "Internal", "SD card", or "Storage"
+    val displayPath: String       // Wine drives: "C:\\...", "Z:\\..."; storage: the unix absolute path
+)
+
+// Resolve where [file] lives (storage source + drive + a friendly path) by prefix-matching
+// its absolute path. Robust to a missing/renamed container — falls through to OTHER.
+fun describeLocation(file: File, containers: List<Container>, imagefsDir: File): FavLocation {
+    val abs = file.absolutePath
+
+    for (container in containers) {
+        val driveC = File(container.rootDir, ".wine/drive_c").absolutePath
+        if (abs == driveC || abs.startsWith("$driveC/")) {
+            val remainder = abs.removePrefix(driveC).replace('/', '\\')
+            return FavLocation(
+                storage = FavStorage.CONTAINER,
+                containerName = container.name,
+                driveLabel = "Drive C:",
+                displayPath = "C:$remainder",
+            )
+        }
+    }
+
+    val imagefs = imagefsDir.absolutePath
+    if (abs == imagefs || abs.startsWith("$imagefs/")) {
+        val remainder = abs.removePrefix(imagefs).replace('/', '\\')
+        // Z:/imagefs is shared across containers — no single owning container.
+        return FavLocation(
+            storage = FavStorage.CONTAINER,
+            containerName = null,
+            driveLabel = "Drive Z:",
+            displayPath = "Z:$remainder",
+        )
+    }
+
+    val internal = "/storage/emulated/0"
+    if (abs == internal || abs.startsWith("$internal/")) {
+        return FavLocation(FavStorage.INTERNAL, null, "Internal", abs)
+    }
+
+    if (abs.startsWith("/storage/")) {
+        val name = abs.removePrefix("/storage/").substringBefore('/')
+        if (name.isNotEmpty() && name != "emulated" && name != "self") {
+            return FavLocation(FavStorage.SD, null, "SD card", abs)
+        }
+    }
+
+    return FavLocation(FavStorage.OTHER, null, "Storage", abs)
+}
+
+// Semantic identity colours for the favourite-card drive badge. Intentionally NOT theme
+// accent colours — they identify the storage source at a glance. Returns (background, foreground).
+private fun badgeColors(loc: FavLocation): Pair<Color, Color> {
+    val white = Color(0xFFFFFFFF)
+    return when {
+        loc.storage == FavStorage.INTERNAL -> Color(0xFF2E5FB0) to white   // blue
+        loc.storage == FavStorage.SD -> Color(0xFF2E7D32) to white         // green
+        loc.driveLabel == "Drive Z:" -> Color(0xFF6A3FB0) to white         // purple
+        loc.storage == FavStorage.CONTAINER -> Color(0xFF8F6A00) to white  // amber (Drive C:)
+        else -> Color(0xFF555555) to white                                 // grey
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,6 +193,7 @@ fun FileManagerScreen() {
 
     val containerManager = mainActivity?.containerManager
     val containers = remember { containerManager?.getContainers()?.toList() ?: emptyList<Container>() }
+    val imagefsDir = remember { File(context.filesDir, "imagefs") }
 
     val rootDir = File("/storage/emulated/0")
 
@@ -140,6 +213,11 @@ fun FileManagerScreen() {
     var operationProgress by remember { mutableFloatStateOf(0f) }
     val listState = rememberLazyListState()
     val pullState = rememberPullToRefreshState()
+
+    // Favorites view: when on, a dedicated bookmarks list replaces the file list.
+    // favTick is bumped on any add/remove/toggle so the favorites view + per-row star recompute.
+    var showFavorites by remember { mutableStateOf(false) }
+    var favTick by remember { mutableIntStateOf(0) }
 
     // resetScroll: jump to the top of the list (true for navigation; false for in-place reloads
     // after delete/paste/rename/refresh so the user keeps their scroll position).
@@ -172,9 +250,14 @@ fun FileManagerScreen() {
 
     LaunchedEffect(Unit) { openDrive(rootDir) }
 
-    // System/gesture Back goes up one directory; only when we're at the current drive's
-    // root (top layer) is it disabled, letting Back propagate to close the File Manager.
-    BackHandler(enabled = currentDir != currentRoot) {
+    // System/gesture Back: while the Favorites view is open it closes that first; otherwise
+    // it goes up one directory. Only at the current drive's root with Favorites closed is it
+    // disabled, letting Back propagate to close the File Manager.
+    BackHandler(enabled = showFavorites || currentDir != currentRoot) {
+        if (showFavorites) {
+            showFavorites = false
+            return@BackHandler
+        }
         val parent = currentDir.parentFile
         if (parent != null && parent.exists()) loadDirectory(parent)
     }
@@ -432,7 +515,7 @@ fun FileManagerScreen() {
                     containers.forEach { container ->
                         Text(
                             text = container.name,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 14.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -459,7 +542,7 @@ fun FileManagerScreen() {
                     containers.forEach { container ->
                         Text(
                             text = container.name,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 14.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -483,7 +566,7 @@ fun FileManagerScreen() {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0D0D0D))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
         ) {
             IconButton(onClick = {
@@ -491,24 +574,21 @@ fun FileManagerScreen() {
                 // Don't climb above the current drive's root.
                 if (currentDir != currentRoot && parent != null && parent.exists()) loadDirectory(parent)
             }, enabled = currentDir != currentRoot) {
-                Icon(Icons.Filled.ArrowBack, "Back", tint = IconBlue)
+                Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.primary)
             }
 
-            val imagefsDir = File(context.filesDir, "imagefs")
-            val currentDriveLabel = when {
-                containers.any { currentDir.absolutePath.startsWith(File(it.rootDir, ".wine/drive_c").absolutePath) } -> "Drive C:"
-                currentDir.absolutePath.startsWith(imagefsDir.absolutePath) -> "Drive Z:"
-                else -> drives.firstOrNull { (_, d) -> currentDir.absolutePath.startsWith(d.absolutePath) }?.first ?: "Storage"
-            }
+            val currentDriveLabel = describeLocation(currentDir, containers, imagefsDir).driveLabel
+            // Dim the drive chip while the Favorites list is open (it's not the active context).
+            val driveChipAlpha = if (showFavorites) 0.45f else 1f
             Box {
                 Text(
                     text = "  $currentDriveLabel  ",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = driveChipAlpha),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFF0A0A0A))
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                         .clickable { showDriveMenu = true }
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
@@ -519,7 +599,7 @@ fun FileManagerScreen() {
                     DropdownMenuItem(
                         text = { Text("Drive C:") },
                         leadingIcon = {
-                            Icon(Icons.Filled.SdStorage, null, tint = IconBlue, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.SdStorage, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         },
                         onClick = {
                             showDriveMenu = false
@@ -534,7 +614,7 @@ fun FileManagerScreen() {
                     DropdownMenuItem(
                         text = { Text("Drive Z:") },
                         leadingIcon = {
-                            Icon(Icons.Filled.Storage, null, tint = IconBlue, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Storage, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         },
                         onClick = {
                             showDriveMenu = false
@@ -545,7 +625,7 @@ fun FileManagerScreen() {
                         DropdownMenuItem(
                             text = { Text(label) },
                             leadingIcon = {
-                                Icon(Icons.Filled.Storage, null, tint = IconBlue, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Storage, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                             },
                             onClick = {
                                 showDriveMenu = false
@@ -558,17 +638,38 @@ fun FileManagerScreen() {
 
             Spacer(Modifier.width(4.dp))
 
-            Text(
-                text = currentDir.absolutePath,
-                color = OnSurfaceVariant,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            if (showFavorites) {
+                Text(
+                    text = "★ Favorites",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Text(
+                    text = currentDir.absolutePath,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // Star toggle: open/close the dedicated Favorites list.
+            IconButton(onClick = { showFavorites = !showFavorites }) {
+                if (showFavorites) {
+                    Icon(Icons.Filled.Star, "Hide favorites", tint = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Filled.StarBorder, "Show favorites", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
 
-        HorizontalDivider(color = DividerColor)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
         // ── Paste banner ──
         if (clipboardFile != null) {
@@ -576,18 +677,18 @@ fun FileManagerScreen() {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(CardStroke.copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     .clickable { performPaste() }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                Icon(Icons.Filled.ContentPaste, "Paste", tint = IconBlue, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.ContentPaste, "Paste", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Paste ${clipboardFile?.name}${if (isCutOperation) " (move)" else ""} here",
-                    color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onBackground, fontSize = 13.sp, modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = { clipboardFile = null; isCutOperation = false }) {
-                    Text("Cancel", color = OnSurfaceVariant, fontSize = 12.sp)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
         }
@@ -597,29 +698,53 @@ fun FileManagerScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF0A0A0A))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 val pctText = if (operationDeterminate) "  ${(operationProgress * 100).toInt()}%" else ""
-                Text("$operationLabel$pctText", color = OnSurfaceVariant, fontSize = 12.sp)
+                Text("$operationLabel$pctText", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 Spacer(Modifier.height(4.dp))
                 if (operationDeterminate) {
                     LinearProgressIndicator(
                         progress = { operationProgress },
                         modifier = Modifier.fillMaxWidth().height(4.dp),
-                        color = IconBlue,
-                        trackColor = DividerColor,
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.outline,
                     )
                 } else {
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().height(4.dp),
-                        color = IconBlue,
-                        trackColor = DividerColor,
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.outline,
                     )
                 }
             }
         }
 
+        // ── Favorites list OR file list ──
+        if (showFavorites) {
+            FavoritesList(
+                containers = containers,
+                imagefsDir = imagefsDir,
+                currentDir = currentDir,
+                favTick = favTick,
+                onPinCurrent = {
+                    FavoritesStore.add(context, currentDir.absolutePath)
+                    favTick++
+                    Toast.makeText(context, "Added \"${currentDir.name}\" to Favorites", Toast.LENGTH_SHORT).show()
+                },
+                onJump = { dir ->
+                    showFavorites = false
+                    openDrive(dir)
+                },
+                onUnpin = { dir ->
+                    FavoritesStore.remove(context, dir.absolutePath)
+                    favTick++
+                    Toast.makeText(context, "Removed \"${dir.name}\" from Favorites", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
+        } else {
         // ── File list (pull down to refresh) ──
         Box(
             modifier = Modifier
@@ -634,11 +759,14 @@ fun FileManagerScreen() {
                             modifier = Modifier.fillParentMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("Empty directory", color = OnSurfaceVariant)
+                            Text("Empty directory", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {
                     items(entries, key = { it.absolutePath }) { file ->
+                        val isFav = remember(file.absolutePath, favTick) {
+                            FavoritesStore.isFavorite(context, file.absolutePath)
+                        }
                         FileItemRow(
                             file = file,
                             onTap = {
@@ -653,6 +781,18 @@ fun FileManagerScreen() {
                             onCut = { clipboardFile = file; isCutOperation = true; showMenuFor = null },
                             onDelete = { selectedEntry = file; showMenuFor = null },
                             onRename = { renameTarget = file; showMenuFor = null },
+                            isFavorite = isFav,
+                            onToggleFavorite = {
+                                val nowFav = FavoritesStore.toggle(context, file.absolutePath)
+                                favTick++
+                                showMenuFor = null
+                                Toast.makeText(
+                                    context,
+                                    if (nowFav) "Added \"${file.name}\" to Favorites"
+                                    else "Removed \"${file.name}\" from Favorites",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
                         )
                     }
                 }
@@ -666,22 +806,23 @@ fun FileManagerScreen() {
                 )
             }
         }
+        }
 
         // ── FAB area ──
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0D0D0D))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             OutlinedButton(
                 onClick = { showNewFolderDialog = true },
-                border = BorderStroke(1.dp, CardStroke),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
-                Icon(Icons.Filled.CreateNewFolder, null, modifier = Modifier.size(18.dp), tint = IconBlue)
+                Icon(Icons.Filled.CreateNewFolder, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(6.dp))
-                Text("New Folder", color = Color.White)
+                Text("New Folder", color = MaterialTheme.colorScheme.onBackground)
             }
         }
     }
@@ -699,6 +840,8 @@ private fun FileItemRow(
     onCut: () -> Unit,
     onDelete: () -> Unit,
     onRename: () -> Unit,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
 ) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val isDir = file.isDirectory
@@ -720,8 +863,8 @@ private fun FileItemRow(
             .padding(horizontal = 12.dp, vertical = 3.dp)
             .clickable(onClick = onTap),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = CardFill),
-        border = BorderStroke(1.dp, CardStroke),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -737,19 +880,19 @@ private fun FileItemRow(
                 isExe -> Icon(
                     painter = painterResource(R.drawable.icon_menu_container),
                     contentDescription = null,
-                    tint = IconWhite,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(36.dp),
                 )
                 isDir -> Icon(
                     imageVector = Icons.Filled.Folder,
                     contentDescription = null,
-                    tint = IconBlue,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(36.dp),
                 )
                 else -> Icon(
                     imageVector = Icons.Filled.InsertDriveFile,
                     contentDescription = null,
-                    tint = IconWhite,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(36.dp),
                 )
             }
@@ -757,7 +900,7 @@ private fun FileItemRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = file.name,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -768,43 +911,242 @@ private fun FileItemRow(
                         if (!isDir) append(StringUtils.formatBytes(file.length())).append("  \u2022  ")
                         append(dateFormat.format(Date(file.lastModified())))
                     },
-                    color = OnSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                 )
             }
             Box {
                 IconButton(onClick = onMenu) {
-                    Icon(Icons.Filled.MoreVert, "Actions", tint = IconBlue, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Filled.MoreVert, "Actions", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = onDismissMenu) {
+                    // Favorites are directories — only folders get the pin toggle.
+                    if (isDir) {
+                        DropdownMenuItem(
+                            text = { Text(if (isFavorite) "Remove from Favorites" else "Add to Favorites") },
+                            leadingIcon = {
+                                Icon(
+                                    if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            onClick = { onToggleFavorite() },
+                        )
+                    }
                     if (canRun) {
                         DropdownMenuItem(
                             text = { Text("Run") },
-                            leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = IconBlue) },
+                            leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = MaterialTheme.colorScheme.primary) },
                             onClick = { onDismissMenu(); onRun() },
                         )
                     }
                     DropdownMenuItem(
                         text = { Text("Rename") },
-                        leadingIcon = { Icon(Icons.Filled.Edit, null, tint = IconBlue) },
+                        leadingIcon = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = { onDismissMenu(); onRename() },
                     )
                     DropdownMenuItem(
                         text = { Text("Copy") },
-                        leadingIcon = { Icon(Icons.Filled.FileCopy, null, tint = IconBlue) },
+                        leadingIcon = { Icon(Icons.Filled.FileCopy, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = { onDismissMenu(); onCopy() },
                     )
                     DropdownMenuItem(
                         text = { Text("Cut") },
-                        leadingIcon = { Icon(Icons.Filled.ContentCut, null, tint = IconBlue) },
+                        leadingIcon = { Icon(Icons.Filled.ContentCut, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = { onDismissMenu(); onCut() },
                     )
                     DropdownMenuItem(
                         text = { Text("Delete") },
-                        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = IconBlue) },
+                        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = { onDismissMenu(); onDelete() },
                     )
                 }
+            }
+        }
+    }
+}
+
+// Dedicated Favorites list that replaces the file list while the star toggle is on.
+// Reads the store keyed on [favTick] so it recomposes after any pin/unpin.
+@Composable
+private fun FavoritesList(
+    containers: List<Container>,
+    imagefsDir: File,
+    currentDir: File,
+    favTick: Int,
+    onPinCurrent: () -> Unit,
+    onJump: (File) -> Unit,
+    onUnpin: (File) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val favorites = remember(favTick) {
+        FavoritesStore.list(context).map(::File).filter { it.exists() }
+    }
+    val currentAlreadyPinned = remember(favTick, currentDir.absolutePath) {
+        FavoritesStore.isFavorite(context, currentDir.absolutePath)
+    }
+
+    LazyColumn(modifier = modifier) {
+        item {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = "Favorites",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = onPinCurrent,
+                    enabled = !currentAlreadyPinned,
+                ) {
+                    Icon(Icons.Filled.PushPin, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "Pin current folder",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 13.sp,
+                    )
+                }
+            }
+        }
+
+        if (favorites.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillParentMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "No favorites yet — pin a folder with its ⋮ menu to jump back here fast.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(horizontal = 32.dp),
+                    )
+                }
+            }
+        } else {
+            items(favorites, key = { it.absolutePath }) { file ->
+                val loc = remember(file.absolutePath, containers) {
+                    describeLocation(file, containers, imagefsDir)
+                }
+                FavoriteCard(
+                    file = file,
+                    loc = loc,
+                    onJump = { onJump(file) },
+                    onUnpin = { onUnpin(file) },
+                )
+            }
+        }
+    }
+}
+
+// A single favourite — matches the FileItemRow card style (surfaceContainer + outline +
+// RoundedCornerShape(10.dp)). Shows the folder name, a coloured drive badge + origin text,
+// and the full display path; tapping jumps into it, the filled star unpins.
+@Composable
+private fun FavoriteCard(
+    file: File,
+    loc: FavLocation,
+    onJump: () -> Unit,
+    onUnpin: () -> Unit,
+) {
+    val (badgeBg, badgeFg) = badgeColors(loc)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 3.dp)
+            .clickable(onClick = onJump),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(36.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.name,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(2.dp))
+                // Origin line: coloured drive badge + source description.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = loc.driveLabel,
+                        color = badgeFg,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(badgeBg)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    when {
+                        loc.containerName != null -> Row {
+                            Text(
+                                text = "Container: ",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                            )
+                            Text(
+                                text = "\"${loc.containerName}\"",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        else -> Text(
+                            text = when (loc.storage) {
+                                FavStorage.INTERNAL -> "Internal storage"
+                                FavStorage.SD -> "SD card"
+                                FavStorage.CONTAINER -> "System files (shared)"  // Drive Z:
+                                FavStorage.OTHER -> "Storage"
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = loc.displayPath,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(onClick = onUnpin) {
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = "Remove from favorites",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }

@@ -5,8 +5,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +24,7 @@ private val DefaultColorScheme = darkColorScheme(
     onSurface        = OnSurface,
     surfaceVariant   = SurfaceVariant,
     onSurfaceVariant = OnSurfaceVariant,
+    outline          = Divider,
     error            = Error,
 )
 
@@ -48,12 +52,20 @@ private val AppTypography = Typography(
     labelSmall     = Default.labelSmall.copy(fontFamily = BricolageFontFamily, fontWeight = FontWeight(600)),
 )
 
+/** Dim accent for low-emphasis fills/borders/tracks. Not part of Material's ColorScheme, so
+ *  it rides alongside via this CompositionLocal. Fallback #002277 = the legacy AMOLED value, so
+ *  anything reading it outside WinlatorTheme still gets today's default. */
+val LocalAccentDim = staticCompositionLocalOf { Color(0xFF002277) }
+
 @Composable
 fun WinlatorTheme(content: @Composable () -> Unit) {
     val colorScheme by AppThemeState.colorScheme.collectAsState(initial = AppThemeState.currentColorSchemeSnapshot())
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        content = content
-    )
+    val accentDim by AppThemeState.accentDim.collectAsState(initial = AppThemeState.currentAccentDimSnapshot())
+    CompositionLocalProvider(LocalAccentDim provides accentDim) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = AppTypography,
+            content = content
+        )
+    }
 }

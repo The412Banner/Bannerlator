@@ -41,7 +41,7 @@ fun PreloaderOverlay() {
         Surface(
             color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(0.5.dp, Color(0xFF2E2E2E)),
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline),
             shadowElevation = 8.dp,
         ) {
             Column(

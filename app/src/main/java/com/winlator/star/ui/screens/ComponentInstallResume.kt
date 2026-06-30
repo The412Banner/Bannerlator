@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -29,6 +30,7 @@ fun ComponentInstallResume() {
     val context = LocalContext.current
     val activity = context.findActivity()
     val scope = rememberCoroutineScope()
+    val cs = MaterialTheme.colorScheme
 
     var pending by remember { mutableStateOf(ComponentExecInstaller.pendingComponentName(context)) }
     var busy by remember { mutableStateOf(false) }
@@ -38,8 +40,8 @@ fun ComponentInstallResume() {
     message?.let { m ->
         AlertDialog(
             onDismissRequest = { message = null },
-            containerColor = Color(0xFF2A2A2A),
-            text = { Text(m, color = Color(0xFFCCCCCC)) },
+            containerColor = cs.surfaceContainerHigh,
+            text = { Text(m, color = cs.onSurface) },
             confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
         )
     }
@@ -48,22 +50,23 @@ fun ComponentInstallResume() {
 
     AlertDialog(
         onDismissRequest = { /* keep until the user chooses */ },
-        containerColor = Color(0xFF2A2A2A),
-        title = { Text("Finish installing $name", color = Color(0xFFEEEEEE)) },
+        containerColor = cs.surfaceContainerHigh,
+        title = { Text("Finish installing $name", color = cs.onSurface) },
         text = {
             Column {
                 Text(
                     if (busy) "Working on $name…"
                     else "The $name installer ran. Finish setting it up in the container? " +
                         "If it needs another installer, the container will open again.",
-                    color = Color(0xFFCCCCCC),
+                    color = cs.onSurface,
                 )
                 if (busy) {
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(
                         progress = progress.coerceIn(0f, 1f),
                         modifier = Modifier.fillMaxWidth().height(4.dp),
-                        color = Color(0xFF4FC3F7), trackColor = Color(0xFF333333),
+                        // intentional: status color (install-in-progress cyan, distinct from action accent)
+                        color = Color(0xFF4FC3F7), trackColor = cs.surfaceContainerHighest,
                     )
                 }
             }
@@ -90,7 +93,7 @@ fun ComponentInstallResume() {
             TextButton(enabled = !busy, onClick = {
                 ComponentExecInstaller.clearPlan(context)
                 pending = null
-            }) { Text("Discard", color = Color(0xFFE57373)) }
+            }) { Text("Discard", color = Color(0xFFE57373)) } // intentional: destructive-action red
         },
     )
 }

@@ -21,6 +21,11 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     public final int id;
     private String name;
     private float cursorSpeed = 1.0f;
+    // Per-profile accent override for the on-screen touch controls. When customAccentEnabled is
+    // false (default) the controls follow the app theme accent (AppThemeState); when true they use
+    // customAccentColor. Default color = the app default blue, only consulted once the user opts in.
+    private boolean customAccentEnabled = false;
+    private int customAccentColor = 0xFF0055FF;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
     private final List<ControlElement> immutableElements = Collections.unmodifiableList(elements);
@@ -49,6 +54,22 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setCursorSpeed(float cursorSpeed) {
         this.cursorSpeed = cursorSpeed;
+    }
+
+    public boolean isCustomAccentEnabled() {
+        return customAccentEnabled;
+    }
+
+    public void setCustomAccentEnabled(boolean customAccentEnabled) {
+        this.customAccentEnabled = customAccentEnabled;
+    }
+
+    public int getCustomAccentColor() {
+        return customAccentColor;
+    }
+
+    public void setCustomAccentColor(int customAccentColor) {
+        this.customAccentColor = customAccentColor;
     }
 
     public boolean isVirtualGamepad() {
@@ -122,6 +143,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             data.put("id", id);
             data.put("name", name);
             data.put("cursorSpeed", Float.valueOf(cursorSpeed));
+            // Lightweight header fields (sit alongside cursorSpeed, before the heavy elements array)
+            // so the streaming loader in InputControlsManager can read them without parsing elements.
+            data.put("customAccentEnabled", customAccentEnabled);
+            data.put("customAccentColor", customAccentColor);
 
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {

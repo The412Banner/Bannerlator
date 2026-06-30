@@ -365,7 +365,7 @@ public class ControlElement {
         int overlayAlpha = Color.alpha(primaryColor);
         int blackFill = Color.argb(overlayAlpha, 0, 0, 0);
 
-        paint.setColor(selected ? 0xff0277bd : primaryColor);
+        paint.setColor(selected ? inputControlsView.getAccentColor() : primaryColor);
         paint.setStyle(Paint.Style.STROKE);
         float strokeWidth = snappingSize * 0.25f;
         paint.setStrokeWidth(strokeWidth);
@@ -381,7 +381,7 @@ public class ControlElement {
                 int oldColor = paint.getColor();
                 Shape effectiveShape = isShoulderButton ? Shape.ROUND_RECT : shape;
                 boolean pressed = states[0];
-                int activeColor = pressed ? 0xff64ddff : 0xff0277bd;
+                int activeColor = pressed ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor();
 
                 if (isL3R3) {
                     // Render L3/R3 like joystick circles
@@ -487,12 +487,12 @@ public class ControlElement {
                 canvas.drawRoundRect(upCx - btnSize * 0.5f, upCy - btnSize * 0.5f, upCx + btnSize * 0.5f, upCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 // stroke
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[0] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[0] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawRoundRect(upCx - btnSize * 0.5f, upCy - btnSize * 0.5f, upCx + btnSize * 0.5f, upCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 // up arrow
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[0] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[0] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth * 1.2f);
                 path.moveTo(upCx, upCy - arrowH * 0.5f);
                 path.lineTo(upCx - arrowW * 0.5f, upCy + arrowH * 0.5f);
@@ -508,11 +508,11 @@ public class ControlElement {
                 paint.setColor(blackFill);
                 canvas.drawRoundRect(downCx - btnSize * 0.5f, downCy - btnSize * 0.5f, downCx + btnSize * 0.5f, downCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[2] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[2] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawRoundRect(downCx - btnSize * 0.5f, downCy - btnSize * 0.5f, downCx + btnSize * 0.5f, downCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[2] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[2] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth * 1.2f);
                 path.moveTo(downCx, downCy + arrowH * 0.5f);
                 path.lineTo(downCx - arrowW * 0.5f, downCy - arrowH * 0.5f);
@@ -528,11 +528,11 @@ public class ControlElement {
                 paint.setColor(blackFill);
                 canvas.drawRoundRect(leftCx - btnSize * 0.5f, leftCy - btnSize * 0.5f, leftCx + btnSize * 0.5f, leftCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[3] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[3] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawRoundRect(leftCx - btnSize * 0.5f, leftCy - btnSize * 0.5f, leftCx + btnSize * 0.5f, leftCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[3] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[3] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth * 1.2f);
                 path.moveTo(leftCx - arrowH * 0.5f, leftCy);
                 path.lineTo(leftCx + arrowH * 0.5f, leftCy - arrowW * 0.5f);
@@ -548,11 +548,11 @@ public class ControlElement {
                 paint.setColor(blackFill);
                 canvas.drawRoundRect(rightCx - btnSize * 0.5f, rightCy - btnSize * 0.5f, rightCx + btnSize * 0.5f, rightCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[1] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[1] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawRoundRect(rightCx - btnSize * 0.5f, rightCy - btnSize * 0.5f, rightCx + btnSize * 0.5f, rightCy + btnSize * 0.5f, btnRadius, btnRadius, paint);
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(states[1] ? 0xff64ddff : 0xff0277bd);
+                paint.setColor(states[1] ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth * 1.2f);
                 path.moveTo(rightCx + arrowH * 0.5f, rightCy);
                 path.lineTo(rightCx - arrowH * 0.5f, rightCy - arrowW * 0.5f);
@@ -566,7 +566,7 @@ public class ControlElement {
                 paint.setColor(blackFill);
                 canvas.drawRoundRect(cx - centerSize, cy - centerSize, cx + centerSize, cy + centerSize, centerSize * 0.3f, centerSize * 0.3f, paint);
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(0xff0277bd);
+                paint.setColor(inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawRoundRect(cx - centerSize, cy - centerSize, cx + centerSize, cy + centerSize, centerSize * 0.3f, centerSize * 0.3f, paint);
 
@@ -664,7 +664,7 @@ public class ControlElement {
 
                 // Outer circle - light blue stroke
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(0xff0277bd);
+                paint.setColor(inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawCircle(cx, cy, outerRadius, paint);
 
@@ -680,7 +680,7 @@ public class ControlElement {
 
                 // Thumb - light blue stroke
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(0xff0277bd);
+                paint.setColor(inputControlsView.getAccentColor());
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawCircle(thumbstickX, thumbstickY, thumbRadius + strokeWidth * 0.5f, paint);
 
@@ -707,7 +707,9 @@ public class ControlElement {
     }
 
     private int resolveAccentColor() {
-        return -1;
+        // Phase 4: drive the GAMEHUB glass style off the live theme accent (full opacity)
+        // instead of the hardcoded blue fallback. Never -1 now → the hasAccent path is live.
+        return inputControlsView.getAccentColor();
     }
 
     private GameHubLayout.RenderShape gameHubTriggerShape() {
@@ -1067,11 +1069,9 @@ public class ControlElement {
         Paint paint = inputControlsView.getPaint();
         if (iconId < CustomIconManager.CUSTOM_ICON_ID_OFFSET) {
             boolean pressed = type == Type.BUTTON && states[0];
-            if (inputControlsView.getVisualStyle() == VisualStyle.GAMEHUB) {
-                paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xff64ddff : 0xff1C85FE, PorterDuff.Mode.SRC_IN));
-            } else {
-                paint.setColorFilter(new PorterDuffColorFilter(pressed ? 0xff64ddff : 0xff0277bd, PorterDuff.Mode.SRC_IN));
-            }
+            // Icon tint follows the theme accent (bright variant when pressed), for both
+            // the default and GAMEHUB visual styles.
+            paint.setColorFilter(new PorterDuffColorFilter(pressed ? inputControlsView.getAccentBrightColor() : inputControlsView.getAccentColor(), PorterDuff.Mode.SRC_IN));
         }
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);

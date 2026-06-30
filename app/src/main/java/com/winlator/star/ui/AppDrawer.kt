@@ -52,23 +52,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.R
-
-private val PureBlack = Color(0xFF000000)
-private val DarkSurface = Color(0xFF000000)
-private val DimWhite = Color(0xFFEEEEEE)
-private val MutedWhite = Color(0xFF999999)
-private val GlowBlue = Color(0xFF0055FF)
-private val PrimaryDim = Color(0xFF002277)
+import com.winlator.star.ui.theme.LocalAccentDim
 
 private fun iconFor(screen: Screen): Int = when (screen) {
     Screen.Containers    -> R.drawable.icon_menu_container
-    Screen.Games         -> R.drawable.icon_menu_contents
+    Screen.Games         -> R.drawable.icon_games
     Screen.InputControls -> R.drawable.icon_gamepad
     Screen.AdrenoTools   -> R.drawable.icon_menu_gpu
     Screen.Saves         -> R.drawable.icon_save
     Screen.FileManager   -> R.drawable.icon_menu_file_manager
     Screen.Settings      -> R.drawable.icon_settings
-    Screen.Appearance    -> R.drawable.icon_settings
+    Screen.Appearance    -> R.drawable.icon_palette
     else                 -> R.drawable.icon_container
 }
 
@@ -95,29 +89,32 @@ fun AppDrawerContent(
         modifier = Modifier
             .fillMaxHeight()
             .width(280.dp)
-            .background(PureBlack)
+            .background(MaterialTheme.colorScheme.background)
             .border(0.5.dp, Color(0xFF2E2E2E))
             .verticalScroll(rememberScrollState()),
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(18.dp))
 
+        DrawerSectionHeader("Library")
         DrawerItem(Screen.Games,         currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.FileManager,   currentRoute, onNavigate)
+
+        DrawerSectionHeader("System", showDivider = true)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
-
-        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
-
+        DrawerItem(Screen.Appearance,    currentRoute, onNavigate, showNew = true)
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
         DrawerItem(Screen.AdrenoTools,   currentRoute, onNavigate)
 
-        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
-
+        DrawerSectionHeader("Stores", note = "· unchanged", showDivider = true)
         Screen.storeItems.forEach { screen ->
             DrawerStoreItem(screen, onLaunchStore)
         }
 
-        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            modifier = Modifier.padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 6.dp)
+        )
 
         DrawerIconItem(
             label = "About",
@@ -131,9 +128,38 @@ fun AppDrawerContent(
         )
 
         Spacer(Modifier.height(8.dp))
-        HorizontalDivider(color = GlowBlue, modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 20.dp, bottom = 6.dp))
         StorageWidget()
         Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun DrawerSectionHeader(title: String, note: String? = null, showDivider: Boolean = false) {
+    if (showDivider) {
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            modifier = Modifier.padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 2.dp)
+        )
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 22.dp, top = 14.dp, end = 22.dp, bottom = 6.dp),
+    ) {
+        Text(
+            text = title.uppercase(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.4.sp,
+        )
+        if (note != null) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = note,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                fontSize = 10.sp,
+            )
+        }
     }
 }
 
@@ -158,7 +184,7 @@ private fun StorageWidget() {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF0A0A0A))
+            .background(MaterialTheme.colorScheme.surface)
             .border(1.dp, Color(0xFF242424), RoundedCornerShape(10.dp))
             .padding(12.dp)
     ) {
@@ -170,14 +196,14 @@ private fun StorageWidget() {
             ) {
                 Text(
                     text = "Storage",
-                    color = DimWhite,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 if (totalBytes > 0) {
                     Text(
                         text = "${formatBytes(usedBytes)} / ${formatBytes(totalBytes)}",
-                        color = MutedWhite,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                     )
                 }
@@ -189,7 +215,7 @@ private fun StorageWidget() {
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
-                color = GlowBlue,
+                color = MaterialTheme.colorScheme.primary,
                 trackColor = Color(0xFF333333),
             )
         }
@@ -207,52 +233,90 @@ private fun formatBytes(bytes: Long): String {
 }
 
 @Composable
-private fun DrawerItem(screen: Screen, currentRoute: String, onNavigate: (Screen) -> Unit) {
+private fun DrawerItem(
+    screen: Screen,
+    currentRoute: String,
+    onNavigate: (Screen) -> Unit,
+    showNew: Boolean = false,
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val accentDim = LocalAccentDim.current
     val selected = currentRoute == screen.route
     val bgBrush = if (selected)
-        Brush.verticalGradient(listOf(PrimaryDim, GlowBlue.copy(alpha = 0.3f)))
+        Brush.verticalGradient(listOf(accentDim, accent.copy(alpha = 0.10f)))
     else
         Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-    val borderColor = if (selected) GlowBlue.copy(alpha = 0.6f) else Color.Transparent
-    val contentColor = if (selected) Color.White else DimWhite
+    val borderColor = if (selected) accent.copy(alpha = 0.6f) else Color.Transparent
+    val contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(bgBrush, RoundedCornerShape(10.dp))
-            .border(1.5.dp, borderColor, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgBrush, RoundedCornerShape(12.dp))
+            .border(1.5.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable { onNavigate(screen) },
     ) {
         if (selected) {
             Canvas(Modifier.matchParentSize()) {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(GlowBlue.copy(alpha = 0.15f), Color.Transparent),
+                        colors = listOf(accent.copy(alpha = 0.16f), Color.Transparent),
                         radius = size.minDimension / 2f
                     ),
                     radius = size.minDimension / 2f
+                )
+                // Left accent glow bar.
+                val barW = 3.dp.toPx()
+                val barH = size.height * 0.64f
+                drawRoundRect(
+                    color = accent,
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, (size.height - barH) / 2f),
+                    size = androidx.compose.ui.geometry.Size(barW, barH),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(barW / 2f, barW / 2f),
                 )
             }
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
         ) {
             Icon(
                 painter = painterResource(iconFor(screen)),
                 contentDescription = null,
-                tint = GlowBlue,
-                modifier = Modifier.size(26.dp),
+                tint = accent,
+                modifier = Modifier.size(25.dp),
             )
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(13.dp))
             Text(
                 text = screen.label,
                 style = MaterialTheme.typography.bodyLarge,
                 color = contentColor,
             )
+            if (showNew) {
+                Spacer(Modifier.width(8.dp))
+                NewBadge()
+            }
         }
+    }
+}
+
+@Composable
+private fun NewBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 5.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = "NEW",
+            color = Color.White,
+            fontSize = 8.5.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.3.sp,
+        )
     }
 }
 
@@ -263,19 +327,19 @@ private fun DrawerStoreItem(screen: Screen, onLaunchStore: (Screen) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onLaunchStore(screen) }
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 22.dp, vertical = 12.dp),
     ) {
         Icon(
             imageVector = Icons.Filled.Storefront,
             contentDescription = null,
-            tint = GlowBlue,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.width(14.dp))
         Text(
             text = screen.label,
             style = MaterialTheme.typography.bodyLarge,
-            color = MutedWhite,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -287,19 +351,19 @@ private fun DrawerIconItem(label: String, icon: ImageVector, onClick: () -> Unit
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 22.dp, vertical = 12.dp),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = GlowBlue,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.width(14.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = DimWhite,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -350,13 +414,13 @@ private fun SupportLink(label: String, url: String, onOpenUrl: (String) -> Unit)
         Icon(
             imageVector = Icons.Filled.OpenInNew,
             contentDescription = null,
-            tint = GlowBlue,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(16.dp)
         )
         Spacer(Modifier.width(8.dp))
         Text(
             text = label,
-            color = GlowBlue,
+            color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.bodyMedium
         )
     }

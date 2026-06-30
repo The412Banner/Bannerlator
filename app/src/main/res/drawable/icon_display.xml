@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Clean monitor/display icon for the in-game Graphics rail tab (replaces the gear, which
+     read as "settings"). Tinted in code; literal colors are placeholders the tint overrides. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- screen -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M4,4 L20,4 A2,2 0 0 1 22,6 L22,15 A2,2 0 0 1 20,17 L4,17 A2,2 0 0 1 2,15 L2,6 A2,2 0 0 1 4,4 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- stand + foot -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M12,17 L12,21 M8,21 L16,21"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

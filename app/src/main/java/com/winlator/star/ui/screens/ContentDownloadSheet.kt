@@ -37,7 +37,6 @@ import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
 import com.winlator.star.core.TarCompressorUtils
 import com.winlator.star.ui.findActivity
-import com.winlator.star.ui.theme.Divider as DividerColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,8 +105,8 @@ fun ContentDownloadSheet(
     showInfoProfile?.let { profile ->
         AlertDialog(
             onDismissRequest = { showInfoProfile = null },
-            containerColor = Color(0xFF2A2A2A),
-            title = { Text("Content Info", color = Color.White) },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 androidx.compose.foundation.rememberScrollState().let { scroll ->
                     Column(Modifier.verticalScroll(scroll)) {
@@ -116,7 +115,7 @@ fun ContentDownloadSheet(
                         InfoField("Code", profile.verCode.toString())
                         if (!profile.desc.isNullOrEmpty()) {
                             Spacer(Modifier.height(8.dp))
-                            Text(profile.desc, color = Color(0xFFBBBBBB), style = MaterialTheme.typography.bodySmall)
+                            Text(profile.desc, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -129,9 +128,9 @@ fun ContentDownloadSheet(
     confirmRemoveProfile?.let { profile ->
         AlertDialog(
             onDismissRequest = { confirmRemoveProfile = null },
-            containerColor = Color(0xFF2A2A2A),
-            title = { Text("Remove content?", color = Color.White) },
-            text = { Text("Remove \"${profile.verName}\"?", color = Color(0xFFCCCCCC)) },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Remove content?", color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("Remove \"${profile.verName}\"?", color = MaterialTheme.colorScheme.onSurface) },
             confirmButton = {
                 TextButton(onClick = {
                     cm.removeContent(profile)
@@ -149,8 +148,8 @@ fun ContentDownloadSheet(
     errorMsg?.let { msg ->
         AlertDialog(
             onDismissRequest = { errorMsg = null },
-            containerColor = Color(0xFF2A2A2A),
-            text = { Text(msg, color = Color(0xFFCCCCCC)) },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },
             confirmButton = { TextButton(onClick = { errorMsg = null }) { Text("OK") } }
         )
     }
@@ -200,7 +199,7 @@ fun ContentDownloadSheet(
                     }
                     Spacer(Modifier.height(12.dp))
                 }
-                Divider(color = DividerColor)
+                Divider(color = MaterialTheme.colorScheme.outline)
 
                 if (isLoadingRemote) {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -214,7 +213,7 @@ fun ContentDownloadSheet(
                     }
                     if (shown.isEmpty()) {
                         Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            Text("No content available.", color = Color(0xFFCCCCCC))
+                            Text("No content available.", color = MaterialTheme.colorScheme.onSurface)
                         }
                     } else {
                         Box(Modifier.fillMaxWidth().weight(1f)) {
@@ -269,7 +268,7 @@ fun ContentDownloadSheet(
                                         onInfo = { showInfoProfile = profile },
                                         onRemove = { confirmRemoveProfile = profile },
                                     )
-                                    Divider(color = DividerColor.copy(alpha = 0.5f))
+                                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
                                 }
                             }
                         }
@@ -307,7 +306,7 @@ private fun DownloadContentItem(
     onRemove: () -> Unit,
 ) {
     val busy = isDownloading || isInstalling
-    val installedBlue = Color(0xFF4FC3F7)
+    val installedBlue = Color(0xFF4FC3F7) // intentional: distinct installed/in-use status blue, not the accent
     val cs = MaterialTheme.colorScheme
     // Whole row is tappable to download when it's an available (not-installed, not-busy) entry —
     // matches the adrenotools EntryRow behaviour.
@@ -346,7 +345,8 @@ private fun DownloadContentItem(
                     Icon(Icons.Filled.Info, contentDescription = "Info", tint = cs.onSurfaceVariant,
                         modifier = Modifier.size(20.dp).clickable(onClick = onInfo))
                     Spacer(Modifier.width(14.dp))
-                    Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350),
+                    Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350), // intentional: destructive-action red
+
                         modifier = Modifier.size(20.dp).clickable(onClick = onRemove))
                 }
                 else -> Icon(Icons.Filled.CloudDownload, contentDescription = "Download", tint = cs.primary,
@@ -357,16 +357,16 @@ private fun DownloadContentItem(
         if (busy) {
             Spacer(Modifier.height(6.dp))
             val frac = (if (isInstalling) installProgress else progress)?.coerceIn(0f, 1f) ?: 0f
-            val barColor = if (isInstalling) Color(0xFF4CAF50) else cs.primary
+            val barColor = if (isInstalling) Color(0xFF4CAF50) else cs.primary // intentional: green = "installing" phase, distinct from blue download phase
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(if (isInstalling) "Installing" else "Downloading",
-                    style = MaterialTheme.typography.bodySmall, color = Color(0xFFB0BEC5))
+                    style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                 Text("${(frac * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodySmall, color = Color(0xFFB0BEC5))
+                    style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
             Spacer(Modifier.height(3.dp))
             LinearProgressIndicator(progress = frac, modifier = Modifier.fillMaxWidth().height(4.dp),
-                color = barColor, trackColor = Color(0xFF333333))
+                color = barColor, trackColor = cs.surfaceContainerHighest)
         }
     }
 }
@@ -391,8 +391,8 @@ private fun TypeChip(text: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun InfoField(label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
-        Text("$label: ", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.bodySmall)
-        Text(value, color = Color(0xFFE0E0E0), style = MaterialTheme.typography.bodySmall)
+        Text("$label: ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Text(value, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
     }
 }
 

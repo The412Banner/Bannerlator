@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -144,7 +145,7 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D0D)),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -165,7 +166,7 @@ fun SplashScreen(
                 text = "V ${BuildConfig.VERSION_NAME}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFFAAAAAA),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(Modifier.height(8.dp))
@@ -173,7 +174,7 @@ fun SplashScreen(
             Text(
                 text = "$statusText$dots",
                 fontSize = 13.sp,
-                color = Color(0xFF888888),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(Modifier.height(32.dp))
@@ -190,7 +191,7 @@ fun SplashScreen(
             Text(
                 text = "$displayedProgress%",
                 fontSize = 13.sp,
-                color = Color(0xFFAAAAAA),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             AnimatedVisibility(
@@ -201,11 +202,11 @@ fun SplashScreen(
                     Spacer(Modifier.height(32.dp))
                     Button(
                         onClick = onProceed,
-                        colors  = ButtonDefaults.buttonColors(containerColor = Color(0xFF0055FF)),
+                        colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape   = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Proceed", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text("Proceed", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -263,6 +264,9 @@ private fun GlowingProgressBar(
     isComplete: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // intentional: the glow/gradient/track/shimmer below form a hand-tuned multi-stop brand
+    // progress visual (no clean per-stop colorScheme token) and are drawn inside a DrawScope
+    // (outside composition), so they're left off-theme; the rest of the splash follows the theme.
     val glowColor = if (isComplete) Color(0xFF4499FF) else Color(0xFF0055FF)
 
     Canvas(modifier = modifier) {

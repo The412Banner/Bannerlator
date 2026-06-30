@@ -286,7 +286,7 @@ fun InputControlsScreen() {
                 val displayText = if (selectedProfileIdx > 0 && selectedProfileIdx - 1 < profiles.size)
                     profiles[selectedProfileIdx - 1].getName() else "-- Select Profile --"
                 Button(onClick = { showProfileDropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier.fillMaxWidth()) {
                     Text(displayText, color = MaterialTheme.colorScheme.onBackground)
                 }
@@ -359,7 +359,7 @@ fun InputControlsScreen() {
                         builder.show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
             ) { Text("Import Profile", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
             Button(
@@ -370,7 +370,7 @@ fun InputControlsScreen() {
                             "${context.getString(R.string.profile_exported_to)} ${exported.path}")
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
             ) { Text("Export Profile", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
         }
@@ -406,7 +406,7 @@ fun InputControlsScreen() {
                 val accentColor = AColor.parseColor("#4CAF50")
 
                 Box(
-                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).clickable {
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp)).clickable {
                         if (currentProfile != null) {
                             val intent = Intent(context, ExternalControllerBindingsActivity::class.java)
                             intent.putExtra("profile_id", currentProfile!!.id)
@@ -450,7 +450,7 @@ private fun FieldSet(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp))
             .padding(12.dp)
     ) {
         content()

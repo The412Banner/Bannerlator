@@ -466,7 +466,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Spacer(Modifier.height(8.dp))
             Box {
                 Button(onClick = { showBox64Dropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier.fillMaxWidth()) {
                     val label = box64Presets.find { it.id == selectedBox64Preset }?.name ?: selectedBox64Preset
                     Text(label, color = MaterialTheme.colorScheme.onSurface)
@@ -526,7 +526,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Spacer(Modifier.height(8.dp))
             Box {
                 Button(onClick = { showFEXCoreDropdown = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier.fillMaxWidth()) {
                     val label = fexcorePresets.find { it.id == selectedFEXCorePreset }?.name ?: selectedFEXCorePreset
                     Text(label, color = MaterialTheme.colorScheme.onSurface)
@@ -587,7 +587,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) {
                     Button(onClick = { showSFDropdown = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                         modifier = Modifier.fillMaxWidth()) {
                         Text(sfNames.getOrElse(selectedSF) { "Default" }, color = MaterialTheme.colorScheme.onSurface)
                     }
@@ -652,7 +652,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 Text(winlatorPath, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { winlatorPathLauncher.launch(null) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
                     Text("Choose Path", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                 }
             }
@@ -663,7 +663,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 Text(shortcutExportPath, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { shortcutExportPathLauncher.launch(null) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
                     Text("Choose Path", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                 }
             }
@@ -743,7 +743,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for ((i, channel) in wineDebugChannels.withIndex()) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
                         Text(channel, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                         IconButton(onClick = {
                             wineDebugChannels = wineDebugChannels.toMutableList().also { it.removeAt(i) }
@@ -925,7 +925,7 @@ private fun FieldSet(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp))
             .padding(12.dp)
     ) {
         content()

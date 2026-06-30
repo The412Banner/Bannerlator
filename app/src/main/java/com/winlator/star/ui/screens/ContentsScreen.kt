@@ -220,14 +220,14 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
     if (confirmInstallPrompt) {
         AlertDialog(
             onDismissRequest = { confirmInstallPrompt = false },
-            containerColor = Color(0xFF2A2A2A),
-            title = { Text(context.getString(R.string.do_you_want_to_install_content), color = Color.White) },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text(context.getString(R.string.do_you_want_to_install_content), color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Text(
                     context.getString(R.string.pls_make_sure_content_trustworthy) + "\n\n" +
                     context.getString(R.string.content_suffix_is_wcp_packed_xz_zst) + "\n" +
                     context.getString(R.string.get_more_contents_form_github),
-                    color = Color(0xFFCCCCCC),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             },
             confirmButton = {
@@ -257,7 +257,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
             contentAlignment = Alignment.Center,
         ) {
             androidx.compose.material3.Surface(
-                color = Color(0xFF2A2A2A),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.padding(32.dp),
             ) {
@@ -267,7 +267,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                 ) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(16.dp))
-                    Text(msg, color = Color.White)
+                    Text(msg, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -296,8 +296,8 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
         )
         is InstallDialogState.Alert -> AlertDialog(
             onDismissRequest = { installDialog = null; d.onDismiss() },
-            containerColor = Color(0xFF2A2A2A),
-            text = { Text(d.message, color = Color(0xFFCCCCCC)) },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            text = { Text(d.message, color = MaterialTheme.colorScheme.onSurface) },
             confirmButton = {
                 TextButton(onClick = { installDialog = null; d.onDismiss() }) {
                     Text(context.getString(android.R.string.ok), color = MaterialTheme.colorScheme.primary)
@@ -311,8 +311,8 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
     confirmRemove?.let { profile ->
         AlertDialog(
             onDismissRequest = { confirmRemove = null },
-            containerColor = Color(0xFF2A2A2A),
-            title = { Text(context.getString(R.string.do_you_want_to_remove_this_content), color = Color.White) },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text(context.getString(R.string.do_you_want_to_remove_this_content), color = MaterialTheme.colorScheme.onSurface) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmRemove = null
@@ -358,8 +358,8 @@ private fun ContentInfoDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF2A2A2A),
-        title = { Text("Content Info", color = Color.White) },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(
                 modifier = Modifier
@@ -379,7 +379,7 @@ private fun ContentInfoDialog(
                     SectionBox(header = "Description") {
                         Text(
                             text = profile.desc,
-                            color = Color(0xFFBBBBBB),
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -392,7 +392,7 @@ private fun ContentInfoDialog(
                         profile.fileList.forEach { file ->
                             Text(
                                 text = "${file.source} → ${file.target}",
-                                color = Color(0xFFCCCCCC),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(vertical = 2.dp),
                             )
@@ -418,7 +418,7 @@ private fun UntrustedDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF2A2A2A),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text("Warning", color = Color(0xFFFF8A80)) },
         text = {
             Column(
@@ -429,7 +429,7 @@ private fun UntrustedDialog(
                 SectionBox(header = "Unverified Files", borderColor = Color(0xFFFF8A80)) {
                     Text(
                         "These files could not be verified. Continue only if you trust the source.",
-                        color = Color(0xFFCCCCCC),
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -456,21 +456,22 @@ private fun UntrustedDialog(
 @Composable
 private fun SectionBox(
     header: String,
-    borderColor: Color = Color(0xFF555555),
+    borderColor: Color = Color.Unspecified,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
+    val resolvedBorder = if (borderColor == Color.Unspecified) MaterialTheme.colorScheme.outline else borderColor
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = header,
-            color = Color(0xFFAAAAAA),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
         )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, borderColor, shape)
+                .border(1.dp, resolvedBorder, shape)
                 .padding(horizontal = 10.dp, vertical = 8.dp),
         ) {
             content()
@@ -481,8 +482,8 @@ private fun SectionBox(
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
-        Text("$label: ", color = Color(0xFFAAAAAA), style = MaterialTheme.typography.bodySmall)
-        Text(value,      color = Color(0xFFE0E0E0), style = MaterialTheme.typography.bodySmall)
+        Text("$label: ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Text(value,      color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
     }
 }
 

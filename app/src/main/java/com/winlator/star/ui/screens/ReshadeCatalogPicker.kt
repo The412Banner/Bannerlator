@@ -406,12 +406,12 @@ private fun ReshadeCatalogRow(
             val frac = progress?.coerceIn(0f, 1f) ?: 0f
             val barColor = if (phaseLabel == "Installing") Color(0xFF4CAF50) else cs.primary // intentional: status color (green = installing/extract phase)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(phaseLabel, style = MaterialTheme.typography.bodySmall, color = Color(0xFFB0BEC5))
-                Text("${(frac * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB0BEC5))
+                Text(phaseLabel, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                Text("${(frac * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
             Spacer(Modifier.height(3.dp))
             LinearProgressIndicator(progress = frac, modifier = Modifier.fillMaxWidth().height(4.dp),
-                color = barColor, trackColor = Color(0xFF333333))
+                color = barColor, trackColor = cs.surfaceContainerHighest)
         }
     }
 }

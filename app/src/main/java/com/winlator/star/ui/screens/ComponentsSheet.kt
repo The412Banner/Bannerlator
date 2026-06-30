@@ -89,8 +89,8 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     message?.let { m ->
         AlertDialog(
             onDismissRequest = { message = null },
-            containerColor = Color(0xFF2A2A2A),
-            text = { Text(m, color = Color(0xFFCCCCCC)) },
+            containerColor = cs.surfaceContainerHigh,
+            text = { Text(m, color = cs.onSurface) },
             confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
         )
     }
@@ -98,14 +98,14 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     confirmExec?.let { c ->
         AlertDialog(
             onDismissRequest = { confirmExec = null },
-            containerColor = Color(0xFF2A2A2A),
+            containerColor = cs.surfaceContainerHigh,
             title = { Text("Run ${c.name} installer", color = cs.onSurface) },
             text = {
                 Text(
                     "This installs ${c.name} by running its installer inside the container. " +
                         "The container will open and run the installer — when it finishes, close it and " +
                         "you'll be prompted to complete the install.",
-                    color = Color(0xFFCCCCCC),
+                    color = cs.onSurface,
                 )
             },
             confirmButton = {
@@ -229,7 +229,7 @@ private fun ComponentRow(
                     Icon(Icons.Filled.Download, contentDescription = "Install", tint = cs.primary)
                 }
                 else -> Box(
-                    Modifier.background(Color(0xFF2A2A2A), RoundedCornerShape(6.dp))
+                    Modifier.background(cs.surfaceContainerHigh, RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) { Text("N/A", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant) }
             }
@@ -238,7 +238,7 @@ private fun ComponentRow(
             Spacer(Modifier.height(6.dp))
             val frac = (progress ?: 0f).coerceIn(0f, 1f)
             LinearProgressIndicator(progress = frac, modifier = Modifier.fillMaxWidth().height(4.dp),
-                color = cs.primary, trackColor = Color(0xFF333333))
+                color = cs.primary, trackColor = cs.surfaceContainerHighest)
         }
     }
 }

@@ -40,8 +40,8 @@ fun ComponentInstallResume() {
     message?.let { m ->
         AlertDialog(
             onDismissRequest = { message = null },
-            containerColor = Color(0xFF2A2A2A),
-            text = { Text(m, color = Color(0xFFCCCCCC)) },
+            containerColor = cs.surfaceContainerHigh,
+            text = { Text(m, color = cs.onSurface) },
             confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
         )
     }
@@ -50,7 +50,7 @@ fun ComponentInstallResume() {
 
     AlertDialog(
         onDismissRequest = { /* keep until the user chooses */ },
-        containerColor = Color(0xFF2A2A2A),
+        containerColor = cs.surfaceContainerHigh,
         title = { Text("Finish installing $name", color = cs.onSurface) },
         text = {
             Column {
@@ -58,7 +58,7 @@ fun ComponentInstallResume() {
                     if (busy) "Working on $name…"
                     else "The $name installer ran. Finish setting it up in the container? " +
                         "If it needs another installer, the container will open again.",
-                    color = Color(0xFFCCCCCC),
+                    color = cs.onSurface,
                 )
                 if (busy) {
                     Spacer(Modifier.height(12.dp))
@@ -66,7 +66,7 @@ fun ComponentInstallResume() {
                         progress = progress.coerceIn(0f, 1f),
                         modifier = Modifier.fillMaxWidth().height(4.dp),
                         // intentional: status color (install-in-progress cyan, distinct from action accent)
-                        color = Color(0xFF4FC3F7), trackColor = Color(0xFF333333),
+                        color = Color(0xFF4FC3F7), trackColor = cs.surfaceContainerHighest,
                     )
                 }
             }

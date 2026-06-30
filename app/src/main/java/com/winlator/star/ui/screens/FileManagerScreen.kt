@@ -479,7 +479,7 @@ fun FileManagerScreen() {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
         ) {
             IconButton(onClick = {
@@ -504,7 +504,7 @@ fun FileManagerScreen() {
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                         .clickable { showDriveMenu = true }
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
@@ -593,7 +593,7 @@ fun FileManagerScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 val pctText = if (operationDeterminate) "  ${(operationProgress * 100).toInt()}%" else ""
@@ -667,7 +667,7 @@ fun FileManagerScreen() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -716,7 +716,7 @@ private fun FileItemRow(
             .padding(horizontal = 12.dp, vertical = 3.dp)
             .clickable(onClick = onTap),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(

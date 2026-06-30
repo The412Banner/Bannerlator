@@ -30,6 +30,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -970,8 +972,19 @@ private fun ReshadeColorControl(
         onChange(out)
     }
 
+    // Collapsed by default — a deep shader (e.g. Technicolor) has several color params, and
+    // expanding every Hue/Sat/Brightness set at once is a wall of rainbow sliders. The header row
+    // (label + swatch + chevron) is tappable to reveal this param's sliders.
+    var expanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { expanded = !expanded }
+                .padding(vertical = 2.dp)
+        ) {
             Text(label, style = MaterialTheme.typography.bodySmall, color = DimWhite, modifier = Modifier.weight(1f))
             Box(
                 modifier = Modifier
@@ -980,31 +993,38 @@ private fun ReshadeColorControl(
                     .background(Color(rgbInt()))
                     .border(1.dp, MutedWhite, RoundedCornerShape(6.dp))
             )
-        }
-        GradientSlider(
-            "Hue", hue, 0f..360f,
-            Brush.horizontalGradient((0..12).map { Color(android.graphics.Color.HSVToColor(floatArrayOf(it * 30f, 1f, 1f))) }),
-            { hue = it; emit() }
-        )
-        GradientSlider(
-            "Saturation", sat, 0f..1f,
-            Brush.horizontalGradient(listOf(
-                Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0f, valv))),
-                Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, valv)))
-            )),
-            { sat = it; emit() }
-        )
-        GradientSlider(
-            "Brightness", valv, 0f..1f,
-            Brush.horizontalGradient(listOf(Color.Black, Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, 1f))))),
-            { valv = it; emit() }
-        )
-        if (components >= 4) {
-            GradientSlider(
-                "Alpha", alpha, 0f..1f,
-                Brush.horizontalGradient(listOf(Color.Black, Color(rgbInt()))),
-                { alpha = it; emit() }
+            Icon(
+                if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null, tint = MutedWhite,
+                modifier = Modifier.padding(start = 4.dp)
             )
+        }
+        if (expanded) {
+            GradientSlider(
+                "Hue", hue, 0f..360f,
+                Brush.horizontalGradient((0..12).map { Color(android.graphics.Color.HSVToColor(floatArrayOf(it * 30f, 1f, 1f))) }),
+                { hue = it; emit() }
+            )
+            GradientSlider(
+                "Saturation", sat, 0f..1f,
+                Brush.horizontalGradient(listOf(
+                    Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0f, valv))),
+                    Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, valv)))
+                )),
+                { sat = it; emit() }
+            )
+            GradientSlider(
+                "Brightness", valv, 0f..1f,
+                Brush.horizontalGradient(listOf(Color.Black, Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, 1f))))),
+                { valv = it; emit() }
+            )
+            if (components >= 4) {
+                GradientSlider(
+                    "Alpha", alpha, 0f..1f,
+                    Brush.horizontalGradient(listOf(Color.Black, Color(rgbInt()))),
+                    { alpha = it; emit() }
+                )
+            }
         }
     }
 }

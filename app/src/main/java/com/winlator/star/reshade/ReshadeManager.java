@@ -171,6 +171,12 @@ public class ReshadeManager {
             String ann = m.group(3) != null ? m.group(3) : "";
             String defExpr = m.group(4);
 
+            // Skip engine-driven uniforms: a `source = "..."` annotation marks a ReShade-provided
+            // semantic (timer/frametime/framecount/pingpong/random/...) that vkBasalt fills each
+            // frame. These are NOT user-tunable — a slider would do nothing and just clutter the
+            // list. Legit ui_type="color"/slider/etc. uniforms carry no `source =`, so they pass.
+            if (annValue(ann, "source") != null) continue;
+
             // Base scalar type + component count (float3 -> base "float", components 3). Matrices
             // (e.g. float3x3) keep an "x" in baseType and fall through the family check below.
             String baseType = typeStr.replaceAll("[0-9]+$", "");

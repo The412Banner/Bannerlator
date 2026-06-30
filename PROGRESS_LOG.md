@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-06-30 — Per-profile custom accent color for on-screen controls — ✅ CORE DEVICE-PROVEN
+
+Commit `f6ea902` on `feat/ui-rebuild`, CI `28455766095` green. Device-proven (core) via user screenshot:
+the in-game Controls tab shows the shared HSV picker ("Controls Accent", hex `#8F6A00`) and the on-screen
+controls (A–F row + MRB/BKSP/SPACE/ENTER) render in that amber custom color while the app/drawer stay
+green-themed — i.e. the controls are decoupled from the app theme, the override + live redraw work, and
+the shared ColorPicker reuse works in-game. Not yet visually confirmed (wired, expected fine): per-game
+persistence across relaunch, the out-of-game editor checkbox+swatch path, and old-profile back-compat.
+Not merged (umbrella hold). Remaining rebuild work: P4b legacy XML, then single merge.
+
+---
+
 ## 2026-06-30 — Per-profile custom accent color for on-screen controls (CODE DONE + reviewed + CI building)
 
 **TL;DR:** Users can override the theme accent on the in-game touch controls with a **custom color saved

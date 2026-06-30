@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-06-30 — Release 2.2 description rewritten + README accuracy pass + UI-rewrite explainer
+
+**Docs/release only — no code.** Rewrote the **2.2 GitHub release** body (was the auto-generated commit-table) into the established release layout (centered logo → title → bold summary → `✨ What's New` emoji sections → Downloads table → updating note → thanks), covering the real 2.2 scope: themeable interface (app + in-game drawer), 9 new presets (16 total, AMOLED still default), per-game on-screen control colours, File Manager Favorites, rebuilt controller-binding screen, in-game Task Manager (New Task on Vulkan/Native + cards), consistency/readability. Updating note states 2.2 is **app-side only — no ImageFS reinstall**.
+
+- **README:** the bump commit `2ccfda8` had already rewritten it accurately; verified preset names against `ThemePreset.kt` (16 named + Custom) and Favorites labels against `FileManagerScreen.kt:describeLocation` (Internal / SD card / Drive C: / Drive Z:). One fix pushed (`6355d0e`): controls toggle is labelled **"Follow app theme"** (`XServerDrawer.kt:1611`), README said "Follow theme".
+- **NEW: "Under the hood — the UI rewrite" section added to the 2.2 release** at user request — what kind of Compose, what's converted, Compose-vs-XML/Java proportion. **Measured facts (for future reference):**
+  - **Stack** = Jetpack Compose + **Material 3**, Kotlin, **single-Activity** `MainActivity` + **Navigation-Compose** (`compose-bom:2024.02.00`, `navigation-compose:2.7.6`, `activity-compose:1.8.2`), **Hilt**. ~**237 `@Composable`** across ~**62 Compose files** / **91 .kt** files (~**32k** Kotlin LOC).
+  - **Out-of-game app = 100% Compose, no XML screens left.** All drawer destinations are Compose routes (`Screen.kt`): Containers, ContainerDetail, Games/Shortcuts, Contents, InputControls, AdrenoTools, Saves, FileManager, Settings, Appearance, Splash. All 4 storefronts (GOG/Epic/Amazon/Steam — main/login/QR/games/detail) are Compose `setContent {}`. **2.2 converted the last out-of-game holdout: `ExternalControllerBindingsActivity` → Compose.**
+  - **In-game stays classic Java by design** = `XServerDisplayActivity` inflates `xserver_display_activity.xml` to host the native `SurfaceView`/`GLSurfaceView` (X11 + Vulkan/GL renderer + Wine draw there — can't live in a Compose tree). 2.2 made the in-game **drawer + dialogs Compose islands** via `ComposeView` (`XServerDrawer.kt`, `XServerDialogHost.kt`).
+  - **Proportion honesty:** Java is larger by LOC (~**297 .java / ~53k LOC**) but it's the **emulation engine**, not screens — `xserver/` 7.4k, `renderer/` 5.3k, `core/` 5.2k, `inputcontrols/` 3.6k, store backends, box64/fexcore/winhandler/container/xenvironment/xconnector/alsa/midi/sysvshm. Remaining **legacy XML/Java UI** = perf HUD (`frame_rating`/`hud_*`), `BigPictureActivity`, `ControlsEditorActivity` (control-element editor), file/folder pickers (`ShortcutPicker`/`FolderPicker`/`CustomFilePicker`), native over-surface dialogs (`ContentDialog`/`DownloadProgressDialog`/`TaskManagerDialog.java`). Some XML now **orphaned** (e.g. `shortcut_settings_dialog.xml` — no longer referenced). **75 layout XML / ~5.4k LOC, shrinking.**
+- Release: <https://github.com/The412Banner/Bannerlator/releases/tag/2.2>
+
+---
+
 ## 2026-06-30 — UI rebuild MERGED to main + 9 new theme presets (artifacts build)
 
 **The umbrella hold is collapsed.** User decided the rebuild is feature-complete enough to merge and apply small fixes forward, so `feat/ui-rebuild` was merged into `main` and a fresh batch of opt-in themes added.

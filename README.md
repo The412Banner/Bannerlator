@@ -51,31 +51,29 @@
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) |
-| **Version** | Bannerlator **V 2.1.1** — built from Star **marcescence** (`versionName 2.1.1`, `versionCode 34`) |
+| **Version** | Bannerlator **V 2.2** — built from Star **marcescence** (`versionName 2.2`, `versionCode 35`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 
 ---
 
-## 🆕 What's New in 2.1.1
+## 🆕 What's New in 2.2
 
-2.1.1 adds a major new feature — **ReShade post-processing** — plus a **low-latency mode for the OpenGL renderer**, and fixes two community-reported bugs around **controller bindings** and **container duplication**.
+2.2 is a **big visual overhaul**: the whole interface — and the **in-game side drawer** — now follow your chosen theme, with a redesigned drawer, **nine new colour presets**, and **per-game control colours**. It also adds **Favorites** to the File Manager and **rebuilds the controller-binding screen**, alongside a batch of readability and consistency fixes.
 
-**🎨 ReShade post-processing — new.** Real ReShade `.fx` effects now run on top of your games: color grading, sharpening, film grain, CRT looks, tonemapping and more. Effects compile **on-device** through a bundled [vkBasalt](https://github.com/DadSchoorse/vkBasalt) layer (so there's no PC step), and you get them two ways:
-- **On-demand catalog** — pick from a built-in list of ~100 curated, license-safe effects in the container / shortcut editor; each one downloads on tap, so the app stays small.
-- **Drop-in folder** — drop your own effect folders into `Android/data/<package>/files/ReShade/` and they show up in the picker too.
+**🎨 A themeable interface — redesigned.** The app drawer and the in-game side drawer were rebuilt with new icons and accent-driven buttons, and — the big change — **your selected theme now recolours the entire app *and* the in-game drawer**. Previously large parts of the UI stayed blue regardless of theme; now presets and your custom accent reach the screens, dialogs, drawer, chips, sliders and overlays.
+- **9 new theme presets** bring the total to **16**, plus the custom HSV accent picker: **Midnight Cobalt**, **Phosphor**, **Carbon & Ember**, **Amethyst**, **Crimson**, **Synthwave**, **Royal Gold**, **Frost** and **Monochrome** — alongside Classic Dark, **AMOLED** (still the default), Ocean, Forest, Sunset, Rose and Steel.
+- **AMOLED stays the default and is unchanged**, so updating doesn't alter your look unless you choose a new theme. Your previously selected theme and custom accent are preserved.
 
-Effects have a **dedicated ReShade tab** in the in-game drawer with **auto-generated, properly typed controls** — sliders, on/off toggles, dropdowns and colour pickers built straight from each shader's parameters — so you can **toggle effects and tune them live** while the game runs, with a **Reset to defaults** button. *Applies to **DXVK / VKD3D (Vulkan-backed) games**; depth effects (SSAO/DOF) are not included yet.*
+**🕹️ Per-game on-screen control colours — new.** The on-screen touch controls follow your app theme by default, and you can now **override their colour per game**. Turn off "Follow theme" in the Controls editor (in-game drawer or the out-of-game Input Controls page), pick a colour, and it's **saved with that game's profile** — so each game can keep its own control colour.
 
-> 🙏 ReShade support is built on **[vkBasalt](https://github.com/DadSchoorse/vkBasalt)** by **DadSchoorse** (zlib) — the original layer that embeds the ReShade FX compiler — packaged for Winlator by **[Pipetto-crypto](https://github.com/Pipetto-crypto/winlator)** and carried through **[StevenMXZ](https://github.com/StevenMXZ/Winlator-Ludashi)**'s Ludashi line. Bundled / catalog effects are MIT / CC0 shaders by the **ReShade ([crosire](https://github.com/crosire/reshade-shaders))**, **prod80**, **luluco250** and **fubax** authors. See [Credits](#-credits).
+**⭐ File Manager — Favorites / bookmarked folders — new.** Pin the folders you open most and jump straight to them. A **★ button** opens a dedicated **Favorites** list, and each entry shows **exactly where it lives** — a colour-coded badge for the storage source (**Internal**, **SD card**, **Drive C:**, **Drive Z:**), the **container name** for a container drive, and the **full path** — so two games' `C:\Program Files` are never confused. Pin from a folder's **⋮ menu** or with **"Pin current folder"**, unpin with the filled ★. Favorites persist across launches; entries for a deleted container quietly drop off.
 
-**⚡ Native Rendering (Low-Latency Mode) on OpenGL — new.** The direct-scanout **Native Rendering** path — which skips the compositor blit to cut input lag — now works on the **OpenGL** renderer too, not just Vulkan. It's a per-container toggle; like the Vulkan path it's mutually exclusive with the GL post-processing effects/scaling (those grey out while it's on, since it bypasses the compositor).
+**🎮 Controller-binding screen rebuilt.** The external controller-binding screen was rebuilt in the modern UI: **labels are clearly readable under any theme**, each binding is a card matching the rest of the app, and **buttons you press while binding appear instantly**. (Builds on the 2.1.1 readability fix; bindings still persist and Ludashi-format profile import still works.)
 
-**🎮 Controller binding screen now readable (#37).** On the external-controller binding screen the dropdown menus rendered **dark text on a dark background**, so the bindings were effectively invisible. The text is now clearly readable. This rounds out the earlier controller-binding fixes (bindings now persist, and Ludashi-format profile import works).
+**🧰 In-game Task Manager.** **"New Task" now works on the Vulkan / Native renderers** — the dialog used to be invisible over those surfaces — and running processes are shown as **cards**.
 
-**📦 Container Duplicate / Export fixed (#39).** Duplicating a container — especially a downloaded **Proton 11** one — could **silently do nothing**, or produce a copy that lost its game drive-letters, lost its settings, or wouldn't boot. This was actually **five** separate bugs (dropped drive-letter symlinks, an abort on a single unreadable file, only a handful of settings being copied, a crash when a graphics driver was missing, and the wine socket directory breaking boot). Duplicate and export now copy a container faithfully — it appears in the list, keeps its drive mappings and all settings, and boots. A failed duplicate now shows a clear message instead of silently doing nothing.
-
-> ℹ️ ReShade runs through the bundled **vkBasalt** Vulkan layer, which compiles `.fx` to SPIR-V on-device and feeds Turnip — so it only affects **Vulkan-backed (DXVK / VKD3D)** games, on any host renderer. See [Credits](#-credits).
+**🧹 Consistency & readability.** The Games and Containers lists now share one card style with consistent depth on every theme, and legacy dropdowns, spinners, dialogs and section headers follow the accent too — with a luminance floor so text never goes dark-on-dark on a dark custom accent.
 
 ---
 
@@ -133,8 +131,8 @@ Everything Bannerlator offers, at a glance. No PC and no root required — it ru
 - Add shortcuts from external storage.
 - **SteamGridDB** cover-art scraping.
 - Per-game settings including display language / locale.
-- **Customizable on-screen touch controls** and virtual gamepad overlays.
-- **Physical controller** support (SDL2), plus touchpad / mouse emulation with adjustable cursor speed.
+- **Customizable on-screen touch controls** and virtual gamepad overlays, which **follow your app theme** or take a **per-game custom colour** you set in the Controls editor.
+- **Physical controller** support (SDL2), plus touchpad / mouse emulation with adjustable cursor speed. The **external controller-binding screen** lists each input as a card with readable labels, and buttons you press while binding appear instantly.
 
 ### 🛒 Built-in GOG store
 - **Sign in with your [GOG](https://www.gog.com/) account** and browse your owned library directly in-app.
@@ -146,10 +144,12 @@ Everything Bannerlator offers, at a glance. No PC and no root required — it ru
 - **`.lnk` working-directory ("Start in") support** so shortcuts for apps that only run from their own folder launch correctly.
 
 ### 🎛️ Interface & in-game overlay
-- Modern **Jetpack Compose** user interface.
-- In-game overlay drawer for settings, input, and quick toggles.
+- Modern **Jetpack Compose** user interface with a redesigned, icon-led navigation drawer.
+- **Theme-aware everywhere** — your selected preset / accent recolours the **whole app *and* the in-game side drawer**, including dialogs, chips, sliders and overlays.
+- **Customizable themes** — **16 presets** (AMOLED default, Classic Dark, Ocean, Forest, Sunset, Rose, Steel, plus Midnight Cobalt, Phosphor, Carbon & Ember, Amethyst, Crimson, Synthwave, Royal Gold, Frost and Monochrome) plus an **HSV custom-accent picker**.
+- In-game overlay drawer for settings, input, and quick toggles, with a Task Manager that lists processes as cards and can launch new tasks on any renderer.
+- **Built-in File Manager with Favorites** — bookmark folders and jump to them from a dedicated list, each labelled by storage source (Internal / SD card / a container's Drive C: or Z:) and full path.
 - **Performance HUD** — FPS, frame time, CPU/GPU temperature, and RAM, in vertical or horizontal layout.
-- **Customizable themes** — 8 presets plus an HSV colour picker, with dark mode.
 
 ### 📥 Builds & distribution
 - **Three build flavors** with distinct package IDs — *standard*, *PuBG*, and *Ludashi*.

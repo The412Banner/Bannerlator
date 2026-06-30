@@ -100,13 +100,13 @@ fun AppDrawerContent(
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.FileManager,   currentRoute, onNavigate)
 
-        DrawerSectionHeader("System")
+        DrawerSectionHeader("System", showDivider = true)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
         DrawerItem(Screen.Appearance,    currentRoute, onNavigate, showNew = true)
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
         DrawerItem(Screen.AdrenoTools,   currentRoute, onNavigate)
 
-        DrawerSectionHeader("Stores", note = "· unchanged")
+        DrawerSectionHeader("Stores", note = "· unchanged", showDivider = true)
         Screen.storeItems.forEach { screen ->
             DrawerStoreItem(screen, onLaunchStore)
         }
@@ -134,7 +134,13 @@ fun AppDrawerContent(
 }
 
 @Composable
-private fun DrawerSectionHeader(title: String, note: String? = null) {
+private fun DrawerSectionHeader(title: String, note: String? = null, showDivider: Boolean = false) {
+    if (showDivider) {
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            modifier = Modifier.padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 2.dp)
+        )
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(start = 22.dp, top = 14.dp, end = 22.dp, bottom = 6.dp),

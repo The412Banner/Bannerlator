@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -130,7 +132,7 @@ fun XServerDrawer() {
             .width(380.dp)
             .background(surface)
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .width(60.dp)
                 .fillMaxHeight()
@@ -141,55 +143,73 @@ fun XServerDrawer() {
                         endY = Float.POSITIVE_INFINITY
                     )
                 ),
-            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.weight(1f))
-
-            TabIconButton(R.drawable.icon_display, selectedTab == TabType.GRAPHICS) {
-                handleTabClick(TabType.GRAPHICS, state)
-            }
-            Spacer(Modifier.height(6.dp))
-            FpsTabButton(isSelected = selectedTab == TabType.HUD) {
-                handleTabClick(TabType.HUD, state)
-            }
-            Spacer(Modifier.height(6.dp))
-            TabIconButton(R.drawable.icon_screen_effect, selectedTab == TabType.RESHADE) {
-                handleTabClick(TabType.RESHADE, state)
-            }
-            Spacer(Modifier.height(6.dp))
-            TabIconButton(R.drawable.icon_input_controls, selectedTab == TabType.CONTROLS) {
-                handleTabClick(TabType.CONTROLS, state)
-            }
-            Spacer(Modifier.height(6.dp))
-            TabIconButton(R.drawable.icon_debug, selectedTab == TabType.ADVANCED) {
-                handleTabClick(TabType.ADVANCED, state)
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            Box(
+            // The rail scrolls when the screen is too short to fit every icon
+            // (so the bottom Exit/Pause buttons stay reachable). When it does
+            // fit, heightIn(min) + SpaceEvenly reproduces the distributed look.
+            val railMinHeight = maxHeight
+            Column(
                 modifier = Modifier
-                    .width(36.dp)
-                    .height(2.dp)
-                    .background(accent, RoundedCornerShape(1.dp))
-            )
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = railMinHeight)
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    // Top group: section tabs
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        TabIconButton(R.drawable.icon_display, selectedTab == TabType.GRAPHICS) {
+                            handleTabClick(TabType.GRAPHICS, state)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        FpsTabButton(isSelected = selectedTab == TabType.HUD) {
+                            handleTabClick(TabType.HUD, state)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        TabIconButton(R.drawable.icon_screen_effect, selectedTab == TabType.RESHADE) {
+                            handleTabClick(TabType.RESHADE, state)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        TabIconButton(R.drawable.icon_input_controls, selectedTab == TabType.CONTROLS) {
+                            handleTabClick(TabType.CONTROLS, state)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        TabIconButton(R.drawable.icon_debug, selectedTab == TabType.ADVANCED) {
+                            handleTabClick(TabType.ADVANCED, state)
+                        }
+                    }
 
-            Spacer(Modifier.height(10.dp))
+                    // Bottom group: task manager / pause / exit
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .width(36.dp)
+                                .height(2.dp)
+                                .background(accent, RoundedCornerShape(1.dp))
+                        )
 
-            TabIconButton(R.drawable.icon_task_manager, selectedTab == TabType.TASK_MANAGER) {
-                state.selectTab(TabType.TASK_MANAGER)
-                state.onTaskManager?.run()
-            }
-            Spacer(Modifier.height(6.dp))
-            TabIconButton(pauseIcon, isSelected = false) {
-                state.onPauseResume?.run(); state.onClose?.run()
-            }
-            Spacer(Modifier.height(6.dp))
-            TabIconButton(R.drawable.icon_exit, isSelected = false) {
-                state.onExit?.run()
-            }
+                        Spacer(Modifier.height(10.dp))
 
-            Spacer(Modifier.weight(1f))
+                        TabIconButton(R.drawable.icon_task_manager, selectedTab == TabType.TASK_MANAGER) {
+                            state.selectTab(TabType.TASK_MANAGER)
+                            state.onTaskManager?.run()
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        TabIconButton(pauseIcon, isSelected = false) {
+                            state.onPauseResume?.run(); state.onClose?.run()
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        TabIconButton(R.drawable.icon_exit, isSelected = false) {
+                            state.onExit?.run()
+                        }
+                    }
+                }
+            }
         }
 
         Column(

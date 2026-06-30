@@ -203,7 +203,7 @@ private fun ReshadeCatalogSheet(
                         "Offline — showing a cached list. Connect to download new effects."
                     else "Offline — showing installed effects only. Connect to browse the catalog.",
                     color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 20.dp, top = 2.dp),
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 2.dp),
                 )
             }
             Spacer(Modifier.height(10.dp))

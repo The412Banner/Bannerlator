@@ -731,6 +731,7 @@ fun FileManagerScreen() {
                 onPinCurrent = {
                     FavoritesStore.add(context, currentDir.absolutePath)
                     favTick++
+                    Toast.makeText(context, "Added \"${currentDir.name}\" to Favorites", Toast.LENGTH_SHORT).show()
                 },
                 onJump = { dir ->
                     showFavorites = false
@@ -739,6 +740,7 @@ fun FileManagerScreen() {
                 onUnpin = { dir ->
                     FavoritesStore.remove(context, dir.absolutePath)
                     favTick++
+                    Toast.makeText(context, "Removed \"${dir.name}\" from Favorites", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
@@ -781,9 +783,15 @@ fun FileManagerScreen() {
                             onRename = { renameTarget = file; showMenuFor = null },
                             isFavorite = isFav,
                             onToggleFavorite = {
-                                FavoritesStore.toggle(context, file.absolutePath)
+                                val nowFav = FavoritesStore.toggle(context, file.absolutePath)
                                 favTick++
                                 showMenuFor = null
+                                Toast.makeText(
+                                    context,
+                                    if (nowFav) "Added \"${file.name}\" to Favorites"
+                                    else "Removed \"${file.name}\" from Favorites",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             },
                         )
                     }

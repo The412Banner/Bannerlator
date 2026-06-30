@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-30 — UI rebuild: Phase 3 DEVICE-PROVEN + Games-cards-match-Containers follow-up (device-proven)
+
+**TL;DR:** Phase 3 (app-screen colour sweep) is now **device-proven** (all 4 checks pass), and a
+small follow-up makes the **Games list cards look like the Containers cards** — also device-proven.
+Still on the umbrella branch `feat/ui-rebuild` (no merge until the whole rebuild is done).
+Next = Phase 4 (native/legacy surfaces via `getCurrentAccentArgb`).
+
+### Phase 3 — app-screen colour sweep — ✅ DEVICE-PROVEN
+Commits `8a97185` (sweep ~190 literals → theme tokens) + `b20a58d` (3b: elevated `surfaceContainer`
+tokens to restore card depth). Device test on the ludashi build, all 4 pass: (a) AMOLED default card
+depth restored, (b) Sunset recolors the whole app incl. headline FAB + renderer/DXVK chips, (c) wiring
+intact, (d) semantic/per-tech colors kept.
+
+### Follow-up — Games list cards match Containers cards — ✅ DEVICE-PROVEN
+Commit `c6116f5`, CI `28451457959` green. User gripe: the Games list item was a flat edge-to-edge row
+while the Containers entry is a floating card. Fix in `ShortcutsScreen.kt` — wrapped `ShortcutItemLayoutL`
+in the same `Card` as `ContainersScreen` (rounded 12dp `surfaceVariant` panel, `outline` border, 16dp/6dp
+outer margins, 12dp inner padding; `onRun` moved from `Row.clickable` → `Card` onClick) and removed the
+inter-item `Divider`. Grid view unchanged (already a bordered tile). User installed manually + confirmed
+"looks much better" from a screenshot = device-proven. Not merged (umbrella hold).
+
+---
+
 ## 2026-06-30 — Theme + Drawer rebuild: Phase 3 CODE DONE + CI GREEN (at device gate); Phase 2 DEVICE-PROVEN
 
 **TL;DR:** Catch-up checkpoint for Phases 2 & 3 of the UI rebuild. All work lives on the

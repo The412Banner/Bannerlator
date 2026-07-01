@@ -182,7 +182,7 @@ fun ContainersScreen(
                 .align(Alignment.BottomEnd)
                 .padding(20.dp),
         ) {
-            Icon(imageVector = Icons.Filled.Add, contentDescription = "Add container", tint = androidx.compose.ui.graphics.Color.White)
+            Icon(imageVector = Icons.Filled.Add, contentDescription = "Add container", tint = MaterialTheme.colorScheme.onPrimary)
         }
 
         // Loading overlay
@@ -378,7 +378,7 @@ private fun ContainerItem(
                 Icon(
                     painter = painterResource(R.drawable.icon_popup_menu_run),
                     contentDescription = "Run",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(26.dp),
                 )
             }

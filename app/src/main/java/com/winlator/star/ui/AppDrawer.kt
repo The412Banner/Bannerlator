@@ -312,7 +312,7 @@ private fun NewBadge() {
     ) {
         Text(
             text = "NEW",
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onPrimary,
             fontSize = 8.5.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.3.sp,

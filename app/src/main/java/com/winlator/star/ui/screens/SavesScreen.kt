@@ -140,7 +140,7 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
                 onClick = { showNewSaveDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
             ) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = "Add save", tint = Color.White)
+                Icon(imageVector = Icons.Filled.Add, contentDescription = "Add save", tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
 

@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-07-01 — 📦 RELEASE-CHANNEL STATE + artifacts-only test build of `main`
+
+> **Artifacts-only build dispatched** — `build-artifacts.yml` run **`28518700499`**, ref `main` tip `20fd2da` (vc36/2.2.1), label `2.2.1-main-test`, 3 flavors (ludashi/pubg/standard), **NO tag, NO release**. User downloads the APKs to device-test the staged stack; then has "a few things to test and add" before cutting the next release.
+> **Channel state (measured 2026-07-01):**
+> - **Stable** = `2.2` / vc35 (all users).
+> - **Beta (2.2.1-pre1)** = update.json **vc36** = **2.2 + in-game rail scroll ONLY.** ⚠️ CORRECTION: ReShade Tier 1 is **not** in the beta — it merged to main (`d166869`, 2026-07-01 00:19 EDT) ~4.5h *after* pre1 published (2026-06-30 19:45 EDT), and pre1 was built from the `fix/ingame-rail-scroll` branch before Tier 1 landed. (The git tag `2.2.1-pre1` sits loosely at a vc35 docs commit `9f51ed7`; trust the release's update.json vc36, not the tag.)
+> - **Staged on `main` (vc36) but released to NOBODY — 4 areas:** (1) ReShade Tier 1 `d166869`; (2) vkBasalt version-aware `extra_libs`/`.so` re-extraction `f3a6340` (makes Tier 1 work for existing users — ships with #1; NOT device-proven, needs an old-container upgrade check); (3) white-accent bundle `0bfeebd` (#46 control accent + #45 container-creation + white/dark app-accent, device-proven); (4) FPS-limiter shortcut-persist `12a4fc8` (#46, device-proven). #46 + #45 both CLOSED.
+> **⚠️ Monotonic gotcha:** `main` vc36 == pre1 vc36, so the next pre-release/stable **must bump to vc37+** or the updater won't offer it to pre1 testers.
+
+---
+
 ## 2026-07-01 — 🏁 DEVICE-PROVEN + MERGED: #46 FPS-limiter-resets fix — persist in-game toggle to the owning shortcut
 
 > **✅ DEVICE-PROVEN** (user: "installed and tested it, works and remembers now") **+ MERGED to `main`** in `12a4fc8` (`--no-ff` of `8476b60`, `71be697..12a4fc8`), branch `fix/fps-limiter-shortcut-persist` deleted. CI code build `3d59293` / run **`28516599378`** GREEN (13m). **Issue #46 FULLY CLOSED** (both halves — white virtual-control color + this FPS reset — resolved). Version stayed vc36/2.2.1 (accumulate on main, no bump). Fixes the diagnosis in the entry below.

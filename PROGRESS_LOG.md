@@ -2,9 +2,9 @@
 
 ---
 
-## 2026-07-01 — ✅ CODE DONE (CI building, NOT merged): #46 FPS-limiter-resets fix — persist in-game toggle to the owning shortcut
+## 2026-07-01 — 🏁 DEVICE-PROVEN + MERGED: #46 FPS-limiter-resets fix — persist in-game toggle to the owning shortcut
 
-> **Branch `fix/fps-limiter-shortcut-persist`** off `main`, tip `3d59293`, CI run **`28516599378`** dispatched + in_progress (headSha `3d5929370…` == tip). NOT device-tested, NOT merged. Fixes the diagnosis in the entry below.
+> **✅ DEVICE-PROVEN** (user: "installed and tested it, works and remembers now") **+ MERGED to `main`** in `12a4fc8` (`--no-ff` of `8476b60`, `71be697..12a4fc8`), branch `fix/fps-limiter-shortcut-persist` deleted. CI code build `3d59293` / run **`28516599378`** GREEN (13m). **Issue #46 FULLY CLOSED** (both halves — white virtual-control color + this FPS reset — resolved). Version stayed vc36/2.2.1 (accumulate on main, no bump). Fixes the diagnosis in the entry below.
 > **Fix (mirror the ReShade Bug A owner-discriminator fix — write-target == read-source), all in `XServerDisplayActivity.java` (+29/−5):**
 > 1. `onFpsLimitChange` (`:603-611`): when `shortcut != null`, write `fpsLimiterEnabled` (+`fpsLimiterValue` when > 0) back to the **shortcut** and `shortcut.saveData()` (`Shortcut.java:153/163`); else the container write as before.
 > 2. New `resolvedFpsLimiterValue()` mirroring `resolvedFpsLimiterEnabled()` (parseInt with container fallback, null-safe pattern copied from `resolvedManualRefreshRate()`).

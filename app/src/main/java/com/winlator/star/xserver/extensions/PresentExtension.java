@@ -34,6 +34,14 @@ public class PresentExtension implements Extension {
     private final SparseArray<Event> events = new SparseArray<>();
     private SyncExtension syncExtension;
 
+    // ─────────────────────────── Present listener (frame counting) ───────────────────────────
+    // Fired once per actually-presented guest frame (any renderer/API — every present passes through
+    // presentPixmap). Used by the ReShade "freeze-frame preview" pulse to count real presents so it can
+    // re-freeze after N frames render the committed change. Single volatile slot (one observer at a time).
+    public interface PresentListener { void onPresent(); }
+    private volatile PresentListener presentListener;
+    public void setPresentListener(PresentListener l) { this.presentListener = l; }
+
     private static abstract class ClientOpcodes {
         private static final byte QUERY_VERSION = 0;
         private static final byte PRESENT_PIXMAP = 1;
@@ -316,6 +324,10 @@ public class PresentExtension implements Extension {
                 emitIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
             }
         }
+
+        // Notify the frame-counting observer (ReShade preview pulse) — a real present just happened.
+        final PresentListener pl = presentListener;
+        if (pl != null) pl.onPresent();
     }
 
     private void selectInput(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {

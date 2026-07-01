@@ -205,6 +205,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
     PreloaderDialog preloaderDialog = null;
     private Runnable configChangedCallback = null;
     private boolean isPaused = false;
+    // ReShade "freeze-frame preview" (Live preview OFF): the guest is SIGSTOP'd while tuning and each
+    // committed change briefly pulses to reveal it. reshadeLivePreview mirrors the persisted toggle;
+    // reshadePreviewPaused marks the current freeze as preview-owned (a subset of isPaused, so tapping
+    // the pause box or manually resuming clears it); reshadePulseInProgress serializes overlapping
+    // pulses. isPaused stays the single source of truth for "frozen"; a pulse blips SIGCONT/SIGSTOP
+    // underneath it without flipping the UI state.
+    private boolean reshadeLivePreview = false;
+    private boolean reshadePreviewPaused = false;
+    private volatile boolean reshadePulseInProgress = false;
+    private static final int RESHADE_PULSE_TARGET_PRESENTS = 2;   // real presents to reveal a change
+    private static final long RESHADE_PULSE_FALLBACK_MS = 80L;    // re-freeze if the game isn't presenting
     private boolean isRelativeMouseMovement = false;
     private boolean isMouseDisabled = false;
     private boolean pointerCaptureRequested = false;
@@ -612,16 +623,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             xServerView.getRenderer().toggleFullscreen();
             touchpadView.toggleFullscreen();
         };
-        state.onPauseResume            = () -> {
-            if (isPaused) {
-                ProcessHelper.resumeAllWineProcesses();
-                isPaused = false;
-            } else {
-                ProcessHelper.pauseAllWineProcesses();
-                isPaused = true;
-            }
-            state.setIsPaused(isPaused);
-        };
+        state.onPauseResume            = () -> setPausedState(!isPaused);
         state.onPipMode                = () -> enterPictureInPictureMode();
         state.onActiveWindows          = () -> showActiveWindowsDialog();
         state.onTaskManager            = () -> {
@@ -1180,6 +1182,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         startTime = System.currentTimeMillis();
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
         ProcessHelper.resumeAllWineProcesses();
+        // Returning to the foreground unconditionally resumes the guest (above) — keep the paused
+        // UI/state in sync so a stale pause box / Pause-button state can't linger over a running game.
+        if (isPaused) setPausedState(false);
         // Re-assert the VRR vote — onStop() released it when backgrounded.
         reapplyVrr();
         // Track the live panel rate again (the readout shows it while Auto is on).
@@ -1524,6 +1529,85 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // masterEnabled -> enableOnLaunch: the drawer "ReShade" master switch off writes
         // enableOnLaunch=False (whole-chain passthrough); per-effect flags ride <ei>_enabled.
         writeVkBasaltConfig(masterEnabled);
+
+        // The conf is now committed (mtime bumped -> the patched libvkbasalt hot-reloads it). In the
+        // freeze-frame preview mode (Live preview OFF) this is where a committed change enters/pulses
+        // the preview-pause so the new look is revealed on a frozen scene.
+        handleReshadePreviewChange();
+    }
+
+    // ─────────────────────────── ReShade freeze-frame preview ───────────────────────────
+    // Called after each COMMITTED ReShade change (effect toggle or slider release -> applyReshadeLive).
+    // Live preview ON: no-op (the game keeps running, changes apply live). OFF: freeze the game on the
+    // FIRST change (SIGSTOP + pause box), and PULSE on every subsequent change (brief SIGCONT so 1–2
+    // frames render the change, then SIGSTOP again). Runs on the drawer's UI thread.
+    private void handleReshadePreviewChange() {
+        if (reshadeLivePreview) return;
+        if (isPaused) {
+            // Already frozen (this preview, or a manual Pause) -> reveal the change with a brief pulse.
+            reshadePreviewPaused = true;
+            pulseReshadePreview();
+        } else {
+            // First committed change while the game was running -> freeze. The change was applied to
+            // the live conf while still running, so the frames just before the freeze already show it.
+            reshadePreviewPaused = true;
+            setPausedState(true);
+        }
+    }
+
+    // One brief resume so the committed ReShade change actually renders, then re-freeze. Counts real
+    // presented frames via the PresentExtension observer (N=RESHADE_PULSE_TARGET_PRESENTS); a time
+    // fallback re-freezes if the game isn't presenting (no present callback fires). Serialized so
+    // overlapping changes can't stack SIGCONT/SIGSTOP pairs. Never flips isPaused (the UI stays
+    // "frozen" the whole time) — the pulse is purely at the process-signal level.
+    private void pulseReshadePreview() {
+        if (reshadePulseInProgress) return;   // debounce: a pulse is already running
+        reshadePulseInProgress = true;
+
+        final com.winlator.star.xserver.extensions.PresentExtension pe = (xServer != null)
+            ? xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE)
+            : null;
+
+        final java.util.concurrent.atomic.AtomicBoolean finished =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+        final Runnable[] refreezeHolder = new Runnable[1];
+        final Runnable refreeze = () -> {
+            if (!finished.compareAndSet(false, true)) return;   // present-callback vs fallback: run once
+            if (pe != null) pe.setPresentListener(null);
+            handler.removeCallbacks(refreezeHolder[0]);
+            // Re-freeze only if we're still meant to be paused (tap-to-resume may have won the race).
+            if (isPaused) ProcessHelper.pauseAllWineProcesses();
+            reshadePulseInProgress = false;
+        };
+        refreezeHolder[0] = refreeze;
+
+        if (pe != null) {
+            final java.util.concurrent.atomic.AtomicInteger presents =
+                new java.util.concurrent.atomic.AtomicInteger(0);
+            pe.setPresentListener(() -> {
+                if (presents.incrementAndGet() >= RESHADE_PULSE_TARGET_PRESENTS)
+                    runOnUiThread(refreeze);   // marshal back to the handler thread
+            });
+        }
+        // Let the game run so it presents the new look, with a time-based safety net.
+        ProcessHelper.resumeAllWineProcesses();
+        handler.postDelayed(refreeze, RESHADE_PULSE_FALLBACK_MS);
+    }
+
+    // Single source of truth for the frozen/paused state. Suspends/resumes the guest, clears the
+    // preview-ownership flag on any resume, and mirrors to BOTH Compose holders (the drawer Pause
+    // button + the centered pause box). Everything that pauses/resumes (manual Pause, the ReShade
+    // preview, the box tap, lifecycle) routes through here so the flag never disagrees with reality.
+    private void setPausedState(boolean paused) {
+        isPaused = paused;
+        if (paused) {
+            ProcessHelper.pauseAllWineProcesses();
+        } else {
+            ProcessHelper.resumeAllWineProcesses();
+            reshadePreviewPaused = false;
+        }
+        XServerDrawerState.INSTANCE.setIsPaused(paused);
+        XServerDialogState.INSTANCE.setPaused(paused);
     }
 
     private void savePlaytimeData() {
@@ -1557,6 +1641,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void exit() {
+        // A frozen (SIGSTOP'd) guest can't act on the SIGTERM below — resume before tearing down so
+        // graceful termination isn't stuck waiting on a suspended process (any pending pulse aside).
+        reshadePulseInProgress = false;
+        ProcessHelper.resumeAllWineProcesses();
         installerWatchHandler.removeCallbacks(installerWatchRunnable);
         gameExitWatchHandler.removeCallbacks(gameExitWatchRunnable);
         stopDxApiDetection();
@@ -2362,6 +2450,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // null effect). Live-apply rides the single onReshadeApply -> applyReshadeLive seam.
         seedReshadeDrawerState(ds);
         ds.onReshadeApply = (masterEnabled, mode, items) -> applyReshadeLive(masterEnabled, mode, items);
+
+        // "Live preview" toggle — persisted global flag (default OFF = freeze-frame + pulse preview).
+        reshadeLivePreview = preferences.getBoolean("reshade_live_preview", false);
+        ds.setReshadeLivePreview(reshadeLivePreview);
+        ds.onReshadeLivePreviewChange = (enabled) -> {
+            reshadeLivePreview = enabled;
+            preferences.edit().putBoolean("reshade_live_preview", enabled).apply();
+            // Turning Live preview ON while a preview freeze is active: let the game run again.
+            if (enabled && reshadePreviewPaused) runOnUiThread(() -> setPausedState(false));
+        };
+        // Tapping the centered pause box = full resume (covers preview pause AND manual pause).
+        ds.onRequestResume = () -> runOnUiThread(() -> setPausedState(false));
 
         // Input Controls state (renderer-independent: controller profiles + vibration work on
         // BOTH the GL and Vulkan host renderers, so this must run before the GL-only guard below.

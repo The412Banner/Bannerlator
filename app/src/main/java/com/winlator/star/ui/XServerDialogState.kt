@@ -221,6 +221,29 @@ object XServerDialogState {
     }
     @JvmField var onReshadeApply: ReshadeApplyCallback? = null
 
+    // "Live preview" — persisted global toggle at the top of the ReShade tab. ON = ReShade changes
+    // apply live while the game keeps running (today's behaviour). OFF (default) = "freeze-frame +
+    // pulse" preview: the first committed change SIGSTOPs the game; each subsequent change briefly
+    // resumes for 1–2 presents to reveal the new look, then re-freezes. The activity owns the flag
+    // (seeded from SharedPreferences in setupUI); this flow mirrors it for the drawer toggle.
+    private val _reshadeLivePreview = MutableStateFlow(false)
+    val reshadeLivePreview: StateFlow<Boolean> = _reshadeLivePreview
+    fun setReshadeLivePreview(v: Boolean) { _reshadeLivePreview.value = v }
+
+    fun interface BoolCallback { fun invoke(value: Boolean) }
+    @JvmField var onReshadeLivePreviewChange: BoolCallback? = null
+
+    // -------------------------------------------------------------------------
+    // Paused / frozen state — single mirror of the activity's `isPaused`. Drives the centered
+    // "Paused — tap to resume" box in the dialog host (covers BOTH the ReShade freeze-frame preview
+    // and a normal manual Pause). The activity is the single source of truth; it writes this flow
+    // whenever the guest is suspended/resumed. Tapping the box fires onRequestResume (full resume).
+    // -------------------------------------------------------------------------
+    private val _paused = MutableStateFlow(false)
+    val paused: StateFlow<Boolean> = _paused
+    fun setPaused(v: Boolean) { _paused.value = v }
+    @JvmField var onRequestResume: Runnable? = null
+
     // -------------------------------------------------------------------------
     // Vibration dialog
     // -------------------------------------------------------------------------
@@ -451,6 +474,8 @@ object XServerDialogState {
         _reshadeMasterEnabled.value = false
         _reshadeMode.value     = com.winlator.star.reshade.ReshadeLoadout.MODE_SOLO
         _reshadeLoadout.value  = emptyList()
+        _reshadeLivePreview.value = false
+        _paused.value          = false
         _vibrationSlots.value  = emptyList()
         _logLines.value        = emptyList()
         _logPaused.value       = false
@@ -482,6 +507,8 @@ object XServerDialogState {
         onDebandApply = null
         onVulkanScreenEffectsApply = null
         onReshadeApply = null
+        onReshadeLivePreviewChange = null
+        onRequestResume = null
         onVibrationSlotChanged = null
         onInputControlsConfirm = null; onInputControlsSettings = null
         onScreenEffectsApply = null; onSeAddProfile = null; onSeRemoveProfile = null

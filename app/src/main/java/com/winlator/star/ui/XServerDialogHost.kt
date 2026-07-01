@@ -11,6 +11,7 @@ import com.winlator.star.ui.dialogs.NewTaskDialog
 import com.winlator.star.ui.dialogs.ScreenEffectsDialog
 import com.winlator.star.ui.dialogs.VibrationDialog
 import com.winlator.star.ui.overlays.MagnifierOverlay
+import com.winlator.star.ui.overlays.PauseBoxOverlay
 import com.winlator.star.ui.theme.WinlatorTheme
 
 fun setupDialogHost(view: ComposeView) {
@@ -26,6 +27,7 @@ fun XServerDialogHost() {
     val state = XServerDialogState
     val activeDialog     by state.activeDialog.collectAsState()
     val magnifierVisible by state.magnifierVisible.collectAsState()
+    val paused           by state.paused.collectAsState()
     when (activeDialog) {
         XServerDialogState.ActiveDialog.VIBRATION      -> VibrationDialog(state)
         XServerDialogState.ActiveDialog.DEBUG          -> DebugDialogContent(state)
@@ -37,4 +39,8 @@ fun XServerDialogHost() {
     }
 
     if (magnifierVisible) MagnifierOverlay(state)
+
+    // Centered pause indicator — above the game surface, shown whenever the guest is frozen
+    // (ReShade freeze-frame preview OR a manual Pause). Tap to fully resume.
+    if (paused) PauseBoxOverlay(state)
 }

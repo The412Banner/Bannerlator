@@ -909,7 +909,25 @@ private fun ReshadeSection() {
         apply()
     }
 
+    // "Live preview" — persisted global toggle. ON = changes apply live while the game runs. OFF
+    // (default) = freeze-frame + pulse preview (first change SIGSTOPs; each later change briefly
+    // resumes 1–2 frames to reveal it, then re-freezes). The activity owns the flag + the freeze/
+    // pulse; this just reports it. Independent of `master` so it can be set before enabling ReShade.
+    var livePreview by remember { mutableStateOf(XServerDialogState.reshadeLivePreview.value) }
+
     ToggleRow("ReShade", master, true) { master = it; apply() }
+
+    ToggleRow("Live preview", livePreview, true) {
+        livePreview = it
+        XServerDialogState.setReshadeLivePreview(it)
+        XServerDialogState.onReshadeLivePreviewChange?.invoke(it)
+    }
+    Text(
+        if (livePreview) "Changes apply live; the game keeps running."
+        else "Game freezes while tuning; each change pulses briefly to preview, then re-freezes.",
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        fontSize = 10.sp, modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
+    )
 
     if (master) {
         ReshadeModeSelector(mode) { setMode(it) }

@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-07-01 — ✅ CODE DONE (CI building, NOT merged): #46 FPS-limiter-resets fix — persist in-game toggle to the owning shortcut
+
+> **Branch `fix/fps-limiter-shortcut-persist`** off `main`, tip `3d59293`, CI run **`28516599378`** dispatched + in_progress (headSha `3d5929370…` == tip). NOT device-tested, NOT merged. Fixes the diagnosis in the entry below.
+> **Fix (mirror the ReShade Bug A owner-discriminator fix — write-target == read-source), all in `XServerDisplayActivity.java` (+29/−5):**
+> 1. `onFpsLimitChange` (`:603-611`): when `shortcut != null`, write `fpsLimiterEnabled` (+`fpsLimiterValue` when > 0) back to the **shortcut** and `shortcut.saveData()` (`Shortcut.java:153/163`); else the container write as before.
+> 2. New `resolvedFpsLimiterValue()` mirroring `resolvedFpsLimiterEnabled()` (parseInt with container fallback, null-safe pattern copied from `resolvedManualRefreshRate()`).
+> 3. Used the resolver at **both** value read sites so value reads from the same owner it's written to: the drawer value seed (`:795`) and the launch-time `applyFpsLimit(... ? resolvedFpsLimiterValue() : 0)` (was `:2159`, which had paired the shortcut-aware enabled resolver with the raw `container.getFpsLimiterValue()`).
+> **Scope:** container-only (no-shortcut) launches unchanged; `matchRefreshRate`/`manualRefreshRate`/`frameGen` untouched (not shortcut-stamped or not editable in-game). Backward-compatible: a shortcut with no `fpsLimiterValue` extra falls back to the container value.
+> **Hygiene note:** an initial `git add -A` accidentally staged two `.claude/worktrees/` embedded-repo gitlinks; amended out and added `.gitignore` `.claude/worktrees/` (force-pushed `d5f2b22`→`3d59293`).
+> **▶️ Device-retest gate (then comment + close #46):** launch a game via its shortcut → toggle the FPS limiter in-game (test both on→off and off→on, and a cap-value change) → quit → relaunch via the same shortcut → the limiter state + value hold. Confirm a container-only launch still persists, and that a second game's shortcut is unaffected (per-game isolation). No merge / no version bump without user go (accumulate on main per the beta-channel workflow).
+
+---
+
 ## 2026-07-01 — 🔎 ROOT-CAUSE CONFIRMED (not yet coded): #46's 2nd complaint "FPS limit resets every time you close a game" = shortcut-vs-container owner mismatch
 
 > **Status: DIAGNOSED, fix planned, NOT implemented/branched.** Code-traced, not device-repro'd yet. This is the open half of issue #46 (Noname267), the same class of bug as ReShade Tier-1 **Bug A** (write-target ≠ read-source across the shortcut/container owner boundary).

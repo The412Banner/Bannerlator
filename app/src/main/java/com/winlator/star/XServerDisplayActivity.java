@@ -231,6 +231,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private Runnable savePlaytimeRunnable;
     private static final long SAVE_INTERVAL_MS = 1000;
 
+    // Version marker for the bundled graphics_driver/extra_libs.tzst payload (vkBasalt layer +
+    // shared .so's). BUMP THIS whenever app/src/main/assets/graphics_driver/extra_libs.tzst is
+    // repacked, so existing/old containers re-extract the updated .so on their next launch instead
+    // of silently keeping the stale one. Read the persisted marker at
+    // imageFs.getLibDir()/.extra_libs_version; a mismatch (or missing marker => -1) triggers a
+    // re-extract. Value 2 = the 2.2.1 patched Tier-1 libvkbasalt.so (md5 3129127c…).
+    private static final int EXTRA_LIBS_VERSION = 2;
+
     private Handler  timeoutHandler = new Handler(Looper.getMainLooper());
     private Runnable hideControlsRunnable;
 
@@ -2873,6 +2881,30 @@ public class XServerDisplayActivity extends AppCompatActivity {
         winHandler.sendGamepadState();
     }
 
+    // Reads the persisted extra_libs.tzst payload version. Missing or unparseable => -1, which
+    // forces a re-extract (existing installs updating into this build have no marker yet).
+    private int readExtraLibsVersion(File versionFile) {
+        if (!versionFile.exists()) return -1;
+        try (BufferedReader reader = new BufferedReader(new FileReader(versionFile))) {
+            String line = reader.readLine();
+            if (line == null) return -1;
+            return Integer.parseInt(line.trim());
+        } catch (Exception e) {
+            Log.d("XServerDisplayActivity", "extra_libs version marker unreadable/unparseable, treating as -1: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    // Persists the extra_libs.tzst payload version marker after a successful re-extract so the
+    // trigger converges (only re-extracts once per app-upgrade).
+    private void writeExtraLibsVersion(File versionFile, int version) {
+        try (FileOutputStream out = new FileOutputStream(versionFile)) {
+            out.write(Integer.toString(version).getBytes());
+        } catch (Exception e) {
+            Log.d("XServerDisplayActivity", "Failed to write extra_libs version marker: " + e.getMessage());
+        }
+    }
+
     private void extractGraphicsDriverFiles() {
     // 1. Retrieve the selected driver name from the config
     String selectedDriver = graphicsDriverConfig.get("graphicsDriver");
@@ -2930,19 +2962,33 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // 2. SHARED LIBS EXTRACTION
     // First boot extracts everything. After that, extra_libs.tzst carries the vkBasalt layer
     // (libvkbasalt.so + the implicit_layer.d manifest) that powers the CAS/DLS sharpness AND the
-    // ReShade feature — containers created before that bundle landed never got it, so the feature
-    // silently no-ops on them. Re-extract extra_libs whenever the layer .so is missing from this
-    // container's rootDir, so pre-existing containers heal on next launch. Cheap: a single exists()
-    // check guards the (one-time, idempotent) re-extraction.
+    // ReShade feature. Three triggers re-extract extra_libs.tzst so pre-existing containers heal:
+    //   (a) firstTimeBoot                — brand-new container (also gets layers.tzst).
+    //   (b) the layer .so is absent      — container predates the bundle entirely.
+    //   (c) the installed payload is OUTDATED — the app was updated and ships a newer
+    //       extra_libs.tzst (EXTRA_LIBS_VERSION bumped) than what this shared imagefs holds, so
+    //       existing containers would otherwise keep the stale .so and the new features no-op.
+    // Version is persisted in a marker file colocated with the extracted imagefs state
+    // (imageFs.getLibDir()/.extra_libs_version) so a reinstall-imagefs resets it consistently.
+    // Extraction stays a pure additive per-entry overwrite (extra_libs.tzst contains ONLY
+    // usr/lib/*.so + usr/share/vulkan/* — no home/drive_c/user data); no delete/clean step.
+    // Cheap & idempotent: one int read + compare on launch, extraction only on mismatch.
     File vkBasaltSo = new File(imageFs.getLibDir(), "libvkbasalt.so");
+    File extraLibsVersionFile = new File(imageFs.getLibDir(), ".extra_libs_version");
+    int installedExtraLibsVer = readExtraLibsVersion(extraLibsVersionFile);
     if (firstTimeBoot) {
         Log.d("XServerDisplayActivity", "First time container boot, re-extracting layers and extra_libs");
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs.tzst", rootDir);
+        writeExtraLibsVersion(extraLibsVersionFile, EXTRA_LIBS_VERSION);
     }
-    else if (!vkBasaltSo.exists()) {
-        Log.d("XServerDisplayActivity", "vkBasalt layer absent (pre-existing container) — re-extracting extra_libs");
+    else if (!vkBasaltSo.exists() || installedExtraLibsVer != EXTRA_LIBS_VERSION) {
+        if (!vkBasaltSo.exists())
+            Log.d("XServerDisplayActivity", "vkBasalt layer absent (pre-existing container) — re-extracting extra_libs");
+        else
+            Log.d("XServerDisplayActivity", "extra_libs outdated (installed=" + installedExtraLibsVer + " bundled=" + EXTRA_LIBS_VERSION + ") — re-extracting extra_libs");
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs.tzst", rootDir);
+        writeExtraLibsVersion(extraLibsVersionFile, EXTRA_LIBS_VERSION);
     }
 
     // 3. Driver integration.

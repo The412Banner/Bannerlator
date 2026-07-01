@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-07-01 — vkBasalt layer VERSION-AWARE EXTRACTION — existing containers get the updated `extra_libs.tzst` on app-update — ✅ CODE DONE (branch `fix/vkbasalt-version-aware-extraction`, NOT merged)
+
+> **Why:** the layer-extraction gate in `XServerDisplayActivity.java` re-extracted `graphics_driver/extra_libs.tzst` (which carries the vkBasalt layer `libvkbasalt.so`) ONLY when the container was brand-new (`firstTimeBoot`) or the `.so` was TOTALLY ABSENT. It had no "installed `.so` is OUTDATED" case, so a user updating from 2.1.1 (old bundled `.so`) to 2.2.1 who relaunched an EXISTING container kept the stale shared-imagefs `.so` → the new Tier-1 ReShade per-effect features (and CAS/DLS sharpness) silently no-op'd. Required before the 2.2.1 stable cut.
+> **Fix — a third trigger + a persisted version marker.** New constant `EXTRA_LIBS_VERSION = 2` (`XServerDisplayActivity.java:240`, near the other constants; MUST be bumped whenever `app/src/main/assets/graphics_driver/extra_libs.tzst` is repacked). Marker FILE (not SharedPreferences, so a reinstall-imagefs resets it consistently) at `imageFs.getLibDir()/.extra_libs_version` holding the int; missing/unparseable ⇒ `-1`. Restructured gate (`~:2976-2991`): `firstTimeBoot` still extracts BOTH `layers.tzst` + `extra_libs.tzst` then writes the marker; otherwise `!vkBasaltSo.exists() || installedVer != EXTRA_LIBS_VERSION` ⇒ extract `extra_libs.tzst` then write the marker. All three successful-extract paths converge the marker to `EXTRA_LIBS_VERSION` (extracts once per app-upgrade). Helpers `readExtraLibsVersion()`/`writeExtraLibsVersion()` (`~:2886`/`:2900`). Log.d mirrors existing style, names which trigger fired.
+> **Existing installs have NO marker ⇒ `-1` ⇒ mismatch ⇒ re-extract on first launch after updating** — so every pre-existing container picks up the patched Tier-1 `libvkbasalt.so` (md5 `3129127c098dcaa7704cf264ef47f157`, 1852976 B — already the one in `extra_libs.tzst` on main).
+> **DATA-SAFETY (unchanged):** extraction stays a pure additive per-entry overwrite to `imageFs.getRootDir()`; NO delete/clean step added; target unchanged. Verified `extra_libs.tzst` = ONLY `usr/lib/*.so` (libvkbasalt/libvulkan_freedreno/libbcn_layer) + `usr/share/vulkan/*` (icd.d + implicit_layer.d manifests) — NO home/drive_c/user data.
+> **NOT bumped:** app versionCode/versionName stay 35/2.2 (the bump lives on another branch). `extra_libs.tzst` NOT modified. No merge/tag.
+> **On-device verification recipe:** on a device that already has an EXISTING container built with the OLD `.so`, install the 2.2.1 build over it, relaunch that container (do NOT create a new one) → `imageFs` `usr/lib/libvkbasalt.so` md5 == `3129127c098dcaa7704cf264ef47f157`, `.extra_libs_version` == `2`, and a Tier-1 per-effect toggle (Solo bypass / per-effect enable) takes effect live.
+
+---
+
 ## 2026-06-30 — In-game ReShade effect SWITCHING — Tier 1 (multi-effect loadout + per-effect enable gate) — 🏁 FULLY DEVICE-PROVEN + MERGED TO MAIN 2026-07-01 (merge `d166869`)
 
 > 🏁 **STATUS 2026-07-01 — TIER 1 DONE, DEVICE-PROVEN END-TO-END (ludashi).** Gates 1–8 device-verified earlier; then two device-found bugs were fixed and both confirmed on-device on fix build **CI `28492221848`** (branch `feat/reshade-multi-effect-switch` tip **`82c6799`**, headSha `82c67995…` == branch tip, +82/−16 across 3 files, `extra_libs.tzst`/patched .so untouched = app-side only):

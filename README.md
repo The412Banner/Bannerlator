@@ -51,13 +51,36 @@
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) |
-| **Version** | Bannerlator **V 2.2** — built from Star **marcescence** (`versionName 2.2`, `versionCode 35`) |
+| **Version** | Bannerlator **V 2.2.2** — built from Star **marcescence** (`versionName 2.2.2`, `versionCode 37`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 
 ---
 
-## 🆕 What's New in 2.2
+## 🆕 What's New in 2.2.2
+
+2.2.2 brings the big one: **in-game ReShade effects** — real ReShade `.fx` post-processing you configure **per game**, toggle and tune **live**, and **stack**. It also lands a batch of fixes from GitHub and Discord reports: the **FPS limiter no longer resets** between sessions, on-screen controls honour a **white** colour, **container creation** can no longer get stuck, and very light / dark custom accents stay readable. This is an **app-side** update — **no ImageFS reinstall** — and existing containers **refresh their ReShade layer automatically** on next launch.
+
+**🎬 In-game ReShade effects — new.** Run real ReShade `.fx` effects (colour grading, sharpen, film grain, CRT, tonemap, LUTs…) on **DXVK / VKD3D** games, compiled **on-device** via the bundled **[vkBasalt](https://github.com/DadSchoorse/vkBasalt)** layer:
+- **Per-game setup** — pick effects when editing a **container** or a **game shortcut**; your choices are saved with that game.
+- **On-demand catalog** of ~100 curated MIT / CC0 effects (search, browse, download only what you want) — or **drop your own** into the `ReShade/` folder (see [Adding your own ReShade effects](#-adding-your-own-reshade-effects)).
+- **Dedicated in-game ReShade tab** that auto-generates properly **typed controls** — sliders, toggles, dropdowns and colour pickers — read straight from each shader, with a **Reset-to-defaults** button. Toggle and tune effects **live**, no restart, and your changes **persist per game** across quit → relaunch.
+- **Solo or stack** — run a single effect or layer several at once.
+- > ⚠️ **Stacking multiple effects? Add them a few at a time.** Each ReShade effect compiles on-device and costs GPU, so **selecting too many at once can stop a game from starting** — you'll get a **flat / blank screen** instead of the game. If that happens, go back into the per-game **ReShade effect** settings and **uncheck the effects one at a time** (or the specific heavy one) until the game boots correctly, then add more gradually. *(Colour effects today; depth effects like SSAO / DOF aren't supported yet.)*
+
+**♻️ Existing containers auto-update the ReShade layer.** Updating from an earlier version? Your **existing containers pick up the new ReShade (vkBasalt) layer automatically** on next launch — no need to recreate a container or reinstall the ImageFS for ReShade to work.
+
+**🛟 In-game drawer rail now scrolls.** On shorter screens the left icon rail could push **Exit** off the bottom; the rail is now **scrollable**, so every control — including **Exit** — is always reachable.
+
+**🎛️ FPS limiter now sticks between sessions.** Toggling the in-game **FPS limiter** for a game launched from a shortcut is now **saved to that game** — it no longer reverts every time you close and reopen the game. *(GitHub #46.)*
+
+**🎨 Fixes.**
+- **White on-screen controls** — setting the virtual-control colour to **white** now stays white instead of falling back to blue. *(GitHub #46.)*
+- **Readable light / dark accents** — a very **light** custom theme accent no longer paints buttons white-on-white (and a very **dark** one no longer goes dark-on-dark); glyphs pick a contrasting colour automatically. **AMOLED and the built-in presets are unchanged.**
+- **Container creation could get stuck** — after deleting a container that still had a leftover shortcut, creating a new container could silently fail; the stale entry is now cleaned up and no longer blocks creation. *(GitHub #45.)*
+
+<details>
+<summary><b>Previously in 2.2</b> — the themeable-interface overhaul</summary>
 
 2.2 is a **big visual overhaul**: the whole interface — and the **in-game side drawer** — now follow your chosen theme, with a redesigned drawer, **nine new colour presets**, and **per-game control colours**. It also adds **Favorites** to the File Manager and **rebuilds the controller-binding screen**, alongside a batch of readability and consistency fixes.
 
@@ -74,6 +97,8 @@
 **🧰 In-game Task Manager.** **"New Task" now works on the Vulkan / Native renderers** — the dialog used to be invisible over those surfaces — and running processes are shown as **cards**.
 
 **🧹 Consistency & readability.** The Games and Containers lists now share one card style with consistent depth on every theme, and legacy dropdowns, spinners, dialogs and section headers follow the accent too — with a luminance floor so text never goes dark-on-dark on a dark custom accent.
+
+</details>
 
 ---
 
@@ -104,7 +129,8 @@ Everything Bannerlator offers, at a glance. No PC and no root required — it ru
 - **Supersampling (Render scale)** — render above display resolution (1.25× / 1.5× / 2×) and downsample with a Lanczos-2 filter for DSR / OGSSAA-style anti-aliasing; set per container / per shortcut.
 - **Screen effects on both the OpenGL *and* Vulkan renderers** — FXAA, Toon, CRT, NTSC, Color grading, **CAS** sharpening, and fake-HDR (the Vulkan path runs them through a new post-processing pipeline; previously they were OpenGL-only).
 - **Debanding (Vulkan)** — an optional terminal dither pass that removes the visible banding from smooth gradients, skies, and dark scenes on 8-bit output, with an adjustable strength.
-- **ReShade post-processing** — run real ReShade `.fx` effects (colour grading, sharpen, film grain, CRT, tonemap…) on **DXVK / VKD3D** games. Effects compile **on-device** via a bundled **[vkBasalt](https://github.com/DadSchoorse/vkBasalt)** layer; pick from an **on-demand catalog** of ~100 curated MIT/CC0 effects or drop your own into the `ReShade/` folder. A dedicated in-game **ReShade tab** auto-generates properly typed controls (sliders / toggles / dropdowns / colour pickers) from each shader, so you can **toggle and tune effects live** with a Reset-to-defaults button. *(Color effects today; depth effects such as SSAO/DOF are not included yet.)*
+- **ReShade post-processing** — run real ReShade `.fx` effects (colour grading, sharpen, film grain, CRT, tonemap…) on **DXVK / VKD3D** games. Effects compile **on-device** via a bundled **[vkBasalt](https://github.com/DadSchoorse/vkBasalt)** layer; pick from an **on-demand catalog** of ~100 curated MIT/CC0 effects or drop your own into the `ReShade/` folder. A dedicated in-game **ReShade tab** auto-generates properly typed controls (sliders / toggles / dropdowns / colour pickers) from each shader, so you can **toggle and tune effects live** with a Reset-to-defaults button. Effects are configured **per game** (container or shortcut), persist across relaunch, and can be run **solo or stacked**. *(Color effects today; depth effects such as SSAO/DOF are not included yet.)*
+  - > ⚠️ **Stacking multiple effects? Add them a few at a time.** Each effect compiles on-device and costs GPU — **selecting too many at once can stop a game from starting**, showing a **flat / blank screen** instead of the game. If that happens, **uncheck effects one at a time** (or the specific heavy one) in the per-game **ReShade effect** settings until it boots, then add more gradually.
 - **Match refresh rate to FPS (VRR)** — the display's refresh rate can follow your frame rate: an **Auto (match FPS)** toggle or a manual **60 / 90 / 120 / 144 Hz** slider, on all three host renderers, auto-disabled on displays that don't support variable refresh.
 - Adjustable resolution and frame-rate limit.
 
@@ -195,6 +221,7 @@ ReShade/
 > - ReShade only affects **DirectX games running through DXVK / VKD3D** — it does nothing on OpenGL / WineD3D / older 2D titles.
 > - **Effect not in the list?** Make sure it's in **its own subfolder** and that the subfolder actually contains a `.fx` file (a loose `.fx` sitting directly in `ReShade/` is ignored).
 > - **Effect selected but no change in-game?** Most often a missing `#include` — open the `.fx` in a text editor, find any `#include "Something.fxh"` lines, and make sure each of those `.fxh` files is copied into the **same folder** as the `.fx`. Same for any texture files.
+> - **Game won't start / flat or blank screen after enabling effects?** You likely **stacked too many effects at once**. Each one compiles on-device and costs GPU, and too many together can stop the game from launching. Go back into the per-game **ReShade effect** settings and **uncheck the effects one at a time** (or the specific heavy one) until the game boots correctly, then re-enable them gradually. Adding effects **a few at a time** avoids this.
 > - **Can't even find `Android/data`?** Many stock file managers hide it on Android 11+. Use a file manager that can open `Android/data`, or copy the effect folder over from a PC via a USB cable, then drop it in.
 
 ---

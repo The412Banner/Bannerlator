@@ -725,7 +725,11 @@ public class ControlElement {
         Rect boundingBox = getBoundingBox();
 
         int accent = resolveAccentColor();
-        boolean hasAccent = accent != -1;
+        // resolveAccentColor() always returns a full-opacity ARGB (getAccentColor forces alpha
+        // 0xff), so it never yields a real "no accent" sentinel. The old `accent != -1` check
+        // collided with pure white (0xFFFFFFFF == -1 as a signed int), making white controls fall
+        // back to the default blue. Accent is always live now. (issue #46)
+        boolean hasAccent = true;
 
         // Map opacity linearly so the full slider range is usable: 0 = fully invisible,
         // 1 = fully solid. (Was 0.5 + 0.7*opacity, which floored visibility at ~50% and

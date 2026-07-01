@@ -123,6 +123,15 @@ public class ContainerManager {
             data.put("id", id);
 
             File containerDir = new File(homeDir, ImageFs.USER+"-"+id);
+            if (containerDir.exists()) {
+                // An orphan directory can be left behind for a deleted container id — e.g. a
+                // shortcut import calls getDesktopDir().mkdirs() against a stale container, which
+                // recreates xuser-<id>/. Such a dir has no ".container" config; clear it so
+                // creation can proceed instead of silently failing on mkdirs() == false. A dir that
+                // DOES have a config is a genuine id collision → bail. (issue #45)
+                if (new File(containerDir, ".container").isFile()) return null;
+                FileUtils.delete(containerDir);
+            }
             if (!containerDir.mkdirs()) return null;
 
             Container container = new Container(id, this);

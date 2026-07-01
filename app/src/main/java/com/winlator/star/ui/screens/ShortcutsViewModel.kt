@@ -74,10 +74,16 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean("is_grid_view", grid).apply()
     }
 
+    // Only containers still present on disk (with a ".container" config). A deleted container can
+    // linger in the manager's in-memory list; operating on it recreates its directory via
+    // getDesktopDir().mkdirs(), which then breaks future container creation. Filtering here keeps
+    // stale entries out of the picker AND out of import/clone. (issue #45)
+    private fun liveContainers() = manager.getContainers().filter { it.configFile.isFile }
+
     fun importShortcut(containerIndex: Int, uri: Uri, context: Context): ImportResult {
-        val containers = manager.getContainers()
+        val containers = liveContainers()
         if (containerIndex < 0 || containerIndex >= containers.size) {
-            return ImportResult.Error("Invalid container.")
+            return ImportResult.Error("That container no longer exists. Pull to refresh and pick another.")
         }
         val container = containers[containerIndex]
 
@@ -250,18 +256,18 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun cloneToContainer(shortcut: Shortcut, containerIndex: Int): Boolean {
-        val containers = manager.getContainers()
-        if (containerIndex >= containers.size) return false
+        val containers = liveContainers()
+        if (containerIndex < 0 || containerIndex >= containers.size) return false
         val result = shortcut.cloneToContainer(containers[containerIndex])
         if (result) refresh()
         return result
     }
 
-    fun containers() = manager.getContainers()
+    fun containers() = liveContainers()
 
     fun renameImportedShortcut(containerIndex: Int, oldName: String, newName: String) {
         if (oldName == newName || newName.isBlank()) return
-        val containers = manager.getContainers()
+        val containers = liveContainers()
         if (containerIndex < 0 || containerIndex >= containers.size) return
         val container = containers[containerIndex]
         val desktopDir = container.getDesktopDir()

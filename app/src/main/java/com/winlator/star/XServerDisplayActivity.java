@@ -1275,7 +1275,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // it. effects = <reshade>:cas  (sharpen LAST, the usual order). Returns the host-absolute conf
     // path for VKBASALT_CONFIG_FILE, or null when no ReShade effect is selected (caller then keeps
     // the legacy inline CAS path untouched).
-    private String writeVkBasaltConfig() { return writeVkBasaltConfig(true, true); }
+    // Launch-time write: honor the persisted master (enableOnLaunch) so an in-game ReShade OFF sticks.
+    private String writeVkBasaltConfig() { return writeVkBasaltConfig(resolveReshade().masterEnabled, true); }
     private String writeVkBasaltConfig(boolean enableOnLaunch) { return writeVkBasaltConfig(enableOnLaunch, false); }
 
     // Tier 1 multi-effect loadout. Every loadout effect is COMPILED into the vkBasalt chain up front
@@ -1478,8 +1479,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         ds.setReshadeMode(rr != null ? rr.mode : com.winlator.star.reshade.ReshadeLoadout.MODE_SOLO);
         ds.setReshadeLoadout(items);
-        // Master (whole-chain) on/off: ON whenever there's something to show.
-        ds.setReshadeMasterEnabled(!items.isEmpty());
+        // Master (whole-chain) on/off: ON whenever there's something to show, unless the user
+        // explicitly turned ReShade off in-game last session (persisted rr.masterEnabled == false).
+        ds.setReshadeMasterEnabled(!items.isEmpty() && (rr == null || rr.masterEnabled));
     }
 
     // SINGLE pluggable seam for ReShade live-apply. Persists the full drawer loadout snapshot
@@ -1512,17 +1514,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // prefers reshadeLoadout when present).
             String firstEffect = entries.isEmpty() ? "None" : entries.get(0).name;
 
-            if (shortcut != null) {
+            // Persist to the SAME source resolveReshade() will read next launch (the authoritative
+            // owner for this session): the shortcut only when it already owns reshade as a unit,
+            // otherwise the container. Writing by the same shortcutOwnsReshade() discriminator keeps
+            // write-target == read-source, so an in-game change (loadout/mode/params/enabled + the
+            // master switch) is restored on relaunch instead of reverting to the pre-launch config.
+            if (shortcutOwnsReshade()) {
                 shortcut.putExtra("reshadeLoadout", entries.isEmpty() ? null : loadoutJson);
                 shortcut.putExtra("reshadeMode", modeStr);
                 shortcut.putExtra("reshadeParams", paramsJson);
                 shortcut.putExtra("reshadeEffect", firstEffect);
+                shortcut.putExtra("reshadeMasterEnabled", masterEnabled ? null : "0");
                 shortcut.saveData();
             } else if (container != null) {
                 container.setReshadeLoadout(entries.isEmpty() ? null : loadoutJson);
                 container.setReshadeMode(modeStr);
                 container.setReshadeParams(paramsJson);
                 container.setReshadeEffect(firstEffect);
+                container.setReshadeMasterEnabled(masterEnabled);
                 container.saveData();
             }
         } catch (JSONException ignored) {}
@@ -3480,6 +3489,17 @@ return true;
         String paramsJson;   // nested {"<effect>":{uniform:value}} when nested==true, else flat legacy
         boolean nested;      // whether a reshadeLoadout array was the source (params are nested)
         String legacyEffect; // for flat-params migration
+        boolean masterEnabled = true; // whole-chain enableOnLaunch, persisted from the drawer master switch
+    }
+
+    // A shortcut OWNS the reshade config as a unit once it carries any reshade extra (the new loadout
+    // array or the legacy single effect); until then the container's config is authoritative. This is
+    // the SINGLE discriminator used by BOTH resolveReshade() (which source to read) and the live-apply
+    // persist (which source to write) so a write always lands where the next launch will read it.
+    private boolean shortcutOwnsReshade() {
+        return shortcut != null
+                && (shortcut.getExtra("reshadeLoadout", null) != null
+                    || shortcut.getExtra("reshadeEffect", null) != null);
     }
 
     // ReShade selection resolution. The shortcut OWNS the whole reshade config (loadout + mode +
@@ -3497,19 +3517,19 @@ return true;
             return r;
         }
         String loadoutJson, mode, paramsJson, legacyEffect;
-        boolean shortcutOwns = shortcut != null
-                && (shortcut.getExtra("reshadeLoadout", null) != null
-                    || shortcut.getExtra("reshadeEffect", null) != null);
+        boolean shortcutOwns = shortcutOwnsReshade();
         if (shortcutOwns) {
             loadoutJson  = shortcut.getExtra("reshadeLoadout", null);
             mode         = shortcut.getExtra("reshadeMode", "solo");
             paramsJson   = shortcut.getExtra("reshadeParams", null);
             legacyEffect = shortcut.getExtra("reshadeEffect", "None");
+            r.masterEnabled = !shortcut.getExtra("reshadeMasterEnabled", "1").equals("0");
         } else {
             loadoutJson  = container.getReshadeLoadout();
             mode         = container.getReshadeMode();
             paramsJson   = container.getReshadeParams();
             legacyEffect = container.getReshadeEffect();
+            r.masterEnabled = container.getReshadeMasterEnabled();
         }
         r.nested = loadoutJson != null && !loadoutJson.isEmpty();
         r.loadout = com.winlator.star.reshade.ReshadeLoadout.parse(loadoutJson, legacyEffect);

@@ -489,6 +489,17 @@ public class Container {
         putExtra("reshadeMode", (mode == null || mode.isEmpty()) ? null : mode);
     }
 
+    // Master (whole-chain) on/off — mirrors the in-game ReShade drawer switch (enableOnLaunch). ON is
+    // the default whenever a loadout is present; only an explicit in-game OFF is stored ("0") so the
+    // absence of the key keeps the historical "on when there's something to show" behaviour.
+    public boolean getReshadeMasterEnabled() {
+        return !getExtra("reshadeMasterEnabled", "1").equals("0");
+    }
+
+    public void setReshadeMasterEnabled(boolean enabled) {
+        putExtra("reshadeMasterEnabled", enabled ? null : "0");
+    }
+
     public String getWineVersion() {
         return wineVersion;
     }

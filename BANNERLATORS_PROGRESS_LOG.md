@@ -557,3 +557,22 @@ Loader) renders correctly on colorScheme with the honest online-only caveat copy
 catalog delivery (my winlator-contents goldberg-v1 asset), global install gating, themed UI. STILL
 UNPROVEN: actual patch→launch (DLL swap gets a game past the Steam check) — needs a SINGLE-PLAYER
 Steam title (shown on Brawlhalla = online-only, so Error 3003 is server-side, not a patch validation).
+
+## 2026-07-01 (cont.) — Steam download size/progress fix + overlapping dual-color bar
+Commit ad4887f on feat/steam-goldberg-patcher (Kotlin+Java green on ludashi AND standard flavors).
+native-steam-engineer decompiled javasteam-depotdownloader-1.8.0.jar, read DepotDownloader.getDepotInfo
+selection logic, mirrored it EXACTLY in SteamRepository PICS parse: count a depot only if it has a
+public manifest AND (no config OR oslist empty/contains windows) AND language empty/english AND not
+lowviolence; osarch NOT checked (matches our AppItem downloadAllArchs=true). Fixes inflated size
+(HL2 ~14.7GB→~half) since it no longer sums mac/linux/other-language/optional depots. Progress
+denominator switched to summed SELECTED-depot manifest bytes (numerator+denominator same units).
+onChunkCompleted now sums bytes across ALL depots via two ConcurrentHashMap<Int,Long> (install=
+uncompressed, download=compressed) → fixes the ~50% stall (was tracking only largest single depot).
+DUAL BAR: event now DownloadProgress:appId:installDone:installTotal:downloadDone:downloadTotal;
+detail-page LinearProgressIndicator → Box track (surfaceVariant) + lighter download fill
+(primary alpha .4) + solid install fill (primary) on top. downloadTotal from parsing
+manifests/public/download (compressed), in-memory downloadSizeByApp map, NO DB schema change (still v3).
+Pause/resume seeds both accumulators from persisted install bytes (download approximated by install
+fraction on resume, dlog'd). Parser back-compat: dDone/dTotal default to install values.
+GATE: device — HL2 size ~half + logcat "depots: selected=/skipped=" line; smooth 0→100 dual fills on
+a multi-depot download; paused/resumed mid-download percentage sane.

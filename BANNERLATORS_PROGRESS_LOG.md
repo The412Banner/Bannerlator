@@ -481,3 +481,14 @@ name→appId mapping + component-version translation). Gate: CI green then on-de
 (grid density, download/pause/cancel states, white-accent preset).
 Update: branch pushed; CI artifacts run 28556819972 (label steam-store-m3) in flight with watcher;
 root bridge pinged OK — on green, APK goes to device /sdcard/Download for the visual pass.
+
+## 2026-07-01 (cont.) — Compose container picker + result dialog; black-toast root cause fixed
+Device pass of build 1 found the add-to-shortcuts toast = BLACK BOX: targetSdk 28 renders toasts
+in-app with @style/AppTheme = AppCompat.Light + colorBackground forced #000000 → black-on-black.
+Replaced the whole handoff UI (`3910337`): StarLaunchBridge split (loadContainers/writeShortcutAsync
+result callbacks; legacy dialog+toast path kept for Epic/GOG/Amazon but toasts now explicit
+white-on-grey custom view), new store/compose/AddToShortcutsFlow.kt (M3 ContainerPickerDialog +
+AddResultDialog), Steam screens wired to it, MainActivity EXTRA_OPEN_SCREEN deep-link (validated
+against drawerItems; onNewIntent + pendingRoute→LaunchedEffect nav) so "Open Shortcuts" jumps
+CLEAR_TOP|SINGLE_TOP into the Shortcuts (Games) route. Kotlin+Java compile GREEN. Device gate:
+picker rows, result dialog, deep-link from store stack, legacy toast readability.

@@ -576,3 +576,14 @@ Pause/resume seeds both accumulators from persisted install bytes (download appr
 fraction on resume, dlog'd). Parser back-compat: dDone/dTotal default to install values.
 GATE: device — HL2 size ~half + logcat "depots: selected=/skipped=" line; smooth 0→100 dual fills on
 a multi-depot download; paused/resumed mid-download percentage sane.
+
+## 2026-07-01 (cont.) — end of session; user testing in the morning
+CI build 28563136132 (label steam-dl-progress) building overnight off feat/steam-goldberg-patcher
+(tip = size/progress fix + dual bar ad4887f). User will grab the ludashi APK from the run page and
+device-test in the morning (2026-07-02). MORNING CHECKLIST:
+ 1. Goldberg patch→launch on a SINGLE-PLAYER Steam title (Regular→Launch, past the Steam check) —
+    the one still-unproven piece (download+UI already device-proven; Brawlhalla can't validate = online-only).
+ 2. Half-Life 2 (appid 220) size reads ~half of the old ~14.7GB; logcat "depots: selected=/skipped=" confirms set.
+ 3. Multi-depot download: bar climbs smooth 0→100, no ~48-50% stall; dual fills (solid install + lighter download).
+ 4. Pause/resume mid-download: percentage stays sane.
+Branch NOT merged; accumulating (store rebuild + Goldberg + dl fix all on feat/steam-goldberg-patcher).

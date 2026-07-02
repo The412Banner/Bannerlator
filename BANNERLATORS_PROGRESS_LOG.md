@@ -563,3 +563,23 @@ complete the AHB send handshake (read app's 1-byte ack then AHardwareBuffer_send
 + add logs. Re-test: no ANR + full AHB received. THEN Gate 1: DXVK depth-capture patch (compute
 resolve depth -> RGBA8-pack, reuse courier transport, Nightlies patches/dxvk-depth-export.patch,
 CI-green arm64ec) + host real RGBA8 import + grayscale debug quad + catalog + device-prove.
+
+## 2026-07-01 (cont.) — ANR fix built+green; re-test inconclusive (capture logistics)
+Both ANR-fix builds green: APK vc39 (async receive off X-server thread + timeout, run 28540887124)
+and wine wcp 0614c061193 (run 28540927218). Wine root cause = ordering DEADLOCK: courier did
+blocking GetInputFocus before sending the AHB while the host blocked waiting for the AHB. Fix =
+send AHB first (socketpair) + read 1-byte ack (5s timeout) + then GetInputFocus. Release
+build-p11-20260701-sdk28 curated (prerelease, single asset ...-gate0-ahbfix.wcp).
+On-device VERIFY of installed bits all pass: APK=vc39; winevulkan.so has the new courier strings
+(AHB SENT / host ack received / waiting for host ack / X server accepted the pixmap); env var LIVE
+in wineserver. But 4 capture attempts to confirm no-ANR/full-AHB came up empty -- CAPTURE LOGISTICS,
+not a regression: courier is one-shot per process (already fired+cleared for the running AIO), AIO is
+a single process, blind input taps miss because the running 3D scene captures the pointer, and high
+fps flushes the logcat ring (need -G 16M+ and streaming). A fresh firing needs a brand-new AIO
+process (exit container -> relaunch game -> enter scene) with the stream pre-armed; clean relaunches
+didn't land in the windows (pids unchanged). No regression evidence ((a)/(b) log before handshake
+code; scenes render = Vulkan instances created; xfix run already proved the mechanism).
+Gotchas: container re-setup wipes WINE_DEPTH_COURIER; shortcut [Extra Data] was empty (inherits
+container) -- now set on both shortcut and container. Decision pending: (1) one clean fresh relaunch
+to bank the confirmation, or (2) proceed to Gate 1 (recommended) where the real depth device-test
+proves the identical receive path.

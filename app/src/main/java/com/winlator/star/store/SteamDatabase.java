@@ -34,7 +34,9 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     //     real_download_bytes on depot_manifests, real_size_bytes on steam_games.
     // v5: additive real_disk_bytes (block-rounded true on-disk footprint estimate) on
     //     depot_manifests + steam_games — DepotSizeResolver sums ceil(fileSize/block) per file.
-    private static final int    DB_VERSION = 5;
+    // v6: reset real_disk_bytes — a v5 build computed it wrong (skipped every file, so it
+    //     equalled real_size); zero it so the fixed block-rounding recomputes on next resolve.
+    private static final int    DB_VERSION = 6;
 
     // -------------------------------------------------------------------------
     // DDL
@@ -168,6 +170,16 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         if (oldVersion < 5) {
             addColumnIfMissing(db, "depot_manifests", "real_disk_bytes", "INTEGER NOT NULL DEFAULT 0");
             addColumnIfMissing(db, "steam_games",     "real_disk_bytes", "INTEGER NOT NULL DEFAULT 0");
+        }
+        // v5 → v6: the v5 footprint math skipped every file (linkTarget "" != null) so real_disk_bytes
+        // wrongly equalled real_size. Zero it so the fixed block-rounding recomputes on next resolve.
+        if (oldVersion < 6) {
+            try { db.execSQL("UPDATE depot_manifests SET real_disk_bytes = 0"); } catch (Exception e) {
+                Log.w(TAG, "v6 reset depot_manifests.real_disk_bytes: " + e.getMessage());
+            }
+            try { db.execSQL("UPDATE steam_games SET real_disk_bytes = 0"); } catch (Exception e) {
+                Log.w(TAG, "v6 reset steam_games.real_disk_bytes: " + e.getMessage());
+            }
         }
     }
 

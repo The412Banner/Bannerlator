@@ -279,7 +279,10 @@ object DepotSizeResolver {
                 else {
                     var sum = 0L
                     for (f in files) {
-                        if (f.linkTarget != null) continue          // symlink — no data blocks
+                        // linkTarget is a protobuf string → "" (NOT null) for regular files; only
+                        // real symlinks have a non-empty target. (isNullOrEmpty, not != null, or we'd
+                        // skip every file and fall back to the content size.)
+                        if (!f.linkTarget.isNullOrEmpty()) continue  // symlink — no data blocks
                         val sz = f.totalSize
                         if (sz <= 0L) continue                       // directory / empty file
                         sum += ((sz + DEFAULT_BLOCK_BYTES - 1) / DEFAULT_BLOCK_BYTES) * DEFAULT_BLOCK_BYTES

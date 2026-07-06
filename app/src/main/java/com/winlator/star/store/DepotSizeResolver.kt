@@ -141,7 +141,15 @@ object DepotSizeResolver {
         val fallback = cached(appId) ?: estimate(appId)
         // Gate: not signed in, or a download owns the CM → serve cached/estimate, don't touch the CM.
         if (!repo.isLoggedIn || repo.isDownloadActive()) return fallback
-        if (fallback.complete) return fallback   // already fully resolved — nothing to fetch
+        if (fallback.complete) {
+            // Install size is fully resolved — but a game resolved under the pre-v5 schema has no
+            // on-disk footprint yet (real_disk_bytes defaulted to 0). Re-run to backfill it; skip
+            // only when every depot already has a disk estimate too.
+            val needsDiskBackfill = try {
+                repo.database.getDepotManifests(appId).any { it.realSizeBytes > 0L && it.realDiskBytes <= 0L }
+            } catch (_: Throwable) { false }
+            if (!needsDiskBackfill) return fallback
+        }
 
         val future = CompletableFuture<Sizes>()
         try {
@@ -200,7 +208,7 @@ object DepotSizeResolver {
             }
 
             for (r in rows) {
-                if (r.realSizeBytes > 0L) continue                 // already resolved
+                if (r.realDiskBytes > 0L) continue                 // fully resolved (size + disk footprint)
                 if (repo.isDownloadActive()) break                 // a download started mid-resolve — yield
                 if (!repo.isLoggedIn) break
                 resolveOneDepot(cdn, content, scope, appId, r, server, db)  // best-effort; failures degrade

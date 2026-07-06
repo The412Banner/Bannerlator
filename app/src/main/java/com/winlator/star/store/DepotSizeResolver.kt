@@ -201,7 +201,11 @@ object DepotSizeResolver {
             return result
         } finally {
             watchdog.set(false)
-            try { cdn.close() } catch (_: Throwable) {}
+            // NOTE: do NOT close `cdn` here. CdnClient(steamClient) wraps the SteamClient's
+            // app-wide shared OkHttpClient; closing it shuts down that dispatcher's ExecutorService,
+            // which the real depot downloader also uses — poisoning every later manifest/chunk fetch
+            // with "executor rejected" (Brawlhalla stuck-at-0% regression). The downloader engine
+            // never closes the shared client; neither must the resolver. cdn owns nothing to free.
             try { scope.cancel() } catch (_: Throwable) {}
         }
     }

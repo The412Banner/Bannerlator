@@ -32,7 +32,9 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     private static final String DB_NAME    = "steam.db";
     // v4: additive true-depot-size columns (DepotSizeResolver) — real_size_bytes /
     //     real_download_bytes on depot_manifests, real_size_bytes on steam_games.
-    private static final int    DB_VERSION = 4;
+    // v5: additive real_disk_bytes (block-rounded true on-disk footprint estimate) on
+    //     depot_manifests + steam_games — DepotSizeResolver sums ceil(fileSize/block) per file.
+    private static final int    DB_VERSION = 5;
 
     // -------------------------------------------------------------------------
     // DDL
@@ -54,7 +56,9 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  genres          TEXT    NOT NULL DEFAULT ''," +
             // True install size (uncompressed) summed from the SELECTED depots' manifests by
             // DepotSizeResolver. 0 = unresolved → callers fall back to the PICS size_bytes estimate.
-            "  real_size_bytes INTEGER NOT NULL DEFAULT 0" +
+            "  real_size_bytes INTEGER NOT NULL DEFAULT 0," +
+            // Estimated real on-disk footprint (block-rounded per-file sum). 0 = unresolved.
+            "  real_disk_bytes INTEGER NOT NULL DEFAULT 0" +
             ")";
 
     private static final String SQL_LICENSES =
@@ -94,6 +98,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             // in upsertDepotManifest resets these to 0 so a stale size can't survive an update.
             "  real_size_bytes     INTEGER NOT NULL DEFAULT 0," +  // uncompressed (install)
             "  real_download_bytes INTEGER NOT NULL DEFAULT 0," +  // compressed  (network)
+            "  real_disk_bytes     INTEGER NOT NULL DEFAULT 0," +  // block-rounded on-disk estimate
             "  PRIMARY KEY (app_id, depot_id)" +
             ")";
 
@@ -159,6 +164,30 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             addColumnIfMissing(db, "depot_manifests", "real_download_bytes", "INTEGER NOT NULL DEFAULT 0");
             addColumnIfMissing(db, "steam_games",     "real_size_bytes",     "INTEGER NOT NULL DEFAULT 0");
         }
+        // v4 → v5: ADDITIVE — on-disk footprint estimate columns, defaults 0, rows untouched.
+        if (oldVersion < 5) {
+            addColumnIfMissing(db, "depot_manifests", "real_disk_bytes", "INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(db, "steam_games",     "real_disk_bytes", "INTEGER NOT NULL DEFAULT 0");
+        }
+    }
+
+    /**
+     * A newer build wrote a higher DB version, then the user rolled back to this (older) build.
+     * The default SQLiteOpenHelper.onDowngrade THROWS ("Can't downgrade database from version N
+     * to M"), which hard-crashed the Steam screen when a v4 build was rolled back to v3. Rebuild
+     * the schema at this build's version instead: the cached library/licenses are lost but re-sync
+     * on next login, and — crucially — the app no longer crashes on open. Additive-only columns
+     * mean a downgrade would otherwise be harmless, but we can't rely on that across arbitrary gaps.
+     */
+    @Override
+    public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        Log.w(TAG, "Downgrading steam.db v" + oldVersion + " → v" + newVersion + " — rebuilding schema (cache lost, re-syncs on login)");
+        db.execSQL("DROP TABLE IF EXISTS depot_manifests");
+        db.execSQL("DROP TABLE IF EXISTS steam_downloads");
+        db.execSQL("DROP TABLE IF EXISTS steam_license_apps");
+        db.execSQL("DROP TABLE IF EXISTS steam_licenses");
+        db.execSQL("DROP TABLE IF EXISTS steam_games");
+        onCreate(db);
     }
 
     /** ALTER TABLE ... ADD COLUMN, ignoring the "duplicate column name" error so re-runs are safe. */
@@ -402,15 +431,17 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         public final long sizeBytes;          // PICS-declared (unreliable) uncompressed estimate
         public final long realSizeBytes;      // manifest-true uncompressed (install), 0 = unresolved
         public final long realDownloadBytes;  // manifest-true compressed  (network), 0 = unresolved
+        public final long realDiskBytes;      // block-rounded on-disk footprint estimate, 0 = unresolved
 
         DepotManifestRow(int appId, int depotId, long manifestId, long sizeBytes,
-                         long realSizeBytes, long realDownloadBytes) {
+                         long realSizeBytes, long realDownloadBytes, long realDiskBytes) {
             this.appId             = appId;
             this.depotId           = depotId;
             this.manifestId        = manifestId;
             this.sizeBytes         = sizeBytes;
             this.realSizeBytes     = realSizeBytes;
             this.realDownloadBytes = realDownloadBytes;
+            this.realDiskBytes     = realDiskBytes;
         }
     }
 
@@ -420,14 +451,15 @@ public final class SteamDatabase extends SQLiteOpenHelper {
      * so DepotSizeResolver re-fetches. Called on every library sync — must not clobber real sizes.
      */
     public void upsertDepotManifest(int appId, int depotId, long manifestId, long sizeBytes) {
-        long realSize = 0L, realDownload = 0L;
+        long realSize = 0L, realDownload = 0L, realDisk = 0L;
         try (Cursor c = getReadableDatabase().rawQuery(
-                "SELECT manifest_id, real_size_bytes, real_download_bytes FROM depot_manifests" +
+                "SELECT manifest_id, real_size_bytes, real_download_bytes, real_disk_bytes FROM depot_manifests" +
                 " WHERE app_id = ? AND depot_id = ?",
                 new String[]{String.valueOf(appId), String.valueOf(depotId)})) {
             if (c.moveToNext() && c.getLong(0) == manifestId) {
                 realSize     = c.getLong(1);   // same build → keep the resolved sizes
                 realDownload = c.getLong(2);
+                realDisk     = c.getLong(3);
             }
         } catch (Exception ignored) {}
         ContentValues cv = new ContentValues();
@@ -437,6 +469,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         cv.put("size_bytes",          sizeBytes);
         cv.put("real_size_bytes",     realSize);
         cv.put("real_download_bytes", realDownload);
+        cv.put("real_disk_bytes",     realDisk);
         getWritableDatabase().insertWithOnConflict(
                 "depot_manifests", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
     }
@@ -445,13 +478,13 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     public List<DepotManifestRow> getDepotManifests(int appId) {
         List<DepotManifestRow> rows = new ArrayList<>();
         try (Cursor c = getReadableDatabase().rawQuery(
-                "SELECT app_id,depot_id,manifest_id,size_bytes,real_size_bytes,real_download_bytes" +
+                "SELECT app_id,depot_id,manifest_id,size_bytes,real_size_bytes,real_download_bytes,real_disk_bytes" +
                 " FROM depot_manifests WHERE app_id = ? ORDER BY depot_id",
                 new String[]{String.valueOf(appId)})) {
             while (c.moveToNext()) {
                 rows.add(new DepotManifestRow(
                         c.getInt(0), c.getInt(1), c.getLong(2), c.getLong(3),
-                        c.getLong(4), c.getLong(5)));
+                        c.getLong(4), c.getLong(5), c.getLong(6)));
             }
         }
         return rows;
@@ -462,10 +495,11 @@ public final class SteamDatabase extends SQLiteOpenHelper {
      * reply that arrives after the depot's GID changed can't write a stale size onto the new build.
      */
     public void updateDepotRealSize(int appId, int depotId, long manifestId,
-                                    long realSizeBytes, long realDownloadBytes) {
+                                    long realSizeBytes, long realDownloadBytes, long realDiskBytes) {
         ContentValues cv = new ContentValues();
         cv.put("real_size_bytes",     realSizeBytes);
         cv.put("real_download_bytes", realDownloadBytes);
+        cv.put("real_disk_bytes",     realDiskBytes);
         getWritableDatabase().update("depot_manifests", cv,
                 "app_id = ? AND depot_id = ? AND manifest_id = ?",
                 new String[]{String.valueOf(appId), String.valueOf(depotId), String.valueOf(manifestId)});
@@ -485,6 +519,24 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     public void setGameRealSize(int appId, long realSizeBytes) {
         ContentValues cv = new ContentValues();
         cv.put("real_size_bytes", realSizeBytes);
+        getWritableDatabase().update("steam_games", cv,
+                "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** App-level estimated real on-disk footprint (block-rounded), or 0 if unresolved. */
+    public long getGameRealDisk(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT real_disk_bytes FROM steam_games WHERE app_id = ?",
+                new String[]{String.valueOf(appId)})) {
+            if (c.moveToNext()) return c.getLong(0);
+        } catch (Exception ignored) {}
+        return 0L;
+    }
+
+    /** Cache the app-level estimated real on-disk footprint (block-rounded). */
+    public void setGameRealDisk(int appId, long realDiskBytes) {
+        ContentValues cv = new ContentValues();
+        cv.put("real_disk_bytes", realDiskBytes);
         getWritableDatabase().update("steam_games", cv,
                 "app_id = ?", new String[]{String.valueOf(appId)});
     }

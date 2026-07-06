@@ -62,9 +62,18 @@ object DepotSizeResolver {
     /** Whole-resolve budget for the suspend entrypoint (covers several serial depots). */
     private const val RESOLVE_BUDGET_MS   = 120_000L
 
-    /** Sizes(realInstallBytes, realDownloadBytes, complete). complete=true only when EVERY selected
-     *  depot resolved; a partial result still reports the best sum but complete=false. */
-    data class Sizes(val realInstallBytes: Long, val realDownloadBytes: Long, val complete: Boolean)
+    /** Sizes(realInstallBytes, realDownloadBytes, complete, realDiskBytes). complete=true only when
+     *  EVERY selected depot resolved; a partial result still reports the best sum but complete=false.
+     *  realDiskBytes = estimated on-disk footprint (block-rounded), 0 when not resolved. */
+    data class Sizes(
+        val realInstallBytes: Long,
+        val realDownloadBytes: Long,
+        val complete: Boolean,
+        val realDiskBytes: Long = 0L,
+    )
+
+    /** Assumed filesystem block size when the install FS can't be stat'd (ext4/f2fs default). */
+    const val DEFAULT_BLOCK_BYTES = 4096L
 
     // -------------------------------------------------------------------------
     // Instant, DB-only read — safe from ANY thread (pure SQLite, no CM).
@@ -83,17 +92,20 @@ object DepotSizeResolver {
             if (rows.none { it.realSizeBytes > 0L }) return null   // never resolved
             var install = 0L
             var download = 0L
+            var disk = 0L
             var complete = true
             for (r in rows) {
                 if (r.realSizeBytes > 0L) {
                     install  += r.realSizeBytes
                     download += r.realDownloadBytes
+                    disk     += if (r.realDiskBytes > 0L) r.realDiskBytes else r.realSizeBytes
                 } else {
                     complete = false
                     install  += r.sizeBytes            // PICS fallback for the unresolved depot
+                    disk     += r.sizeBytes
                 }
             }
-            Sizes(install, download, complete)
+            Sizes(install, download, complete, disk)
         } catch (t: Throwable) {
             Log.w(TAG, "cached($appId) failed: ${t.javaClass.simpleName}")
             null
@@ -197,6 +209,7 @@ object DepotSizeResolver {
             val result = cached(appId) ?: fallback
             if (result.complete && result.realInstallBytes > 0L) {
                 try { db.setGameRealSize(appId, result.realInstallBytes) } catch (_: Throwable) {}
+                try { db.setGameRealDisk(appId, result.realDiskBytes) } catch (_: Throwable) {}
             }
             return result
         } finally {
@@ -246,9 +259,29 @@ object DepotSizeResolver {
                 Log.w(TAG, "resolve($appId): depot ${row.depotId} manifest had no size — keeping estimate")
                 return
             }
-            db.updateDepotRealSize(appId, row.depotId, row.manifestId, realUncompressed, realCompressed)
+            // Estimated on-disk footprint: sum each real file rounded UP to a filesystem block.
+            // The manifest's per-file totalSize comes from the payload (independent of filename
+            // decryption), so this needs no depot key. Symlinks (linkTarget != null) and directories/
+            // empty entries (totalSize <= 0) occupy no data blocks, so they're skipped — this avoids
+            // depending on the build-time-generated EDepotFileFlag enum. Degrade to the raw
+            // uncompressed total if the file list is unavailable/empty.
+            val realDisk = run {
+                val files = try { manifest.files } catch (_: Throwable) { null }
+                if (files.isNullOrEmpty()) realUncompressed
+                else {
+                    var sum = 0L
+                    for (f in files) {
+                        if (f.linkTarget != null) continue          // symlink — no data blocks
+                        val sz = f.totalSize
+                        if (sz <= 0L) continue                       // directory / empty file
+                        sum += ((sz + DEFAULT_BLOCK_BYTES - 1) / DEFAULT_BLOCK_BYTES) * DEFAULT_BLOCK_BYTES
+                    }
+                    if (sum > 0L) sum else realUncompressed
+                }
+            }
+            db.updateDepotRealSize(appId, row.depotId, row.manifestId, realUncompressed, realCompressed, realDisk)
             Log.i(TAG, "resolve($appId): depot ${row.depotId} real=${realUncompressed}B " +
-                    "download=${realCompressed}B (PICS was ${row.sizeBytes}B)")
+                    "download=${realCompressed}B disk=${realDisk}B (PICS was ${row.sizeBytes}B)")
         } catch (t: Throwable) {
             Log.w(TAG, "resolve($appId): depot ${row.depotId} unexpected ${t.javaClass.simpleName} — keeping estimate")
         }

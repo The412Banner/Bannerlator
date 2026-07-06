@@ -77,6 +77,14 @@ private enum class PauseAction { PAUSE, RESUME }
  *  failed = error, everything else = onSurfaceVariant). */
 private enum class GameStatus { NOT_INSTALLED, INSTALLED, CANCELLED, FAILED }
 
+/** The labeled size breakdown shown under the info chips. Empty strings render nothing. */
+private data class SizeBreakdown(
+    val downloadLabel: String = "",   // "Download: 4.5 GB"
+    val picsLabel: String = "",       // "PICS estimate (Steam): 8.4 GB"
+    val freeLabel: String = "",       // "Free space: 23.1 GB" (+ " — won't fit" when applicable)
+    val fits: Boolean = true,         // false → render freeLabel in the error color
+)
+
 class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventListener {
 
     companion object {
@@ -93,7 +101,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var headerBitmap by mutableStateOf<Bitmap?>(null)
     private var nameText by mutableStateOf("Loading…")
     private var typeText by mutableStateOf("GAME")
+    // Headline chip = on-disk footprint (estimate with "~", or the real measured size once installed).
     private var sizeText by mutableStateOf("Size unknown")
+    // Breakdown lines under the chips: download (compressed), PICS estimate (labeled), free space.
+    private var sizeBreakdown by mutableStateOf(SizeBreakdown())
     // One-shot guard so the manifest-true size resolve fires at most once per detail view.
     private var sizeResolveStarted = false
     private var statusText by mutableStateOf("Not installed")
@@ -152,6 +163,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     nameText = nameText,
                     typeText = typeText,
                     sizeText = sizeText,
+                    sizeBreakdown = sizeBreakdown,
                     statusText = statusText,
                     gameStatus = gameStatus,
                     installBtnText = installBtnText,
@@ -369,9 +381,73 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         Thread {
             val s = try { DepotSizeResolver.resolveBlocking(appId) } catch (_: Throwable) { null }
             if (s != null && s.complete && s.realInstallBytes > 0L) {
-                runOnUiThread { sizeText = fmtSize(s.realInstallBytes) }
+                runOnUiThread { game?.let { refreshSizeUi(it) } }   // real sizes landed → drop "~", update breakdown
             }
         }.apply { isDaemon = true; name = "SteamDetailSizeResolve" }.start()
+    }
+
+    /**
+     * Compute the size section from the DB (pure, UI-thread-safe): the headline on-disk FOOTPRINT
+     * (block-rounded estimate, "~" until resolved) plus the labeled breakdown — download (compressed),
+     * the PICS estimate (explicitly labeled as Steam's), and free space with a "won't fit" flag. For an
+     * installed game the estimate is replaced by the REAL measured footprint (async, best-effort).
+     */
+    private fun refreshSizeUi(g: SteamGame) {
+        val cs = try { DepotSizeResolver.cached(g.appId) } catch (_: Throwable) { null }
+        val resolved   = cs != null && cs.complete
+        val picsInstall = g.sizeBytes
+        val footprint  = if (resolved && cs!!.realDiskBytes > 0L) cs.realDiskBytes else picsInstall
+
+        // Headline: real footprint (no "~") once resolved, else the PICS-based estimate.
+        sizeText = when {
+            footprint > 0L && resolved -> "${fmtSize(footprint)} on disk"
+            footprint > 0L             -> "~${fmtSize(footprint)} on disk"
+            else                       -> "Size unknown"
+        }
+
+        // Download (compressed) — resolved value if sane (0 < download <= install), else PICS estimate.
+        val resolvedDownload = cs?.realDownloadBytes ?: 0L
+        val downloadBytes = if (resolvedDownload in 1..maxOf(picsInstall, resolvedDownload)) resolvedDownload
+                            else try { SteamRepository.getInstance().getSelectedDownloadSize(g.appId) } catch (_: Throwable) { 0L }
+
+        val free = try { freeInstallBytes() } catch (_: Throwable) { -1L }
+        // "Won't fit" only matters before install (an installed game already fits).
+        val fits = g.isInstalled || free < 0L || footprint <= 0L || free >= footprint
+        sizeBreakdown = SizeBreakdown(
+            downloadLabel = if (downloadBytes > 0L) "Download: ${fmtSize(downloadBytes)}" else "",
+            picsLabel     = if (picsInstall > 0L)   "PICS estimate (Steam): ${fmtSize(picsInstall)}" else "",
+            freeLabel     = if (free >= 0L) "Free space: ${fmtSize(free)}" + (if (!fits) " — won't fit" else "") else "",
+            fits          = fits,
+        )
+
+        if (g.isInstalled && g.installDir.isNotEmpty()) measureInstalledFootprint(g)
+    }
+
+    /** Available bytes on the partition the games install to. */
+    private fun freeInstallBytes(): Long {
+        val base = File(filesDir, "imagefs/steam_games")
+        val dir  = if (base.exists()) base else filesDir
+        val st   = android.os.StatFs(dir.path)
+        return st.availableBytes
+    }
+
+    /** Real on-disk footprint of an installed game: sum each file rounded up to a block. Best-effort. */
+    private fun measureInstalledFootprint(g: SteamGame) {
+        Thread {
+            val dir = File(g.installDir)
+            if (!dir.exists()) return@Thread
+            var sum = 0L
+            try {
+                dir.walkTopDown().forEach { f ->
+                    if (f.isFile) {
+                        val len = f.length()
+                        sum += ((len + DepotSizeResolver.DEFAULT_BLOCK_BYTES - 1) /
+                                DepotSizeResolver.DEFAULT_BLOCK_BYTES) * DepotSizeResolver.DEFAULT_BLOCK_BYTES
+                    }
+                }
+            } catch (_: Throwable) { return@Thread }
+            if (sum > 0L) runOnUiThread { sizeText = "${fmtSize(sum)} on disk" }
+        }.apply { isDaemon = true; name = "SteamDetailDiskMeasure" }.start()
     }
 
     private fun resetPauseBtn() {
@@ -431,13 +507,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         // Paint the manifest-TRUE size instantly if it's already resolved (no "~"), otherwise the PICS
         // "~estimate". A background resolve then drops the "~" once the real size lands. cached() is a
         // pure DB read; resolve() is gated off the UI thread + off active downloads inside the resolver.
-        val cachedSizes = try { DepotSizeResolver.cached(g.appId) } catch (_: Throwable) { null }
-        sizeText = when {
-            cachedSizes != null && cachedSizes.complete && cachedSizes.realInstallBytes > 0L ->
-                fmtSize(cachedSizes.realInstallBytes)
-            g.sizeBytes > 0L -> "~${fmtSize(g.sizeBytes)}"
-            else             -> "Size unknown"
-        }
+        refreshSizeUi(g)
         maybeResolveRealSize()
 
         if (g.isInstalled) {
@@ -657,6 +727,7 @@ private fun SteamGameDetailScreen(
     nameText: String,
     typeText: String,
     sizeText: String,
+    sizeBreakdown: SizeBreakdown,
     statusText: String,
     gameStatus: GameStatus,
     installBtnText: String,
@@ -761,6 +832,30 @@ private fun SteamGameDetailScreen(
                 InfoChip(typeText)
                 Spacer(Modifier.width(8.dp))
                 InfoChip(sizeText)
+            }
+            // Labeled size breakdown: download (compressed), PICS estimate (Steam), free space.
+            if (sizeBreakdown.downloadLabel.isNotEmpty() ||
+                sizeBreakdown.picsLabel.isNotEmpty() ||
+                sizeBreakdown.freeLabel.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Column {
+                    if (sizeBreakdown.downloadLabel.isNotEmpty()) Text(
+                        text = sizeBreakdown.downloadLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (sizeBreakdown.picsLabel.isNotEmpty()) Text(
+                        text = sizeBreakdown.picsLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (sizeBreakdown.freeLabel.isNotEmpty()) Text(
+                        text = sizeBreakdown.freeLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (sizeBreakdown.fits) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.error,
+                    )
+                }
             }
             Spacer(Modifier.height(8.dp))
             Text(

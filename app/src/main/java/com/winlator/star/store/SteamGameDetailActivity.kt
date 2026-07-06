@@ -94,6 +94,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var nameText by mutableStateOf("Loading…")
     private var typeText by mutableStateOf("GAME")
     private var sizeText by mutableStateOf("Size unknown")
+    // One-shot guard so the manifest-true size resolve fires at most once per detail view.
+    private var sizeResolveStarted = false
     private var statusText by mutableStateOf("Not installed")
     private var gameStatus by mutableStateOf(GameStatus.NOT_INSTALLED)
     private var installBtnText by mutableStateOf("Install")
@@ -356,6 +358,22 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         }
     }
 
+    /**
+     * Fire-and-forget: resolve the app's manifest-true install size off the UI thread, once. On
+     * success, drop the "~" and show the real size. Silent + degrades to the estimate on any failure
+     * (not-logged-in / download active / CM timeout — all handled inside DepotSizeResolver).
+     */
+    private fun maybeResolveRealSize() {
+        if (sizeResolveStarted) return
+        sizeResolveStarted = true
+        Thread {
+            val s = try { DepotSizeResolver.resolveBlocking(appId) } catch (_: Throwable) { null }
+            if (s != null && s.complete && s.realInstallBytes > 0L) {
+                runOnUiThread { sizeText = fmtSize(s.realInstallBytes) }
+            }
+        }.apply { isDaemon = true; name = "SteamDetailSizeResolve" }.start()
+    }
+
     private fun resetPauseBtn() {
         pauseBtnEnabled = false
         pauseBtnText = "Pause"
@@ -410,7 +428,17 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         val g = game ?: return
         nameText = g.name.ifEmpty { "App ${g.appId}" }
         typeText = g.type.uppercase()
-        sizeText = if (g.sizeBytes > 0) "~${fmtSize(g.sizeBytes)}" else "Size unknown"
+        // Paint the manifest-TRUE size instantly if it's already resolved (no "~"), otherwise the PICS
+        // "~estimate". A background resolve then drops the "~" once the real size lands. cached() is a
+        // pure DB read; resolve() is gated off the UI thread + off active downloads inside the resolver.
+        val cachedSizes = try { DepotSizeResolver.cached(g.appId) } catch (_: Throwable) { null }
+        sizeText = when {
+            cachedSizes != null && cachedSizes.complete && cachedSizes.realInstallBytes > 0L ->
+                fmtSize(cachedSizes.realInstallBytes)
+            g.sizeBytes > 0L -> "~${fmtSize(g.sizeBytes)}"
+            else             -> "Size unknown"
+        }
+        maybeResolveRealSize()
 
         if (g.isInstalled) {
             statusText = "Installed"

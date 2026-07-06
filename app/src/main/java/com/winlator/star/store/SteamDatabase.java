@@ -30,7 +30,9 @@ public final class SteamDatabase extends SQLiteOpenHelper {
 
     private static final String TAG        = "SteamDB";
     private static final String DB_NAME    = "steam.db";
-    private static final int    DB_VERSION = 3;
+    // v4: additive true-depot-size columns (DepotSizeResolver) — real_size_bytes /
+    //     real_download_bytes on depot_manifests, real_size_bytes on steam_games.
+    private static final int    DB_VERSION = 4;
 
     // -------------------------------------------------------------------------
     // DDL
@@ -49,7 +51,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  last_updated    INTEGER NOT NULL DEFAULT 0," +
             "  developer       TEXT    NOT NULL DEFAULT ''," +
             "  metacritic_score INTEGER NOT NULL DEFAULT 0," +
-            "  genres          TEXT    NOT NULL DEFAULT ''" +
+            "  genres          TEXT    NOT NULL DEFAULT ''," +
+            // True install size (uncompressed) summed from the SELECTED depots' manifests by
+            // DepotSizeResolver. 0 = unresolved → callers fall back to the PICS size_bytes estimate.
+            "  real_size_bytes INTEGER NOT NULL DEFAULT 0" +
             ")";
 
     private static final String SQL_LICENSES =
@@ -84,6 +89,11 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  depot_id    INTEGER NOT NULL," +
             "  manifest_id INTEGER NOT NULL DEFAULT 0," +
             "  size_bytes  INTEGER NOT NULL DEFAULT 0," +
+            // True per-depot sizes from the depot MANIFEST (metadata only), resolved lazily by
+            // DepotSizeResolver. 0 = unresolved. Keyed with manifest_id: a GID change (new build)
+            // in upsertDepotManifest resets these to 0 so a stale size can't survive an update.
+            "  real_size_bytes     INTEGER NOT NULL DEFAULT 0," +  // uncompressed (install)
+            "  real_download_bytes INTEGER NOT NULL DEFAULT 0," +  // compressed  (network)
             "  PRIMARY KEY (app_id, depot_id)" +
             ")";
 
@@ -131,12 +141,33 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.i(TAG, "Upgrading steam.db v" + oldVersion + " → v" + newVersion);
-        db.execSQL("DROP TABLE IF EXISTS depot_manifests");
-        db.execSQL("DROP TABLE IF EXISTS steam_downloads");
-        db.execSQL("DROP TABLE IF EXISTS steam_license_apps");
-        db.execSQL("DROP TABLE IF EXISTS steam_licenses");
-        db.execSQL("DROP TABLE IF EXISTS steam_games");
-        onCreate(db);
+        // Legacy destructive path: anything older than v3 gets recreated at the latest schema
+        // (onCreate builds the CURRENT DDL, which already includes the v4 real_* columns).
+        if (oldVersion < 3) {
+            db.execSQL("DROP TABLE IF EXISTS depot_manifests");
+            db.execSQL("DROP TABLE IF EXISTS steam_downloads");
+            db.execSQL("DROP TABLE IF EXISTS steam_license_apps");
+            db.execSQL("DROP TABLE IF EXISTS steam_licenses");
+            db.execSQL("DROP TABLE IF EXISTS steam_games");
+            onCreate(db);
+            return;
+        }
+        // v3 → v4: ADDITIVE — add the true-size columns, defaults 0, existing rows untouched
+        // (no library re-sync required). Guarded so a partial/re-run upgrade can't hard-fail.
+        if (oldVersion < 4) {
+            addColumnIfMissing(db, "depot_manifests", "real_size_bytes",     "INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(db, "depot_manifests", "real_download_bytes", "INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(db, "steam_games",     "real_size_bytes",     "INTEGER NOT NULL DEFAULT 0");
+        }
+    }
+
+    /** ALTER TABLE ... ADD COLUMN, ignoring the "duplicate column name" error so re-runs are safe. */
+    private static void addColumnIfMissing(SQLiteDatabase db, String table, String column, String type) {
+        try {
+            db.execSQL("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+        } catch (Exception e) {
+            Log.w(TAG, "addColumn " + table + "." + column + " skipped: " + e.getMessage());
+        }
     }
 
     // =========================================================================
@@ -368,39 +399,94 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         public final int  appId;
         public final int  depotId;
         public final long manifestId;
-        public final long sizeBytes;
+        public final long sizeBytes;          // PICS-declared (unreliable) uncompressed estimate
+        public final long realSizeBytes;      // manifest-true uncompressed (install), 0 = unresolved
+        public final long realDownloadBytes;  // manifest-true compressed  (network), 0 = unresolved
 
-        DepotManifestRow(int appId, int depotId, long manifestId, long sizeBytes) {
-            this.appId      = appId;
-            this.depotId    = depotId;
-            this.manifestId = manifestId;
-            this.sizeBytes  = sizeBytes;
+        DepotManifestRow(int appId, int depotId, long manifestId, long sizeBytes,
+                         long realSizeBytes, long realDownloadBytes) {
+            this.appId             = appId;
+            this.depotId           = depotId;
+            this.manifestId        = manifestId;
+            this.sizeBytes         = sizeBytes;
+            this.realSizeBytes     = realSizeBytes;
+            this.realDownloadBytes = realDownloadBytes;
         }
     }
 
+    /**
+     * Upsert a depot's PICS metadata (manifest GID + declared size). Preserves any resolved
+     * real_*_bytes when the manifest GID is UNCHANGED; a GID change (new build) resets them to 0
+     * so DepotSizeResolver re-fetches. Called on every library sync — must not clobber real sizes.
+     */
     public void upsertDepotManifest(int appId, int depotId, long manifestId, long sizeBytes) {
+        long realSize = 0L, realDownload = 0L;
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT manifest_id, real_size_bytes, real_download_bytes FROM depot_manifests" +
+                " WHERE app_id = ? AND depot_id = ?",
+                new String[]{String.valueOf(appId), String.valueOf(depotId)})) {
+            if (c.moveToNext() && c.getLong(0) == manifestId) {
+                realSize     = c.getLong(1);   // same build → keep the resolved sizes
+                realDownload = c.getLong(2);
+            }
+        } catch (Exception ignored) {}
         ContentValues cv = new ContentValues();
-        cv.put("app_id",      appId);
-        cv.put("depot_id",    depotId);
-        cv.put("manifest_id", manifestId);
-        cv.put("size_bytes",  sizeBytes);
+        cv.put("app_id",              appId);
+        cv.put("depot_id",            depotId);
+        cv.put("manifest_id",         manifestId);
+        cv.put("size_bytes",          sizeBytes);
+        cv.put("real_size_bytes",     realSize);
+        cv.put("real_download_bytes", realDownload);
         getWritableDatabase().insertWithOnConflict(
                 "depot_manifests", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
-    /** All depots (with manifest IDs) for a given app. */
+    /** All depots (with manifest IDs + resolved real sizes) for a given app. */
     public List<DepotManifestRow> getDepotManifests(int appId) {
         List<DepotManifestRow> rows = new ArrayList<>();
         try (Cursor c = getReadableDatabase().rawQuery(
-                "SELECT app_id,depot_id,manifest_id,size_bytes FROM depot_manifests" +
-                " WHERE app_id = ? ORDER BY depot_id",
+                "SELECT app_id,depot_id,manifest_id,size_bytes,real_size_bytes,real_download_bytes" +
+                " FROM depot_manifests WHERE app_id = ? ORDER BY depot_id",
                 new String[]{String.valueOf(appId)})) {
             while (c.moveToNext()) {
                 rows.add(new DepotManifestRow(
-                        c.getInt(0), c.getInt(1), c.getLong(2), c.getLong(3)));
+                        c.getInt(0), c.getInt(1), c.getLong(2), c.getLong(3),
+                        c.getLong(4), c.getLong(5)));
             }
         }
         return rows;
+    }
+
+    /**
+     * Persist a depot's manifest-true sizes (DepotSizeResolver). Guarded on manifest_id so a
+     * reply that arrives after the depot's GID changed can't write a stale size onto the new build.
+     */
+    public void updateDepotRealSize(int appId, int depotId, long manifestId,
+                                    long realSizeBytes, long realDownloadBytes) {
+        ContentValues cv = new ContentValues();
+        cv.put("real_size_bytes",     realSizeBytes);
+        cv.put("real_download_bytes", realDownloadBytes);
+        getWritableDatabase().update("depot_manifests", cv,
+                "app_id = ? AND depot_id = ? AND manifest_id = ?",
+                new String[]{String.valueOf(appId), String.valueOf(depotId), String.valueOf(manifestId)});
+    }
+
+    /** App-level resolved true install size (uncompressed), or 0 if unresolved. */
+    public long getGameRealSize(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT real_size_bytes FROM steam_games WHERE app_id = ?",
+                new String[]{String.valueOf(appId)})) {
+            if (c.moveToNext()) return c.getLong(0);
+        } catch (Exception ignored) {}
+        return 0L;
+    }
+
+    /** Cache the app-level resolved true install size (uncompressed). */
+    public void setGameRealSize(int appId, long realSizeBytes) {
+        ContentValues cv = new ContentValues();
+        cv.put("real_size_bytes", realSizeBytes);
+        getWritableDatabase().update("steam_games", cv,
+                "app_id = ?", new String[]{String.valueOf(appId)});
     }
 
     // =========================================================================

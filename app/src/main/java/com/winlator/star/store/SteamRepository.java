@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import in.dragonbra.javasteam.enums.EResult;
 import in.dragonbra.javasteam.networking.steam3.ProtocolTypes;
 import in.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud;
+import in.dragonbra.javasteam.steam.handlers.steamcontent.SteamContent;
 import in.dragonbra.javasteam.steam.handlers.steamuserstats.SteamUserStats;
 import in.dragonbra.javasteam.steam.handlers.steamapps.License;
 import in.dragonbra.javasteam.steam.handlers.steamapps.PICSProductInfo;
@@ -1340,6 +1341,22 @@ public final class SteamRepository {
 
     public SteamClient   getSteamClient() { return steamClient; }
     public SteamApps     getSteamApps()   { return steamApps; }
+
+    /** The SteamContent handler (manifest request codes + CDN server list) — auto-registered on the
+     *  SteamClient. Used by DepotSizeResolver for metadata-only manifest fetches. Null if not connected. */
+    public SteamContent  getSteamContent() {
+        SteamClient sc = steamClient;
+        return sc != null ? sc.getHandler(SteamContent.class) : null;
+    }
+
+    /** True while a depot download owns the CM connection. DepotSizeResolver must NOT issue CM
+     *  traffic while this is true (it would contend with the download's AsyncJobs) — it serves the
+     *  cached/estimate instead and defers. */
+    public boolean isDownloadActive() { return downloadActive; }
+
+    /** Submit work onto the single library/sync worker thread so DepotSizeResolver's manifest
+     *  fetches stay serialized with (and off) the CM pump, exactly like the PICS sync. */
+    public void submitLibraryWork(Runnable r) { runOnLibraryWorker(r); }
     public SteamDatabase getDatabase() {
         if (appContext != null) return SteamDatabase.getInstance(appContext);
         return SteamDatabase.getInstance();

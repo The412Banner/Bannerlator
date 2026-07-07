@@ -159,6 +159,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
     private var steamStatus by mutableStateOf(SteamRepository.getInstance().status)
 
+    // Steam Cloud saves — only meaningful once the game is installed AND a Steam session is live
+    // (SteamRepository.getSteamCloud() != null). Download is the safe/primary op; upload asks first.
+    private var cloudVisible by mutableStateOf(false)
+    private var cloudBusy by mutableStateOf(false)
+    private var cloudStatus by mutableStateOf<String?>(null)
+    private var showUploadConfirm by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         appId = intent.getIntExtra(EXTRA_APP_ID, 0)
@@ -207,11 +214,41 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     goldbergSizeLabel = goldbergSizeLabel,
                     onGoldbergDownloadClick = { onGoldbergDownloadClicked() },
                     onGoldbergModeSelected = { onGoldbergModeSelected(it) },
+                    cloudVisible = cloudVisible,
+                    cloudBusy = cloudBusy,
+                    cloudStatus = cloudStatus,
+                    cloudFolderPath = steamCloudDir().absolutePath,
+                    onDownloadCloud = { onDownloadCloudSaves() },
+                    onUploadCloud = { showUploadConfirm = true },
                     onBack = { finish() },
                     onInstallClick = { onInstallClicked() },
                     onPauseResumeClick = { onPauseResumeClicked() },
                     onLaunchClick = { onLaunchClicked() },
                 )
+
+                if (showUploadConfirm) {
+                    AlertDialog(
+                        onDismissRequest = { showUploadConfirm = false },
+                        title = { Text("Upload saves to Steam Cloud?") },
+                        text = {
+                            Text(
+                                "This uploads the files in this game's local cloud-saves folder to " +
+                                    "your Steam Cloud, overwriting the cloud copies of those files.\n\n" +
+                                    "It only ADDS or REPLACES files — it never deletes anything from " +
+                                    "the cloud. If the local folder is empty, nothing is sent."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showUploadConfirm = false
+                                onUploadCloudSaves()
+                            }) { Text("Upload") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showUploadConfirm = false }) { Text("Cancel") }
+                        },
+                    )
+                }
 
                 if (showSpeedPicker) {
                     DownloadSpeedPickerDialog(
@@ -591,6 +628,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             installAction = InstallAction.UNINSTALL
             installBtnEnabled = true
             launchBtnEnabled = true
+            // Cloud saves need a live Steam session (the SteamCloud handle is only bound after login).
+            cloudVisible = SteamRepository.getInstance().steamCloud != null
             goldbergMode = SteamPrefs.getGoldbergMode(appId)
             goldbergInstalled = GoldbergComponent.isInstalled(this)
             // If the global component isn't downloaded yet, fetch the catalog in
@@ -607,6 +646,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             installAction = InstallAction.INSTALL
             installBtnEnabled = true
             launchBtnEnabled = false
+            cloudVisible = false
         }
     }
 
@@ -730,6 +770,40 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         }.start()
     }
 
+    /**
+     * Local staging folder for this game's Steam Cloud saves. A Bannerlator-owned, user-visible
+     * directory (NOT the game's Wine-prefix save location — see report). Downloads land here
+     * preserving the cloud path layout; uploads read back from here.
+     */
+    private fun steamCloudDir(): File =
+        File(android.os.Environment.getExternalStorageDirectory(), "Bannerlator/SteamCloudSaves/$appId")
+
+    /** Cloud -> local. The safe/primary direction — it can only ever write to the local staging folder. */
+    private fun onDownloadCloudSaves() {
+        if (cloudBusy) return
+        cloudBusy = true
+        cloudStatus = "Preparing download…"
+        SteamCloudSaveManager.downloadSaves(this, appId, steamCloudDir(),
+            object : SteamCloudSaveManager.Callback {
+                override fun onStatus(message: String) { runOnUiThread { cloudStatus = message } }
+                override fun onDone(summary: String) { runOnUiThread { cloudStatus = summary; cloudBusy = false } }
+                override fun onError(message: String) { runOnUiThread { cloudStatus = "Error: $message"; cloudBusy = false } }
+            })
+    }
+
+    /** Local -> cloud. Gated behind an explicit confirmation dialog. Strictly additive (never deletes). */
+    private fun onUploadCloudSaves() {
+        if (cloudBusy) return
+        cloudBusy = true
+        cloudStatus = "Preparing upload…"
+        SteamCloudSaveManager.uploadSaves(this, appId, steamCloudDir(),
+            object : SteamCloudSaveManager.Callback {
+                override fun onStatus(message: String) { runOnUiThread { cloudStatus = message } }
+                override fun onDone(summary: String) { runOnUiThread { cloudStatus = summary; cloudBusy = false } }
+                override fun onError(message: String) { runOnUiThread { cloudStatus = "Error: $message"; cloudBusy = false } }
+            })
+    }
+
     /** Compose add-to-shortcuts flow: load containers, then show the M3 picker. */
     private fun startAddToShortcuts(gameName: String, exePath: String, coverUrl: String?) {
         // If this game is in Cold Client Loader mode, the shortcut must launch the
@@ -833,6 +907,12 @@ private fun SteamGameDetailScreen(
     goldbergSizeLabel: String,
     onGoldbergDownloadClick: () -> Unit,
     onGoldbergModeSelected: (GoldbergMode) -> Unit,
+    cloudVisible: Boolean,
+    cloudBusy: Boolean,
+    cloudStatus: String?,
+    cloudFolderPath: String,
+    onDownloadCloud: () -> Unit,
+    onUploadCloud: () -> Unit,
     onBack: () -> Unit,
     onInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
@@ -1062,6 +1142,16 @@ private fun SteamGameDetailScreen(
                 onModeSelected = onGoldbergModeSelected,
             )
         }
+
+        if (cloudVisible) {
+            CloudSavesSection(
+                busy = cloudBusy,
+                status = cloudStatus,
+                folderPath = cloudFolderPath,
+                onDownloadCloud = onDownloadCloud,
+                onUploadCloud = onUploadCloud,
+            )
+        }
     }
 
     // DLC picker sheet — choose which owned DLC download with the game (opt-out).
@@ -1242,6 +1332,98 @@ private fun GoldbergSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Steam Cloud saves section. Two clearly-labeled directional actions:
+ *   ⬇ Download from Cloud — the safe/primary op (only writes to the local staging folder)
+ *   ⬆ Upload to Cloud     — strictly additive (never deletes); the caller gates it behind a confirm
+ * Both buttons disable while an op is running. Shown only when the game is installed and a Steam
+ * session is live (handled by the caller's `cloudVisible`).
+ */
+@Composable
+private fun CloudSavesSection(
+    busy: Boolean,
+    status: String?,
+    folderPath: String,
+    onDownloadCloud: () -> Unit,
+    onUploadCloud: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(16.dp),
+    ) {
+        Text(
+            text = "Steam Cloud Saves",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Sync this game's saves with your Steam Cloud. Download copies your cloud saves " +
+                "into the folder below; Upload sends that folder's files back to the cloud.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Uploads only add or replace files — they never delete anything from the cloud.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Folder: $folderPath",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = onDownloadCloud,
+                enabled = !busy,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+            ) { Text("⬇ Download from Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+
+            OutlinedButton(
+                onClick = onUploadCloud,
+                enabled = !busy,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+            ) { Text("⬆ Upload to Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+
+        if (busy) {
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = status ?: "Working…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else if (!status.isNullOrEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

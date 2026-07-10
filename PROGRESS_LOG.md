@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-07-09 — 🔗 Cross-app config matching: BannerHub configs → Bannerlator (appid-index PR #1 + translate-mirror decision)
+
+> **New initiative (not a Bannerlator code change yet — repo-side + design). Goal: let a user's added game auto-suggest/apply a known-good setup from BannerHub's ~2113-game / ~10k-config crowdsourced DB (`The412Banner/bannerhub-game-configs`). Full detail in memory [[project_bannerlator_bannerhub_config_crossuse]].**
+>
+> **Two jobs, decided:** (1) MATCHING = join user's game to configs by **Steam appid**; (2) TRANSLATION = turn a BannerHub (XiaoJi `com.xj.winemu`) config into a Bannerlator `.container`.
+>
+> **✅ MATCHING shipped as PR:** https://github.com/The412Banner/bannerhub-game-configs/pull/1 (branch `feat/steam-appid-enrichment`, as The412Banner, base main, OPEN/awaiting merge). Adds 5 NEW files — `games_steam.json` (folder→appid, **2113 folders / 1382 resolved = 65% seed**), `steam_index.json` (appid→[folders] reverse index), `steam_aliases.json` (manual exe-abbrev overrides), `tools/enrich_steam_ids.py` (incremental resolver: naive→norm→fuzzy + aliases + non-game filter), `.github/workflows/enrich-steam-ids.yml`. **games.json VERIFIED untouched.** Reuses the site's Cloudflare Worker `/steam/search?name=` (returns `{appid,name,cover}`) which the browse UI already calls for covers; `devices.json` gives the per-game SoC index for free.
+>
+> **Measured resolve rate (full 2113 sweep):** 64% naive / 65% basic / 67% w/ proper normalization. Biggest fixable bug = apostrophe (`_s_`→`'s`, rescues all Assassin's Creed + Baldur's Gate). Residual ~33% = exe-abbrevs (AC3SP/ACOdyssey → aliases/exe-WMClass match), tools-not-games (7-Zip/4gb_patch → filter), non-Steam/niche (→ SteamGridDB). Fuzzy Steam search → plausibly ~75-80%.
+>
+> **✅ DECISION — TRANSLATION via pre-translated MIRROR (not client-side):** second folder **`bannerlator-configs/`** in the same repo, **incremental daily sync** (diff configs/, not full re-translate), non-games filtered, components validated against OUR catalog (nicholasx417/winlator-contents + Turnip), each config appid-stamped. Centralizes the fragile XiaoJi→.container + component mapping in CI (fixable w/o app release). Client stays thin: resolve game→appid→lookup native config→apply (feas-2 on confidence, feas-1 suggest). (Separate-repo `bannerlator-game-configs` is the cleaner-isolation alt; repo grows ~2× either way.)
+>
+> **🔒 NON-INTERFERENCE INVARIANT (hard requirement):** never write games.json or configs/ (the BannerHub app reads games.json in 3 places + a 30-min cron regenerates it); everything is a separate sidecar/folder + separate concurrency-guarded workflow (rebase-before-push, no cron); resolution once in CI → consumers read static files, ZERO Worker load per user; additive/opt-in. Zero impact on BannerHub builds — verified.
+>
+> **▶️ TOMORROW (2026-07-10):** build the **XiaoJi→.container translator + component-catalog validator** (load-bearing), then the daily mirror workflow, then the Bannerlator-side consumer (fetch steam_index.json, persist shortcut→appid via existing SteamGridDB resolve, join, suggest/apply). Merge PR #1 + optional `force:true` seed upgrade whenever.
+
 ## 2026-07-08 — 🚧 2.6-pre: port GameNative #1620 (+#1644) — ASR SurfaceFlinger crash + BGRA→RGBA color fix
 
 > **Branch `feat/asr-gn1620` off main `0ff4df95` (clean post-2.5 base). NOT yet CI-verified/device-tested. 2.6-preN material.**

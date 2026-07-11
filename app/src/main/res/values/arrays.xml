@@ -44,7 +44,6 @@
         <item>WineD3D</item>
         <item>DXVK+VKD3D</item>
         <item>VEGAS+VKD3D</item>
-        <item>VEGAS</item>
     </string-array>
     <string-array name="ddrawrapper_entries">
         <item>CnC-DDraw</item>

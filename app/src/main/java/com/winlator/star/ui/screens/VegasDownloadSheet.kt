@@ -53,6 +53,7 @@ fun VegasDownloadSheet(
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var downloadingTag by remember { mutableStateOf<String?>(null) }
+    var downloadProgress by remember { mutableStateOf(0f) }
     var installing by remember { mutableStateOf(false) }
 
     // Fetch releases from GitHub API
@@ -140,6 +141,12 @@ fun VegasDownloadSheet(
                     )
                 }
             } else {
+                if (downloadingTag != null) {
+                    LinearProgressIndicator(
+                        progress = downloadProgress,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 LazyColumn(Modifier.fillMaxWidth()) {
                     items(releases, key = { it.tagName }) { release ->
                         val isDownloading = downloadingTag == release.tagName
@@ -158,9 +165,12 @@ fun VegasDownloadSheet(
                                     onClick = {
                                         val url = release.wcpAssetUrl ?: return@IconButton
                                         downloadingTag = release.tagName
+                                        downloadProgress = 0f
                                         scope.launch {
                                             val uri = withContext(Dispatchers.IO) {
-                                                downloadWcp(context, url, release.tagName)
+                                                downloadWcp(context, url, release.tagName) { progress ->
+                                                    downloadProgress = progress
+                                                }
                                             }
                                             downloadingTag = null
                                             if (uri != null) {
@@ -195,9 +205,12 @@ fun VegasDownloadSheet(
 }
 
 /** Download a .wcp file to cache dir and return a content:// URI. */
-private fun downloadWcp(context: Context, url: String, tag: String): Uri? {
+private fun downloadWcp(context: Context, url: String, tag: String, onProgress: ((Float) -> Unit)? = null): Uri? {
     val f = File(context.cacheDir, "vegas_${tag}.wcp")
-    return if (Downloader.downloadFile(url, f)) Uri.fromFile(f) else null
+    val listener = if (onProgress != null) object : Downloader.ProgressListener {
+        override fun onProgress(fraction: Float) { onProgress(fraction) }
+    } else null
+    return if (Downloader.downloadFile(url, f, listener)) Uri.fromFile(f) else null
 }
 
 /** Install a .wcp content package via ContentsManager. */

@@ -1888,6 +1888,8 @@ internal fun DxvkConfigDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val config = remember(initialConfig) { DXVKConfigDialog.parseConfig(initialConfig) }
+    val activity = context.findActivity() ?: return
+    var isProcessing by remember { mutableStateOf(false) }
 
     val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
     val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
@@ -1938,6 +1940,36 @@ internal fun DxvkConfigDialog(
     var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
     var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
 
+    val pickVegasLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = InAppFilePicker.pickedUri(result.data)
+            if (uri != null) {
+                isProcessing = true
+                installContentFromUri(activity, uri) { success ->
+                    if (success) {
+                        Toast.makeText(activity, "VEGAS version installed", Toast.LENGTH_SHORT).show()
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                val cm = ContentsManager(context)
+                                cm.syncContents()
+                                val newVersions = if (isVegas)
+                                    DXVKConfigDialog.loadVegasVersionList(context, cm)
+                                else
+                                    DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
+                                withContext(Dispatchers.Main) {
+                                    allDxvkVersions.value = newVersions
+                                }
+                            }
+                        }
+                    }
+                    isProcessing = false
+                }
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isVegas) "VEGAS ${stringResource(R.string.configuration)}" else "DXVK ${stringResource(R.string.configuration)}") },
@@ -1960,6 +1992,60 @@ internal fun DxvkConfigDialog(
                     ContentInstallGear(
                         onDownloadFile = onDownloadDxvk
                     )
+                    if (isVegas) {
+                        IconButton(
+                            onClick = {
+                                isProcessing = true
+                                scope.launch {
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            val cm = ContentsManager(context)
+                                            cm.syncContents()
+                                            val expectedName = "vegas-$selectedDxvk"
+                                            val profile = cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+                                                .firstOrNull { it.verName == expectedName }
+                                            if (profile != null) {
+                                                cm.removeContent(profile)
+                                                cm.syncContents()
+                                                val newVersions = DXVKConfigDialog.loadVegasVersionList(context, cm)
+                                                withContext(Dispatchers.Main) {
+                                                    allDxvkVersions.value = newVersions
+                                                    if (selectedDxvk !in newVersions) {
+                                                        selectedDxvk = newVersions.firstOrNull() ?: selectedDxvk
+                                                    }
+                                                    Toast.makeText(activity, "VEGAS version deleted", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } else {
+                                                withContext(Dispatchers.Main) {
+                                                    Toast.makeText(activity, "No installed VEGAS version to delete", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(activity, "ERROR: Failed to delete — ${e.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                    } finally {
+                                        withContext(Dispatchers.Main) { isProcessing = false }
+                                    }
+                                }
+                            },
+                            enabled = !isProcessing,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                        }
+                        IconButton(
+                            onClick = { pickVegasLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP, "Select VEGAS package")) },
+                            enabled = !isProcessing,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = "Install from file", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+                if (isProcessing) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
                 }
                 Spacer(Modifier.height(8.dp))
                 if (dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) {
@@ -2266,8 +2352,18 @@ private fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boole
             cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
                 var phase = 0
                 override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                    val message = when (reason) {
+                        ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough storage space"
+                        ContentsManager.InstallFailedReason.ERROR_BADTAR -> "Corrupted archive file"
+                        ContentsManager.InstallFailedReason.ERROR_NOPROFILE -> "No valid profile found in package"
+                        ContentsManager.InstallFailedReason.ERROR_BADPROFILE -> "Invalid profile in package"
+                        ContentsManager.InstallFailedReason.ERROR_MISSINGFILES -> "Missing required files in package"
+                        ContentsManager.InstallFailedReason.ERROR_EXIST -> "This version is already installed"
+                        ContentsManager.InstallFailedReason.ERROR_UNTRUSTPROFILE -> "Untrusted profile, installation blocked"
+                        ContentsManager.InstallFailedReason.ERROR_UNKNOWN -> "Unknown installation error"
+                    }
                     activity.runOnUiThread {
-                        Toast.makeText(activity, "Install failed: $reason", Toast.LENGTH_LONG).show()
+                        Toast.makeText(activity, "ERROR: $message", Toast.LENGTH_LONG).show()
                         onResult(false)
                     }
                 }
@@ -2282,7 +2378,7 @@ private fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boole
                         }
                     } catch (e: Exception) {
                         activity.runOnUiThread {
-                            Toast.makeText(activity, "Install error: ${e.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(activity, "ERROR: Installation error — ${e.message}", Toast.LENGTH_LONG).show()
                             onResult(false)
                         }
                     }
@@ -2290,7 +2386,7 @@ private fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boole
             })
         } catch (e: Exception) {
             activity.runOnUiThread {
-                Toast.makeText(activity, "Install error: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, "ERROR: Installation error — ${e.message}", Toast.LENGTH_LONG).show()
                 onResult(false)
             }
         }

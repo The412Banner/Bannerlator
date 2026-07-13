@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-07-13 — 🌐 LAN-over-internet feature: SPIKE (netns assumption device-PROVEN, VpnService probe built, pushing to CI)
+
+> **Goal:** let two Bannerlator users play LAN-multiplayer games together over the internet (one hosts, one joins). Design settled: a **virtual LAN overlay** (make both phones look like one subnet) — do NOT touch per-game netcode. Best fit = **L2 mesh with broadcast forwarding (ZeroTier/n2n)**; L3 (Tailscale/Nebula) rejected (no broadcast fwd → game server-browser stays empty). Integration point = **Android `VpnService` tun** (captures Wine traffic transparently); userspace SDK (libzt/tsnet) REJECTED — gives its own socket stack, Wine's winsock won't use it. NAT traversal needs a relay (CF Workers can host room-code signaling but NOT raw UDP relay → mesh root-servers or self-hosted supernode). Full design in [[project_bannerlator_lan_overlay_feature]].
+>
+> **✅ ASSUMPTION #1 — DEVICE-PROVEN (root bridge, 2026-07-13):** Winlator does NOT isolate the network namespace. App PID 21169 (`u0_a177`), `init` (PID 1), and `system_server` ALL share `net:[4026531840]` (the global netns). ⇒ Wine/box64 fork into the same netns under the app UID ⇒ **a per-app VpnService WILL capture Wine's LAN broadcast**. App already holds INTERNET + ACCESS_NETWORK_STATE; no tun currently exists. This was the cheap kill-switch for the whole feature — it holds.
+>
+> **🔧 SPIKE BUILT (branch `feat/lan-overlay-spike`, off main; NOT for merge):** `com.winlator.star.net.LanBridgeVpnService` — broadcast-only VpnService (routes 255.255.255.255/32 + 224.0.0.0/4 + 192.168/16 + 10/8 to tun, leaves public traffic off-tun so Steam/games still work), reads the tun, parses IPv4, logs `LANSPIKE: CAPTURED ...`; fires 5× in-process `DatagramSocket` broadcast probes (the exact app-UID→bionic-socket path Wine hits). Trigger = exported `LanSpikeReceiver` via `am broadcast -a com.winlator.banner.LAN_SPIKE_START`. Manifest: service w/ BIND_VPN_SERVICE + receiver. targetSdk 28 = no FGS-type hassle.
+>
+> **▶️ NEXT:** push → CI → `stage-apk` → device: `cmd appops set com.winlator.banner ACTIVATE_VPN allow`, START, `logcat -s LANSPIKE`. **PROOF #2 = a `probe N sent` line followed by a `CAPTURED UDP ... [BROADCAST]` line** ⇒ mechanism confirmed. Then confirmation #3 = real Wine game LAN broadcast. If proven → design the shippable overlay (mesh choice + room-code worker + consent UX).
+
 ## 2026-07-13 — 🍷 New Proton 10.0-4 (unixlib + fast-yield, stripped+zstd) shipped + in-app catalog; broken P11 x86-64 rows pulled
 
 > **Proton-layer work on `The412Banner/proton-wine` + `winlator-contents` (no Bannerlator app change). Full detail: [[project_fexcore_unixlib_transition]].**

@@ -256,6 +256,21 @@
         <activity android:name="com.winlator.star.store.QrLoginActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <service android:name="com.winlator.star.store.SteamForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
         <service android:name="com.winlator.star.store.download.DownloadForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
+
+        <!-- SPIKE / DEBUG ONLY: LAN-over-internet feasibility probe (not user-facing) -->
+        <service android:name="com.winlator.star.net.LanBridgeVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.VpnService"/>
+            </intent-filter>
+        </service>
+        <receiver android:name="com.winlator.star.net.LanSpikeReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="com.winlator.banner.LAN_SPIKE_START"/>
+                <action android:name="com.winlator.banner.LAN_SPIKE_STOP"/>
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
 

@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-07-13 — 🌐 LAN-over-internet multiplayer: feasibility PROVEN + P1.1/P1.2 built & device-proven (PAUSED → resume at P1.3)
+
+> **Feature:** let two Bannerlator users play a LAN-multiplayer game over the internet (one hosts, one joins by code). Design = **own minimal 2-peer virtual-LAN overlay** (user decision — NOT ZeroTier/n2n: no licensing, full control, reuses CF+account). Full spec + decisions: memory `project_bannerlator_lan_overlay_spec.md`; feasibility detail `project_bannerlator_lan_overlay_feature.md`.
+>
+> **✅ P0 feasibility — device-proven:** Winlator shares the global netns (app/init/system_server all `net:[4026531840]`), so a per-app VpnService captures Wine's LAN broadcast (spike `CAPTURED UDP -> 255.255.255.255 [BROADCAST]`). Learnings: must call `VpnService.prepare()` before `establish()`; a VpnService without `setAllowedApplications` routes device-wide (blackholed DNS) → real overlay is SCOPED to banner.
+>
+> **✅ P1.1 transport backbone — host-verified.** Standalone C workspace `/home/claude-user/lannet` (becomes the Android `.so`): `lanswitch` (2-node switch: bcast/mcast→fan-out, unicast→peer, drop), `frame`, `relay_core`+`relay` (room-keyed UDP forwarder, relay-first = works through any NAT), `tunnel` (client pump). `make check` = 20 checks green; `test_tunnel` + `e2e_test.py` prove broadcast/unicast delivery + room isolation through the real relay.
+>
+> **✅ P1.2 scoped VpnService + JNI tunnel — DEVICE-PROVEN (build `d66e4ba`, branch `feat/lan-overlay-p1` off main `29651161`, worktree `/home/claude-user/lan-p1-wt`).** `liblannet.so` (JNI pump) + `LanOverlayVpnService` (scoped `addAllowedApplication`, 10.99.0.x/24, routes /24+bcast+mcast only, MTU 1380) + trigger receiver. CI 29283732914 green (native clean under NDK/bionic). On real HW: `nativeStart rc=0` + `overlay up: 10.99.0.1`; relay (in PRoot on the SAME phone, shared netns, app reaches `127.0.0.1:48800`) logged the device's `JOIN role=1` + `PING` keepalive + peer-B `JOIN role=2` + broadcast `DATA` forwarded to device. Device cleaned, Termux re-foregrounded.
+>
+> **⚠️ NOT yet exercised:** device EMITTING into the tunnel + inbound consumed by a listener (needs a real Wine game or a small app-side probe) = the P1.6 round-trip. **⚠️ Payload is CLEARTEXT** — wrap in Noise IK before any release.
+>
+> **▶️ RESUME AT P1.3 (after work):** Worker room-code signaling (`POST /lan/host`→6-char code, `POST /lan/join {code}`→relay addr+peer role), identity via existing account system — self-contained, testable against CF like the config worker. Then P1.4 relay VPS, P1.5 host/join UI, P1.6 two-device round-trip (exit), + Noise crypto. Full sub-plan in the spec memory. **Branch `feat/lan-overlay-p1` is throwaway-early (cleartext), NOT for merge yet. Repo is CONTESTED by a concurrent session — always sha-verify built APKs.**
+
 ## 2026-07-13 — 🍷 New Proton 10.0-4 (unixlib + fast-yield, stripped+zstd) shipped + in-app catalog; broken P11 x86-64 rows pulled
 
 > **Proton-layer work on `The412Banner/proton-wine` + `winlator-contents` (no Bannerlator app change). Full detail: [[project_fexcore_unixlib_transition]].**

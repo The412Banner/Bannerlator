@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -155,7 +156,7 @@ fun AdrenoDriverDownloadSheet(
 
     pendingEntry?.let { entry ->
         if (!downloading) {
-            AlertDialog(
+            OutlinedAlertDialog(
                 onDismissRequest = { pendingEntry = null },
                 title = { Text("Download driver?") },
                 text = {
@@ -220,7 +221,7 @@ fun AdrenoDriverDownloadSheet(
                 },
             )
         } else {
-            AlertDialog(
+            OutlinedAlertDialog(
                 onDismissRequest = { /* block dismiss while busy */ },
                 title = { Text(downloadStage) },
                 text = {

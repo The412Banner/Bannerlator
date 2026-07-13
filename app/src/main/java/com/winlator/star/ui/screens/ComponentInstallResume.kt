@@ -38,7 +38,7 @@ fun ComponentInstallResume() {
     var message by remember { mutableStateOf<String?>(null) }
 
     message?.let { m ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { message = null },
             containerColor = cs.surfaceContainerHigh,
             text = { Text(m, color = cs.onSurface) },
@@ -48,7 +48,7 @@ fun ComponentInstallResume() {
 
     val name = pending ?: return
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = { /* keep until the user chooses */ },
         containerColor = cs.surfaceContainerHigh,
         title = { Text("Finish installing $name", color = cs.onSurface) },

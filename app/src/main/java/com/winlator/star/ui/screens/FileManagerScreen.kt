@@ -517,7 +517,7 @@ fun FileManagerScreen(
 
     if (showNewFolderDialog) {
         var folderName by remember { mutableStateOf("") }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showNewFolderDialog = false },
             title = { Text("New Folder") },
             text = {
@@ -540,7 +540,7 @@ fun FileManagerScreen(
 
     if (renameTarget != null) {
         var newName by remember(renameTarget) { mutableStateOf(renameTarget?.name ?: "") }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { renameTarget = null },
             title = { Text("Rename") },
             text = {
@@ -564,7 +564,7 @@ fun FileManagerScreen(
 
     if (selectedEntry != null && selectedEntry != showMenuFor) {
         val file = selectedEntry ?: return
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { selectedEntry = null },
             title = { Text("Delete?") },
             text = { Text("Delete \"${file.name}\" permanently?") },
@@ -579,7 +579,7 @@ fun FileManagerScreen(
     }
 
     if (showContainerPicker) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showContainerPicker = false },
             title = { Text("Choose container") },
             text = {
@@ -606,7 +606,7 @@ fun FileManagerScreen(
 
     if (pendingRun != null) {
         val file = pendingRun
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { pendingRun = null },
             title = { Text("Run in which container?") },
             text = {
@@ -634,7 +634,7 @@ fun FileManagerScreen(
 
     if (pendingAddShortcut != null) {
         val file = pendingAddShortcut
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { pendingAddShortcut = null },
             title = { Text("Add to which container?") },
             text = {

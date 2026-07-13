@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -274,7 +275,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 }
 
                 goldbergMessage?.let { msg ->
-                    AlertDialog(
+                    OutlinedAlertDialog(
                         onDismissRequest = { goldbergMessage = null },
                         title = { Text("Steam Emulator (Goldberg)") },
                         text = { Text(msg) },
@@ -1280,7 +1281,7 @@ private fun DownloadSpeedPickerDialog(
     // Per-download, not persisted — defaults off each time (scoped to this one download).
     var debugLog by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Download speed") },
         text = {
@@ -1366,7 +1367,7 @@ private fun ExePickerDialogGame(
     onDismiss: () -> Unit,
     onSelected: (String) -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select executable for \"$gameName\"") },
         text = {

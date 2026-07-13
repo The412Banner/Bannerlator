@@ -123,7 +123,7 @@ fun ContentDownloadSheet(
 
     // Info sub-dialog
     showInfoProfile?.let { profile ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showInfoProfile = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
@@ -146,7 +146,7 @@ fun ContentDownloadSheet(
 
     // Remove confirmation
     confirmRemoveProfile?.let { profile ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { confirmRemoveProfile = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text("Remove content?", color = MaterialTheme.colorScheme.onSurface) },
@@ -166,7 +166,7 @@ fun ContentDownloadSheet(
 
     // Error sub-dialog
     errorMsg?.let { msg ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { errorMsg = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },

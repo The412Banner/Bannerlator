@@ -375,7 +375,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     }
 
     if (showBackupDialog) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showBackupDialog = false },
             title = { Text("Backup Data") },
             text = { Text("Do you want to create a backup of the app's data directory?") },
@@ -409,7 +409,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     }
 
     if (showRestoreConfirm) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showRestoreConfirm = false; pendingRestoreUri = null },
             title = { Text("Restore Data") },
             text = { Text("This will restart the app. Continue?") },
@@ -1015,7 +1015,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
         val selectedSet = remember { mutableStateOf(wineDebugChannels.toSet()) }
 
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showDebugChannelDialog = false },
             title = { Text("Wine Debug Channels") },
             text = {

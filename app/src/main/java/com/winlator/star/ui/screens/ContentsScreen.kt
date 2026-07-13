@@ -228,7 +228,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
 
     // ── Confirm: install from file ────────────────────────────────────────────
     if (confirmInstallPrompt) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { confirmInstallPrompt = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(context.getString(R.string.do_you_want_to_install_content), color = MaterialTheme.colorScheme.onSurface) },
@@ -324,7 +324,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
             onConfirm = { installDialog = null; d.onConfirm() },
             onDismiss = { installDialog = null; d.onCancel() },
         )
-        is InstallDialogState.Alert -> AlertDialog(
+        is InstallDialogState.Alert -> OutlinedAlertDialog(
             onDismissRequest = { installDialog = null; d.onDismiss() },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             text = { Text(d.message, color = MaterialTheme.colorScheme.onSurface) },
@@ -339,7 +339,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
 
     // ── Confirm: remove ───────────────────────────────────────────────────────
     confirmRemove?.let { profile ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { confirmRemove = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(context.getString(R.string.do_you_want_to_remove_this_content), color = MaterialTheme.colorScheme.onSurface) },
@@ -386,7 +386,7 @@ private fun ContentInfoDialog(
     onConfirm: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
@@ -446,7 +446,7 @@ private fun UntrustedDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text("Warning", color = Color(0xFFFF8A80)) },

@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -141,7 +142,7 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
                 )
 
                 if (showSignOutDialog) {
-                    AlertDialog(
+                    OutlinedAlertDialog(
                         onDismissRequest = { showSignOutDialog = false },
                         title = { Text("Sign out of Steam?") },
                         text = { Text("Your saved login will be removed. You will need to sign in again.") },
@@ -671,7 +672,7 @@ private fun ExePickerDialog(
     onDismiss: () -> Unit,
     onSelected: (String) -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {

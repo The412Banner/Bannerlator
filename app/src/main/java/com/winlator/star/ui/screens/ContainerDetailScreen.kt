@@ -334,7 +334,7 @@ internal fun VulkanSettingsDialog(
     // (old config) resolves to true. ASR-only; independent of swapRB (Vulkan/GL).
     var sfCompatMode by remember { mutableStateOf(cfg["sfCompatMode"] != "false") }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.vulkan_settings)) },
         text = {
@@ -1374,7 +1374,7 @@ internal fun AddEnvVarComposable(
 
     val knownNames = remember { EnvVarsView.knownEnvVars.map { it[0] } }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.new_environment_variable)) },
         text = {
@@ -1657,7 +1657,7 @@ internal fun GraphicsDriverConfigDialog(
     val bcnTypeEntries      = remember { context.resources.getStringArray(R.array.bcn_emulation_type_entries).toList() }
     val bcnCacheEntries     = remember { context.resources.getStringArray(R.array.bcn_emulation_cache_entries).toList() }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.graphics_driver_configuration)) },
         text = {
@@ -1836,7 +1836,7 @@ internal fun ExtensionPickerDialog(
         mutableStateOf(extensions.associateWith { !blacklisted.contains(it) })
     }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.graphics_driver_available_extensions)) },
         text = {
@@ -1970,7 +1970,7 @@ internal fun DxvkConfigDialog(
         }
     }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isVegas) "VEGAS ${stringResource(R.string.configuration)}" else "DXVK ${stringResource(R.string.configuration)}") },
         text = {
@@ -2127,7 +2127,7 @@ internal fun WineD3DConfigDialog(
     var orm       by remember { mutableStateOf(config.get("OffscreenRenderingMode").ifEmpty { "fbo" }) }
     var renderer  by remember { mutableStateOf(config.get("renderer").ifEmpty { "gl" }) }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("WineD3D ${stringResource(R.string.configuration)}") },
         text = {
@@ -2237,7 +2237,7 @@ internal fun FpsCounterConfigDialog(
         "hudTransparency=$hudTransparency"
     ).joinToString(",")
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("FPS Counter Settings") },
         text = {

@@ -87,7 +87,7 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     }
 
     message?.let { m ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { message = null },
             containerColor = cs.surfaceContainerHigh,
             text = { Text(m, color = cs.onSurface) },
@@ -96,7 +96,7 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     }
 
     confirmExec?.let { c ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { confirmExec = null },
             containerColor = cs.surfaceContainerHigh,
             title = { Text("Run ${c.name} installer", color = cs.onSurface) },

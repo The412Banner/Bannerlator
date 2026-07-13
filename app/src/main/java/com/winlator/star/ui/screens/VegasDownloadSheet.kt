@@ -116,7 +116,7 @@ fun VegasDownloadSheet(
 
     // Error dialog
     errorMsg?.let { msg ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { errorMsg = null },
             title = { Text("Error", color = MaterialTheme.colorScheme.onSurface) },
             text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },
@@ -125,7 +125,7 @@ fun VegasDownloadSheet(
     }
 
     // Main dialog
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("VEGAS Downloads", color = MaterialTheme.colorScheme.onSurface) },
         text = {

@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -1297,7 +1298,7 @@ private fun ExePickerDialogGog(
     onSelected: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select game executable") },
         text = {
@@ -1325,7 +1326,7 @@ private fun InstallConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Install ${game.title}?") },
         text = {
@@ -1384,7 +1385,7 @@ private fun DetailDialog(
         if (game.description.isNotEmpty()) append("\n${game.description}")
     }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(game.title) },
         text = {

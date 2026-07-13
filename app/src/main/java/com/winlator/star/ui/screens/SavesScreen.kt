@@ -331,7 +331,7 @@ private fun NewSaveDialog(
         }
     }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("New Save") },
         text = {
@@ -416,7 +416,7 @@ private fun EditSaveDialog(
     var title by remember(save) { mutableStateOf(save.getTitle()) }
     val context = LocalContext.current
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Save") },
         text = {
@@ -458,7 +458,7 @@ private fun TransferSaveDialog(
     var selectedIndex by remember { mutableStateOf(0) }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Transfer Container") },
         text = {
@@ -515,7 +515,7 @@ private fun ImportContainerSelectDialog(
     var selectedIndex by remember { mutableStateOf(0) }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Import Save") },
         text = {

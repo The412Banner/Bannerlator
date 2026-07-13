@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,7 +32,7 @@ fun VibrationDialog(state: XServerDialogState) {
         checked.addAll(slots.map { it.second })
     }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = { state.dismiss() },
         title = { Text("Vibration") },
         text = {

@@ -262,7 +262,7 @@ fun ContainersScreen(
     // Import picker dialog
     if (showImportPicker) {
         val backups = remember { vm.availableBackups() }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showImportPicker = false },
             title = { Text("Import Container") },
             text = {
@@ -296,7 +296,7 @@ fun ContainersScreen(
     confirmDialog?.let { action ->
         when (action) {
             is ConfirmAction.Duplicate -> {
-                AlertDialog(
+                OutlinedAlertDialog(
                     onDismissRequest = { confirmDialog = null },
                     title = { Text("Duplicate container?") },
                     text = { Text("Duplicate \"${action.container.name}\"?") },
@@ -312,7 +312,7 @@ fun ContainersScreen(
                 )
             }
             is ConfirmAction.Remove -> {
-                AlertDialog(
+                OutlinedAlertDialog(
                     onDismissRequest = { confirmDialog = null },
                     title = { Text("Remove container?") },
                     text = { Text("Remove \"${action.container.name}\" permanently?") },
@@ -338,7 +338,7 @@ fun ContainersScreen(
     // ---- Backup / Restore game save flow ----
     when (val flow = saveFlow) {
         null -> {}
-        is SaveFlow.Fork -> AlertDialog(
+        is SaveFlow.Fork -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text("Game saves") },
             text = {
@@ -357,7 +357,7 @@ fun ContainersScreen(
             },
             confirmButton = { TextButton(onClick = { saveFlow = null }) { Text("Cancel") } },
         )
-        is SaveFlow.RestoreSource -> AlertDialog(
+        is SaveFlow.RestoreSource -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text("Restore a save") },
             text = {
@@ -386,7 +386,7 @@ fun ContainersScreen(
             },
             confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.Fork(flow.container) }) { Text("Back") } },
         )
-        is SaveFlow.Confirm -> AlertDialog(
+        is SaveFlow.Confirm -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text("Restore game save?") },
             text = {
@@ -411,7 +411,7 @@ fun ContainersScreen(
             },
             dismissButton = { TextButton(onClick = { saveFlow = null }) { Text("Cancel") } },
         )
-        is SaveFlow.BackupScope -> AlertDialog(
+        is SaveFlow.BackupScope -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text(stringResource(R.string.save_backup_scope_title)) },
             text = {
@@ -432,7 +432,7 @@ fun ContainersScreen(
         )
         is SaveFlow.GamePicker -> {
             val shortcuts = remember(flow.container.id) { vm.shortcutsFor(flow.container) }
-            AlertDialog(
+            OutlinedAlertDialog(
                 onDismissRequest = { saveFlow = null },
                 title = { Text(stringResource(R.string.save_backup_pick_game_title)) },
                 text = {
@@ -469,7 +469,7 @@ fun ContainersScreen(
                 saveFlow = SaveFlow.BackupFormat(flow.container, roots, flow.gameName)
             },
         )
-        is SaveFlow.BackupFormat -> AlertDialog(
+        is SaveFlow.BackupFormat -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text(stringResource(R.string.save_backup_format_title)) },
             text = {
@@ -845,7 +845,7 @@ private fun GameSavesDialog(
     // Warn if any two ticked folders are nested (manual add can create that; shared subtree copied once).
     val overlap = checked.any { a -> checked.any { b -> a != b && (a.startsWith("$b/")) } }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onCancel,
         title = { Text(gameName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -927,7 +927,7 @@ private fun ManualAddDialog(container: Container, onPick: (File) -> Unit, onCanc
     val subDirs = remember(cur.path) {
         cur.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name.lowercase() } ?: emptyList()
     }
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onCancel,
         title = { Text(stringResource(R.string.save_backup_add_folder_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -1044,7 +1044,7 @@ private fun StorageInfoDialog(container: Container, onDismiss: () -> Unit) {
         }
     }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Storage Info") },
         text = {

@@ -673,7 +673,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Import container picker
     if (showImportContainerPicker) {
         val containers = vm.containers()
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showImportContainerPicker = false },
             title = { Text("Select container") },
             text = {
@@ -713,7 +713,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Rename after import
     if (showRenameDialog) {
         var newName by remember { mutableStateOf(renameDialogName) }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showRenameDialog = false },
             title = { Text("Rename Shortcut") },
             text = {
@@ -746,7 +746,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
 
     // Remove confirmation
     confirmRemove?.let { s ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { confirmRemove = null },
             title = { Text("Remove shortcut?") },
             text = { Text("Remove \"${s.name}\"?") },
@@ -768,7 +768,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Clone-to-container dialog
     cloneTarget?.let { s ->
         val containers = vm.containers()
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { cloneTarget = null },
             title = { Text("Select container") },
             text = {
@@ -812,7 +812,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val days    = (totalMs / (1000 * 60 * 60 * 24))
         val formatted = String.format("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
         var didReset by remember { mutableStateOf(false) }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { propertiesShortcut = null },
             title = { Text("Properties") },
             text = {
@@ -835,7 +835,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Scrape cover dialog
     val sc = scrapeTarget
     if (sc != null) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { scrapeTarget = null },
             title = { Text("Scrape cover for \"${sc.name}\"") },
             text = {
@@ -903,7 +903,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     if (!communityDialogsGated) communityTarget?.let { s ->
         val dismiss = { communityTarget = null; communityResult = null }
         val communityDialogShape = RoundedCornerShape(28.dp)
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = dismiss,
             // Drop the dialog surface a notch below the cards' surfaceContainer fill so the config
             // cards + their 1dp outline separate from the background the same way the game/container
@@ -1175,7 +1175,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 uploadStarted = false
                 cancel()
             }
-            AlertDialog(
+            OutlinedAlertDialog(
                 onDismissRequest = dismissReplace,
                 title = { Text("Replace your shared config?") },
                 text = {
@@ -1213,7 +1213,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     if (showMyUploads) {
         val myUploadsShape = RoundedCornerShape(28.dp)
         val closeMyUploads = { showMyUploads = false; expandedUploadSha = null }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = closeMyUploads,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             shape = myUploadsShape,
@@ -1335,7 +1335,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
 
     // Delete-confirm for one of the user's uploads.
     deleteUploadRow?.let { row ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { deleteUploadRow = null },
             title = { Text("Delete shared config?") },
             text = { Text("Delete your shared config for \"${row.record.game}\"?", color = OnSurface) },
@@ -1393,7 +1393,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             is CommunityPick.File -> "Config from ${pick.entry.device.ifBlank { pick.entry.soc.ifBlank { "that device" } }}."
             is CommunityPick.Device -> "Config from ${pick.device.model.ifBlank { "that device" }}."
         }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { configAction = null },
             title = { Text(pick.game.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
             text = {
@@ -1462,7 +1462,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             is CommunityPick.File -> pick.entry.device.ifBlank { pick.entry.soc.ifBlank { "a device" } }
             is CommunityPick.Device -> pick.device.model.ifBlank { "a device" }
         }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { applyPicker = null },
             title = { Text("Apply to game…") },
             text = {
@@ -1498,7 +1498,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
 
     // Mismatch confirmation — target shortcut's game doesn't match the config's game.
     applyMismatch?.let { (sc, pick) ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { applyMismatch = null },
             title = { Text("Different game") },
             text = { Text("This config is for \"${pick.game.name}\" — apply to \"${sc.name}\" anyway?") },
@@ -1515,7 +1515,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Phase 3 step 2 — EXPORT hand-off. After a config artifact is generated, offer the two local
     // sinks: Share (ACTION_SEND via the app FileProvider) or Save to the public Downloads folder.
     exportResult?.let { res ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { exportResult = null },
             title = { Text("Share this game's config") },
             text = {
@@ -1546,7 +1546,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // shortcut): mirrors the apply-target picker — pick which shortcut the imported file applies to.
     importedConfigUri?.let { uri ->
         val shortcutList = vm.currentShortcuts()
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { importedConfigUri = null },
             title = { Text("Apply imported config to…") },
             text = {
@@ -1579,7 +1579,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
 
     // Applying spinner (blocking) while the config is fetched + merged.
     if (applyBusy) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = {},
             title = { Text("Applying config") },
             text = {
@@ -1613,7 +1613,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             }
         }
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { applyResult = null },
             title = { Text(if (res.ok) "Config applied" else "Couldn't apply") },
             text = {
@@ -1896,7 +1896,7 @@ private fun MyAccountDialog(
         }
     }
 
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = shape,
@@ -2324,7 +2324,7 @@ private fun SmartComponentInstallRow(
 
     // Exact-match confirm dialog (stacks over the result dialog).
     confirmProfile?.let { p ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { confirmProfile = null },
             title = { Text("Install ${p.verName}?") },
             text = { Text("Download and install ${mc.type} ${p.verName}, then apply it to this shortcut?") },
@@ -2499,7 +2499,7 @@ private fun SmartDriverInstallRow(
 
     // Per-variant confirm dialog (stacks over the result dialog).
     confirmEntry?.let { e ->
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { confirmEntry = null },
             title = { Text("Quick install ${e.displayName}?") },
             text = { Text("Download and install this Turnip driver from ${e.source}, then apply it to this shortcut?") },

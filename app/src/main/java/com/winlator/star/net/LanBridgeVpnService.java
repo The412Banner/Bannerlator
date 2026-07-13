@@ -41,6 +41,17 @@ public class LanBridgeVpnService extends VpnService {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (running) return START_STICKY;
         try {
+            // Must register as the active VPN before establish(). With appop
+            // ACTIVATE_VPN=allow (set via root for the spike) this returns null and
+            // consents silently; a non-null Intent would need an Activity to show the dialog.
+            Intent prep = VpnService.prepare(this);
+            if (prep != null) {
+                Log.e(TAG, "prepare() wants UI consent — appop ACTIVATE_VPN not honored; "
+                        + "run: cmd appops set com.winlator.banner ACTIVATE_VPN allow");
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+            Log.i(TAG, "prepare() ok (app registered as active VPN)");
             Builder b = new Builder()
                     .setSession("LanBridgeSpike")
                     .setMtu(1400)

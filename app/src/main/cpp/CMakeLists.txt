@@ -145,3 +145,19 @@ target_link_libraries(direct_scanout
         atomic
 )
 
+
+# lannet — LAN-over-internet overlay tunnel (P1). Client pump + 2-node virtual
+# switch (host-verified as a standalone C workspace); JNI-driven by the
+# VpnService. Links only log (bionic provides sockets/poll/pthread/clock).
+add_library(lannet SHARED
+        lannet/lanswitch.c
+        lannet/frame.c
+        lannet/tunnel.c
+        lannet/lannet_jni.c
+)
+
+target_compile_options(lannet PRIVATE -Wall -Wextra)
+
+target_link_libraries(lannet
+        log
+)

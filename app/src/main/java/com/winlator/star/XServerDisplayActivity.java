@@ -989,7 +989,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
             @Override
             public void onUpdateWindowContent(Window window) {
-                if (!winStarted && window.isApplicationWindow()) {
+                // Fallback dismiss for pure-2D/GDI/software games that never present a GPUImage (the
+                // primary trigger is renderer.setOnFirstGameFrame). Only a ~fullscreen window counts:
+                // the real game/2D window fills the screen, while an early launcher/splash window is
+                // small — this is what stopped the overlay dismissing on Prince-of-Persia's launcher.
+                if (!winStarted && window.isApplicationWindow() && isFullscreenGameWindow(window)) {
                     xServerView.getRenderer().setCursorVisible(true);
                     // Success: the game painted. Stop the not-frozen timers, record how long the
                     // launch took (per-shortcut groundwork), and dismiss the overlay.
@@ -1758,6 +1762,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    // A window is a "fullscreen game window" when it fills ~the whole screen (both dimensions at
+    // least 85% of the X screen resolution). The real game/2D window spans the display; an early
+    // launcher/splash window is small — so this keeps the content-update fallback from dismissing the
+    // launch overlay on a launcher, while still dismissing for a genuine fullscreen software/2D game.
+    private static final float FULLSCREEN_WINDOW_FRACTION = 0.85f;
+    private boolean isFullscreenGameWindow(Window window) {
+        if (xServer == null) return false;
+        int sw = xServer.screenInfo.width, sh = xServer.screenInfo.height;
+        if (sw <= 0 || sh <= 0) return false;
+        return window.getWidth() >= sw * FULLSCREEN_WINDOW_FRACTION
+                && window.getHeight() >= sh * FULLSCREEN_WINDOW_FRACTION;
+    }
+
     // Best-effort "open the log folder" for the failure card. Folder-opening is unevenly supported
     // across file managers, so we fall back to showing the path if no handler is available.
     private void openLogFolder() {
@@ -2410,6 +2427,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
             });
         }
+
+        // PRIMARY launch-overlay dismiss: the truest "the game is actually rendering" signal is the
+        // first DXVK/Present GPU frame (a real swapchain AHardwareBuffer) reaching the present path.
+        // Launcher/splash/GDI windows go through the CPU path and never fire this, so we no longer
+        // dismiss on an early launcher window (the black-screen-after-splash bug). Fires once on the
+        // render thread; hop to the main thread for the timer/dialog work. Guarded by winStarted so
+        // it stays idempotent with the fullscreen-content fallback in onUpdateWindowContent.
+        renderer.setOnFirstGameFrame(wid -> {
+            if (winStarted) return;
+            runOnUiThread(() -> {
+                if (winStarted) return;
+                cancelLaunchTimers();
+                recordLaunchDuration();
+                preloaderDialog.closeOnUiThread();
+                xServerView.getRenderer().setCursorVisible(true);
+                winStarted = true;
+            });
+        });
 
         if (shortcut != null) {
             renderer.setUnviewableWMClasses("explorer.exe");

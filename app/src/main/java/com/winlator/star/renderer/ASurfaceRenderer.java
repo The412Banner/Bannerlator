@@ -431,6 +431,8 @@ public class ASurfaceRenderer implements HostRenderer,
     private void pushGpuImageToNative(int windowId, GPUImage g) {
         long ahbPtr = g.getHardwareBufferPtr();
         if (ahbPtr == 0) return;
+        // First real game frame reached the present path -> dismiss the launch overlay.
+        fireFirstGameFrame(windowId);
         nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, 0, null, -1, sfCompatMode);
         if (hudFrameTick != null) hudFrameTick.accept(windowId);
     }
@@ -516,6 +518,24 @@ public class ASurfaceRenderer implements HostRenderer,
     // mirroring VulkanRenderer.setHudFrameTick — the perf HUD is otherwise never driven under ASR.
     private java.util.function.IntConsumer hudFrameTick = null;
     public void setHudFrameTick(java.util.function.IntConsumer c) { hudFrameTick = c; }
+
+    // One-shot "first real game frame" callback (see HostRenderer). Fired the first time a GPUImage
+    // (a real swapchain AHardwareBuffer) is presented via pushGpuImageToNative, so the launch overlay
+    // dismisses on the first actual game render. The CPU/AHBImage chrome path (pushCpuImageToNative)
+    // never fires it, so early launcher/splash windows do not dismiss the overlay. Lock-free in steady
+    // state: after the first fire the field is null and the null check short-circuits every later
+    // present; the AtomicBoolean guarantees a single delivery.
+    private final java.util.concurrent.atomic.AtomicBoolean firstGameFrameFired =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+    private java.util.function.IntConsumer onFirstGameFrame = null;
+    public void setOnFirstGameFrame(java.util.function.IntConsumer c) { onFirstGameFrame = c; }
+    private void fireFirstGameFrame(int windowId) {
+        java.util.function.IntConsumer c = onFirstGameFrame;
+        if (c != null && firstGameFrameFired.compareAndSet(false, true)) {
+            onFirstGameFrame = null;
+            c.accept(windowId);
+        }
+    }
 
     // -------------------------------------------------------------------------
     // HostRenderer

@@ -495,6 +495,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     GPUImage g = (GPUImage) pixmap.getTexture();
                     long ahbPtr = g.getHardwareBufferPtr();
                     if (ahbPtr != 0) {
+                        // First real game frame reached the present path -> dismiss the launch overlay.
+                        fireFirstGameFrame(window.id);
                         if (nativeMode && pixmap.isDirectScanout() && nativeIsScanoutActive(nativeHandle)) {
                             int fence = g.unlock();
                             nativeScanoutSetBuffer(nativeHandle, ahbPtr,
@@ -541,6 +543,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     GPUImage g = (GPUImage) drawable.getTexture();
                     long ahbPtr = g.getHardwareBufferPtr();
                     if (ahbPtr != 0) {
+                        // First real game frame reached the present path -> dismiss the launch overlay.
+                        fireFirstGameFrame(window.id);
                         boolean scanoutNow = nativeMode && nativeIsScanoutActive(nativeHandle);
                         if (nativeMode && drawable.isDirectScanout() && scanoutNow) {
                             boolean wasDelivered = nativeIsGameFrameDelivered(nativeHandle);
@@ -852,6 +856,23 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     // on its FPS window. Decoupled from classicHudRef so it works for both HUD variants.
     private java.util.function.IntConsumer hudFrameTick = null;
     public void setHudFrameTick(java.util.function.IntConsumer c) { hudFrameTick = c; }
+
+    // One-shot "first real game frame" callback (see HostRenderer). Fired the first time a GPUImage
+    // (a real swapchain AHardwareBuffer) reaches the present path, so the launch overlay dismisses on
+    // the first actual game render — not on an early launcher/splash window (those take the CPU path).
+    // Lock-free in steady state: after the first fire the field is null, so the null check short-
+    // circuits every later present with no atomic op; the AtomicBoolean guarantees a single delivery.
+    private final java.util.concurrent.atomic.AtomicBoolean firstGameFrameFired =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+    private java.util.function.IntConsumer onFirstGameFrame = null;
+    public void setOnFirstGameFrame(java.util.function.IntConsumer c) { onFirstGameFrame = c; }
+    private void fireFirstGameFrame(int windowId) {
+        java.util.function.IntConsumer c = onFirstGameFrame;
+        if (c != null && firstGameFrameFired.compareAndSet(false, true)) {
+            onFirstGameFrame = null;
+            c.accept(windowId);
+        }
+    }
 
     public void setFrameRating(Object fr) {
         if (fr instanceof FrameRating) classicHudRef = (FrameRating) fr;

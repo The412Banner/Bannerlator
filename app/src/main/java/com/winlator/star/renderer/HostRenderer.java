@@ -22,6 +22,11 @@ public interface HostRenderer {
     void setScreenOffsetYRelativeToCursor(boolean b);
     boolean isScreenOffsetYRelativeToCursor();
     void setFpsWindowId(int id);
+    // One-shot callback fired on the FIRST real game frame (a GPUImage present reaching the
+    // present path), passing the presenting window id. Used to dismiss the launch overlay only
+    // once the game is actually rendering — launcher/splash/GDI windows go through the CPU path
+    // and never fire this. Fires at most once, then is a no-op with zero steady-state cost.
+    void setOnFirstGameFrame(java.util.function.IntConsumer c);
     void setFrameRating(Object fr);
     int getFpsLimit();
     void setFpsLimit(int limit);

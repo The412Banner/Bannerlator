@@ -90,6 +90,22 @@ object SteamPrefs {
         prefs.edit().putString(K_GOLDBERG_PREFIX + appId, mode.name).apply()
     }
 
+    // ── Goldberg LAN mode: per-game toggle ───────────────────────────────────
+    // Whether "Goldberg LAN mode" (custom_broadcasts.txt = peer overlay vIP) is armed for [appId].
+    // Defaults ON for a patched game (the spec pre-checks it when patched); only ever consulted when
+    // the game is actually Goldberg-patched, so the default is harmless otherwise.
+
+    private const val K_GOLDBERG_LAN_PREFIX = "goldberg_lan_"
+
+    /** Whether Goldberg LAN mode is enabled for [appId]. Defaults true (pre-checked when patched). */
+    fun getGoldbergLanEnabled(appId: Int): Boolean =
+        prefs.getBoolean(K_GOLDBERG_LAN_PREFIX + appId, true)
+
+    /** Persist the Goldberg LAN mode toggle for [appId]. */
+    fun setGoldbergLanEnabled(appId: Int, enabled: Boolean) {
+        prefs.edit().putBoolean(K_GOLDBERG_LAN_PREFIX + appId, enabled).apply()
+    }
+
     // ── DLC picker: per-game EXCLUDED DLC (opt-out) ──────────────────────────
     // Owned DLC downloads with the game by default; the picker lets the user opt
     // OUT of specific DLC. We store the excluded set (CSV of DLC appIds) rather

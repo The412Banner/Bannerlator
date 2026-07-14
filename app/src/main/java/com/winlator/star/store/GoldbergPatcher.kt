@@ -265,6 +265,33 @@ object GoldbergPatcher {
         return out
     }
 
+    /**
+     * Every directory a per-game Goldberg *networking* config file (e.g. Goldberg's
+     * `custom_broadcasts.txt`) should be written into for [mode]:
+     *  - one `steam_settings` beside each steam_api dll ([analyze]), and
+     *  - for COLDCLIENT only, one `steam_settings` beside the primary game exe, since the
+     *    ColdClientLoader lives next to the exe rather than the dll.
+     *
+     * Directories may not exist yet — callers `mkdirs()` as needed. Reuses the same target
+     * resolution the patcher itself uses (analyze + choosePrimaryExe) so the LAN drop-in lands
+     * exactly where Goldberg was applied. Never throws.
+     */
+    @JvmStatic
+    fun steamSettingsDirs(installDir: File, gameName: String, mode: GoldbergMode): List<File> {
+        val dirs = LinkedHashSet<File>()
+        try {
+            for (t in analyze(installDir)) dirs.add(File(t.dir, "steam_settings"))
+            if (mode == GoldbergMode.COLDCLIENT) {
+                AmazonLaunchHelper.choosePrimaryExe(installDir, gameName)?.parentFile?.let {
+                    dirs.add(File(it, "steam_settings"))
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "steamSettingsDirs failed for ${installDir.path}", e)
+        }
+        return dirs.toList()
+    }
+
     private fun collectApiDlls(dir: File, out: MutableList<PatchTarget>) {
         val entries = dir.listFiles() ?: return
         for (f in entries) {

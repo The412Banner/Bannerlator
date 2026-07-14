@@ -279,6 +279,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // LAN Multiplayer host/join dialog, opened from a game's long-press menu. The overlay is game-agnostic
     // in P1, so it's the same shared dialog as the nav-drawer / in-game surfaces (all observe LanSessionState).
     var showLanDialog by remember { mutableStateOf(false) }
+    // The shortcut whose long-press opened the LAN dialog (null = opened from the game-agnostic status
+    // pill). Drives the optional Goldberg-LAN-mode game context threaded into the dialog.
+    var lanShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var deleteUploadRow by remember { mutableStateOf<MyUploadRow?>(null) }
     var expandedUploadSha by remember { mutableStateOf<String?>(null) }
     var uploadDescText by remember { mutableStateOf("") }
@@ -542,7 +545,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         topBarActions.value = {
             // LAN session status pill — hidden when Idle, otherwise a tappable connecting/waiting/connected
             // chip that opens the LAN dialog for quick code/Stop access. Reads LanSessionState.
-            com.winlator.star.net.LanStatusPill(onClick = { showLanDialog = true })
+            com.winlator.star.net.LanStatusPill(onClick = { lanShortcut = null; showLanDialog = true })
             IconButton(onClick = { showCommunityBrowser = true }) {
                 Icon(
                     imageVector = Icons.Filled.Public,
@@ -626,7 +629,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onProperties = { propertiesShortcut = shortcut },
                                     onScrapeCover = { scrapeCoverFor(shortcut) },
                                     onCommunityConfigs = { communityConfigsFor(shortcut) },
-                                    onLanMultiplayer = { showLanDialog = true },
+                                    onLanMultiplayer = { lanShortcut = shortcut; showLanDialog = true },
                                 )
                             }
                         }
@@ -651,7 +654,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onProperties = itemProperties,
                                     onScrapeCover = { scrapeCoverFor(shortcut) },
                                     onCommunityConfigs = { communityConfigsFor(shortcut) },
-                                    onLanMultiplayer = { showLanDialog = true },
+                                    onLanMultiplayer = { lanShortcut = shortcut; showLanDialog = true },
                                 )
                             }
                         }
@@ -1380,7 +1383,20 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Phase 2 (optional accounts) — the My-account sheet. Its "My uploads" button dismisses this and opens
     // the existing My-uploads manager (the per-game dialog still opens My uploads directly, unchanged).
     if (showLanDialog) {
-        com.winlator.star.net.LanMultiplayerDialog(onDismiss = { showLanDialog = false })
+        // Resolve the tapped shortcut → (Steam appId, installDir, name) off-main so the dialog can offer
+        // the Goldberg-LAN-mode toggle for a patched Steam game. Null (status-pill entry or unresolved) →
+        // no game context → no toggle.
+        val sc = lanShortcut
+        var lanGame by remember(sc) { mutableStateOf<LanGameContext?>(null) }
+        LaunchedEffect(sc) {
+            lanGame = if (sc == null) null else withContext(Dispatchers.IO) { resolveSteamGameForShortcut(context, sc) }
+        }
+        com.winlator.star.net.LanMultiplayerDialog(
+            onDismiss = { showLanDialog = false },
+            gameAppId = lanGame?.appId,
+            gameInstallDir = lanGame?.installDir,
+            gameName = lanGame?.name,
+        )
     }
 
     if (showMyAccount) {
@@ -4872,6 +4888,36 @@ private fun renameShortcut(shortcut: Shortcut, newName: String) {
         }
         val lnk = File(parent, "${shortcut.name}.lnk")
         if (lnk.isFile) lnk.renameTo(File(parent, "$newName.lnk"))
+    }
+}
+
+/** Resolved Steam-game identity for a shortcut, used to offer Goldberg LAN mode. */
+private data class LanGameContext(val appId: Int, val installDir: String, val name: String)
+
+/**
+ * Best-effort resolution of a [Shortcut] → the installed Steam game it launches, so the LAN dialog can
+ * offer Goldberg LAN mode. Shortcuts carry no appId, so we match on the install-path convention: Steam
+ * installs land in `imagefs/steam_games/<safeName>` and the shortcut's Exec path contains that same
+ * `<safeName>` segment (both derive from the sanitised game name). We look for an installed GameRow whose
+ * installDir basename appears as a path segment in the shortcut's exe path.
+ *
+ * Returns null (→ no toggle) for non-Steam shortcuts, an uninitialised DB, or no match — always safe.
+ * NOTE (flagged for review): this is a heuristic reverse-map, not an authoritative shortcut→appId link.
+ */
+private fun resolveSteamGameForShortcut(context: Context, shortcut: Shortcut): LanGameContext? {
+    return try {
+        val db = com.winlator.star.store.SteamDatabase.getInstance(context.applicationContext)
+        val games = db.installedGames
+        // Windows exe path like "Z:\steam_games\<safeName>\...\game.exe" — split into path segments.
+        val segments = shortcut.path.split('\\', '/').map { it.trim() }.filter { it.isNotEmpty() }.toHashSet()
+        val match = games.firstOrNull { g ->
+            val dir = g.installDir
+            !dir.isNullOrBlank() && File(dir).name.let { it.isNotEmpty() && segments.contains(it) }
+        } ?: return null
+        LanGameContext(match.appId, match.installDir, (match.name ?: "").ifBlank { shortcut.name })
+    } catch (e: Exception) {
+        android.util.Log.w("BH_GOLDBERG_LAN", "resolveSteamGameForShortcut failed", e)
+        null
     }
 }
 

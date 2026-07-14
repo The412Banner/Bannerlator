@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.store.SteamPrefs
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,9 +75,20 @@ import java.util.UUID
  * ActivityResultRegistry (works from both the main Compose activity and the in-game dialog-host ComposeView),
  * and starts/stops [LanOverlayVpnService]. The running service publishes "up"/"down" back into
  * [LanSessionState], so the code below only ever drives the optimistic Creating / pending transitions.
+ *
+ * OPTIONAL game context ([gameAppId] / [gameInstallDir] / [gameName]) is supplied only by the per-game
+ * long-press surface. When present AND the game is Goldberg-patched ([GoldbergLanMode.isEligible]) a
+ * "Goldberg LAN mode" toggle appears; with it on, host/join writes the peer overlay vIP into the game's
+ * Goldberg steam_settings so its Steam-LAN discovery goes as directed unicast over the overlay. The
+ * nav-drawer and in-game surfaces pass no context (all null) → no toggle, identical behaviour as before.
  */
 @Composable
-fun LanMultiplayerDialog(onDismiss: () -> Unit) {
+fun LanMultiplayerDialog(
+    onDismiss: () -> Unit,
+    gameAppId: Int? = null,
+    gameInstallDir: String? = null,
+    gameName: String? = null,
+) {
     val context = LocalContext.current
     val activity = remember(context) { context.findComponentActivity() }
     val clipboard = LocalClipboardManager.current
@@ -84,6 +97,34 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
 
     var joinCode by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+
+    // Goldberg LAN mode — offered only for a patched game passed in via long-press. Keyed on the appId
+    // so the eligibility check + persisted toggle re-seed if this composable is reused for another game.
+    val goldbergEligible = remember(gameAppId, gameInstallDir) {
+        gameAppId != null && !gameInstallDir.isNullOrBlank() && GoldbergLanMode.isEligible(context, gameAppId)
+    }
+    var goldbergOn by remember(gameAppId) {
+        val initial = if (goldbergEligible && gameAppId != null) {
+            SteamPrefs.init(context.applicationContext)
+            SteamPrefs.getGoldbergLanEnabled(gameAppId)
+        } else {
+            false
+        }
+        mutableStateOf(initial)
+    }
+
+    // Drop / remove the peer-vIP custom_broadcasts.txt for the patched game. Both are off-main + no-op
+    // safe inside GoldbergLanMode, so we can call them freely from the UI thread.
+    fun maybeEnableGoldberg(room: LanRoom) {
+        if (goldbergOn && goldbergEligible && gameAppId != null && !gameInstallDir.isNullOrBlank()) {
+            GoldbergLanMode.enable(context, gameAppId, gameInstallDir, gameName ?: "", room.role)
+        }
+    }
+    fun maybeDisableGoldberg() {
+        if (goldbergEligible && gameAppId != null && !gameInstallDir.isNullOrBlank()) {
+            GoldbergLanMode.disable(context, gameAppId, gameInstallDir, gameName ?: "")
+        }
+    }
 
     // VPN consent. We register directly on the Activity's ActivityResultRegistry (unique key, unregistered
     // on dispose) rather than rememberLauncherForActivityResult, so this works even in the in-game
@@ -149,6 +190,9 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
                 LanSessionState.setIdle()
                 error = "Couldn't create a room. Check your connection and try again."
             } else {
+                // Host-before-launch: drop the peer-vIP file now, before the game starts (Goldberg
+                // reads custom_broadcasts.txt at startup).
+                maybeEnableGoldberg(room)
                 beginOverlay(room)
             }
         }
@@ -165,6 +209,7 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
                 LanSessionState.setIdle()
                 error = "Room $code wasn't found — it may be full or expired."
             } else {
+                maybeEnableGoldberg(room)
                 beginOverlay(room)
             }
         }
@@ -172,6 +217,7 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
 
     fun stop() {
         val code = LanSessionState.activeCode()
+        maybeDisableGoldberg()                     // remove the peer-vIP file we dropped (overlay teardown)
         stopOverlay(context)                       // service.onDestroy → LanSessionState.onOverlayDown()
         LanSessionState.setIdle()                  // also clear an optimistic pending state immediately
         if (code != null) scope.launch { withContext(Dispatchers.IO) { LanRoomWorker.leave(code) } }
@@ -192,6 +238,20 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
                 error?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(10.dp))
+                }
+                // Goldberg LAN mode toggle — only for a patched game, only before hosting (Goldberg reads
+                // the file at startup, so the choice must be made pre-launch).
+                if (goldbergEligible && session is LanSession.Idle) {
+                    GoldbergLanModeToggle(
+                        checked = goldbergOn,
+                        onChange = { on ->
+                            goldbergOn = on
+                            gameAppId?.let {
+                                SteamPrefs.init(context.applicationContext)
+                                SteamPrefs.setGoldbergLanEnabled(it, on)
+                            }
+                        },
+                    )
                 }
                 when (val s = session) {
                     LanSession.Idle -> IdleContent(
@@ -266,6 +326,38 @@ private fun IdleContent(
     ) {
         Text("Join game", fontWeight = FontWeight.SemiBold)
     }
+}
+
+@Composable
+private fun GoldbergLanModeToggle(checked: Boolean, onChange: (Boolean) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Goldberg LAN mode",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "For games whose multiplayer uses Steam networking. Turn this on before launching the game.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Switch(checked = checked, onCheckedChange = onChange)
+        }
+    }
+    Spacer(Modifier.height(14.dp))
 }
 
 @Composable

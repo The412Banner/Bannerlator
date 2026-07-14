@@ -1,5 +1,7 @@
 package com.winlator.star.net
 
+import android.content.Context
+import android.view.WindowManager
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -38,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -87,12 +92,18 @@ fun LanChatOverlay() {
         offset = IntOffset(offX.roundToInt(), offY.roundToInt()),
         onDismissRequest = { /* controlled by the title-bar _ / X, never by outside touches */ },
         properties = PopupProperties(
-            focusable = true,          // needed for the text field / soft keyboard
+            // Focusable ONLY when expanded (so the text field can type). The bubble is non-focusable so
+            // it never grabs key/controller input. Either way we add FLAG_NOT_TOUCH_MODAL below so touches
+            // OUTSIDE the window reach the game — you keep playing.
+            focusable = mode == LanChat.WindowMode.EXPANDED,
             dismissOnBackPress = false,
-            dismissOnClickOutside = false,  // -> non-touch-modal: outside touches reach the game
+            dismissOnClickOutside = false,
             clippingEnabled = false,
         ),
     ) {
+        // A focusable Compose popup is touch-modal by default (traps all touches). Force
+        // FLAG_NOT_TOUCH_MODAL on the popup window so touches outside its bounds pass to the game.
+        NonTouchModalPopupEffect()
         val dragMove = Modifier.pointerInput(Unit) {
             detectDragGestures { change, d -> change.consume(); offX += d.x; offY += d.y }
         }
@@ -183,20 +194,22 @@ private fun ChatWindow(dragMove: Modifier, widthDp: Float, listHeightDp: Float, 
                 }
             }
 
-            // ── Messages ──
-            if (messages.isEmpty()) {
-                Text(
-                    if (connected) "Say hi — messages send instantly, even while the game runs." else "Connecting…",
-                    color = Color.White.copy(alpha = 0.65f), fontSize = 12.5.sp, textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 22.dp),
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = listHeightDp.dp).padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    items(messages) { m -> ChatLine(m) }
+            // ── Messages (fixed, user-resizable height so vertical drag actually grows the area) ──
+            Box(Modifier.fillMaxWidth().height(listHeightDp.dp).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                if (messages.isEmpty()) {
+                    Text(
+                        if (connected) "Say hi — messages send instantly, even while the game runs." else "Connecting…",
+                        color = Color.White.copy(alpha = 0.65f), fontSize = 12.5.sp, textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+                    )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        items(messages) { m -> ChatLine(m) }
+                    }
                 }
             }
 
@@ -243,6 +256,27 @@ private fun ChatWindow(dragMove: Modifier, widthDp: Float, listHeightDp: Float, 
             Box(Modifier.padding(3.dp).size(11.dp).border(1.5.dp, Color.White.copy(alpha = 0.4f),
                 RoundedCornerShape(bottomEnd = 5.dp)))
         }
+    }
+}
+
+/**
+ * Compose renders a focusable Popup in its own window that is touch-MODAL by default (it swallows every
+ * touch on screen). We flip FLAG_NOT_TOUCH_MODAL on that window so touches OUTSIDE the chat window fall
+ * through to the game behind it — letting the player keep playing with the chat open.
+ */
+@Composable
+private fun NonTouchModalPopupEffect() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val root = view.rootView
+        val lp = root.layoutParams
+        if (lp is WindowManager.LayoutParams) {
+            lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+            (view.context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.let {
+                try { it.updateViewLayout(root, lp) } catch (e: Exception) { /* window gone */ }
+            }
+        }
+        onDispose { }
     }
 }
 

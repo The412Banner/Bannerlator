@@ -75,6 +75,7 @@ import com.winlator.star.store.AmazonMainActivity
 import com.winlator.star.store.EpicMainActivity
 import com.winlator.star.store.GogMainActivity
 import com.winlator.star.store.SteamMainActivity
+import com.winlator.star.net.LanMultiplayerDialog
 import com.winlator.star.ui.AccountUiBus
 import com.winlator.star.ui.AppDrawerContent
 import com.winlator.star.ui.AppNavGraph
@@ -335,6 +336,9 @@ private fun AppShell(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val topBarActionsState = remember { topBarActionsState() }
+    // LAN Multiplayer host/join dialog, opened from the nav-drawer. Local to the shell (unlike My Account,
+    // it isn't triggered from another screen), and observes LanSessionState so it mirrors every surface.
+    var showLan by remember { mutableStateOf(false) }
 
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route ?: startRoute
@@ -421,6 +425,10 @@ private fun AppShell(
                     }
                     AccountUiBus.requestMyAccount()
                 },
+                onLanMultiplayer = {
+                    scope.launch { drawerState.close() }
+                    showLan = true
+                },
             )
         },
     ) {
@@ -480,6 +488,10 @@ private fun AppShell(
 
     if (showAboutDialog) {
         AboutDialog(onDismiss = onDismissAboutDialog)
+    }
+
+    if (showLan) {
+        LanMultiplayerDialog(onDismiss = { showLan = false })
     }
 }
 

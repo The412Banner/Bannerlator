@@ -76,6 +76,8 @@ public class LanOverlayVpnService extends VpnService {
             handle = LanOverlay.nativeStart(tun.getFd(), relay, port, room, role);
             if (handle == 0) { Log.e(TAG, "nativeStart failed"); teardown(); stopSelf(); return START_NOT_STICKY; }
             Log.i(TAG, "overlay up: " + selfIp + " role=" + role + " relay=" + relay + ":" + port + " room=" + room);
+            // Tell the shared session state the tunnel is up so all 3 UI surfaces flip to connected.
+            LanSessionState.onOverlayUp(room, role);
         } catch (Exception e) {
             Log.e(TAG, "start failed", e);
             teardown();
@@ -93,6 +95,8 @@ public class LanOverlayVpnService extends VpnService {
     @Override
     public void onDestroy() {
         teardown();
+        // Overlay stopped (user Stop, or a failed start) — return every UI surface to Idle.
+        LanSessionState.onOverlayDown();
         Log.i(TAG, "overlay stopped");
         super.onDestroy();
     }

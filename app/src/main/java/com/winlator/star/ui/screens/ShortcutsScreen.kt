@@ -77,6 +77,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Search
@@ -275,6 +276,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // hosts create/login/reset when logged out and profile + "My uploads" + "Log out" when signed in.
     var showMyAccount by remember { mutableStateOf(false) }
     var myUploads by remember { mutableStateOf<List<MyUploadRow>?>(null) }
+    // LAN Multiplayer host/join dialog, opened from a game's long-press menu. The overlay is game-agnostic
+    // in P1, so it's the same shared dialog as the nav-drawer / in-game surfaces (all observe LanSessionState).
+    var showLanDialog by remember { mutableStateOf(false) }
     var deleteUploadRow by remember { mutableStateOf<MyUploadRow?>(null) }
     var expandedUploadSha by remember { mutableStateOf<String?>(null) }
     var uploadDescText by remember { mutableStateOf("") }
@@ -619,6 +623,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onProperties = { propertiesShortcut = shortcut },
                                     onScrapeCover = { scrapeCoverFor(shortcut) },
                                     onCommunityConfigs = { communityConfigsFor(shortcut) },
+                                    onLanMultiplayer = { showLanDialog = true },
                                 )
                             }
                         }
@@ -643,6 +648,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onProperties = itemProperties,
                                     onScrapeCover = { scrapeCoverFor(shortcut) },
                                     onCommunityConfigs = { communityConfigsFor(shortcut) },
+                                    onLanMultiplayer = { showLanDialog = true },
                                 )
                             }
                         }
@@ -1370,6 +1376,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
 
     // Phase 2 (optional accounts) — the My-account sheet. Its "My uploads" button dismisses this and opens
     // the existing My-uploads manager (the per-game dialog still opens My uploads directly, unchanged).
+    if (showLanDialog) {
+        com.winlator.star.net.LanMultiplayerDialog(onDismiss = { showLanDialog = false })
+    }
+
     if (showMyAccount) {
         MyAccountDialog(
             vm = vm,
@@ -3422,6 +3432,7 @@ private fun ShortcutItemLayoutL(
     onProperties: () -> Unit,
     onScrapeCover: () -> Unit,
     onCommunityConfigs: () -> Unit,
+    onLanMultiplayer: () -> Unit,
 ) {
     val container = shortcut.container
     val res = LocalContext.current.resources
@@ -3526,6 +3537,7 @@ private fun ShortcutItemLayoutL(
             onProperties = onProperties,
             onScrapeCover = onScrapeCover,
             onCommunityConfigs = onCommunityConfigs,
+            onLanMultiplayer = onLanMultiplayer,
         )
       }
     }
@@ -3542,6 +3554,7 @@ private fun ShortcutOverflowButton(
     onProperties: () -> Unit,
     onScrapeCover: () -> Unit,
     onCommunityConfigs: () -> Unit,
+    onLanMultiplayer: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Box {
@@ -3596,6 +3609,12 @@ private fun ShortcutOverflowButton(
             )
             MenuItemDivider()
             DropdownMenuItem(
+                text = { Text("Host/Join LAN game") },
+                leadingIcon = { Icon(Icons.Filled.Wifi, null, tint = MaterialTheme.colorScheme.primary) },
+                onClick = { menuExpanded = false; onLanMultiplayer() },
+            )
+            MenuItemDivider()
+            DropdownMenuItem(
                 text = { Text("Properties") },
                 leadingIcon = { Icon(Icons.Filled.Info, null) },
                 onClick = { menuExpanded = false; onProperties() },
@@ -3617,6 +3636,7 @@ private fun ShortcutGridItem(
     onProperties: () -> Unit,
     onScrapeCover: () -> Unit,
     onCommunityConfigs: () -> Unit,
+    onLanMultiplayer: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -3706,6 +3726,8 @@ private fun ShortcutGridItem(
             DropdownMenuItem(text = { Text("Scrape cover") }, leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onScrapeCover() })
             MenuItemDivider()
             DropdownMenuItem(text = { Text("Community configs") }, leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCommunityConfigs() })
+            MenuItemDivider()
+            DropdownMenuItem(text = { Text("Host/Join LAN game") }, leadingIcon = { Icon(Icons.Filled.Wifi, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onLanMultiplayer() })
             MenuItemDivider()
             DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
         }

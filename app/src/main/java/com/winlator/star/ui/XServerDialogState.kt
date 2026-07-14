@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 object XServerDialogState {
 
     enum class ActiveDialog {
-        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK
+        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK, LAN
     }
 
     // -------------------------------------------------------------------------

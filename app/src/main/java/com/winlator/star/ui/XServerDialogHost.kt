@@ -10,6 +10,7 @@ import com.winlator.star.ui.dialogs.InputControlsDialog
 import com.winlator.star.ui.dialogs.NewTaskDialog
 import com.winlator.star.ui.dialogs.ScreenEffectsDialog
 import com.winlator.star.ui.dialogs.VibrationDialog
+import com.winlator.star.net.LanMultiplayerDialog
 import com.winlator.star.ui.overlays.MagnifierOverlay
 import com.winlator.star.ui.overlays.PauseBoxOverlay
 import com.winlator.star.ui.theme.WinlatorTheme
@@ -35,6 +36,9 @@ fun XServerDialogHost() {
         XServerDialogState.ActiveDialog.SCREEN_EFFECTS -> ScreenEffectsDialog(state)
         XServerDialogState.ActiveDialog.ACTIVE_WINDOWS -> ActiveWindowsDialog(state)
         XServerDialogState.ActiveDialog.NEW_TASK       -> NewTaskDialog(state)
+        // Same shared host/join UI as the app, shown as a DIALOG so the running game isn't paused. Consent
+        // is obtained via THIS ComposeView's Activity (XServerDisplayActivity) inside LanMultiplayerDialog.
+        XServerDialogState.ActiveDialog.LAN            -> LanMultiplayerDialog(onDismiss = { state.dismiss() })
         XServerDialogState.ActiveDialog.NONE           -> Unit
     }
 

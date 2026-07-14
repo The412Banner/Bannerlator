@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.FlipToFront
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -1953,6 +1954,34 @@ private fun AdvancedContent(state: XServerDrawerState) {
     }
     AdvancedActionRow("Show Keyboard", R.drawable.icon_keyboard) {
         state.onClose?.run(); state.onKeyboard?.run()
+    }
+    // LAN Multiplayer — closes the drawer and opens the SAME shared host/join dialog (rendered by the
+    // dialog-host ComposeView) so the running game is never paused by launching an Activity.
+    AdvancedActionRowVector("LAN Multiplayer", Icons.Filled.Wifi) {
+        state.onClose?.run()
+        XServerDialogState.show(XServerDialogState.ActiveDialog.LAN)
+    }
+}
+
+@Composable
+private fun AdvancedActionRowVector(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(label, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
     }
 }
 

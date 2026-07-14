@@ -27,6 +27,10 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.runtime.collectAsState
+import com.winlator.star.net.LanSession
+import com.winlator.star.net.LanSessionState
 import androidx.compose.material3.AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -77,6 +81,7 @@ fun AppDrawerContent(
     // PHASE 3 (optional accounts): null = logged out (subtle "Sign in" row); non-null = profile header.
     account: AccountManager.Account? = null,
     onMyAccount: () -> Unit = {},
+    onLanMultiplayer: () -> Unit = {},
 ) {
     var showHelp by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -106,6 +111,7 @@ fun AppDrawerContent(
         DrawerItem(Screen.Games,         currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.FileManager,   currentRoute, onNavigate)
+        DrawerLanItem(onClick = onLanMultiplayer)
 
         DrawerSectionHeader("System", showDivider = true)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
@@ -399,6 +405,51 @@ private fun DrawerStoreItem(screen: Screen, onLaunchStore: (Screen) -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+// LAN Multiplayer entry. Observes the shared LanSessionState so the row shows an "Active" pill while a
+// session is running (matching the in-game + long-press surfaces — they never drift).
+@Composable
+private fun DrawerLanItem(onClick: () -> Unit) {
+    val session by LanSessionState.session.collectAsState()
+    val active = session !is LanSession.Idle
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 22.dp, vertical = 12.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Wifi,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(14.dp))
+        Text(
+            text = "LAN Multiplayer",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        if (active) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
+            ) {
+                Text(
+                    text = "ACTIVE",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 8.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.3.sp,
+                )
+            }
+        }
     }
 }
 

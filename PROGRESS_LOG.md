@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-07-14 (later) — 🌐 LAN: FIRST 2-DEVICE / 2-NETWORK live test (FlatOut 2) — connection layer PROVEN; + in-game chat feature
+
+> **Full detail: memory `project_bannerlator_lan_overlay_spec.md` → "P1.6 FIRST 2-DEVICE" section.** Real remote friend, room ERMF9Z.
+>
+> **✅ CROSS-NETWORK PAIRING PROVEN (first ever):** relay showed host `172.59.138.179` (T-Mobile) + friend `158.58.97.227` (different network) in the same room. **✅ "Player connected" UI flip from a REAL peer** (worker `/lan/join` → member count → `/lan/status` poll → in-game dialog "✓ Player connected"). **✅ Broadcast crosses w/ a real peer:** user's Goldberg presence-broadcast (UDP 47584, FO2 Goldberg-patched) captured+normalized+forwarded — 320 DATA frames to relay, to `255.255.255.255` AND `10.99.0.255`. **⇒ The entire connection + signaling + broadcast-transport layer is now device-proven end-to-end with real remote hardware across two networks.**
+>
+> **❌ FO2 game-discovery incomplete:** FO2's GameSpy 7947 never appeared; friend sent 0 DATA; friend's tunnel DROPPED (likely Android freezer — he backgrounded the app to communicate → overlay frozen). Couldn't retry — room expired / stale-member slot. **🐛 Bugs:** (1) 30-min room TTL too short; (2) dropped peer doesn't free its worker member slot (relay idle-evicts @180s but worker count only decrements on `/lan/leave`) → can't re-join. Device hit 94°C. **Retry:** fresh room + friend KEEPS APP FOREGROUND + BROWSES FO2's LAN list; fallback FlatOutNet `connect 10.99.0.1`.
+>
+> **⭐ FEATURE REQUEST (user): IN-GAME CHAT** — comms panel in the in-game XServerDrawer so players talk WITHOUT leaving the game (leaving = freezer drops the tunnel = self-defeating). Reuse the Compose overlay + room/relay; text over a new relay msg type or a poll endpoint. Roadmap lane **PC**. High value — unblocks first-time-test coordination.
+
 ## 2026-07-14 — 🌐 LAN: P1.6 real-game testing + broadcast/crash fixes + Goldberg LAN mode (increment 1) — ⏸️ paused for 2nd device
 
 > **Full state + all findings: memory `project_bannerlator_lan_overlay_spec.md` (P1.6 test sections + "★ FEATURE SPEC: Goldberg LAN mode" + PG roadmap).** Branch `feat/lan-overlay-p1`, tip `638e376c` (NOT merged).

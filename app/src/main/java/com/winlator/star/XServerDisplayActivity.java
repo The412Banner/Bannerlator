@@ -215,9 +215,33 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // elapsedRealtime when the launch overlay is first shown; used for the per-shortcut launch-time
     // record taken when the game first renders (groundwork for a future adaptive slow-hint threshold).
     private long preloaderStartMs = 0L;
-    // Flipped to true when the game's first application window paints (success dismiss). volatile:
-    // written on the X11 window thread, read on the guest-termination thread.
+    // Flipped to true when the launch overlay is dismissed (the game is rendering / a 2D game painted).
+    // The single idempotent guard shared by the sustained-frames path and the fullscreen fallback.
+    // volatile: written on the UI thread, read on the render + X11 window + guest-termination threads.
     private volatile boolean winStarted = false;
+    // Sustained-frames launch-dismiss tag (grep "LaunchOverlay" in logcat to tune the constants below).
+    private static final String LAUNCH_TAG = "LaunchOverlay";
+    // The overlay dismisses only when game frames have been presented CONTINUOUSLY for this long AND
+    // this many frames within one uninterrupted burst — i.e. real gameplay, not a short DXGI intro/logo
+    // that presents a few frames and then stops for a long black load. A gap longer than
+    // FRAME_GAP_RESET_MS restarts the burst, so the intro burst never accumulates to the threshold.
+    // Starting values — tuned from a Crysis 3 logcat run.
+    private static final long LAUNCH_SUSTAINED_MS = 1500L;
+    private static final int LAUNCH_SUSTAINED_FRAMES = 20;
+    private static final long FRAME_GAP_RESET_MS = 600L;
+    // Fullscreen-content fallback (pure-2D/GDI/software games that never GPU-present): only allowed to
+    // dismiss once at least this long has passed since the overlay appeared, and only when no game
+    // frame was ever presented — so it can never pre-empt the sustained-frames path for a 3D game.
+    private static final long LAUNCH_FALLBACK_MIN_MS = 8000L;
+    // Sustained-frames bookkeeping. Read/written only on the render thread (the per-present callback is
+    // single-threaded per renderer), so plain fields — lock-free, single-writer, off the UI thread.
+    private long launchLastFrameMs = 0L;
+    private long launchBurstStartMs = 0L;
+    private int launchBurstFrames = 0;
+    private long launchLastCadenceLogMs = 0L;
+    // Set true on the first game-frame present; gates the fullscreen fallback off for any 3D game.
+    // volatile: written on the render thread, read on the X11 window thread (onUpdateWindowContent).
+    private volatile boolean anyGameFramePresented = false;
     // "Not-frozen" reassurance timers over the unmeasurable guest-boot tail. Neither kills the launch.
     private static final long LAUNCH_SLOW_HINT_MS = 15_000L;
     private static final long LAUNCH_STILL_WORKING_MS = 90_000L;
@@ -989,18 +1013,29 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
             @Override
             public void onUpdateWindowContent(Window window) {
-                // Fallback dismiss for pure-2D/GDI/software games that never present a GPUImage (the
-                // primary trigger is renderer.setOnFirstGameFrame). Only a ~fullscreen window counts:
-                // the real game/2D window fills the screen, while an early launcher/splash window is
-                // small — this is what stopped the overlay dismissing on Prince-of-Persia's launcher.
-                if (!winStarted && window.isApplicationWindow() && isFullscreenGameWindow(window)) {
+                // Fallback dismiss ONLY for pure-2D/GDI/software games that never GPU-present (the
+                // primary trigger is the sustained-frames renderer.setOnGameFramePresented path). It is
+                // deliberately conservative so it can never pre-empt the sustained-frames path for a 3D
+                // game and dismiss on an early fullscreen splash/black window: it requires a ~fullscreen
+                // application window, that NO game frame was ever presented (anyGameFramePresented), and
+                // that at least LAUNCH_FALLBACK_MIN_MS has elapsed since the overlay appeared (a real 2D
+                // game that simply never GPU-presents). winStarted is the single idempotent guard.
+                long sinceStart = (preloaderStartMs != 0L)
+                        ? SystemClock.elapsedRealtime() - preloaderStartMs : 0L;
+                if (!winStarted && window.isApplicationWindow() && isFullscreenGameWindow(window)
+                        && !anyGameFramePresented && sinceStart >= LAUNCH_FALLBACK_MIN_MS) {
                     xServerView.getRenderer().setCursorVisible(true);
-                    // Success: the game painted. Stop the not-frozen timers, record how long the
-                    // launch took (per-shortcut groundwork), and dismiss the overlay.
+                    // A fullscreen 2D game painted without ever GPU-presenting. Stop the not-frozen
+                    // timers, record the launch time (per-shortcut groundwork), and dismiss the overlay.
                     runOnUiThread(() -> cancelLaunchTimers());
                     recordLaunchDuration();
                     preloaderDialog.closeOnUiThread();
                     winStarted = true;
+                    int sw = (xServer != null) ? xServer.screenInfo.width : 0;
+                    int sh = (xServer != null) ? xServer.screenInfo.height : 0;
+                    Log.d(LAUNCH_TAG, "DISMISS via fullscreen-fallback window=" + window.id
+                            + " size=" + window.getWidth() + "x" + window.getHeight()
+                            + " screen=" + sw + "x" + sh + " t=" + sinceStart);
                 }
                     
                 if (frameRatingWindowId == window.id) {
@@ -1013,7 +1048,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             @Override
             public void onMapWindow(Window window) {
                 // Log the class name of the mapped window
-                Log.d("XServerDisplayActivity", "onMapWindow: Detected window className: " + window.getClassName());
+                Log.d("XServerDisplayActivity", "onMapWindow: Detected window className: " + window.getClassName()
+                        + " size=" + window.getWidth() + "x" + window.getHeight());
                 // A window mapped (before its content paints) — nudge the tail label so the user sees
                 // progress past the guest-boot spinner. The real dismiss is still onUpdateWindowContent.
                 if (!winStarted) preloaderDialog.enterGuest("Game window detected…");
@@ -2428,22 +2464,51 @@ public class XServerDisplayActivity extends AppCompatActivity {
             });
         }
 
-        // PRIMARY launch-overlay dismiss: the truest "the game is actually rendering" signal is the
-        // first DXVK/Present GPU frame (a real swapchain AHardwareBuffer) reaching the present path.
-        // Launcher/splash/GDI windows go through the CPU path and never fire this, so we no longer
-        // dismiss on an early launcher window (the black-screen-after-splash bug). Fires once on the
-        // render thread; hop to the main thread for the timer/dialog work. Guarded by winStarted so
-        // it stays idempotent with the fullscreen-content fallback in onUpdateWindowContent.
-        renderer.setOnFirstGameFrame(wid -> {
+        // PRIMARY launch-overlay dismiss: SUSTAINED game frames, not the first one. A game's DXGI
+        // intro/logo can present a short GPU burst within ~1-2s and then stop for a 10-15s black load
+        // (Crysis 3), so "first frame" dismissed on the intro. Instead we require frames to have flowed
+        // CONTINUOUSLY for LAUNCH_SUSTAINED_MS AND LAUNCH_SUSTAINED_FRAMES within one uninterrupted
+        // burst: a gap > FRAME_GAP_RESET_MS restarts the burst, so the intro burst never reaches the
+        // threshold and only steady gameplay rendering dismisses. Bookkeeping stays on the render
+        // thread (lock-free, single-writer); only the dismiss work hops to the UI thread, re-checking
+        // winStarted so it stays idempotent with the fullscreen-content fallback.
+        renderer.setOnGameFramePresented(wid -> {
             if (winStarted) return;
-            runOnUiThread(() -> {
-                if (winStarted) return;
-                cancelLaunchTimers();
-                recordLaunchDuration();
-                preloaderDialog.closeOnUiThread();
-                xServerView.getRenderer().setCursorVisible(true);
-                winStarted = true;
-            });
+            anyGameFramePresented = true;
+            long now = SystemClock.elapsedRealtime();
+            if (launchBurstStartMs == 0L || now - launchLastFrameMs > FRAME_GAP_RESET_MS) {
+                if (launchBurstStartMs != 0L) {
+                    Log.d(LAUNCH_TAG, "frame gap " + (now - launchLastFrameMs) + " -> reset burst");
+                }
+                launchBurstStartMs = now;
+                launchBurstFrames = 1;
+                launchLastCadenceLogMs = now;
+            } else {
+                launchBurstFrames++;
+            }
+            launchLastFrameMs = now;
+            long dur = now - launchBurstStartMs;
+            // Cadence sample at most every ~500ms (keeps the per-frame path from logging every frame).
+            if (now - launchLastCadenceLogMs >= 500L) {
+                Log.d(LAUNCH_TAG, "frame burst n=" + launchBurstFrames + " dur=" + dur
+                        + " fps~=" + (dur > 0 ? launchBurstFrames * 1000L / dur : 0));
+                launchLastCadenceLogMs = now;
+            }
+            if (dur >= LAUNCH_SUSTAINED_MS && launchBurstFrames >= LAUNCH_SUSTAINED_FRAMES) {
+                final int fWid = wid;
+                final long fDur = dur;
+                final int fFrames = launchBurstFrames;
+                runOnUiThread(() -> {
+                    if (winStarted) return;
+                    cancelLaunchTimers();
+                    recordLaunchDuration();
+                    preloaderDialog.closeOnUiThread();
+                    xServerView.getRenderer().setCursorVisible(true);
+                    winStarted = true;
+                    Log.d(LAUNCH_TAG, "DISMISS via sustained-frames after " + fDur + "ms, "
+                            + fFrames + " frames, window=" + fWid);
+                });
+            }
         });
 
         if (shortcut != null) {

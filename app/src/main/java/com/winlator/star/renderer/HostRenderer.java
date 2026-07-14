@@ -22,11 +22,13 @@ public interface HostRenderer {
     void setScreenOffsetYRelativeToCursor(boolean b);
     boolean isScreenOffsetYRelativeToCursor();
     void setFpsWindowId(int id);
-    // One-shot callback fired on the FIRST real game frame (a GPUImage present reaching the
-    // present path), passing the presenting window id. Used to dismiss the launch overlay only
-    // once the game is actually rendering — launcher/splash/GDI windows go through the CPU path
-    // and never fire this. Fires at most once, then is a no-op with zero steady-state cost.
-    void setOnFirstGameFrame(java.util.function.IntConsumer c);
+    // Callback fired on EVERY real game frame (a GPUImage present reaching the present path),
+    // passing the presenting window id. The activity uses the continuity of these presents to
+    // dismiss the launch overlay only once the game is rendering *steadily* — a brief intro/logo
+    // burst that then stops for a long black load does not qualify. Launcher/splash/GDI windows go
+    // through the CPU path and never fire this. Steady-state cost is a null check plus one virtual
+    // call per present (mirrors setHudFrameTick), no allocation.
+    void setOnGameFramePresented(java.util.function.IntConsumer c);
     void setFrameRating(Object fr);
     int getFpsLimit();
     void setFpsLimit(int limit);

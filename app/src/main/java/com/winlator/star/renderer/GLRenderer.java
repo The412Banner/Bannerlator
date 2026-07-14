@@ -85,23 +85,18 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private java.util.function.IntConsumer hudFrameTick = null;
     public void setHudFrameTick(java.util.function.IntConsumer c) { hudFrameTick = c; }
 
-    // One-shot "first real game frame" callback (see HostRenderer). Fired the first time a GPUImage
-    // (a real swapchain AHardwareBuffer) is presented via presentScanout, so the launch overlay
-    // dismisses on the first actual game render. On GL this GPU-frame signal only exists in native
-    // (FLIP/scanout) mode; in non-native GL the game frame arrives as a sampled texture, so the
-    // activity's fullscreen-content fallback handles dismiss there. Lock-free in steady state: after
-    // the first fire the field is null and the null check short-circuits every later present; the
-    // AtomicBoolean guarantees a single delivery.
-    private final java.util.concurrent.atomic.AtomicBoolean firstGameFrameFired =
-        new java.util.concurrent.atomic.AtomicBoolean(false);
-    private java.util.function.IntConsumer onFirstGameFrame = null;
-    public void setOnFirstGameFrame(java.util.function.IntConsumer c) { onFirstGameFrame = c; }
-    private void fireFirstGameFrame(int windowId) {
-        java.util.function.IntConsumer c = onFirstGameFrame;
-        if (c != null && firstGameFrameFired.compareAndSet(false, true)) {
-            onFirstGameFrame = null;
-            c.accept(windowId);
-        }
+    // Per-present "game frame presented" callback (see HostRenderer). Fired on EVERY GPUImage
+    // (real swapchain AHardwareBuffer) presented via presentScanout; the activity uses the continuity
+    // of these to dismiss the launch overlay only once frames flow steadily (not on a brief intro
+    // burst). On GL this GPU-frame signal only exists in native (FLIP/scanout) mode; in non-native GL
+    // the game frame arrives as a sampled texture, so the activity's fullscreen-content fallback
+    // handles dismiss there. Steady-state cost is a null check plus one virtual call per present, no
+    // allocation — same shape as hudFrameTick.
+    private java.util.function.IntConsumer onGameFramePresented = null;
+    public void setOnGameFramePresented(java.util.function.IntConsumer c) { onGameFramePresented = c; }
+    private void fireGameFramePresented(int windowId) {
+        java.util.function.IntConsumer c = onGameFramePresented;
+        if (c != null) c.accept(windowId);
     }
 
     // Selectable sampler filter for window/content drawables only (the cursor stays LINEAR so the
@@ -744,8 +739,8 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             long ahbPtr = g.getHardwareBufferPtr();
             if (ahbPtr == 0) return;
 
-            // First real game frame reached the present path -> dismiss the launch overlay.
-            fireFirstGameFrame(window.id);
+            // Every real game frame reaching the present path feeds the sustained-frames launch dismiss.
+            fireGameFramePresented(window.id);
 
             boolean wasDelivered = scanout.isGameFrameDelivered();
             int fence = g.unlock();

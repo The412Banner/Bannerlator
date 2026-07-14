@@ -431,8 +431,8 @@ public class ASurfaceRenderer implements HostRenderer,
     private void pushGpuImageToNative(int windowId, GPUImage g) {
         long ahbPtr = g.getHardwareBufferPtr();
         if (ahbPtr == 0) return;
-        // First real game frame reached the present path -> dismiss the launch overlay.
-        fireFirstGameFrame(windowId);
+        // Every real game frame reaching the present path feeds the sustained-frames launch dismiss.
+        fireGameFramePresented(windowId);
         nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, 0, null, -1, sfCompatMode);
         if (hudFrameTick != null) hudFrameTick.accept(windowId);
     }
@@ -519,22 +519,17 @@ public class ASurfaceRenderer implements HostRenderer,
     private java.util.function.IntConsumer hudFrameTick = null;
     public void setHudFrameTick(java.util.function.IntConsumer c) { hudFrameTick = c; }
 
-    // One-shot "first real game frame" callback (see HostRenderer). Fired the first time a GPUImage
-    // (a real swapchain AHardwareBuffer) is presented via pushGpuImageToNative, so the launch overlay
-    // dismisses on the first actual game render. The CPU/AHBImage chrome path (pushCpuImageToNative)
-    // never fires it, so early launcher/splash windows do not dismiss the overlay. Lock-free in steady
-    // state: after the first fire the field is null and the null check short-circuits every later
-    // present; the AtomicBoolean guarantees a single delivery.
-    private final java.util.concurrent.atomic.AtomicBoolean firstGameFrameFired =
-        new java.util.concurrent.atomic.AtomicBoolean(false);
-    private java.util.function.IntConsumer onFirstGameFrame = null;
-    public void setOnFirstGameFrame(java.util.function.IntConsumer c) { onFirstGameFrame = c; }
-    private void fireFirstGameFrame(int windowId) {
-        java.util.function.IntConsumer c = onFirstGameFrame;
-        if (c != null && firstGameFrameFired.compareAndSet(false, true)) {
-            onFirstGameFrame = null;
-            c.accept(windowId);
-        }
+    // Per-present "game frame presented" callback (see HostRenderer). Fired on EVERY GPUImage
+    // (real swapchain AHardwareBuffer) presented via pushGpuImageToNative; the activity uses the
+    // continuity of these to dismiss the launch overlay only once frames flow steadily (not on a brief
+    // intro burst). The CPU/AHBImage chrome path (pushCpuImageToNative) never fires it, so launcher/
+    // splash windows do not feed it. Steady-state cost is a null check plus one virtual call per
+    // present, no allocation — same shape as hudFrameTick.
+    private java.util.function.IntConsumer onGameFramePresented = null;
+    public void setOnGameFramePresented(java.util.function.IntConsumer c) { onGameFramePresented = c; }
+    private void fireGameFramePresented(int windowId) {
+        java.util.function.IntConsumer c = onGameFramePresented;
+        if (c != null) c.accept(windowId);
     }
 
     // -------------------------------------------------------------------------

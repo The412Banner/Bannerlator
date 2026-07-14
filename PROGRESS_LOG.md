@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-07-14 (evening) — 💬 IN-GAME CHAT shipped + 2-DEVICE PROVEN; 🔋 background-drop fix stack
+
+> **Full state: memory `project_bannerlator_lan_overlay_spec.md` → top "📍 CHECKPOINT 2026-07-14".** Branch `feat/lan-overlay-p1` tip `fa9b7efc` (NOT merged).
+>
+> **🏆 IN-GAME CHAT — built spec→ship in a day, DEVICE-PROVEN single AND 2-device.** Dedicated Cloudflare **Durable-Object + WebSocket** worker (`bannerlator-lan-chat.the412banner.workers.dev`, dir `/home/claude-user/lan-chat-worker`, git; isolated from the config/accounts worker; SQLite DO, hibernation API; `test_chat.mjs` green, **46ms** round-trip). App: `LanChatClient` (OkHttp WS, auto-reconnect) + `LanChat` (StateFlow SSOT, auto-connects off `LanSessionState`) + `LanChatOverlay` (FLOATING, NON-MODAL via `Popup`+`FLAG_NOT_TOUCH_MODAL` so it renders over the game's Vulkan SurfaceView AND touches pass through; draggable title bar, corner resize, ~72% translucent, `_`→bubble/`X`, names both sides right/left, typing dots) + Chat button in `LanMultiplayerDialog`. **4 device-feedback rounds:** visibility(Popup) → touch-passthrough → resize+names+typing → **controller** (focusable ONLY while typing so the controller keeps driving the game). REAL 2-device proof (room FCZBVT): The412Banner host + devaspe guest, DIFFERENT networks, live back-and-forth + typing indicator — "sweeeeet it works / this is cool af".
+>
+> **🔋 BACKGROUND-DROP FIX** (recurring: friend tabs to Discord → his session ends). KEY diagnostic (user): CHAT stayed up while the OVERLAY dropped ⇒ a non-foreground `VpnService` is STOPPED by Android independent of the process (chat = plain WS thread survives; overlay = reapable service). Fix stack: (1) **overlay now a FOREGROUND SERVICE** w/ ongoing notification (`startForeground`, channel `lan_overlay`, `dataSync`; commit `fa9b7efc`; build `bannerlator-bg-session-fa9b7ef`) — INSTALL ON BOTH; (2) friend battery-opt exemption; (3) **relay AUTO-REJOIN** self-healing (DEPLOYED to VPS, `relay_core.c`: PING `find_or_create_room`+real-role, DATA upserts sender; `make check` green; NON-DISRUPTIVE to healthy sessions per user requirement). Also fixed host-first DNS crash + subnet-directed broadcast earlier today (both device-proven, network-adaptive).
+>
+> **▶️ NEXT:** install bg-session build on BOTH + friend battery-exempt → retry 2-device **FlatOut 2 game LAN** (P1.6 exit; chat+transport proven, the game's GameSpy discovery is the remaining piece). Then pre-launch hardening (Noise IK, relay abuse, worker stale-member reconcile).
+
 ## 2026-07-14 (later) — 🌐 LAN: FIRST 2-DEVICE / 2-NETWORK live test (FlatOut 2) — connection layer PROVEN; + in-game chat feature
 
 > **Full detail: memory `project_bannerlator_lan_overlay_spec.md` → "P1.6 FIRST 2-DEVICE" section.** Real remote friend, room ERMF9Z.

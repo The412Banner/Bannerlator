@@ -75,6 +75,8 @@ import com.winlator.star.store.AmazonMainActivity
 import com.winlator.star.store.EpicMainActivity
 import com.winlator.star.store.GogMainActivity
 import com.winlator.star.store.SteamMainActivity
+import com.winlator.star.net.LanChat
+import com.winlator.star.net.LanChatOverlay
 import com.winlator.star.net.LanMultiplayerDialog
 import com.winlator.star.ui.AccountUiBus
 import com.winlator.star.ui.AppDrawerContent
@@ -246,6 +248,11 @@ class MainActivity : AppCompatActivity() {
 
                     // Compose-based preloader overlay — replaces XML PreloaderDialog
                     PreloaderOverlay()
+
+                    // Floating, non-modal LAN chat window over the main app (pre-game surface).
+                    val chatCtx = LocalContext.current
+                    LaunchedEffect(Unit) { LanChat.ensureStarted(chatCtx) }
+                    LanChatOverlay()
                 }
             }
         }

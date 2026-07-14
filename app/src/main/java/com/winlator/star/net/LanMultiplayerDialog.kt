@@ -280,7 +280,27 @@ fun LanMultiplayerDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                // Chat toggles the floating window (open when hidden, close when showing). It carries its own
+                // unread badge and NEVER leaves the room — closing the window just hides the UI.
+                val chatUnread by LanChat.unread.collectAsState()
+                TextButton(onClick = { LanChat.toggleWindow() }) {
+                    Text("Chat")
+                    if (chatUnread > 0) {
+                        Spacer(Modifier.width(5.dp))
+                        Box(
+                            Modifier.size(18.dp).background(Color(0xFFE5484D), RoundedCornerShape(9.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(if (chatUnread > 9) "9+" else chatUnread.toString(),
+                                color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("Close") }
+            }
+        },
     )
 }
 

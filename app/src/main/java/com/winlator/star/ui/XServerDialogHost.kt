@@ -1,9 +1,13 @@
 package com.winlator.star.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
+import com.winlator.star.net.LanChat
+import com.winlator.star.net.LanChatOverlay
 import com.winlator.star.ui.dialogs.ActiveWindowsDialog
 import com.winlator.star.ui.dialogs.DebugDialogContent
 import com.winlator.star.ui.dialogs.InputControlsDialog
@@ -29,6 +33,10 @@ fun XServerDialogHost() {
     val activeDialog     by state.activeDialog.collectAsState()
     val magnifierVisible by state.magnifierVisible.collectAsState()
     val paused           by state.paused.collectAsState()
+
+    // Auto-connect the chat socket whenever a LAN room is active (independent of the game/tunnel).
+    val ctx = LocalContext.current
+    LaunchedEffect(Unit) { LanChat.ensureStarted(ctx) }
     when (activeDialog) {
         XServerDialogState.ActiveDialog.VIBRATION      -> VibrationDialog(state)
         XServerDialogState.ActiveDialog.DEBUG          -> DebugDialogContent(state)
@@ -47,4 +55,7 @@ fun XServerDialogHost() {
     // Centered pause indicator — above the game surface, shown whenever the guest is frozen
     // (ReShade freeze-frame preview OR a manual Pause). Tap to fully resume.
     if (paused) PauseBoxOverlay(state)
+
+    // Floating, non-modal chat window over the running game (only its own box consumes touches).
+    LanChatOverlay()
 }

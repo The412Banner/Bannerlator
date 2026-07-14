@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-07-13 — 🌐 LAN multiplayer: P1.5+ connection-status pill + "Hosted by" + relay hardening — ALL DEVICE/LIVE-VERIFIED (P1.6 = exit)
+
+> **Continues the entry below. Full state + RECONNECT CHECKLIST: memory `project_bannerlator_lan_overlay_spec.md`.** App branch `feat/lan-overlay-p1` tip `abc448a4` (NOT merged).
+>
+> **✅ P1.5+ connection-status pill (build `abc448a4`, CI 29297674955 green).** `LanSessionState` now owns a session-scoped poll of `GET /lan/status?code=` (3.5s); phase CONNECTING→WAITING→CONNECTED derived from overlay-up + member count. `LanStatusPill` in the Games top-bar (blue connecting / amber waiting / green connected; tap→dialog); dialog status text tracks it. `HttpUtils.getWithStatus` + `LanRoomWorker.status()` added. **DEVICE-VERIFIED:** hosted from app (code `KSL79K`)→amber "LAN: waiting"→I curl'd `POST /lan/join` (bumps members→2)→poll flipped pill **green "LAN: connected"** + dialog "player connected".
+>
+> **✅ "Hosted by <name>" — worker fix DEPLOYED + LIVE-VERIFIED** (`bannerhub-configs-worker`, commit `4444ef2` on `mainwork`). `makeSession(uid, env, username)` bakes the name into the SIGNED HMAC session (tamper-proof); `readSession`→`{uid,name}`; `/lan/host` stamps `host_uid`+`host_username`, `/lan/join` returns both. Anonymous / old / invalid session → `null` (graceful, no "Hosted by"). Verified live: signed-in host's name flows to joiner; anon→null; login/create/`/account/count`/`/games` unregressed. `test_lan.mjs` covers username + 3 no-username paths. Deploy preserved 5 bindings + LAN_RELAY vars via `.worker-backups/deploy-meta-lan.json`.
+>
+> **✅ Relay hardening (host C `/home/claude-user/lannet`, redeployed to VM `150.136.117.250`).** Fixes the "rooms accumulate forever / 256 cap" scaling+correctness gap: `relay_core` per-room `last_seen` + `relay_sweep(now, idle)`; `relay_ingest(...,now,...)` (deterministic, `now` passed in); `relay.c` poll-based loop sweeps every 30s; `RELAY_IDLE_TIMEOUT_SEC`=180 (12× the 15s tunnel keepalive → only truly-dead rooms swept); `RELAY_MAX_ROOMS` 256→1024. Host tests incl 4 eviction checks ALL PASS; rebuilt on VM + `systemctl restart`, active. **CAPACITY:** ~dozens concurrent games on the free micro; CF free tier + 3.5s poll ≈ few-hundred sessions/day → scale via CF $5 tier + slower poll + bigger/multiple relays; relay room table linear-scan → hashmap beyond ~few thousand.
+>
+> **AUTH = anonymous default, NO login required; username = optional bonus.** Living report kept current: internal `/sdcard/Download/Bannerlator-LAN-Report.{html,md}` + public https://the412banner.github.io/bannerlator-lan/ (redacted, 0 IP). **▶️ NEXT: P1.6 two-device round-trip (EXIT)** — real LAN game on 2 devices; then Noise IK crypto (⚠️ payload cleartext) + relay abuse-hardening before public launch.
+
 ## 2026-07-13 — 🌐 LAN-over-internet multiplayer: BACKEND LIVE + POLISHED UI device-verified (P1.3–P1.5 done; P1.6 = exit)
 
 > **Continues the P1.1/P1.2 entry below. Full detail: memory `project_bannerlator_lan_overlay_spec.md`.** Feature = two Bannerlator users play a LAN-multiplayer game over the internet (host/join by 6-char code). Own 2-peer virtual-LAN overlay. Branch `feat/lan-overlay-p1` (tip `8f343acf`, NOT merged; worktree `/home/claude-user/lan-p1-wt`).

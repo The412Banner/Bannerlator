@@ -540,6 +540,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // parent's clear when it fires post-commit.
     LaunchedEffect(isGridView) {
         topBarActions.value = {
+            // LAN session status pill — hidden when Idle, otherwise a tappable connecting/waiting/connected
+            // chip that opens the LAN dialog for quick code/Stop access. Reads LanSessionState.
+            com.winlator.star.net.LanStatusPill(onClick = { showLanDialog = true })
             IconButton(onClick = { showCommunityBrowser = true }) {
                 Icon(
                     imageVector = Icons.Filled.Public,

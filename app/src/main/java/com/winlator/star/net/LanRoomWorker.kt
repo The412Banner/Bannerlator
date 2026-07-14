@@ -4,6 +4,13 @@ import com.winlator.star.core.HttpUtils
 import org.json.JSONObject
 import java.util.concurrent.CountDownLatch
 
+/** Result of a /lan/status poll: the room is alive with a member count, expired (404), or momentarily unreachable. */
+sealed interface LanStatus {
+    data class Ok(val members: Int, val max: Int, val ready: Boolean) : LanStatus
+    data object Gone : LanStatus     // 404 — room expired/closed; end the session
+    data object Unknown : LanStatus  // transient/network — keep the session, retry
+}
+
 /** A room handed back by the LAN signaling worker: where to connect and what role we play. */
 data class LanRoom(
     val code: String,   // 6-char room code (host shares this)
@@ -51,6 +58,29 @@ object LanRoomWorker {
         post("$BASE/lan/leave", JSONObject().put("code", code.trim().uppercase()).toString())
     }
 
+    /**
+     * GET /lan/status?code=CODE — how many players are in the room right now. Blocking; call off the main
+     * thread (the session poll loop does). Distinguishes a real 404 ([LanStatus.Gone], the room expired)
+     * from a transient network failure ([LanStatus.Unknown], keep the session and retry).
+     */
+    fun status(code: String): LanStatus {
+        val resp = getWithStatus("$BASE/lan/status?code=${code.trim().uppercase()}") ?: return LanStatus.Unknown
+        if (resp.code == 404) return LanStatus.Gone
+        val body = resp.body ?: return LanStatus.Unknown
+        if (resp.code < 200 || resp.code >= 300) return LanStatus.Unknown
+        return try {
+            val o = JSONObject(body)
+            if (o.has("error")) return LanStatus.Unknown
+            val members = o.optInt("members", -1)
+            val max = o.optInt("max", 2)
+            val ready = o.optString("status", "").equals("ready", ignoreCase = true) || members >= 2
+            if (members < 0 && !o.has("status")) LanStatus.Unknown
+            else LanStatus.Ok(members = members.coerceAtLeast(if (ready) 2 else 1), max = max, ready = ready)
+        } catch (e: Exception) {
+            LanStatus.Unknown
+        }
+    }
+
     private fun parse(resp: String?): LanRoom? {
         if (resp == null) return null
         return try {
@@ -70,6 +100,22 @@ object LanRoomWorker {
                     .ifBlank { null },
             )
         } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun getWithStatus(url: String): HttpUtils.HttpResponse? {
+        val latch = CountDownLatch(1)
+        val holder = arrayOfNulls<HttpUtils.HttpResponse>(1)
+        HttpUtils.getWithStatus(url) { resp ->
+            holder[0] = resp
+            latch.countDown()
+        }
+        return try {
+            latch.await()
+            holder[0]
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
             null
         }
     }

@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -202,7 +203,7 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
                     LanSession.Creating -> BusyContent("Setting up your room…")
                     is LanSession.Hosting -> HostingContent(
                         code = s.code,
-                        connected = s.connected,
+                        phase = s.phase,
                         onCopy = {
                             clipboard.setText(AnnotatedString(s.code))
                             Toast.makeText(context, "Code copied", Toast.LENGTH_SHORT).show()
@@ -212,7 +213,7 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
                     )
                     is LanSession.Joined -> JoinedContent(
                         code = s.code,
-                        connected = s.connected,
+                        phase = s.phase,
                         hostName = s.hostName,
                         onLeave = ::stop,
                     )
@@ -283,7 +284,7 @@ private fun BusyContent(message: String) {
 @Composable
 private fun HostingContent(
     code: String,
-    connected: Boolean,
+    phase: LanPhase,
     onCopy: () -> Unit,
     onShare: () -> Unit,
     onStop: () -> Unit,
@@ -309,13 +310,13 @@ private fun HostingContent(
         }
     }
     Spacer(Modifier.height(14.dp))
-    StatusLine(connected = connected, hostRole = true)
+    StatusLine(phase = phase)
     Spacer(Modifier.height(14.dp))
     StopButton(text = "Stop hosting", onClick = onStop)
 }
 
 @Composable
-private fun JoinedContent(code: String, connected: Boolean, hostName: String?, onLeave: () -> Unit) {
+private fun JoinedContent(code: String, phase: LanPhase, hostName: String?, onLeave: () -> Unit) {
     Text(
         "Joined room",
         style = MaterialTheme.typography.bodySmall,
@@ -333,7 +334,7 @@ private fun JoinedContent(code: String, connected: Boolean, hostName: String?, o
         )
     }
     Spacer(Modifier.height(14.dp))
-    StatusLine(connected = connected, hostRole = false)
+    StatusLine(phase = phase)
     Spacer(Modifier.height(14.dp))
     StopButton(text = "Leave game", onClick = onLeave)
 }
@@ -361,10 +362,12 @@ private fun CodeCard(code: String) {
 }
 
 @Composable
-private fun StatusLine(connected: Boolean, hostRole: Boolean) {
-    val text = when {
-        connected -> "Overlay active — launch your game and open its LAN / Multiplayer menu."
-        else -> "Starting the overlay…"
+private fun StatusLine(phase: LanPhase) {
+    val connected = phase == LanPhase.CONNECTED
+    val text = when (phase) {
+        LanPhase.CONNECTING -> "Starting the overlay…"
+        LanPhase.WAITING -> "Waiting for player…"
+        LanPhase.CONNECTED -> "✓ Player connected — launch your game and open its LAN / Multiplayer menu."
     }
     val color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -373,6 +376,46 @@ private fun StatusLine(connected: Boolean, hostRole: Boolean) {
             Spacer(Modifier.width(8.dp))
         }
         Text(text, style = MaterialTheme.typography.bodySmall, color = color)
+    }
+}
+
+/**
+ * Compact status pill for the Games top app bar. Hidden entirely when Idle; otherwise a small coloured
+ * chip — blue "connecting", amber "waiting", green "connected" — that opens [LanMultiplayerDialog] on tap.
+ * Reads [LanSessionState] so it stays in lockstep with every other surface.
+ */
+@Composable
+fun LanStatusPill(onClick: () -> Unit) {
+    val session by LanSessionState.session.collectAsState()
+    val phase = session.phaseOrNull() ?: return
+    val (color, label) = when (phase) {
+        LanPhase.CONNECTING -> Color(0xFF3B82F6) to "LAN: connecting"
+        LanPhase.WAITING -> Color(0xFFF59E0B) to "LAN: waiting"
+        LanPhase.CONNECTED -> Color(0xFF22C55E) to "LAN: connected"
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = 0.18f))
+            .border(1.dp, color.copy(alpha = 0.9f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(color),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 

@@ -123,6 +123,35 @@ public abstract class HttpUtils {
         Executors.newSingleThreadExecutor().execute(() -> postWithStatusAsync(url, jsonBody, onComplete));
     }
 
+    private static void getWithStatusAsync(String url, Callback<HttpResponse> onComplete) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection)(new URL(url)).openConnection();
+            connection.setRequestProperty("User-Agent", "Bannerlator");
+            int code = connection.getResponseCode();
+            InputStream inStream = (code >= 200 && code < 300)
+                    ? connection.getInputStream() : connection.getErrorStream();
+            String body = null;
+            if (inStream != null) {
+                try (InputStream in = inStream) {
+                    body = new String(StreamUtils.copyToByteArray(in), StandardCharsets.UTF_8);
+                }
+            }
+            onComplete.call(new HttpResponse(code, body));
+        }
+        catch (Exception e) {
+            onComplete.call(new HttpResponse(0, null));
+        }
+    }
+
+    /**
+     * GET a URL and hand back BOTH the status code and the response body (2xx or not) — the GET analog of
+     * {@link #postWithStatus}, so a caller can tell a real 404 (e.g. an expired LAN room) apart from a
+     * transient network failure ({@code code == 0}). Runs off the calling thread.
+     */
+    public static void getWithStatus(final String url, final Callback<HttpResponse> onComplete) {
+        Executors.newSingleThreadExecutor().execute(() -> getWithStatusAsync(url, onComplete));
+    }
+
     private static void downloadAsync(String url, File destination, AtomicBoolean interruptRef, Callback<Integer> onPublishProgress, Callback<Boolean> onDownloadComplete) {
         try {
             interruptRef.set(false);

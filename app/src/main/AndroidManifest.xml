@@ -257,6 +257,13 @@
         <service android:name="com.winlator.star.store.SteamForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
         <service android:name="com.winlator.star.store.download.DownloadForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
 
+        <!-- LAN-over-internet host/join UI (P1.5). exported for on-device testing. -->
+        <activity android:name="com.winlator.star.net.LanActivity"
+            android:exported="true"
+            android:label="LAN Game"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/AppTheme"/>
+
         <!-- LAN-over-internet overlay (P1). VpnService scoped to this app only. -->
         <service android:name="com.winlator.star.net.LanOverlayVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"

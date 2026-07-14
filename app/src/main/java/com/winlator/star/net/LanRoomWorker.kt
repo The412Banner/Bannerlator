@@ -11,6 +11,10 @@ data class LanRoom(
     val port: Int,      // relay UDP port
     val room: String,   // room key used with the relay (== code)
     val role: Int,      // LanOverlay.ROLE_HOST or ROLE_CLIENT
+    // OPTIONAL host identity: present only when the HOST was signed into their Bannerlator account
+    // (they passed a session to /lan/host and the worker stamped host_uid). Anonymous hosts => null.
+    val hostUid: String? = null,   // the host's account user-id, if any
+    val hostName: String? = null,  // the host's username, if any (drives "Hosted by <name>")
 )
 
 /**
@@ -22,8 +26,19 @@ data class LanRoom(
 object LanRoomWorker {
     private const val BASE = "https://bannerhub-configs-worker.the412banner.workers.dev"
 
-    /** POST /lan/host -> a new room we host (role 1). null on failure. */
-    fun host(): LanRoom? = parse(post("$BASE/lan/host", "{}"))
+    /**
+     * POST /lan/host -> a new room we host (role 1). null on failure.
+     *
+     * [session] is OPTIONAL account flavor: when the user is signed into their Bannerlator account we pass
+     * their session token so the worker stamps host_uid (joiners then see "Hosted by <username>"). Anonymous
+     * hosts pass null and nothing changes — sign-in is NEVER required to host or join.
+     */
+    fun host(session: String? = null): LanRoom? {
+        val body = JSONObject()
+            .also { if (!session.isNullOrBlank()) it.put("session", session) }
+            .toString()
+        return parse(post("$BASE/lan/host", body))
+    }
 
     /** POST /lan/join {code} -> the room to join as client (role 2). null if not found / full / error. */
     fun join(code: String): LanRoom? {
@@ -49,6 +64,10 @@ object LanRoomWorker {
                 port = o.optInt("port", 48800),
                 room = room,
                 role = o.optInt("role", 1),
+                // Optional host identity (present when the host was signed in). Tolerate a few key spellings.
+                hostUid = o.optString("host_uid", o.optString("hostUid", "")).ifBlank { null },
+                hostName = o.optString("host_username", o.optString("hostUsername", o.optString("host_name", "")))
+                    .ifBlank { null },
             )
         } catch (e: Exception) {
             null

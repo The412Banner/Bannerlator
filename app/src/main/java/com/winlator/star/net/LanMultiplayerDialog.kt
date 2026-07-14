@@ -138,7 +138,12 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
         error = null
         LanSessionState.setCreating()
         scope.launch {
-            val room = withContext(Dispatchers.IO) { LanRoomWorker.host() }
+            // Optional flavor: if signed in, pass the account session so joiners see "Hosted by <username>".
+            // Anonymous (no account) => null, unchanged. Sign-in is never required.
+            val room = withContext(Dispatchers.IO) {
+                val session = com.winlator.star.communityconfigs.AccountManager.current(context)?.session
+                LanRoomWorker.host(session)
+            }
             if (room == null || room.relay.isBlank()) {
                 LanSessionState.setIdle()
                 error = "Couldn't create a room. Check your connection and try again."
@@ -208,6 +213,7 @@ fun LanMultiplayerDialog(onDismiss: () -> Unit) {
                     is LanSession.Joined -> JoinedContent(
                         code = s.code,
                         connected = s.connected,
+                        hostName = s.hostName,
                         onLeave = ::stop,
                     )
                 }
@@ -309,7 +315,7 @@ private fun HostingContent(
 }
 
 @Composable
-private fun JoinedContent(code: String, connected: Boolean, onLeave: () -> Unit) {
+private fun JoinedContent(code: String, connected: Boolean, hostName: String?, onLeave: () -> Unit) {
     Text(
         "Joined room",
         style = MaterialTheme.typography.bodySmall,
@@ -317,6 +323,15 @@ private fun JoinedContent(code: String, connected: Boolean, onLeave: () -> Unit)
     )
     Spacer(Modifier.height(10.dp))
     CodeCard(code)
+    // "Hosted by <username>" only when the host was signed in; anonymous hosts show nothing.
+    if (!hostName.isNullOrBlank()) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Hosted by $hostName",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     Spacer(Modifier.height(14.dp))
     StatusLine(connected = connected, hostRole = false)
     Spacer(Modifier.height(14.dp))

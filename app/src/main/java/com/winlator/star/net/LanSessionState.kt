@@ -18,7 +18,8 @@ sealed interface LanSession {
     data object Idle : LanSession
     data object Creating : LanSession
     data class Hosting(val code: String, val connected: Boolean) : LanSession
-    data class Joined(val code: String, val connected: Boolean) : LanSession
+    // hostName: OPTIONAL "Hosted by <username>" flavor, present only when the host was signed in. null = anon.
+    data class Joined(val code: String, val connected: Boolean, val hostName: String? = null) : LanSession
 }
 
 /**
@@ -57,7 +58,7 @@ object LanSessionState {
     /** Room obtained, overlay service asked to start. Optimistic — connected=false until the service confirms. */
     fun setPending(room: LanRoom) {
         _session.value =
-            if (room.role == LanOverlay.ROLE_CLIENT) LanSession.Joined(room.code, connected = false)
+            if (room.role == LanOverlay.ROLE_CLIENT) LanSession.Joined(room.code, connected = false, hostName = room.hostName)
             else LanSession.Hosting(room.code, connected = false)
     }
 
@@ -68,9 +69,15 @@ object LanSessionState {
     /** Overlay tunnel established + native pump started. Flips connected=true, keeping the code. */
     @JvmStatic
     fun onOverlayUp(code: String, role: Int) {
+        val prev = _session.value
         _session.value =
-            if (role == LanOverlay.ROLE_CLIENT) LanSession.Joined(code, connected = true)
-            else LanSession.Hosting(code, connected = true)
+            if (role == LanOverlay.ROLE_CLIENT) {
+                // Preserve the "Hosted by" flavor captured at join time across the connected flip.
+                val name = (prev as? LanSession.Joined)?.takeIf { it.code == code }?.hostName
+                LanSession.Joined(code, connected = true, hostName = name)
+            } else {
+                LanSession.Hosting(code, connected = true)
+            }
     }
 
     /** Overlay stopped or failed to start. Every surface returns to Idle. */

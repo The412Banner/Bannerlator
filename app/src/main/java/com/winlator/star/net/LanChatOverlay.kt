@@ -50,8 +50,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
@@ -87,15 +92,21 @@ fun LanChatOverlay() {
     var listHeightDp by remember { mutableStateOf(196f) }
     val density = LocalDensity.current
 
+    // Focusable ONLY while actively composing a message. Otherwise non-focusable so the CONTROLLER keeps
+    // driving the game (and you can still read/scroll/drag the chat via touch — those don't need focus).
+    var typing by remember { mutableStateOf(false) }
+    LaunchedEffect(mode) { if (mode != LanChat.WindowMode.EXPANDED) typing = false }
+
     Popup(
         alignment = Alignment.TopStart,
         offset = IntOffset(offX.roundToInt(), offY.roundToInt()),
         onDismissRequest = { /* controlled by the title-bar _ / X, never by outside touches */ },
         properties = PopupProperties(
-            // Focusable ONLY when expanded (so the text field can type). The bubble is non-focusable so
-            // it never grabs key/controller input. Either way we add FLAG_NOT_TOUCH_MODAL below so touches
-            // OUTSIDE the window reach the game — you keep playing.
-            focusable = mode == LanChat.WindowMode.EXPANDED,
+            // Focusable ONLY while typing (see `typing`). Non-focusable the rest of the time -> the
+            // controller/keyboard keep going to the GAME, and FLAG_NOT_TOUCH_MODAL (below) passes outside
+            // touches through too. So the window can stay OPEN while you play; it only borrows input focus
+            // for the moment you're tapping out a reply.
+            focusable = typing,
             dismissOnBackPress = false,
             dismissOnClickOutside = false,
             clippingEnabled = false,
@@ -113,6 +124,9 @@ fun LanChatOverlay() {
                 dragMove = dragMove,
                 widthDp = widthDp,
                 listHeightDp = listHeightDp,
+                typing = typing,
+                onStartTyping = { typing = true },
+                onStopTyping = { typing = false },
                 onResize = { dx, dy ->
                     widthDp = (widthDp + with(density) { dx.toDp().value }).coerceIn(244f, 460f)
                     listHeightDp = (listHeightDp + with(density) { dy.toDp().value }).coerceIn(120f, 420f)
@@ -151,13 +165,26 @@ private fun ChatBubble(dragHandle: Modifier) {
 }
 
 @Composable
-private fun ChatWindow(dragMove: Modifier, widthDp: Float, listHeightDp: Float, onResize: (Float, Float) -> Unit) {
+private fun ChatWindow(
+    dragMove: Modifier,
+    widthDp: Float,
+    listHeightDp: Float,
+    typing: Boolean,
+    onStartTyping: () -> Unit,
+    onStopTyping: () -> Unit,
+    onResize: (Float, Float) -> Unit,
+) {
     val messages by LanChat.messages.collectAsState()
     val connected by LanChat.connected.collectAsState()
     val peer by LanChat.peerPresent.collectAsState()
     val peerTyping by LanChat.peerTyping.collectAsState()
     var input by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    // When typing turns on, the popup has just become focusable — grab the text field so the keyboard opens.
+    // Small delay so the window's focusable flag is applied before we request focus (avoids a 1-frame race).
+    LaunchedEffect(typing) { if (typing) { delay(60); runCatching { focusRequester.requestFocus() } } }
 
     LaunchedEffect(messages.size, peerTyping) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
@@ -225,18 +252,32 @@ private fun ChatWindow(dragMove: Modifier, widthDp: Float, listHeightDp: Float, 
                 Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { if (it.length <= 500) { input = it; LanChat.notifyTyping() } },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Message…", fontSize = 13.sp) },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { send(input) { input = "" } }),
-                )
+                Box(Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { if (it.length <= 500) { input = it; LanChat.notifyTyping() } },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
+                            // Field lost focus (keyboard dismissed / tapped away) -> hand input back to the game.
+                            .onFocusChanged { if (!it.isFocused) onStopTyping() },
+                        placeholder = { Text("Message…", fontSize = 13.sp) },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { send(input) { input = "" }; focusManager.clearFocus() }),
+                    )
+                    // While NOT typing the window is non-focusable, so the field can't focus itself on tap.
+                    // This transparent catcher turns typing ON (window becomes focusable, then the field grabs focus).
+                    if (!typing) {
+                        Box(Modifier.matchParentSize().clickable { onStartTyping() })
+                    }
+                }
                 Spacer(Modifier.width(4.dp))
-                IconButton(onClick = { send(input) { input = "" } }, enabled = input.isNotBlank()) {
+                IconButton(
+                    onClick = { send(input) { input = "" }; focusManager.clearFocus() },
+                    enabled = input.isNotBlank(),
+                ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send",
                         tint = if (input.isNotBlank()) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.3f))
                 }

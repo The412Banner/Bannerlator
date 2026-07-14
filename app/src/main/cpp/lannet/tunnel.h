@@ -21,16 +21,18 @@ typedef struct {
     uint32_t self_vip;     /* host-order */
     uint32_t peer_vip;
     uint32_t prefix_len;   /* e.g. 24 */
+    uint32_t local_bcast;  /* underlying real-net directed bcast, host-order; 0 == none */
     uint8_t  role;
     char     room[LANNET_ROOM_LEN];
     volatile int running;
 } lannet_tunnel;
 
 /* Opens the relay socket, sends JOIN. Returns 0 or <0 on error. role =
- * LANNET_ROLE_HOST (vip .1) or LANNET_ROLE_CLIENT (vip .2) on 10.99.0.0/24. */
+ * LANNET_ROLE_HOST (vip .1) or LANNET_ROLE_CLIENT (vip .2) on 10.99.0.0/24.
+ * local_bcast = underlying real-net directed broadcast (host-order, 0 == none). */
 int  lannet_tunnel_open(lannet_tunnel *t, int tun_fd,
                         const char *relay_ip, int relay_port,
-                        const char *room, uint8_t role);
+                        const char *room, uint8_t role, uint32_t local_bcast);
 
 /* Blocking pump loop until lannet_tunnel_stop(). */
 void lannet_tunnel_run(lannet_tunnel *t);

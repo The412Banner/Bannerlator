@@ -13,9 +13,10 @@ public final class LanOverlay {
 
     private LanOverlay() {}
 
-    /** Returns a native handle (0 == failure). tunFd is the VpnService tun fd. */
+    /** Returns a native handle (0 == failure). tunFd is the VpnService tun fd.
+     * localBcast = underlying real-net directed broadcast (host-order int, 0 == none). */
     public static native long nativeStart(int tunFd, String relayIp, int relayPort,
-                                          String room, int role);
+                                          String room, int role, int localBcast);
 
     public static native void nativeStop(long handle);
 }

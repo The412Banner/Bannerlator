@@ -24,14 +24,17 @@ static void *pump(void *v) {
 
 JNIEXPORT jlong JNICALL
 Java_com_winlator_star_net_LanOverlay_nativeStart(JNIEnv *env, jclass clazz,
-        jint tunFd, jstring relayIp, jint relayPort, jstring room, jint role) {
+        jint tunFd, jstring relayIp, jint relayPort, jstring room, jint role,
+        jint localBcast) {
     (void)clazz;
     const char *ip = (*env)->GetStringUTFChars(env, relayIp, NULL);
     const char *rm = (*env)->GetStringUTFChars(env, room, NULL);
 
     lannet_handle *h = calloc(1, sizeof(*h));
-    int rc = h ? lannet_tunnel_open(&h->t, tunFd, ip, (int)relayPort, rm, (uint8_t)role) : -99;
-    LOGI("nativeStart tunFd=%d relay=%s:%d room=%s role=%d rc=%d", tunFd, ip, relayPort, rm, role, rc);
+    int rc = h ? lannet_tunnel_open(&h->t, tunFd, ip, (int)relayPort, rm,
+                                    (uint8_t)role, (uint32_t)localBcast) : -99;
+    LOGI("nativeStart tunFd=%d relay=%s:%d room=%s role=%d localBcast=0x%08x rc=%d",
+         tunFd, ip, relayPort, rm, role, (uint32_t)localBcast, rc);
 
     (*env)->ReleaseStringUTFChars(env, relayIp, ip);
     (*env)->ReleaseStringUTFChars(env, room, rm);

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.net.ConnectivityManager;
+import android.net.LinkProperties;
 import android.os.Process;
 import android.util.Log;
 
@@ -390,8 +391,13 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         String primaryDNS = "8.8.4.4";
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Service.CONNECTIVITY_SERVICE);
         if (connectivityManager.getActiveNetwork() != null) {
-            ArrayList<InetAddress> dnsServers = new ArrayList<>(connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork()).getDnsServers());
-            primaryDNS = dnsServers.get(0).toString().substring(1);
+            LinkProperties linkProperties = connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork());
+            // A DNS-less active network (e.g. our scoped LAN-overlay VpnService, which sets no DNS)
+            // yields an empty list here; guard it so launch doesn't crash. Falls back to 8.8.4.4.
+            if (linkProperties != null && !linkProperties.getDnsServers().isEmpty()) {
+                ArrayList<InetAddress> dnsServers = new ArrayList<>(linkProperties.getDnsServers());
+                primaryDNS = dnsServers.get(0).toString().substring(1);
+            }
         }
         envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
         envVars.put("WINE_NEW_NDIS", "1");

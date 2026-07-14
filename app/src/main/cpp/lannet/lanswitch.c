@@ -9,7 +9,8 @@ static uint32_t rd_be32(const uint8_t *p) {
 }
 
 lsw_action lsw_classify(const uint8_t *pkt, size_t len,
-                        uint32_t self_vip, uint32_t peer_vip, uint32_t prefix_len) {
+                        uint32_t self_vip, uint32_t peer_vip, uint32_t prefix_len,
+                        uint32_t local_bcast) {
     if (len < 20) return LSW_DROP;               /* too short for an IPv4 header */
     if ((pkt[0] >> 4) != 4) return LSW_DROP;      /* IPv4 only for now */
 
@@ -20,6 +21,11 @@ lsw_action lsw_classify(const uint8_t *pkt, size_t len,
 
     /* multicast 224.0.0.0/4 */
     if ((dst & 0xF0000000u) == 0xE0000000u) return LSW_BROADCAST;
+
+    /* underlying real-network directed broadcast (e.g. 192.168.1.255) — the
+     * common case for LAN games that don't use the limited-broadcast address.
+     * The VpnService routes exactly this /32 into the tun for us to catch. */
+    if (local_bcast != 0 && dst == local_bcast) return LSW_BROADCAST;
 
     /* subnet-directed broadcast for our virtual subnet (host bits all ones) */
     if (prefix_len < 32) {

@@ -21,9 +21,13 @@ typedef enum {
 } lsw_action;
 
 /* All IPs are host-order uint32 (e.g. 10.99.0.1 == 0x0A630001).
- * self_vip/peer_vip: our and the peer's virtual IPs. prefix_len: e.g. 24. */
+ * self_vip/peer_vip: our and the peer's virtual IPs. prefix_len: e.g. 24.
+ * local_bcast: the underlying real network's directed-broadcast (e.g.
+ * 192.168.1.255), which many LAN games target instead of 255.255.255.255;
+ * the VpnService routes it into the tun so we can catch it. 0 == none. */
 lsw_action lsw_classify(const uint8_t *pkt, size_t len,
-                        uint32_t self_vip, uint32_t peer_vip, uint32_t prefix_len);
+                        uint32_t self_vip, uint32_t peer_vip, uint32_t prefix_len,
+                        uint32_t local_bcast);
 
 /* Convenience: a.b.c.d -> host-order uint32. */
 uint32_t lsw_ip(uint8_t a, uint8_t b, uint8_t c, uint8_t d);

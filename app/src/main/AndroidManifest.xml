@@ -267,6 +267,7 @@
         <!-- LAN-over-internet overlay (P1). VpnService scoped to this app only. -->
         <service android:name="com.winlator.star.net.LanOverlayVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"
+            android:foregroundServiceType="dataSync"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.net.VpnService"/>

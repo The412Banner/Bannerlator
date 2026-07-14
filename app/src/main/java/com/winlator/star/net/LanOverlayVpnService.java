@@ -1,5 +1,9 @@
 package com.winlator.star.net;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -7,8 +11,12 @@ import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.Network;
 import android.net.VpnService;
+import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
+
+import com.winlator.star.MainActivity;
+import com.winlator.star.R;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -38,6 +46,8 @@ public class LanOverlayVpnService extends VpnService {
     public static final String EXTRA_ROOM  = "room";
     public static final String EXTRA_ROLE  = "role";
     public static final String SELF_PKG    = "com.winlator.banner";
+    private static final String CHANNEL_ID = "lan_overlay";
+    private static final int NOTIF_ID = 4801;
 
     private ParcelFileDescriptor tun;
     private long handle;
@@ -106,6 +116,9 @@ public class LanOverlayVpnService extends VpnService {
             handle = LanOverlay.nativeStart(tun.getFd(), relay, port, room, role, localBcastInt);
             if (handle == 0) { Log.e(TAG, "nativeStart failed"); teardown(); stopSelf(); return START_NOT_STICKY; }
             Log.i(TAG, "overlay up: " + selfIp + " role=" + role + " relay=" + relay + ":" + port + " room=" + room);
+            // Go foreground so Android does NOT freeze/kill this process when the app is backgrounded
+            // (e.g. the user tabs to Discord) — without this the overlay tunnel + chat socket drop.
+            startForegroundNotification(room);
             // Tell the shared session state the tunnel is up so all 3 UI surfaces flip to connected.
             LanSessionState.onOverlayUp(room, role);
         } catch (Exception e) {
@@ -157,9 +170,44 @@ public class LanOverlayVpnService extends VpnService {
         return null;
     }
 
+    /**
+     * Promote to a foreground service with an ongoing notification. This is what keeps the process
+     * alive (not frozen/cached-killed by Android) while the app is backgrounded — so the LAN tunnel AND
+     * the chat WebSocket survive tabbing away to Discord etc. Tapping the notification returns to the app.
+     */
+    private void startForegroundNotification(String room) {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            if (Build.VERSION.SDK_INT >= 26) {
+                NotificationChannel ch = new NotificationChannel(
+                        CHANNEL_ID, "LAN Multiplayer", NotificationManager.IMPORTANCE_LOW);
+                ch.setDescription("Keeps your LAN session and chat connected while the app is in the background.");
+                ch.setShowBadge(false);
+                nm.createNotificationChannel(ch);
+            }
+            Intent open = new Intent(this, MainActivity.class)
+                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            int piFlags = PendingIntent.FLAG_UPDATE_CURRENT
+                    | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+            PendingIntent pi = PendingIntent.getActivity(this, 0, open, piFlags);
+            Notification n = new Notification.Builder(this, CHANNEL_ID)
+                    .setContentTitle("LAN Multiplayer active")
+                    .setContentText("Room " + room + " — connected. Stay in the app to keep the session alive.")
+                    .setSmallIcon(R.drawable.ic_stat_ab_gear_0011)
+                    .setOngoing(true)
+                    .setContentIntent(pi)
+                    .build();
+            startForeground(NOTIF_ID, n);
+        } catch (Exception e) {
+            Log.w(TAG, "startForeground failed (session may drop when backgrounded)", e);
+        }
+    }
+
     private void teardown() {
         if (handle != 0) { LanOverlay.nativeStop(handle); handle = 0; }
         if (tun != null) { try { tun.close(); } catch (Exception ignored) {} tun = null; }
+        try { stopForeground(true); } catch (Exception ignored) {}
     }
 
     @Override

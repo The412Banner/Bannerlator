@@ -52,6 +52,7 @@ class LanChatClient(
         fun onHistory(messages: List<Incoming>)
         fun onMessage(msg: Incoming)
         fun onPresence(event: String, role: String, name: String, count: Int)
+        fun onTyping(role: String, name: String)
     }
 
     // A tiny dedicated client — HttpUtils' client is tuned for one-shot REST calls; a WS wants its own
@@ -77,6 +78,11 @@ class LanChatClient(
         val t = text.trim().take(500)
         if (t.isEmpty()) return
         ws?.send(JSONObject().put("t", "msg").put("text", t).toString())
+    }
+
+    /** Notify the peer we're typing (relayed, not stored). Caller throttles. */
+    fun sendTyping() {
+        ws?.send(JSONObject().put("t", "typing").toString())
     }
 
     /** Permanent close — stops reconnect and tears down the socket + scope. */
@@ -131,6 +137,7 @@ class LanChatClient(
                     listener.onHistory(out)
                 }
                 "msg" -> listener.onMessage(o.toIncoming())
+                "typing" -> listener.onTyping(o.optString("from"), o.optString("name"))
                 "presence" -> listener.onPresence(
                     o.optString("event"),
                     o.optString("role"),

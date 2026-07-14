@@ -5,7 +5,9 @@ import android.content.Context
 import com.winlator.star.communityconfigs.AccountManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,6 +60,10 @@ object LanChat : LanChatClient.Listener {
     private val _windowMode = MutableStateFlow(WindowMode.HIDDEN)
     val windowMode: StateFlow<WindowMode> = _windowMode.asStateFlow()
 
+    /** True while the PEER is typing (auto-clears after a few seconds of silence). */
+    private val _peerTyping = MutableStateFlow(false)
+    val peerTyping: StateFlow<Boolean> = _peerTyping.asStateFlow()
+
     // ── Internals ───────────────────────────────────────────────────────────────────
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
@@ -68,6 +74,8 @@ object LanChat : LanChatClient.Listener {
     private var client: LanChatClient? = null
     private var connectedCode: String? = null
     private var myRole: String = "host"
+    private var typingClearJob: Job? = null
+    private var lastTypingSent = 0L
 
     /**
      * Idempotently begin observing [LanSessionState]. Called from every place the overlay is hosted
@@ -108,6 +116,7 @@ object LanChat : LanChatClient.Listener {
         _connected.value = false
         _peerPresent.value = false
         _presenceLine.value = null
+        _peerTyping.value = false
         _messages.value = emptyList()
         _unread.value = 0
         _windowMode.value = WindowMode.HIDDEN
@@ -139,6 +148,15 @@ object LanChat : LanChatClient.Listener {
     /** Send a line to the room. No-op when not connected. */
     fun sendMessage(text: String) { client?.send(text) }
 
+    /** Called on each keystroke; throttled to one "typing" ping every 2.5s so the peer sees a dots line. */
+    fun notifyTyping() {
+        val now = System.currentTimeMillis()
+        if (now - lastTypingSent >= 2500) {
+            lastTypingSent = now
+            client?.sendTyping()
+        }
+    }
+
     // ── LanChatClient.Listener (OkHttp socket thread) ─────────────────────────────────
     override fun onConnected() { _connected.value = true }
 
@@ -152,8 +170,17 @@ object LanChat : LanChatClient.Listener {
     override fun onMessage(msg: LanChatClient.Incoming) {
         val m = msg.toMsg()
         _messages.update { (it + m).takeLast(MAX_MESSAGES) }
-        // Only a PEER message bumps unread, and only while the full window isn't open.
-        if (!m.mine && _windowMode.value != WindowMode.EXPANDED) _unread.update { it + 1 }
+        if (!m.mine) {
+            _peerTyping.value = false   // a message means they stopped typing
+            // Only a PEER message bumps unread, and only while the full window isn't open.
+            if (_windowMode.value != WindowMode.EXPANDED) _unread.update { it + 1 }
+        }
+    }
+
+    override fun onTyping(role: String, name: String) {
+        _peerTyping.value = true
+        typingClearJob?.cancel()
+        typingClearJob = scope.launch { delay(4000); _peerTyping.value = false }
     }
 
     override fun onPresence(event: String, role: String, name: String, count: Int) {

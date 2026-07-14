@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-07-13 — 🌐 LAN-over-internet multiplayer: BACKEND LIVE + POLISHED UI device-verified (P1.3–P1.5 done; P1.6 = exit)
+
+> **Continues the P1.1/P1.2 entry below. Full detail: memory `project_bannerlator_lan_overlay_spec.md`.** Feature = two Bannerlator users play a LAN-multiplayer game over the internet (host/join by 6-char code). Own 2-peer virtual-LAN overlay. Branch `feat/lan-overlay-p1` (tip `8f343acf`, NOT merged; worktree `/home/claude-user/lan-p1-wt`).
+>
+> **✅ P1.3 Worker signaling — DEPLOYED + LIVE** (`bannerhub-configs-worker`, commit `133503a` in `/home/claude-user/bannerhub-api`, mainwork): `/lan/host` (6-char code), `/lan/join`, `/lan/status`, `/lan/leave`; `lan:` KV prefix, 30-min TTL; 5/5 bindings preserved. Optional `session`→`host_uid` (anonymous default). ⚠️ FOLLOW-UP: `/lan/join` returns `host_uid` but NOT the resolved username → "Hosted by X" won't show a name until the worker stores/returns `host_username`.
+>
+> **✅ P1.4 Relay VPS — LIVE + INTERNET-PROVEN.** Oracle Always-Free `E2.1.Micro` (Ampere was out-of-capacity), Ubuntu 24.04, public IP **`150.136.117.250`**, systemd `lannet-relay` on `udp/48800`. SSH `ubuntu@` key `~/.ssh/lannet_relay`. `test_public.py` PASS (broadcast A→B over real internet). Worker env `LAN_RELAY_HOST/PORT` set → `/lan/host` returns real relay. Gotchas: desktop-site for SSH-key/public-IP; ephemeral public IP post-create; UDP 48800 in NSG + security list; `setup.sh -I INPUT 1` (above Oracle's catch-all REJECT).
+>
+> **✅ P1.5 ENGINE + POLISHED UI — DEVICE-VERIFIED (build `8f343acf`, CI run 29296720715 green on all 3 flavors).** `LanRoomWorker.kt`/`LanOverlay`/`LanOverlayVpnService` engine + **`LanSessionState.kt`** (StateFlow single source of truth, DownloadRegistry-style) + **`LanMultiplayerDialog.kt`** (polished Compose, OutlinedAlertDialog style, big copyable code card + Copy/Share). **3 SYNCED entry points:** nav-drawer "LAN Multiplayer" (`AppDrawer.kt`, shows ACTIVE pill), per-game long-press (`ShortcutsScreen.kt` grid+list), in-game side-menu DIALOG (`XServerDrawer`/`XServerDialogHost`, game not paused). Anonymous default + optional username tie-in (`AccountManager.current?.session`→`host()`). **DEVICE TEST (this device):** nav-drawer→dialog renders styled → Host → code `6XDLDN` shown → overlay up → LIVE relay logged `JOIN room=6XDLDN role=1`+PING → drawer shows **ACTIVE pill** (sync proven). Built by android-app-engineer agent; old bare `LanActivity` harness kept adb-only (no LAUNCHER).
+>
+> **⚠️ UI FOLLOW-UPS:** (1) worker `host_username` (above) for "Hosted by X"; (2) "connected" today = tunnel-up, NOT peer-joined — needs a real peer-connected engine signal. **⚠️ Payload still CLEARTEXT** — Noise IK + relay abuse-hardening before public launch.
+>
+> **▶️ NEXT: P1.6 — two-device round-trip (EXIT)** = install a known LAN game on 2 devices, host on one / join on the other, confirm they find each other & play. Needs a 2nd device (or this device + a simulated peer for the plumbing). **📄 Living report:** `/sdcard/Download/Bannerlator-LAN-Report.{html,md}` (kept current per milestone; no secrets).
+
 ## 2026-07-13 — 🌐 LAN-over-internet multiplayer: feasibility PROVEN + P1.1/P1.2 built & device-proven (PAUSED → resume at P1.3)
 
 > **Feature:** let two Bannerlator users play a LAN-multiplayer game over the internet (one hosts, one joins by code). Design = **own minimal 2-peer virtual-LAN overlay** (user decision — NOT ZeroTier/n2n: no licensing, full control, reuses CF+account). Full spec + decisions: memory `project_bannerlator_lan_overlay_spec.md`; feasibility detail `project_bannerlator_lan_overlay_feature.md`.

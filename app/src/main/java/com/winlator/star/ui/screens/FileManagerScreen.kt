@@ -61,6 +61,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -80,7 +81,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -257,6 +261,12 @@ fun FileManagerScreen(
     var showFavorites by remember { mutableStateOf(false) }
     var favTick by remember { mutableIntStateOf(0) }
 
+    // storageTick is bumped on ON_RESUME so the removable-volume enumeration ([drives]) re-runs
+    // when we return to the app. Returning from a game (XServerDisplayActivity) can drop the SD
+    // card out of the file manager until the storage roots are re-listed; a manual bg/fg is the
+    // known workaround and fires ON_RESUME, so we replicate it here.
+    var storageTick by remember { mutableIntStateOf(0) }
+
     // resetScroll: jump to the top of the list (true for navigation; false for in-place reloads
     // after delete/paste/rename/refresh so the user keeps their scroll position).
     fun loadDirectory(dir: File, resetScroll: Boolean = true) {
@@ -292,6 +302,30 @@ fun FileManagerScreen(
     }
 
     LaunchedEffect(Unit) { openDrive(rootDir) }
+
+    // Re-enumerate storage on resume. Returning from a game (XServerDisplayActivity) or a manual
+    // background/foreground both fire ON_RESUME — the latter is the known workaround for the SD
+    // card dropping out of the file manager, so we replicate it: re-list the removable volumes
+    // (storageTick), the current directory, and re-check favorites' existence (favTick). The first
+    // resume is skipped since LaunchedEffect(Unit) above already did the initial load. Pattern
+    // mirrors ShortcutsScreen/SavesScreen/ContainersScreen.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        var firstResume = true
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (firstResume) {
+                    firstResume = false
+                } else {
+                    storageTick++
+                    favTick++
+                    loadDirectory(currentDir, resetScroll = false)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // System/gesture Back: while the Favorites view is open it closes that first; otherwise
     // it goes up one directory. Only at the current drive's root with Favorites closed is it
@@ -499,7 +533,7 @@ fun FileManagerScreen(
 
     var showDriveMenu by remember { mutableStateOf(false) }
     var showContainerPicker by remember { mutableStateOf(false) }
-    val drives = remember {
+    val drives = remember(storageTick) {
         buildList {
             add("Internal" to File("/storage/emulated/0"))
             val external = File("/storage")

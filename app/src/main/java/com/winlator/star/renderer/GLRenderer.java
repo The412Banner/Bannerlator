@@ -745,14 +745,23 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             content.refreshDataFromTexture();
             boolean delivered = scanout.isGameFrameDelivered();
 
-            // First delivered frame: stop guest content updates so GLSurfaceView stops redrawing and
-            // the opaque top game SC occludes the stale GL frame -> SurfaceFlinger can HWC-overlay it.
+            // First delivered frame: stop the software-draw path from continuously re-rendering the
+            // (now-occluded) GLSurfaceView content; the opaque top game SC occludes the stale GL frame
+            // so SurfaceFlinger can HWC-overlay it. setRenderingEnabled(false) only gates the
+            // onUpdateWindowContent -> requestRender path (WindowManager.triggerOnUpdateWindowContent).
             if (!xRenderingPausedForScanout && !wasDelivered && delivered) {
                 xServer.setRenderingEnabled(false);
                 xRenderingPausedForScanout = true;
             }
             if (hudFrameTick != null) hudFrameTick.accept(window.id);
         }
+        // Tick the parent GLSurfaceView once per guest present so SurfaceFlinger latches the child
+        // game SC buffer we just pushed. Without this, with RENDERMODE_WHEN_DIRTY + the paused
+        // software-draw path above, the parent surface never produces a frame after the first, so the
+        // child SC updates aren't recomposited until an input event forces a redraw -> the game
+        // appears frozen ("ghosts until you touch the screen"). Pacing stays tied to the guest present
+        // rate (the IdleNotify FPS limiter still gates presents), not free-running. GL path only.
+        if (nativeMode && scanout != null) xServerView.requestRender();
     }
 
     private static class RenderableWindow {

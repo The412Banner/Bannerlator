@@ -70,31 +70,11 @@ jobs:
             echo "NM=${TC}/bin/llvm-nm"
           } >> $GITHUB_ENV
 
-      - name: Build libltdl (GNU libtool ${{ env.LIBTOOL_VER }})
-        run: |
-          set -euxo pipefail
-          cd "$RUNNER_TEMP"
-          wget -q "https://ftpmirror.gnu.org/libtool/libtool-${LIBTOOL_VER}.tar.gz" \
-            || wget -q "https://ftp.gnu.org/gnu/libtool/libtool-${LIBTOOL_VER}.tar.gz"
-          tar xf "libtool-${LIBTOOL_VER}.tar.gz"
-          cd "libtool-${LIBTOOL_VER}/libltdl"
-          ./configure \
-            --host=aarch64-linux-android \
-            --enable-shared --disable-static \
-            CC="$CC" AR="$AR" RANLIB="$RANLIB" STRIP="$STRIP" \
-            CFLAGS="-O2 -fPIC" \
-            LDFLAGS="-Wl,-z,max-page-size=16384"
-          make -j"$(nproc)"
-          SO=$(find . -name 'libltdl.so.*' -type f | head -1)
-          test -n "$SO"
-          "$STRIP" --strip-unneeded "$SO"
-          patchelf --set-soname libltdl.so "$SO"
-          mkdir -p "$GITHUB_WORKSPACE/out"
-          cp "$SO" "$GITHUB_WORKSPACE/out/libltdl.so"
-
       - name: Build libsndfile ${{ env.SNDFILE_TAG }}
+        continue-on-error: true
         run: |
           set -euxo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/out"
           cd "$RUNNER_TEMP"
           git clone --depth 1 --branch "${SNDFILE_TAG}" https://github.com/libsndfile/libsndfile.git sndfile
           cmake -S sndfile -B build-sf -G Ninja \
@@ -116,10 +96,41 @@ jobs:
           patchelf --set-soname libsndfile.so "$SO"
           cp "$SO" "$GITHUB_WORKSPACE/out/libsndfile.so"
 
+      - name: Build libltdl (GNU libtool ${{ env.LIBTOOL_VER }})
+        continue-on-error: true
+        run: |
+          set -euxo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cd "$RUNNER_TEMP"
+          wget -q "https://ftpmirror.gnu.org/libtool/libtool-${LIBTOOL_VER}.tar.gz" \
+            || wget -q "https://ftp.gnu.org/gnu/libtool/libtool-${LIBTOOL_VER}.tar.gz"
+          tar xf "libtool-${LIBTOOL_VER}.tar.gz"
+          # Configure at the top level (not the libltdl/ subdir): the top-level
+          # build emits the installable shared libltdl.la -> libltdl.so.7. A
+          # standalone libltdl/ configure only builds the libltdlc convenience
+          # archive, never a .so.
+          cd "libtool-${LIBTOOL_VER}"
+          ./configure \
+            --host=aarch64-linux-android \
+            --enable-shared --disable-static --enable-ltdl-install \
+            CC="$CC" AR="$AR" RANLIB="$RANLIB" STRIP="$STRIP" \
+            CFLAGS="-O2 -fPIC" \
+            LDFLAGS="-Wl,-z,max-page-size=16384"
+          make -j"$(nproc)" -C libltdl
+          echo "=== libltdl/.libs listing ==="; ls -la libltdl/.libs || true
+          SO=$(find libltdl/.libs -name 'libltdl.so*' -type f 2>/dev/null | head -1)
+          test -n "$SO"
+          "$STRIP" --strip-unneeded "$SO"
+          patchelf --set-soname libltdl.so "$SO"
+          cp "$SO" "$GITHUB_WORKSPACE/out/libltdl.so"
+
       - name: Acceptance test (16 KB alignment + soname)
         run: |
           set -euo pipefail
           fail=0
+          shopt -s nullglob
+          got=("$GITHUB_WORKSPACE"/out/*.so)
+          [ "${#got[@]}" -gt 0 ] || { echo "!! no .so produced"; exit 1; }
           for f in "$GITHUB_WORKSPACE"/out/*.so; do
             align=$("$READELF" -l "$f" | awk '/LOAD/{print $NF}' | sort -u | tr '\n' ' ')
             soname=$("$READELF" -d "$f" | awk '/SONAME/{print $NF}')

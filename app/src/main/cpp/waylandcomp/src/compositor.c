@@ -20,7 +20,10 @@
 #include <wayland-server.h>
 #include "xdg-shell-server-protocol.h"
 #include "linux-dmabuf-v1-server-protocol.h"
-#include "vk_import.h"
+#include "vk_present.h"
+
+/* Defined in the dmabuf section below; presents a committed dmabuf frame. */
+static void present_committed_buffer(struct wl_resource *buffer);
 
 /* ------------------------------------------------------------------ wl_surface */
 
@@ -59,7 +62,10 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     fprintf(stderr, "[srv] surface.commit (buffer=%p)  <-- FRAME OBSERVED\n",
             (void *)s->pending_buffer);
     if (s->pending_buffer) {
-        /* No renderer yet: release immediately so the client can reuse it. */
+        /* Composite the frame to the output window (dmabuf path), then release so
+         * the client can reuse the buffer. present + queue-wait completes the read
+         * before release, so immediate release is safe. */
+        present_committed_buffer(s->pending_buffer);
         wl_buffer_send_release(s->pending_buffer);
         s->pending_buffer = NULL;
     }
@@ -274,6 +280,7 @@ struct dmabuf_params {
 };
 struct dmabuf_buffer {
     int fd[MAX_PLANES];
+    uint32_t offset[MAX_PLANES], stride[MAX_PLANES];
     int n_planes;
     int32_t width, height;
     uint32_t format;
@@ -286,6 +293,18 @@ static void dbuf_buffer_destroy_req(struct wl_client *c, struct wl_resource *r) 
 static const struct wl_buffer_interface dbuf_buffer_impl = {
     .destroy = dbuf_buffer_destroy_req,
 };
+
+/* Called from surface_commit: if the committed buffer is one of our dmabuf
+ * buffers, composite it to the output window via the Vulkan present backend. */
+static void present_committed_buffer(struct wl_resource *buffer) {
+    if (!buffer) return;
+    if (!wl_resource_instance_of(buffer, &wl_buffer_interface, &dbuf_buffer_impl))
+        return; /* wl_shm or other buffer — not handled by the GPU path yet */
+    struct dmabuf_buffer *b = wl_resource_get_user_data(buffer);
+    if (b && b->n_planes >= 1)
+        vk_present_commit_dmabuf(b->fd[0], b->format, b->modifier, b->width,
+                                 b->height, b->stride[0], b->offset[0]);
+}
 static void dbuf_buffer_resource_destroy(struct wl_resource *r) {
     struct dmabuf_buffer *b = wl_resource_get_user_data(r);
     if (!b) return;
@@ -330,16 +349,9 @@ static struct wl_resource *params_do_create(struct wl_client *c,
         fprintf(stderr, "[srv]     plane %d: fd=%d size=%lld offset=%u stride=%u\n",
                 i, p->fd[i], sz, p->offset[i], p->stride[i]);
         b->fd[i] = p->fd[i];
+        b->offset[i] = p->offset[i];
+        b->stride[i] = p->stride[i];
         p->fd[i] = -1; /* ownership moves to the buffer */
-    }
-    fprintf(stderr,
-            "[srv]     ==> ZERO-COPY GPU BUFFER CROSSED THE SOCKET (risk #1 retired)\n");
-    /* Prove we can import it into our own Vulkan device (once). */
-    static int import_tried = 0;
-    if (!import_tried && p->n_planes == 1) {
-        import_tried = 1;
-        vk_import_dmabuf(b->fd[0], format, b->modifier, w, h, p->stride[0],
-                         p->offset[0]);
     }
     struct wl_resource *buf =
         wl_resource_create(c, &wl_buffer_interface, 1, id);

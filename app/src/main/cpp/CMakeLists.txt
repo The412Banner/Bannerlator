@@ -152,7 +152,7 @@ target_link_libraries(direct_scanout
 # waylandcomp/generated (no host wayland-scanner needed at app build time).
 add_library(bannerwayland SHARED
         waylandcomp/src/compositor.c
-        waylandcomp/src/vk_import.c
+        waylandcomp/src/vk_present.c
         waylandcomp/src/waylandcomp_jni.c
         waylandcomp/generated/xdg-shell-protocol.c
         waylandcomp/generated/linux-dmabuf-v1-protocol.c

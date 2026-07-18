@@ -373,7 +373,9 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             // must be the FULL host path where XServerDisplayActivity created the socket
             // (imagefs/tmp/wayland-0), not a bare "/tmp". Skip DISPLAY (winex11.drv is hidden anyway).
             envVars.put("WAYLAND_DISPLAY", "wayland-0");
-            envVars.put("XDG_RUNTIME_DIR", rootDir.getPath() + "/tmp");
+            // Must match XServerDisplayActivity.startWaylandCompositor: filesDir/.wayland-rt (NOT
+            // imagefs/tmp, which setupXEnvironment clears out from under the compositor's socket).
+            envVars.put("XDG_RUNTIME_DIR", new File(context.getFilesDir(), ".wayland-rt").getPath());
             // winewayland.so's DT_NEEDED libwayland-client/-egl/xkbcommon/xkbregistry are bundled in
             // the Proton wcp's lib/ with the exact sonames winewayland was linked against (unversioned,
             // e.g. "libxkbcommon.so"). imagefs/usr/lib ships versioned sonames ("libxkbcommon.so.0"),

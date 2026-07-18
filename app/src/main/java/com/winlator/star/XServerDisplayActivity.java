@@ -2051,7 +2051,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandSurfaceView = new android.view.SurfaceView(this);
         waylandSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        final String xdgRuntimeDir = imageFs.getRootDir().getPath() + "/tmp";
+        // Dedicated runtime dir for the wayland socket. NOT imagefs/tmp — setupXEnvironment does
+        // FileUtils.clear(imagefs/tmp), which races the compositor's async socket creation and
+        // deletes wayland-0. filesDir/.wayland-rt is app-private, never cleared, and reachable by
+        // the guest (full /data paths, no chroot). GuestProgramLauncherComponent uses the same path.
+        File waylandRtDir = new File(getFilesDir(), ".wayland-rt");
+        waylandRtDir.mkdirs();
+        final String xdgRuntimeDir = waylandRtDir.getPath();
         // Resolve the container's Turnip driver (adrenotools) so the compositor can import dmabufs.
         String driverPath = null, libraryName = null;
         try {

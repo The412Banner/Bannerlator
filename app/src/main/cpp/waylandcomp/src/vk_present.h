@@ -11,6 +11,12 @@
  * vk_import dmabuf import).
  */
 
+// Set the Turnip driver to load (adrenotools). Call before the first commit.
+// NULL args -> the backend falls back to the system libvulkan (dmabuf import will
+// likely fail — Adreno lacks drm_format_modifier). driver_path ends with '/'.
+void vk_present_set_driver(const char *driver_path, const char *library_name,
+                           const char *native_lib_dir);
+
 // Set/replace the output window (from Surface via ANativeWindow_fromSurface).
 // NULL tears the swapchain down (surface destroyed).
 void vk_present_set_window(ANativeWindow *window);

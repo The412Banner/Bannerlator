@@ -153,6 +153,7 @@ target_link_libraries(direct_scanout
 add_library(bannerwayland SHARED
         waylandcomp/src/compositor.c
         waylandcomp/src/vk_present.c
+        waylandcomp/src/vk_loader.c
         waylandcomp/src/waylandcomp_jni.c
         waylandcomp/generated/xdg-shell-protocol.c
         waylandcomp/generated/linux-dmabuf-v1-protocol.c
@@ -165,9 +166,12 @@ target_include_directories(bannerwayland PRIVATE
 add_library(wayland-server SHARED IMPORTED)
 set_target_properties(wayland-server PROPERTIES IMPORTED_LOCATION
         ${CMAKE_CURRENT_SOURCE_DIR}/waylandcomp/prebuilt/lib/libwayland-server.so)
+# Vulkan is loaded at runtime via adrenotools (Turnip), not linked directly — so the
+# compositor uses Turnip's driver, which supports dmabuf import (drm_format_modifier).
 target_link_libraries(bannerwayland
         wayland-server
-        vulkan
+        adrenotools
+        dl
         log
         android
 )

@@ -7,6 +7,7 @@
 #include <jni.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 #include <android/log.h>
 #include <android/native_window_jni.h>
 #include "vk_present.h"
@@ -48,12 +49,26 @@ Java_com_winlator_star_wayland_WaylandCompositor_nativeStart(JNIEnv *env, jclass
     start_thread();
 }
 
-/* Start with a real output Surface: bind the ANativeWindow to the render backend,
- * then run the compositor. Frames committed by clients are composited to this Surface. */
+static char *dup_jstr(JNIEnv *env, jstring s) {
+    if (!s) return NULL;
+    const char *c = (*env)->GetStringUTFChars(env, s, NULL);
+    char *out = c ? strdup(c) : NULL;
+    if (c) (*env)->ReleaseStringUTFChars(env, s, c);
+    return out;
+}
+
+/* Start with a real output Surface + the container's Turnip driver (adrenotools).
+ * Frames committed by clients are composited to this Surface via Turnip. */
 JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeStartWithSurface(
-        JNIEnv *env, jclass clazz, jobject surface, jstring xdgRuntimeDir) {
+        JNIEnv *env, jclass clazz, jobject surface, jstring xdgRuntimeDir,
+        jstring driverPath, jstring libraryName, jstring nativeLibDir) {
     set_runtime_dir(env, xdgRuntimeDir);
+    char *dp = dup_jstr(env, driverPath);
+    char *ln = dup_jstr(env, libraryName);
+    char *nl = dup_jstr(env, nativeLibDir);
+    vk_present_set_driver(dp, ln, nl);
+    free(dp); free(ln); free(nl);
     if (surface) {
         ANativeWindow *win = ANativeWindow_fromSurface(env, surface);
         vk_present_set_window(win); /* backend acquires; released on nativeSetSurface(null) */

@@ -5,6 +5,9 @@ import android.os.Bundle
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.WindowManager
+import com.winlator.star.container.ContainerManager
+import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
+import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.wayland.WaylandCompositor
 
 /**
@@ -32,8 +35,28 @@ class WaylandDisplayActivity : Activity(), SurfaceHolder.Callback {
     override fun surfaceCreated(holder: SurfaceHolder) {
         if (!started) {
             started = true
-            // XDG_RUNTIME_DIR = an app-private dir for the wayland socket.
-            WaylandCompositor.nativeStartWithSurface(holder.surface, filesDir.absolutePath)
+            // Resolve the container's Turnip driver so the compositor imports dmabufs via
+            // Turnip (not the system Adreno driver, which lacks drm_format_modifier).
+            var driverPath: String? = null
+            var libraryName: String? = null
+            try {
+                val containerId = intent.getIntExtra("container_id", 0)
+                val container = ContainerManager(this).getContainerById(containerId)
+                // The adrenotools driver id is the graphicsDriverConfig "version" (e.g.
+                // "Mesa Turnip v…"), not the DX-wrapper graphicsDriver field.
+                val driverId = container?.let {
+                    GraphicsDriverConfigDialog.getVersion(it.graphicsDriverConfig)
+                }
+                if (!driverId.isNullOrEmpty() && driverId != "System") {
+                    val atm = AdrenotoolsManager(this)
+                    driverPath = atm.getDriverPath(driverId)
+                    libraryName = atm.getLibraryName(driverId)
+                }
+            } catch (_: Exception) { /* fall back to system libvulkan */ }
+            WaylandCompositor.nativeStartWithSurface(
+                holder.surface, filesDir.absolutePath,
+                driverPath, libraryName, applicationInfo.nativeLibraryDir
+            )
             // TODO(M4): launch the Wine guest here with the wayland display env, reusing
             // the container/imagefs/box64-FEX machinery and the winewayland wcp.
         } else {

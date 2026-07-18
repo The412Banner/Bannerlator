@@ -3776,6 +3776,17 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             if (shortcut.container.getRendererSfCompatMode()) "1" else "0") == "1")
     }
 
+    // Display backend per-game override: "" = use the container's Display backend, else force
+    // "x11"/"wayland". Absent extra falls back to the container default at launch. When the
+    // effective backend is Wayland the embedded compositor replaces the Renderer group, so the
+    // renderer overrides below are greyed (mirrors the container settings screen).
+    var displayBackendOverride by remember { mutableStateOf(shortcut.getExtra("displayBackend", "")) }
+    val effectiveWaylandShortcut = when (displayBackendOverride) {
+        Container.DISPLAY_BACKEND_WAYLAND -> true
+        Container.DISPLAY_BACKEND_X11 -> false
+        else -> shortcut.container.isWaylandBackend
+    }
+
     // Vulkan renderer per-game overrides (native / Colors=swapRB / present mode) — default to the
     // container's values; only shown + relevant when this shortcut runs on the Vulkan renderer.
     // Stored via the same "native"/"swapRB"/"presentMode" extras the launch resolver reads.
@@ -4080,6 +4091,8 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
             putExtra("screenSize", screenSize)
             putExtra("graphicsDriver", StringUtils.parseIdentifier(selectedGfxDriver))
             putExtra("graphicsDriverConfig", graphicsDriverConfig)
+            // Display backend override: "" clears the extra (use container default) via putExtra(null).
+            putExtra("displayBackend", displayBackendOverride.ifEmpty { null })
             putExtra("renderer", StringUtils.parseIdentifier(selectedRenderer))
             putExtra("sfCompatMode", if (sfCompatMode) "1" else "0")
             // Vulkan per-game overrides (read by resolvedRendererNative/SwapRB/PresentMode at launch).
@@ -4222,6 +4235,28 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
                         }
                     }
 
+                    // Display backend override (per-game): default to the container, or force
+                    // X11 / Wayland. Wayland greys the Renderer group below (compositor replaces it).
+                    run {
+                        val dbLabels = listOf("Use container default", "Force X11", "Force Wayland")
+                        val dbValues = listOf("", Container.DISPLAY_BACKEND_X11, Container.DISPLAY_BACKEND_WAYLAND)
+                        val dbIdx = dbValues.indexOf(displayBackendOverride).coerceAtLeast(0)
+                        LabeledDropdown(
+                            label = "Display backend",
+                            options = dbLabels,
+                            selectedOption = dbLabels[dbIdx],
+                            onSelect = { displayBackendOverride = dbValues[dbLabels.indexOf(it)] }
+                        )
+                        if (effectiveWaylandShortcut) {
+                            Text(
+                                "Wayland (experimental): renders through the embedded compositor " +
+                                    "(winewayland). Renderer options below don't apply.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
                     // Graphics Driver
                     LabeledDropdown(
                         label = stringResource(R.string.graphics_driver),
@@ -4259,7 +4294,8 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
                             // SurfaceFlinger is experimental and can reboot some devices — require opt-in.
                             if (it == "SurfaceFlinger" && selectedRenderer != "SurfaceFlinger") showSfWarning = true
                             else selectedRenderer = it
-                        }
+                        },
+                        enabled = !effectiveWaylandShortcut
                     )
                     if (showSfWarning) {
                         SurfaceFlingerWarningDialog(
@@ -4270,7 +4306,7 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
 
                     // SurfaceFlinger colour correction (ASR-only, GN #1620) — only relevant when this
                     // game runs on the SurfaceFlinger renderer, so surface it under that choice.
-                    if (selectedRenderer == "SurfaceFlinger") {
+                    if (!effectiveWaylandShortcut && selectedRenderer == "SurfaceFlinger") {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(stringResource(R.string.renderer_sf_compat))
@@ -4285,7 +4321,7 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
                     }
 
                     // Vulkan renderer per-game overrides — only relevant when this game runs on Vulkan.
-                    if (selectedRenderer == "Vulkan") {
+                    if (!effectiveWaylandShortcut && selectedRenderer == "Vulkan") {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(R.string.renderer_native), Modifier.weight(1f))
                             Switch(checked = vkNative, onCheckedChange = { vkNative = it })
@@ -4327,7 +4363,8 @@ private fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> Un
                             label = "Render scale (supersampling)",
                             options = renderScaleLabels,
                             selectedOption = renderScaleLabels[rsIdx],
-                            onSelect = { renderScale = renderScaleValues[renderScaleLabels.indexOf(it)] }
+                            onSelect = { renderScale = renderScaleValues[renderScaleLabels.indexOf(it)] },
+                            enabled = !effectiveWaylandShortcut
                         )
                     }
 

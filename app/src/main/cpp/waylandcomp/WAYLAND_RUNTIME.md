@@ -36,6 +36,14 @@ The staged `src/` here is that proven code, to grow into the app-embedded compos
   and point the container at the winewayland wcp.
 
 ## Status
-Branch scaffolding only. Compositor sources staged; CMake/Activity/JNI/launch wiring +
-imagefs libs are the next phase, gated on the winewayland wcp (task #1) landing green so
-it can be verified end-to-end on-device.
+- ✅ **Native lib foundation done + compile-verified.** Compositor + vk_import + pre-generated
+  protocol glue build as `libbannerwayland.so` (CMake target added), linking the vendored
+  bionic `libwayland-server`. Verified: compiles/links clean as an aarch64 bionic `.so`,
+  exports `banner_wayland_run`, NEEDED = libwayland-server + libvulkan. JNI entry
+  (`waylandcomp_jni.c`) + `WaylandCompositor.java` bring it up on a thread. Compositor-process
+  runtime deps (libwayland-server/libffi/libandroid-support) staged in `jniLibs/arm64-v8a`.
+- ⏭️ **Next phase (gated on the winewayland wcp landing green):** `WaylandDisplayActivity`
+  (SurfaceView) + JNI `ANativeWindow`→Vulkan swapchain + blit the imported game VkImage to the
+  window (last un-proven render step) + input + launch wiring (start compositor, `WAYLAND_DISPLAY`,
+  per-prefix `Drivers\Graphics=winewayland`) + `ImageFsInstaller.installWaylandLibs()` (client/egl/xkb
+  into the imagefs for winewayland.so).

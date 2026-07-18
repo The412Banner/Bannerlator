@@ -424,9 +424,12 @@ static void bind_output(struct wl_client *c, void *data, uint32_t ver,
     }
 }
 
-/* ------------------------------------------------------------------ main */
+/* ------------------------------------------------------------------ entry
+ * Lib entry point (was main() in the standalone spike). Blocks in the wl event
+ * loop, so the JNI wrapper runs it on a dedicated thread. XDG_RUNTIME_DIR must
+ * be set by the caller before this runs. */
 
-int main(void) {
+int banner_wayland_run(void) {
     struct wl_display *display = wl_display_create();
     if (!display) {
         fprintf(stderr, "[srv] wl_display_create failed\n");

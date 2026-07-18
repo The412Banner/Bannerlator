@@ -145,3 +145,29 @@ target_link_libraries(direct_scanout
         atomic
 )
 
+
+# ── Embedded Wayland compositor (experimental parallel runtime) ──────────────
+# Runs a libwayland-server compositor in-process so games launched via Wine's
+# winewayland.drv can present into it. Protocol glue is pre-generated in
+# waylandcomp/generated (no host wayland-scanner needed at app build time).
+add_library(bannerwayland SHARED
+        waylandcomp/src/compositor.c
+        waylandcomp/src/vk_import.c
+        waylandcomp/src/waylandcomp_jni.c
+        waylandcomp/generated/xdg-shell-protocol.c
+        waylandcomp/generated/linux-dmabuf-v1-protocol.c
+)
+target_include_directories(bannerwayland PRIVATE
+        waylandcomp/generated
+        waylandcomp/prebuilt/include
+        waylandcomp/src
+)
+add_library(wayland-server SHARED IMPORTED)
+set_target_properties(wayland-server PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/waylandcomp/prebuilt/lib/libwayland-server.so)
+target_link_libraries(bannerwayland
+        wayland-server
+        vulkan
+        log
+        android
+)

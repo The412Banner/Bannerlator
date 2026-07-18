@@ -368,11 +368,12 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
         if (waylandMode) {
-            // Wayland display path: point Wine at the embedded compositor's socket (created by
-            // XServerDisplayActivity under the imagefs /tmp, so the guest sees it here). Do NOT set
-            // DISPLAY so winex11.drv fails to init and Wine falls through to winewayland.drv.
+            // Wayland display path: point Wine at the embedded compositor's socket. winewayland's
+            // unixlib runs host-side (no chroot — the guest uses full /data paths), so XDG_RUNTIME_DIR
+            // must be the FULL host path where XServerDisplayActivity created the socket
+            // (imagefs/tmp/wayland-0), not a bare "/tmp". Skip DISPLAY (winex11.drv is hidden anyway).
             envVars.put("WAYLAND_DISPLAY", "wayland-0");
-            envVars.put("XDG_RUNTIME_DIR", "/tmp");
+            envVars.put("XDG_RUNTIME_DIR", rootDir.getPath() + "/tmp");
         } else {
             envVars.put("DISPLAY", ":0");
         }

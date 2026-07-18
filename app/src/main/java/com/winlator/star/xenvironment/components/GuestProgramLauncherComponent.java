@@ -469,6 +469,14 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             envVars.putAll(this.envVars);
         }
 
+        // Wayland: disable winex11.drv (append, keeping the dxwrapper's overrides) so Wine's
+        // explorer default driver list (mac,x11,wayland) skips x11 — whose DllMain otherwise
+        // "succeeds" even with no X server and wins — and loads winewayland.drv instead.
+        if (waylandMode) {
+            String ov = envVars.get("WINEDLLOVERRIDES");
+            envVars.put("WINEDLLOVERRIDES", (ov == null || ov.isEmpty() ? "" : ov + ";") + "winex11.drv=");
+        }
+
         String emulator = container.getEmulator();
         if (shortcut != null)
             emulator = shortcut.getExtra("emulator", container.getEmulator());

@@ -1,0 +1,203 @@
+name: Build 16 KB-aligned audio prebuilts
+
+# Standalone NDK cross-compiles of the hand-committed audio prebuilts in
+# app/src/main/jniLibs/arm64-v8a, relinked with -Wl,-z,max-page-size=16384 so
+# they load on 16 KB-page Android devices (Android 15/16 flagships). The
+# original committed copies are 4 KB-aligned (LOAD align 0x1000) and fail to
+# map on 16 KB-page kernels.
+#
+# libltdl (GNU libtool) and libsndfile build cleanly from upstream source with
+# the NDK. PulseAudio 13.0 is attempted in a separate, non-blocking job: stock
+# PA 13.0 does not compile against bionic without the downstream Winlator/
+# GameNative patch set, so that job captures the failure log as evidence and is
+# expected to fail. The four libpulse* libs are delivered out-of-band from a
+# symbol-verified 16 KB relink of the identical PA 13.0 (see REPORT).
+#
+# Acceptance test for every produced .so:
+#   llvm-readelf -l <file> | awk '/LOAD/{print $NF}' | sort -u  ==  0x4000
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/16kb-align-prebuilt-libs
+
+permissions:
+  contents: read
+
+env:
+  NDK_PKG: "ndk;29.0.14206865"
+  NDK_VER: "29.0.14206865"
+  API: "24"
+  LIBTOOL_VER: "2.4.7"
+  SNDFILE_TAG: "1.0.31"
+
+jobs:
+  ltdl-sndfile:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install NDK + CMake
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          mkdir -p "$SDK_ROOT"
+          if [ ! -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools/
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
+            rm -f /tmp/cmdline-tools.zip
+          fi
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "${NDK_PKG}" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/${NDK_VER}" >> $GITHUB_ENV
+
+      - name: Install host build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool patchelf wget ninja-build
+
+      - name: Set NDK toolchain vars
+        run: |
+          TC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64"
+          test -x "${TC}/bin/aarch64-linux-android${API}-clang" || { echo "clang missing"; ls "${TC}/bin" | head; exit 1; }
+          {
+            echo "TC=${TC}"
+            echo "CC=${TC}/bin/aarch64-linux-android${API}-clang"
+            echo "CXX=${TC}/bin/aarch64-linux-android${API}-clang++"
+            echo "AR=${TC}/bin/llvm-ar"
+            echo "RANLIB=${TC}/bin/llvm-ranlib"
+            echo "STRIP=${TC}/bin/llvm-strip"
+            echo "READELF=${TC}/bin/llvm-readelf"
+            echo "NM=${TC}/bin/llvm-nm"
+          } >> $GITHUB_ENV
+
+      - name: Build libltdl (GNU libtool ${{ env.LIBTOOL_VER }})
+        run: |
+          set -euxo pipefail
+          cd "$RUNNER_TEMP"
+          wget -q "https://ftpmirror.gnu.org/libtool/libtool-${LIBTOOL_VER}.tar.gz" \
+            || wget -q "https://ftp.gnu.org/gnu/libtool/libtool-${LIBTOOL_VER}.tar.gz"
+          tar xf "libtool-${LIBTOOL_VER}.tar.gz"
+          cd "libtool-${LIBTOOL_VER}/libltdl"
+          ./configure \
+            --host=aarch64-linux-android \
+            --enable-shared --disable-static \
+            CC="$CC" AR="$AR" RANLIB="$RANLIB" STRIP="$STRIP" \
+            CFLAGS="-O2 -fPIC" \
+            LDFLAGS="-Wl,-z,max-page-size=16384"
+          make -j"$(nproc)"
+          SO=$(find . -name 'libltdl.so.*' -type f | head -1)
+          test -n "$SO"
+          "$STRIP" --strip-unneeded "$SO"
+          patchelf --set-soname libltdl.so "$SO"
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp "$SO" "$GITHUB_WORKSPACE/out/libltdl.so"
+
+      - name: Build libsndfile ${{ env.SNDFILE_TAG }}
+        run: |
+          set -euxo pipefail
+          cd "$RUNNER_TEMP"
+          git clone --depth 1 --branch "${SNDFILE_TAG}" https://github.com/libsndfile/libsndfile.git sndfile
+          cmake -S sndfile -B build-sf -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-${API} \
+            -DBUILD_SHARED_LIBS=ON \
+            -DBUILD_PROGRAMS=OFF \
+            -DBUILD_EXAMPLES=OFF \
+            -DBUILD_TESTING=OFF \
+            -DENABLE_EXTERNAL_LIBS=OFF \
+            -DENABLE_MPEG=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,max-page-size=16384"
+          cmake --build build-sf -j"$(nproc)"
+          SO=$(find build-sf -name 'libsndfile.so.*' -type f | head -1)
+          test -n "$SO"
+          "$STRIP" --strip-unneeded "$SO"
+          patchelf --set-soname libsndfile.so "$SO"
+          cp "$SO" "$GITHUB_WORKSPACE/out/libsndfile.so"
+
+      - name: Acceptance test (16 KB alignment + soname)
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in "$GITHUB_WORKSPACE"/out/*.so; do
+            align=$("$READELF" -l "$f" | awk '/LOAD/{print $NF}' | sort -u | tr '\n' ' ')
+            soname=$("$READELF" -d "$f" | awk '/SONAME/{print $NF}')
+            nsym=$("$NM" -D --defined-only "$f" | wc -l)
+            echo "$(basename "$f"): align=[$align] soname=$soname defsym=$nsym"
+            if [ "$(echo "$align" | tr -d ' ')" != "0x4000" ]; then
+              echo "  !! FAIL: expected only 0x4000"; fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audio-libs-16k
+          path: out/
+
+  pulseaudio-attempt:
+    # Non-blocking best-effort. Stock PA 13.0 does not build on bionic without
+    # the downstream patch set; this captures the exact failure for the record.
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - name: Install NDK
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          mkdir -p "$SDK_ROOT"
+          if [ ! -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -sL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools/
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
+          fi
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "${NDK_PKG}"
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/${NDK_VER}" >> $GITHUB_ENV
+
+      - name: Install meson/ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build python3-pip pkg-config
+          sudo pip3 install --upgrade "meson>=1.1"
+
+      - name: Attempt PulseAudio 13.0 cross-configure (expected to fail on bionic)
+        continue-on-error: true
+        run: |
+          set -x
+          TC="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          cd "$RUNNER_TEMP"
+          wget -q "https://freedesktop.org/software/pulseaudio/releases/pulseaudio-13.0.tar.xz" || true
+          tar xf pulseaudio-13.0.tar.xz || { echo "download/extract failed"; exit 0; }
+          cat > cross.txt <<EOF
+          [binaries]
+          c = '${TC}/aarch64-linux-android${API}-clang'
+          cpp = '${TC}/aarch64-linux-android${API}-clang++'
+          ar = '${TC}/llvm-ar'
+          strip = '${TC}/llvm-strip'
+          pkgconfig = 'pkg-config'
+          [host_machine]
+          system = 'android'
+          cpu_family = 'aarch64'
+          cpu = 'aarch64'
+          endian = 'little'
+          EOF
+          meson setup build-pa pulseaudio-13.0 --cross-file cross.txt \
+            -Ddaemon=true -Dclient=true -Ddoxygen=false -Dman=false -Dtests=false \
+            -Dgtk=disabled -Dglib=disabled -Ddbus=disabled -Dx11=disabled \
+            -Dalsa=disabled -Dsystemd=disabled -Dudev=disabled -Dopenssl=disabled \
+            -Dbluez5=disabled -Dgsettings=disabled -Djack=disabled \
+            2>&1 | tee "$GITHUB_WORKSPACE/pa-configure.log" || true
+          ninja -C build-pa 2>&1 | tee -a "$GITHUB_WORKSPACE/pa-build.log" || true
+          echo "PA attempt finished (see logs)."
+
+      - name: Upload PA attempt logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulseaudio-attempt-log
+          path: |
+            pa-configure.log
+            pa-build.log
+          if-no-files-found: ignore

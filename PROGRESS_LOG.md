@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-07-18 — 🌊 WAYLAND RUNTIME PROJECT — spike PROVEN + winewayland wcp building + app branch scaffolded
+
+> **New experimental PARALLEL display runtime: run/launch games through Wine's `winewayland.drv` → our own embedded Wayland compositor (native, Vulkan), instead of the X11 path (pure-Java X11 server + `libwinlator.so`). X11 runtime stays default + UNTOUCHED. Full detail: [[project_bannerlator_wayland_runtime]].**
+>
+> **Why:** explicit-sync frame pacing (`wp_linux_drm_syncobj`) the X11/Java server can't express + dmabuf zero-copy + Wine upstream invests in winewayland while winex11 is legacy-maintenance. NOT a replacement — a separate flavor.
+>
+> **✅ SPIKE DEVICE-PROVEN (Adreno 750 / Turnip)** — repo `/home/claude-user/bannerlator-wayland` (local, 3 commits). M1: minimal libwayland-server compositor + client, xdg-shell handshake + wl_shm commit observed. **M2 (make-or-break, RISK #1 RETIRED):** Turnip's Vulkan WSI exported real zero-copy dmabufs to our EXTERNAL compositor (640×480 XR24/LINEAR, fd 1.2MB, 30/30 frames presented) — the SAME Mesa WSI path winewayland.drv drives for DXVK/VKD3D games. **Import:** compositor imported that dmabuf into its own Turnip VkImage. Full GPU path closed both directions WITHOUT a Wine build. ⚠️ Build from PRoot shell not the bridge (Termux clang ECHILD under Magisk daemon).
+>
+> **① winewayland P11 arm64ec wcp — BUILDING.** Branch `The412Banner/proton-wine:feat/winewayland` (off `proton_11.0`, pushed). `--without-wayland`→`--with-wayland` + `WAYLAND_CLIENT/_EGL/XKBCOMMON/XKBREGISTRY` flags (same pattern as other deps, bypass pkg-config prefix); vendored bionic aarch64 wayland/xkb libs+headers in `android/wayland-deps/` (from this device's Termux, reproducible); `libwayland-bin` for host wayland-scanner; strip+ccache unchanged; 9 driver protocol XMLs all in-tree. **Run `29643622174`** (sdk28, aarch64+x86_64) — configure PASSED (compiling); background-watched; VERIFY winewayland.so in artifact at completion.
+>
+> **② bannerlator app branch — SCAFFOLDED.** Branch `feat/wayland-runtime` (off `main`, pushed, tip `a3f7334f`). Proven compositor sources staged → `app/src/main/cpp/waylandcomp/` + integration plan `WAYLAND_RUNTIME.md`. **REMAINING M4 (next phase, gated on ① green):** CMake `libbannerwayland.so` + `WaylandDisplayActivity` (SurfaceView) + JNI ANativeWindow→Vulkan swapchain + blit imported VkImage to window + input + launch wiring (start compositor, `WAYLAND_DISPLAY`, per-prefix `Drivers\Graphics=winewayland`) + imagefs wayland libs.
+>
+> **Status:** GPU-path risk retired; wcp building (verify+iterate to green); app branch scaffolded; full app integration is next after the wcp lands. Nothing merged; X11 untouched.
+
 ## 2026-07-16 (night) — ✅ RELEASE 2.6.2 SHIPPED = LATEST (fixes-and-hardening; user chose the 2.6.2 label over 2.7)
 
 > **Cut from current `main` = the eve-session accumulator below. vc**45**, tag `2.6.2` @ version-bump `380cc90a`, API-confirmed `latest=2.6.2`, prerelease=false. Release build run **29551084664** ✅. Assets = 3 flavor APKs + `update.json` (vc45/2.6.2 — in-app updater offers it). Styled body applied + README updated (`ef5b4eac`).**

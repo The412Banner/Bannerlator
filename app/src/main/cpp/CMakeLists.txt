@@ -157,6 +157,7 @@ add_library(bannerwayland SHARED
         waylandcomp/src/waylandcomp_jni.c
         waylandcomp/generated/xdg-shell-protocol.c
         waylandcomp/generated/linux-dmabuf-v1-protocol.c
+        waylandcomp/generated/viewporter-protocol.c
 )
 target_include_directories(bannerwayland PRIVATE
         waylandcomp/generated

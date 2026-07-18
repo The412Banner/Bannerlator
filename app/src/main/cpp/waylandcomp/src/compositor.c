@@ -7,8 +7,10 @@
  * — and we observe the commit. No rendering yet (that's milestone 2); attached
  * buffers are just logged and released so the client keeps producing frames.
  *
- * Globals advertised: wl_compositor, wl_subcompositor, wl_shm (via
- * wl_display_init_shm), wl_output, xdg_wm_base, zwp_linux_dmabuf_v1.
+ * Globals advertised: wl_compositor, wl_subcompositor, wp_viewporter, wl_shm
+ * (via wl_display_init_shm), wl_output, xdg_wm_base, zwp_linux_dmabuf_v1.
+ * These are winewayland.drv's full required set (wl_compositor, xdg_wm_base,
+ * wl_shm, wl_subcompositor, wp_viewporter); the rest it treats as optional.
  */
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
@@ -20,6 +22,7 @@
 #include <wayland-server.h>
 #include "xdg-shell-server-protocol.h"
 #include "linux-dmabuf-v1-server-protocol.h"
+#include "viewporter-server-protocol.h"
 #include "vk_present.h"
 
 /* Defined in the dmabuf section below; presents a committed dmabuf frame. */
@@ -191,6 +194,48 @@ static void bind_subcompositor(struct wl_client *c, void *data, uint32_t ver,
         wl_resource_create(c, &wl_subcompositor_interface, ver, id);
     wl_resource_set_implementation(r, &subcompositor_impl, NULL, NULL);
     fprintf(stderr, "[srv] client bound wl_subcompositor v%u\n", ver);
+}
+
+/* ---------------------------------------------------------------- wp_viewporter
+ * winewayland.drv also hard-requires wp_viewporter (source-crop + destination-scale
+ * of a surface). It sets a viewport destination to size the game surface. Our present
+ * path already scales the committed dmabuf to fill the output window, so we accept the
+ * viewport requests and treat them as no-ops (the destination == our output size). */
+
+static void viewport_destroy(struct wl_client *c, struct wl_resource *r) {
+    wl_resource_destroy(r);
+}
+static void viewport_set_source(struct wl_client *c, struct wl_resource *r,
+                                wl_fixed_t x, wl_fixed_t y,
+                                wl_fixed_t w, wl_fixed_t h) {}
+static void viewport_set_destination(struct wl_client *c, struct wl_resource *r,
+                                     int32_t w, int32_t h) {}
+static const struct wp_viewport_interface viewport_impl = {
+    .destroy = viewport_destroy,
+    .set_source = viewport_set_source,
+    .set_destination = viewport_set_destination,
+};
+
+static void viewporter_destroy(struct wl_client *c, struct wl_resource *r) {
+    wl_resource_destroy(r);
+}
+static void viewporter_get_viewport(struct wl_client *c, struct wl_resource *r,
+                                    uint32_t id, struct wl_resource *surface) {
+    struct wl_resource *vp =
+        wl_resource_create(c, &wp_viewport_interface, wl_resource_get_version(r), id);
+    wl_resource_set_implementation(vp, &viewport_impl, NULL, NULL);
+    fprintf(stderr, "[srv] viewporter.get_viewport -> %p\n", (void *)vp);
+}
+static const struct wp_viewporter_interface viewporter_impl = {
+    .destroy = viewporter_destroy,
+    .get_viewport = viewporter_get_viewport,
+};
+static void bind_viewporter(struct wl_client *c, void *data, uint32_t ver,
+                            uint32_t id) {
+    struct wl_resource *r =
+        wl_resource_create(c, &wp_viewporter_interface, ver, id);
+    wl_resource_set_implementation(r, &viewporter_impl, NULL, NULL);
+    fprintf(stderr, "[srv] client bound wp_viewporter v%u\n", ver);
 }
 
 /* ------------------------------------------------------------------ xdg_shell */
@@ -508,6 +553,7 @@ int banner_wayland_run(void) {
 
     wl_global_create(display, &wl_compositor_interface, 6, NULL, bind_compositor);
     wl_global_create(display, &wl_subcompositor_interface, 1, NULL, bind_subcompositor);
+    wl_global_create(display, &wp_viewporter_interface, 1, NULL, bind_viewporter);
     wl_display_init_shm(display); /* wl_shm global + pool/buffer handling */
     wl_global_create(display, &wl_output_interface, 2, NULL, bind_output);
     wl_global_create(display, &xdg_wm_base_interface, 1, NULL, bind_xdg_wm_base);

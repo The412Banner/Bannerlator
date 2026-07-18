@@ -2058,11 +2058,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
         File waylandRtDir = new File(getFilesDir(), ".wayland-rt");
         waylandRtDir.mkdirs();
         final String xdgRuntimeDir = waylandRtDir.getPath();
-        // Resolve the container's Turnip driver (adrenotools) so the compositor can import dmabufs.
+        // Resolve the Turnip driver (adrenotools) so the compositor can import dmabufs — honoring a
+        // per-game shortcut override exactly like the guest does (the guest's ADRENOTOOLS_DRIVER_PATH
+        // is set from the same resolved value). Using container.getGraphicsDriverConfig() unconditionally
+        // grabbed the wrong driver on a shortcut launch (empty libraryName -> adrenotools load fails ->
+        // system libvulkan -> no dmabuf exts -> vkCreateDevice fails -> black screen).
         String driverPath = null, libraryName = null;
         try {
-            String driverId = com.winlator.star.contentdialog.GraphicsDriverConfigDialog
-                    .getVersion(container.getGraphicsDriverConfig());
+            String gdc = (shortcut != null)
+                    ? shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig())
+                    : container.getGraphicsDriverConfig();
+            String driverId = com.winlator.star.contentdialog.GraphicsDriverConfigDialog.getVersion(gdc);
             if (driverId != null && !driverId.isEmpty() && !driverId.equals("System")) {
                 com.winlator.star.contents.AdrenotoolsManager atm =
                         new com.winlator.star.contents.AdrenotoolsManager(this);

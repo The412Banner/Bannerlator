@@ -1121,10 +1121,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 final String[] stage = { "Preparing Wine & graphics driver" };
                 try {
                     preloaderDialog.step(2, "Preparing Wine & graphics driver…");
+                    setWineDisplayDriver();   // BEFORE setupWineSystemFiles starts the first wineserver
                     setupWineSystemFiles();
                     extractGraphicsDriverFiles();
                     changeWineAudioDriver();
-                    setWineDisplayDriver();   // before any wineserver loads the registry (see below)
                     stage[0] = "Building environment";
                     setupXEnvironment();
                 } catch (Exception e) {

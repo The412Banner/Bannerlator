@@ -4365,9 +4365,33 @@ return true;
                         if (bak.exists() && !drv.exists()) bak.renameTo(drv);
                     }
                 }
+                if (waylandMode) installWaylandLibs(libDir);
             }
         } catch (Exception e) {
             Log.e("XServerDisplayActivity", "wayland: winex11 hide/restore failed", e);
+        }
+    }
+
+    /**
+     * Stage winewayland.so's host deps into imagefs/usr/lib so the guest's dlopen resolves them via
+     * LD_LIBRARY_PATH (same path winex11.so's libX11/libXext deps resolve on — proven). The libs are
+     * bundled in the Proton wcp's lib/ root. Only copy a lib the imagefs lacks, so we never clobber
+     * an existing versioned base lib / symlink (imagefs already ships libxkbcommon/-registry symlinks).
+     */
+    private void installWaylandLibs(File wcpLibDir) {
+        File dstDir = imageFs.getLibDir();
+        for (String lib : new String[]{"libwayland-client.so", "libwayland-egl.so",
+                                       "libxkbcommon.so", "libxkbregistry.so"}) {
+            File src = new File(wcpLibDir, lib);
+            File dst = new File(dstDir, lib);
+            if (src.exists() && !dst.exists()) {
+                if (FileUtils.copy(src, dst)) {
+                    dst.setExecutable(true, false);
+                    Log.d("XServerDisplayActivity", "wayland: staged " + lib + " into imagefs");
+                } else {
+                    Log.e("XServerDisplayActivity", "wayland: failed to stage " + lib);
+                }
+            }
         }
     }
 

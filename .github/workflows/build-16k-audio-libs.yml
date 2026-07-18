@@ -90,7 +90,10 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,max-page-size=16384"
           cmake --build build-sf -j"$(nproc)"
-          SO=$(find build-sf -name 'libsndfile.so.*' -type f | head -1)
+          echo "=== built .so ==="; find build-sf -name 'libsndfile.so*' -type f -exec ls -la {} \;
+          # Android CMake emits an unversioned libsndfile.so (soname already
+          # libsndfile.so, no .so.1 suffix) -- match the exact name.
+          SO=$(find build-sf -name 'libsndfile.so' -type f | head -1)
           test -n "$SO"
           "$STRIP" --strip-unneeded "$SO"
           patchelf --set-soname libsndfile.so "$SO"
@@ -105,20 +108,19 @@ jobs:
           wget -q "https://ftpmirror.gnu.org/libtool/libtool-${LIBTOOL_VER}.tar.gz" \
             || wget -q "https://ftp.gnu.org/gnu/libtool/libtool-${LIBTOOL_VER}.tar.gz"
           tar xf "libtool-${LIBTOOL_VER}.tar.gz"
-          # Configure at the top level (not the libltdl/ subdir): the top-level
-          # build emits the installable shared libltdl.la -> libltdl.so.7. A
-          # standalone libltdl/ configure only builds the libltdlc convenience
-          # archive, never a .so.
-          cd "libtool-${LIBTOOL_VER}"
+          # Build the standalone libltdl WITH --enable-ltdl-install: that is what
+          # switches the build from the libltdlc convenience archive to the
+          # installable shared libltdl.la -> .libs/libltdl.so.7.
+          cd "libtool-${LIBTOOL_VER}/libltdl"
           ./configure \
             --host=aarch64-linux-android \
             --enable-shared --disable-static --enable-ltdl-install \
             CC="$CC" AR="$AR" RANLIB="$RANLIB" STRIP="$STRIP" \
             CFLAGS="-O2 -fPIC" \
             LDFLAGS="-Wl,-z,max-page-size=16384"
-          make -j"$(nproc)" -C libltdl
-          echo "=== libltdl/.libs listing ==="; ls -la libltdl/.libs || true
-          SO=$(find libltdl/.libs -name 'libltdl.so*' -type f 2>/dev/null | head -1)
+          make -j"$(nproc)"
+          echo "=== .libs listing ==="; ls -la .libs || true
+          SO=$(find .libs -name 'libltdl.so*' -type f 2>/dev/null | head -1)
           test -n "$SO"
           "$STRIP" --strip-unneeded "$SO"
           patchelf --set-soname libltdl.so "$SO"

@@ -26,4 +26,8 @@ void vk_present_set_window(ANativeWindow *window);
 int vk_present_commit_dmabuf(int fd, uint32_t drm_format, uint64_t modifier,
                              int w, int h, uint32_t stride, uint32_t offset);
 
+// Composite one committed wl_shm (CPU) frame to the screen — the Wine desktop and plain
+// GDI windows, which winewayland draws via wl_shm rather than Vulkan. data is BGRA/XRGB8888.
+int vk_present_commit_shm(const void *data, int w, int h, int stride, uint32_t wl_format);
+
 #endif

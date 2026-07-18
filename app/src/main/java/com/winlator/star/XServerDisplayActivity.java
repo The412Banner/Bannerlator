@@ -2343,6 +2343,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
         preloaderDialog.enterGuest("Waiting for " + preloaderGameName + " to render…");
         runOnUiThread(this::startLaunchTimers);
 
+        // Wayland: the launch overlay must ALWAYS clear so the guest is visible — the compositor
+        // present path (first-frame hook) may not fire for a shm-only desktop, and the guest must
+        // never be hidden behind a stuck spinner. Force-close it 2s after guest boot, unconditionally.
+        if (waylandMode) {
+            new android.os.Handler(getMainLooper()).postDelayed(() -> {
+                if (!winStarted) { winStarted = true; cancelLaunchTimers(); }
+                preloaderDialog.closeOnUiThread();
+            }, 2000L);
+        }
+
         // Start the WinHandler (writes events to the file)
         winHandler.start();
 

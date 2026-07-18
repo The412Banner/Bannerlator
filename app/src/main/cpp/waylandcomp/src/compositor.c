@@ -399,12 +399,26 @@ static const struct wl_buffer_interface dbuf_buffer_impl = {
  * buffers, composite it to the output window via the Vulkan present backend. */
 static void present_committed_buffer(struct wl_resource *buffer) {
     if (!buffer) return;
-    if (!wl_resource_instance_of(buffer, &wl_buffer_interface, &dbuf_buffer_impl))
-        return; /* wl_shm or other buffer — not handled by the GPU path yet */
-    struct dmabuf_buffer *b = wl_resource_get_user_data(buffer);
-    if (b && b->n_planes >= 1)
-        vk_present_commit_dmabuf(b->fd[0], b->format, b->modifier, b->width,
-                                 b->height, b->stride[0], b->offset[0]);
+    if (wl_resource_instance_of(buffer, &wl_buffer_interface, &dbuf_buffer_impl)) {
+        struct dmabuf_buffer *b = wl_resource_get_user_data(buffer);
+        if (b && b->n_planes >= 1)
+            vk_present_commit_dmabuf(b->fd[0], b->format, b->modifier, b->width,
+                                     b->height, b->stride[0], b->offset[0]);
+        return;
+    }
+    /* wl_shm (CPU) buffer — the Wine desktop / GDI windows. Upload+blit its pixels so they
+     * appear on screen too, not just Vulkan/dmabuf game frames. */
+    struct wl_shm_buffer *shm = wl_shm_buffer_get(buffer);
+    if (shm) {
+        wl_shm_buffer_begin_access(shm);
+        void *data = wl_shm_buffer_get_data(shm);
+        int32_t w = wl_shm_buffer_get_width(shm);
+        int32_t h = wl_shm_buffer_get_height(shm);
+        int32_t stride = wl_shm_buffer_get_stride(shm);
+        if (data && w > 0 && h > 0)
+            vk_present_commit_shm(data, w, h, stride, wl_shm_buffer_get_format(shm));
+        wl_shm_buffer_end_access(shm);
+    }
 }
 static void dbuf_buffer_resource_destroy(struct wl_resource *r) {
     struct dmabuf_buffer *b = wl_resource_get_user_data(r);

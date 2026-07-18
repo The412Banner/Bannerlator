@@ -317,3 +317,112 @@ int vk_present_commit_dmabuf(int fd, uint32_t drm_format, uint64_t modifier, int
     }
     return 0;
 }
+
+/* Present one wl_shm (CPU) buffer. winewayland draws the Wine desktop and plain GDI windows
+ * via wl_shm, not Vulkan, so without this the desktop is invisible (only dmabuf/Vulkan game
+ * frames showed). Upload the pixels into a linear host-visible VkImage, then blit+present it
+ * exactly like the dmabuf path. Expects BGRA/XRGB8888 bytes (winewayland's shm format). */
+int vk_present_commit_shm(const void *data, int w, int h, int stride, uint32_t wl_format) {
+    (void)wl_format; /* ARGB8888/XRGB8888 -> little-endian BGRA bytes == B8G8R8A8_UNORM */
+    if (!g_window || !data || w <= 0 || h <= 0) return -1;
+    if (ensure_init() != 0) return -1;
+
+    VkImageCreateInfo ici = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_B8G8R8A8_UNORM, .extent = {w, h, 1}, .mipLevels = 1, .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT, .tiling = VK_IMAGE_TILING_LINEAR,
+        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED};
+    VkImage src; VkDeviceMemory srcMem;
+    if (g_vk.CreateImage(g_dev, &ici, NULL, &src) != VK_SUCCESS) return -1;
+
+    VkMemoryRequirements req; g_vk.GetImageMemoryRequirements(g_dev, src, &req);
+    VkPhysicalDeviceMemoryProperties mp; g_vk.GetPhysicalDeviceMemoryProperties(g_pd, &mp);
+    int idx = -1;
+    for (uint32_t i = 0; i < mp.memoryTypeCount; i++)
+        if ((req.memoryTypeBits & (1u << i)) &&
+            (mp.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
+            (mp.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) { idx = i; break; }
+    if (idx < 0) { g_vk.DestroyImage(g_dev, src, NULL); return -1; }
+
+    VkMemoryAllocateInfo mai = {.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                .allocationSize = req.size, .memoryTypeIndex = (uint32_t)idx};
+    if (g_vk.AllocateMemory(g_dev, &mai, NULL, &srcMem) != VK_SUCCESS) {
+        g_vk.DestroyImage(g_dev, src, NULL); return -1;
+    }
+    g_vk.BindImageMemory(g_dev, src, srcMem, 0);
+
+    VkImageSubresource subr = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0};
+    VkSubresourceLayout lay; g_vk.GetImageSubresourceLayout(g_dev, src, &subr, &lay);
+    void *map = NULL;
+    if (g_vk.MapMemory(g_dev, srcMem, 0, req.size, 0, &map) != VK_SUCCESS) {
+        g_vk.FreeMemory(g_dev, srcMem, NULL); g_vk.DestroyImage(g_dev, src, NULL); return -1;
+    }
+    int rowbytes = w * 4; if (stride < rowbytes) rowbytes = stride;
+    for (int y = 0; y < h; y++)
+        memcpy((uint8_t *)map + lay.offset + (size_t)y * lay.rowPitch,
+               (const uint8_t *)data + (size_t)y * stride, rowbytes);
+    g_vk.UnmapMemory(g_dev, srcMem); /* coherent: visible to the queue at submit */
+
+    uint32_t img = 0;
+    VkResult ar = g_vk.AcquireNextImageKHR(g_dev, g_swapchain, UINT64_MAX, g_acq, VK_NULL_HANDLE, &img);
+    if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) {
+        g_vk.FreeMemory(g_dev, srcMem, NULL); g_vk.DestroyImage(g_dev, src, NULL); return -1;
+    }
+
+    g_vk.ResetCommandBuffer(g_cmd, 0);
+    VkCommandBufferBeginInfo bi = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                   .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+    g_vk.BeginCommandBuffer(g_cmd, &bi);
+    VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    VkImageMemoryBarrier b_src = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = src, .subresourceRange = range,
+        .srcAccessMask = VK_ACCESS_HOST_WRITE_BIT, .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT};
+    VkImageMemoryBarrier b_dst = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = g_images[img], .subresourceRange = range, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT};
+    VkImageMemoryBarrier pre[2] = {b_src, b_dst};
+    g_vk.CmdPipelineBarrier(g_cmd, VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 2, pre);
+
+    VkImageBlit blit = {.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+                        .srcOffsets = {{0, 0, 0}, {w, h, 1}},
+                        .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+                        .dstOffsets = {{0, 0, 0}, {(int)g_extent.width, (int)g_extent.height, 1}}};
+    g_vk.CmdBlitImage(g_cmd, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, g_images[img],
+                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+
+    VkImageMemoryBarrier b_present = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = g_images[img],
+        .subresourceRange = range, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT};
+    g_vk.CmdPipelineBarrier(g_cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                            0, 0, NULL, 0, NULL, 1, &b_present);
+    g_vk.EndCommandBuffer(g_cmd);
+
+    VkPipelineStageFlags wait = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    VkSubmitInfo si = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .waitSemaphoreCount = 1,
+                       .pWaitSemaphores = &g_acq, .pWaitDstStageMask = &wait, .commandBufferCount = 1,
+                       .pCommandBuffers = &g_cmd, .signalSemaphoreCount = 1, .pSignalSemaphores = &g_rnd};
+    g_vk.ResetFences(g_dev, 1, &g_fence);
+    g_vk.QueueSubmit(g_queue, 1, &si, g_fence);
+
+    VkPresentInfoKHR pi = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .waitSemaphoreCount = 1,
+                           .pWaitSemaphores = &g_rnd, .swapchainCount = 1,
+                           .pSwapchains = &g_swapchain, .pImageIndices = &img};
+    g_vk.QueuePresentKHR(g_queue, &pi);
+    g_vk.WaitForFences(g_dev, 1, &g_fence, VK_TRUE, UINT64_MAX);
+    g_vk.QueueWaitIdle(g_queue);
+
+    g_vk.FreeMemory(g_dev, srcMem, NULL);
+    g_vk.DestroyImage(g_dev, src, NULL);
+
+    if (!g_first_frame_done) { g_first_frame_done = 1; banner_on_first_frame(); }
+    return 0;
+}

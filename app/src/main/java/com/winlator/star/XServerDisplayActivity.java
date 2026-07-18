@@ -1124,6 +1124,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     setupWineSystemFiles();
                     extractGraphicsDriverFiles();
                     changeWineAudioDriver();
+                    setWineDisplayDriver();   // before any wineserver loads the registry (see below)
                     stage[0] = "Building environment";
                     setupXEnvironment();
                 } catch (Exception e) {
@@ -2316,9 +2317,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         // Start all environment components (XServer, Audio, Wine, etc.)
-        // Select the Wine display driver in the prefix registry (winewayland vs winex11).
-        setWineDisplayDriver();
-
         preloaderDialog.step(4, "Launching Windows…");
         environment.startEnvironmentComponents();
 

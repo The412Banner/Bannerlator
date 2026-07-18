@@ -487,6 +487,32 @@ private fun TopLevelFields(
         }
         Spacer(Modifier.height(8.dp))
 
+        // Display backend: X11 (Java X server + libwinlator) vs the embedded Wayland
+        // compositor (winewayland.drv). Wayland routes launches through our compositor and
+        // greys out the whole Renderer group below, which the compositor replaces. The
+        // Graphics Driver (Turnip) + DX Wrapper stay live — Wayland runs on top of them.
+        run {
+            val backendLabels = listOf("X11", "Wayland")
+            val backendValues = listOf(Container.DISPLAY_BACKEND_X11, Container.DISPLAY_BACKEND_WAYLAND)
+            val selIdx = backendValues.indexOf(viewModel.displayBackend).coerceAtLeast(0)
+            LabeledDropdown(
+                label = "Display backend",
+                options = backendLabels,
+                selectedOption = backendLabels[selIdx],
+                onSelect = { viewModel.displayBackend = backendValues[backendLabels.indexOf(it)] }
+            )
+            if (viewModel.isWaylandBackend) {
+                Text(
+                    "Wayland (experimental): games render through the embedded compositor " +
+                        "(winewayland). Needs a winewayland Proton (11.0-1-arm64ec-7+). The " +
+                        "Renderer options below don't apply and are disabled.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
         // Graphics Driver + config button
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             LabeledDropdown(
@@ -527,7 +553,9 @@ private fun TopLevelFields(
         }
         Spacer(Modifier.height(8.dp))
 
-        // Renderer
+        // Renderer — the X11-side compositor stage. Greyed under the Wayland backend, which
+        // replaces it with the embedded compositor.
+        val rendererEnabled = !viewModel.isWaylandBackend
         var showSfWarning by remember { mutableStateOf(false) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             LabeledDropdown(
@@ -539,9 +567,10 @@ private fun TopLevelFields(
                     if (it == "SurfaceFlinger" && viewModel.selectedRenderer != "SurfaceFlinger") showSfWarning = true
                     else viewModel.selectedRenderer = it
                 },
+                enabled = rendererEnabled,
                 modifier = Modifier.weight(1f)
             )
-            if (viewModel.selectedRenderer == "Vulkan") {
+            if (rendererEnabled && viewModel.selectedRenderer == "Vulkan") {
                 IconButton(onClick = onShowVulkanConfig) {
                     Icon(Icons.Default.Settings, contentDescription = null)
                 }
@@ -557,7 +586,7 @@ private fun TopLevelFields(
         // choice, only when SurfaceFlinger is selected (mirrors the per-game shortcut editor). The
         // renderer-settings gear only appears for Vulkan, so this toggle would otherwise be
         // unreachable for the very renderer it applies to.
-        if (viewModel.selectedRenderer == "SurfaceFlinger") {
+        if (rendererEnabled && viewModel.selectedRenderer == "SurfaceFlinger") {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -587,7 +616,8 @@ private fun TopLevelFields(
                 label = "Render scale (supersampling)",
                 options = renderScaleLabels,
                 selectedOption = renderScaleLabels[rsIdx],
-                onSelect = { viewModel.renderScale = renderScaleValues[renderScaleLabels.indexOf(it)] }
+                onSelect = { viewModel.renderScale = renderScaleValues[renderScaleLabels.indexOf(it)] },
+                enabled = !viewModel.isWaylandBackend
             )
         }
         Spacer(Modifier.height(8.dp))

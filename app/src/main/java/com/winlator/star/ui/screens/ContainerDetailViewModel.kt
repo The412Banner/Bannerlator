@@ -81,6 +81,12 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var rendererSwapRB      by mutableStateOf(false)
     // SurfaceFlinger (ASR) BGRA->RGBA colour correction (GN #1620). Default ON = correct colours.
     var rendererSfCompatMode by mutableStateOf(true)
+
+    // Display backend: "x11" (default) or "wayland". Wayland routes launches through the
+    // embedded compositor (winewayland.drv) and greys out the whole Renderer group above,
+    // which the compositor replaces. See Container.DISPLAY_BACKEND_*.
+    var displayBackend by mutableStateOf(Container.DISPLAY_BACKEND_X11)
+    val isWaylandBackend get() = displayBackend == Container.DISPLAY_BACKEND_WAYLAND
     // Render scale (supersampling) — stored via the "renderScale" extra (no DB field). "1.0" = Off.
     var renderScale         by mutableStateOf("1.0")
     var autoCloseOnExit     by mutableStateOf(true)
@@ -322,6 +328,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         rendererFilterMode       = c?.getRendererFilterMode() ?: 0
         rendererSwapRB           = c?.getRendererSwapRB() ?: false
         rendererSfCompatMode     = c?.getRendererSfCompatMode() ?: true
+        displayBackend           = c?.getDisplayBackend() ?: Container.DISPLAY_BACKEND_X11
         renderScale              = c?.getExtra("renderScale", "1.0") ?: "1.0"
         autoCloseOnExit          = (c?.getExtra("autoCloseOnExit", "1") ?: "1") == "1"
         selectedDXWrapper        = identifierToDisplay(c?.getDXWrapper() ?: Container.DEFAULT_DXWRAPPER, dxWrapperEntries)
@@ -645,6 +652,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setRendererFilterMode(rendererFilterMode)
             c.setRendererSwapRB(rendererSwapRB)
             c.setRendererSfCompatMode(rendererSfCompatMode)
+            c.setDisplayBackend(displayBackend)
             c.putExtra("renderScale", if (renderScale == "1.0") null else renderScale)
             c.putExtra("autoCloseOnExit", if (autoCloseOnExit) null else "0")  // default ON
             c.setInputType(inputType)

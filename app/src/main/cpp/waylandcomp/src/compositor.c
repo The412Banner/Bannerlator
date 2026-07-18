@@ -36,8 +36,12 @@
  * UI thread and are injected into the compositor thread via g_input_pipe so all wl_pointer
  * sends happen on the wl event-loop thread (libwayland is not thread-safe). --- */
 static struct wl_display *g_display;
-static struct wl_resource *g_pointer;         /* client's wl_pointer, or NULL */
-static struct wl_resource *g_pointer_focus;   /* wl_surface the pointer entered */
+/* Each Wine process is a SEPARATE wayland client with its own wl_pointer, so we track one
+ * per client and route events to the pointer whose client owns the visible surface. */
+struct seat_pointer { struct wl_resource *ptr; struct wl_resource *focus; };
+#define MAX_PTRS 16
+static struct seat_pointer g_ptrs[MAX_PTRS];
+static int g_nptrs;
 static struct wl_resource *g_visible_surface; /* last surface committed with a buffer = what's on screen */
 static int g_input_pipe[2] = {-1, -1};
 struct input_msg { int action; int x; int y; }; /* action: 0=down 1=move 2=up */
@@ -588,7 +592,8 @@ static const struct wl_pointer_interface pointer_impl = {
     .set_cursor = pointer_set_cursor, .release = pointer_release,
 };
 static void pointer_res_destroy(struct wl_resource *r) {
-    if (g_pointer == r) { g_pointer = NULL; g_pointer_focus = NULL; }
+    for (int i = 0; i < g_nptrs; i++)
+        if (g_ptrs[i].ptr == r) { g_ptrs[i] = g_ptrs[--g_nptrs]; break; }
 }
 
 static void keyboard_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
@@ -600,8 +605,8 @@ static void seat_get_pointer(struct wl_client *c, struct wl_resource *r, uint32_
     struct wl_resource *p = wl_resource_create(c, &wl_pointer_interface,
                                                wl_resource_get_version(r), id);
     wl_resource_set_implementation(p, &pointer_impl, NULL, pointer_res_destroy);
-    g_pointer = p; g_pointer_focus = NULL;
-    fprintf(stderr, "[srv] wl_seat.get_pointer -> %p\n", (void *)p);
+    if (g_nptrs < MAX_PTRS) { g_ptrs[g_nptrs].ptr = p; g_ptrs[g_nptrs].focus = NULL; g_nptrs++; }
+    WLOGI("wl_seat.get_pointer -> %p (nptrs=%d)", (void *)p, g_nptrs);
 }
 static void seat_get_keyboard(struct wl_client *c, struct wl_resource *r, uint32_t id) {
     struct wl_resource *k = wl_resource_create(c, &wl_keyboard_interface,
@@ -627,28 +632,31 @@ static void bind_seat(struct wl_client *c, void *data, uint32_t ver, uint32_t id
     fprintf(stderr, "[srv] client bound wl_seat v%u\n", ver);
 }
 
-/* Deliver one pointer event to the focused (visible) surface. Runs on the compositor thread. */
+/* Deliver one pointer event to the visible surface's client pointer. Compositor thread. */
 static void deliver_pointer(const struct input_msg *m) {
-    if (!g_pointer || !g_visible_surface) return;
-    /* Only deliver to a surface owned by the pointer's client. */
-    if (wl_resource_get_client(g_pointer) != wl_resource_get_client(g_visible_surface)) return;
+    if (!g_visible_surface) return;
+    struct wl_client *vc = wl_resource_get_client(g_visible_surface);
+    struct seat_pointer *sp = NULL;
+    for (int i = 0; i < g_nptrs; i++)
+        if (wl_resource_get_client(g_ptrs[i].ptr) == vc) { sp = &g_ptrs[i]; break; }
+    if (!sp) { WLOGI("deliver_pointer: no pointer for visible-surface client"); return; }
+    struct wl_resource *ptr = sp->ptr;
     wl_fixed_t fx = wl_fixed_from_int(m->x), fy = wl_fixed_from_int(m->y);
     uint32_t t = now_ms();
-    int ptr_ver = wl_resource_get_version(g_pointer);
-    if (g_pointer_focus != g_visible_surface) {
-        if (g_pointer_focus)
-            wl_pointer_send_leave(g_pointer, wl_display_next_serial(g_display), g_pointer_focus);
-        g_pointer_focus = g_visible_surface;
-        wl_pointer_send_enter(g_pointer, wl_display_next_serial(g_display), g_pointer_focus, fx, fy);
+    if (sp->focus != g_visible_surface) {
+        if (sp->focus)
+            wl_pointer_send_leave(ptr, wl_display_next_serial(g_display), sp->focus);
+        sp->focus = g_visible_surface;
+        wl_pointer_send_enter(ptr, wl_display_next_serial(g_display), sp->focus, fx, fy);
     }
-    wl_pointer_send_motion(g_pointer, t, fx, fy);
+    wl_pointer_send_motion(ptr, t, fx, fy);
     if (m->action == 0)
-        wl_pointer_send_button(g_pointer, wl_display_next_serial(g_display), t, BTN_LEFT,
+        wl_pointer_send_button(ptr, wl_display_next_serial(g_display), t, BTN_LEFT,
                                WL_POINTER_BUTTON_STATE_PRESSED);
     else if (m->action == 2)
-        wl_pointer_send_button(g_pointer, wl_display_next_serial(g_display), t, BTN_LEFT,
+        wl_pointer_send_button(ptr, wl_display_next_serial(g_display), t, BTN_LEFT,
                                WL_POINTER_BUTTON_STATE_RELEASED);
-    if (ptr_ver >= WL_POINTER_FRAME_SINCE_VERSION) wl_pointer_send_frame(g_pointer);
+    if (wl_resource_get_version(ptr) >= WL_POINTER_FRAME_SINCE_VERSION) wl_pointer_send_frame(ptr);
     wl_display_flush_clients(g_display);
 }
 
@@ -666,6 +674,8 @@ void banner_wayland_send_pointer(int action, int x, int y) {
     struct input_msg m = { action, x, y };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
     (void)n;
+    WLOGI("send_pointer action=%d x=%d y=%d (nptrs=%d visible=%p)", action, x, y,
+          g_nptrs, (void *)g_visible_surface);
 }
 
 /* ------------------------------------------------------------------ entry

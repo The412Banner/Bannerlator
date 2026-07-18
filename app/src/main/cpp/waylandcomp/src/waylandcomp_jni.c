@@ -14,6 +14,7 @@
 
 extern int banner_wayland_run(void);
 extern void banner_wayland_send_pointer(int action, int x, int y);
+extern void banner_wayland_send_key(int evdev, int state);
 
 #define TAG "BannerWayland"
 
@@ -120,6 +121,13 @@ JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeSendPointer(
         JNIEnv *env, jclass clazz, jint action, jint x, jint y) {
     banner_wayland_send_pointer(action, x, y);
+}
+
+/* Inject a key event. evdev = Linux input keycode (KEY_A=30…); state 1=down 0=up. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSendKey(
+        JNIEnv *env, jclass clazz, jint evdev, jint state) {
+    banner_wayland_send_key(evdev, state);
 }
 
 /* Swap/clear the output window (e.g. SurfaceView recreated/destroyed). */

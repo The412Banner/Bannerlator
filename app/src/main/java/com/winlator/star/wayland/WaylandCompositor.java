@@ -50,4 +50,7 @@ public final class WaylandCompositor {
     /** Inject a pointer event into the compositor (from the SurfaceView touch listener).
      *  action: 0=down, 1=move, 2=up. x/y in compositor output space (0..1919, 0..1079). */
     public static native void nativeSendPointer(int action, int x, int y);
+
+    /** Inject a key event. evdev = Linux input keycode (KEY_A=30…); state: 1=down, 0=up. */
+    public static native void nativeSendKey(int evdev, int state);
 }

@@ -39,13 +39,17 @@ static struct wl_display *g_display;
 /* Each Wine process is a SEPARATE wayland client with its own wl_pointer, so we track one
  * per client and route events to the pointer whose client owns the visible surface. */
 struct seat_pointer { struct wl_resource *ptr; struct wl_resource *focus; };
+struct seat_keyboard { struct wl_resource *kb; struct wl_resource *focus; };
 #define MAX_PTRS 16
 static struct seat_pointer g_ptrs[MAX_PTRS];
 static int g_nptrs;
+static struct seat_keyboard g_kbs[MAX_PTRS];
+static int g_nkbs;
 static struct wl_resource *g_visible_surface; /* last surface committed with a buffer = what's on screen */
 static struct wl_resource *g_cursor_surface;  /* the wl_pointer.set_cursor surface (NOT blitted fullscreen) */
 static int g_input_pipe[2] = {-1, -1};
-struct input_msg { int action; int x; int y; }; /* action: 0=down 1=move 2=up */
+/* type 0 = pointer (p1=action 0down/1move/2up, p2=x, p3=y); type 1 = key (p1=evdev, p2=state 1down/0up) */
+struct input_msg { int type; int p1; int p2; int p3; };
 #include "xdg-shell-server-protocol.h"
 #include "linux-dmabuf-v1-server-protocol.h"
 #include "viewporter-server-protocol.h"
@@ -609,6 +613,10 @@ static void pointer_res_destroy(struct wl_resource *r) {
 
 static void keyboard_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static const struct wl_keyboard_interface keyboard_impl = { .release = keyboard_release };
+static void keyboard_res_destroy(struct wl_resource *r) {
+    for (int i = 0; i < g_nkbs; i++)
+        if (g_kbs[i].kb == r) { g_kbs[i] = g_kbs[--g_nkbs]; break; }
+}
 static void touch_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static const struct wl_touch_interface touch_impl = { .release = touch_release };
 
@@ -622,8 +630,25 @@ static void seat_get_pointer(struct wl_client *c, struct wl_resource *r, uint32_
 static void seat_get_keyboard(struct wl_client *c, struct wl_resource *r, uint32_t id) {
     struct wl_resource *k = wl_resource_create(c, &wl_keyboard_interface,
                                                wl_resource_get_version(r), id);
-    wl_resource_set_implementation(k, &keyboard_impl, NULL, NULL);
-    /* No keymap yet (input focus/keys are a later step); winewayland tolerates this. */
+    wl_resource_set_implementation(k, &keyboard_impl, NULL, keyboard_res_destroy);
+    if (g_nkbs < MAX_PTRS) { g_kbs[g_nkbs].kb = k; g_kbs[g_nkbs].focus = NULL; g_nkbs++; }
+    /* Send the xkb keymap the app extracted to $XDG_RUNTIME_DIR/keymap.xkb. Without a keymap the
+     * client can't interpret our evdev key codes. */
+    const char *rt = getenv("XDG_RUNTIME_DIR");
+    char path[512];
+    snprintf(path, sizeof(path), "%s/keymap.xkb", rt ? rt : ".");
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd >= 0) {
+        struct stat st;
+        if (fstat(fd, &st) == 0 && st.st_size > 0)
+            wl_keyboard_send_keymap(k, WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1, fd, (uint32_t)st.st_size);
+        close(fd);
+    } else {
+        WLOGE("keymap open failed: %s", path);
+    }
+    if (wl_resource_get_version(k) >= WL_KEYBOARD_REPEAT_INFO_SINCE_VERSION)
+        wl_keyboard_send_repeat_info(k, 25, 500);
+    WLOGI("wl_seat.get_keyboard -> %p (nkbs=%d)", (void *)k, g_nkbs);
 }
 static void seat_get_touch(struct wl_client *c, struct wl_resource *r, uint32_t id) {
     struct wl_resource *t = wl_resource_create(c, &wl_touch_interface,
@@ -650,9 +675,10 @@ static void deliver_pointer(const struct input_msg *m) {
     struct seat_pointer *sp = NULL;
     for (int i = 0; i < g_nptrs; i++)
         if (wl_resource_get_client(g_ptrs[i].ptr) == vc) { sp = &g_ptrs[i]; break; }
-    if (!sp) { WLOGI("deliver_pointer: no pointer for visible-surface client"); return; }
+    if (!sp) return;
     struct wl_resource *ptr = sp->ptr;
-    wl_fixed_t fx = wl_fixed_from_int(m->x), fy = wl_fixed_from_int(m->y);
+    int action = m->p1;
+    wl_fixed_t fx = wl_fixed_from_int(m->p2), fy = wl_fixed_from_int(m->p3);
     uint32_t t = now_ms();
     if (sp->focus != g_visible_surface) {
         if (sp->focus)
@@ -661,20 +687,49 @@ static void deliver_pointer(const struct input_msg *m) {
         wl_pointer_send_enter(ptr, wl_display_next_serial(g_display), sp->focus, fx, fy);
     }
     wl_pointer_send_motion(ptr, t, fx, fy);
-    if (m->action == 0)
+    if (action == 0)
         wl_pointer_send_button(ptr, wl_display_next_serial(g_display), t, BTN_LEFT,
                                WL_POINTER_BUTTON_STATE_PRESSED);
-    else if (m->action == 2)
+    else if (action == 2)
         wl_pointer_send_button(ptr, wl_display_next_serial(g_display), t, BTN_LEFT,
                                WL_POINTER_BUTTON_STATE_RELEASED);
     if (wl_resource_get_version(ptr) >= WL_POINTER_FRAME_SINCE_VERSION) wl_pointer_send_frame(ptr);
     wl_display_flush_clients(g_display);
 }
 
-/* wl event-loop callback: drain queued touch events written by the Android UI thread. */
+/* Deliver one key event to the visible surface's client keyboard. p1=evdev keycode, p2=state. */
+static void deliver_key(const struct input_msg *m) {
+    if (!g_visible_surface) return;
+    struct wl_client *vc = wl_resource_get_client(g_visible_surface);
+    struct seat_keyboard *sk = NULL;
+    for (int i = 0; i < g_nkbs; i++)
+        if (wl_resource_get_client(g_kbs[i].kb) == vc) { sk = &g_kbs[i]; break; }
+    if (!sk) return;
+    struct wl_resource *kb = sk->kb;
+    uint32_t t = now_ms();
+    if (sk->focus != g_visible_surface) {
+        struct wl_array keys; wl_array_init(&keys);
+        if (sk->focus)
+            wl_keyboard_send_leave(kb, wl_display_next_serial(g_display), sk->focus);
+        sk->focus = g_visible_surface;
+        wl_keyboard_send_enter(kb, wl_display_next_serial(g_display), sk->focus, &keys);
+        /* Baseline modifiers = none. (Shift/Ctrl come through as their own key events; winewayland
+         * tracks them via the keymap. A full xkb modifier mask is a later refinement.) */
+        wl_keyboard_send_modifiers(kb, wl_display_next_serial(g_display), 0, 0, 0, 0);
+        wl_array_release(&keys);
+    }
+    wl_keyboard_send_key(kb, wl_display_next_serial(g_display), t, (uint32_t)m->p1,
+                         m->p2 ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED);
+    wl_display_flush_clients(g_display);
+}
+
+/* wl event-loop callback: drain queued input events written by the Android UI thread. */
 static int on_input_readable(int fd, uint32_t mask, void *data) {
     struct input_msg m;
-    while (read(fd, &m, sizeof(m)) == (ssize_t)sizeof(m)) deliver_pointer(&m);
+    while (read(fd, &m, sizeof(m)) == (ssize_t)sizeof(m)) {
+        if (m.type == 1) deliver_key(&m);
+        else deliver_pointer(&m);
+    }
     return 0;
 }
 
@@ -682,11 +737,19 @@ static int on_input_readable(int fd, uint32_t mask, void *data) {
  * dispatches it. x/y are in output space (0..1919, 0..1079). */
 void banner_wayland_send_pointer(int action, int x, int y) {
     if (g_input_pipe[1] < 0) return;
-    struct input_msg m = { action, x, y };
+    struct input_msg m = { 0, action, x, y };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
     (void)n;
-    WLOGI("send_pointer action=%d x=%d y=%d (nptrs=%d visible=%p)", action, x, y,
-          g_nptrs, (void *)g_visible_surface);
+}
+
+/* Called from JNI. Queues a key event. evdev = Linux input keycode (e.g. KEY_A=30); state 1=down 0=up. */
+void banner_wayland_send_key(int evdev, int state) {
+    if (g_input_pipe[1] < 0) return;
+    struct input_msg m = { 1, evdev, state, 0 };
+    ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
+    (void)n;
+    WLOGI("send_key evdev=%d state=%d (nkbs=%d visible=%p)", evdev, state, g_nkbs,
+          (void *)g_visible_surface);
 }
 
 /* ------------------------------------------------------------------ entry

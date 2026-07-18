@@ -2587,6 +2587,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         inputControlsView.setVisualStyle(VisualStyle.GAMEHUB);
 
+        // Wayland mode: touch must reach the compositor SurfaceView (-> wl_pointer), but touchpadView
+        // (X11 mouse emulation) + inputControlsView were just added ON TOP of it and were eating every
+        // touch. Bring the wayland surface to the front so its onTouchListener receives events; the
+        // DrawerLayout still handles the left-edge swipe to open the in-game drawer.
+        if (waylandMode && waylandSurfaceView != null) waylandSurfaceView.bringToFront();
 
         startTouchscreenTimeout();
 

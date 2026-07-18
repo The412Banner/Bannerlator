@@ -2316,6 +2316,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         // Start all environment components (XServer, Audio, Wine, etc.)
+        // Select the Wine display driver in the prefix registry (winewayland vs winex11).
+        setWineDisplayDriver();
+
         preloaderDialog.step(4, "Launching Windows…");
         environment.startEnvironmentComponents();
 
@@ -4329,6 +4332,22 @@ return true;
             }
             container.putExtra("audioDriver", audioDriver);
             container.saveData();
+        }
+    }
+
+    // Force the Wine graphics driver via the prefix registry. Wayland selects winewayland.drv
+    // (into our compositor); otherwise we only restore x11 if a prior wayland launch had set it,
+    // so normal X11 prefixes are left untouched.
+    private void setWineDisplayDriver() {
+        File userRegFile = new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg");
+        try (WineRegistryEditor reg = new WineRegistryEditor(userRegFile)) {
+            if (waylandMode) {
+                reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "wayland");
+            } else {
+                String cur = reg.getStringValue("Software\\Wine\\Drivers", "Graphics", "");
+                if ("wayland".equals(cur))
+                    reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "x11");
+            }
         }
     }
 

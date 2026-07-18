@@ -13,6 +13,7 @@
 #include "vk_present.h"
 
 extern int banner_wayland_run(void);
+extern void banner_wayland_send_pointer(int action, int x, int y);
 
 #define TAG "BannerWayland"
 
@@ -111,6 +112,14 @@ Java_com_winlator_star_wayland_WaylandCompositor_nativeStartWithSurface(
         __android_log_print(ANDROID_LOG_INFO, TAG, "output window bound (%p)", (void *)win);
     }
     start_thread();
+}
+
+/* Inject a pointer event from the Android SurfaceView touch listener (UI thread).
+ * action: 0=down 1=move 2=up; x/y in output space (0..1919, 0..1079). */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSendPointer(
+        JNIEnv *env, jclass clazz, jint action, jint x, jint y) {
+    banner_wayland_send_pointer(action, x, y);
 }
 
 /* Swap/clear the output window (e.g. SurfaceView recreated/destroyed). */

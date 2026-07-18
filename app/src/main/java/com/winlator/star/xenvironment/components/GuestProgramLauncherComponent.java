@@ -376,6 +376,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             // Must match XServerDisplayActivity.startWaylandCompositor: filesDir/.wayland-rt (NOT
             // imagefs/tmp, which setupXEnvironment clears out from under the compositor's socket).
             envVars.put("XDG_RUNTIME_DIR", new File(context.getFilesDir(), ".wayland-rt").getPath());
+            // TEMP (verification): dump the raw Wayland wire protocol to prove real Wayland is running.
+            envVars.put("WAYLAND_DEBUG", "1");
             // winewayland.so's DT_NEEDED libwayland-client/-egl/xkbcommon/xkbregistry are bundled in
             // the Proton wcp's lib/ with the exact sonames winewayland was linked against (unversioned,
             // e.g. "libxkbcommon.so"). imagefs/usr/lib ships versioned sonames ("libxkbcommon.so.0"),

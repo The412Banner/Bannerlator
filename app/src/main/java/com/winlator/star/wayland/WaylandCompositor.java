@@ -46,4 +46,8 @@ public final class WaylandCompositor {
 
     /** Replace/clear the output window when the SurfaceView is (re)created/destroyed. */
     public static native void nativeSetSurface(Surface surface);
+
+    /** Inject a pointer event into the compositor (from the SurfaceView touch listener).
+     *  action: 0=down, 1=move, 2=up. x/y in compositor output space (0..1919, 0..1079). */
+    public static native void nativeSendPointer(int action, int x, int y);
 }

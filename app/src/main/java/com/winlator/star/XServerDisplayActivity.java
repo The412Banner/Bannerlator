@@ -2051,6 +2051,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandSurfaceView = new android.view.SurfaceView(this);
         waylandSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        // Touch -> wl_pointer. Map view pixels to the compositor's 1920x1080 output space (we blit
+        // the guest surface fullscreen, so that IS the guest coordinate space). action 0=down/1=move/2=up.
+        waylandSurfaceView.setOnTouchListener((v, ev) -> {
+            int action;
+            switch (ev.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                case android.view.MotionEvent.ACTION_POINTER_DOWN: action = 0; break;
+                case android.view.MotionEvent.ACTION_MOVE:         action = 1; break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_POINTER_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:       action = 2; break;
+                default: return true;
+            }
+            int vw = v.getWidth(), vh = v.getHeight();
+            if (vw <= 0 || vh <= 0) return true;
+            int ox = (int) (Math.max(0f, Math.min(ev.getX(), vw)) / vw * 1920f);
+            int oy = (int) (Math.max(0f, Math.min(ev.getY(), vh)) / vh * 1080f);
+            com.winlator.star.wayland.WaylandCompositor.nativeSendPointer(action, ox, oy);
+            return true;
+        });
         // Dedicated runtime dir for the wayland socket. NOT imagefs/tmp — setupXEnvironment does
         // FileUtils.clear(imagefs/tmp), which races the compositor's async socket creation and
         // deletes wayland-0. filesDir/.wayland-rt is app-private, never cleared, and reachable by

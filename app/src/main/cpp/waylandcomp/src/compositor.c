@@ -12,6 +12,7 @@
  * These are winewayland.drv's full required set (wl_compositor, xdg_wm_base,
  * wl_shm, wl_subcompositor, wp_viewporter); the rest it treats as optional.
  */
+#define _GNU_SOURCE 1
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,11 +20,27 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <fcntl.h>
+#include <time.h>
 #include <android/log.h>
 #include <wayland-server.h>
 
 #define WLOGI(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", __VA_ARGS__)
 #define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", __VA_ARGS__)
+
+#ifndef BTN_LEFT
+#define BTN_LEFT 0x110  /* linux/input-event-codes.h */
+#endif
+
+/* --- input state (wl_seat pointer). Touch events arrive from the Android SurfaceView on the
+ * UI thread and are injected into the compositor thread via g_input_pipe so all wl_pointer
+ * sends happen on the wl event-loop thread (libwayland is not thread-safe). --- */
+static struct wl_display *g_display;
+static struct wl_resource *g_pointer;         /* client's wl_pointer, or NULL */
+static struct wl_resource *g_pointer_focus;   /* wl_surface the pointer entered */
+static struct wl_resource *g_visible_surface; /* last surface committed with a buffer = what's on screen */
+static int g_input_pipe[2] = {-1, -1};
+struct input_msg { int action; int x; int y; }; /* action: 0=down 1=move 2=up */
 #include "xdg-shell-server-protocol.h"
 #include "linux-dmabuf-v1-server-protocol.h"
 #include "viewporter-server-protocol.h"
@@ -75,6 +92,8 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
         present_committed_buffer(s->pending_buffer);
         wl_buffer_send_release(s->pending_buffer);
         s->pending_buffer = NULL;
+        /* This surface is what's now on screen -> pointer routes here (we blit it fullscreen). */
+        g_visible_surface = s->resource;
     }
 }
 static void surface_set_buffer_transform(struct wl_client *c, struct wl_resource *r,
@@ -551,6 +570,104 @@ static void bind_output(struct wl_client *c, void *data, uint32_t ver,
     }
 }
 
+/* ------------------------------------------------------------------ wl_seat
+ * A single pointer seat so the guest is clickable. winewayland binds wl_seat,
+ * calls get_pointer, and routes wl_pointer.enter/motion/button to the HWND for
+ * the entered surface. We deliver events to g_visible_surface (what we blit to
+ * the screen), scaled from Android touch coords by the app. */
+
+static uint32_t now_ms(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint32_t serial,
+                               struct wl_resource *surface, int32_t hx, int32_t hy) {}
+static void pointer_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
+static const struct wl_pointer_interface pointer_impl = {
+    .set_cursor = pointer_set_cursor, .release = pointer_release,
+};
+static void pointer_res_destroy(struct wl_resource *r) {
+    if (g_pointer == r) { g_pointer = NULL; g_pointer_focus = NULL; }
+}
+
+static void keyboard_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
+static const struct wl_keyboard_interface keyboard_impl = { .release = keyboard_release };
+static void touch_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
+static const struct wl_touch_interface touch_impl = { .release = touch_release };
+
+static void seat_get_pointer(struct wl_client *c, struct wl_resource *r, uint32_t id) {
+    struct wl_resource *p = wl_resource_create(c, &wl_pointer_interface,
+                                               wl_resource_get_version(r), id);
+    wl_resource_set_implementation(p, &pointer_impl, NULL, pointer_res_destroy);
+    g_pointer = p; g_pointer_focus = NULL;
+    fprintf(stderr, "[srv] wl_seat.get_pointer -> %p\n", (void *)p);
+}
+static void seat_get_keyboard(struct wl_client *c, struct wl_resource *r, uint32_t id) {
+    struct wl_resource *k = wl_resource_create(c, &wl_keyboard_interface,
+                                               wl_resource_get_version(r), id);
+    wl_resource_set_implementation(k, &keyboard_impl, NULL, NULL);
+    /* No keymap yet (input focus/keys are a later step); winewayland tolerates this. */
+}
+static void seat_get_touch(struct wl_client *c, struct wl_resource *r, uint32_t id) {
+    struct wl_resource *t = wl_resource_create(c, &wl_touch_interface,
+                                               wl_resource_get_version(r), id);
+    wl_resource_set_implementation(t, &touch_impl, NULL, NULL);
+}
+static void seat_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
+static const struct wl_seat_interface seat_impl = {
+    .get_pointer = seat_get_pointer, .get_keyboard = seat_get_keyboard,
+    .get_touch = seat_get_touch, .release = seat_release,
+};
+static void bind_seat(struct wl_client *c, void *data, uint32_t ver, uint32_t id) {
+    struct wl_resource *r = wl_resource_create(c, &wl_seat_interface, ver, id);
+    wl_resource_set_implementation(r, &seat_impl, NULL, NULL);
+    wl_seat_send_capabilities(r, WL_SEAT_CAPABILITY_POINTER | WL_SEAT_CAPABILITY_KEYBOARD);
+    if (ver >= 2) wl_seat_send_name(r, "bannerlator-seat");
+    fprintf(stderr, "[srv] client bound wl_seat v%u\n", ver);
+}
+
+/* Deliver one pointer event to the focused (visible) surface. Runs on the compositor thread. */
+static void deliver_pointer(const struct input_msg *m) {
+    if (!g_pointer || !g_visible_surface) return;
+    /* Only deliver to a surface owned by the pointer's client. */
+    if (wl_resource_get_client(g_pointer) != wl_resource_get_client(g_visible_surface)) return;
+    wl_fixed_t fx = wl_fixed_from_int(m->x), fy = wl_fixed_from_int(m->y);
+    uint32_t t = now_ms();
+    int ptr_ver = wl_resource_get_version(g_pointer);
+    if (g_pointer_focus != g_visible_surface) {
+        if (g_pointer_focus)
+            wl_pointer_send_leave(g_pointer, wl_display_next_serial(g_display), g_pointer_focus);
+        g_pointer_focus = g_visible_surface;
+        wl_pointer_send_enter(g_pointer, wl_display_next_serial(g_display), g_pointer_focus, fx, fy);
+    }
+    wl_pointer_send_motion(g_pointer, t, fx, fy);
+    if (m->action == 0)
+        wl_pointer_send_button(g_pointer, wl_display_next_serial(g_display), t, BTN_LEFT,
+                               WL_POINTER_BUTTON_STATE_PRESSED);
+    else if (m->action == 2)
+        wl_pointer_send_button(g_pointer, wl_display_next_serial(g_display), t, BTN_LEFT,
+                               WL_POINTER_BUTTON_STATE_RELEASED);
+    if (ptr_ver >= WL_POINTER_FRAME_SINCE_VERSION) wl_pointer_send_frame(g_pointer);
+    wl_display_flush_clients(g_display);
+}
+
+/* wl event-loop callback: drain queued touch events written by the Android UI thread. */
+static int on_input_readable(int fd, uint32_t mask, void *data) {
+    struct input_msg m;
+    while (read(fd, &m, sizeof(m)) == (ssize_t)sizeof(m)) deliver_pointer(&m);
+    return 0;
+}
+
+/* Called from JNI (Android UI thread). Queues a pointer event; the compositor thread
+ * dispatches it. x/y are in output space (0..1919, 0..1079). */
+void banner_wayland_send_pointer(int action, int x, int y) {
+    if (g_input_pipe[1] < 0) return;
+    struct input_msg m = { action, x, y };
+    ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
+    (void)n;
+}
+
 /* ------------------------------------------------------------------ entry
  * Lib entry point (was main() in the standalone spike). Blocks in the wl event
  * loop, so the JNI wrapper runs it on a dedicated thread. XDG_RUNTIME_DIR must
@@ -589,6 +706,17 @@ int banner_wayland_run(void) {
     wl_global_create(display, &wl_output_interface, 2, NULL, bind_output);
     wl_global_create(display, &xdg_wm_base_interface, 1, NULL, bind_xdg_wm_base);
     wl_global_create(display, &zwp_linux_dmabuf_v1_interface, 3, NULL, bind_dmabuf);
+    wl_global_create(display, &wl_seat_interface, 5, NULL, bind_seat);
+
+    /* Input injection: the Android UI thread writes touch events to g_input_pipe[1];
+     * the wl event loop drains them on this thread (deliver_pointer). */
+    g_display = display;
+    if (pipe2(g_input_pipe, O_CLOEXEC | O_NONBLOCK) == 0) {
+        wl_event_loop_add_fd(wl_display_get_event_loop(display), g_input_pipe[0],
+                             WL_EVENT_READABLE, on_input_readable, NULL);
+    } else {
+        WLOGE("input pipe creation failed");
+    }
 
     fprintf(stderr, "[srv] bannerlator-wayland compositor up on WAYLAND_DISPLAY=%s\n",
             socket);

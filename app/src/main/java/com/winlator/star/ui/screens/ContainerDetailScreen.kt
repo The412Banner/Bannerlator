@@ -664,16 +664,24 @@ private fun TopLevelFields(
         )
         Spacer(Modifier.height(8.dp))
 
-        // Show FPS + config
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Show FPS + config — the HUD's FPS number is fed by the X11/scanout present path, which
+        // the Wayland compositor replaces (it doesn't tick the counter yet), so grey it under Wayland.
+        val fpsCounterEnabled = !viewModel.isWaylandBackend
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = if (fpsCounterEnabled) Modifier else Modifier.alpha(0.5f)
+        ) {
             Switch(
                 checked = viewModel.showFPS,
-                onCheckedChange = { viewModel.showFPS = it }
+                onCheckedChange = { viewModel.showFPS = it },
+                enabled = fpsCounterEnabled
             )
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.show_fps), modifier = Modifier.weight(1f))
-            IconButton(onClick = onShowFpsConfig) {
-                Icon(Icons.Default.Settings, contentDescription = null)
+            if (fpsCounterEnabled) {
+                IconButton(onClick = onShowFpsConfig) {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                }
             }
         }
 

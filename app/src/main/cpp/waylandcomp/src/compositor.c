@@ -43,6 +43,7 @@ struct seat_pointer { struct wl_resource *ptr; struct wl_resource *focus; };
 static struct seat_pointer g_ptrs[MAX_PTRS];
 static int g_nptrs;
 static struct wl_resource *g_visible_surface; /* last surface committed with a buffer = what's on screen */
+static struct wl_resource *g_cursor_surface;  /* the wl_pointer.set_cursor surface (NOT blitted fullscreen) */
 static int g_input_pipe[2] = {-1, -1};
 struct input_msg { int action; int x; int y; }; /* action: 0=down 1=move 2=up */
 #include "xdg-shell-server-protocol.h"
@@ -87,9 +88,16 @@ static void surface_set_input(struct wl_client *c, struct wl_resource *r,
                               struct wl_resource *region) {}
 static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     struct surface *s = wl_resource_get_user_data(r);
-    fprintf(stderr, "[srv] surface.commit (buffer=%p)  <-- FRAME OBSERVED\n",
-            (void *)s->pending_buffer);
     if (s->pending_buffer) {
+        /* The pointer cursor is a SEPARATE small surface (set via wl_pointer.set_cursor). We blit
+         * one surface fullscreen, so blitting the cursor would stretch a 24x24 image over the whole
+         * screen and hide the app. Skip presenting the cursor surface (just release its buffer) so
+         * the app stays visible; a real cursor overlay is a later step. */
+        if (s->resource == g_cursor_surface) {
+            wl_buffer_send_release(s->pending_buffer);
+            s->pending_buffer = NULL;
+            return;
+        }
         /* Composite the frame to the output window (dmabuf path), then release so
          * the client can reuse the buffer. present + queue-wait completes the read
          * before release, so immediate release is safe. */
@@ -586,7 +594,10 @@ static uint32_t now_ms(void) {
 }
 
 static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint32_t serial,
-                               struct wl_resource *surface, int32_t hx, int32_t hy) {}
+                               struct wl_resource *surface, int32_t hx, int32_t hy) {
+    /* Remember which surface is the cursor so surface_commit doesn't blit it fullscreen. */
+    g_cursor_surface = surface;
+}
 static void pointer_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static const struct wl_pointer_interface pointer_impl = {
     .set_cursor = pointer_set_cursor, .release = pointer_release,

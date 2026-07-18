@@ -19,7 +19,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <android/log.h>
 #include <wayland-server.h>
+
+#define WLOGI(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", __VA_ARGS__)
+#define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", __VA_ARGS__)
 #include "xdg-shell-server-protocol.h"
 #include "linux-dmabuf-v1-server-protocol.h"
 #include "viewporter-server-protocol.h"
@@ -541,15 +545,28 @@ static void bind_output(struct wl_client *c, void *data, uint32_t ver,
 int banner_wayland_run(void) {
     struct wl_display *display = wl_display_create();
     if (!display) {
-        fprintf(stderr, "[srv] wl_display_create failed\n");
+        WLOGE("wl_display_create failed");
         return 1;
     }
 
-    const char *socket = wl_display_add_socket_auto(display);
-    if (!socket) {
-        fprintf(stderr, "[srv] add_socket failed (XDG_RUNTIME_DIR set?)\n");
+    /* Use a FIXED socket name so it always matches the guest's WAYLAND_DISPLAY=wayland-0
+     * (wl_display_add_socket_auto would drift to wayland-1/2/… if a stale socket exists,
+     * and the guest only ever looks for wayland-0). Unlink any stale socket+lock first so
+     * a previous run that didn't clean up can't block the bind. */
+    const char *rt = getenv("XDG_RUNTIME_DIR");
+    WLOGI("XDG_RUNTIME_DIR=%s", rt ? rt : "(null)");
+    if (rt && *rt) {
+        char p[512];
+        snprintf(p, sizeof(p), "%s/wayland-0", rt);      unlink(p);
+        snprintf(p, sizeof(p), "%s/wayland-0.lock", rt); unlink(p);
+    }
+    if (wl_display_add_socket(display, "wayland-0") != 0) {
+        WLOGE("add_socket(wayland-0) failed in XDG_RUNTIME_DIR=%s (errno path/perms?)",
+              rt ? rt : "(null)");
         return 1;
     }
+    const char *socket = "wayland-0";
+    WLOGI("listening on %s/wayland-0", rt ? rt : "?");
 
     wl_global_create(display, &wl_compositor_interface, 6, NULL, bind_compositor);
     wl_global_create(display, &wl_subcompositor_interface, 1, NULL, bind_subcompositor);

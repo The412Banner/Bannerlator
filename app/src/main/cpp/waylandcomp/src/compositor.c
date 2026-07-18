@@ -46,7 +46,6 @@ static int g_nptrs;
 static struct seat_keyboard g_kbs[MAX_PTRS];
 static int g_nkbs;
 static struct wl_resource *g_visible_surface; /* last surface committed with a buffer = what's on screen */
-static struct wl_resource *g_cursor_surface;  /* the wl_pointer.set_cursor surface (NOT blitted fullscreen) */
 static int g_input_pipe[2] = {-1, -1};
 /* type 0 = pointer (p1=action 0down/1move/2up, p2=x, p3=y); type 1 = key (p1=evdev, p2=state 1down/0up) */
 struct input_msg { int type; int p1; int p2; int p3; };
@@ -65,6 +64,7 @@ struct surface {
     struct wl_resource *pending_buffer; /* buffer from the most recent attach */
     struct wl_resource *xdg_surface;    /* set once role is assigned */
     int configured;
+    int presentable; /* has a window role (xdg_surface or subsurface); a cursor/plain surface = 0 */
 };
 
 static void surface_destroy(struct wl_client *c, struct wl_resource *r) {
@@ -93,11 +93,12 @@ static void surface_set_input(struct wl_client *c, struct wl_resource *r,
 static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     struct surface *s = wl_resource_get_user_data(r);
     if (s->pending_buffer) {
-        /* The pointer cursor is a SEPARATE small surface (set via wl_pointer.set_cursor). We blit
-         * one surface fullscreen, so blitting the cursor would stretch a 24x24 image over the whole
-         * screen and hide the app. Skip presenting the cursor surface (just release its buffer) so
-         * the app stays visible; a real cursor overlay is a later step. */
-        if (s->resource == g_cursor_surface) {
+        /* Only present real WINDOW surfaces (xdg_surface or subsurface role). The mouse cursor is a
+         * plain wl_surface with no role, committed BEFORE wl_pointer.set_cursor is called (see Wine's
+         * wayland_pointer.c) — so we can't identify it by set_cursor in time. Gating on a window role
+         * skips it regardless: blitting a 24x24 cursor fullscreen would stretch it over the whole
+         * screen. A real small cursor overlay is a later step. */
+        if (!s->presentable) {
             wl_buffer_send_release(s->pending_buffer);
             s->pending_buffer = NULL;
             return;
@@ -220,6 +221,8 @@ static void subcompositor_get_subsurface(struct wl_client *c, struct wl_resource
     struct wl_resource *sub =
         wl_resource_create(c, &wl_subsurface_interface, wl_resource_get_version(r), id);
     wl_resource_set_implementation(sub, &subsurface_impl, NULL, NULL);
+    /* A subsurface carries window content (winewayland uses these for child windows) -> presentable. */
+    { struct surface *s = wl_resource_get_user_data(surface); if (s) s->presentable = 1; }
     fprintf(stderr, "[srv] subcompositor.get_subsurface -> %p (parent %p)\n",
             (void *)sub, (void *)parent);
 }
@@ -370,6 +373,8 @@ static void xdg_wm_base_get_xdg_surface(struct wl_client *c, struct wl_resource 
         wl_resource_create(c, &xdg_surface_interface,
                            wl_resource_get_version(r), id);
     wl_resource_set_implementation(xs, &xdg_surface_impl, NULL, NULL);
+    /* This wl_surface now has a window role -> its committed buffers are presented (not a cursor). */
+    { struct surface *s = wl_resource_get_user_data(surf); if (s) s->presentable = 1; }
     /* Initial configure so the client proceeds to attach a buffer. */
     xdg_surface_send_configure(xs, 1);
     fprintf(stderr, "[srv] xdg_wm_base.get_xdg_surface -> configure(1)\n");
@@ -599,8 +604,8 @@ static uint32_t now_ms(void) {
 
 static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint32_t serial,
                                struct wl_resource *surface, int32_t hx, int32_t hy) {
-    /* Remember which surface is the cursor so surface_commit doesn't blit it fullscreen. */
-    g_cursor_surface = surface;
+    /* Cursor surfaces are excluded from presentation by their lack of a window role
+     * (see surface_commit's presentable check), so nothing to do here. */
 }
 static void pointer_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static const struct wl_pointer_interface pointer_impl = {

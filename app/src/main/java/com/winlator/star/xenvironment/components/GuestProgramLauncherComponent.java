@@ -454,6 +454,21 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
         envVars.put("FAKE_EVDEV_VIBRATION", "1");
 
+        // winewayland.so (unixlib) dlopens libwayland-client/-egl/xkbcommon/xkbregistry, but Android's
+        // linker doesn't honor LD_LIBRARY_PATH for a unixlib's dlopen'd deps (namespace isolation) —
+        // so they must be LD_PRELOADed, exactly like libandroid-sysvshm is for winex11.so. Otherwise
+        // winewayland.drv's DllMain fails: "dlopen failed: library libwayland-client.so not found".
+        if (waylandMode) {
+            for (String wl : new String[]{"libwayland-client.so", "libwayland-egl.so",
+                                          "libxkbcommon.so", "libxkbregistry.so"}) {
+                File f = new File(imageFs.getLibDir(), wl);
+                if (f.exists()) {
+                    if (!ld_preload.isEmpty()) ld_preload += ":";
+                    ld_preload += f.getAbsolutePath();
+                }
+            }
+        }
+
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         envVars.put("LD_PRELOAD", ld_preload);
 

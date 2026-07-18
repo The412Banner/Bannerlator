@@ -4347,6 +4347,28 @@ return true;
                     reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "x11");
             }
         }
+        // Winlator patches winex11.drv so its init succeeds even with no X server, so it always
+        // wins Wine's driver selection. To force winewayland, hide winex11.drv in wayland mode so
+        // explorer's LoadLibrary fails and it falls through to wayland. Self-healing: any X11-mode
+        // launch restores it, so a crash mid-wayland can never permanently break the X11 path.
+        try {
+            com.winlator.star.contents.ContentProfile profile =
+                    contentsManager.getProfileByEntryName(container.getWineVersion());
+            if (profile != null) {
+                File libDir = new File(ContentsManager.getInstallDir(this, profile), profile.wineLibPath);
+                for (String arch : new String[]{"aarch64-windows", "i386-windows"}) {
+                    File drv = new File(libDir, "wine/" + arch + "/winex11.drv");
+                    File bak = new File(libDir, "wine/" + arch + "/winex11.drv.bak");
+                    if (waylandMode) {
+                        if (drv.exists() && !bak.exists()) drv.renameTo(bak);
+                    } else {
+                        if (bak.exists() && !drv.exists()) bak.renameTo(drv);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e("XServerDisplayActivity", "wayland: winex11 hide/restore failed", e);
+        }
     }
 
     private void applyGeneralPatches(Container container) {

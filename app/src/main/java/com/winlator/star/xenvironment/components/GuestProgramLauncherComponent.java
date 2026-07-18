@@ -374,6 +374,14 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             // (imagefs/tmp/wayland-0), not a bare "/tmp". Skip DISPLAY (winex11.drv is hidden anyway).
             envVars.put("WAYLAND_DISPLAY", "wayland-0");
             envVars.put("XDG_RUNTIME_DIR", rootDir.getPath() + "/tmp");
+            // winewayland.so's DT_NEEDED libwayland-client/-egl/xkbcommon/xkbregistry are bundled in
+            // the Proton wcp's lib/ with the exact sonames winewayland was linked against (unversioned,
+            // e.g. "libxkbcommon.so"). imagefs/usr/lib ships versioned sonames ("libxkbcommon.so.0"),
+            // which bionic rejects with a verneed mismatch. So prepend the wcp lib/ to LD_LIBRARY_PATH:
+            // the 4 wayland libs resolve there (matching sonames); their transitive deps (libffi,
+            // libandroid-support, libc…) still resolve from imagefs/usr/lib further down the path.
+            envVars.put("LD_LIBRARY_PATH", imageFs.getWinePath() + "/lib" + ":"
+                    + rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
         } else {
             envVars.put("DISPLAY", ":0");
         }

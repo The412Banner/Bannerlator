@@ -7,8 +7,8 @@
  * — and we observe the commit. No rendering yet (that's milestone 2); attached
  * buffers are just logged and released so the client keeps producing frames.
  *
- * Globals advertised: wl_compositor, wl_shm (via wl_display_init_shm),
- * wl_output, xdg_wm_base.
+ * Globals advertised: wl_compositor, wl_subcompositor, wl_shm (via
+ * wl_display_init_shm), wl_output, xdg_wm_base, zwp_linux_dmabuf_v1.
  */
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
@@ -139,6 +139,58 @@ static void bind_compositor(struct wl_client *c, void *data, uint32_t ver,
         wl_resource_create(c, &wl_compositor_interface, ver, id);
     wl_resource_set_implementation(r, &compositor_impl, NULL, NULL);
     fprintf(stderr, "[srv] client bound wl_compositor v%u\n", ver);
+}
+
+/* --------------------------------------------------------------- wl_subcompositor
+ * winewayland.drv hard-requires wl_subcompositor at init (wayland_process_init aborts
+ * with "compositor doesn't support wl_subcompositor" otherwise). It uses subsurfaces to
+ * compose a window's client area / decorations. For our single fullscreen game surface the
+ * main (parent) surface carries the dmabuf we present, so the subsurface requests can be
+ * minimal no-ops — we only need to satisfy the protocol so init succeeds and the client
+ * keeps committing the parent surface. */
+
+static void subsurface_destroy(struct wl_client *c, struct wl_resource *r) {
+    wl_resource_destroy(r);
+}
+static void subsurface_set_position(struct wl_client *c, struct wl_resource *r,
+                                    int32_t x, int32_t y) {}
+static void subsurface_place_above(struct wl_client *c, struct wl_resource *r,
+                                   struct wl_resource *sibling) {}
+static void subsurface_place_below(struct wl_client *c, struct wl_resource *r,
+                                   struct wl_resource *sibling) {}
+static void subsurface_set_sync(struct wl_client *c, struct wl_resource *r) {}
+static void subsurface_set_desync(struct wl_client *c, struct wl_resource *r) {}
+static const struct wl_subsurface_interface subsurface_impl = {
+    .destroy = subsurface_destroy,
+    .set_position = subsurface_set_position,
+    .place_above = subsurface_place_above,
+    .place_below = subsurface_place_below,
+    .set_sync = subsurface_set_sync,
+    .set_desync = subsurface_set_desync,
+};
+
+static void subcompositor_destroy(struct wl_client *c, struct wl_resource *r) {
+    wl_resource_destroy(r);
+}
+static void subcompositor_get_subsurface(struct wl_client *c, struct wl_resource *r,
+                                         uint32_t id, struct wl_resource *surface,
+                                         struct wl_resource *parent) {
+    struct wl_resource *sub =
+        wl_resource_create(c, &wl_subsurface_interface, wl_resource_get_version(r), id);
+    wl_resource_set_implementation(sub, &subsurface_impl, NULL, NULL);
+    fprintf(stderr, "[srv] subcompositor.get_subsurface -> %p (parent %p)\n",
+            (void *)sub, (void *)parent);
+}
+static const struct wl_subcompositor_interface subcompositor_impl = {
+    .destroy = subcompositor_destroy,
+    .get_subsurface = subcompositor_get_subsurface,
+};
+static void bind_subcompositor(struct wl_client *c, void *data, uint32_t ver,
+                               uint32_t id) {
+    struct wl_resource *r =
+        wl_resource_create(c, &wl_subcompositor_interface, ver, id);
+    wl_resource_set_implementation(r, &subcompositor_impl, NULL, NULL);
+    fprintf(stderr, "[srv] client bound wl_subcompositor v%u\n", ver);
 }
 
 /* ------------------------------------------------------------------ xdg_shell */
@@ -455,6 +507,7 @@ int banner_wayland_run(void) {
     }
 
     wl_global_create(display, &wl_compositor_interface, 6, NULL, bind_compositor);
+    wl_global_create(display, &wl_subcompositor_interface, 1, NULL, bind_subcompositor);
     wl_display_init_shm(display); /* wl_shm global + pool/buffer handling */
     wl_global_create(display, &wl_output_interface, 2, NULL, bind_output);
     wl_global_create(display, &xdg_wm_base_interface, 1, NULL, bind_xdg_wm_base);

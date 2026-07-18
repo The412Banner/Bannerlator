@@ -16,7 +16,8 @@
     X(GetPhysicalDeviceQueueFamilyProperties) X(GetPhysicalDeviceSurfaceSupportKHR) \
     X(GetPhysicalDeviceSurfaceCapabilitiesKHR) X(GetPhysicalDeviceSurfaceFormatsKHR) \
     X(CreateAndroidSurfaceKHR) X(DestroySurfaceKHR) X(CreateDevice) \
-    X(GetDeviceProcAddr) X(EnumerateDeviceExtensionProperties)
+    X(GetDeviceProcAddr) X(EnumerateDeviceExtensionProperties) \
+    X(GetPhysicalDeviceMemoryProperties)
 
 #define VK_DEVICE_FUNCS(X) \
     X(GetDeviceQueue) X(CreateSwapchainKHR) X(DestroySwapchainKHR) X(GetSwapchainImagesKHR) \
@@ -25,7 +26,8 @@
     X(BindImageMemory) X(DestroyImage) X(FreeMemory) X(AcquireNextImageKHR) \
     X(ResetCommandBuffer) X(BeginCommandBuffer) X(CmdPipelineBarrier) X(CmdBlitImage) \
     X(EndCommandBuffer) X(ResetFences) X(QueueSubmit) X(QueuePresentKHR) X(WaitForFences) \
-    X(QueueWaitIdle) X(GetMemoryFdPropertiesKHR)
+    X(QueueWaitIdle) X(GetMemoryFdPropertiesKHR) \
+    X(GetImageSubresourceLayout) X(MapMemory) X(UnmapMemory)
 
 struct vk_api {
 #define X(n) PFN_vk##n n;

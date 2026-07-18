@@ -18,6 +18,21 @@ public final class WaylandCompositor {
 
     private WaylandCompositor() {}
 
+    private static volatile Runnable firstFrameListener;
+
+    /** Register a callback fired once, when the compositor presents the first client
+     *  frame to the output Surface. Used to dismiss the launch overlay in wayland mode
+     *  (there is no XServer window-content hook). Runs on the compositor thread — the
+     *  listener must marshal to the UI thread itself. */
+    public static void setFirstFrameListener(Runnable r) { firstFrameListener = r; }
+
+    /** Invoked from native (banner_on_first_frame) on the first present. */
+    @SuppressWarnings("unused")
+    static void onFirstFramePresented() {
+        Runnable r = firstFrameListener;
+        if (r != null) r.run();
+    }
+
     /** Start the compositor headless (no output window) — bring-up tests only. */
     public static native void nativeStart(String xdgRuntimeDir);
 

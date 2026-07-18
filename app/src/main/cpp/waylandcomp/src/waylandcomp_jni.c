@@ -16,6 +16,42 @@ extern int banner_wayland_run(void);
 
 #define TAG "BannerWayland"
 
+static JavaVM *g_jvm;
+static jclass g_compositor_cls;      /* global ref */
+static jmethodID g_on_first_frame;   /* static void onFirstFramePresented() */
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    (void)reserved;
+    g_jvm = vm;
+    JNIEnv *env;
+    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) == JNI_OK) {
+        jclass c = (*env)->FindClass(env, "com/winlator/star/wayland/WaylandCompositor");
+        if (c) {
+            g_compositor_cls = (*env)->NewGlobalRef(env, c);
+            g_on_first_frame = (*env)->GetStaticMethodID(env, g_compositor_cls,
+                                                         "onFirstFramePresented", "()V");
+        }
+    }
+    return JNI_VERSION_1_6;
+}
+
+/* Called from vk_present.c on the compositor thread when the first client frame is
+ * presented. Attaches to the JVM (this thread is a bare pthread) and calls back into
+ * Java so the launch overlay can dismiss. Fires exactly once. */
+void banner_on_first_frame(void) {
+    if (!g_jvm || !g_compositor_cls || !g_on_first_frame) return;
+    JNIEnv *env = NULL;
+    int attached = 0;
+    if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if ((*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL) != JNI_OK) return;
+        attached = 1;
+    }
+    (*env)->CallStaticVoidMethod(env, g_compositor_cls, g_on_first_frame);
+    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+    if (attached) (*g_jvm)->DetachCurrentThread(g_jvm);
+    __android_log_print(ANDROID_LOG_INFO, TAG, "first client frame presented -> notified app");
+}
+
 static void *comp_thread(void *arg) {
     (void)arg;
     __android_log_print(ANDROID_LOG_INFO, TAG, "compositor thread starting");

@@ -2037,6 +2037,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // under the imagefs /tmp (XDG_RUNTIME_DIR = rootDir/tmp) so the guest — which sees the imagefs as
     // its root — finds it at /tmp/wayland-0 (matching the guest env in GuestProgramLauncherComponent).
     private void startWaylandCompositor(FrameLayout rootView) {
+        // Wayland has no XServer onUpdateWindowContent hook to dismiss the launch overlay, so
+        // dismiss on the compositor's FIRST presented client frame instead (mirrors the X11 grace
+        // delay so the boot steps are briefly visible). Fires on the compositor thread -> marshal
+        // to UI. Guard with winStarted so it runs exactly once.
+        com.winlator.star.wayland.WaylandCompositor.setFirstFrameListener(() -> runOnUiThread(() -> {
+            if (winStarted) return;
+            winStarted = true;
+            cancelLaunchTimers();
+            new android.os.Handler(getMainLooper()).postDelayed(
+                    preloaderDialog::closeOnUiThread, LAUNCH_OVERLAY_GRACE_MS);
+        }));
         waylandSurfaceView = new android.view.SurfaceView(this);
         waylandSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));

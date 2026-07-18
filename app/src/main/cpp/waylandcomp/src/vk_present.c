@@ -31,6 +31,10 @@ static VkCommandPool g_pool;
 static VkCommandBuffer g_cmd;
 static VkSemaphore g_acq, g_rnd;
 static VkFence g_fence;
+static int g_first_frame_done; /* one-shot: fire banner_on_first_frame() on first present */
+
+/* Implemented in waylandcomp_jni.c — notifies Java (dismiss launch overlay). */
+extern void banner_on_first_frame(void);
 
 static VkFormat drm_to_vk(uint32_t drm) { (void)drm; return VK_FORMAT_B8G8R8A8_UNORM; }
 
@@ -304,5 +308,12 @@ int vk_present_commit_dmabuf(int fd, uint32_t drm_format, uint64_t modifier, int
 
     g_vk.FreeMemory(g_dev, srcMem, NULL);
     g_vk.DestroyImage(g_dev, src, NULL);
+
+    /* Signal the app once, on the first real client frame reaching the screen, so the
+     * launch/preloader overlay can dismiss (wayland has no XServer window-content hook). */
+    if (!g_first_frame_done) {
+        g_first_frame_done = 1;
+        banner_on_first_frame();
+    }
     return 0;
 }

@@ -158,12 +158,21 @@ static int ensure_init(void) {
     uint32_t want = caps.minImageCount + 1;
     if (caps.maxImageCount && want > caps.maxImageCount) want = caps.maxImageCount;
 
+    /* Use IDENTITY preTransform when the surface supports it. Setting preTransform =
+     * currentTransform tells the presentation engine our content is ALREADY pre-rotated by
+     * that amount — but our blit doesn't rotate, so on a device whose surface reports a 90°
+     * currentTransform the display then rotates our upright frame 90° (game shows sideways).
+     * IDENTITY = "don't rotate what I present", which is what we want. */
+    VkSurfaceTransformFlagBitsKHR pretrans =
+        (caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+            ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : caps.currentTransform;
+
     VkSwapchainCreateInfoKHR sci = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, .surface = g_surface,
         .minImageCount = want, .imageFormat = chosen.format, .imageColorSpace = chosen.colorSpace,
         .imageExtent = g_extent, .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE, .preTransform = caps.currentTransform,
+        .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE, .preTransform = pretrans,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR, .clipped = VK_TRUE};
     if (g_vk.CreateSwapchainKHR(g_dev, &sci, NULL, &g_swapchain) != VK_SUCCESS) {

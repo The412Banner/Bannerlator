@@ -69,6 +69,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     public Container getContainer() { return this.container; }
     public void setContainer(Container container) { this.container = container; }
 
+    // When true, the guest uses the Wayland display path (winewayland.drv → embedded compositor)
+    // instead of the X11 server. Set by XServerDisplayActivity in wayland_mode.
+    private boolean waylandMode = false;
+    public void setWaylandMode(boolean v) { this.waylandMode = v; }
+
     private void extractBox64Files() {
         ImageFs imageFs = environment.getImageFs();
         Context context = environment.getContext();
@@ -362,7 +367,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("WRAPPER_CACHE_PATH", rootDir.getPath() + "/usr/var/cache");
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
-        envVars.put("DISPLAY", ":0");
+        if (waylandMode) {
+            // Wayland display path: point Wine at the embedded compositor's socket (created by
+            // XServerDisplayActivity under the imagefs /tmp, so the guest sees it here). Do NOT set
+            // DISPLAY so winex11.drv fails to init and Wine falls through to winewayland.drv.
+            envVars.put("WAYLAND_DISPLAY", "wayland-0");
+            envVars.put("XDG_RUNTIME_DIR", "/tmp");
+        } else {
+            envVars.put("DISPLAY", ":0");
+        }
         envVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
         envVars.put("GST_PLUGIN_FEATURE_RANK", "ximagesink:3000");
         envVars.put("ALSA_CONFIG_PATH", rootDir.getPath() + "/usr/share/alsa/alsa.conf" + ":" + rootDir.getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");

@@ -409,6 +409,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private String screenEffectProfile;
 
     private GuestProgramLauncherComponent guestProgramLauncherComponent;
+    // Experimental Wayland display path: when true, run the game through winewayland.drv into
+    // our embedded compositor instead of the X11 server. All branches are guarded by this flag,
+    // so the X11 path is unchanged when it's false. See WAYLAND_RUNTIME.md.
+    private boolean waylandMode = false;
+    private android.view.SurfaceView waylandSurfaceView;
     private EnvVars overrideEnvVars;
 
     private void createNotifcationChannel() {
@@ -796,6 +801,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         container = containerManager.getContainerById(getIntent().getIntExtra("container_id", 0));
 
         componentInstallerExe = getIntent().getStringExtra("component_installer_exe");
+        waylandMode = getIntent().getBooleanExtra("wayland_mode", false);
 
         // Log shortcut_path
         String shortcutPath = getIntent().getStringExtra("shortcut_path");
@@ -2026,6 +2032,49 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (containerDataChanged) container.saveData();
     }
 
+    // Bring up the embedded Wayland compositor into a full-screen SurfaceView. The socket is created
+    // under the imagefs /tmp (XDG_RUNTIME_DIR = rootDir/tmp) so the guest — which sees the imagefs as
+    // its root — finds it at /tmp/wayland-0 (matching the guest env in GuestProgramLauncherComponent).
+    private void startWaylandCompositor(FrameLayout rootView) {
+        waylandSurfaceView = new android.view.SurfaceView(this);
+        waylandSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        final String xdgRuntimeDir = imageFs.getRootDir().getPath() + "/tmp";
+        // Resolve the container's Turnip driver (adrenotools) so the compositor can import dmabufs.
+        String driverPath = null, libraryName = null;
+        try {
+            String driverId = com.winlator.star.contentdialog.GraphicsDriverConfigDialog
+                    .getVersion(container.getGraphicsDriverConfig());
+            if (driverId != null && !driverId.isEmpty() && !driverId.equals("System")) {
+                com.winlator.star.contents.AdrenotoolsManager atm =
+                        new com.winlator.star.contents.AdrenotoolsManager(this);
+                driverPath = atm.getDriverPath(driverId);
+                libraryName = atm.getLibraryName(driverId);
+            }
+        } catch (Exception e) {
+            Log.e("XServerDisplayActivity", "wayland: driver resolve failed", e);
+        }
+        final String fDriverPath = driverPath, fLibraryName = libraryName;
+        final String nativeLibDir = getApplicationInfo().nativeLibraryDir;
+        waylandSurfaceView.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+            boolean started = false;
+            @Override public void surfaceCreated(android.view.SurfaceHolder h) {
+                if (!started) {
+                    started = true;
+                    com.winlator.star.wayland.WaylandCompositor.nativeStartWithSurface(
+                            h.getSurface(), xdgRuntimeDir, fDriverPath, fLibraryName, nativeLibDir);
+                } else {
+                    com.winlator.star.wayland.WaylandCompositor.nativeSetSurface(h.getSurface());
+                }
+            }
+            @Override public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int ht) {}
+            @Override public void surfaceDestroyed(android.view.SurfaceHolder h) {
+                com.winlator.star.wayland.WaylandCompositor.nativeSetSurface(null);
+            }
+        });
+        rootView.addView(waylandSurfaceView);
+    }
+
     private void setupXEnvironment() throws PackageManager.NameNotFoundException {
 
         // Set environment variables
@@ -2116,6 +2165,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
             guestProgramLauncherComponent.setContainer(this.container);
             guestProgramLauncherComponent.setWineInfo(this.wineInfo);
+            guestProgramLauncherComponent.setWaylandMode(waylandMode);
 
             String guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " + getWineStartCommand();
 
@@ -2204,12 +2254,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.SYSVSHM_SERVER_PATH)
                 )
         );
-        environment.addComponent(
-                new XServerComponent(
-                        xServer,
-                        UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)
-                )
-        );
+        // In wayland mode the embedded compositor is the display server, so don't run the X server.
+        if (!waylandMode) {
+            environment.addComponent(
+                    new XServerComponent(
+                            xServer,
+                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)
+                    )
+            );
+        }
 
         // Audio driver logic
         if (audioDriver.equals("alsa")) {
@@ -2455,6 +2508,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         xServer.setRenderer(renderer);
         rootView.addView(xServerView);
+
+        // Wayland mode: overlay the embedded compositor's SurfaceView on top of the (idle) X view,
+        // and start the compositor rendering into it. winewayland.drv connects to its socket.
+        if (waylandMode) startWaylandCompositor(rootView);
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
         touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);

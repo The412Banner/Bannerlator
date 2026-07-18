@@ -195,12 +195,11 @@ fun ContainersScreen(
                         container = container,
                         onRun = {
                             if (!XrActivity.isEnabled(context)) {
-                                val target = if (container.displayBackend ==
-                                        com.winlator.star.container.Container.DISPLAY_BACKEND_WAYLAND)
-                                    com.winlator.star.WaylandDisplayActivity::class.java
-                                else XServerDisplayActivity::class.java
-                                val intent = Intent(context, target)
+                                val intent = Intent(context, XServerDisplayActivity::class.java)
                                 intent.putExtra("container_id", container.id)
+                                if (container.displayBackend ==
+                                        com.winlator.star.container.Container.DISPLAY_BACKEND_WAYLAND)
+                                    intent.putExtra("wayland_mode", true)
                                 context.startActivity(intent)
                             } else {
                                 XrActivity.openIntent(activity, container.id, null)

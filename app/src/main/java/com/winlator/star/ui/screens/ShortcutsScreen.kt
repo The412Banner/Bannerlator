@@ -4938,16 +4938,16 @@ private fun renameShortcut(shortcut: Shortcut, newName: String) {
 
 private fun runShortcut(activity: Activity, shortcut: Shortcut) {
     if (!XrActivity.isEnabled(activity)) {
-        // Effective display backend: per-game override, else the container default.
+        // Effective display backend: per-game override, else the container default. Wayland reuses
+        // XServerDisplayActivity's launch machinery via a guarded wayland_mode flag.
         val backend = shortcut.getExtra("displayBackend", shortcut.container.displayBackend)
-        val target = if (backend == com.winlator.star.container.Container.DISPLAY_BACKEND_WAYLAND)
-            com.winlator.star.WaylandDisplayActivity::class.java
-        else XServerDisplayActivity::class.java
-        val intent = Intent(activity, target).apply {
+        val wayland = backend == com.winlator.star.container.Container.DISPLAY_BACKEND_WAYLAND
+        val intent = Intent(activity, XServerDisplayActivity::class.java).apply {
             putExtra("container_id", shortcut.container.id)
             putExtra("shortcut_path", shortcut.file.path)
             putExtra("shortcut_name", shortcut.name)
             putExtra("disableXinput", shortcut.getExtra("disableXinput", "0"))
+            if (wayland) putExtra("wayland_mode", true)
         }
         activity.startActivity(intent)
     } else {

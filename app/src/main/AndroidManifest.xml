@@ -86,6 +86,14 @@
             android:exported="true" />
 
         <activity
+            android:name="com.winlator.star.WaylandDisplayActivity"
+            android:theme="@style/AppThemeFullscreen"
+            android:launchMode="singleTask"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:exported="false" />
+
+        <activity
             android:name="com.winlator.star.XrActivity"
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"

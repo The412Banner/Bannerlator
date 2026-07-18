@@ -414,6 +414,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // so the X11 path is unchanged when it's false. See WAYLAND_RUNTIME.md.
     private boolean waylandMode = false;
     private android.view.SurfaceView waylandSurfaceView;
+    private android.widget.ImageView waylandCursorView;
+    private float waylandCursorX = -1f, waylandCursorY = -1f; // touchpad cursor position (view px)
     private EnvVars overrideEnvVars;
 
     private void createNotifcationChannel() {
@@ -2053,22 +2055,43 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         // Touch -> wl_pointer. Map view pixels to the compositor's 1920x1080 output space (we blit
         // the guest surface fullscreen, so that IS the guest coordinate space). action 0=down/1=move/2=up.
+        // Touchpad-style cursor: a visible on-screen pointer that moves RELATIVE to finger drag
+        // (from wherever it is, not jumping to the touch point), with tap = left-click. The cursor is
+        // an Android overlay view (waylandCursorView); we keep it in sync with the wl_pointer.motion
+        // we send, so the guest's pointer and the visible arrow always match.
+        waylandCursorView = new android.widget.ImageView(this);
+        waylandCursorView.setImageBitmap(makeArrowCursorBitmap());
+        waylandCursorView.setLayoutParams(new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+        waylandCursorView.setVisibility(View.GONE);
+        final float[] last = {0f, 0f};
+        final float[] moved = {0f};
+        final float SENS = 1.4f;
         waylandSurfaceView.setOnTouchListener((v, ev) -> {
-            int action;
-            switch (ev.getActionMasked()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                case android.view.MotionEvent.ACTION_POINTER_DOWN: action = 0; break;
-                case android.view.MotionEvent.ACTION_MOVE:         action = 1; break;
-                case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_POINTER_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:       action = 2; break;
-                default: return true;
-            }
             int vw = v.getWidth(), vh = v.getHeight();
             if (vw <= 0 || vh <= 0) return true;
-            int ox = (int) (Math.max(0f, Math.min(ev.getX(), vw)) / vw * 1920f);
-            int oy = (int) (Math.max(0f, Math.min(ev.getY(), vh)) / vh * 1080f);
-            com.winlator.star.wayland.WaylandCompositor.nativeSendPointer(action, ox, oy);
+            if (waylandCursorX < 0) { waylandCursorX = vw / 2f; waylandCursorY = vh / 2f; }
+            switch (ev.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    last[0] = ev.getX(); last[1] = ev.getY(); moved[0] = 0f;
+                    break;
+                case android.view.MotionEvent.ACTION_MOVE: {
+                    float dx = (ev.getX() - last[0]) * SENS, dy = (ev.getY() - last[1]) * SENS;
+                    last[0] = ev.getX(); last[1] = ev.getY();
+                    moved[0] += Math.abs(dx) + Math.abs(dy);
+                    waylandCursorX = Math.max(0f, Math.min(vw, waylandCursorX + dx));
+                    waylandCursorY = Math.max(0f, Math.min(vh, waylandCursorY + dy));
+                    updateWaylandCursor(vw, vh, 1); // motion
+                    break;
+                }
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (moved[0] < 14f) { // a tap (not a drag) -> left click at the cursor
+                        updateWaylandCursor(vw, vh, 0); // button press
+                        updateWaylandCursor(vw, vh, 2); // button release
+                    }
+                    break;
+            }
             return true;
         });
         // Dedicated runtime dir for the wayland socket. NOT imagefs/tmp — setupXEnvironment does
@@ -2121,6 +2144,41 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         });
         rootView.addView(waylandSurfaceView);
+        rootView.addView(waylandCursorView); // the overlay pointer, on top of the compositor surface
+    }
+
+    /** Move the overlay pointer to the current touchpad position and send the guest a wl_pointer
+     *  event mapped to the 1920x1080 output space. action: 0=press, 1=motion, 2=release. */
+    private void updateWaylandCursor(int vw, int vh, int action) {
+        if (waylandCursorView != null) {
+            waylandCursorView.setX(waylandCursorX);
+            waylandCursorView.setY(waylandCursorY);
+            if (waylandCursorView.getVisibility() != View.VISIBLE)
+                waylandCursorView.setVisibility(View.VISIBLE);
+        }
+        int ox = (int) (waylandCursorX / vw * 1920f);
+        int oy = (int) (waylandCursorY / vh * 1080f);
+        com.winlator.star.wayland.WaylandCompositor.nativeSendPointer(action, ox, oy);
+    }
+
+    /** A small classic arrow cursor bitmap (white fill, dark outline) drawn in code. */
+    private android.graphics.Bitmap makeArrowCursorBitmap() {
+        int w = 22, h = 34;
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(w, h,
+                android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas cv = new android.graphics.Canvas(bmp);
+        android.graphics.Path p = new android.graphics.Path();
+        p.moveTo(1, 1); p.lineTo(1, 25); p.lineTo(7, 19); p.lineTo(11, 28);
+        p.lineTo(15, 26); p.lineTo(11, 17); p.lineTo(19, 17); p.close();
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        paint.setStyle(android.graphics.Paint.Style.FILL);
+        paint.setColor(0xFFFFFFFF);
+        cv.drawPath(p, paint);
+        paint.setStyle(android.graphics.Paint.Style.STROKE);
+        paint.setStrokeWidth(1.5f);
+        paint.setColor(0xFF202020);
+        cv.drawPath(p, paint);
+        return bmp;
     }
 
     private void setupXEnvironment() throws PackageManager.NameNotFoundException {
@@ -2595,7 +2653,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // (X11 mouse emulation) + inputControlsView were just added ON TOP of it and were eating every
         // touch. Bring the wayland surface to the front so its onTouchListener receives events; the
         // DrawerLayout still handles the left-edge swipe to open the in-game drawer.
-        if (waylandMode && waylandSurfaceView != null) waylandSurfaceView.bringToFront();
+        if (waylandMode && waylandSurfaceView != null) {
+            waylandSurfaceView.bringToFront();
+            if (waylandCursorView != null) waylandCursorView.bringToFront(); // pointer above the surface
+        }
 
         startTouchscreenTimeout();
 

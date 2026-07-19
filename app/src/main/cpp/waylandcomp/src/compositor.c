@@ -46,6 +46,10 @@ static int g_nptrs;
 static struct seat_keyboard g_kbs[MAX_PTRS];
 static int g_nkbs;
 static struct wl_resource *g_visible_surface; /* last surface committed with a buffer = what's on screen */
+/* Real buffer size of g_visible_surface. We blit it STRETCHED to the fullscreen (1920x1080) output,
+ * so incoming pointer coords (output space) must be scaled back to surface-local space by this ratio
+ * or clicks on any non-fullscreen window (e.g. the file manager) land outside the real surface. */
+static int g_vis_w = 1920, g_vis_h = 1080;
 static int g_input_pipe[2] = {-1, -1};
 /* type 0 = pointer (p1=action 0down/1move/2up, p2=x, p3=y); type 1 = key (p1=evdev, p2=state 1down/0up) */
 struct input_msg { int type; int p1; int p2; int p3; };
@@ -441,9 +445,11 @@ static void present_committed_buffer(struct wl_resource *buffer) {
     if (!buffer) return;
     if (wl_resource_instance_of(buffer, &wl_buffer_interface, &dbuf_buffer_impl)) {
         struct dmabuf_buffer *b = wl_resource_get_user_data(buffer);
-        if (b && b->n_planes >= 1)
+        if (b && b->n_planes >= 1) {
+            if (b->width > 0 && b->height > 0) { g_vis_w = b->width; g_vis_h = b->height; }
             vk_present_commit_dmabuf(b->fd[0], b->format, b->modifier, b->width,
                                      b->height, b->stride[0], b->offset[0]);
+        }
         return;
     }
     /* wl_shm (CPU) buffer — the Wine desktop / GDI windows. Upload+blit its pixels so they
@@ -455,8 +461,10 @@ static void present_committed_buffer(struct wl_resource *buffer) {
         int32_t w = wl_shm_buffer_get_width(shm);
         int32_t h = wl_shm_buffer_get_height(shm);
         int32_t stride = wl_shm_buffer_get_stride(shm);
-        if (data && w > 0 && h > 0)
+        if (data && w > 0 && h > 0) {
+            g_vis_w = w; g_vis_h = h;
             vk_present_commit_shm(data, w, h, stride, wl_shm_buffer_get_format(shm));
+        }
         wl_shm_buffer_end_access(shm);
     }
 }
@@ -683,8 +691,15 @@ static void deliver_pointer(const struct input_msg *m) {
     if (!sp) return;
     struct wl_resource *ptr = sp->ptr;
     int action = m->p1;
-    wl_fixed_t fx = wl_fixed_from_int(m->p2), fy = wl_fixed_from_int(m->p3);
+    /* Java sends coords in the 1920x1080 output space; we blit the surface stretched to fullscreen,
+     * so map back to the surface's real (g_vis_w x g_vis_h) local space or clicks miss non-fullscreen
+     * windows (e.g. the file manager). Fullscreen surfaces scale 1:1 (no-op). */
+    int lx = (int)((long long)m->p2 * g_vis_w / 1920);
+    int ly = (int)((long long)m->p3 * g_vis_h / 1080);
+    wl_fixed_t fx = wl_fixed_from_int(lx), fy = wl_fixed_from_int(ly);
     uint32_t t = now_ms();
+    WLOGI("pointer action=%d out=(%d,%d) surf=%dx%d -> local=(%d,%d)",
+          action, m->p2, m->p3, g_vis_w, g_vis_h, lx, ly);
     if (sp->focus != g_visible_surface) {
         if (sp->focus)
             wl_pointer_send_leave(ptr, wl_display_next_serial(g_display), sp->focus);

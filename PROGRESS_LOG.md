@@ -4206,3 +4206,29 @@ Resume recipe: launch GL container xuser-3 -> AIO DX11 cube -> enable perf HUD -
 5. **Keep-alive ping + connect watchdog** — cheap, prevents idle CM drops (GameNative pingInterval 15s :3456 + post-connect BAD-CM watchdog :3563). We're TCP-only so add the watchdog; investigate a TCP heartbeat.
 
 **Guardrails:** Do 1+2 first (biggest ROI). Do NOT start editing until today's `c72d943` (CI run `28685150972`) is DEVICE-CONFIRMED on HL2 — don't stack unproven changes. One item per commit, device-verify each. Branch `feat/steam-goldberg-patcher`. Also-deferred #5 = wire the dead `updateNotification` (cosmetic).
+
+---
+
+## 2026-07-19 — WAYLAND RUNTIME: PARKED (revisit later)
+
+Parked cleanly on `feat/wayland-runtime` (tip 9eca32e0, pushed). X11 path untouched. Full detail in memory: `project_bannerlator_wayland_runtime` + `project_bannerlator_wlroots_desktop`.
+
+### DONE this session
+- **libwayland 1.24 -> 1.26.0** cross-compiled for aarch64/bionic (Termux clang + meson) and swapped into BOTH sides: app compositor (`waylandcomp/prebuilt` + jniLibs, app tip 9eca32e0) and the winewayland wcp (proton-wine `feat/winewayland` d6a7216). New wcp staged: `/sdcard/Download/proton-11.0-1-arm64ec-wl126.wcp`.
+- **Compositor input fixes:** (1) scale pointer coords output-space -> surface-local (clickfix); (2) present the LARGEST surface, not the last committed (largest-surface fix), so tiny taskbar toplevels don't steal the fullscreen blit.
+- **DEVICE-VALIDATED for interaction:** user navigated the Wayland file manager (drives/folders) and double-click-launched an exe -> selection / click / double-tap-open all work.
+- Latest APK: `/sdcard/Download/Bannerlator-1.26-gamefix-ludashi.apk` (md5 598af855782f5f154fa9ec32f6f85f9a) = 1.26 + clickfix + largest-surface.
+
+### BLOCKER (why parked) — NOT ours, not the compositor
+FlatOut 2 aborts at launch on Wayland (c0000142). Root cause = the game's **Goldberg/gbe_fork `steam_api.dll` DllMain returns FALSE under FEX-wow64** (heavy 32-bit C++ DLL). Reproduces on X11 too; both the ludashi + standard apps use the identical arm64ec Proton 11 + FEXCore-2607 stack -> **not** our winewayland wcp, **not** the display. The game is DRM-free (ZOOM Platform), so it doesn't need Goldberg at all. **FIX (untested, parked before applying): turn Goldberg OFF / Restore for FlatOut 2** (restores the 268KB Valve `steam_api.dll.bak`, whose DllMain inits fine).
+
+### FULL DESKTOP path (future)
+wlroots-on-Android spike = **GO** (device-proven: wlroots + deps cross-compile, link, and run in a bionic process). Fork `xMeM/wlroots-termux` (0.16.2); it already ships an AHardwareBuffer->dmabuf allocator. Next milestone = **M2** (headless wlroots in-APK). Spike artifacts: `~/scratchpad/wlroots-spike/` + device `/sdcard/Download/wlrspike/`. Keep our proven `vk_present.c`; replace `compositor.c`. See `project_bannerlator_wlroots_desktop`.
+
+### CLEANUP BEFORE ANY MERGE (debug-only, still in tree)
+- Remove the temp pointer log in `compositor.c` `deliver_pointer` (`WLOGI("pointer action=...")`).
+- (Earlier) remove `send_pointer` / `get_pointer` / `send_key` WLOGI; restore device `wine_debug_channels` pref; drop `WAYLAND_DEBUG` if set.
+
+### RESUME HERE (when revisiting)
+1. Apply Goldberg-OFF to FlatOut 2 (or pick a game that boots) -> launch on Wayland -> validate the fullscreen-game cheap win (compositor render + input with a real running game).
+2. Decide whether to green-light **wlroots M2** for the full multi-window desktop.

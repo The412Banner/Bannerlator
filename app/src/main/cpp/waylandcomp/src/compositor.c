@@ -98,18 +98,9 @@ static void surface_set_opaque(struct wl_client *c, struct wl_resource *r,
                                struct wl_resource *region) {}
 static void surface_set_input(struct wl_client *c, struct wl_resource *r,
                               struct wl_resource *region) {}
-/* Pixel area of a committed buffer (dmabuf or wl_shm), 0 if unknown. Used to pick the largest
- * surface as the one we present fullscreen. */
-static long long buffer_area(struct wl_resource *buffer) {
-    if (!buffer) return 0;
-    if (wl_resource_instance_of(buffer, &wl_buffer_interface, &dbuf_buffer_impl)) {
-        struct dmabuf_buffer *b = wl_resource_get_user_data(buffer);
-        return b ? (long long)b->width * b->height : 0;
-    }
-    struct wl_shm_buffer *shm = wl_shm_buffer_get(buffer);
-    if (shm) return (long long)wl_shm_buffer_get_width(shm) * wl_shm_buffer_get_height(shm);
-    return 0;
-}
+/* Pixel area of a committed buffer (dmabuf or wl_shm); used to pick the largest surface to present.
+ * Defined below, after struct dmabuf_buffer / dbuf_buffer_impl are complete. */
+static long long buffer_area(struct wl_resource *buffer);
 
 static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     struct surface *s = wl_resource_get_user_data(r);
@@ -464,6 +455,18 @@ static void dbuf_buffer_destroy_req(struct wl_client *c, struct wl_resource *r) 
 static const struct wl_buffer_interface dbuf_buffer_impl = {
     .destroy = dbuf_buffer_destroy_req,
 };
+
+/* Pixel area of a committed buffer (dmabuf or wl_shm), 0 if unknown. */
+static long long buffer_area(struct wl_resource *buffer) {
+    if (!buffer) return 0;
+    if (wl_resource_instance_of(buffer, &wl_buffer_interface, &dbuf_buffer_impl)) {
+        struct dmabuf_buffer *b = wl_resource_get_user_data(buffer);
+        return b ? (long long)b->width * b->height : 0;
+    }
+    struct wl_shm_buffer *shm = wl_shm_buffer_get(buffer);
+    if (shm) return (long long)wl_shm_buffer_get_width(shm) * wl_shm_buffer_get_height(shm);
+    return 0;
+}
 
 /* Called from surface_commit: if the committed buffer is one of our dmabuf
  * buffers, composite it to the output window via the Vulkan present backend. */

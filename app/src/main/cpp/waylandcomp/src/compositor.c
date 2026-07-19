@@ -50,6 +50,10 @@ static struct wl_resource *g_visible_surface; /* last surface committed with a b
  * so incoming pointer coords (output space) must be scaled back to surface-local space by this ratio
  * or clicks on any non-fullscreen window (e.g. the file manager) land outside the real surface. */
 static int g_vis_w = 1920, g_vis_h = 1080;
+/* Area (px) of the current visible surface's buffer. We present the LARGEST presentable surface,
+ * not the last one committed: winewayland in /desktop mode spawns tiny taskbar/helper toplevels
+ * (e.g. 119x34) that would otherwise steal the fullscreen blit from the actual game window. */
+static long long g_vis_area = 0;
 static int g_input_pipe[2] = {-1, -1};
 /* type 0 = pointer (p1=action 0down/1move/2up, p2=x, p3=y); type 1 = key (p1=evdev, p2=state 1down/0up) */
 struct input_msg { int type; int p1; int p2; int p3; };
@@ -94,6 +98,19 @@ static void surface_set_opaque(struct wl_client *c, struct wl_resource *r,
                                struct wl_resource *region) {}
 static void surface_set_input(struct wl_client *c, struct wl_resource *r,
                               struct wl_resource *region) {}
+/* Pixel area of a committed buffer (dmabuf or wl_shm), 0 if unknown. Used to pick the largest
+ * surface as the one we present fullscreen. */
+static long long buffer_area(struct wl_resource *buffer) {
+    if (!buffer) return 0;
+    if (wl_resource_instance_of(buffer, &wl_buffer_interface, &dbuf_buffer_impl)) {
+        struct dmabuf_buffer *b = wl_resource_get_user_data(buffer);
+        return b ? (long long)b->width * b->height : 0;
+    }
+    struct wl_shm_buffer *shm = wl_shm_buffer_get(buffer);
+    if (shm) return (long long)wl_shm_buffer_get_width(shm) * wl_shm_buffer_get_height(shm);
+    return 0;
+}
+
 static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     struct surface *s = wl_resource_get_user_data(r);
     if (s->pending_buffer) {
@@ -110,11 +127,18 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
         /* Composite the frame to the output window (dmabuf path), then release so
          * the client can reuse the buffer. present + queue-wait completes the read
          * before release, so immediate release is safe. */
-        present_committed_buffer(s->pending_buffer);
+        /* Present only the LARGEST presentable surface (the game), so tiny taskbar/helper toplevels
+         * from /desktop mode (119x34 etc.) don't steal the fullscreen blit. The current visible
+         * surface always re-presents its own new frames. This is a single-window stopgap; a true
+         * multi-window desktop needs per-surface geometry composition (the wlroots project). */
+        long long area = buffer_area(s->pending_buffer);
+        if (s->resource == g_visible_surface || area >= g_vis_area) {
+            present_committed_buffer(s->pending_buffer); /* sets g_vis_w/h */
+            g_visible_surface = s->resource; /* pointer routes here (we blit it fullscreen) */
+            g_vis_area = area;
+        }
         wl_buffer_send_release(s->pending_buffer);
         s->pending_buffer = NULL;
-        /* This surface is what's now on screen -> pointer routes here (we blit it fullscreen). */
-        g_visible_surface = s->resource;
     }
 }
 static void surface_set_buffer_transform(struct wl_client *c, struct wl_resource *r,
@@ -141,7 +165,9 @@ static const struct wl_surface_interface surface_impl = {
 };
 
 static void surface_resource_destroy(struct wl_resource *r) {
-    free(wl_resource_get_user_data(r));
+    struct surface *s = wl_resource_get_user_data(r);
+    if (s && s->resource == g_visible_surface) { g_visible_surface = NULL; g_vis_area = 0; }
+    free(s);
 }
 
 /* ------------------------------------------------------------------ wl_region */

@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import com.winlator.star.renderer.ASurfaceRenderer;
+import com.winlator.star.renderer.DisplayXRenderer;
 import com.winlator.star.renderer.GLRenderer;
 import com.winlator.star.renderer.HostRenderer;
 import com.winlator.star.renderer.vulkan.VulkanRenderer;
@@ -51,10 +52,35 @@ public class XServerView extends FrameLayout {
     public void initRenderer(String rendererType) {
         boolean vulkan = "vulkan".equalsIgnoreCase(rendererType);
         boolean surfaceFlinger = "surfaceflinger".equalsIgnoreCase(rendererType);
+        boolean displayX = "displayx".equalsIgnoreCase(rendererType);
         // ASR needs every Drawable backed by a composer-compatible AHardwareBuffer. Global flag —
         // set before any window content Drawable is created (and clear it for GL/Vulkan).
+        // DisplayX allocates its own AHardwareBuffer per layer and memcpys into it, so it wants
+        // the plain (non-ASR) Drawable path.
         com.winlator.star.xserver.Drawable.setAsrMode(surfaceFlinger);
-        if (surfaceFlinger) {
+        if (displayX) {
+            vulkanSurfaceView = new SurfaceView(getContext());
+            vulkanSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            addView(vulkanSurfaceView);
+            final DisplayXRenderer dxRenderer = new DisplayXRenderer(this, xServer);
+            renderer = dxRenderer;
+            vulkanSurfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+                @Override
+                public void surfaceCreated(SurfaceHolder holder) {
+                    dxRenderer.onSurfaceCreated(holder.getSurface());
+                }
+                @Override
+                public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+                    dxRenderer.onSurfaceChanged(width, height);
+                    reassertFrameRate();
+                }
+                @Override
+                public void surfaceDestroyed(SurfaceHolder holder) {
+                    dxRenderer.onSurfaceDestroyed();
+                }
+            });
+        } else if (surfaceFlinger) {
             vulkanSurfaceView = new SurfaceView(getContext());
             vulkanSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));

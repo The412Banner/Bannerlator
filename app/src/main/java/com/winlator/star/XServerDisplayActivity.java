@@ -2549,6 +2549,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 && !com.winlator.star.renderer.ASurfaceRenderer.isSupported()) {
             rendererType = "vulkan";
         }
+        // DisplayX is SurfaceControl-based too, so it carries the same API 29+ requirement.
+        if ("displayx".equalsIgnoreCase(rendererType)
+                && !com.winlator.star.renderer.DisplayXRenderer.isSupported()) {
+            rendererType = "vulkan";
+        }
         boolean useVulkan = "vulkan".equals(rendererType);
         xServerView.initRenderer(rendererType);
         final HostRenderer renderer = xServerView.getRenderer();

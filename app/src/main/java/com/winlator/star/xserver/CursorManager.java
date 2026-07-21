@@ -3,13 +3,43 @@ package com.winlator.star.xserver;
 import android.util.SparseArray;
 
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 
 public class CursorManager extends XResourceManager {
     private final SparseArray<Cursor> cursors = new SparseArray<>();
     private final DrawableManager drawableManager;
+    private final ArrayList<OnCursorModificationListener> onCursorModificationListeners = new ArrayList<>();
+
+    // Only the DisplayX renderer needs cursor lifecycle events (each cursor becomes an
+    // AHardwareBuffer on its own SurfaceControl layer). Defaulted no-op for everyone else.
+    public interface OnCursorModificationListener {
+        default void onCreateCursor(Cursor cursor) {}
+
+        default void onFreeCursor(Cursor cursor) {}
+    }
 
     public CursorManager(DrawableManager drawableManager) {
         this.drawableManager = drawableManager;
+    }
+
+    public void addOnCursorModificationListener(OnCursorModificationListener listener) {
+        onCursorModificationListeners.add(listener);
+    }
+
+    public void removeOnCursorModificationListener(OnCursorModificationListener listener) {
+        onCursorModificationListeners.remove(listener);
+    }
+
+    private void triggerOnCreateCursor(Cursor cursor) {
+        for (int i = onCursorModificationListeners.size()-1; i >= 0; i--) {
+            onCursorModificationListeners.get(i).onCreateCursor(cursor);
+        }
+    }
+
+    private void triggerOnFreeCursor(Cursor cursor) {
+        for (int i = onCursorModificationListeners.size()-1; i >= 0; i--) {
+            onCursorModificationListeners.get(i).onFreeCursor(cursor);
+        }
     }
 
     public Cursor getCursor(int id) {
@@ -22,11 +52,14 @@ public class CursorManager extends XResourceManager {
         Cursor cursor = new Cursor(id, x, y, drawable, sourcePixmap.drawable, maskPixmap != null ? maskPixmap.drawable : null);
         cursors.put(id, cursor);
         triggerOnCreateResourceListener(cursor);
+        triggerOnCreateCursor(cursor);
         return cursor;
     }
 
     public void freeCursor(int id) {
-        triggerOnFreeResourceListener(cursors.get(id));
+        Cursor cursor = cursors.get(id);
+        triggerOnFreeResourceListener(cursor);
+        if (cursor != null) triggerOnFreeCursor(cursor);
         cursors.remove(id);
     }
 

@@ -30,10 +30,16 @@ public class WindowManager extends XResourceManager {
     private volatile boolean renderingEnabled = true;
 
     public interface OnWindowModificationListener {
+        // Only the DisplayX renderer mirrors the window tree natively, so it is the sole
+        // consumer of onCreateWindow/onReparentWindow. Defaulted no-op for every other renderer.
+        default void onCreateWindow(Window window, Window parent) {}
+
+        default void onReparentWindow(Window window, Window newParent) {}
+
         default void onMapWindow(Window window) {}
 
         default void onUnmapWindow(Window window) {}
-        
+
         default void onDestroyWindow(Window window) {}
 
         default void onChangeWindowZOrder(Window window) {}
@@ -180,6 +186,7 @@ public class WindowManager extends XResourceManager {
         windows.put(id, window);
         parent.addChild(window);
         triggerOnCreateResourceListener(window);
+        triggerOnCreateWindow(window, parent);
         return window;
     }
 
@@ -280,6 +287,7 @@ public class WindowManager extends XResourceManager {
         Window oldParent = window.getParent();
         if (oldParent != null) oldParent.removeChild(window);
         newParent.addChild(window);
+        triggerOnReparentWindow(window, newParent);
     }
 
     public void setRenderingEnabled(boolean enabled) {
@@ -302,6 +310,18 @@ public class WindowManager extends XResourceManager {
 
     public void removeOnWindowModificationListener(OnWindowModificationListener onWindowModificationListener) {
         onWindowModificationListeners.remove(onWindowModificationListener);
+    }
+
+    private void triggerOnCreateWindow(Window window, Window parent) {
+        for (int i = onWindowModificationListeners.size()-1; i >= 0; i--) {
+            onWindowModificationListeners.get(i).onCreateWindow(window, parent);
+        }
+    }
+
+    private void triggerOnReparentWindow(Window window, Window newParent) {
+        for (int i = onWindowModificationListeners.size()-1; i >= 0; i--) {
+            onWindowModificationListeners.get(i).onReparentWindow(window, newParent);
+        }
     }
 
     private void triggerOnMapWindow(Window window) {

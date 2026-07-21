@@ -96,6 +96,14 @@ public class PresentExtension implements Extension {
     // Mechanism (IdleNotify-delay pacing + WindowTiming) ported from GameNative
     // (https://github.com/utkarshdalal/GameNative). See README Credits.
     private volatile int frameRateLimit = 0;
+
+    // DisplayX only: (windowId, pixmapDrawableId) pairs already registered as native direct
+    // contents, so each AHB is handed over once rather than on every present.
+    private final java.util.HashSet<Long> directContentPixmaps = new java.util.HashSet<>();
+
+    private static long key(int windowId, int drawableId) {
+        return ((long) windowId << 32) | (drawableId & 0xffffffffL);
+    }
     public void setFrameRateLimit(int limit) { this.frameRateLimit = Math.max(0, limit); }
 
     private static final long FIRE_EARLY_NS = 700_000L; // 0.7 ms
@@ -275,7 +283,27 @@ public class PresentExtension implements Extension {
         synchronized (content.renderLock) {
             boolean isNative = vr != null && vr.isNativeMode();
 
-            if (xr instanceof com.winlator.star.renderer.ASurfaceRenderer) {
+            if (xr instanceof com.winlator.star.renderer.DisplayXRenderer) {
+                // DisplayX: hand the pixmap's AHB straight to the window's SurfaceControl layer.
+                // Unlike upstream (which registers direct contents in DRI3 PixmapFromBuffers, where
+                // it already knows the window) our DRI3 creates pixmaps standalone, so the
+                // window<->pixmap association only exists here — register on first present.
+                final com.winlator.star.renderer.DisplayXRenderer dxr =
+                    (com.winlator.star.renderer.DisplayXRenderer) xr;
+                if (window.attributes.isMapped()
+                        && pixmap.drawable.getTexture() instanceof GPUImage
+                        && ((GPUImage) pixmap.drawable.getTexture()).getHardwareBufferPtr() != 0) {
+                    if (directContentPixmaps.add(key(window.id, pixmap.drawable.id))) {
+                        dxr.addDirectContent(window.id, pixmap.drawable, (GPUImage) pixmap.drawable.getTexture());
+                    }
+                    sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
+                    dxr.updateDirectContent(window.id, pixmap.drawable.id);
+                } else {
+                    content.copyArea((short)0, (short)0, xOff, yOff, pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
+                    sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
+                }
+                emitIdleNotify(window, pixmap, serial, idleFence, targetFps, null);
+            } else if (xr instanceof com.winlator.star.renderer.ASurfaceRenderer) {
                 // SurfaceFlinger (ASR): hand the pixmap's AHB to the window's own SurfaceControl
                 // layer (no GL/Vulkan compositor). Additive branch — leaves the Vulkan/GL paths below
                 // untouched. Falls back to copyArea for non-AHB (SHM) pixmaps.

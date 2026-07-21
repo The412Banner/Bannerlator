@@ -283,7 +283,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // (refreshGraphicsDriverEntries below re-reads the wrapper part after an import/delete.)
         audioDriverEntries = res.getStringArray(R.array.audio_driver_entries).toList()
         emulatorEntries   = res.getStringArray(R.array.emulator_entries).toList()
-        rendererEntries = listOf("OpenGL", "Vulkan", "SurfaceFlinger")
+        rendererEntries = listOf("OpenGL", "Vulkan", "SurfaceFlinger", "DisplayX")
         lcAllEntries      = res.getStringArray(R.array.some_lc_all).toList()
         startupSelectionEntries = res.getStringArray(R.array.startup_selection_entries).toList()
         mouseWarpEntries  = listOf(

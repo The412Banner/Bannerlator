@@ -5486,6 +5486,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
             when {
                 id.equals("vulkan", ignoreCase = true) -> "Vulkan"
                 id.equals("surfaceflinger", ignoreCase = true) -> "SurfaceFlinger"
+                id.equals("displayx", ignoreCase = true) -> "DisplayX"
                 else -> "OpenGL"
             }
         )

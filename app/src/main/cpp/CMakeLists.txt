@@ -146,3 +146,29 @@ target_link_libraries(direct_scanout
         atomic
 )
 
+# DisplayX host renderer — a straight SurfaceControl compositor: every X window becomes
+# its own ASurfaceControl layer backed by an AHardwareBuffer, composited by SurfaceFlinger.
+# Ported from Pipetto-crypto/winlator (branch winlator_bionic, MIT). Kept as its own .so
+# for the same reason as direct_scanout: log/android/dl/atomic only, NO EGL, NO GLES, NO
+# vulkan, NO adrenotools — selecting DisplayX must not drag any of those onto the path.
+# All ASurfaceControl_*/ASurfaceTransaction_* entry points are dlsym'd at runtime
+# (DisplayX::start), so the library still loads below the API level that introduced them.
+add_library(displayx SHARED
+        displayx/displayx_jni.cpp
+        displayx/displayx.cpp
+        displayx/window.cpp
+        displayx/cursor.cpp
+        displayx/view_transformation.cpp
+)
+
+target_compile_options(displayx PRIVATE
+        -Wall -Wextra -std=c++17
+)
+
+target_link_libraries(displayx
+        log
+        android
+        dl
+        atomic
+)
+

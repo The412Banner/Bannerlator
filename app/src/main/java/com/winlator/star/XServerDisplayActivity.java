@@ -3308,6 +3308,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 && !com.winlator.star.renderer.ASurfaceRenderer.isSupported()) {
             rendererType = "vulkan";
         }
+        // DisplayX is SurfaceControl-based too, so it carries the same API 29+ requirement.
+        if ("displayx".equalsIgnoreCase(rendererType)
+                && !com.winlator.star.renderer.DisplayXRenderer.isSupported()) {
+            rendererType = "vulkan";
+        }
         boolean useVulkan = "vulkan".equals(rendererType);
         // Gate the drawer's live Present Mode selector: it only exists on the Vulkan host renderer
         // (OpenGL/SurfaceFlinger have no present-mode control).

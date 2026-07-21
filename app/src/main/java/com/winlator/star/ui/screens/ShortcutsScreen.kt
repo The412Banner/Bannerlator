@@ -4320,19 +4320,23 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
 
                     // Renderer (host) — per-game override of the container's OpenGL/Vulkan choice.
                     var showSfWarning by remember { mutableStateOf(false) }
+                    var pendingRenderer by remember { mutableStateOf("SurfaceFlinger") }
                     LabeledDropdown(
                         label = stringResource(R.string.renderer),
-                        options = listOf("OpenGL", "Vulkan", "SurfaceFlinger"),
+                        options = listOf("OpenGL", "Vulkan", "SurfaceFlinger", "DisplayX"),
                         selectedOption = selectedRenderer,
                         onSelect = {
                             // SurfaceFlinger is experimental and can reboot some devices — require opt-in.
-                            if (it == "SurfaceFlinger" && selectedRenderer != "SurfaceFlinger") showSfWarning = true
-                            else selectedRenderer = it
+                            // DisplayX drives SurfaceControl the same way, so it carries the same warning.
+                            if ((it == "SurfaceFlinger" || it == "DisplayX") && selectedRenderer != it) {
+                                pendingRenderer = it
+                                showSfWarning = true
+                            } else selectedRenderer = it
                         }
                     )
                     if (showSfWarning) {
                         SurfaceFlingerWarningDialog(
-                            onConfirm = { selectedRenderer = "SurfaceFlinger"; showSfWarning = false },
+                            onConfirm = { selectedRenderer = pendingRenderer; showSfWarning = false },
                             onDismiss = { showSfWarning = false }
                         )
                     }

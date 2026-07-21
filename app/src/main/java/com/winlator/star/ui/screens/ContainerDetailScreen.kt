@@ -544,6 +544,7 @@ private fun TopLevelFields(
 
         // Renderer
         var showSfWarning by remember { mutableStateOf(false) }
+        var pendingRenderer by remember { mutableStateOf("SurfaceFlinger") }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             LabeledDropdown(
                 label = stringResource(R.string.renderer),
@@ -551,8 +552,11 @@ private fun TopLevelFields(
                 selectedOption = viewModel.selectedRenderer,
                 onSelect = {
                     // SurfaceFlinger is experimental and can reboot some devices — require opt-in.
-                    if (it == "SurfaceFlinger" && viewModel.selectedRenderer != "SurfaceFlinger") showSfWarning = true
-                    else viewModel.selectedRenderer = it
+                    // DisplayX drives SurfaceControl the same way, so it carries the same warning.
+                    if ((it == "SurfaceFlinger" || it == "DisplayX") && viewModel.selectedRenderer != it) {
+                        pendingRenderer = it
+                        showSfWarning = true
+                    } else viewModel.selectedRenderer = it
                 },
                 modifier = Modifier.weight(1f)
             )
@@ -564,7 +568,7 @@ private fun TopLevelFields(
         }
         if (showSfWarning) {
             SurfaceFlingerWarningDialog(
-                onConfirm = { viewModel.selectedRenderer = "SurfaceFlinger"; showSfWarning = false },
+                onConfirm = { viewModel.selectedRenderer = pendingRenderer; showSfWarning = false },
                 onDismiss = { showSfWarning = false }
             )
         }

@@ -95,7 +95,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE: Byte = 1
         const val OPEN_FILE_REQUEST_CODE: Byte = 2
-        const val EDIT_INPUT_CONTROLS_REQUEST_CODE: Byte = 3
         const val OPEN_DIRECTORY_REQUEST_CODE: Byte = 4
         const val OPEN_IMAGE_REQUEST_CODE: Byte = 5
 
@@ -113,9 +112,6 @@ class MainActivity : AppCompatActivity() {
     private val splashViewModel: SplashViewModel by lazy {
         ViewModelProvider(this)[SplashViewModel::class.java]
     }
-
-    private var selectedProfileId: Int = 0
-    private var editInputControls: Boolean = false
 
     // Holds the OS cold-start splash on screen only until the Compose UI is about to draw its first
     // frame. Not held for the imagefs install — that has its own in-app SplashScreen surface.
@@ -159,45 +155,30 @@ class MainActivity : AppCompatActivity() {
 
         containerManager = ContainerManager(this)
 
-        editInputControls = intent.getBooleanExtra("edit_input_controls", false)
-        selectedProfileId = intent.getIntExtra("selected_profile_id", 0)
+        val selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0)
+        val startRoute = validRouteOrNull(intent.getStringExtra(EXTRA_OPEN_SCREEN))
+            ?: menuItemIdToRoute(selectedMenuItemId)
+            ?: when {
+                prefs.getBoolean("enable_big_picture_mode", false) -> Screen.BigPicture.route
+                prefs.getString("default_landing_screen", "games") == "containers" -> Screen.Containers.route
+                else -> Screen.Games.route
+            }
 
-        val startRoute = when {
-            editInputControls -> Screen.InputControls.route
-            else -> {
-                val selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0)
-                validRouteOrNull(intent.getStringExtra(EXTRA_OPEN_SCREEN))
-                    ?: menuItemIdToRoute(selectedMenuItemId)
-                    // User-chosen default landing screen (Settings). Only applies when nothing else
-                    // dictated the route (no deep-link / menu nav / edit-controls). Big Picture is a
-                    // couch/TV launcher shown at startup instead of the normal UI, so when its pref is
-                    // on it wins over the default landing screen. Otherwise defaults to "games" = the
-                    // Game Shortcuts page, i.e. the historical default.
-                    ?: when {
-                        prefs.getBoolean("enable_big_picture_mode", false) -> Screen.BigPicture.route
-                        prefs.getString("default_landing_screen", "games") == "containers" -> Screen.Containers.route
-                        else -> Screen.Games.route
-                    }
+        val willInstall = splashViewModel.installIfNeeded(this)
+        if (!willInstall) {
+            // Already installed — request permissions immediately
+            requestAppPermissions()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                showAllFilesDialog.value = true
+            }
+            if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
             }
         }
-
-        if (!editInputControls) {
-            val willInstall = splashViewModel.installIfNeeded(this)
-            if (!willInstall) {
-                // Already installed — request permissions immediately
-                requestAppPermissions()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-                    showAllFilesDialog.value = true
-                }
-                if (Build.VERSION.SDK_INT >= 33 &&
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED
-                ) {
-                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
-                }
-            }
-            // If willInstall == true: permissions are requested after user taps Proceed
-        }
+        // If willInstall == true: permissions are requested after user taps Proceed
 
         // First-run/install decision is made; let the OS splash hand off to the Compose UI.
         contentReady = true
@@ -213,8 +194,6 @@ class MainActivity : AppCompatActivity() {
                         startRoute = startRoute,
                         pendingRoute = pendingRoute.value,
                         onPendingRouteConsumed = { pendingRoute.value = null },
-                        editInputControls = editInputControls,
-                        selectedInputProfileId = selectedProfileId,
                         showAllFilesDialog = showAllFilesDialog.value,
                         showAboutDialog = showAboutDialog.value,
                         onDismissAllFilesDialog = { showAllFilesDialog.value = false },
@@ -335,8 +314,6 @@ private fun AppShell(
     startRoute: String,
     pendingRoute: String?,
     onPendingRouteConsumed: () -> Unit,
-    editInputControls: Boolean,
-    selectedInputProfileId: Int,
     showAllFilesDialog: Boolean,
     showAboutDialog: Boolean,
     onDismissAllFilesDialog: () -> Unit,
@@ -409,7 +386,7 @@ private fun AppShell(
     CompositionLocalProvider(LocalTopBarActions provides topBarActionsState) {
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = !editInputControls && !currentRoute.startsWith("container_detail") && !isBigPicture,
+        gesturesEnabled = !currentRoute.startsWith("container_detail") && !isBigPicture,
         drawerContent = {
             AppDrawerContent(
                 currentRoute = currentRoute,
@@ -449,17 +426,13 @@ private fun AppShell(
                 if (!isBigPicture) {
                     AppTopBar(
                         title = screenTitle,
-                        showBack = editInputControls,
+                        showBack = false,
                         // Signed-in + has a picture → the ☰ becomes their avatar (still opens the drawer).
                         // Versioned URL so a live picture change refreshes the swap in lockstep with the drawer.
                         avatarUrl = account?.displayAvatarUrl,
                         onNavClick = {
-                            if (editInputControls) {
-                                navController.popBackStack()
-                            } else {
-                                scope.launch {
-                                    if (drawerState.isOpen) drawerState.close() else drawerState.open()
-                                }
+                            scope.launch {
+                                if (drawerState.isOpen) drawerState.close() else drawerState.open()
                             }
                         },
                         actions = topBarActionsState.value,
@@ -469,7 +442,7 @@ private fun AppShell(
         ) { innerPadding ->
             Column(modifier = Modifier.padding(if (isBigPicture) PaddingValues(0.dp) else innerPadding)) {
                 val upd = bannerUpdate
-                if (upd != null && !bannerDismissed && !editInputControls && !isBigPicture) {
+                if (upd != null && !bannerDismissed && !isBigPicture) {
                     UpdateBanner(
                         versionName = upd.versionName,
                         onUpdate = {
@@ -483,7 +456,6 @@ private fun AppShell(
                 }
                 AppNavGraph(
                     navController = navController,
-                    selectedInputProfileId = selectedInputProfileId,
                     startRoute = startRoute,
                     modifier = Modifier.weight(1f),
                 )

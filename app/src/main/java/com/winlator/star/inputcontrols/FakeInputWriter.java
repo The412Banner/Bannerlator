@@ -222,13 +222,6 @@ public class FakeInputWriter {
         writeEvent(EV_KEY, BUTTON_MAP[idx], pressed ? 1 : 0);
     }
 
-    private void writeAxis(short code, int value, int[] prevRef, int index) {
-        if (prevRef[index] == value)
-            return;
-        prevRef[index] = value;
-        writeEvent(EV_ABS, code, value);
-    }
-
     public void writeGamepadState(GamepadState state) {
         if (!isOpen && !open())
             return;

@@ -122,7 +122,7 @@ class ConfigExporterTest {
         assertEquals("dxvk", config.scalars["dxwrapper"])
         assertEquals("box64", config.scalars["emulator"])
         assertEquals("pulseaudio", config.scalars["audioDriver"])
-        assertEquals("1", config.scalars["inputType"])
+        assertEquals("4", config.scalars["inputType"])
         assertEquals("2.4.1", config.dxwrapperConfig["version"])
         // Heuristic async ("0" — name has no "async") is untouched with no bl_ext to override it.
         assertEquals("0", config.dxwrapperConfig["async"])

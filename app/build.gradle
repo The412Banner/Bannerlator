@@ -59,6 +59,7 @@ android {
         targetSdkVersion 28
         versionCode 48
         versionName "2.8"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         externalNativeBuild {
             cmake {
@@ -219,4 +220,8 @@ dependencies {
     // core's JSONObject calls run on the JVM instead of hitting android.jar's "not mocked" stubs.
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20231013'
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.02.00')
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
 }

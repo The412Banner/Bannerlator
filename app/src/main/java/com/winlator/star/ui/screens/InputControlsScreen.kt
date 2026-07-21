@@ -40,12 +40,18 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +83,7 @@ import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InputControlsScreen() {
     val context = LocalContext.current
@@ -127,6 +135,7 @@ fun InputControlsScreen() {
             try {
                 val json = FileUtils.readString(context, uri)
                 val imported = manager.importProfile(JSONObject(json))
+                    ?: throw IllegalArgumentException("Unsupported control profile version")
                 importProfileCallback!!(imported)
             } catch (_: Exception) {
                 AppUtils.showToast(context, R.string.unable_to_import_profile)
@@ -264,18 +273,30 @@ fun InputControlsScreen() {
                             val positions = selectedItems.toList()
                             currentProfile = null
                             val processedCount = AtomicInteger()
+                            val failedCount = AtomicInteger()
                             for (position in positions) {
                                 HttpUtils.download(
                                     "https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/${items[position]}"
                                 ) { content ->
-                                    if (content != null) {
-                                        try { manager.importProfile(JSONObject(content)) } catch (_: Exception) { }
-                                    }
+                                    val imported = if (content != null) {
+                                        try { manager.importProfile(JSONObject(content)) } catch (_: Exception) { null }
+                                    } else null
+                                    if (imported == null) failedCount.incrementAndGet()
                                     if (processedCount.incrementAndGet() == positions.size) {
                                         (context as? Activity)?.runOnUiThread {
                                             isDownloading = false
                                             refreshProfiles()
                                             refreshControllers()
+                                            if (failedCount.get() > 0) {
+                                                AppUtils.showToast(
+                                                    context,
+                                                    context.resources.getQuantityString(
+                                                        R.plurals.profiles_not_imported,
+                                                        failedCount.get(),
+                                                        failedCount.get(),
+                                                    ),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -377,7 +398,11 @@ fun InputControlsScreen() {
                                 0 -> {
                                     setCallback()
                                     importInAppLauncher.launch(
-                                        InAppFilePicker.buildIntent(act, InAppFilePicker.ICP, "Select control profile")
+                                        InAppFilePicker.buildIntent(
+                                            act,
+                                            InAppFilePicker.ICP,
+                                            act.getString(R.string.select_control_profile),
+                                        )
                                     )
                                 }
                                 1 -> {
@@ -392,7 +417,7 @@ fun InputControlsScreen() {
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
-            ) { Text("Import Profile", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
+            ) { Text(stringResource(R.string.import_control_profile), color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
             Button(
                 onClick = {
                     if (currentProfile != null) {
@@ -403,7 +428,29 @@ fun InputControlsScreen() {
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
-            ) { Text("Export Profile", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
+            ) { Text(stringResource(R.string.export_control_profile_icpx), color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
+        }
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = {
+                PlainTooltip {
+                    Text(stringResource(R.string.export_control_profile_icp_tooltip))
+                }
+            },
+            state = rememberTooltipState(),
+        ) {
+            OutlinedButton(
+                onClick = {
+                    if (currentProfile != null) {
+                        val exported = manager.exportLegacyProfile(currentProfile!!)
+                        if (exported != null) AppUtils.showToast(context,
+                            "${context.getString(R.string.profile_exported_to)} ${exported.path}")
+                    } else AppUtils.showToast(context, R.string.no_profile_selected)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.export_control_profile_icp_legacy), fontSize = 12.sp)
+            }
         }
 
         // ── Controls Editor ─────────────────────────────────────────

@@ -19,7 +19,7 @@ object InAppFilePicker {
 
     // Common allowed-extension sets, shared across import call sites.
     val WCP = arrayOf("wcp", "tzst", "xz", "zst", "zip")           // content packs (proton/dxvk/box64/…)
-    val ICP = arrayOf("icp")                                        // input control profiles
+    val ICP = arrayOf("icp", "icpx")                               // legacy and extended input profiles
     val IMAGES = arrayOf("png", "jpg", "jpeg", "webp", "bmp", "gif") // wallpapers / custom icons
     val DLL = arrayOf("dll")                                        // e.g. Lossless.dll (frame gen)
     val DRIVER = arrayOf("zip", "adpkg")                            // AdrenoTools driver packages

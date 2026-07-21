@@ -6186,16 +6186,20 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
 
                     // Renderer (host) — per-game override of the container's OpenGL/Vulkan choice.
                     var showSfWarning by remember { mutableStateOf(false) }
+                    var pendingRenderer by remember { mutableStateOf("SurfaceFlinger") }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         DpDrop(
                             dp, "renderer",
                             label = stringResource(R.string.renderer),
-                            options = listOf("OpenGL", "Vulkan", "SurfaceFlinger"),
+                            options = listOf("OpenGL", "Vulkan", "SurfaceFlinger", "DisplayX"),
                             selected = selectedRenderer,
                             onSelect = {
                                 // SurfaceFlinger is experimental and can reboot some devices — require opt-in.
-                                if (it == "SurfaceFlinger" && selectedRenderer != "SurfaceFlinger") showSfWarning = true
-                                else selectedRenderer = it
+                                // DisplayX drives SurfaceControl the same way, so it carries the same warning.
+                                if ((it == "SurfaceFlinger" || it == "DisplayX") && selectedRenderer != it) {
+                                    pendingRenderer = it
+                                    showSfWarning = true
+                                } else selectedRenderer = it
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -6205,7 +6209,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                     }
                     if (showSfWarning) {
                         SurfaceFlingerWarningDialog(
-                            onConfirm = { selectedRenderer = "SurfaceFlinger"; showSfWarning = false },
+                            onConfirm = { selectedRenderer = pendingRenderer; showSfWarning = false },
                             onDismiss = { showSfWarning = false }
                         )
                     }

@@ -2294,8 +2294,9 @@ private fun ControlsContent(state: XServerDrawerState) {
             OutlinedButton(
                 onClick = {
                     XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
-                    XServerDialogState.onInputControlsSettings?.run()
+                    XServerDialogState.onInputControlsSettings?.invoke(selectedIdx)
                 },
+                enabled = selectedIdx > 0,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp),
             ) { Text("Profile Settings\u2026") }

@@ -420,8 +420,11 @@ object XServerDialogState {
     fun interface InputConfirmCallback {
         fun invoke(profileIndex: Int, showTouchscreen: Boolean, timeout: Boolean, haptics: Boolean)
     }
+    fun interface InputSettingsCallback {
+        fun invoke(profileIndex: Int)
+    }
     @JvmField var onInputControlsConfirm: InputConfirmCallback? = null
-    @JvmField var onInputControlsSettings: Runnable? = null
+    @JvmField var onInputControlsSettings: InputSettingsCallback? = null
 
     // -------------------------------------------------------------------------
     // Screen Effects dialog

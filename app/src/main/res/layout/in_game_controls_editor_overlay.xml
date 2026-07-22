@@ -1,28 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/FLContainer"
+    android:id="@+id/InGameControlsEditorOverlay"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/ComposeToolbar"
+        android:id="@+id/InGameComposeToolbar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
+        android:layout_gravity="center_horizontal|top"
         android:layout_marginTop="8dp" />
 
     <View
-        android:id="@+id/VSidebarOverlay"
+        android:id="@+id/InGameSidebarOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@android:color/transparent"
-        android:clickable="true"
-        android:focusable="true"
         android:visibility="gone" />
 
     <ScrollView
-        android:id="@+id/SVSidebar"
+        android:id="@+id/InGameSidebar"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="start|top"
@@ -31,7 +29,7 @@
         android:visibility="gone">
 
         <LinearLayout
-            android:id="@+id/LLSidebarContent"
+            android:id="@+id/InGameSidebarContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -39,7 +37,7 @@
     </ScrollView>
 
     <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/ComposeDialogHost"
+        android:id="@+id/InGameComposeDialogHost"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone" />

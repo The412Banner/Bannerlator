@@ -1,6 +1,5 @@
 package com.winlator.star.communityconfigs
 
-import android.util.Log
 import com.winlator.star.winhandler.WinHandler
 import org.json.JSONObject
 
@@ -52,8 +51,6 @@ data class ShortcutConfig(
  * XiaoJi-only fields (steam_client, hub_type, base component) are dropped.
  */
 object ConfigTranslator {
-
-    private const val TAG = "CommunityConfigs"
 
     /** Component values are JSON blobs; pull the human {@code name}/{@code displayName}. */
     private fun jname(raw: String?): String {
@@ -178,7 +175,6 @@ object ConfigTranslator {
             }
         }
 
-        Log.d(TAG, "Translated config: dxwrapper=$dxwrapper dxvk=$dxvk vkd3d=$vkd3d turnip=$turnip fex=$fex proton=$proton")
         return ShortcutConfig(
             scalars = scalars,
             dxwrapperConfig = dxw,

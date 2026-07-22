@@ -96,7 +96,13 @@ fun InputControlsDialog(state: XServerDialogState) {
                 Spacer(Modifier.height(8.dp))
 
                 OutlinedButton(
-                    onClick = { state.onInputControlsSettings?.run() },
+                    onClick = {
+                        state.onInputControlsConfirm?.invoke(
+                            selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled
+                        )
+                        state.onInputControlsSettings?.invoke(selectedIdx)
+                    },
+                    enabled = selectedIdx > 0,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Profile Settings…")
@@ -105,6 +111,7 @@ fun InputControlsDialog(state: XServerDialogState) {
         },
         confirmButton = {
             TextButton(onClick = {
+                state.setSelectedProfileIdx(selectedIdx)
                 state.onInputControlsConfirm?.invoke(
                     selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled
                 )

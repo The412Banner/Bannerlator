@@ -93,6 +93,14 @@ public class TouchpadView extends View {
     private float resolutionScale;
     private static final int UPDATE_FORM_DELAYED_TIME = 50;
     private boolean mouseEnabled = true;
+    private final Runnable delayedTouchscreenPress = this::performDelayedTouchscreenPress;
+
+    private void performDelayedTouchscreenPress() {
+        if (continueClick && pointerButtonLeftEnabled) {
+            xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
+            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+        }
+    }
 
     private Handler timeoutHandler; // Reference to the activity's timeout handler
     private Runnable hideControlsRunnable; // Runnable to hide the controls
@@ -115,7 +123,7 @@ public class TouchpadView extends View {
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(false);
-        setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow));
+        setPointerIcon(PointerIcon.load(getResources(), R.xml.hidden_pointer_arrow));
         updateXform(AppUtils.getScreenWidth(), AppUtils.getScreenHeight(), xServer.screenInfo.width, xServer.screenInfo.height);
         // Initialize SharedPreferences here
         this.preferences = PreferenceManager.getDefaultSharedPreferences(context);
@@ -340,19 +348,13 @@ public class TouchpadView extends View {
             }
 
             if (simTouchScreen) {
-                final Runnable clickDelay = () -> {
-                    if (continueClick) {
-                        xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
-                    }
-                };
                 if (pointerId == 0) {
                     continueClick = true;
                     if (Math.hypot(fingers[0].x - lastTouchedPosX, fingers[0].y - lastTouchedPosY) * resolutionScale > EFFECTIVE_TOUCH_DISTANCE) {
                         lastTouchedPosX = fingers[0].x;
                         lastTouchedPosY = fingers[0].y;
                     }
-                    postDelayed(clickDelay, CLICK_DELAYED_TIME);
+                    postDelayed(delayedTouchscreenPress, CLICK_DELAYED_TIME);
                 } else if (pointerId == 1) {
                     // When put a finger on InputControl, such as a button.
                     // The pointerId that TouchPadView got won't increase from 1, so map 1 as 0 here.
@@ -362,7 +364,7 @@ public class TouchpadView extends View {
                             lastTouchedPosX = fingers[1].x;
                             lastTouchedPosY = fingers[1].y;
                         }
-                        postDelayed(clickDelay, CLICK_DELAYED_TIME);
+                        postDelayed(delayedTouchscreenPress, CLICK_DELAYED_TIME);
                     } else
                         continueClick = System.currentTimeMillis() - fingers[0].touchTime > CLICK_DELAYED_TIME;
                 }
@@ -461,7 +463,7 @@ public class TouchpadView extends View {
             xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
 
         // Handle long press for right click (or use a dedicated method to detect long press)
-        if (event.getPointerCount() == 1) {
+        if (event.getPointerCount() == 1 && pointerButtonLeftEnabled) {
             if (xServer.isRelativeMouseMovement())
                 xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTDOWN, 0, 0, 0);
             else
@@ -498,7 +500,7 @@ public class TouchpadView extends View {
     }
 
     private void handleTwoFingerTap(MotionEvent event) {
-        if (event.getPointerCount() == 2) {
+        if (event.getPointerCount() == 2 && pointerButtonRightEnabled) {
             if (xServer.isRelativeMouseMovement()) {
                 xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTDOWN, 0, 0, 0);
                 xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
@@ -663,7 +665,7 @@ public class TouchpadView extends View {
     }
 
     private void releasePointerButtonLeft(final Finger finger) {
-        if (pointerButtonLeftEnabled && finger == fingerPointerButtonLeft && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
+        if (finger == fingerPointerButtonLeft && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
             postDelayed(() -> {
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
                 fingerPointerButtonLeft = null;
@@ -672,7 +674,7 @@ public class TouchpadView extends View {
     }
 
     private void releasePointerButtonRight(final Finger finger) {
-        if (pointerButtonRightEnabled && finger == fingerPointerButtonRight && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
+        if (finger == fingerPointerButtonRight && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
             postDelayed(() -> {
                 xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
                 fingerPointerButtonRight = null;
@@ -682,6 +684,28 @@ public class TouchpadView extends View {
 
     public void setSensitivity(float sensitivity) {
         this.sensitivity = sensitivity;
+    }
+
+    public void releaseAllInputs() {
+        resetGestureState();
+        continueClick = false;
+        removeCallbacks(delayedTouchscreenPress);
+        for (byte i = 0; i < MAX_FINGERS; i++) fingers[i] = null;
+        numFingers = 0;
+        scrolling = false;
+        scrollAccumY = 0;
+        fingerPointerButtonLeft = null;
+        fingerPointerButtonRight = null;
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.MIDDLEUP, 0, 0, 0);
+        }
+        else {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE);
+        }
     }
 
     public boolean isPointerButtonLeftEnabled() {

@@ -14,6 +14,7 @@ import com.winlator.star.inputcontrols.ControlsProfile;
 import com.winlator.star.inputcontrols.ExternalController;
 import com.winlator.star.inputcontrols.FakeInputWriter;
 import com.winlator.star.inputcontrols.GamepadState;
+import com.winlator.star.widget.InputControlsView;
 import com.winlator.star.xserver.XServer;
 
 import android.content.Context;
@@ -856,7 +857,9 @@ public class WinHandler {
     }
 
     public void sendGamepadState() {
-        final ControlsProfile profile = activity.getInputControlsView().getProfile();
+        final InputControlsView inputControlsView = activity.getInputControlsView();
+        if (inputControlsView == null) return;
+        final ControlsProfile profile = inputControlsView.getProfile();
         if (profile == null) {
             releaseSlot(OSC_DEVICE_ID);
             return;
@@ -864,7 +867,7 @@ public class WinHandler {
 
         final GamepadState gamepadState = profile.getGamepadState();
         final boolean useVirtualGamepad = profile.isVirtualGamepad()
-                && activity.getInputControlsView().isShowTouchscreenControls();
+                && inputControlsView.isShowTouchscreenControls();
 
         // Handle virtual gamepad (on-screen controls)
         if (useVirtualGamepad) {
@@ -888,7 +891,8 @@ public class WinHandler {
         // Check if this controller has bindings in the current profile
         // If it does, we should NOT send the raw state here, because InputControlsView
         // will send the remapped state via the no-arg sendGamepadState().
-        ControlsProfile profile = activity.getInputControlsView().getProfile();
+        InputControlsView inputControlsView = activity.getInputControlsView();
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
         if (profile != null) {
             ExternalController profileController = profile.getController(controller.getDeviceId());
             if (profileController != null && profileController.getControllerBindingCount() > 0) {
@@ -1608,6 +1612,22 @@ public class WinHandler {
                 sendGamepadState(controller);
         }
         return handled;
+    }
+
+    public void releaseAllControllerInputs() {
+        for (ExternalController controller : controllers.values()) {
+            controller.state.reset();
+            controller.remappedState.reset();
+            sendGamepadState(controller);
+        }
+        InputControlsView inputControlsView = activity.getInputControlsView();
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        if (profile == null) return;
+        for (ExternalController controller : profile.getControllers()) {
+            controller.state.reset();
+            controller.remappedState.reset();
+            sendGamepadState(controller);
+        }
     }
 
     public byte getInputType() {

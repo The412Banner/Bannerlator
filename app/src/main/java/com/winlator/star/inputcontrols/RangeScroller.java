@@ -92,7 +92,8 @@ public class RangeScroller {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (!scrolling) inputControlsView.post(() -> inputControlsView.handleInputEvent(binding, true));
+                if (!scrolling) inputControlsView.post(() ->
+                        inputControlsView.handleCountedInputEvent(binding, true, 0, true));
             }
         }, TouchpadView.MAX_TAP_MILLISECONDS);
     }
@@ -124,11 +125,12 @@ public class RangeScroller {
         if (isActionDown) {
             destroyTimer();
             if (isTap() && !scrolling) {
-                inputControlsView.handleInputEvent(binding, true);
+                inputControlsView.handleCountedInputEvent(binding, true, 0, true);
                 final Binding finalBinding = binding;
-                inputControlsView.postDelayed(() -> inputControlsView.handleInputEvent(finalBinding, false), 30);
+                inputControlsView.postDelayed(() ->
+                        inputControlsView.handleCountedInputEvent(finalBinding, false, 0, true), 30);
             }
-            else inputControlsView.handleInputEvent(binding, false);
+            else inputControlsView.handleCountedInputEvent(binding, false, 0, true);
         }
         isActionDown = false;
     }

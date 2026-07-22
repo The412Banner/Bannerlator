@@ -12,12 +12,19 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
+    public static final int EDITOR_VERSION = 2;
+    public static final int SCHEMA_VERSION = 2;
+    public static final int MIN_EDITOR_VERSION = EDITOR_VERSION;
+
     public final int id;
     private String name;
     private float cursorSpeed = 1.0f;
@@ -28,12 +35,38 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private int customAccentColor = 0xFF0055FF;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
+    private final Map<String, GroupInfo> groups = new LinkedHashMap<>();
     private final List<ControlElement> immutableElements = Collections.unmodifiableList(elements);
+    private final List<ExternalController> immutableControllers = Collections.unmodifiableList(controllers);
     private boolean elementsLoaded = false;
     private boolean controllersLoaded = false;
+    private boolean groupsLoaded = false;
     private boolean virtualGamepad = false;
+    private final ArrayList<Object> elementOrder = new ArrayList<>();
     private final Context context;
     private GamepadState gamepadState;
+
+    public static class GroupInfo {
+        private final String name;
+        private boolean visible = true;
+
+        public GroupInfo(String name, boolean visible) {
+            this.name = name;
+            this.visible = visible;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public boolean isVisible() {
+            return visible;
+        }
+
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+    }
 
     public ControlsProfile(Context context, int id) {
         this.context = context;
@@ -53,7 +86,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public void setCursorSpeed(float cursorSpeed) {
-        this.cursorSpeed = cursorSpeed;
+        this.cursorSpeed = Float.isFinite(cursorSpeed) ? Math.max(0.1f, Math.min(5.0f, cursorSpeed)) : 1.0f;
     }
 
     public boolean isCustomAccentEnabled() {
@@ -74,6 +107,16 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public boolean isVirtualGamepad() {
         return virtualGamepad;
+    }
+
+    void updateVirtualGamepad() {
+        virtualGamepad = false;
+        for (ControlElement element : elements) {
+            if (element.usesGamepadBinding()) {
+                virtualGamepad = true;
+                return;
+            }
+        }
     }
 
     public GamepadState getGamepadState() {
@@ -135,11 +178,119 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return elementsLoaded;
     }
 
-    public void save() {
+    private void loadGroupsFromJSONObject(JSONObject profileJSONObject) throws JSONException {
+        groups.clear();
+        JSONArray groupsJSONArray = profileJSONObject.optJSONArray("groups");
+        if (groupsJSONArray != null) {
+            for (int i = 0; i < groupsJSONArray.length(); i++) {
+                JSONObject groupJSONObject = groupsJSONArray.optJSONObject(i);
+                if (groupJSONObject == null) continue;
+                String name = groupJSONObject.optString("name", null);
+                if (name == null) continue;
+                name = name.trim();
+                if (name.isEmpty()) continue;
+                boolean visible = groupJSONObject.optBoolean("visible", true);
+                groups.put(name, new GroupInfo(name, visible));
+            }
+        }
+        groupsLoaded = true;
+    }
+
+    private void ensureGroupsLoaded() {
+        if (groupsLoaded) return;
+
+        File file = getProfileFile(context, id);
+        if (!file.isFile()) {
+            groupsLoaded = true;
+            return;
+        }
+
+        try {
+            JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
+            loadGroupsFromJSONObject(profileJSONObject);
+        }
+        catch (JSONException | IOException e) {
+            groups.clear();
+            groupsLoaded = true;
+        }
+    }
+
+    private static Integer readScaledDimension(
+            JSONObject elementJSONObject,
+            String ratioKey,
+            String legacyPixelKey,
+            int referenceSize) throws JSONException {
+        if (elementJSONObject.has(ratioKey)) {
+            double ratio = elementJSONObject.getDouble(ratioKey);
+            if (!Double.isFinite(ratio) || ratio <= 0) throw new JSONException("Invalid " + ratioKey);
+            double scaled = ratio * Math.max(1, referenceSize);
+            if (scaled > Integer.MAX_VALUE) throw new JSONException("Out-of-range " + ratioKey);
+            return (int)Math.round(scaled);
+        }
+        if (elementJSONObject.has(legacyPixelKey)) return elementJSONObject.getInt(legacyPixelKey);
+        return null;
+    }
+
+    public GroupInfo getGroup(String name) {
+        if (name == null) return null;
+        name = name.trim();
+        if (name.isEmpty()) return null;
+        ensureGroupsLoaded();
+        return groups.get(name);
+    }
+
+    public Map<String, GroupInfo> getGroups() {
+        ensureGroupsLoaded();
+        return groups;
+    }
+
+    public GroupInfo addGroup(String name) {
+        if (name == null) return null;
+        String trimmedName = name.trim();
+        if (trimmedName.isEmpty()) return null;
+        ensureGroupsLoaded();
+        GroupInfo group = groups.get(trimmedName);
+        if (group == null) {
+            group = new GroupInfo(trimmedName, true);
+            groups.put(trimmedName, group);
+        }
+        return group;
+    }
+
+    public void setGroupVisible(String name, boolean visible) {
+        GroupInfo group = getGroup(name);
+        if (group != null) group.setVisible(visible);
+    }
+
+    public boolean isGroupVisible(String name) {
+        GroupInfo group = getGroup(name);
+        return group == null || group.isVisible();
+    }
+
+    public List<ControlElement> getGroupElements(String groupId) {
+        if (groupId == null) return new ArrayList<>();
+        groupId = groupId.trim();
+        if (groupId.isEmpty()) return new ArrayList<>();
+        ArrayList<ControlElement> groupElements = new ArrayList<>();
+        for (ControlElement element : elements) {
+            if (groupId.equals(element.getGroupId())) groupElements.add(element);
+        }
+        return groupElements;
+    }
+
+    public int getGroupElementCount(String groupId) {
+        return getGroupElements(groupId).size();
+    }
+
+    public boolean save() {
         File file = getProfileFile(context, id);
 
         try {
-            JSONObject data = new JSONObject();
+            JSONObject data = file.isFile()
+                    ? new JSONObject(InputControlsManager.readStringAtomically(file))
+                    : new JSONObject();
+            data.put("schemaVersion", SCHEMA_VERSION);
+            data.put("minEditorVersion", MIN_EDITOR_VERSION);
             data.put("id", id);
             data.put("name", name);
             data.put("cursorSpeed", Float.valueOf(cursorSpeed));
@@ -148,9 +299,25 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             data.put("customAccentEnabled", customAccentEnabled);
             data.put("customAccentColor", customAccentColor);
 
+            JSONArray groupsJSONArray = new JSONArray();
+            if (!groupsLoaded && file.isFile()) {
+                JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
+                JSONArray existingGroups = profileJSONObject.optJSONArray("groups");
+                if (existingGroups != null) groupsJSONArray = existingGroups;
+            }
+            else {
+                for (GroupInfo group : groups.values()) {
+                    JSONObject groupJSONObject = new JSONObject();
+                    groupJSONObject.put("name", group.getName());
+                    groupJSONObject.put("visible", group.isVisible());
+                    groupsJSONArray.put(groupJSONObject);
+                }
+            }
+            data.put("groups", groupsJSONArray);
+
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
+                JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
                 // Preserve the on-disk elements when they were never loaded into memory,
                 // but tolerate a profile that has no (or a malformed) elements array
                 // otherwise the whole save() throws and is silently swallowed below,
@@ -158,12 +325,31 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 JSONArray existingElements = profileJSONObject.optJSONArray("elements");
                 if (existingElements != null) elementsJSONArray = existingElements;
             }
-            else for (ControlElement element : elements) elementsJSONArray.put(element.toJSONObject());
+            else {
+                ArrayList<ControlElement> remainingElements = new ArrayList<>(elements);
+                for (Object entry : elementOrder) {
+                    if (entry instanceof ControlElement) {
+                        ControlElement element = (ControlElement)entry;
+                        if (remainingElements.remove(element)) {
+                            JSONObject serializedElement = element.toJSONObject();
+                            if (serializedElement == null) return false;
+                            elementsJSONArray.put(serializedElement);
+                        }
+                    } else {
+                        elementsJSONArray.put(entry);
+                    }
+                }
+                for (ControlElement element : remainingElements) {
+                    JSONObject serializedElement = element.toJSONObject();
+                    if (serializedElement == null) return false;
+                    elementsJSONArray.put(serializedElement);
+                }
+            }
             data.put("elements", elementsJSONArray);
 
             JSONArray controllersJSONArray = new JSONArray();
             if (!controllersLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
+                JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
                 if (profileJSONObject.has("controllers")) controllersJSONArray = profileJSONObject.getJSONArray("controllers");
             }
             else {
@@ -173,10 +359,13 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 }
             }
             if (controllersJSONArray.length() > 0) data.put("controllers", controllersJSONArray);
+            else data.remove("controllers");
 
-            FileUtils.writeString(file, data.toString());
+            return InputControlsManager.writeStringAtomically(file, data.toString());
         }
-        catch (JSONException e) {}
+        catch (JSONException | IOException e) {
+            return false;
+        }
     }
 
     public static File getProfileFile(Context context, int id) {
@@ -186,11 +375,13 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     public void addElement(ControlElement element) {
         elements.add(element);
         elementsLoaded = true;
+        updateVirtualGamepad();
     }
 
     public void removeElement(ControlElement element) {
         elements.remove(element);
         elementsLoaded = true;
+        updateVirtualGamepad();
     }
 
     public List<ControlElement> getElements() {
@@ -206,11 +397,17 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         controllersLoaded = false;
 
         File file = getProfileFile(context, id);
-        if (!file.isFile()) return controllers;
+        if (!file.isFile()) {
+            controllersLoaded = true;
+            return controllers;
+        }
 
         try {
-            JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-            if (!profileJSONObject.has("controllers")) return controllers;
+            JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
+            if (!profileJSONObject.has("controllers")) {
+                controllersLoaded = true;
+                return controllers;
+            }
             JSONArray controllersJSONArray = profileJSONObject.getJSONArray("controllers");
             for (int i = 0; i < controllersJSONArray.length(); i++) {
                 // Skip a single malformed controller instead of aborting the whole load.
@@ -226,7 +423,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                         JSONObject controllerBindingJSONObject = controllerBindingsJSONArray.getJSONObject(j);
                         ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
                         controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
-                        controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                        String serializedBindingName = controllerBindingJSONObject.getString("binding");
+                        controllerBinding.setLoadedBinding(
+                                Binding.fromString(serializedBindingName), serializedBindingName);
                         controller.addControllerBinding(controllerBinding);
                     }
                     controllers.add(controller);
@@ -235,25 +434,39 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     e.printStackTrace();
                 }
             }
-            controllersLoaded = true;
         }
-        catch (JSONException e) {
+        catch (JSONException | IOException e) {
             e.printStackTrace();
         }
+        controllersLoaded = true;
         return controllers;
+    }
+
+    public List<ExternalController> getControllers() {
+        if (!controllersLoaded) loadControllers();
+        return immutableControllers;
     }
 
     public void loadElements(InputControlsView inputControlsView) {
         elements.clear();
+        elementOrder.clear();
         elementsLoaded = false;
         virtualGamepad = false;
 
         File file = getProfileFile(context, id);
-        if (!file.isFile()) return;
+        if (!file.isFile()) {
+            elementsLoaded = true;
+            return;
+        }
 
         try {
-            JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-            JSONArray elementsJSONArray = profileJSONObject.getJSONArray("elements");
+            JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
+            loadGroupsFromJSONObject(profileJSONObject);
+            JSONArray elementsJSONArray = profileJSONObject.optJSONArray("elements");
+            if (elementsJSONArray == null) {
+                elementsLoaded = true;
+                return;
+            }
             for (int i = 0; i < elementsJSONArray.length(); i++) {
                 // Skip a single malformed element (unknown type/shape/range from a fork's
                 // profile, missing keys, etc.) instead of aborting the whole load.
@@ -271,24 +484,148 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.getString("range")));
                     if (elementJSONObject.has("orientation")) element.setOrientation((byte)elementJSONObject.getInt("orientation"));
 
-                    boolean hasGamepadBinding = true;
-                    JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");
-                    for (int j = 0; j < bindingsJSONArray.length(); j++) {
-                        Binding binding = Binding.fromString(bindingsJSONArray.getString(j));
-                        element.setBindingAt(j, binding);
-                        if (!binding.isGamepad()) hasGamepadBinding = false;
+                    // Load new fields for extended types (backward compatible)
+                    if (elementJSONObject.has("deadZone")) element.setDeadZone((float)elementJSONObject.getDouble("deadZone"));
+                    if (elementJSONObject.has("groupId")) {
+                        element.setGroupId(elementJSONObject.optString("groupId", null));
+                        if (element.getGroupId() != null && getGroup(element.getGroupId()) == null) addGroup(element.getGroupId());
+                    }
+                    Integer areaWidth = readScaledDimension(
+                        elementJSONObject, "areaWidthRatio", "areaWidth", inputControlsView.getMaxWidth());
+                    if (areaWidth != null) element.setAreaWidth(areaWidth);
+                    Integer areaHeight = readScaledDimension(
+                        elementJSONObject, "areaHeightRatio", "areaHeight", inputControlsView.getMaxHeight());
+                    if (areaHeight != null) element.setAreaHeight(areaHeight);
+                    Integer stickRadius = readScaledDimension(
+                        elementJSONObject,
+                        "stickRadiusRatio",
+                        "stickRadius",
+                        Math.min(inputControlsView.getMaxWidth(), inputControlsView.getMaxHeight()));
+                    if (stickRadius != null) element.setStickRadius(stickRadius);
+                    if (elementJSONObject.has("mouseSensitivity")) element.setMouseSensitivity((float)elementJSONObject.getDouble("mouseSensitivity"));
+                    if (elementJSONObject.has("customAreaColor")) element.setCustomAreaColor(elementJSONObject.getInt("customAreaColor"));
+                    if (elementJSONObject.has("customAreaOpacity")) element.setCustomAreaOpacity((float)elementJSONObject.getDouble("customAreaOpacity"));
+                    if (elementJSONObject.has("customAreaAppearanceEnabled")) {
+                        element.setCustomAreaAppearanceEnabled(elementJSONObject.getBoolean("customAreaAppearanceEnabled"));
+                    }
+                    if (elementJSONObject.has("gridRows")) element.setGridRows(elementJSONObject.getInt("gridRows"));
+                    if (elementJSONObject.has("gridCols")) element.setGridCols(elementJSONObject.getInt("gridCols"));
+                    if (elementJSONObject.has("gridSpacing")) element.setGridSpacing((float)elementJSONObject.getDouble("gridSpacing"));
+                    if (element.getType() == ControlElement.Type.EXPANDABLE_BUTTON) {
+                        element.setExpandableChildCount(elementJSONObject.optInt("expandableChildCount", 4));
+                        if (elementJSONObject.has("expandableLayout")) {
+                            try {
+                                element.setExpandableLayout(ControlElement.ExpandableLayout.valueOf(
+                                        elementJSONObject.getString("expandableLayout")));
+                            }
+                            catch (IllegalArgumentException ignored) {}
+                        }
+                        if (elementJSONObject.has("expandableDirection")) {
+                            try {
+                                element.setExpandableDirection(ControlElement.ExpandableDirection.valueOf(
+                                        elementJSONObject.getString("expandableDirection")));
+                            }
+                            catch (IllegalArgumentException ignored) {}
+                        }
+                    }
+                    if (elementJSONObject.has("gridCellShape")) {
+                        try {
+                            element.setGridCellShape(ControlElement.Shape.valueOf(elementJSONObject.getString("gridCellShape")));
+                        }
+                        catch (IllegalArgumentException e) {
+                            element.setGridCellShape(ControlElement.Shape.ROUND_RECT);
+                        }
+                    }
+                    if (element.getType() == ControlElement.Type.BUTTON_GRID) {
+                        int rows = element.getGridRows() > 0 ? element.getGridRows() : 2;
+                        int cols = element.getGridCols() > 0 ? element.getGridCols() : 8;
+                        element.setBindingCount(rows * cols);
+                        element.setBinding(Binding.NONE);
                     }
 
-                    if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;
+                    boolean elementUsesGamepad = false;
+                    JSONArray bindingsJSONArray = elementJSONObject.optJSONArray("bindings");
+                    if (bindingsJSONArray != null) {
+                        int bindingLimit = element.getType() == ControlElement.Type.BUTTON_GRID
+                                || element.getType() == ControlElement.Type.EXPANDABLE_BUTTON
+                            ? Math.min(bindingsJSONArray.length(), element.getBindingCount())
+                            : bindingsJSONArray.length();
+                        for (int j = 0; j < bindingLimit; j++) {
+                            Binding binding = Binding.fromString(bindingsJSONArray.optString(j, null));
+                            element.setBindingAt(j, binding);
+                            if (binding.isGamepad()) elementUsesGamepad = true;
+                        }
+                    }
+                    JSONArray blockTouchscreenMouseButtonsJSONArray =
+                            elementJSONObject.optJSONArray("blockTouchscreenMouseButtons");
+                    if (blockTouchscreenMouseButtonsJSONArray != null) {
+                        int priorityLimit = Math.min(blockTouchscreenMouseButtonsJSONArray.length(),
+                                element.getBindingCount());
+                        for (int j = 0; j < priorityLimit; j++) {
+                            element.setBlocksTouchscreenMouseButtonsAt(j,
+                                    blockTouchscreenMouseButtonsJSONArray.optBoolean(j, true));
+                        }
+                    }
+
+                    // Load combos if present
+                    JSONArray combosArr = elementJSONObject.optJSONArray("combos");
+                    if (combosArr != null) {
+                        for (int j = 0; j < combosArr.length(); j++) {
+                            try {
+                                JSONArray entry = combosArr.getJSONArray(j);
+                                if (entry.length() < 2) continue;
+
+                                int idx = entry.getInt(0);
+                                if (idx < 0 || idx >= element.getBindingCount()) continue;
+
+                                JSONArray keys = entry.optJSONArray(1);
+                                if (keys == null || keys.length() == 0) continue;
+
+                                ArrayList<Binding> combo = new ArrayList<>();
+                                ArrayList<String> rawNames = new ArrayList<>();
+                                for (int k = 0; k < keys.length(); k++) {
+                                    String rawName = keys.optString(k, null);
+                                    if (rawName == null) continue;
+                                    rawNames.add(rawName);
+                                    Binding binding = Binding.fromString(rawName);
+                                    if (binding != Binding.NONE) combo.add(binding);
+                                    if (binding.isGamepad()) elementUsesGamepad = true;
+                                }
+                                if (!rawNames.isEmpty()) element.setLoadedCombo(
+                                        idx,
+                                        combo.toArray(new Binding[0]),
+                                        rawNames.toArray(new String[0]));
+                            }
+                            catch (JSONException | IllegalArgumentException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+
+                    // Load hold key if present
+                    if (elementJSONObject.has("holdKey")) {
+                        try {
+                            element.setHoldKey(Binding.fromString(elementJSONObject.getString("holdKey")));
+                        }
+                        catch (IllegalArgumentException e) {
+                            element.setHoldKey(Binding.NONE);
+                        }
+                    }
+
+                    if (!virtualGamepad && elementUsesGamepad) virtualGamepad = true;
+                    element.setSourceJSONObject(elementJSONObject);
                     elements.add(element);
+                    elementOrder.add(element);
                 }
                 catch (JSONException | IllegalArgumentException e) {
+                    Object unknownElement = elementsJSONArray.opt(i);
+                    if (unknownElement != null) elementOrder.add(unknownElement);
                     e.printStackTrace();
                 }
             }
             elementsLoaded = true;
         }
-        catch (JSONException e) {
+        catch (JSONException | IOException e) {
             e.printStackTrace();
         }
     }

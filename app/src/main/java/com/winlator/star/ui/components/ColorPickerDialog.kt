@@ -18,7 +18,7 @@ import com.winlator.star.core.Callback
 import com.winlator.star.ui.theme.WinlatorTheme
 
 // Hosts the shared Compose ColorPicker inside an AlertDialog so the legacy Java input-controls
-// editor (InputControlsFragment) can reuse the same picker as the Appearance screen and the in-game
+// controls editor can reuse the same picker as the Appearance screen and the in-game
 // drawer. onColorChanged fires live for each adjustment, reporting the ARGB int.
 //
 // A ComposeView placed in an AlertDialog is NOT under the activity's content view, so its view tree

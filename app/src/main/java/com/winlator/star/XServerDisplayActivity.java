@@ -715,6 +715,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             container.setFrameGenFlowScale(flow);
             container.setFrameGenModel(fgModel);
             container.saveData();
+            // The cap is scaled by the bionic-fg multiplier (see applyFpsLimit), so it has to be
+            // re-applied whenever that multiplier moves — including to Off. Without this, turning
+            // frame gen off would leave the pacer running on the scaled budget, i.e. at twice the
+            // cap the user asked for. The lsfg branch above already does this for its own guard.
+            reapplyFpsLimit();
         };
         // Standalone FPS limiter: paces the X11 Present extension (delays IdleNotify) so the GAME
         // itself throttles — works live with any frame-gen engine or none, all host renderers, all
@@ -4689,6 +4694,21 @@ return true;
         int vrrCap = fps;
         // Step aside while lsfg-vk is multiplying -- it paces itself (see lsfgGovernsFps()).
         if (lsfgGovernsFps()) fps = 0;
+        // The cap is a SOURCE rate: it limits the frames the GAME renders, not the frames that
+        // reach the panel. bionic-fg's generated frames are ordinary X11 presents through the same
+        // window, so the Present pacer cannot tell them apart and would otherwise spend the budget
+        // on them -- setting 30 with 2x gave 30 PRESENTED (game at 15), instead of the game at 30
+        // doubled to 60. Scale the pacer budget by the multiplier so the cap keeps meaning "game
+        // frames". Guarded >= 2 exactly like applyVrr: multiplier is 0 while frame gen is off, and
+        // an unguarded multiply would zero the cap and silently disable the limiter.
+        else if (fps > 0) {
+            int fgMult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
+            if (fgMult >= 2 && XServerDrawerState.INSTANCE.getFrameGenEnabled().getValue()
+                    && "bionic".equals(resolvedFrameGenEngine())) {
+                fps = fps * fgMult;
+                vrrCap = vrrCap * fgMult;   // panel should follow the DISPLAYED rate, as for lsfg
+            }
+        }
         com.winlator.star.xserver.extensions.PresentExtension pe =
                 xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
         if (pe != null) pe.setFrameRateLimit(fps);
@@ -4708,8 +4728,11 @@ return true;
     // Complementary to the FPS limiter: the limiter caps the producer/render rate, this matches the
     // display/panel rate so the panel cadence follows render cadence (smoother + power savings).
     //   Auto ON, cap == 0 (limiter off)    -> vote 0f (clear; panel runs free)
-    //   Auto ON, normal / bionic-fg        -> vote cap
-    //   Auto ON, lsfg multiplying (>= 2)   -> vote cap x mult (the displayed rate)
+    //   Auto ON, no frame gen              -> vote cap
+    //   Auto ON, bionic-fg multiplying     -> vote cap x mult, ALREADY SCALED by applyFpsLimit
+    //                                         (the cap is a source rate; displayed is cap x mult)
+    //   Auto ON, lsfg multiplying (>= 2)   -> vote cap x mult (scaled here, since the pacer steps
+    //                                         aside for lsfg and never sees the scaled value)
     //   Auto OFF, manual rate > 0          -> vote that rate (lock, independent of the FPS cap)
     //   Auto OFF, manual rate == 0         -> vote 0f (no lock; panel runs free)
     private void applyVrr(int cap) {

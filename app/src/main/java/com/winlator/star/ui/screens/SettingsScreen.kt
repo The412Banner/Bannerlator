@@ -68,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -340,8 +341,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     val lsfgDllFile = remember { File(context.filesDir, "lsfg-vk/Lossless.dll") }
     fun lsfgDllStatusText(): String =
         if (lsfgDllFile.isFile && lsfgDllFile.length() > 0)
-            "Imported (" + (lsfgDllFile.length() / (1024 * 1024)) + " MB)"
-        else "Not set — lsfg-vk will stay off"
+            context.getString(R.string.settings_lsfg_imported, lsfgDllFile.length() / (1024 * 1024))
+        else context.getString(R.string.settings_lsfg_not_set)
     var lsfgDllStatus by remember { mutableStateOf(lsfgDllStatusText()) }
     fun importLosslessDllFromUri(uri: Uri) {
         try {
@@ -351,7 +352,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
             lsfgDllStatus = lsfgDllStatusText()
         } catch (e: Exception) {
-            lsfgDllStatus = "Import failed: " + e.message
+            lsfgDllStatus = context.getString(R.string.settings_lsfg_import_failed, e.message ?: "")
         }
     }
     val importLosslessDllLauncher = rememberLauncherForActivityResult(
@@ -368,7 +369,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
                 Spacer(Modifier.height(16.dp))
-                Text("Backing up data...")
+                Text(stringResource(R.string.settings_backing_up))
             }
         }
         return
@@ -377,8 +378,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     if (showBackupDialog) {
         OutlinedAlertDialog(
             onDismissRequest = { showBackupDialog = false },
-            title = { Text("Backup Data") },
-            text = { Text("Do you want to create a backup of the app's data directory?") },
+            title = { Text(stringResource(R.string.settings_backup_data)) },
+            text = { Text(stringResource(R.string.settings_backup_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     showBackupDialog = false
@@ -393,26 +394,26 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                             ) { file -> !file.absolutePath.contains("imagefs/tmp/.sysvshm") }
                             (context as? Activity)?.runOnUiThread {
                                 isBackingUp = false
-                                AppUtils.showToast(context, "Backup completed: ${backupFile.path}")
+                                AppUtils.showToast(context, context.getString(R.string.settings_backup_completed, backupFile.path))
                             }
                         } catch (_: Exception) {
                             (context as? Activity)?.runOnUiThread {
                                 isBackingUp = false
-                                AppUtils.showToast(context, "Backup failed.")
+                                AppUtils.showToast(context, R.string.settings_backup_failed)
                             }
                         }
                     }
-                }) { Text("Yes") }
+                }) { Text(stringResource(R.string.yes)) }
             },
-            dismissButton = { TextButton(onClick = { showBackupDialog = false }) { Text("No") } }
+            dismissButton = { TextButton(onClick = { showBackupDialog = false }) { Text(stringResource(R.string.no)) } }
         )
     }
 
     if (showRestoreConfirm) {
         OutlinedAlertDialog(
             onDismissRequest = { showRestoreConfirm = false; pendingRestoreUri = null },
-            title = { Text("Restore Data") },
-            text = { Text("This will restart the app. Continue?") },
+            title = { Text(stringResource(R.string.settings_restore_data)) },
+            text = { Text(stringResource(R.string.settings_restore_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     showRestoreConfirm = false
@@ -422,9 +423,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         context.startActivity(intent)
                         (context as? Activity)?.finish()
                     }
-                }) { Text("Restore") }
+                }) { Text(stringResource(R.string.settings_restore)) }
             },
-            dismissButton = { TextButton(onClick = { showRestoreConfirm = false; pendingRestoreUri = null }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { showRestoreConfirm = false; pendingRestoreUri = null }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 
@@ -437,13 +438,17 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ── Updates ──────────────────────────────────────────────────
-        FieldSetLabel("Updates")
+        FieldSetLabel(stringResource(R.string.settings_section_updates))
         FieldSet {
             val latest = updateInfo
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // stringResource() can't be called from inside a non-@Composable lambda
+                // (let/run/forEach), so resolve both parts at composable top-level then concat.
+                val installedText = stringResource(R.string.settings_installed_version, UpdateManager.installedVersionName())
+                val latestSuffix = if (latest != null)
+                    stringResource(R.string.settings_latest_version_suffix, latest.versionName) else ""
                 Text(
-                    "Installed: V ${UpdateManager.installedVersionName()}" +
-                        (latest?.let { "   ·   Latest: V ${it.versionName}" } ?: ""),
+                    installedText + latestSuffix,
                     color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.weight(1f)
                 )
                 if (checkingUpdate) {
@@ -453,7 +458,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Spacer(Modifier.height(8.dp))
             if (latest != null && latest.isNewer) {
                 Text(
-                    "Update available", color = Color(0xFFFFC107), fontSize = 13.sp, // intentional: amber = update-available status, semantic not themeable
+                    stringResource(R.string.settings_update_available), color = Color(0xFFFFC107), fontSize = 13.sp, // intentional: amber = update-available status, semantic not themeable
                     fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp)
                 )
                 if (latest.notes.isNotBlank()) {
@@ -466,9 +471,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     onClick = { activity?.let { UpdateManager.downloadAndInstall(it, latest) {} } },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), // intentional: green = success/safe action (install/backup/restore), distinct from accent
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                ) { Text("Download & install V ${latest.versionName}", color = Color.White) } // intentional: high-contrast label on green fill
+                ) { Text(stringResource(R.string.settings_download_install, latest.versionName), color = Color.White) } // intentional: high-contrast label on green fill
             } else if (latest != null) {
-                Text("You're up to date.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Text(stringResource(R.string.settings_up_to_date), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             }
             Button(
                 onClick = {
@@ -478,8 +483,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                             updateInfo = info
                             checkingUpdate = false
                             when {
-                                info == null -> AppUtils.showToast(context, "Couldn't check for updates")
-                                !info.isNewer -> AppUtils.showToast(context, "You're on the latest version")
+                                info == null -> AppUtils.showToast(context, R.string.settings_update_check_failed)
+                                !info.isNewer -> AppUtils.showToast(context, R.string.settings_on_latest)
                                 else -> {}
                             }
                         }
@@ -487,13 +492,13 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 },
                 enabled = !checkingUpdate,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) { Text(if (checkingUpdate) "Checking…" else "Check for updates", color = MaterialTheme.colorScheme.onPrimary) }
+            ) { Text(if (checkingUpdate) stringResource(R.string.settings_checking) else stringResource(R.string.settings_check_for_updates), color = MaterialTheme.colorScheme.onPrimary) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = notifyUpdates, onCheckedChange = {
                     notifyUpdates = it
                     UpdateManager.setNotifyEnabled(context, it)
                 })
-                Text("Notify me about updates", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_notify_updates), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = includePrereleases, onCheckedChange = {
@@ -505,14 +510,14 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         activity?.runOnUiThread { updateInfo = info; checkingUpdate = false }
                     }
                 })
-                Text("Include pre-releases (beta builds)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_include_prereleases), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
         }
 
         // ── Box64 Preset ─────────────────────────────────────────────
-        FieldSetLabel("Box64")
+        FieldSetLabel(stringResource(R.string.box64))
         FieldSet {
-            Text("Box64 Preset", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(stringResource(R.string.settings_box64_preset), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(8.dp))
             Box {
                 Button(onClick = { showBox64Dropdown = true },
@@ -542,19 +547,19 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         setOnConfirmCallback { refreshBox64Presets() }
                         show()
                     }
-                }) { Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.Add, stringResource(R.string.add), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     Box64EditPresetDialog(context, "box64", selectedBox64Preset).apply {
                         setOnConfirmCallback { refreshBox64Presets() }
                         show()
                     }
-                }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.Edit, stringResource(R.string.edit), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_preset) {
                         Box64PresetManager.duplicatePreset("box64", context, selectedBox64Preset)
                         refreshBox64Presets()
                     }
-                }) { Icon(Icons.Default.ContentCopy, "Duplicate", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.duplicate), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     if (selectedBox64Preset.startsWith(Box64Preset.CUSTOM)) {
                         ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_preset) {
@@ -562,26 +567,26 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                             refreshBox64Presets()
                         }
                     } else AppUtils.showToast(context, R.string.you_cannot_remove_this_preset)
-                }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.Delete, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     if (selectedBox64Preset.startsWith(Box64Preset.CUSTOM)) {
                         Box64PresetManager.exportPreset("box64", context, selectedBox64Preset)
-                    } else AppUtils.showToast(context, "Cannot export this preset")
-                }) { Icon(Icons.Default.FileUpload, "Export", tint = MaterialTheme.colorScheme.onSurface) }
+                    } else AppUtils.showToast(context, R.string.settings_cannot_export_preset)
+                }) { Icon(Icons.Default.FileUpload, stringResource(R.string.export), tint = MaterialTheme.colorScheme.onSurface) }
                 ImportSourceIconButton(
                     icon = Icons.Default.FileDownload,
-                    contentDescription = "Import",
+                    contentDescription = stringResource(R.string.import_action),
                     tint = MaterialTheme.colorScheme.onSurface,
-                    onInApp = { importBox64InAppLauncher.launch(InAppFilePicker.buildIntent(context, emptyArray(), "Select box64 preset")) },
+                    onInApp = { importBox64InAppLauncher.launch(InAppFilePicker.buildIntent(context, emptyArray(), context.getString(R.string.settings_select_box64_preset))) },
                     onSystem = { importBox64Launcher.launch(arrayOf("*/*")) },
                 )
             }
         }
 
         // ── FEXCore Preset ────────────────────────────────────────────
-        FieldSetLabel("FEXCore Config")
+        FieldSetLabel(stringResource(R.string.settings_section_fexcore))
         FieldSet {
-            Text("FEXCore Preset", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(stringResource(R.string.settings_fexcore_preset), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(8.dp))
             Box {
                 Button(onClick = { showFEXCoreDropdown = true },
@@ -611,19 +616,19 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         setOnConfirmCallback { refreshFEXCorePresets() }
                         show()
                     }
-                }) { Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.Add, stringResource(R.string.add), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     FEXCoreEditPresetDialog(context, selectedFEXCorePreset).apply {
                         setOnConfirmCallback { refreshFEXCorePresets() }
                         show()
                     }
-                }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.Edit, stringResource(R.string.edit), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_preset) {
                         FEXCorePresetManager.duplicatePreset(context, selectedFEXCorePreset)
                         refreshFEXCorePresets()
                     }
-                }) { Icon(Icons.Default.ContentCopy, "Duplicate", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.duplicate), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     if (selectedFEXCorePreset.startsWith(FEXCorePreset.CUSTOM)) {
                         ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_preset) {
@@ -631,33 +636,35 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                             refreshFEXCorePresets()
                         }
                     } else AppUtils.showToast(context, R.string.you_cannot_remove_this_preset)
-                }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.Delete, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.onSurface) }
                 IconButton(onClick = {
                     if (selectedFEXCorePreset.startsWith(FEXCorePreset.CUSTOM)) {
                         FEXCorePresetManager.exportPreset(context, selectedFEXCorePreset)
-                    } else AppUtils.showToast(context, "Cannot export this preset")
-                }) { Icon(Icons.Default.FileUpload, "Export", tint = MaterialTheme.colorScheme.onSurface) }
+                    } else AppUtils.showToast(context, R.string.settings_cannot_export_preset)
+                }) { Icon(Icons.Default.FileUpload, stringResource(R.string.export), tint = MaterialTheme.colorScheme.onSurface) }
                 ImportSourceIconButton(
                     icon = Icons.Default.FileDownload,
-                    contentDescription = "Import",
+                    contentDescription = stringResource(R.string.import_action),
                     tint = MaterialTheme.colorScheme.onSurface,
-                    onInApp = { importFEXCoreInAppLauncher.launch(InAppFilePicker.buildIntent(context, emptyArray(), "Select FEXCore preset")) },
+                    onInApp = { importFEXCoreInAppLauncher.launch(InAppFilePicker.buildIntent(context, emptyArray(), context.getString(R.string.settings_select_fexcore_preset))) },
                     onSystem = { importFEXCoreLauncher.launch(arrayOf("*/*")) },
                 )
             }
         }
 
         // ── Sound ─────────────────────────────────────────────────────
-        FieldSetLabel("Sound")
+        FieldSetLabel(stringResource(R.string.sound))
         FieldSet {
-            Text("MIDI Sound Font", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(stringResource(R.string.settings_midi_soundfont), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(8.dp))
+            // Resolve outside the non-@Composable getOrElse{} lambda below.
+            val defaultSf = stringResource(R.string.settings_soundfont_default)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) {
                     Button(onClick = { showSFDropdown = true },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                         modifier = Modifier.fillMaxWidth()) {
-                        Text(sfNames.getOrElse(selectedSF) { "Default" }, color = MaterialTheme.colorScheme.onSurface)
+                        Text(sfNames.getOrElse(selectedSF) { defaultSf }, color = MaterialTheme.colorScheme.onSurface)
                     }
                     DropdownMenu(
                         expanded = showSFDropdown,
@@ -704,9 +711,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 }
                 ImportSourceIconButton(
                     icon = Icons.Default.Add,
-                    contentDescription = "Install",
+                    contentDescription = stringResource(R.string.install),
                     tint = MaterialTheme.colorScheme.onSurface,
-                    onInApp = { prepareSFInstall(); installSFInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SF2, "Select SoundFont")) },
+                    onInApp = { prepareSFInstall(); installSFInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SF2, context.getString(R.string.settings_select_soundfont))) },
                     onSystem = { prepareSFInstall(); installSFLauncher.launch(arrayOf("*/*")) },
                 )
                 IconButton(onClick = {
@@ -718,41 +725,41 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                             } else AppUtils.showToast(context, R.string.sound_font_removed_failed)
                         }
                     } else AppUtils.showToast(context, R.string.cannot_remove_default_sound_font)
-                }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurface) }
+                }) { Icon(Icons.Default.Delete, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.onSurface) }
             }
         }
 
         // ── Path Settings ─────────────────────────────────────────────
-        FieldSetLabel("Path Settings")
+        FieldSetLabel(stringResource(R.string.settings_section_paths))
         FieldSet {
-            Text("Winlator Path", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(stringResource(R.string.settings_winlator_path), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(winlatorPath, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { winlatorPathLauncher.launch(null) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
-                    Text("Choose Path", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
+                    Text(stringResource(R.string.settings_choose_path), color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Text("Shortcut Export Path", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(stringResource(R.string.settings_shortcut_export_path), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(shortcutExportPath, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { shortcutExportPathLauncher.launch(null) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
-                    Text("Choose Path", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
+                    Text(stringResource(R.string.settings_choose_path), color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                 }
             }
         }
 
         // ── Default Screen on Launch ──────────────────────────────────
-        FieldSetLabel("Default Screen on Launch")
+        FieldSetLabel(stringResource(R.string.settings_section_default_screen))
         FieldSet {
             Text(
-                "Which screen the app opens to.",
+                stringResource(R.string.settings_default_screen_desc),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
             )
@@ -762,41 +769,41 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     selected = defaultLandingScreen == "games",
                     onClick = { defaultLandingScreen = "games" },
                 )
-                Text("Game Shortcuts", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_game_shortcuts), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = defaultLandingScreen == "containers",
                     onClick = { defaultLandingScreen = "containers" },
                 )
-                Text("Containers", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.containers), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
         }
 
         // ── Big Picture Mode ──────────────────────────────────────────
-        FieldSetLabel("Big Picture Mode")
+        FieldSetLabel(stringResource(R.string.settings_section_big_picture))
         FieldSet {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = bigPictureMode, onCheckedChange = { bigPictureMode = it })
-                Text("Enable Big Picture Mode on App Launch", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_enable_big_picture), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Spacer(Modifier.height(8.dp))
             FieldSet {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = customApiKeyEnabled, onCheckedChange = { customApiKeyEnabled = it })
-                    Text("Set SteamGrid API Key? (Cover Art)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Text(stringResource(R.string.settings_set_steamgrid_key), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = {
                         val url = "https://www.steamgriddb.com/profile/preferences/api"
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }) { Icon(Icons.Default.Help, stringResource(R.string.help), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 if (customApiKeyEnabled) {
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = customApiKey,
                         onValueChange = { customApiKey = it },
-                        placeholder = { Text("Enter your API Key here", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        placeholder = { Text(stringResource(R.string.settings_api_key_hint), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         textStyle = MaterialTheme.typography.bodySmall
@@ -806,10 +813,10 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
 
         // ── XServer ──────────────────────────────────────────────────
-        FieldSetLabel("XServer")
+        FieldSetLabel(stringResource(R.string.xserver))
         FieldSet {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Cursor Speed", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_cursor_speed), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.weight(1f))
                 Text("${(cursorSpeed * 100).toInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
             }
             Slider(
@@ -820,28 +827,28 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = useDRI3, onCheckedChange = { useDRI3 = it })
-                Text("Use DRI3 Extension", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_use_dri3), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = useXR, onCheckedChange = { useXR = it })
-                Text("Use XR", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_use_xr), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = cursorLock, onCheckedChange = { cursorLock = it })
-                Text("True Mouse Control (Deactivate with Volume Down)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_true_mouse_control), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = xinputToggle, onCheckedChange = { xinputToggle = it })
-                Text("Disable Xinput (Used for Exclusive M/KB support)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_disable_xinput), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
         }
 
         // ── Logs ─────────────────────────────────────────────────────
-        FieldSetLabel("Logs")
+        FieldSetLabel(stringResource(R.string.logs))
         FieldSet {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = enableWineDebug, onCheckedChange = { enableWineDebug = it })
-                Text("Enable Wine Debug", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_enable_wine_debug), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -852,38 +859,38 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         IconButton(onClick = {
                             wineDebugChannels = wineDebugChannels.toMutableList().also { it.removeAt(i) }
                         }, modifier = Modifier.size(20.dp)) {
-                            Icon(Icons.Default.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Close, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
                         }
                     }
                 }
                 IconButton(onClick = { showDebugChannelDialog = true }) {
-                    Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Default.Add, stringResource(R.string.add), tint = MaterialTheme.colorScheme.onSurface)
                 }
                 IconButton(onClick = {
                     wineDebugChannels = SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS.split(",").toMutableList()
                 }) {
-                    Icon(Icons.Default.Refresh, "Reset", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Default.Refresh, stringResource(R.string.reset), tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = enableBox64Logs, onCheckedChange = { enableBox64Logs = it })
-                Text("Enable Box64 Logs", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_enable_box64_logs), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Spacer(Modifier.height(12.dp))
             // ── Log location (issue #70): where wine_debug.log + DXVK/DXGI/VKD3D logs are written ──
-            Text("Log location", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(stringResource(R.string.settings_log_location), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(8.dp))
             Box {
                 Button(onClick = { showLogLocationDropdown = true },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier.fillMaxWidth()) {
                     val label = when (logLocationMode) {
-                        LogLocation.MODE_DOWNLOAD -> "Download (/sdcard/Download/bannerlator)"
-                        LogLocation.MODE_DOCUMENTS -> "Documents (/sdcard/Documents/bannerlator)"
+                        LogLocation.MODE_DOWNLOAD -> stringResource(R.string.settings_log_download)
+                        LogLocation.MODE_DOCUMENTS -> stringResource(R.string.settings_log_documents)
                         LogLocation.MODE_CUSTOM ->
-                            if (logLocationCustomPath.isNotEmpty()) logLocationCustomPath else "Choose folder…"
-                        else -> "App data (default)"
+                            if (logLocationCustomPath.isNotEmpty()) logLocationCustomPath else stringResource(R.string.settings_choose_folder)
+                        else -> stringResource(R.string.settings_log_app_data)
                     }
                     Text(label, color = MaterialTheme.colorScheme.onSurface)
                 }
@@ -893,25 +900,25 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     modifier = Modifier.outlinedMenuCard()
                 ) {
                     DropdownMenuItem(
-                        text = { Text("App data (default)") },
+                        text = { Text(stringResource(R.string.settings_log_app_data)) },
                         onClick = { logLocationMode = LogLocation.MODE_APP_DATA; showLogLocationDropdown = false }
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Download") },
+                        text = { Text(stringResource(R.string.settings_log_download_short)) },
                         onClick = { logLocationMode = LogLocation.MODE_DOWNLOAD; showLogLocationDropdown = false }
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Documents") },
+                        text = { Text(stringResource(R.string.settings_log_documents_short)) },
                         onClick = { logLocationMode = LogLocation.MODE_DOCUMENTS; showLogLocationDropdown = false }
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Choose folder…") },
+                        text = { Text(stringResource(R.string.settings_choose_folder)) },
                         onClick = {
                             showLogLocationDropdown = false
-                            logLocationDirLauncher.launch(InAppFilePicker.buildDirIntent(context, "Select log folder"))
+                            logLocationDirLauncher.launch(InAppFilePicker.buildDirIntent(context, context.getString(R.string.settings_select_log_folder)))
                         }
                     )
                 }
@@ -919,26 +926,26 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
 
         // ── Experimental ──────────────────────────────────────────────
-        FieldSetLabel("Experimental")
+        FieldSetLabel(stringResource(R.string.experimental))
         FieldSet {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = enableFileProvider, onCheckedChange = { enableFileProvider = it })
-                Text("Enable File Provider", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_enable_file_provider), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = {
                     AppUtils.showHelpBox(context, android.view.View(context), R.string.help_file_provider)
-                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }) { Icon(Icons.Default.Help, stringResource(R.string.help), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = openWithBrowser, onCheckedChange = { openWithBrowser = it })
-                Text("Open with Android Browser", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_open_with_browser), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = shareClipboard, onCheckedChange = { shareClipboard = it })
-                Text("Share Android Clipboard", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(stringResource(R.string.settings_share_clipboard), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Spacer(Modifier.height(8.dp))
-            Text("Downloadable Contents URL", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(stringResource(R.string.settings_downloadable_contents_url), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = downloadableContentsURL,
@@ -950,7 +957,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
 
         // ── ImageFS ──────────────────────────────────────────────────
-        FieldSetLabel("ImageFS")
+        FieldSetLabel(stringResource(R.string.imagefs))
         FieldSet {
             Button(
                 onClick = {
@@ -960,51 +967,50 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), // intentional: green = success/safe action (install/backup/restore), distinct from accent
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) { Text("Reinstall ImageFS", color = Color.White) } // intentional: high-contrast label on green fill
+            ) { Text(stringResource(R.string.settings_reinstall_imagefs), color = Color.White) } // intentional: high-contrast label on green fill
             Button(
                 onClick = { showBackupDialog = true },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), // intentional: green = success/safe action (install/backup/restore), distinct from accent
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) { Text("Backup Data", color = Color.White) } // intentional: high-contrast label on green fill
+            ) { Text(stringResource(R.string.settings_backup_data), color = Color.White) } // intentional: high-contrast label on green fill
             Button(
-                onClick = { restoreFileInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select backup")) },
+                onClick = { restoreFileInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, context.getString(R.string.settings_select_backup))) },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), // intentional: green = success/safe action (install/backup/restore), distinct from accent
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) { Text("Restore Data", color = Color.White) } // intentional: high-contrast label on green fill
+            ) { Text(stringResource(R.string.settings_restore_data), color = Color.White) } // intentional: high-contrast label on green fill
             TextButton(
                 onClick = { restoreFileLauncher.launch(arrayOf("*/*")) },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Pick via system…", color = MaterialTheme.colorScheme.primary) }
+            ) { Text(stringResource(R.string.settings_pick_via_system), color = MaterialTheme.colorScheme.primary) }
         }
 
         // ── Frame Generation: lsfg-vk (Lossless Scaling DLL) ─────────────
-        FieldSetLabel("Frame Generation — lsfg-vk")
+        FieldSetLabel(stringResource(R.string.settings_section_framegen))
         FieldSet {
             Text(
-                "lsfg-vk needs your own Lossless Scaling \"Lossless.dll\". Pick it once — it is copied " +
-                "into the app and reused by any container whose Frame Generation engine is set to lsfg-vk.",
+                stringResource(R.string.settings_lsfg_desc),
                 color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
             Text(
-                "Status: " + lsfgDllStatus, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
+                stringResource(R.string.settings_lsfg_status, lsfgDllStatus), color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
             Button(
-                onClick = { importLosslessDllInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DLL, "Select Lossless.dll")) },
+                onClick = { importLosslessDllInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DLL, context.getString(R.string.settings_select_lossless_dll))) },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), // intentional: green = success/safe action (install/backup/restore), distinct from accent
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) { Text("Import Lossless.dll", color = Color.White) } // intentional: high-contrast label on green fill
+            ) { Text(stringResource(R.string.settings_import_lossless_dll), color = Color.White) } // intentional: high-contrast label on green fill
             TextButton(
                 onClick = { importLosslessDllLauncher.launch(arrayOf("*/*")) },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Pick via system…", color = MaterialTheme.colorScheme.primary) }
+            ) { Text(stringResource(R.string.settings_pick_via_system), color = MaterialTheme.colorScheme.primary) }
             if (lsfgDllFile.isFile) {
                 Button(
                     onClick = { lsfgDllFile.delete(); lsfgDllStatus = lsfgDllStatusText() },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                ) { Text("Remove", color = Color.White) } // intentional: high-contrast label on error/destructive fill
+                ) { Text(stringResource(R.string.remove), color = Color.White) } // intentional: high-contrast label on error/destructive fill
             }
         }
 
@@ -1016,13 +1022,13 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         FloatingActionButton(
             onClick = {
                 saveSettings()
-                AppUtils.showToast(context, "Settings saved!")
+                AppUtils.showToast(context, R.string.settings_saved)
                 onSaved()
             },
             containerColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         ) {
-            Icon(Icons.Default.Check, "Save", tint = MaterialTheme.colorScheme.onPrimary)
+            Icon(Icons.Default.Check, stringResource(R.string.save), tint = MaterialTheme.colorScheme.onPrimary)
         }
     }
 
@@ -1039,7 +1045,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
 
         OutlinedAlertDialog(
             onDismissRequest = { showDebugChannelDialog = false },
-            title = { Text("Wine Debug Channels") },
+            title = { Text(stringResource(R.string.settings_wine_debug_channels)) },
             text = {
                 // Hundreds of channels — bound the height and scroll so the whole
                 // alphabetical list (vulkan, heap, …) stays reachable, not just the top.
@@ -1066,10 +1072,10 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 TextButton(onClick = {
                     wineDebugChannels = selectedSet.value.toMutableList()
                     showDebugChannelDialog = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDebugChannelDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDebugChannelDialog = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -1097,9 +1103,9 @@ private fun ImportSourceIconButton(
             onDismissRequest = { expanded = false },
             modifier = Modifier.outlinedMenuCard()
         ) {
-            DropdownMenuItem(text = { Text("Browse files") }, onClick = { expanded = false; onInApp() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.settings_browse_files)) }, onClick = { expanded = false; onInApp() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Pick via system…") }, onClick = { expanded = false; onSystem() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.settings_pick_via_system)) }, onClick = { expanded = false; onSystem() })
         }
     }
 }

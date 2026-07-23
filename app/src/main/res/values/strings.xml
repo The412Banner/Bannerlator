@@ -874,6 +874,116 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="wrapper_catalog_download_ok">%1$s added</string>
     <string name="wrapper_catalog_download_failed">Couldn\'t download %1$s</string>
     <string name="wrapper_catalog_close">Done</string>
+
+    <!-- ===== SettingsScreen (i18n POC) ===== -->
+    <!-- Section headers -->
+    <string name="settings_section_updates">Updates</string>
+    <string name="settings_section_fexcore">FEXCore Config</string>
+    <string name="settings_section_paths">Path Settings</string>
+    <string name="settings_section_default_screen">Default Screen on Launch</string>
+    <string name="settings_section_big_picture">Big Picture Mode</string>
+    <string name="settings_section_framegen">Frame Generation — lsfg-vk</string>
+    <!-- Updates -->
+    <string name="settings_installed_version">Installed: V %1$s</string>
+    <string name="settings_latest_version_suffix">   ·   Latest: V %1$s</string>
+    <string name="settings_update_available">Update available</string>
+    <string name="settings_download_install">Download &amp; install V %1$s</string>
+    <string name="settings_up_to_date">You\'re up to date.</string>
+    <string name="settings_checking">Checking…</string>
+    <string name="settings_check_for_updates">Check for updates</string>
+    <string name="settings_update_check_failed">Couldn\'t check for updates</string>
+    <string name="settings_on_latest">You\'re on the latest version</string>
+    <string name="settings_notify_updates">Notify me about updates</string>
+    <string name="settings_include_prereleases">Include pre-releases (beta builds)</string>
+    <!-- Presets (Box64 / FEXCore) -->
+    <string name="settings_box64_preset">Box64 Preset</string>
+    <string name="settings_fexcore_preset">FEXCore Preset</string>
+    <string name="settings_cannot_export_preset">Cannot export this preset</string>
+    <string name="settings_select_box64_preset">Select box64 preset</string>
+    <string name="settings_select_fexcore_preset">Select FEXCore preset</string>
+    <string name="import_action">Import</string>
+    <string name="install">Install</string>
+    <string name="help">Help</string>
+    <!-- Sound -->
+    <string name="settings_midi_soundfont">MIDI Sound Font</string>
+    <string name="settings_soundfont_default">Default</string>
+    <string name="settings_select_soundfont">Select SoundFont</string>
+    <!-- Paths -->
+    <string name="settings_winlator_path">Winlator Path</string>
+    <string name="settings_choose_path">Choose Path</string>
+    <string name="settings_shortcut_export_path">Shortcut Export Path</string>
+    <!-- Default screen -->
+    <string name="settings_default_screen_desc">Which screen the app opens to.</string>
+    <string name="settings_game_shortcuts">Game Shortcuts</string>
+    <!-- Big Picture -->
+    <string name="settings_enable_big_picture">Enable Big Picture Mode on App Launch</string>
+    <string name="settings_set_steamgrid_key">Set SteamGrid API Key? (Cover Art)</string>
+    <string name="settings_api_key_hint">Enter your API Key here</string>
+    <!-- XServer -->
+    <string name="settings_cursor_speed">Cursor Speed</string>
+    <string name="settings_use_dri3">Use DRI3 Extension</string>
+    <string name="settings_use_xr">Use XR</string>
+    <string name="settings_true_mouse_control">True Mouse Control (Deactivate with Volume Down)</string>
+    <string name="settings_disable_xinput">Disable Xinput (Used for Exclusive M/KB support)</string>
+    <!-- Logs -->
+    <string name="settings_enable_wine_debug">Enable Wine Debug</string>
+    <string name="settings_enable_box64_logs">Enable Box64 Logs</string>
+    <string name="settings_log_location">Log location</string>
+    <string name="settings_log_app_data">App data (default)</string>
+    <string name="settings_log_download">Download (/sdcard/Download/bannerlator)</string>
+    <string name="settings_log_documents">Documents (/sdcard/Documents/bannerlator)</string>
+    <string name="settings_choose_folder">Choose folder…</string>
+    <string name="settings_log_download_short">Download</string>
+    <string name="settings_log_documents_short">Documents</string>
+    <string name="settings_select_log_folder">Select log folder</string>
+    <string name="settings_wine_debug_channels">Wine Debug Channels</string>
+    <!-- Experimental -->
+    <string name="settings_enable_file_provider">Enable File Provider</string>
+    <string name="settings_open_with_browser">Open with Android Browser</string>
+    <string name="settings_share_clipboard">Share Android Clipboard</string>
+    <string name="settings_downloadable_contents_url">Downloadable Contents URL</string>
+    <!-- ImageFS / backup / restore -->
+    <string name="settings_reinstall_imagefs">Reinstall ImageFS</string>
+    <string name="settings_backup_data">Backup Data</string>
+    <string name="settings_restore_data">Restore Data</string>
+    <string name="settings_pick_via_system">Pick via system…</string>
+    <string name="settings_backing_up">Backing up data…</string>
+    <string name="settings_backup_confirm">Do you want to create a backup of the app\'s data directory?</string>
+    <string name="settings_backup_completed">Backup completed: %1$s</string>
+    <string name="settings_backup_failed">Backup failed.</string>
+    <string name="settings_restore_confirm">This will restart the app. Continue?</string>
+    <string name="settings_restore">Restore</string>
+    <string name="settings_select_backup">Select backup</string>
+    <!-- lsfg-vk -->
+    <string name="settings_lsfg_desc">lsfg-vk needs your own Lossless Scaling \"Lossless.dll\". Pick it once — it is copied into the app and reused by any container whose Frame Generation engine is set to lsfg-vk.</string>
+    <string name="settings_lsfg_status">Status: %1$s</string>
+    <string name="settings_lsfg_imported">Imported (%1$d MB)</string>
+    <string name="settings_lsfg_not_set">Not set — lsfg-vk will stay off</string>
+    <string name="settings_lsfg_import_failed">Import failed: %1$s</string>
+    <string name="settings_import_lossless_dll">Import Lossless.dll</string>
+    <string name="settings_select_lossless_dll">Select Lossless.dll</string>
+    <!-- Misc -->
+    <string name="settings_browse_files">Browse files</string>
+    <string name="settings_saved">Settings saved!</string>
+
+    <!-- ===== ContainerDetailScreen — FPS Counter dialog (i18n POC, template-heavy) ===== -->
+    <string name="container_fps_title">FPS Counter Settings</string>
+    <string name="container_fps_metrics">Metrics</string>
+    <string name="container_fps_tip">Tip: tap the HUD in-game to switch vertical/horizontal layout.</string>
+    <string name="container_fps_style_gamehub">Rich overlay: skins, colored fields, live FPS graph.</string>
+    <string name="container_fps_style_gamenative">GameNative-style overlay: compact pill or stacked list with live graphs.</string>
+    <string name="container_fps_style_classic">Classic Bannerlator overlay.</string>
+    <string name="container_fps_bands_off">Temperatures use their normal color.</string>
+    <string name="container_fps_bands_auto">Thresholds read from your device\'s own thermal trip points, falling back to safe defaults.</string>
+    <string name="container_fps_bands_manual">Set the red point per sensor; amber sits just below it.</string>
+    <!-- %1$d = temperature in °C; the literal % in scale/opacity must be doubled as %% -->
+    <string name="container_fps_cpu_red">CPU red at: %1$d°C</string>
+    <string name="container_fps_gpu_red">GPU red at: %1$d°C</string>
+    <string name="container_fps_bat_red">Battery red at: %1$d°C</string>
+    <string name="container_fps_hud_scale">HUD Scale: %1$d%%</string>
+    <string name="container_fps_hud_opacity">HUD Opacity: %1$d%%</string>
+    <string name="container_fps_hud_outline">HUD outline: %1$d</string>
+    <string name="container_fps_hud_transparency">HUD Transparency: %1$d</string>
 </resources>
 
 

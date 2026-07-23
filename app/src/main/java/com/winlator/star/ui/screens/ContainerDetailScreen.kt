@@ -2727,7 +2727,7 @@ internal fun FpsCounterConfigDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("FPS Counter Settings") },
+        title = { Text(stringResource(R.string.container_fps_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -2741,22 +2741,22 @@ internal fun FpsCounterConfigDialog(
                 ) { hudStyle = styles[it] }
                 Text(
                     when (hudStyle) {
-                        "gamehub" -> "Rich overlay: skins, colored fields, live FPS graph."
-                        "gamenative" -> "GameNative-style overlay: compact pill or stacked list with live graphs."
-                        else -> "Classic Bannerlator overlay."
+                        "gamehub" -> stringResource(R.string.container_fps_style_gamehub)
+                        "gamenative" -> stringResource(R.string.container_fps_style_gamenative)
+                        else -> stringResource(R.string.container_fps_style_classic)
                     },
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Tip: tap the HUD in-game to switch vertical/horizontal layout.",
+                    stringResource(R.string.container_fps_tip),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(12.dp))
 
                 // Compact multi-select metric chips (filled = on) in a wrap layout,
                 // so ~13 metrics fit in a few rows instead of stacked Switch rows.
-                Text("Metrics", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.container_fps_metrics), style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(4.dp))
                 // Build the currently-VISIBLE chips first (respecting per-style gating), then chunk
                 // into an aligned 3-wide grid — so hidden chips never leave holes. Each stays an
@@ -2799,30 +2799,30 @@ internal fun FpsCounterConfigDialog(
                     }
                     Text(
                         when (bandMode) {
-                            0 -> "Temperatures use their normal color."
-                            1 -> "Thresholds read from your device's own thermal trip points, falling back to safe defaults."
-                            else -> "Set the red point per sensor; amber sits just below it."
+                            0 -> stringResource(R.string.container_fps_bands_off)
+                            1 -> stringResource(R.string.container_fps_bands_auto)
+                            else -> stringResource(R.string.container_fps_bands_manual)
                         },
                         style = MaterialTheme.typography.bodySmall
                     )
                     if (bandMode == 2) {
                         // Red point only; amber is derived. Always \u00B0C — thresholds never convert.
                         Spacer(Modifier.height(4.dp))
-                        Text("CPU red at: $tempRedCpu\u00B0C", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.container_fps_cpu_red, tempRedCpu), style = MaterialTheme.typography.bodySmall)
                         Slider(
                             value = tempRedCpu.toFloat(),
                             onValueChange = { tempRedCpu = it.toInt() },
                             valueRange = 50f..110f, steps = 59
                         )
                         if (gameNative && showGpuTemp) {
-                            Text("GPU red at: $tempRedGpu\u00B0C", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.container_fps_gpu_red, tempRedGpu), style = MaterialTheme.typography.bodySmall)
                             Slider(
                                 value = tempRedGpu.toFloat(),
                                 onValueChange = { tempRedGpu = it.toInt() },
                                 valueRange = 50f..110f, steps = 59
                             )
                         }
-                        Text("Battery red at: $tempRedBat\u00B0C", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.container_fps_bat_red, tempRedBat), style = MaterialTheme.typography.bodySmall)
                         Slider(
                             value = tempRedBat.toFloat(),
                             onValueChange = { tempRedBat = it.toInt() },
@@ -2832,7 +2832,7 @@ internal fun FpsCounterConfigDialog(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Text("HUD Scale: $hudScale%", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.container_fps_hud_scale, hudScale), style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = hudScale.toFloat(),
                     onValueChange = { hudScale = it.toInt().coerceAtLeast(50) },
@@ -2841,7 +2841,7 @@ internal fun FpsCounterConfigDialog(
 
                 if (rich) {
                     Spacer(Modifier.height(4.dp))
-                    Text("HUD Opacity: $hudOpacity%", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.container_fps_hud_opacity, hudOpacity), style = MaterialTheme.typography.bodySmall)
                     Slider(
                         value = hudOpacity.toFloat(),
                         onValueChange = { hudOpacity = it.toInt() },
@@ -2853,7 +2853,7 @@ internal fun FpsCounterConfigDialog(
                     }
                     HudThreeStop("HUD color", listOf("Soft", "Mid", "Vivid"), colors.indexOf(color)) { color = colors[it] }
                     Spacer(Modifier.height(8.dp))
-                    Text("HUD outline: $outlineValue", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.container_fps_hud_outline, outlineValue), style = MaterialTheme.typography.bodySmall)
                     Slider(
                         value = outlineValue.toFloat(),
                         onValueChange = { outlineValue = it.toInt() },
@@ -2862,7 +2862,7 @@ internal fun FpsCounterConfigDialog(
                     HudThreeStop("Outline color", listOf("Gray", "Accent"), if (outlineAccent) 1 else 0) { outlineAccent = it == 1 }
                 } else {
                     Spacer(Modifier.height(4.dp))
-                    Text("HUD Transparency: $hudTransparency", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.container_fps_hud_transparency, hudTransparency), style = MaterialTheme.typography.bodySmall)
                     Slider(
                         value = hudTransparency.toFloat(),
                         onValueChange = { hudTransparency = it.toInt() },

@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-07-24 — ✅ **DEVICE-VERIFIED: in-game refresh unlock + frame generation** (both shipped in 2.9-pre3)
+
+> **🖥️ In-game refresh rate unlock — TESTED AND VERIFIED.** Clears the "built + staged, NOT device-verified" caveat from the 07-22 entry below. The RandR extension advertises the panel's real rates and games pick them up.
+>
+> **🔑 REQUIRES A CURRENT WINE LAYER — this is the part users will trip over.** The unlock only works on a Proton layer whose `winex11` was **compiled with xrandr**: the refreshed **Proton 11.0-1** and **Proton 10.0-4** builds, both downloadable in-app. On an older layer `WineRandrSupport.isXrandrCapable()` reports false and the app deliberately does **not** write the `EmulateModelist`/`Modeset` keys — because on a non-xrandr layer they give no benefit *and* shrink the resolution list to the NoRes single mode, a mild regression. So old-layer users lose nothing, they just don't gain the rates until they download one of those two layers. Called out prominently in the pre3 release notes.
+>
+> **🎞️ Frame generation — TESTED AND VERIFIED WORKING, but still experimental.** Runs, models switch live, present-path fence fix is in. **bionic-fg remains quirky / work-in-progress** — verified ≠ finished. Model quality (1–4) is still unproven, and the FPS-limiter interaction at low caps is still the known rough edge. Framed exactly that way in the release notes rather than as a clean pass.
+>
+> **▶️ STILL OUTSTANDING for frame gen:** the model 3 vs model 4 **fast-lateral-motion + occlusion** quality test. Every FSR3 number so far was measured parked, which is a valid cost measurement and a worthless quality one.
+
 ## 2026-07-24 — 🔀 **PR #156 integrated onto current main → `integration/pr156-pre3`** (author resolved the conflicts himself; audit found 2 merge casualties)
 
 > **Yesterday's resume plan is obsolete: arro000 pushed `4a048296` "Merge official main and resolve PR conflicts" at 06:27 UTC today.** PR #156 is now `MERGEABLE` / `CLEAN`, contains all of `main` through `2c64fca2` (Smart Game Import), and grew to **+9,787 / −3,709 across 61 files**. Both conflicts were resolved exactly the way the plan called for — `app/build.gradle` kept **main's vc49** (his own vc50 bump reverted in `9c06a61d` "build: restore main version code"), and `XServerDisplayActivity.java` **kept both** `advertisePanelRefreshRates()` (:495, called :1205) and the new input code. Still a **DRAFT**, still **zero CI runs**.

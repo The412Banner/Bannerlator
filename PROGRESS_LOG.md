@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-07-24 — 🔀 **PR #156 integrated onto current main → `integration/pr156-pre3`** (author resolved the conflicts himself; audit found 2 merge casualties)
+
+> **Yesterday's resume plan is obsolete: arro000 pushed `4a048296` "Merge official main and resolve PR conflicts" at 06:27 UTC today.** PR #156 is now `MERGEABLE` / `CLEAN`, contains all of `main` through `2c64fca2` (Smart Game Import), and grew to **+9,787 / −3,709 across 61 files**. Both conflicts were resolved exactly the way the plan called for — `app/build.gradle` kept **main's vc49** (his own vc50 bump reverted in `9c06a61d` "build: restore main version code"), and `XServerDisplayActivity.java` **kept both** `advertisePanelRefreshRates()` (:495, called :1205) and the new input code. Still a **DRAFT**, still **zero CI runs**.
+>
+> **Branch `integration/pr156-pre3` = `origin/main` + fast-forward to `pr156-head` + one restore commit.** No conflict resolution was needed on our side. vc stays **49** / versionName "2.8".
+>
+> **🐞 CASUALTY 1 — `.opencode/agent/ama-agent.md` deleted (RESTORED, `d37c8b2d`).** The AMA workflow (`ama-answer.yml`) sources this file to run opencode as a read-only Q&A agent — *it is what enforces bash/write/edit/webfetch off*. It has been on main since `310ea59a` (2026-07-03) and the bot ran green as recently as this morning (run `30056443051`, issue #163). It was deleted as collateral in `c7913996` "refine virtual mouse priority and button grids" — nothing to do with that commit's purpose — and the merge kept the deletion because the PR-side parent no longer had the file. **Restored verbatim from main.** Every other deletion vs main (12 files) is the legacy `InputControlsFragment` / XML-layout input stack the rebuild legitimately replaces.
+>
+> **🐞 CASUALTY 2 — an EVIL MERGE into Smart Game Import (KEPT deliberately, but it belongs on `main`, not here).** `4a048296` edits `core/GameIdentifier.kt` + `GameIdentifierTest.kt`, and **neither parent contains those edits** (`f2f0a688` doesn't even have the file — it landed on main only last night). Changes made during conflict resolution are invisible in the PR diff, which is exactly the shape of the pre1→pre2 merge-only bug. **Both edits are correct — they fix real bugs in code that is 12 hours old:**
+> 1. `GameIdentifierTest` asserted `"The Witcher 3: Wild Hunt"`, but `normalizeName():108` unconditionally does `s.replace(":", " - ")` and the GOG name flows through it at `:92`. **Main's test is genuinely failing** — the assertion should be `"The Witcher 3 - Wild Hunt"`.
+> 2. `EXE_SUFFIX_RE` was unanchored, so `(win64|…|game|launcher|client|…)` stripped those words **anywhere in a title**, not just as a trailing suffix. Now `(?:…)+$` — anchored and repeatable.
+>
+> **🔑 Why the failing test shipped: NO workflow runs `gradlew test`.** `build-artifacts.yml`, `_build.yml` and `release.yml` only assemble. There are three unit-test files in the tree (`ConfigExporterTest`, `GameIdentifierTest`, and #156's new 745-line `InputControlsFormatTest`) and **nothing has ever executed them in CI.** Worth fixing independently of this PR.
+>
+> **▶️ NEXT:** artifacts-only CI on `integration/pr156-pre3` (3 flavors) → if green, cut **2.9-pre3**. Open question for the release cut: pre1 and pre2 both sat on vc49, so a vc49 pre3 installs over pre2 but the updater won't offer it.
+
 ## 2026-07-22 — 🖥️ **In-game refresh rate unlocked** — RandR X-server extension + Max-refresh setting (branch `feat/randr-refresh-modes`, vc48→**49**)
 
 > **Every game that exposes a refresh toggle was locked to 60 Hz on a 144 Hz panel, and no client-side setting could change it — the cause was on our side.** The X server implemented BigReq, DRI3, MIT-SHM, Present and Sync but **no RandR at all**. RandR is how `winex11.drv` enumerates display modes; finding none it falls back to its NoRes settings handler (priority 1), whose `nores_get_modes()` returns exactly one mode with `dmDisplayFrequency` hardcoded to 60. That single synthetic mode is what reached the games.

@@ -402,8 +402,45 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // processes are the only ones visible under our uid).
     private Thread dxApiThread;
 
-    /** "VKD3D" if a D3D12 game module is loaded, [fallback] if a D3D9/10/11 one is, else null. */
+    private long dxDetectStartMs;
+
+    /** A DXVK/VKD3D log written since this run started (stale logs from earlier launches ignored). */
+    private boolean isFreshLog(java.io.File f) {
+        // 10s backward margin: the game creates its D3D device a moment after detection starts.
+        return f.isFile() && f.length() > 0 && f.lastModified() >= dxDetectStartMs - 10000L;
+    }
+
+    /**
+     * "VKD3D" if the D3D12 path is active this run, [fallback] (DXVK) if a D3D9/10/11 log shows
+     * activity, else null.
+     *
+     * Reads the DXVK/VKD3D log files (whose paths the app itself sets via DXVK_LOG_PATH /
+     * VKD3D_LOG_FILE) rather than scanning host /proc/maps — because under box64/FEXCore the guest
+     * PE DLLs are loaded into the emulator's own memory and never appear as host-mapped d3d12.dll,
+     * so the old maps scan NEVER fired and every D3D12 game was mislabeled as the configured
+     * wrapper ("DXVK"). Falls back to the maps scan where logs aren't available.
+     */
     private String detectActiveDxApi(String fallback) {
+        java.io.File logDir = com.winlator.star.core.LogLocation.resolveLogDir(this);
+        if (logDir != null) {
+            // VKD3D-Proton's log has a fixed name we set via VKD3D_LOG_FILE — fresh = D3D12 this run.
+            if (isFreshLog(new java.io.File(logDir, "vkd3d-proton.log"))) return "VKD3D";
+            // Any DXVK d3d9/10/11 (or dxgi) log written this run confirms the DXVK path. Only one
+            // game runs per container, so a fresh <exe>_d3d11.log here is unambiguously this game.
+            java.io.File[] logs = logDir.listFiles();
+            if (logs != null) for (java.io.File f : logs) {
+                String n = f.getName();
+                if ((n.endsWith("_d3d11.log") || n.endsWith("_d3d10.log")
+                        || n.endsWith("_d3d9.log") || n.endsWith("_dxgi.log")) && isFreshLog(f))
+                    return fallback;
+            }
+        }
+        return detectActiveDxApiFromMaps(fallback);
+    }
+
+    /** Legacy host-/proc-maps detector — accurate only where guest DLLs are host-mapped (no
+     *  emulator). Kept as a fallback when log files aren't available. */
+    private String detectActiveDxApiFromMaps(String fallback) {
         java.io.File[] pids = new java.io.File("/proc").listFiles();
         if (pids == null) return null;
         boolean d3d11 = false;
@@ -427,6 +464,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Poll for the active D3D API just after launch and update the overlay label once detected. */
     private void startDxApiDetection(final String prefix, final String fallback) {
         stopDxApiDetection();
+        dxDetectStartMs = System.currentTimeMillis();
         dxApiThread = new Thread(() -> {
             for (int i = 0; i < 40 && !Thread.currentThread().isInterrupted(); i++) {
                 String api = detectActiveDxApi(fallback);

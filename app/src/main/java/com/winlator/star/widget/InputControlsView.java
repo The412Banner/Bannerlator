@@ -526,7 +526,6 @@ public class InputControlsView extends View {
         return super.onGenericMotionEvent(event);
     }
 
-    @Override
     // The in-game HUD is drawn BENEATH this (full-screen) controls view, so a control button under the
     // HUD still wins the touch. But this view consumes/forwards everything, which would starve the HUD.
     // So a non-button touch that lands on a visible HUD is routed to it — keeping the HUD's long-press
@@ -547,6 +546,7 @@ public class InputControlsView extends View {
         return null;
     }
 
+    @Override
     public boolean onTouchEvent(MotionEvent event) {
         boolean hapticsEnabled = preferences.getBoolean("touchscreen_haptics_enabled", true);
         resetTouchscreenTimeout();

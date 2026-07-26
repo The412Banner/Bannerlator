@@ -527,6 +527,26 @@ public class InputControlsView extends View {
     }
 
     @Override
+    // The in-game HUD is drawn BENEATH this (full-screen) controls view, so a control button under the
+    // HUD still wins the touch. But this view consumes/forwards everything, which would starve the HUD.
+    // So a non-button touch that lands on a visible HUD is routed to it — keeping the HUD's long-press
+    // lock/unlock, drag and tap working underneath the controls. Several HUD styles (and the classic
+    // pair's two orientations) are passed as candidates; only the visible one under the finger matches.
+    // hudTarget latches the whole primary gesture (set on DOWN) so a drag leaving the HUD still reaches it.
+    private View[] hudCandidates;
+    private View hudTarget;
+    public void setHudFallThroughViews(View... views) { this.hudCandidates = views; }
+
+    private View hudAt(float x, float y) {
+        if (hudCandidates == null) return null;
+        for (View h : hudCandidates) {
+            if (h == null || h.getVisibility() != View.VISIBLE) continue;
+            float hx = h.getX(), hy = h.getY();
+            if (x >= hx && x <= hx + h.getWidth() && y >= hy && y <= hy + h.getHeight()) return h;
+        }
+        return null;
+    }
+
     public boolean onTouchEvent(MotionEvent event) {
         boolean hapticsEnabled = preferences.getBoolean("touchscreen_haptics_enabled", true);
         resetTouchscreenTimeout();
@@ -593,7 +613,13 @@ public class InputControlsView extends View {
                             touchpadView.setPointerButtonLeftEnabled(false);
                         }
                     }
-                    if (!handled) touchpadView.onTouchEvent(event);
+                    if (!handled) {
+                        // Not on a control button. On the primary DOWN, latch the HUD (drawn beneath us)
+                        // that the touch started over — if any, route the whole gesture there; else touchpad.
+                        if (actionMasked == MotionEvent.ACTION_DOWN) hudTarget = hudAt(x, y);
+                        if (hudTarget != null) hudTarget.onTouchEvent(event);
+                        else touchpadView.onTouchEvent(event);
+                    }
                     break;
                 }
                 case MotionEvent.ACTION_MOVE: {
@@ -605,7 +631,10 @@ public class InputControlsView extends View {
                         for (ControlElement element : profile.getElements()) {
                             if (element.handleTouchMove(pid, x, y)) handled = true;
                         }
-                        if (!handled) touchpadView.onTouchEvent(event);
+                        if (!handled) {
+                            if (hudTarget != null) hudTarget.onTouchEvent(event);
+                            else touchpadView.onTouchEvent(event);
+                        }
                     }
                     break;
                 }
@@ -613,7 +642,11 @@ public class InputControlsView extends View {
                 case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_CANCEL:
                     for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;
-                    if (!handled) touchpadView.onTouchEvent(event);
+                    if (!handled) {
+                        if (hudTarget != null) hudTarget.onTouchEvent(event);
+                        else touchpadView.onTouchEvent(event);
+                    }
+                    if (actionMasked == MotionEvent.ACTION_UP || actionMasked == MotionEvent.ACTION_CANCEL) hudTarget = null;
                     break;
             }
         }

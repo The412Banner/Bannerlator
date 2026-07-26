@@ -5147,6 +5147,24 @@ return true;
         }
     }
 
+    /**
+     * Layer the given HUD directly BENEATH the on-screen controls so control buttons draw — and take
+     * their touches — over it (fixing a locked HUD eating button presses where they overlap). The
+     * controls view routes any non-button touch that lands on a visible HUD back to it, so long-press
+     * lock/unlock, drag and tap keep working underneath the controls. No-op if controls aren't present.
+     */
+    private void placeHudBelowControls(View hud) {
+        FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
+        if (inputControlsView == null || hud == null || rootView == null) return;
+        int ci = rootView.indexOfChild(inputControlsView);
+        int hi = rootView.indexOfChild(hud);
+        if (ci >= 0 && hi > ci) {           // HUD currently above the controls → drop it just below them
+            rootView.removeView(hud);
+            rootView.addView(hud, ci);      // controls shift up one → now drawn above the HUD
+        }
+        inputControlsView.setHudFallThroughViews(frameRating, frameRatingHorizontal, perfHud, gameNativeHud, fusionHud);
+    }
+
     /** Flip the in-game FPS overlay between horizontal and vertical layouts (tap on the overlay). */
     /** Build the GameHub-style HUD and add it to the overlay. Safe to call live (UI thread). */
     private void buildPerfHud(String fpsConfigString) {
@@ -5173,6 +5191,7 @@ return true;
         // revealed by changeFrameRatingVisibility once the window appears (launch path).
         perfHud.setVisibility(frameRatingWindowId != -1 ? View.VISIBLE : View.GONE);
         rootView.addView(perfHud);
+        placeHudBelowControls(perfHud);
     }
 
     /** Build the classic FrameRating HUD (both orientations) and add it. Safe to call live (UI thread). */
@@ -5200,6 +5219,7 @@ return true;
         restoreHudPosition(frameRatingHorizontal, "hudPosCH");
         frameRatingHorizontal.setVisibility(shown && fpsHudHorizontal ? View.VISIBLE : View.GONE);
         rootView.addView(frameRatingHorizontal);
+        placeHudBelowControls(frameRatingHorizontal);
 
         frameRating = new FrameRating(this, graphicsDriverConfig);
         frameRating.setFpsCounter(fpsCounter);
@@ -5219,6 +5239,7 @@ return true;
         restoreHudPosition(frameRating, "hudPosCV");
         frameRating.setVisibility(shown && !fpsHudHorizontal ? View.VISIBLE : View.GONE);
         rootView.addView(frameRating);
+        placeHudBelowControls(frameRating);
 
         if (hudRendererLabel != null) {
             frameRatingHorizontal.setRenderer(hudRendererLabel);
@@ -5260,6 +5281,7 @@ return true;
         // revealed by changeFrameRatingVisibility once the window appears (launch path).
         gameNativeHud.setVisibility(frameRatingWindowId != -1 ? View.VISIBLE : View.GONE);
         rootView.addView(gameNativeHud);
+        placeHudBelowControls(gameNativeHud);
     }
 
     private void removeGameNativeHud() {
@@ -5297,6 +5319,7 @@ return true;
         restoreHudPosition(fusionHud, "hudPosFusion");
         fusionHud.setVisibility(frameRatingWindowId != -1 ? View.VISIBLE : View.GONE);
         rootView.addView(fusionHud);
+        placeHudBelowControls(fusionHud);
     }
 
     private void removeFusionHud() {

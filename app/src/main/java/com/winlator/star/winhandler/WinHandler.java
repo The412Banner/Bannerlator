@@ -174,6 +174,13 @@ public class WinHandler {
     // Sub-pixel carry for mouse mode, so slow tilts still move the pointer instead of rounding to 0.
     private float accumulatedGyroMouseX = 0.0f;
     private float accumulatedGyroMouseY = 0.0f;
+    // Gyro absolute-cursor path (desktop mode): an UNCLAMPED virtual pointer position so returning the
+    // device to its original orientation returns the cursor. The displayed pointer is kept in-bounds,
+    // which leaves CursorLocker (enabled only in this mode) inert instead of clawing the position back
+    // to the edge and discarding rotation spent past it (issue #175).
+    private float gyroPointerVirtualX = 0.0f;
+    private float gyroPointerVirtualY = 0.0f;
+    private boolean gyroPointerSeeded = false;
     // Orientation-mode zero reference: the pose captured the moment the gyro became active, which the
     // offsets below are measured against. Touched only from the sensor path and the reset/config
     // helpers (main thread), same as the toggle latch above.
@@ -1206,6 +1213,7 @@ public class WinHandler {
             smoothedGyroY = 0.0f;
             accumulatedGyroMouseX = 0.0f;
             accumulatedGyroMouseY = 0.0f;
+            gyroPointerSeeded = false; // re-seed the virtual position from the live cursor on next activation
             return;
         }
 
@@ -1227,7 +1235,23 @@ public class WinHandler {
         // real relative motion (mouse-look games), otherwise we move the X pointer (desktop/windowed).
         XServer xServer = activity != null ? activity.getXServer() : null;
         if (xServer != null && !xServer.isRelativeMouseMovement()) {
-            xServer.injectPointerMoveDelta(dx, dy);
+            // Absolute-cursor path: integrate into an unclamped virtual position, then drive the pointer
+            // toward its clamped value through the locked delta path. Keeping the displayed pointer
+            // in-bounds leaves CursorLocker inert, and the virtual position retains motion spent past the
+            // edge so returning the device returns the cursor (issue #175). The +/-1-screen bound caps
+            // wind-up from sustained same-direction rotation.
+            final int w = xServer.screenInfo.width, h = xServer.screenInfo.height;
+            if (!gyroPointerSeeded) {
+                gyroPointerVirtualX = xServer.pointer.getClampedX();
+                gyroPointerVirtualY = xServer.pointer.getClampedY();
+                gyroPointerSeeded = true;
+            }
+            gyroPointerVirtualX = Math.max(-w, Math.min(2 * w, gyroPointerVirtualX + dx));
+            gyroPointerVirtualY = Math.max(-h, Math.min(2 * h, gyroPointerVirtualY + dy));
+            int targetX = Math.max(0, Math.min(w - 1, Math.round(gyroPointerVirtualX)));
+            int targetY = Math.max(0, Math.min(h - 1, Math.round(gyroPointerVirtualY)));
+            xServer.injectPointerMoveDelta(targetX - xServer.pointer.getX(),
+                                           targetY - xServer.pointer.getY());
             return;
         }
         queueGyroMouseEvent(dx, dy);

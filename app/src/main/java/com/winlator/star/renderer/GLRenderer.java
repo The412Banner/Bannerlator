@@ -94,6 +94,37 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     
     private final EffectComposer effectComposer;
 
+    // BLPerfProbe (Phase 0). drawFrame() is the number that matters (host composite rate). Static hook
+    // to the activity's FpsCounter (guest present rate); read-only on the GL thread. All probe state
+    // below is touched only on the GL thread; the request counter lives in XServerView (AtomicInteger).
+    public static volatile com.winlator.star.widget.FpsCounter probeFpsCounter;
+    private long probeWindowStartNs = 0;
+    private int probeDrawCount = 0;
+    private int probeReqAtWindowStart = 0;
+
+    private void probeTick() {
+        long now = System.nanoTime();
+        if (probeWindowStartNs == 0) {
+            probeWindowStartNs = now;
+            probeReqAtWindowStart = XServerView.PROBE_REQ.get();
+            probeDrawCount = 0;
+        }
+        probeDrawCount++;
+        long elapsed = now - probeWindowStartNs;
+        if (elapsed >= 1_000_000_000L) {
+            int reqNow = XServerView.PROBE_REQ.get();
+            double secs = elapsed / 1e9;
+            float hudfps = probeFpsCounter != null ? probeFpsCounter.getCurrentFPS() : -1f;
+            Log.d("BLPerfProbe", String.format(java.util.Locale.US,
+                "req/s=%.1f draw/s=%.1f hudfps=%.1f native=%b cursor=%b mag=%b zoom=%.2f offY=%b",
+                (reqNow - probeReqAtWindowStart) / secs, probeDrawCount / secs, hudfps,
+                nativeMode, cursorVisible, magnifierEnabled, magnifierZoom, screenOffsetYRelativeToCursor));
+            probeWindowStartNs = now;
+            probeReqAtWindowStart = reqNow;
+            probeDrawCount = 0;
+        }
+    }
+
     /**
      * Interface used for window screenshot results.
      */
@@ -276,6 +307,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     public void drawFrame() {
+        if (XServerView.PERF_PROBE) probeTick();
         boolean xrFrame = false;
         boolean xrImmersive = false;
         if (XrActivity.isEnabled(null)) {

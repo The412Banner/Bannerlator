@@ -2706,6 +2706,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServerView.initRenderer(rendererType);
         final HostRenderer renderer = xServerView.getRenderer();
         renderer.setCursorVisible(false);
+        GLRenderer.probeFpsCounter = fpsCounter; // BLPerfProbe (Phase 0) — no-op unless the probe tag is on
 
         // Standalone FPS limiter (guest-side, via the X11 Present extension): apply the resolved
         // per-game/container value up front, independent of the frame-gen engine. The in-game toggle

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
+import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -21,6 +22,11 @@ import java.util.concurrent.Executors;
 
 @SuppressLint("ViewConstructor")
 public class XServerView extends FrameLayout {
+    // BLPerfProbe (Phase 0, ship-safe). Counts every render request across all renderers — the single
+    // funnel for GL/Vulkan/ASR. Folds away unless `setprop log.tag.BLPerfProbe DEBUG` before launch.
+    public static final boolean PERF_PROBE = Log.isLoggable("BLPerfProbe", Log.DEBUG);
+    public static final java.util.concurrent.atomic.AtomicInteger PROBE_REQ = new java.util.concurrent.atomic.AtomicInteger();
+
     private HostRenderer renderer;
     private SurfaceView vulkanSurfaceView;
     private GLSurfaceView glSurfaceView;
@@ -137,6 +143,7 @@ public class XServerView extends FrameLayout {
     }
 
     public void requestRender() {
+        if (PERF_PROBE) PROBE_REQ.incrementAndGet();
         if (glSurfaceView != null) glSurfaceView.requestRender();
         else if (renderer != null) renderer.requestRender();
     }

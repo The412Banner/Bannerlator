@@ -245,7 +245,9 @@ class EpicGamesActivity : ComponentActivity() {
                 dlcEd.putString("epic_dlcs_$key", value.toString())
             }
             dlcEd.apply()
-            val displayGames = if (mainGames.isEmpty()) rawGames else mainGames
+            val displayGames = (if (mainGames.isEmpty()) rawGames else mainGames)
+                .distinctBy { it.appName }
+                .toMutableList()
 
             displayGames.sortWith { a, b -> a.title.compareTo(b.title, ignoreCase = true) }
 
@@ -551,7 +553,7 @@ class EpicGamesActivity : ComponentActivity() {
                 g.canRunOffline = j.optBoolean("canRunOffline", true)
                 list.add(g)
             }
-            list
+            list.distinctBy { it.appName }
         } catch (e: Exception) { Log.e(TAG, "loadCachedGames failed", e); null }
     }
 

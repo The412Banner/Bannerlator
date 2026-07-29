@@ -280,7 +280,14 @@ public class ContainerManager {
 
 
     private void removeContainer(Container container) {
-        if (FileUtils.delete(container.getRootDir())) containers.remove(container);
+        if (FileUtils.delete(container.getRootDir())) {
+            containers.remove(container);
+            // A new container can reuse this id — drop the persisted component-install set
+            // (ComponentsSheet/RecommendedComponentsSection/ComponentExecInstaller all key on
+            // "c<id>") or the fresh prefix shows those components as already installed (#189).
+            context.getSharedPreferences("component_installs", Context.MODE_PRIVATE)
+                    .edit().remove("c" + container.id).apply();
+        }
     }
 
     public ArrayList<Shortcut> loadShortcuts() {

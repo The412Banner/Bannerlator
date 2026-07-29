@@ -27,7 +27,9 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
 /**
@@ -70,6 +72,13 @@ fun BoxScope.DraggableAddButton(
     var buttonPx by remember { mutableFloatStateOf(0f) }
     val travel = (trackPx - buttonPx).coerceAtLeast(0f)
 
+    // fraction is 0 = start, 1 = end, but graphicsLayer's translationX is raw pixels and does
+    // NOT mirror under RTL — while the layout position (start) does. Without flipping the sign,
+    // an RTL locale laid the button out at the visual right edge and then translated it a further
+    // full track-width to the right: completely off-screen at the default 1f (#200). Flipped,
+    // 1f lands at the visual left — the same spot Alignment.BottomEnd used to give RTL users.
+    val dirSign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
+
     val lift by animateFloatAsState(if (dragging) 1.12f else 1f, label = "fabLift")
 
     fun commit() {
@@ -92,7 +101,7 @@ fun BoxScope.DraggableAddButton(
             // off to the right. onSizeChanged goes after buttonModifier so it measures the sized
             // button rather than the incoming constraints.
             modifier = Modifier
-                .graphicsLayer { translationX = travel * fraction }
+                .graphicsLayer { translationX = dirSign * travel * fraction }
                 .scale(lift)
                 .then(buttonModifier)
                 .onSizeChanged { buttonPx = it.width.toFloat() }
@@ -106,7 +115,7 @@ fun BoxScope.DraggableAddButton(
                 // Doing it in one gesture removes the ordering question entirely: wait for the
                 // press, and whichever happens first (release, or the long-press timeout) decides
                 // whether this was a tap or a pick-up.
-                .pointerInput(travel) {
+                .pointerInput(travel, dirSign) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         var up: PointerInputChange? = null
@@ -123,7 +132,10 @@ fun BoxScope.DraggableAddButton(
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             drag(down.id) { change ->
                                 if (travel > 0f) {
-                                    fraction = (fraction + change.positionChange().x / travel)
+                                    // positionChange().x is screen-relative too: in RTL a swipe
+                                    // toward the end of the track is a negative x, so the same
+                                    // sign flip keeps the button following the finger.
+                                    fraction = (fraction + dirSign * change.positionChange().x / travel)
                                         .coerceIn(0f, 1f)
                                 }
                                 change.consume()

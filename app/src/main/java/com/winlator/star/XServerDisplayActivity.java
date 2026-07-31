@@ -969,10 +969,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // FPS limiter is no longer part of frame gen — it's a standalone host pacer
             // (onFpsLimitChange). bionic-fg conf carries frame gen only; pass the limiter off.
             int fgModel = s.getFrameGenModel().getValue();
-            writeBionicFgConfig(mult, flow, false, 0, fgModel);
+            // EXPERIMENTAL even-pacing: only meaningful while FG is actually multiplying (mult > 0).
+            boolean evenPace = fgOn && mult > 0 && s.getFrameGenEvenPace().getValue();
+            writeBionicFgConfig(mult, flow, false, 0, fgModel, evenPace,
+                    evenPace ? resolvedEvenPaceFpsLimit() : 0);
+            // Arm the pacer's eager superseded-idle release in lock-step with even-pacing so the
+            // layer's generated frames don't starve the swapchain; off restores default drop behaviour.
+            setPresentEagerIdleRelease(evenPace);
             if (fgOn) container.setFrameGenMultiplier(mult);
             container.setFrameGenFlowScale(flow);
             container.setFrameGenModel(fgModel);
+            container.setFrameGenEvenPace(s.getFrameGenEvenPace().getValue());
             container.saveData();
         };
         // Standalone FPS limiter: paces the X11 Present extension (delays IdleNotify) so the GAME
@@ -1246,6 +1253,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         XServerDrawerState.INSTANCE.setFrameGenMultiplier(0);
         XServerDrawerState.INSTANCE.setFrameGenFlowScale(container.getFrameGenFlowScale());
         XServerDrawerState.INSTANCE.setFrameGenModel(resolvedFrameGenModel());
+        XServerDrawerState.INSTANCE.setFrameGenEvenPace(resolvedFrameGenEvenPace());
         XServerDrawerState.INSTANCE.setFrameGenEngine(fgEngine);
         XServerDrawerState.INSTANCE.setLsfgPerformanceMode(container.isLsfgPerformanceMode());
         XServerDrawerState.INSTANCE.setFpsLimiterEnabled(fpsLimOn);
@@ -1914,6 +1922,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // path (see in-game drawer). Keys: multiplier (2-4), flow_scale (0.2-1.0), model (0-3).
     // multiplier: 0 = frame gen off (Off in the menu), else 2-4. fpsLimit: 0 = no cap, else 10-200.
     private void writeBionicFgConfig(int multiplier, float flowScale, boolean fpsLimiterEnabled, int fpsLimitValue, int model) {
+        writeBionicFgConfig(multiplier, flowScale, fpsLimiterEnabled, fpsLimitValue, model, false, 0);
+    }
+
+    // evenPace (EXPERIMENTAL, default OFF): engages the layer's internal even-pacing engine by writing
+    // `even_pace = true` and a real `fps_limit = <evenPaceFpsLimit>` (the cadence the layer holds its
+    // generated frames to). fps_limit_enabled stays FALSE regardless — the layer's own HARD limiter is
+    // never engaged here (our guest-side X11 IdleNotify pacer owns the real cap), so the two never
+    // double-cap; even_pace uses fps_limit only as the spacing reference. When evenPace is false the
+    // output is byte-identical to the historical writer (no even_pace line, fps_limit = fpsLimitValue).
+    private void writeBionicFgConfig(int multiplier, float flowScale, boolean fpsLimiterEnabled,
+                                     int fpsLimitValue, int model, boolean evenPace, int evenPaceFpsLimit) {
         try {
             File configDir = new File(imageFs.home_path, ".config/bionic-fg");
             configDir.mkdirs();
@@ -1921,17 +1940,52 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // conf.toml is self-describing: the enabled flag and the remembered cap
             // value are written separately so toggling the limiter off in the UI does
             // not throw away the chosen value (the layer keeps it as the remembered cap).
+            int effectiveFpsLimit = evenPace ? Math.max(1, evenPaceFpsLimit) : fpsLimitValue;
             String toml = "# Written by Bannerlator (per-container frame generation)\n"
                     + "multiplier = " + multiplier + "\n"
                     + "flow_scale = " + String.format(java.util.Locale.US, "%.2f", flowScale) + "\n"
                     + "model = " + Math.max(0, Math.min(4, model)) + "\n"
                     + "fps_limit_enabled = " + (fpsLimiterEnabled ? "true" : "false") + "\n"
-                    + "fps_limit = " + fpsLimitValue + "\n";
+                    + "fps_limit = " + effectiveFpsLimit + "\n";
+            if (evenPace) toml += "even_pace = true\n";
             FileUtils.writeString(confFile, toml);
         }
         catch (Exception e) {
             Log.e("BionicFG", "Failed to write bionic-fg conf.toml", e);
         }
+    }
+
+    // Cadence target for the layer's even-pacing engine. Prefer the user's real FPS cap (the same value
+    // our guest-side pacer enforces); when the user has no cap set, anchor even_pace to the live panel
+    // refresh rate, else the remembered limiter value, else 60 — so it always has a stable cadence.
+    private int resolvedEvenPaceFpsLimit() {
+        if (resolvedFpsLimiterEnabled()) {
+            int v = resolvedFpsLimiterValue();
+            if (v > 0) return v;
+        }
+        int refresh = XServerDrawerState.INSTANCE.getCurrentRefreshRate().getValue();
+        if (refresh > 0) return refresh;
+        int remembered = resolvedFpsLimiterValue();
+        return remembered > 0 ? remembered : 60;
+    }
+
+    // Per-game override for the experimental even-pacing toggle (shortcut wins over the container),
+    // mirroring resolvedFrameGenModel's discipline. Read-only; never writes back.
+    private boolean resolvedFrameGenEvenPace() {
+        if (shortcut != null) {
+            return shortcut.getExtra("frameGenEvenPace",
+                    container.isFrameGenEvenPace() ? "1" : "0").equals("1");
+        }
+        return container.isFrameGenEvenPace();
+    }
+
+    // Arm/disarm the PresentExtension's eager superseded-idle release. On only while bionic-fg
+    // even-pacing is actively multiplying frames, so default paced-limiter behaviour is unchanged.
+    private void setPresentEagerIdleRelease(boolean eager) {
+        if (xServer == null) return;
+        com.winlator.star.xserver.extensions.PresentExtension pe =
+                xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
+        if (pe != null) pe.setEagerIdleRelease(eager);
     }
 
     // lsfg-vk (GameNative fork) conf.toml. The layer watches this file's mtime in its present hook

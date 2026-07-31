@@ -491,6 +491,20 @@ public class Container {
         putExtra("frameGenModel", String.valueOf(model));
     }
 
+    // EXPERIMENTAL, per-container, default OFF. Engages the bionic-fg layer's internal even-pacing
+    // engine (conf.toml `even_pace = true`): the layer evenly spaces its GENERATED frames across each
+    // real-frame interval instead of emitting them in a burst right after the real present. This is
+    // complementary to — not a replacement for — our guest-side X11 IdleNotify pacer (which caps the
+    // REAL producer). Kept off by default so the conf.toml output is byte-identical to today until a
+    // user opts in. Only meaningful for the bionic engine (lsfg-vk has its own path).
+    public boolean isFrameGenEvenPace() {
+        return getExtra("frameGenEvenPace", "0").equals("1");
+    }
+
+    public void setFrameGenEvenPace(boolean evenPace) {
+        putExtra("frameGenEvenPace", evenPace ? "1" : "0");
+    }
+
     // lsfg-vk "performance mode" (conf.toml performance_mode): trades interpolation quality for FPS,
     // aimed at low-end devices. Per-container, default OFF (matches the previous hardcoded false, so
     // existing users see no change until they flip it). Also live-toggleable from the in-game FG menu.

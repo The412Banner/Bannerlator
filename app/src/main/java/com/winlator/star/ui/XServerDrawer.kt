@@ -788,6 +788,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val initFgMult by state.frameGenMultiplier.collectAsState()
     val initFgFlow by state.frameGenFlowScale.collectAsState()
     val initFgModel by state.frameGenModel.collectAsState()
+    val initFgEvenPace by state.frameGenEvenPace.collectAsState()
     val engine by state.frameGenEngine.collectAsState()
     val layerActive by state.bionicFgActive.collectAsState()
     val initLsfgPerf by state.lsfgPerformanceMode.collectAsState()
@@ -838,10 +839,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
         var fgMult by remember(initFgMult) { mutableIntStateOf(initFgMult) }
         var fgFlow by remember(initFgFlow) { mutableFloatStateOf(initFgFlow) }
         var fgModel by remember(initFgModel) { mutableIntStateOf(initFgModel) }
+        var fgEvenPace by remember(initFgEvenPace) { mutableStateOf(initFgEvenPace) }
         fun applyFg() {
             state.setFrameGenMultiplier(fgMult)
             state.setFrameGenFlowScale(fgFlow)
             state.setFrameGenModel(fgModel)
+            state.setFrameGenEvenPace(fgEvenPace)
             state.onBionicFgConfigChange?.run()
         }
 
@@ -864,6 +867,30 @@ private fun FrameGenSection(state: XServerDrawerState) {
                     modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
                 )
                 FgModelButtons(fgModel) { fgModel = it; applyFg() }
+            }
+        }
+
+        // Even pacing (EXPERIMENTAL), bionic-fg only. Engages the layer's internal even-pacing engine
+        // so generated frames are spaced evenly across each real-frame interval instead of bursting
+        // right after the real present. Complementary to the FPS limiter (which caps the real
+        // producer). Hidden while frame gen is Off, where it has nothing to pace.
+        AnimatedVisibility(
+            visible = engine == "bionic" && fgMult > 0,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column {
+                Spacer(Modifier.height(8.dp))
+                ToggleRow("Even pacing (experimental)", fgEvenPace) {
+                    fgEvenPace = it
+                    applyFg()
+                }
+                Text(
+                    "Spaces generated frames evenly for smoother motion. Experimental — turn off if you see judder or stutter.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                )
             }
         }
 

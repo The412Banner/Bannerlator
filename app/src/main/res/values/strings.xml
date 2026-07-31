@@ -656,6 +656,8 @@
     <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
     <string name="fg_performance_mode">Performance mode</string>
     <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>
+    <string name="fg_even_pace">Even pacing (experimental)</string>
+    <string name="fg_even_pace_hint">Spaces generated frames evenly for smoother motion. Experimental — turn off if you see judder or stutter. bionic-fg only; toggle it live from the in-game FG menu.</string>
     <string name="fps_limiter">FPS Limiter</string>
     <string name="fps_limiter_ingame_hint">Loads the limiter; set the cap (10–200) live from the in-game FPS menu.</string>
     <string name="match_refresh_rate">Match refresh rate to FPS</string>

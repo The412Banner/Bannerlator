@@ -94,6 +94,12 @@ object XServerDrawerState {
     private val _frameGenModel = MutableStateFlow(0)
     val frameGenModel: StateFlow<Int> = _frameGenModel
 
+    // EXPERIMENTAL even-pacing (bionic-fg only). When on, conf.toml gains `even_pace = true` + a real
+    // fps_limit cadence and the X11 pacer's eager superseded-idle release is armed. Default OFF; seeded
+    // per-container (with per-game override) at launch, toggled live from the FG pane.
+    private val _frameGenEvenPace = MutableStateFlow(false)
+    val frameGenEvenPace: StateFlow<Boolean> = _frameGenEvenPace
+
     // Which FG engine the container runs: "off" / "bionic" / "lsfg". Shown as a label above the
     // in-game multiplier/flow controls so the user knows which engine they're tuning.
     private val _frameGenEngine = MutableStateFlow("off")
@@ -273,6 +279,7 @@ object XServerDrawerState {
     fun setFrameGenMultiplier(v: Int)      { _frameGenMultiplier.value = v }
     fun setFrameGenFlowScale(v: Float)     { _frameGenFlowScale.value = v }
     fun setFrameGenModel(v: Int)           { _frameGenModel.value = v.coerceIn(0, 4) }
+    fun setFrameGenEvenPace(v: Boolean)    { _frameGenEvenPace.value = v }
     fun setFrameGenEngine(v: String)       { _frameGenEngine.value = v }
     fun setLsfgPerformanceMode(v: Boolean) { _lsfgPerformanceMode.value = v }
     fun setFpsLimiterEnabled(v: Boolean)   { _fpsLimiterEnabled.value = v }
@@ -382,6 +389,7 @@ object XServerDrawerState {
         _frameGenMultiplier.value = 2
         _frameGenFlowScale.value = 0.6f
         _frameGenModel.value = 0
+        _frameGenEvenPace.value = false
         _frameGenEngine.value = "off"
         _lsfgPerformanceMode.value = false
         _fpsLimiterEnabled.value = false

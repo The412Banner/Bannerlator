@@ -98,6 +98,16 @@ public class PresentExtension implements Extension {
     private volatile int frameRateLimit = 0;
     public void setFrameRateLimit(int limit) { this.frameRateLimit = Math.max(0, limit); }
 
+    // Mailbox semantics for the paced IdleNotify scheduler (EXPERIMENTAL even-pacing mode only). When
+    // a new present supersedes a still-pending idle on the SAME window, release the superseded one
+    // immediately instead of silently dropping it (choreographer path) or holding it to the schedule
+    // (CPU path). Armed only while bionic-fg even-pacing is active: the layer then owns base pacing and
+    // presents at multiplier x the cap, so its generated frames starve the swapchain unless the guest's
+    // buffer releases track presents. Default false ⇒ behaviour is byte-identical to before: a
+    // superseded idle is dropped exactly as today (single-in-flight back-pressure never supersedes).
+    private volatile boolean eagerIdleRelease = false;
+    public void setEagerIdleRelease(boolean eager) { this.eagerIdleRelease = eager; }
+
     private static final long FIRE_EARLY_NS = 700_000L; // 0.7 ms
 
     private static class PendingIdle {
@@ -140,9 +150,26 @@ public class PresentExtension implements Extension {
         long fireTime = wt.nextIdleNs - FIRE_EARLY_NS;
 
         if (tryGetChoreographer(renderer) != null) {
-            pendingIdles.put(window.id, new PendingIdle(window, pixmap, serial, idleFence, fireTime));
+            // put() atomically replaces any pending idle for this window; the returned value is the
+            // superseded one. Default (eager off): it is dropped, exactly as before. Even-pacing on:
+            // release it now so the layer's generated frames don't starve the swapchain.
+            PendingIdle superseded =
+                pendingIdles.put(window.id, new PendingIdle(window, pixmap, serial, idleFence, fireTime));
+            if (superseded != null && eagerIdleRelease) {
+                sendIdleNotify(superseded.window, superseded.pixmap, superseded.serial, superseded.idleFence);
+            }
             postChoreographerCallback();
         } else {
+            // CPU-pacer path is not keyed by window, so multiple idles for one window can coexist.
+            // Even-pacing on: drain (release) any still-queued idles for this window before enqueuing
+            // the new one. The cpuQueue.remove() guard means only one thread ever fires a given entry.
+            if (eagerIdleRelease) {
+                for (PendingIdle q : cpuQueue) {
+                    if (q.window == window && cpuQueue.remove(q)) {
+                        sendIdleNotify(q.window, q.pixmap, q.serial, q.idleFence);
+                    }
+                }
+            }
             cpuQueue.offer(new PendingIdle(window, pixmap, serial, idleFence, fireTime));
         }
     }
@@ -169,8 +196,11 @@ public class PresentExtension implements Extension {
                 pendingIdles.entrySet().iterator(); it.hasNext(); ) {
             PendingIdle p = it.next().getValue();
             if (frameTimeNs >= p.targetNs) {
-                it.remove();
-                sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
+                // Fire only if this exact entry is still mapped (remove(key,val) returns true). If a
+                // newer present superseded it, the stale entry is skipped — never double-notified.
+                if (pendingIdles.remove(p.window.id, p)) {
+                    sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
+                }
             } else anyRemaining = true;
         }
         if (anyRemaining) postChoreographerCallback();
@@ -190,9 +220,11 @@ public class PresentExtension implements Extension {
                 if (p == null) { java.util.concurrent.locks.LockSupport.parkNanos(500_000L); continue; }
                 long now = System.nanoTime();
                 if (now >= p.targetNs) {
-                    cpuQueue.poll();
-                    pendingIdles.remove(p.window.id, p);
-                    sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
+                    // remove() guard: an eager release (even-pacing) may have already drained this
+                    // entry — send only if this thread is the one that removed it (no double-notify).
+                    if (cpuQueue.remove(p)) {
+                        sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
+                    }
                 } else {
                     long diff = p.targetNs - now;
                     if (diff > 2_000_000L) java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);

@@ -778,9 +778,11 @@ private fun RuntimeBackendChip(state: XServerDrawerState) {
 }
 
 // ───── Frame Generation section (pinned to top of Graphics tab) ─────
-// On/off is per-container; multiplier & flow scale are tuned live here and hot-reload
-// via conf.toml. Multiplier is a segmented button row (Off / 2× / 3× / 4×); the Flow
-// Scale slider collapses while Off and expands when a multiplier is selected.
+// The container-level enable gates the whole section; inside it a simple On/Off toggle
+// starts/stops frame gen (On is a fixed 2× multiplier — matching GameHub, which exposes
+// no multiplier picker and hard-wires 2×). Flow scale is tuned live here (preset chips +
+// a manual slider) and hot-reloads via conf.toml. The model, even-pacing and flow controls
+// collapse while Off and expand when On.
 @Composable
 private fun FrameGenSection(state: XServerDrawerState) {
     val accent = MaterialTheme.colorScheme.primary
@@ -803,7 +805,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0
     // (Off) every launch even when the container has an engine selected, so gate on initFgMult too
-    // — otherwise the dot would show green while FG is idle. Tracks live as the user toggles Off/2×/…
+    // — otherwise the dot would show green while FG is idle. Tracks live as the user toggles Off/On.
     val isRunning = layerActive && engine != "off" && initFgMult > 0
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -848,7 +850,9 @@ private fun FrameGenSection(state: XServerDrawerState) {
             state.onBionicFgConfigChange?.run()
         }
 
-        FgMultiplierButtons(fgMult) { fgMult = it; applyFg() }
+        // On/Off only — no 2×/3×/4× picker (GameHub-style). "On" resolves to a fixed 2×
+        // multiplier; "Off" is 0. All the reveal-gating below still keys off fgMult > 0.
+        FgOnOffButtons(fgMult) { fgMult = it; applyFg() }
 
         // Interpolation model, bionic-fg only. The layer rebuilds its framegen context when the
         // model changes (same path as a multiplier change), so this switches live. Hidden while
@@ -902,6 +906,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
         ) {
             Column {
                 Spacer(Modifier.height(8.dp))
+                // Quick-preset chips (GameHub-style). Tapping one snaps the flow scale to a
+                // preset value, which moves the manual slider below live; the slider stays
+                // free for fine-tuning anything in between. 0.2–0.8 mirror GameHub's ladder
+                // (Fast/Smooth/Balanced/Enhanced); 1.0 "Max" is our own top-of-range addition.
+                FgFlowPresetChips(fgFlow) { fgFlow = it; applyFg() }
+                Spacer(Modifier.height(8.dp))
                 LabeledSlider(
                     "Flow Scale", fgFlow, 0.2f..1.0f,
                     { fgFlow = it }, { applyFg() },
@@ -944,7 +954,9 @@ private fun FrameGenSection(state: XServerDrawerState) {
     }
 }
 
-// Off / 2× / 3× / 4× segmented button row. mult values 0/2/3/4; selected = filled accent.
+// Interpolation-model segmented row (bionic-fg): Default/Traced/V2/FSR3/FSR3+ = 0..4.
+// selected = filled accent. Kept as an advanced selector alongside the GameHub-style
+// On/Off toggle — this is our superset over GameHub, which ships only two engines.
 @Composable
 private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
@@ -985,11 +997,14 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
     }
 }
 
+// Frame-gen On/Off segmented row (GameHub-style — no 2×/3×/4× picker). "On" maps to a
+// fixed 2× multiplier (the value the layer and every GameHub preset use); "Off" = 0, which
+// the conf writer/layer treat as frame gen disabled. selected is the live multiplier value.
 @Composable
-private fun FgMultiplierButtons(selected: Int, onSelect: (Int) -> Unit) {
+private fun FgOnOffButtons(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
-    val options = listOf(0 to "Off", 2 to "2×", 3 to "3×", 4 to "4×")
+    val options = listOf(0 to "Off", 2 to "On")
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1016,6 +1031,54 @@ private fun FgMultiplierButtons(selected: Int, onSelect: (Int) -> Unit) {
                     color = if (isSel) Color.Black else accent,
                     fontSize = 13.sp,
                     fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+// Flow-scale quick-preset chips. Each chip snaps flowScale to a preset and the manual
+// slider follows live (the slider is still free for in-between values). 0.2/0.4/0.6/0.8
+// mirror GameHub's Fast/Smooth/Balanced/Enhanced ladder; 1.0 "Max" is our own extension
+// (GameHub tops out at 0.8). A chip highlights when the live value matches its preset, so
+// dragging the slider off a preset clears the highlight.
+@Composable
+private fun FgFlowPresetChips(flowScale: Float, onSelect: (Float) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val accentDim = LocalAccentDim.current
+    val options = listOf(
+        0.2f to "Save",
+        0.4f to "Smooth",
+        0.6f to "Balanced",
+        0.8f to "Enhanced",
+        1.0f to "Max"
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        options.forEach { (value, label) ->
+            val isSel = kotlin.math.abs(flowScale - value) < 0.001f
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSel) accent else Color.Black)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSel) accent else accentDim,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onSelect(value) }
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    label,
+                    color = if (isSel) Color.Black else accent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
                 )
             }
         }
@@ -1458,7 +1521,7 @@ private fun GradientSlider(
 
 // Scaling-mode picker: 7 options (0=None 1=Linear 2=Nearest 3=SGSR 4=FSR 5=FSR Fit
 // 6=Sharpen) laid out as rows of four segmented chips (same box-chip idiom as
-// FgMultiplierButtons). Grayed out when the active host renderer is not Vulkan.
+// FgOnOffButtons). Grayed out when the active host renderer is not Vulkan.
 // Terminal debanding controls (toggle + optional dither-strength slider), shared by the
 // GL and Vulkan graphics blocks. Reads/writes the single _debandEnabled/_debandStrength
 // state and fires onDebandApply; only one renderer block is shown per session, so the

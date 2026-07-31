@@ -703,7 +703,7 @@ private fun TopLevelFields(
         )
         val lsfgDllAvailable = remember { java.io.File(context.filesDir, "lsfg-vk/Lossless.dll").isFile }
         val fgDisabledOpts = buildSet {
-            add(fgEngineLabels[1])                          // bionic-fg — grayed out for now (WIP; re-enable once proven)
+            // bionic-fg re-enabled to A/B the experimental even-pacing mode.
             if (!lsfgDllAvailable) add(fgEngineLabels[2])   // lsfg-vk — needs an imported Lossless.dll
         }
         val fgSelIdx = fgEngines.indexOf(viewModel.frameGenEngine).coerceAtLeast(0)

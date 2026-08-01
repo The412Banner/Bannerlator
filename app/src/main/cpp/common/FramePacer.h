@@ -40,7 +40,8 @@ public:
         std::lock_guard<std::mutex> lk(mutex_);
         vsyncNs_ = vsyncNs > 0 ? vsyncNs : 0;
         if (!enabled) { armed_.store(false, std::memory_order_relaxed); return; }
-        if (seedIntervalNs > 0) ewmaNs_ = seedIntervalNs;   // seed to avoid warmup jitter
+        seedNs_ = seedIntervalNs > 0 ? seedIntervalNs : 0;  // cap*mult: authoritative when set
+        if (seedIntervalNs > 0) ewmaNs_ = seedIntervalNs;   // seed the (uncapped) EWMA start too
         nextTargetNs_  = 0;                                  // resync the deadline
         lastArrivalNs_ = 0;
         armed_.store(true, std::memory_order_relaxed);
@@ -58,13 +59,21 @@ public:
         bool engaged = false;
         {
             std::lock_guard<std::mutex> lk(mutex_);
-            // 1) Self-calibrate: EWMA (alpha≈0.1, integer form) of the true arrival interval.
-            if (lastArrivalNs_ != 0) {
-                int64_t d = entry - lastArrivalNs_;
-                if (d > 0) ewmaNs_ = (ewmaNs_ == 0) ? d : ewmaNs_ + (d - ewmaNs_) / 10;
+            // 1) Target interval. When a real FPS cap is set, cap*mult IS the intended even present
+            //    rate — use it directly (authoritative). The measured arrival interval must NOT be
+            //    trusted once we pace: entry-to-entry then reflects our OWN paced drain, a feedback
+            //    loop that settles at the wrong rate (device-observed: locked at 47fps vs the 60fps
+            //    cap). Only self-calibrate (EWMA of the true arrival interval) when UNCAPPED.
+            if (seedNs_ > 0) {
+                interval = seedNs_;
+            } else {
+                if (lastArrivalNs_ != 0) {
+                    int64_t d = entry - lastArrivalNs_;
+                    if (d > 0) ewmaNs_ = (ewmaNs_ == 0) ? d : ewmaNs_ + (d - ewmaNs_) / 10;
+                }
+                lastArrivalNs_ = entry;
+                interval = ewmaNs_;
             }
-            lastArrivalNs_ = entry;
-            interval = ewmaNs_;
             if (interval > 0) {
                 if (interval < kMinIntervalNs) interval = kMinIntervalNs;  // reject outliers (>240fps)
                 if (interval > kMaxIntervalNs) interval = kMaxIntervalNs;  // reject outliers (<10fps)
@@ -120,6 +129,7 @@ private:
 
     std::atomic<bool>     armed_{false};
     std::mutex            mutex_;
+    int64_t               seedNs_        = 0;   // cap*mult interval; authoritative when > 0
     int64_t               ewmaNs_        = 0;
     int64_t               nextTargetNs_  = 0;
     int64_t               lastArrivalNs_ = 0;

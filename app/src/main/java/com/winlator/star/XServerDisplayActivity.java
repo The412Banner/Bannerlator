@@ -976,6 +976,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // Arm the pacer's eager superseded-idle release in lock-step with even-pacing so the
             // layer's generated frames don't starve the swapchain; off restores default drop behaviour.
             setPresentEagerIdleRelease(evenPace);
+
+            // Arm the host generated-frame even pacer in lock-step (mult>1 spaces the SF present
+            // time; 0 disables). Base cadence = the real-frame cap so the grid tracks IdleNotify
+            // arrivals. Fully gated to FG-on + the experimental even-pacing toggle.
+            setPresentGeneratedFramePacing(evenPace ? mult : 0, resolvedEvenPaceFpsLimit());
             if (fgOn) container.setFrameGenMultiplier(mult);
             container.setFrameGenFlowScale(flow);
             container.setFrameGenModel(fgModel);
@@ -1947,7 +1952,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     + "model = " + Math.max(0, Math.min(4, model)) + "\n"
                     + "fps_limit_enabled = " + (fpsLimiterEnabled ? "true" : "false") + "\n"
                     + "fps_limit = " + effectiveFpsLimit + "\n";
-            if (evenPace) toml += "even_pace = true\n";
+            // Host even-pacing now owns generated-frame spacing (PresentExtension +
+            // ASurfaceTransaction_setDesiredPresentTime), so DISABLE the layer's own even-pacer
+            // sleep to stop it fighting the host grid; written explicitly to override a stale true.
+            if (evenPace) toml += "even_pace = false\n";
             FileUtils.writeString(confFile, toml);
         }
         catch (Exception e) {
@@ -1986,6 +1994,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         com.winlator.star.xserver.extensions.PresentExtension pe =
                 xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
         if (pe != null) pe.setEagerIdleRelease(eager);
+    }
+
+    // Arm/disarm the PresentExtension generated-frame even pacer (see setGeneratedFramePacing).
+    // mult<=1 or baseFps<=0 disables it; engaged only while bionic-fg even-pacing is active.
+    private void setPresentGeneratedFramePacing(int mult, int baseFps) {
+        if (xServer == null) return;
+        com.winlator.star.xserver.extensions.PresentExtension pe =
+                xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
+        if (pe != null) pe.setGeneratedFramePacing(mult, baseFps);
     }
 
     // lsfg-vk (GameNative fork) conf.toml. The layer watches this file's mtime in its present hook

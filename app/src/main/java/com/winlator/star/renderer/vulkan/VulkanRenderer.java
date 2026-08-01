@@ -98,7 +98,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeDetachSurface(long handle);
     private native boolean nativeReattachSurface(long handle, android.view.Surface surface);
     private native void nativeDestroyScanout(long handle);
-    private native void nativeScanoutSetBuffer(long handle, long ahbPtr, int x, int y, int w, int h, int fenceFd);
+    private native void nativeScanoutSetBuffer(long handle, long ahbPtr, int x, int y, int w, int h, int fenceFd, long desiredPresentNs);
     private native void nativeScanoutSetCursorImage(long handle, java.nio.ByteBuffer pixels, short w, short h, short stride);
     private native void nativeScanoutSetCursorPos(long handle, short x, short y, short hotX, short hotY);
     private native boolean nativeIsScanoutActive(long handle);
@@ -482,8 +482,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     if (ahbPtr != 0) {
                         if (nativeMode && pixmap.isDirectScanout() && nativeIsScanoutActive(nativeHandle)) {
                             int fence = g.unlock();
+                            // Direct-scanout copy path (non-native COPY fallback); the frame-gen even
+                            // pacer only drives the primary FLIP path via onUpdateWindowContent, so no
+                            // latch-time hint here.
                             nativeScanoutSetBuffer(nativeHandle, ahbPtr,
-                                rx, ry, pixmap.width, pixmap.height, fence);
+                                rx, ry, pixmap.width, pixmap.height, fence, 0L);
                             g.lock();
                             pixmap.refreshDataFromTexture();
                         } else {
@@ -511,7 +514,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     @Override
-    public void onUpdateWindowContent(Window window) {
+    public void onUpdateWindowContent(Window window) { onUpdateWindowContent(window, 0L); }
+
+    // desiredPresentNs (0 = none): frame-gen even-pacer SF latch-time hint, forwarded to the native
+    // scanout FLIP present. See PresentExtension.computeDesiredPresentNs.
+    public void onUpdateWindowContent(Window window, long desiredPresentNs) {
         synchronized (lock) {
             if (nativeHandle == 0) return;
             Drawable drawable = window.getContent();
@@ -532,7 +539,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
                             int fence = g.unlock();
                             nativeScanoutSetBuffer(nativeHandle, ahbPtr,
-                                rx, ry, drawable.width, drawable.height, fence);
+                                rx, ry, drawable.width, drawable.height, fence, desiredPresentNs);
                             g.lock();
                             drawable.refreshDataFromTexture();
                             boolean delivered = nativeIsGameFrameDelivered(nativeHandle);

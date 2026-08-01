@@ -24,6 +24,7 @@ typedef void  (*pfn_STSetBuffer)(void*, void*, AHardwareBuffer*, int);
 typedef void  (*pfn_STSetZOrder)(void*, void*, int32_t);
 typedef void  (*pfn_STSetVisibility)(void*, void*, int8_t);
 typedef void  (*pfn_STSetGeometry)(void*, void*, const ARect*, const ARect*, int32_t);
+typedef void  (*pfn_STSetDesiredPresentTime)(void*, int64_t);
 
 bool ScanoutContext::loadApi() {
     if (scanoutApiLoaded) return fnSCCreateFromWin != nullptr;
@@ -44,6 +45,9 @@ bool ScanoutContext::loadApi() {
     fnSTSetZOrder     = dlsym(lib, "ASurfaceTransaction_setZOrder");
     fnSTSetVisibility = dlsym(lib, "ASurfaceTransaction_setVisibility");
     fnSTSetGeometry   = dlsym(lib, "ASurfaceTransaction_setGeometry");
+    // OPTIONAL (API 29+): frame-gen even-pacer latch-time hint. Resolved OUTSIDE coreOk — if absent
+    // the pacer silently no-ops. Not required for normal scanout.
+    fnSTSetDesiredPresentTime = dlsym(lib, "ASurfaceTransaction_setDesiredPresentTime");
 
     bool coreOk = fnSCCreateFromWin && fnSCRelease &&
                   fnSTCreate && fnSTDelete && fnSTApply &&
@@ -67,6 +71,7 @@ bool ScanoutContext::loadApi() {
 #define ST_SETZORDER(t,sc,z)   if(fnSTSetZOrder) ((pfn_STSetZOrder)fnSTSetZOrder)((t),(sc),(z))
 #define ST_SETVIS(t,sc,v)      ((pfn_STSetVisibility)fnSTSetVisibility)((t),(sc),(v))
 #define ST_SETGEO(t,sc,s,d,r)  ((pfn_STSetGeometry)fnSTSetGeometry)((t),(sc),(s),(d),(r))
+#define ST_SET_PRESENT_TIME(t,ns) if(fnSTSetDesiredPresentTime) ((pfn_STSetDesiredPresentTime)fnSTSetDesiredPresentTime)((t),(ns))
 
 static inline bool arectEq(const ARect& a, const ARect& b) {
     return a.left==b.left && a.top==b.top && a.right==b.right && a.bottom==b.bottom;
@@ -204,7 +209,8 @@ void ScanoutContext::destroy() {
     scanoutGeoDirty   = true;
 }
 
-void ScanoutContext::setBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd) {
+void ScanoutContext::setBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd,
+                               int64_t desiredPresentNs) {
     (void)x; (void)y;   // dst comes from scanoutDst*; x/y kept for ABI parity
     if (!scanoutActive.load() || !scanoutGameSC || !ahb || !scanoutGameTx) {
         SCO_RLOG("scanoutSetBuffer: SKIPPED active=%d sc=%p ahb=%p tx=%p",
@@ -251,6 +257,15 @@ void ScanoutContext::setBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h,
           scanoutVisShown = true;
       }
     }
+
+    // Frame-gen even pacer: hand SurfaceFlinger the intended latch time so the real + interpolated
+    // presents land on an even 2-vsync/3-vsync grid (the GameHub cadence) instead of back-to-back +
+    // stall. This is a declarative hint at the SF latch stage — NOT a host-thread sleep (cf. the
+    // reverted host-nanosleep pacer) — and it survives where the layer's pre-present sleep did not.
+    // Caveat: this path presents the guest AHB directly, so SF holds it slightly longer; the Java grid
+    // clamps the hold to < 1 real-frame (maxAhead) and the DXVK FLIP swapchain (>=3 images) absorbs it.
+    // The fully buffer-safe path is ASR sfCompat (pool-backed). Hint dropped when the symbol is absent.
+    if (desiredPresentNs > 0) ST_SET_PRESENT_TIME(t, desiredPresentNs);
 
     ST_APPLY(t);
 

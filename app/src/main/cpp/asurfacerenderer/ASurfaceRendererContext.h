@@ -59,7 +59,10 @@ public:
                          int64_t serial    = 0,
                          jobject gpuImage  = nullptr,
                          int     slot      = -1,
-                         bool    sfCompatMode = true);
+                         bool    sfCompatMode = true,
+                         // 0 = none. Frame-gen even-pacer SF latch-time hint; only honored on the
+                         // sfCompat (pool-buffered) branch so the guest buffer is never held longer.
+                         int64_t desiredPresentNs = 0);
 
     // Pre-imports the stable three-buffer CPU scanout swapchain. Repeated calls
     // are cheap and make surface/context recreation safe.
@@ -171,6 +174,9 @@ private:
     void* fnSTReparent         = nullptr;
     void* fnSTSetOnComplete    = nullptr;
     void* fnSTStatsGetPreviousReleaseFenceFd = nullptr;
+    // OPTIONAL (API 29+): frame-gen even-pacer latch-time hint. Resolved separately from coreOk — a
+    // missing symbol just disables the pacer (no regression).
+    void* fnSTSetDesiredPresentTime = nullptr;
 
     void oneShot(std::function<void(void*)> fill);
 

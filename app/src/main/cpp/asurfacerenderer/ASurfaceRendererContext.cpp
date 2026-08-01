@@ -52,6 +52,7 @@ typedef void  (*pfn_STSetOnComplete)(void* transaction, void* context,
                                      void (*callback)(void* context, void* stats));
 typedef int   (*pfn_STStatsGetPreviousReleaseFenceFd)(void* stats, void* surface_control);
 typedef void  (*pfn_STReparent)(void*, void*, void*);
+typedef void  (*pfn_STSetDesiredPresentTime)(void*, int64_t);
 
 #define SC_CREATE(win, name)   ((pfn_SCCreateFromWindow)fnSCCreateFromWin)((win),(name))
 #define SC_RELEASE(sc)         ((pfn_SCRelease)fnSCRelease)((sc))
@@ -64,6 +65,7 @@ typedef void  (*pfn_STReparent)(void*, void*, void*);
 #define ST_SETGEO(t,sc,s,d,r)  ((pfn_STSetGeometry)fnSTSetGeometry)((t),(sc),(s),(d),(r))
 #define ST_SET_TRANSPARENCY(t,sc,tr) if(fnSTSetBufferTransparency) ((pfn_STSetBufferTransparency)fnSTSetBufferTransparency)((t),(sc),(tr))
 #define ST_REPARENT(t,sc,p)    if(fnSTReparent) ((pfn_STReparent)fnSTReparent)((t),(sc),(p))
+#define ST_SET_PRESENT_TIME(t,ns) if(fnSTSetDesiredPresentTime) ((pfn_STSetDesiredPresentTime)fnSTSetDesiredPresentTime)((t),(ns))
 
 #define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5
 
@@ -156,6 +158,9 @@ bool ASurfaceRendererContext::loadScanoutApi() {
     fnSTSetBufferTransform = dlsym(lib, "ASurfaceTransaction_setBufferTransform");
     fnSTReparent      = dlsym(lib, "ASurfaceTransaction_reparent");
     fnSTStatsGetPreviousReleaseFenceFd = dlsym(lib, "ASurfaceTransactionStats_getPreviousReleaseFenceFd");
+    // OPTIONAL (API 29+): frame-gen even-pacer latch-time hint. NOT part of coreOk — if absent the
+    // pacer silently no-ops.
+    fnSTSetDesiredPresentTime = dlsym(lib, "ASurfaceTransaction_setDesiredPresentTime");
 
     bool coreOk = fnSCCreateFromWin && fnSCRelease && fnSTCreate && fnSTDelete && fnSTApply && fnSTSetBuffer && fnSTSetVisibility &&
                   fnSTSetGeometry && fnSTSetOnComplete && fnSTSetBufferTransparency && fnSTSetBufferTransform && fnSTReparent &&
@@ -339,7 +344,8 @@ void ASurfaceRendererContext::returnSourceFence(JNIEnv* env, jobject ahbImage, i
 }
 
 void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AHardwareBuffer* sourceAhb, int sourceAcquireFenceFd,
-                                              int64_t windowId, int64_t serial, jobject ahbImage, int sourceSlot, bool sfCompatMode) {
+                                              int64_t windowId, int64_t serial, jobject ahbImage, int sourceSlot, bool sfCompatMode,
+                                              int64_t desiredPresentNs) {
     if (!sourceAhb) { if (sourceAcquireFenceFd >= 0) close(sourceAcquireFenceFd); return; }
     if (!acceptingConvertedFrames.load(std::memory_order_acquire)) {
         returnSourceFence(env, ahbImage, sourceSlot, sourceAcquireFenceFd);
@@ -444,6 +450,14 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
 
         ST_SETBUF(transaction, surfaceControl, destinationSlot->buffer, conversionFenceFd);
         ST_SET_TRANSPARENCY(transaction, surfaceControl, 2);
+
+        // Frame-gen even pacer: tell SurfaceFlinger the intended latch time so the real + interpolated
+        // presents land on an even 2-vsync/3-vsync grid (the GameHub cadence) instead of back-to-back +
+        // stall. Declarative hint at the SF latch stage — NOT a host-thread sleep (cf. the reverted
+        // host-nanosleep pacer) — so it survives where the layer's pre-vkQueuePresent sleep did not.
+        // Safe here because this branch presents a CONVERTED POOL buffer (depth 8), so the guest buffer
+        // is already returned; only a pool slot is held ~<1 real-frame. Dropped if the symbol is absent.
+        if (desiredPresentNs > 0) ST_SET_PRESENT_TIME(transaction, desiredPresentNs);
 
         std::vector<PendingSurfaceRelease> releases;
         if (previousSlot) {

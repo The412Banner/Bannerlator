@@ -378,23 +378,28 @@ public class ASurfaceRenderer implements HostRenderer,
         if (!surfaceInitialized) return;
         Drawable drawable = window.getContent();
         if (drawable == null || !window.attributes.isMapped() || isUnviewable(window)) return;
-        pushWindowBuffer(window.id, drawable);
+        pushWindowBuffer(window.id, drawable, 0L);
     }
 
     /** Direct present entry point for PresentExtension (the DXVK FLIP/AHB path). */
-    public void presentWindow(Window window, Drawable pixmap) {
+    public void presentWindow(Window window, Drawable pixmap) { presentWindow(window, pixmap, 0L); }
+
+    /** As above, with a frame-gen even-pacer SF latch-time hint (0 = none). See
+     *  PresentExtension.computeDesiredPresentNs. */
+    public void presentWindow(Window window, Drawable pixmap, long desiredPresentNs) {
         if (!surfaceInitialized || pixmap == null) return;
         if (!window.attributes.isMapped() || isUnviewable(window)) return;
-        pushWindowBuffer(window.id, pixmap);
+        pushWindowBuffer(window.id, pixmap, desiredPresentNs);
     }
 
-    private void pushWindowBuffer(int windowId, Drawable drawable) {
+    private void pushWindowBuffer(int windowId, Drawable drawable, long desiredPresentNs) {
         if (!windowSurfaces.containsKey(windowId)) return; // SC not created yet; updateScene will
         synchronized (drawable.renderLock) {
             if (drawable.getTexture() instanceof AHBImage) {
+                // CPU chrome is never paced (desiredPresentNs is ignored below).
                 pushCpuImageToNative(windowId, (AHBImage) drawable.getTexture());
             } else if (drawable.getTexture() instanceof GPUImage) {
-                pushGpuImageToNative(windowId, (GPUImage) drawable.getTexture());
+                pushGpuImageToNative(windowId, (GPUImage) drawable.getTexture(), desiredPresentNs);
             }
         }
     }
@@ -411,8 +416,9 @@ public class ASurfaceRenderer implements HostRenderer,
         if (ahbPtr == 0) return;
         int acquireFence = g.consumeAcquireFence();
         // R/B swap is handled per-slot by the CPU copy + native converter; slot/AHBImage let the
-        // native side return the release fence to the swapchain slot it just consumed.
-        nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
+        // native side return the release fence to the swapchain slot it just consumed. CPU chrome is
+        // never even-paced -> desiredPresentNs 0.
+        nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode, 0L);
         // #1644: half-rate HUD tick for CPU chrome.
         if (hudFrameTick != null) {
             if (skipFPSCount.getAndIncrement() >= 1) {
@@ -428,10 +434,10 @@ public class ASurfaceRenderer implements HostRenderer,
      * through the native BGRA->RGBA converter when {@link #sfCompatMode} is on.
      * Caller holds {@code drawable.renderLock}.
      */
-    private void pushGpuImageToNative(int windowId, GPUImage g) {
+    private void pushGpuImageToNative(int windowId, GPUImage g, long desiredPresentNs) {
         long ahbPtr = g.getHardwareBufferPtr();
         if (ahbPtr == 0) return;
-        nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, 0, null, -1, sfCompatMode);
+        nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, 0, null, -1, sfCompatMode, desiredPresentNs);
         if (hudFrameTick != null) hudFrameTick.accept(windowId);
     }
 
@@ -567,7 +573,7 @@ public class ASurfaceRenderer implements HostRenderer,
     private native boolean nativeReattachSurface(Surface surface);
     private native void nativeDestroyScanout();
     private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId,
-            long serial, AHBImage ahbImage, int slot, boolean sfCompatMode);
+            long serial, AHBImage ahbImage, int slot, boolean sfCompatMode, long desiredPresentNs);
     // CPU scanout swapchain (AHBImage) registration with the native GPU converter (GN #1620).
     static native boolean nativePrepareCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
     static native void nativeReleaseCpuSourceBuffers(long ahb0, long ahb1, long ahb2);

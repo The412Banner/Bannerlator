@@ -210,7 +210,8 @@ public:
     void applyScanoutBuffer();
     void initScanoutFromWindows(ANativeWindow* gameWin, ANativeWindow* cursorWin);
     void scanoutSetDst(int x, int y, int w, int h);
-    void scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1);
+    void scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1,
+                          int64_t desiredPresentNs = 0);
     void scanoutSetCursorImage(void* pixels, short w, short h, short stride);
     void scanoutSetCursorPos(short x, short y, short hotX, short hotY);
     // The renderer-neutral scanout implementation. The scanout methods above are

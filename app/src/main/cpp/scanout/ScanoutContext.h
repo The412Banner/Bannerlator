@@ -38,7 +38,10 @@ public:
     void destroy();
 
     // --- per-frame game buffer (applies its transaction INLINE) ---
-    void setBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1);
+    // desiredPresentNs (0 = none): declarative SF latch-time hint for the frame-gen even pacer
+    // (ASurfaceTransaction_setDesiredPresentTime). See setBuffer() impl.
+    void setBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1,
+                   int64_t desiredPresentNs = 0);
 
     // --- cursor: pure state-setters. They mutate state only and DO NOT signal
     //     any render thread. Each returns true if a deferred apply is now
@@ -98,6 +101,9 @@ private:
     void*   fnSTSetZOrder     = nullptr;
     void*   fnSTSetVisibility = nullptr;
     void*   fnSTSetGeometry   = nullptr;
+    // Optional (API 29+): resolved separately from coreOk so a missing symbol just disables the
+    // even-pacer hint (no regression). See loadApi().
+    void*   fnSTSetDesiredPresentTime = nullptr;
 
     int32_t scanoutDstX = 0, scanoutDstY = 0, scanoutDstW = 0, scanoutDstH = 0;
     bool    gameScVisible = false;

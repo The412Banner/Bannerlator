@@ -25,8 +25,9 @@ void VulkanRendererContext::applyScanoutBuffer() {
     scanout.applyPendingCursor();
 }
 
-void VulkanRendererContext::scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd) {
-    scanout.setBuffer(ahb, x, y, w, h, fenceFd);
+void VulkanRendererContext::scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd,
+                                             int64_t desiredPresentNs) {
+    scanout.setBuffer(ahb, x, y, w, h, fenceFd, desiredPresentNs);
 }
 
 void VulkanRendererContext::scanoutSetDst(int x, int y, int w, int h) {

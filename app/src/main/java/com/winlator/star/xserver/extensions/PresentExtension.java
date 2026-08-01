@@ -108,6 +108,46 @@ public class PresentExtension implements Extension {
     private volatile boolean eagerIdleRelease = false;
     public void setEagerIdleRelease(boolean eager) { this.eagerIdleRelease = eager; }
 
+    // ─────────── Generated-frame even pacer (EXPERIMENTAL) ───────────
+    // When bionic-fg multiplies (mult > 1) the layer emits the real + interpolated presents nearly
+    // back-to-back; each is applied to SurfaceFlinger immediately, so they collapse onto adjacent
+    // refreshes then stall (measured 1-vsync + 4-vsync bimodal). We rewrite every game present's
+    // DESIRED PRESENT TIME onto an even grid at (base * mult) fps and pass it to the native SF
+    // submit (ASurfaceTransaction_setDesiredPresentTime): SF withholds the latch until that time.
+    // Declarative hint at the latch stage — NOT a host-thread sleep (cf. the reverted host-nanosleep
+    // pacer that capped the display, not the game) — so it survives where the layer's pre-present
+    // sleep did not (that only shifted pipe-entry; our compositor re-applied and SF re-quantized it).
+    // Grid rate = base*mult stays locked to the IdleNotify-capped arrival rate. Goal: reproduce
+    // GameHub's even 2-vsync/3-vsync alternation. mult <= 1 or baseFps <= 0 => disabled (hint 0).
+    private volatile int genPaceMultiplier = 0;
+    private volatile int genPaceBaseFps = 0;
+    public void setGeneratedFramePacing(int mult, int baseFps) {
+        this.genPaceMultiplier = Math.max(0, mult);
+        this.genPaceBaseFps = Math.max(0, baseFps);
+    }
+
+    private static class GenPaceTiming { long nextSlotNs = 0; long lastDesiredNs = 0; }
+    private final java.util.concurrent.ConcurrentHashMap<Integer, GenPaceTiming> genPaceTimings =
+        new java.util.concurrent.ConcurrentHashMap<>();
+
+    // Desired SF latch time (System.nanoTime / CLOCK_MONOTONIC domain) for this present, or 0 when
+    // the pacer is off. Per-window even grid, resync-after-pause, <=1-real-frame latency clamp,
+    // monotonic per window (SF requires non-decreasing desired times per SurfaceControl).
+    private long computeDesiredPresentNs(Window window) {
+        final int m = genPaceMultiplier, base = genPaceBaseFps;
+        if (m <= 1 || base <= 0) return 0;
+        final long grid = 1_000_000_000L / ((long) base * m);
+        final long now = System.nanoTime();
+        GenPaceTiming t = genPaceTimings.computeIfAbsent(window.id, k -> new GenPaceTiming());
+        if (t.nextSlotNs <= now - grid) t.nextSlotNs = now;   // first frame / resync after a pause
+        else t.nextSlotNs += grid;
+        final long maxAhead = 1_000_000_000L / base;           // clamp added latency to <= 1 real frame
+        long desired = Math.min(t.nextSlotNs, now + maxAhead);
+        desired = Math.max(desired, t.lastDesiredNs + 1);
+        t.lastDesiredNs = desired;
+        return desired;
+    }
+
     private static final long FIRE_EARLY_NS = 700_000L; // 0.7 ms
 
     private static class PendingIdle {
@@ -293,6 +333,10 @@ public class PresentExtension implements Extension {
 
         final int targetFps = this.frameRateLimit;
 
+        // Even pacer: desired SF latch time for this game present (0 = disabled). Computed once so
+        // both native present paths (ASR + Vulkan scanout) receive the same grid slot.
+        final long desiredPresentNs = computeDesiredPresentNs(window);
+
         long ust = System.nanoTime() / 1000;
         long msc = ust / FAKE_INTERVAL;
 
@@ -319,7 +363,7 @@ public class PresentExtension implements Extension {
                     content.setTexture(pixmap.drawable.getTexture());
                     content.setDirectScanout(true);
                     sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
-                    asr.presentWindow(window, content);
+                    asr.presentWindow(window, content, desiredPresentNs);
                 } else {
                     content.copyArea((short)0, (short)0, xOff, yOff, pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
                     sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
@@ -329,7 +373,7 @@ public class PresentExtension implements Extension {
                 content.setTexture(pixmap.drawable.getTexture());
                 content.setDirectScanout(true);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
-                if (window.attributes.isMapped()) vr.onUpdateWindowContent(window);
+                if (window.attributes.isMapped()) vr.onUpdateWindowContent(window, desiredPresentNs);
                 emitIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
             } else if (vr != null && window.attributes.isMapped()
                     && pixmap.drawable.getTexture() instanceof GPUImage

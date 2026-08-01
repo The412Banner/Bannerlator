@@ -70,12 +70,21 @@ public:
                 if (interval > kMaxIntervalNs) interval = kMaxIntervalNs;  // reject outliers (<10fps)
                 // 2) Headroom guard: only pace when the target interval has slack over one vsync.
                 if (vsyncNs_ <= 0 || interval > vsyncNs_) {
-                    if (nextTargetNs_ == 0 || nextTargetNs_ < entry - interval)
-                        nextTargetNs_ = entry;                   // resync after pause / rate change
-                    int64_t dl = nextTargetNs_;
-                    nextTargetNs_ += interval;                   // ABSOLUTE, drift-free advance
-                    if (dl > entry) { deadline = dl; engaged = true; }
-                    else nextTargetNs_ = 0;                      // arrivals already >= target: pass through
+                    // Next deadline = previous deadline + interval (absolute, drift-free), where
+                    // nextTargetNs_ holds the LAST deadline we paced to. The deadline must be one
+                    // interval AHEAD (like GameScope seeds last_target then presents at last_target+
+                    // interval) — the earlier code used the base itself, which equals `now` on the first
+                    // frame, so `deadline > now` was never true and it never engaged. First frame / fell
+                    // behind (deadline in the past after a pause or rate change) -> reschedule one
+                    // interval out; raced >2 intervals ahead (measured interval a touch too large) ->
+                    // clamp so added latency can't run away. Always engages when there's headroom.
+                    int64_t target = (nextTargetNs_ == 0) ? (entry + interval)
+                                                          : (nextTargetNs_ + interval);
+                    if (target <= entry)                 target = entry + interval;    // behind -> resync
+                    if (target > entry + 2 * interval)   target = entry + interval;    // ahead  -> clamp
+                    nextTargetNs_ = target;
+                    deadline = target;
+                    engaged  = true;
                 } else {
                     nextTargetNs_ = 0;                           // no headroom: pass through
                 }

@@ -265,6 +265,27 @@ void ScanoutContext::setBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h,
     // Caveat: this path presents the guest AHB directly, so SF holds it slightly longer; the Java grid
     // clamps the hold to < 1 real-frame (maxAhead) and the DXVK FLIP swapchain (>=3 images) absorbs it.
     // The fully buffer-safe path is ASR sfCompat (pool-backed). Hint dropped when the symbol is absent.
+    // [BFGPace DIAG — remove after diagnosis] Is the pacer's desired-present value arriving on THIS
+    // (FLIP) path, is the symbol resolved, and are successive desired times even (min~max~16.67ms) or
+    // bunched (min~0/max~33)? desired==0 here => presents are taking the copy path, not FLIP.
+    {
+        static uint32_t s_bfgN = 0;
+        static int64_t s_bfgLast = 0;
+        static double s_bfgMin = 1e18, s_bfgMax = 0.0;
+        if (desiredPresentNs > 0 && s_bfgLast > 0) {
+            double d = (desiredPresentNs - s_bfgLast) / 1e6;
+            if (d < s_bfgMin) s_bfgMin = d;
+            if (d > s_bfgMax) s_bfgMax = d;
+        }
+        if (desiredPresentNs > 0) s_bfgLast = desiredPresentNs;
+        if ((++s_bfgN % 60u) == 0) {
+            __android_log_print(ANDROID_LOG_INFO, "BFGPace",
+                "SCANOUT desired=%lld intervalMs[min=%.2f max=%.2f] sym=%d",
+                (long long)desiredPresentNs, s_bfgMin, s_bfgMax,
+                fnSTSetDesiredPresentTime ? 1 : 0);
+            s_bfgMin = 1e18; s_bfgMax = 0.0;
+        }
+    }
     if (desiredPresentNs > 0) ST_SET_PRESENT_TIME(t, desiredPresentNs);
 
     ST_APPLY(t);

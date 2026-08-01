@@ -121,9 +121,11 @@ public class PresentExtension implements Extension {
     // GameHub's even 2-vsync/3-vsync alternation. mult <= 1 or baseFps <= 0 => disabled (hint 0).
     private volatile int genPaceMultiplier = 0;
     private volatile int genPaceBaseFps = 0;
+    private int genPaceLogCtr = 0; // BFGPace DIAG
     public void setGeneratedFramePacing(int mult, int baseFps) {
         this.genPaceMultiplier = Math.max(0, mult);
         this.genPaceBaseFps = Math.max(0, baseFps);
+        android.util.Log.i("BFGPace", "armed mult=" + this.genPaceMultiplier + " base=" + this.genPaceBaseFps);
     }
 
     private static class GenPaceTiming { long nextSlotNs = 0; long lastDesiredNs = 0; }
@@ -145,6 +147,7 @@ public class PresentExtension implements Extension {
         long desired = Math.min(t.nextSlotNs, now + maxAhead);
         desired = Math.max(desired, t.lastDesiredNs + 1);
         t.lastDesiredNs = desired;
+        if ((++genPaceLogCtr % 60) == 0) android.util.Log.i("BFGPace", "grid=" + (grid/1e6) + "ms aheadOfNowMs=" + ((desired-now)/1e6) + " m=" + m + " base=" + base);
         return desired;
     }
 

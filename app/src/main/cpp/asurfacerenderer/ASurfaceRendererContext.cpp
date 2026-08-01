@@ -451,14 +451,6 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
         ST_SETBUF(transaction, surfaceControl, destinationSlot->buffer, conversionFenceFd);
         ST_SET_TRANSPARENCY(transaction, surfaceControl, 2);
 
-        // Frame-gen even pacer: tell SurfaceFlinger the intended latch time so the real + interpolated
-        // presents land on an even 2-vsync/3-vsync grid (the GameHub cadence) instead of back-to-back +
-        // stall. Declarative hint at the SF latch stage — NOT a host-thread sleep (cf. the reverted
-        // host-nanosleep pacer) — so it survives where the layer's pre-vkQueuePresent sleep did not.
-        // Safe here because this branch presents a CONVERTED POOL buffer (depth 8), so the guest buffer
-        // is already returned; only a pool slot is held ~<1 real-frame. Dropped if the symbol is absent.
-        if (desiredPresentNs > 0) ST_SET_PRESENT_TIME(transaction, desiredPresentNs);
-
         std::vector<PendingSurfaceRelease> releases;
         if (previousSlot) {
             releases.push_back(PendingSurfaceRelease{surfaceControl, previousSlot, false});
@@ -467,6 +459,17 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
         if (!attachTransactionCompleteCallback(transaction, std::move(releases), windowId, serial)) {
             LOGE("Could not attach SurfaceControl OnComplete callback");
         }
+
+        // Frame-gen even pacer (authoritative). GameScope-style absolute drift-free spin on THIS
+        // present thread, IMMEDIATELY before the commit, so the real + interpolated frames land on an
+        // even 2v/3v grid (the GameHub cadence) instead of back-to-back + stall. Owns the timeline; its
+        // deadline also feeds setDesiredPresentTime as a consistent belt-and-suspenders hint (falls
+        // back to the Java-supplied desiredPresentNs only when disarmed). Safe here because this branch
+        // presents a CONVERTED POOL buffer (depth 8) — the guest buffer is already returned; only a
+        // pool slot is held. No-op cost when disarmed.
+        const int64_t pacedDeadlineNs = framePacer.waitForNextDeadline("asr_compat");
+        const int64_t presentHintNs   = pacedDeadlineNs > 0 ? pacedDeadlineNs : desiredPresentNs;
+        if (presentHintNs > 0) ST_SET_PRESENT_TIME(transaction, presentHintNs);
 
         ST_APPLY(transaction);
         ST_DELETE(transaction);
@@ -482,6 +485,11 @@ void ASurfaceRendererContext::setWindowBuffer(JNIEnv* env, int64_t contentId, AH
 
         ST_SETBUF(transaction, surfaceControl, sourceAhb, sourceAcquireFenceFd);
         ST_SET_TRANSPARENCY(transaction, surfaceControl, 2);
+
+        // Frame-gen even pacer: spin to the even-grid deadline before committing. NO latch-time hint on
+        // this branch — it presents the guest buffer DIRECTLY, so we don't ask SF to hold it (avoids
+        // guest-swapchain starvation); the spin alone evens the cadence. No-op cost when disarmed.
+        framePacer.waitForNextDeadline("asr_direct");
 
         // No callback needed since we're not tracking converted buffers
         ST_APPLY(transaction);

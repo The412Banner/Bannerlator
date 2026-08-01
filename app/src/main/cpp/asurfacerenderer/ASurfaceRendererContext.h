@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "../common/FramePacer.h"
 
 class BlitConverter;
 
@@ -82,6 +83,13 @@ public:
                       int dstL, int dstT, int dstR, int dstB);
 
     void setSfCallbackTarget(JNIEnv* env, jobject rendererObj);
+
+    // Frame-gen even pacer (GameScope-style spin before the SF commit). enabled=false disarms (zero
+    // cost). Self-calibrating + headroom-gated. See FramePacer.h.
+    void setFramePacing(bool enabled, int64_t seedIntervalNs, int64_t vsyncNs) {
+        framePacer.configure(enabled, seedIntervalNs, vsyncNs);
+    }
+    FramePacer framePacer;
 
     void beginShutdown();
 

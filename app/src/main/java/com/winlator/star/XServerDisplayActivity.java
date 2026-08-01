@@ -1999,10 +1999,31 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // Arm/disarm the PresentExtension generated-frame even pacer (see setGeneratedFramePacing).
     // mult<=1 or baseFps<=0 disables it; engaged only while bionic-fg even-pacing is active.
     private void setPresentGeneratedFramePacing(int mult, int baseFps) {
-        if (xServer == null) return;
-        com.winlator.star.xserver.extensions.PresentExtension pe =
-                xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
-        if (pe != null) pe.setGeneratedFramePacing(mult, baseFps);
+        // Java desired-time hint plumbing (belt-and-suspenders; the NATIVE spin below owns the timeline).
+        if (xServer != null) {
+            com.winlator.star.xserver.extensions.PresentExtension pe =
+                    xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
+            if (pe != null) pe.setGeneratedFramePacing(mult, baseFps);
+        }
+        // Native GameScope-style spin pacer (authoritative). Gated to FG-on + even-pace (mult>1).
+        // Seed the self-calibrating interval from 1e9/(cap*mult) ONLY when a real FPS cap is set;
+        // otherwise 0 => the pacer measures the true arrival rate itself, so it works cap ON and OFF.
+        // vsyncNs from the live panel refresh drives the headroom guard (skip when no headroom).
+        boolean enabled = mult > 1;
+        long seedIntervalNs = 0;
+        if (enabled && resolvedFpsLimiterEnabled()) {
+            int cap = resolvedFpsLimiterValue();
+            if (cap > 0) seedIntervalNs = 1_000_000_000L / ((long) cap * mult);
+        }
+        int refresh = XServerDrawerState.INSTANCE.getCurrentRefreshRate().getValue();
+        long vsyncNs = refresh > 0 ? 1_000_000_000L / refresh : 0;
+        com.winlator.star.renderer.HostRenderer r =
+                xServerView != null ? xServerView.getRenderer() : null;
+        if (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer) {
+            ((com.winlator.star.renderer.vulkan.VulkanRenderer) r).setFramePacing(enabled, seedIntervalNs, vsyncNs);
+        } else if (r instanceof com.winlator.star.renderer.ASurfaceRenderer) {
+            ((com.winlator.star.renderer.ASurfaceRenderer) r).setFramePacing(enabled, seedIntervalNs, vsyncNs);
+        }
     }
 
     // lsfg-vk (GameNative fork) conf.toml. The layer watches this file's mtime in its present hook

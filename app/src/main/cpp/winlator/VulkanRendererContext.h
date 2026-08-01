@@ -112,6 +112,7 @@ struct VkTable {
 // Renderer-neutral direct-scanout impl (owns the SurfaceControl/AHB state).
 // Included after SCANOUT_LOG is defined above; its own definition is guarded.
 #include "../scanout/ScanoutContext.h"
+#include "../common/FramePacer.h"
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -214,6 +215,12 @@ public:
                           int64_t desiredPresentNs = 0);
     void scanoutSetCursorImage(void* pixels, short w, short h, short stride);
     void scanoutSetCursorPos(short x, short y, short hotX, short hotY);
+
+    // Frame-gen even pacer (GameScope-style spin). Arms both the swapchain-present path (renderFrame,
+    // before QueuePresentKHR) and the direct-scanout path (scanout.setBuffer) — mutually exclusive
+    // modes, so only one ever paces. enabled=false disarms (zero cost). See FramePacer.h.
+    void setFramePacing(bool enabled, int64_t seedIntervalNs, int64_t vsyncNs);
+    FramePacer framePacer;
     // The renderer-neutral scanout implementation. The scanout methods above are
     // thin forwarders to this (see VulkanRendererScanout.cpp); the cursor render-
     // thread signalling stays in the forwarders, not in ScanoutContext.

@@ -99,6 +99,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native boolean nativeReattachSurface(long handle, android.view.Surface surface);
     private native void nativeDestroyScanout(long handle);
     private native void nativeScanoutSetBuffer(long handle, long ahbPtr, int x, int y, int w, int h, int fenceFd, long desiredPresentNs);
+    private native void nativeSetFramePacing(long handle, boolean enabled, long seedIntervalNs, long vsyncNs);
     private native void nativeScanoutSetCursorImage(long handle, java.nio.ByteBuffer pixels, short w, short h, short stride);
     private native void nativeScanoutSetCursorPos(long handle, short x, short y, short hotX, short hotY);
     private native boolean nativeIsScanoutActive(long handle);
@@ -166,6 +167,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetNtsc(nativeHandle, pendingNtscEnabled);
                     nativeSetColorGrade(nativeHandle, pendingColorBrightness, pendingColorContrast, pendingColorGamma);
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
+                    nativeSetFramePacing(nativeHandle, pendingFramePacingEnabled, pendingFramePacingSeedIntervalNs, pendingFramePacingVsyncNs);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
                     if (nativeMode) {
@@ -818,6 +820,18 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         synchronized (lock) { if (nativeHandle != 0) nativeSetSwapRB(nativeHandle, enabled); }
     }
 
+    // Frame-gen even pacer (native GameScope-style spin, applied before QueuePresentKHR / scanout
+    // commit). enabled=false disarms. seedIntervalNs = 1e9/(cap*mult) when a real cap is set, else 0
+    // (self-calibrates). vsyncNs = 1e9/panelHz (0 = unknown). Stored so it survives context recreate.
+    public void setFramePacing(boolean enabled, long seedIntervalNs, long vsyncNs) {
+        pendingFramePacingEnabled = enabled;
+        pendingFramePacingSeedIntervalNs = seedIntervalNs;
+        pendingFramePacingVsyncNs = vsyncNs;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetFramePacing(nativeHandle, enabled, seedIntervalNs, vsyncNs);
+        }
+    }
+
     public void setVkPresentMode(int mode) {
         pendingPresentMode = mode;
         synchronized (lock) { if (nativeHandle != 0) nativeSetPresentMode(nativeHandle, mode); }
@@ -886,6 +900,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private float   pendingColorContrast   = 0.0f;  // -100..100 slider; 0 = neutral
     private float   pendingColorGamma      = 1.0f;  // 0.5..3.0 slider; 1.0 = neutral
     private boolean pendingSwapRB         = false;
+    private boolean pendingFramePacingEnabled = false;
+    private long    pendingFramePacingSeedIntervalNs = 0;
+    private long    pendingFramePacingVsyncNs = 0;
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) {
         this.fpsLimit = limit;

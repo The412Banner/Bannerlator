@@ -20,6 +20,7 @@
 #include <atomic>
 #include <mutex>
 #include <cstdint>
+#include "../common/FramePacer.h"
 
 #ifndef SCANOUT_LOG
 #define SCANOUT_LOG(...) __android_log_print(ANDROID_LOG_DEBUG,"Winlator_Scanout",__VA_ARGS__)
@@ -38,10 +39,13 @@ public:
     void destroy();
 
     // --- per-frame game buffer (applies its transaction INLINE) ---
-    // desiredPresentNs (0 = none): declarative SF latch-time hint for the frame-gen even pacer
-    // (ASurfaceTransaction_setDesiredPresentTime). See setBuffer() impl.
+    // desiredPresentNs (0 = none): fallback SF latch-time hint; when the frame pacer is armed it owns
+    // the timeline (spins before ST_APPLY) and its own deadline supersedes this. See setBuffer() impl.
     void setBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1,
                    int64_t desiredPresentNs = 0);
+
+    // Frame-gen even pacer for the direct-scanout commit (armed by the owning renderer). See FramePacer.h.
+    FramePacer framePacer;
 
     // --- cursor: pure state-setters. They mutate state only and DO NOT signal
     //     any render thread. Each returns true if a deferred apply is now

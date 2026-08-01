@@ -1617,9 +1617,21 @@ ok=true;}catch(...){}
     VkSwapchainKHR scs[]={swapchain};
     VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
+    // Frame-gen even pacer (PRIMARY hop — this is the tested Vulkan swapchain/FIFO present path).
+    // GameScope-style absolute drift-free spin on the render thread right before QueuePresentKHR: the
+    // last <0.5ms is a sched_yield busy-spin so the present isn't randomly shoved across a vblank by
+    // nanosleep slack (our measured 1v/4v bunching). Self-calibrating + headroom-gated; no-op disarmed.
+    framePacer.waitForNextDeadline("vk_present");
     res=vk_.QueuePresentKHR(graphicsQueue,&pi);
     if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
+}
+
+void VulkanRendererContext::setFramePacing(bool enabled, int64_t seedIntervalNs, int64_t vsyncNs) {
+    // Arm both present paths of this renderer (swapchain-present + direct-scanout are mutually
+    // exclusive modes, so only one ever spins). See FramePacer.h.
+    framePacer.configure(enabled, seedIntervalNs, vsyncNs);
+    scanout.framePacer.configure(enabled, seedIntervalNs, vsyncNs);
 }
 
 void VulkanRendererContext::onSurfaceResized(int w, int h) {

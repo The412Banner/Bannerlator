@@ -189,6 +189,14 @@ Java_com_winlator_star_renderer_ASurfaceRenderer_nativeSetWindowBuffer(
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_ASurfaceRenderer_nativeSetFramePacing(
+        JNIEnv*, jobject, jboolean enabled, jlong seedIntervalNs, jlong vsyncNs)
+{
+    std::shared_lock lk(g_ctxMutex);
+    if (auto* r = g_ctx) r->setFramePacing((bool)enabled, (int64_t)seedIntervalNs, (int64_t)vsyncNs);
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_ASurfaceRenderer_nativeBeginTransaction(JNIEnv*, jobject) {
     std::shared_lock lk(g_ctxMutex);
     if (auto* r = g_ctx) r->beginTransaction();

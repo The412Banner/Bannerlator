@@ -166,6 +166,14 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeScanoutSetBuffer(
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFramePacing(
+    JNIEnv*, jobject, jlong handle, jboolean enabled, jlong seedIntervalNs, jlong vsyncNs)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFramePacing((bool)enabled, (int64_t)seedIntervalNs, (int64_t)vsyncNs);
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeScanoutSetCursorImage(
     JNIEnv* env, jobject, jlong handle, jobject buf, jshort w, jshort h, jshort stride)
 {

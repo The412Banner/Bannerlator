@@ -69,6 +69,19 @@ public class ASurfaceRenderer implements HostRenderer,
     public void setSfCompatMode(boolean enabled) { this.sfCompatMode = enabled; }
     public boolean isSfCompatMode() { return sfCompatMode; }
 
+    // Frame-gen even pacer (native GameScope-style spin before the SF commit). enabled=false disarms.
+    // seedIntervalNs = 1e9/(cap*mult) when a real cap is set, else 0 (self-calibrates). vsyncNs =
+    // 1e9/panelHz (0 = unknown). Stored so it survives native context recreate (onSurfaceCreated).
+    private boolean pendingFramePacingEnabled = false;
+    private long    pendingFramePacingSeedIntervalNs = 0;
+    private long    pendingFramePacingVsyncNs = 0;
+    public void setFramePacing(boolean enabled, long seedIntervalNs, long vsyncNs) {
+        pendingFramePacingEnabled = enabled;
+        pendingFramePacingSeedIntervalNs = seedIntervalNs;
+        pendingFramePacingVsyncNs = vsyncNs;
+        if (surfaceInitialized) nativeSetFramePacing(enabled, seedIntervalNs, vsyncNs);
+    }
+
     // #1644: CPU-drawn chrome is scanned out at half the rate of the game frame; this counter
     // gates the per-present HUD tick for the CPU path so the HUD still reflects the game cadence.
     private final AtomicInteger skipFPSCount = new AtomicInteger(0);
@@ -146,6 +159,7 @@ public class ASurfaceRenderer implements HostRenderer,
             NATIVE_CONTEXT_GENERATION.incrementAndGet();
             skipFPSCount.set(0);
             nativeSetSfCallbackTarget(this);
+            nativeSetFramePacing(pendingFramePacingEnabled, pendingFramePacingSeedIntervalNs, pendingFramePacingVsyncNs);
             updateTransform();
             nativeInitScanout();
             sendCursorToNative(lastCursor);
@@ -574,6 +588,7 @@ public class ASurfaceRenderer implements HostRenderer,
     private native void nativeDestroyScanout();
     private native void nativeSetWindowBuffer(long contentId, long ahbPtr, int fenceFd, long windowId,
             long serial, AHBImage ahbImage, int slot, boolean sfCompatMode, long desiredPresentNs);
+    private native void nativeSetFramePacing(boolean enabled, long seedIntervalNs, long vsyncNs);
     // CPU scanout swapchain (AHBImage) registration with the native GPU converter (GN #1620).
     static native boolean nativePrepareCpuSourceBuffers(long ahb0, long ahb1, long ahb2);
     static native void nativeReleaseCpuSourceBuffers(long ahb0, long ahb1, long ahb2);

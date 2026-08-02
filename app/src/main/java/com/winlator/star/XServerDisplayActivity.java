@@ -1598,6 +1598,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     extractGraphicsDriverFiles();
                     changeWineAudioDriver();
                     applyGameRefreshRateUnlock();
+                    // Steam install-recipe robustness pass: ensure a steamAppId-tagged game's
+                    // installScript.vdf Registry + Copy Files have landed in this prefix before the game
+                    // boots (covers shortcuts made before the feature, or re-bound to a new container).
+                    // Local stages only — the Run Process step is owned by the shortcut-creation hook.
+                    runSteamInstallScriptPreLaunch();
                     stage[0] = "Building environment";
                     setupXEnvironment();
                 } catch (Exception e) {
@@ -3197,6 +3202,30 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Reset dxwrapper config
         dxwrapperConfig = null;
 
+    }
+
+    /**
+     * Applies a Steam game's installScript.vdf local stages (Registry + Copy Files) into this
+     * container just before first launch, guarded once per (appId, container). No-op for non-Steam
+     * shortcuts. Runs on the setup worker thread (prefix already prepared by setupWineSystemFiles).
+     */
+    private void runSteamInstallScriptPreLaunch() {
+        if (shortcut == null || container == null) return;
+        int appId;
+        try {
+            appId = Integer.parseInt(shortcut.getExtra("steamAppId", "0").trim());
+        } catch (NumberFormatException e) {
+            return;
+        }
+        if (appId <= 0) return;
+        File exe = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+        if (exe == null) return;
+        try {
+            com.winlator.star.store.steamscript.InstallScriptExecutor.applyLocalStagesForLaunch(
+                    this, container, appId, exe.getAbsolutePath());
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "installScript pre-launch pass failed", t);
+        }
     }
 
     private void createWrapperScript(String path, String content) {

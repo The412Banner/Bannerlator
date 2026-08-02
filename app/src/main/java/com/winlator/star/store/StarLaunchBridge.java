@@ -237,6 +237,19 @@ public final class StarLaunchBridge {
 
                 Log.d(TAG, "Wrote shortcut: " + shortcutFile.getPath());
 
+                // Steam install-recipe: EA-on-Steam (and other) titles ship an installScript.vdf in the
+                // depot whose Registry + Copy Files + Run Process steps install the bundled EA App /
+                // entitlement. This is the first moment (container, appId, installDir) all exist, so run
+                // the recipe once for this container. Best-effort — a failure never blocks the shortcut.
+                if (steamAppId > 0) {
+                    try {
+                        com.winlator.star.store.steamscript.InstallScriptExecutor.runForShortcut(
+                                activity, container, steamAppId, exePath);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "installScript execution failed for " + gameName, t);
+                    }
+                }
+
                 // Resolve cover art URL: fix protocol-relative, then try store URL,
                 // fall back to SteamGridDB if needed.
                 String artUrl = normalizeUrl(coverArtUrl);

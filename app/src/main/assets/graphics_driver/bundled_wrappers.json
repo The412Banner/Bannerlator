@@ -31,9 +31,9 @@
     "catalogVersion": 3
   },
   "leegao_bcn.tzst": {
-    "version": "leegao bcn_layer 20260719",
-    "notes": "leegao's BCn transcode layer with the device-hook composition fix.",
+    "version": "leegao bcn (Fcharan G-series test 20260731)",
+    "notes": "leegao's BCn transcode layer, Charan / WinMali-Dev G-series improvements (Mali Valhall G-series transcode tuning) on top of the device-hook composition fix.",
     "catalogId": "bannerlator-bcn-leegao",
-    "catalogVersion": 1
+    "catalogVersion": 2
   }
 }

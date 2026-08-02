@@ -1267,6 +1267,22 @@ public class WrapperManager {
         return out;
     }
 
+    /**
+     * G2 self-heal for the Mali BCn simplification: the "Wrapper + bcn_layer" and "Wrapper + compat +
+     * bcn" picker entries were collapsed into two GLOBAL ASTC/ETC2 toggles. Both identifiers shipped the
+     * wrapper-leegao ICD as their base, so a container/shortcut still stored on either is remapped to
+     * "wrapper-leegao" — otherwise it resolves to NO picker entry and silently resets to the first driver.
+     * The two transcode sub-keys (bcnTranscodeAstc/bcnTranscodeEtc2) live in graphicsDriverConfig and
+     * survive the remap, so the layer still activates via the global env block at launch. Every other
+     * identifier is returned unchanged. Single source of truth for both editors AND the launch path,
+     * same spirit as {@link com.winlator.star.core.DefaultVersion#REMOVED_TURNIP_ICD}.
+     */
+    public static String migrateRemovedDriver(String identifier) {
+        if ("wrapper-bcn_layer".equals(identifier) || "wrapper-compat-bcn".equals(identifier))
+            return "wrapper-leegao";
+        return identifier;
+    }
+
     /** Whether a bundled asset exists for the slot (defensive; the 6 are always shipped). */
     public boolean hasBundledAsset(String fileName) {
         AssetManager am = mContext.getAssets();

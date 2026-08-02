@@ -23,8 +23,6 @@
         <item>Wrapper-leegao</item>
         <item>Wrapper-legacy</item>
         <item>Wrapper-gamenative</item>
-        <item>Wrapper + bcn_layer</item>
-        <item>Wrapper + compat + bcn</item>
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>

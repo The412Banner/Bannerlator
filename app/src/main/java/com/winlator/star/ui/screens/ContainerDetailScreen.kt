@@ -2123,6 +2123,28 @@ internal fun GraphicsDriverConfigDialog(
                         )
                     }
                 }
+                // BCn -> ASTC / ETC2 transcode — two GLOBAL toggles (Mali-simplify). They used to live
+                // only in the removed "Wrapper + bcn_layer" / "Wrapper + compat + bcn" pickers' section
+                // below; now they overlay leegao's improved libbcn_layer.so on top of ANY wrapper. The
+                // launch path extracts leegao_bcn.tzst and emits ENABLE_BCN_COMPUTE only when a toggle is
+                // ON (both off = layer stays dormant, zero cost). HIDDEN entirely on Adreno (G1) — it has
+                // native BCn, so the transcode layer is pure overhead there. Config keys unchanged
+                // (bcnTranscodeAstc / bcnTranscodeEtc2); the standalone bcn-family controls below stay put.
+                if (!GPUInformation.isAdrenoGPU(context)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = bcnTranscodeEtc2, onCheckedChange = { bcnTranscodeEtc2 = it })
+                        Text(stringResource(R.string.bcn_layer_transcode_etc2))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = bcnTranscodeAstc, onCheckedChange = { bcnTranscodeAstc = it })
+                        Text(stringResource(R.string.bcn_layer_transcode_astc))
+                    }
+                    Text(
+                        stringResource(R.string.bcn_layer_transcode_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = syncFrame, onCheckedChange = { syncFrame = it })
                     Text(stringResource(R.string.graphics_driver_sync_frame))
@@ -2178,20 +2200,9 @@ internal fun GraphicsDriverConfigDialog(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = bcnTranscodeEtc2, onCheckedChange = { bcnTranscodeEtc2 = it })
-                            Text(stringResource(R.string.bcn_layer_transcode_etc2))
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = bcnTranscodeAstc, onCheckedChange = { bcnTranscodeAstc = it })
-                            Text(stringResource(R.string.bcn_layer_transcode_astc))
-                        }
-                        Text(
-                            stringResource(R.string.bcn_layer_transcode_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // NOTE: the ETC2 / ASTC transcode toggles used to live here — they are now the
+                        // two GLOBAL toggles rendered above (shown for any wrapper on non-Adreno), so they
+                        // are intentionally NOT repeated in this section to avoid a duplicate control.
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = bcnImageView, onCheckedChange = { bcnImageView = it })

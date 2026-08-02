@@ -1389,6 +1389,32 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.d("XServerDisplayActivity", "XInput Disabled from Shortcut: " + xinputDisabledFromShortcut);
         }
 
+        // G2 (Mali BCn simplification) defensive self-heal: the "Wrapper + bcn_layer" / "Wrapper +
+        // compat + bcn" picker entries were collapsed into two global ASTC/ETC2 toggles. Both shipped the
+        // wrapper-leegao ICD as their base, so a container/shortcut still stored on either is remapped to
+        // wrapper-leegao HERE — before any graphicsDriver.startsWith(...) extraction/env branch runs — so
+        // the launch resolves a valid driver instead of a dead identifier. Persist it (persist-safe,
+        // mirrors the turnip-26.1.0 self-heal below): never block the launch on the write. The two
+        // transcode sub-keys ride along in graphicsDriverConfig, so the global BCn env block still fires.
+        String migratedDriver = WrapperManager.migrateRemovedDriver(graphicsDriver);
+        if (!migratedDriver.equals(graphicsDriver)) {
+            Log.w("GraphicsDriverExtraction", "Driver '" + graphicsDriver
+                    + "' was collapsed into the global BCn toggles — remapping to " + migratedDriver + " and persisting");
+            graphicsDriver = migratedDriver;
+            try {
+                if (shortcut != null && !shortcut.getExtra("graphicsDriver", "").isEmpty()) {
+                    shortcut.putExtra("graphicsDriver", migratedDriver);
+                    shortcut.saveData();
+                } else {
+                    container.setGraphicsDriver(migratedDriver);
+                    container.saveData();
+                }
+            } catch (Exception e) {
+                // In-memory remap above already keeps the launch correct; the editor also self-heals on open.
+                Log.w("GraphicsDriverExtraction", "could not persist bcn-driver migration", e);
+            }
+        }
+
         // Gyro (motion aim) — resolve the whole config ONCE here and push it into WinHandler in a
         // single call. enabled/target/activator/sensitivity/invertX/invertY are per-game (the
         // shortcut extra wins, else the container value, else the GYRO_*_DEFAULT baked into the
@@ -4483,14 +4509,29 @@ public class XServerDisplayActivity extends AppCompatActivity {
         writeExtraLibsVersion(extraLibsVersionFile, EXTRA_LIBS_VERSION);
     }
 
-    // Wrapper Version Manager (#132): the leegao BCn layer (libbcn_layer.so + manifest) normally
-    // ships inside extra_libs.tzst. A user-installed "BCn layer" override (leegao_bcn.tzst) overlays
-    // a newer copy on top — extract it AFTER extra_libs so it wins, and every launch when present
-    // (small file) so it applies regardless of the extra_libs version gate above.
-    File bcnLayerOverride = new File(getFilesDir(), "graphics_driver/leegao_bcn.tzst");
-    if (bcnLayerOverride.isFile()) {
-        Log.d("GraphicsDriverExtraction", "applying user BCn layer override (leegao_bcn.tzst)");
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, bcnLayerOverride, rootDir);
+    // Wrapper Version Manager (#132) + Mali-simplify (G1): overlay leegao's improved libbcn_layer.so
+    // (libbcn_layer.so + manifest; the plain copy also ships inside extra_libs.tzst). Extract AFTER
+    // extra_libs so it wins, and every launch (small file) so it applies regardless of the extra_libs
+    // version gate above. STRICTLY skipped on Adreno/Qualcomm — it has native BCn, so the transcode
+    // layer is never extracted there (G1). Two overlay sources, downloaded override taking precedence:
+    //   (a) a user-installed "BCn layer" WrapperManager slot (filesDir/graphics_driver/leegao_bcn.tzst)
+    //       is overlaid whenever present — keeps a newer downloaded .so fresh even with toggles off
+    //       (the layer stays dormant until the env block below sets ENABLE_BCN_COMPUTE); else
+    //   (b) either global transcode toggle (bcnTranscodeAstc/Etc2) is ON — overlay the IMPROVED BUNDLED
+    //       leegao_bcn.tzst (Charan G-series) so the layer the env block activates is the good one.
+    // (leegao_bcn.tzst also carries a trivial version.txt at root; landing it in the container root is
+    // harmless — it's inert and never read at runtime.)
+    if (GPUInformation.getVendorID(null, null) != 0x5143) {
+        File bcnLayerOverride = new File(getFilesDir(), "graphics_driver/leegao_bcn.tzst");
+        boolean anyTranscodeToggle = "1".equals(graphicsDriverConfig.get("bcnTranscodeAstc"))
+                || "1".equals(graphicsDriverConfig.get("bcnTranscodeEtc2"));
+        if (bcnLayerOverride.isFile()) {
+            Log.d("GraphicsDriverExtraction", "applying user BCn layer override (leegao_bcn.tzst)");
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, bcnLayerOverride, rootDir);
+        } else if (anyTranscodeToggle) {
+            Log.d("GraphicsDriverExtraction", "overlaying bundled leegao_bcn.tzst (transcode toggle on, non-Adreno)");
+            extractGraphicsAsset("leegao_bcn.tzst", rootDir);
+        }
     }
 
     // 3. Driver integration — adrenotools for every selectable driver (turnip-sdk36, v819,
@@ -4741,6 +4782,35 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         } // useGamenativeEngine ? GameNative DX12 path : leegao bcn_layer/compat_layer path
         } // activateBcnLayer
+    }
+
+    // === Global BCn transcode toggles (Mali-simplify) ===
+    // The ASTC / ETC2 transcode targets are now two GLOBAL toggles (they used to be exposed only by the
+    // removed bcn_layer / compat-bcn pickers, whose stored containers are migrated to wrapper-leegao at
+    // load + launch). They drive leegao's standalone libbcn_layer.so (overlaid above from leegao_bcn.tzst)
+    // on ANY wrapper selection EXCEPT:
+    //   - the bcn-family IMPORTS handled above (isBcnLayerDriver — they already own the layer env), and
+    //   - wrapper-gamenative, which has its OWN integrated BCn (WRAPPER_EMULATE_BCN, set in the legacy
+    //     branch above) and must not run the standalone layer on top (double transcode).
+    // STRICTLY gated to non-Qualcomm (0x5143 has native BCn — same guard as everywhere else; G1). Both
+    // toggles off => ENABLE_BCN_COMPUTE is left UNSET => the implicit layer stays dormant (no perf cost),
+    // so every wrapper's default behavior is unchanged until the user opts in. When a toggle IS on we also
+    // force WRAPPER_EMULATE_BCN=0: the wrapper's integrated BCn and the standalone layer would both
+    // transcode the same textures, so we run exactly one (the layer) — honoring "never set both".
+    boolean isGamenativeWrapper = graphicsDriver != null && graphicsDriver.startsWith("wrapper-gamenative");
+    if (!isBcnLayerDriver && !isGamenativeWrapper
+            && GPUInformation.getVendorID(null, null) != 0x5143) {
+        boolean astcOn = "1".equals(graphicsDriverConfig.get("bcnTranscodeAstc"));
+        boolean etc2On = "1".equals(graphicsDriverConfig.get("bcnTranscodeEtc2"));
+        if (astcOn || etc2On) {
+            envVars.put("ENABLE_BCN_COMPUTE", "1");
+            envVars.put("BCN_TRANSCODE_TO_ASTC", astcOn ? "1" : "0");
+            envVars.put("BCN_TRANSCODE_TO_ETC2", etc2On ? "1" : "0");
+            // Run only the standalone layer, not the wrapper's integrated BCn (avoid double transcode).
+            envVars.put("WRAPPER_EMULATE_BCN", "0");
+            Log.d("GraphicsDriverExtraction", "Global BCn transcode layer active (non-Adreno): ASTC="
+                    + (astcOn ? 1 : 0) + " ETC2=" + (etc2On ? 1 : 0) + " (WRAPPER_EMULATE_BCN forced 0)");
+        }
     }
 
     String fdDevFeatures = graphicsDriverConfig.get("fdDevFeatures");

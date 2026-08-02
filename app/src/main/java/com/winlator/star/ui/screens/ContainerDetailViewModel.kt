@@ -409,8 +409,11 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             ?.takeIf { it.isNotEmpty() && box64VersionEntries.contains(it) }
             ?.let { selectedBox64Version = it }
 
-        // Graphics driver (load as display name for dropdown)
-        selectedGraphicsDriver   = identifierToDisplay(c?.graphicsDriver ?: defaultGraphicsDriverForNewContainer(), graphicsDriverEntries)
+        // Graphics driver (load as display name for dropdown). migrateRemovedDriver (G2) remaps a
+        // container still stored on the collapsed "wrapper-bcn_layer" / "wrapper-compat-bcn" entries to
+        // wrapper-leegao, so the picker shows a valid selection instead of silently falling back to the
+        // first driver; the two ASTC/ETC2 toggles ride along in graphicsDriverConfig.
+        selectedGraphicsDriver   = identifierToDisplay(WrapperManager.migrateRemovedDriver(c?.graphicsDriver ?: defaultGraphicsDriverForNewContainer()), graphicsDriverEntries)
         graphicsDriverConfig     = c?.graphicsDriverConfig ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG
         rendererNative           = c?.isRendererNative() ?: false
         rendererPresentMode      = c?.getRendererPresentMode() ?: "fifo"

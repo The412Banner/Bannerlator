@@ -219,10 +219,13 @@ fun ContainerDetailScreen(
         )
     }
     val isVegasWrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "").contains("vegas")
-    // Mali compat/bcn testers need DXVK 1.x reachable even with VKD3D selected, to try the
-    // 1.10.3 adapter-accept workaround (#137). Relax the #113 DXVK-2.x-only filter ONLY for the
-    // "Wrapper + compat + bcn" driver; every other driver keeps the guard unchanged.
-    val relaxDxvkFilter = StringUtils.parseIdentifier(viewModel.selectedGraphicsDriver) == "wrapper-compat-bcn"
+    // #113 filter hides DXVK 1.x when VKD3D is on (VKD3D-Proton needs DXVK 2.x's DXGI, so DX12
+    // can't start on a 1.x backer). On Mali, DXVK 1.10.3 is often the most compatible build and CAN
+    // pair with VKD3D via the adapter-accept path (#137) — so relax the filter for ALL non-Adreno
+    // GPUs: Mali users can freely pick any DXVK version with VKD3D on. Adreno KEEPS the guard (DXVK
+    // 1.x + VKD3D never starts there — pure footgun, no benefit). Relaxing only un-hides the option;
+    // it does not force a working combo (the adapter-accept path still has to hold on that Mali).
+    val relaxDxvkFilter = remember { !GPUInformation.isAdrenoGPU(context) }
     if (showDxvkConfig) {
         DxvkConfigDialog(
             isArm64EC = viewModel.isArm64EC,

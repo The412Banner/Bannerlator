@@ -207,6 +207,7 @@ import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.WrapperManager
+import com.winlator.star.core.GPUInformation
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
@@ -6669,9 +6670,10 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
         )
     }
     val isVegasCfg = StringUtils.parseIdentifier(selectedDxWrapper).contains("vegas")
-    // See ContainerDetailScreen: relax the #113 DXVK-2.x filter only for the Mali "Wrapper + compat
-    // + bcn" driver, so per-game shortcuts can also reach the DXVK 1.10.3 workaround (#137).
-    val relaxDxvkFilter = StringUtils.parseIdentifier(selectedGfxDriver) == "wrapper-compat-bcn"
+    // See ContainerDetailScreen: the #113 DXVK-2.x filter is relaxed for ALL non-Adreno (Mali) GPUs
+    // so per-game shortcuts can also pair any DXVK version (incl. 1.10.3, #137) with VKD3D. Adreno
+    // keeps the guard unchanged (DXVK 1.x + VKD3D never starts there).
+    val relaxDxvkFilter = remember { !GPUInformation.isAdrenoGPU(context) }
     if (showDxvkConfig) {
         DxvkConfigDialog(
             isArm64EC = isArm64EC,

@@ -4647,20 +4647,33 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // OFF on Qualcomm, mirroring the ENABLE_BCN_COMPUTE guards below and the bcn_layer
             // vendor gate. Only 0x5143 is skipped; Mali/Xclipse/PowerVR behaviour is unchanged.
             boolean isQualcomm = GPUInformation.getVendorID(null, null) == 0x5143;
+            // BCn double-decode fix: "Type = compute" activates leegao's STANDALONE libbcn_layer.so
+            // (via ENABLE_BCN_COMPUTE) — a full BCn decoder on its own. The wrapper ICD ALSO has its
+            // own integrated BCn (WRAPPER_EMULATE_BCN). Before, auto/full set BOTH, so on a non-Qualcomm
+            // GPU with the default auto+compute the container ran TWO BCn decoders at once (redundant
+            // GPU/memory work + slower startup, and they don't coordinate). Make them mutually
+            // exclusive: when the compute layer is active, force WRAPPER_EMULATE_BCN=0 so the standalone
+            // layer is the ONLY decoder. "software" type keeps the wrapper's own emulation (layer off).
+            // (Mirrors the "never both" rule already applied on the global ASTC/ETC2 toggle path.)
+            boolean computeLayer = "compute".equals(bcnEmulationType) && !isQualcomm;
             switch (bcnEmulation) {
                 case "auto" -> {
-                    if ("compute".equals(bcnEmulationType) && !isQualcomm) {
+                    if (computeLayer) {
                         envVars.put("ENABLE_BCN_COMPUTE", "1");
                         envVars.put("BCN_COMPUTE_AUTO", "1");
+                        envVars.put("WRAPPER_EMULATE_BCN", "0"); // layer decodes BCn; don't double up
+                    } else {
+                        envVars.put("WRAPPER_EMULATE_BCN", isQualcomm ? "0" : "3");
                     }
-                    envVars.put("WRAPPER_EMULATE_BCN", isQualcomm ? "0" : "3");
                 }
                 case "full" -> {
-                    if ("compute".equals(bcnEmulationType) && !isQualcomm) {
+                    if (computeLayer) {
                         envVars.put("ENABLE_BCN_COMPUTE", "1");
                         envVars.put("BCN_COMPUTE_AUTO", "0");
+                        envVars.put("WRAPPER_EMULATE_BCN", "0"); // layer decodes BCn; don't double up
+                    } else {
+                        envVars.put("WRAPPER_EMULATE_BCN", isQualcomm ? "0" : "2");
                     }
-                    envVars.put("WRAPPER_EMULATE_BCN", isQualcomm ? "0" : "2");
                 }
                 case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
                 default -> envVars.put("WRAPPER_EMULATE_BCN", isQualcomm ? "0" : "1");

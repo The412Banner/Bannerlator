@@ -461,8 +461,11 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // refreshWineDependent() has populated box64VersionEntries for the arch.
         seedArchDependentDefaults(seedArch)
 
-        // Graphics driver (load as display name for dropdown)
-        selectedGraphicsDriver   = identifierToDisplay(seed?.graphicsDriver ?: defaultGraphicsDriverForNewContainer(), graphicsDriverEntries)
+        // Graphics driver (load as display name for dropdown). migrateRemovedDriver (G2) remaps a
+        // container still stored on the collapsed "wrapper-bcn_layer" / "wrapper-compat-bcn" entries to
+        // wrapper-leegao, so the picker shows a valid selection instead of silently falling back to the
+        // first driver; the two ASTC/ETC2 toggles ride along in graphicsDriverConfig.
+        selectedGraphicsDriver   = identifierToDisplay(WrapperManager.migrateRemovedDriver(seed?.graphicsDriver ?: defaultGraphicsDriverForNewContainer()), graphicsDriverEntries)
         graphicsDriverConfig     = seed?.graphicsDriverConfig ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG
         rendererNative           = seed?.isRendererNative() ?: false
         rendererPresentMode      = seed?.getRendererPresentMode() ?: "fifo"

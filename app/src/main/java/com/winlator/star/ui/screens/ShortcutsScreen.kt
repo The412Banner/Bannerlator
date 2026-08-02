@@ -5444,7 +5444,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
         WrapperManager.driverEntries(context, res.getStringArray(R.array.graphics_driver_entries))
     }
     var selectedGfxDriver by remember {
-        val id = shortcut.getExtra("graphicsDriver", shortcut.container.graphicsDriver)
+        // migrateRemovedDriver (G2): a shortcut still stored on the collapsed "wrapper-bcn_layer" /
+        // "wrapper-compat-bcn" entries is remapped to wrapper-leegao so it resolves to a valid picker
+        // entry instead of silently resetting to the first driver (ASTC/ETC2 ride in graphicsDriverConfig).
+        val id = WrapperManager.migrateRemovedDriver(
+            shortcut.getExtra("graphicsDriver", shortcut.container.graphicsDriver))
         mutableStateOf(graphicsDriverEntries.firstOrNull { StringUtils.parseIdentifier(it) == id }
             ?: graphicsDriverEntries.firstOrNull() ?: id)
     }

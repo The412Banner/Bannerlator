@@ -1023,8 +1023,9 @@ public final class SteamRepository {
                         // downloaded, so it is skipped entirely (contributes nothing).
                         StringBuilder depotSb = new StringBuilder();
                         java.util.List<Integer> includedDlcIds = new java.util.ArrayList<>();  // owned DLC bundled with the game
-                        // The game's DLC appIds (extended/listofdlc). A depot whose id is in this set is
-                        // a DLC depot (its depot id == the DLC appId) — see the depot loop for handling.
+                        // The game's DLC appIds (extended/listofdlc). This is the LEGACY fallback DLC
+                        // signal (games whose DLC depot id == the DLC appId); the primary signal is each
+                        // depot's own config/dlcappid — see the depot loop for handling.
                         java.util.Set<Integer> dlcSet = new java.util.HashSet<>();
                         String listOfDlc = kvStr(root.get("extended").get("listofdlc"));
                         if (!listOfDlc.isEmpty()) {
@@ -1074,20 +1075,38 @@ public final class SteamRepository {
                                     Log.d(TAG, "app " + app.getId() + " skip depot " + depotId + " lowviolence");
                                     skippedCount++; continue;
                                 }
-                                // DLC handling. Steam does NOT tag a depot's config with dlcappid here;
-                                // instead the game lists its DLC appIds in extended/listofdlc, and each
-                                // DLC's depot id == that DLC's appId (verified: Just Cause 3 depots
-                                // 388290.. == its DLC appIds; See No Evil depot 320210 == its soundtrack
-                                // DLC). So a depot whose id is in the game's DLC set is a DLC depot:
-                                //   - not licensed → SKIP (unowned DLC; else the engine tries a depot it
-                                //     has no key for → 0 bytes → false "incomplete" on the owned game).
-                                //   - licensed → keep + record for the detail-page "Includes DLC:" line.
-                                if (dlcSet.contains(depotId)) {
-                                    if (!licensedApps.contains(depotId)) {
-                                        Log.d(TAG, "app " + app.getId() + " skip DLC depot " + depotId + " (not owned)");
+                                // DLC handling. A depot belongs to a DLC in one of two ways:
+                                //   (1) the depot's own config carries "dlcappid" = the DLC's appId
+                                //       (the real Steam mechanism; the depot id and the DLC appId are
+                                //       DIFFERENT — e.g. Dead Cells "Bad Seed" is DLC appId 1046440 but
+                                //       depot id 1046441); or
+                                //   (2) legacy games where the DLC's depot id == the DLC appId and the
+                                //       game just lists that appId in extended/listofdlc (verified:
+                                //       Just Cause 3 depots 388290.. == its DLC appIds; See No Evil depot
+                                //       320210 == its soundtrack DLC).
+                                // Resolve the depot's DLC appId from (1) first, then fall back to (2).
+                                // Ownership AND the "Includes DLC:" record must key off the DLC APPID,
+                                // never the depot id — otherwise a depot≠appId DLC is misfiled as base
+                                // content (counted in the size denominator, stored, then fails at download
+                                // when its key comes back "not available from this account" → the whole,
+                                // otherwise-complete install is falsely marked incomplete).
+                                //   - DLC not licensed → SKIP (unowned DLC; else the engine tries a depot
+                                //     it has no key for → 0 bytes → false "incomplete" on the owned game).
+                                //   - DLC licensed → keep + record the DLC appId for the "Includes DLC:" line.
+                                int dlcAppId = 0;
+                                String dlcAppStr = kvStr(config.get("dlcappid")).trim();
+                                if (!dlcAppStr.isEmpty()) {
+                                    try { dlcAppId = Integer.parseInt(dlcAppStr); }
+                                    catch (NumberFormatException ignored) {}
+                                }
+                                if (dlcAppId == 0 && dlcSet.contains(depotId)) dlcAppId = depotId; // legacy depot==appId
+                                if (dlcAppId != 0) {
+                                    if (!licensedApps.contains(dlcAppId)) {
+                                        Log.d(TAG, "app " + app.getId() + " skip DLC depot " + depotId
+                                                + " (DLC appId " + dlcAppId + " not owned)");
                                         skippedCount++; continue;
                                     }
-                                    if (!includedDlcIds.contains(depotId)) includedDlcIds.add(depotId);
+                                    if (!includedDlcIds.contains(dlcAppId)) includedDlcIds.add(dlcAppId);
                                 }
 
                                 // Selected — count it.

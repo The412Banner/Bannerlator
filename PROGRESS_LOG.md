@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-08-04 — 🎞️ **bionic-fg 0.1.1 — branch `feat/bionic-fg-0.1.1` (clean-base strategy)**
+> Upgrading the bundled bionic-fg FG layer to upstream **v0.1.1** built on our fork `The412Banner/bionic-fg`. **Strategy (user): clean v0.1.1 base first, re-layer our models/fence-fix after.** Fork default branch set to `main` (was `bannerlator`); fork `main` already == upstream `main` (`0dd2c6a` = v0.1.1 + i386/#9 + README, incl. #8 clean-room models 0/1). v0.1.1 is a **clean-room shader rewrite** (drops the traced SPIR-V; committed pre-gen `shaders_embedded_clean.hpp` → CI build needs no glslc). Clean base = **models 0 & 1 only** → **graying out app model toggles 2/3/4** (v2/fsr3/fsr3-v2) until we rebuild them. Our models 2/3/4 + fence fix `35e39f3` preserved on fork branch `bannerlator`. Submodule bumped → `0dd2c6a`. vc FROZEN 67 (test build). NEXT: build `.so` (build-bionic-fg.yml) → bundle asset → pubg test APK → device-test. → memory [[project_bannerlator_bionic_fg_011_upgrade]]
+
 ## 2026-08-04 — 🏁 **CUT 2.9.5 STABLE — ✅ DONE & VERIFIED-LIVE** (versionCode 66→**67**, versionName `2.9.5`)
 > ✅ Second dispatch `30961554997` (`6d98a0ae`) ALL-GREEN + PUBLISHED. Verified: isPrerelease=false, `releases/latest`→**2.9.5**, tag `2.9.5`→built commit **`6d98a0ae`** (no drift — docs pushed before dispatch), served `update.json` = **vc67 / 2.9.5** with all 3 flavor APK names + the frame-gen ⚠️ in notes, 3 APKs + update.json attached. Pubg APK (`1e6b0fce`) already staged to `/sdcard/Download`. vc now FROZEN at 67 for dev/pre until next stable. Release-history + MEMORY.md + freeze-vc memory (grep-gotcha) all updated.
 >

@@ -880,6 +880,14 @@ private fun FrameGenSection(state: XServerDrawerState) {
                     modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
                 )
                 FgModelButtons(fgModel) { fgModel = it; applyFg() }
+                if (AVAILABLE_FRAME_GEN_MODELS.size < 5) {
+                    Text(
+                        stringResource(R.string.frame_generation_model_unavailable_hint),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+                    )
+                }
             }
         }
 
@@ -949,6 +957,9 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
     ) {
         options.forEach { (model, label) ->
             val isSel = selected == model
+            // Models not built into the current bionic-fg layer render grayed and non-clickable
+            // (see AVAILABLE_FRAME_GEN_MODELS). A saved-but-now-disabled model still shows selected.
+            val available = model in AVAILABLE_FRAME_GEN_MODELS
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -960,7 +971,8 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
                         color = if (isSel) accent else accentDim,
                         shape = RoundedCornerShape(8.dp)
                     )
-                    .clickable { onSelect(model) }
+                    .then(if (available) Modifier.clickable { onSelect(model) } else Modifier)
+                    .alpha(if (available) 1f else 0.4f)
                     .padding(vertical = 9.dp)
             ) {
                 Text(

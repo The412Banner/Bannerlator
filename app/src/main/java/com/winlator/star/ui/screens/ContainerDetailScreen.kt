@@ -54,6 +54,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.MainActivity
 import com.winlator.star.R
+import com.winlator.star.ui.AVAILABLE_FRAME_GEN_MODELS
 import com.winlator.star.ui.findActivity
 import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.WineD3DConfigDialog
@@ -879,13 +880,30 @@ private fun TopLevelFields(
                 stringResource(R.string.frame_generation_model_fsr3),
                 stringResource(R.string.frame_generation_model_fsr3_v2)
             )
+            // Gray out any model not currently built into the bundled bionic-fg layer (see
+            // AVAILABLE_FRAME_GEN_MODELS). A previously-saved index stays shown but disabled — the
+            // native layer runs model >= 2 as Default, so we don't rewrite the saved value.
+            val fgModelDisabled = fgModelLabels
+                .filterIndexed { idx, _ -> idx !in AVAILABLE_FRAME_GEN_MODELS }
+                .toSet()
             LabeledDropdown(
                 label = stringResource(R.string.frame_generation_model),
                 options = fgModelLabels,
                 selectedOption = fgModelLabels[viewModel.frameGenModel.coerceIn(0, 4)],
-                onSelect = { viewModel.frameGenModel = fgModelLabels.indexOf(it) }
+                onSelect = { viewModel.frameGenModel = fgModelLabels.indexOf(it) },
+                disabledOptions = fgModelDisabled
             )
-            if (viewModel.frameGenModel != 0) {
+            if (fgModelDisabled.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.frame_generation_model_unavailable_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+                )
+            }
+            // Still flag the enabled-but-experimental models (e.g. Traced) — but not the disabled
+            // ones, whose unavailability is already explained above.
+            if (viewModel.frameGenModel != 0 && viewModel.frameGenModel in AVAILABLE_FRAME_GEN_MODELS) {
                 Text(
                     text = stringResource(R.string.frame_generation_model_experimental_hint),
                     style = MaterialTheme.typography.bodySmall,

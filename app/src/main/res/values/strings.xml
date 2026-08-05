@@ -679,6 +679,7 @@
     <string name="frame_generation_model_fsr3">FidelityFX optical flow (experimental)</string>
     <string name="frame_generation_model_fsr3_v2">FidelityFX optical flow v2 (experimental)</string>
     <string name="frame_generation_model_experimental_hint">Experimental model — may render incorrectly or cost more performance than it gains. Switch back to Default if a game misbehaves.</string>
+    <string name="frame_generation_model_unavailable_hint">Models V2/FSR3/FSR3-v2 are temporarily unavailable in this build and will return in a later update. A saved selection runs as Default in the meantime.</string>
     <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
     <string name="fg_performance_mode">Performance mode</string>
     <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>

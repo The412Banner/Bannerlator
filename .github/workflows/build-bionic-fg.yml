@@ -31,8 +31,11 @@ jobs:
             mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest" 2>/dev/null || true
             rm -f /tmp/cmdline-tools.zip
           fi
-          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;26.1.10909125" "cmake;3.22.1"
-          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+          # NDK r27d (27.3.13750724) — matches upstream bionic-fg v0.1.1's arm64 toolchain
+          # (clang 18). r27d's Vulkan headers carry VK_KHR_swapchain_maintenance1 (const void*
+          # pNext), so upstream's v0.1.1 source compiles as-is — no const_cast workaround needed.
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.3.13750724" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$SDK_ROOT/ndk/27.3.13750724" >> $GITHUB_ENV
 
       # No patch step: the Bannerlator fixes that used to be applied here
       # (manifest disable_environment, bounded cross-context fence waits,

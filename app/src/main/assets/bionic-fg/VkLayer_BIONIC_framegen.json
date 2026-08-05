@@ -1,9 +1,10 @@
 {
-    "file_format_version": "1.0.0",
+    "file_format_version": "1.2.1",
     "layer": {
         "name": "VK_LAYER_BIONIC_framegen",
         "type": "GLOBAL",
         "library_path": "../../../lib/libbionic_fg.so",
+        "library_arch": "64",
         "api_version": "1.1.0",
         "implementation_version": "2",
         "description": "Bionic FG standalone frame generation (authorized embedded shaders)",

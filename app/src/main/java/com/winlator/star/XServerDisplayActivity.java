@@ -2905,7 +2905,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // registry customisations are preserved. Empty on legacy containers -> trips once.
     // History: "1" = add Pale Moon browser (2026-08-05).
     //          "2" = Banner File Manager 1.2.0 — fast large folders + version metadata (2026-08-05).
-    private static final String PATTERN_CONTENT_VERSION = "2";
+    //          "3" = AIO Graphics Test 2.0.0 added alongside v1 (2026-08-05).
+    private static final String PATTERN_CONTENT_VERSION = "3";
 
     private void setupWineSystemFiles() {
         String appVersion = String.valueOf(AppUtils.getVersionCode(this));

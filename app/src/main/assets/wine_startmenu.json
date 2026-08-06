@@ -3,10 +3,23 @@
     "children" : [
         {
             "name" : "AIO Graphics Test (32-bit)",
-            "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-32bit.exe"
+            "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-32bit.exe"
         },
         {
             "name" : "AIO Graphics Test (64-bit)",
+            "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-64bit.exe"
+        }
+        ]
+    },
+    {
+    "name" : "AIO Graphics Test (Classic)",
+    "children" : [
+        {
+            "name" : "AIO Graphics Test Classic (32-bit)",
+            "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-32bit.exe"
+        },
+        {
+            "name" : "AIO Graphics Test Classic (64-bit)",
             "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-64bit.exe"
         }
         ]

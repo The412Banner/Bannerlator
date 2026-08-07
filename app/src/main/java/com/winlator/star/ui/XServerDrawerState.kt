@@ -380,8 +380,10 @@ object XServerDrawerState {
     // Fired when a root toggle flips: the Activity writes the per-game override (or the global default
     // for a container-direct launch) and applies it live via PerfRootApplier.
     @JvmField var onRootToggleChange: java.util.function.BiConsumer<String, Boolean>? = null
-    // One-shot free-memory action (drop_caches).
+    // TIER 1 — one-shot drop-file-caches action (drop_caches; light, near-invisible RAM).
     @JvmField var onFreeMemory: Runnable? = null
+    // TIER 2 — one-shot deep clean (root-only): `am kill-all` frees real RAM without touching the game.
+    @JvmField var onDeepClean: Runnable? = null
     // Drawer asks the Activity to refresh the live readouts (cheap sysfs/HudMetrics reads).
     @JvmField var onRootReadoutPoll: Runnable? = null
     // Reset ONE perf key's per-game override so it re-inherits the global default (Activity removes the
@@ -438,7 +440,7 @@ object XServerDrawerState {
         _overriddenKeys.value = emptySet()
         _rootToggles.value = emptyMap()
         _rootReadouts.value = emptyMap()
-        onRootToggleChange = null; onFreeMemory = null; onRootReadoutPoll = null
+        onRootToggleChange = null; onFreeMemory = null; onDeepClean = null; onRootReadoutPoll = null
         onResetPerfKey = null; onResetAllPerf = null
         onClose = null; onKeyboard = null; onInputControls = null
         onScreenEffects = null; onGraphicEngine = null; onVibration = null

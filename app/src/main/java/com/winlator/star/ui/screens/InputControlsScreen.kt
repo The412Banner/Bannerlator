@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -76,6 +77,7 @@ import com.winlator.star.core.HttpUtils
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
+import com.winlator.star.ui.components.PlayerSlotsEditor
 import com.winlator.star.util.InAppFilePicker
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
@@ -538,6 +540,9 @@ fun InputControlsScreen() {
             }
         }
 
+        // ── Player Slots (global default for newly-created containers) ──
+        GlobalPlayerSlotsSection()
+
         // ── Gyroscope ───────────────────────────────────────────────
         GyroscopeSection()
 
@@ -638,6 +643,63 @@ private fun GyroscopeSection() {
                 modifier = Modifier.weight(1f)
             ) { Text("Reset", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
         }
+    }
+}
+
+/**
+ * App-drawer (out-of-game) global default Player-Slots view. Edits a GLOBAL default stored in app
+ * SharedPreferences (GlobalControllerPrefs) that is COPIED into a container's per-container settings
+ * only when that container is CREATED — it is NOT a live launch-time fallback and editing it never
+ * touches an already-created container. Reuses the same PlayerSlotsEditor + On-screen-priority dropdown
+ * as the container/shortcut editors, writing the identical WinHandler slot-overrides JSON schema.
+ */
+@Composable
+private fun GlobalPlayerSlotsSection() {
+    val context = LocalContext.current
+    var helpRes by remember { mutableStateOf<Int?>(null) }
+    helpRes?.let { HelpDialog(it) { helpRes = null } }
+
+    // Seeded from the global pref; every edit writes straight back so the default is always current.
+    var slotOverridesJson by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getSlotOverridesJson(context))
+    }
+    var onScreenMode by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getOnScreenMode(context))
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("Player Slots", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        IconButton(onClick = { helpRes = R.string.help_player_slots }) {
+            Icon(Icons.Default.Help, contentDescription = "What is this?",
+                tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
+        }
+    }
+    FieldSet {
+        Text(
+            "The default for newly-created containers. Assign two devices to one player to share control. " +
+                "Applies to new containers only — existing containers keep their own settings.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        val onScreenModeLabels = listOf("Keep on-screen player", "Yield Player 1 to pad", "Share the player")
+        LabeledDropdown(
+            label = "On-screen priority",
+            options = onScreenModeLabels,
+            selectedOption = onScreenModeLabels.getOrElse(onScreenMode) { onScreenModeLabels[0] },
+            onSelect = {
+                onScreenMode = onScreenModeLabels.indexOf(it).coerceAtLeast(0)
+                com.winlator.star.ui.components.GlobalControllerPrefs.setOnScreenMode(context, onScreenMode)
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+        PlayerSlotsEditor(
+            savedOverridesJson = slotOverridesJson,
+            onOverridesChange = {
+                slotOverridesJson = it
+                com.winlator.star.ui.components.GlobalControllerPrefs.setSlotOverridesJson(context, it)
+            },
+        )
     }
 }
 

@@ -578,6 +578,47 @@ public class Container {
         putExtra("vibrationIntensity", String.valueOf(intensity));
     }
 
+    // Manual controller slot overrides (in-game "Players" sub-tab), per-container. Stored as a raw
+    // JSON object string mapping a stable device descriptor -> desired slot: 0..3 pins the device to
+    // that XInput player slot, WinHandler.SLOT_IGNORE (-2) means "never take a slot", and a missing
+    // key = auto (FCFS). The on-screen pad uses the WinHandler.OSC_DESCRIPTOR sentinel as its key.
+    // Kept as an opaque string here (same discipline as getFPSCounterConfig): XServerDisplayActivity
+    // parses it into a Map for WinHandler.setManualSlotOverrides and writes edits back through here.
+    public String getControllerSlotOverrides() {
+        return getExtra("controllerSlotOverrides", "{}");
+    }
+
+    public void setControllerSlotOverrides(String json) {
+        putExtra("controllerSlotOverrides", json == null || json.isEmpty() ? "{}" : json);
+    }
+
+    // On-screen-controls vs physical-pad priority, per-container. Mirrors the WinHandler.ON_SCREEN_MODE_*
+    // constants (duplicated here for the same reason VIBRATION_MODE_* is — the editor VM shouldn't import
+    // winhandler). KEEP (default) = the historical behavior: the on-screen pad keeps whatever slot it
+    // holds, so a pad hot-plugged mid-game lands on the next free player. YIELD = a pad connecting while
+    // the on-screen pad holds Player 1 promotes to Player 1 (on-screen steps up to the next free slot).
+    // SHARE = that pad co-occupies the on-screen pad's slot (both drive that player, merged). Default is
+    // KEEP so existing containers behave exactly as before. Resolved (shortcut-override-else-container)
+    // and pushed to WinHandler at launch (XServerDisplayActivity.setupUI).
+    public static final int ON_SCREEN_MODE_KEEP = 0;
+    public static final int ON_SCREEN_MODE_YIELD = 1;
+    public static final int ON_SCREEN_MODE_SHARE = 2;
+    public static final int ON_SCREEN_MODE_DEFAULT = ON_SCREEN_MODE_KEEP;
+
+    public int getOnScreenControllerMode() {
+        try {
+            int m = Integer.parseInt(getExtra("onScreenControllerMode", String.valueOf(ON_SCREEN_MODE_DEFAULT)));
+            return (m < ON_SCREEN_MODE_KEEP || m > ON_SCREEN_MODE_SHARE) ? ON_SCREEN_MODE_DEFAULT : m;
+        }
+        catch (NumberFormatException e) {
+            return ON_SCREEN_MODE_DEFAULT;
+        }
+    }
+
+    public void setOnScreenControllerMode(int mode) {
+        putExtra("onScreenControllerMode", String.valueOf(mode));
+    }
+
     // Gyro (motion aim), per-container. Mirrors the WinHandler.GYRO_* constants so the editor VM and
     // the shortcut screen can talk about targets/activators without importing winhandler (same reason
     // the VIBRATION_MODE_* values are duplicated above). Enabled/target/sensitivity/activator/invert

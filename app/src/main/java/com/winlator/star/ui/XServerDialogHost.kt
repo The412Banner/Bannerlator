@@ -10,6 +10,7 @@ import com.winlator.star.ui.dialogs.InputControlsDialog
 import com.winlator.star.ui.dialogs.NewTaskDialog
 import com.winlator.star.ui.dialogs.ScreenEffectsDialog
 import com.winlator.star.ui.dialogs.VibrationDialog
+import com.winlator.star.ui.overlays.ControllerToastOverlay
 import com.winlator.star.ui.overlays.MagnifierOverlay
 import com.winlator.star.ui.overlays.PauseBoxOverlay
 import com.winlator.star.ui.theme.WinlatorTheme
@@ -28,6 +29,7 @@ fun XServerDialogHost() {
     val activeDialog     by state.activeDialog.collectAsState()
     val magnifierVisible by state.magnifierVisible.collectAsState()
     val paused           by state.paused.collectAsState()
+    val controllerToast  by state.controllerToast.collectAsState()
     when (activeDialog) {
         XServerDialogState.ActiveDialog.VIBRATION      -> VibrationDialog(state)
         XServerDialogState.ActiveDialog.DEBUG          -> DebugDialogContent(state)
@@ -43,4 +45,7 @@ fun XServerDialogHost() {
     // Centered pause indicator — above the game surface, shown whenever the guest is frozen
     // (ReShade freeze-frame preview OR a manual Pause). Tap to fully resume.
     if (paused) PauseBoxOverlay(state)
+
+    // Controller-status toast (P5b): top-right, below the Fusion HUD; non-interactive, auto-dismissing.
+    if (controllerToast != null) ControllerToastOverlay(state)
 }

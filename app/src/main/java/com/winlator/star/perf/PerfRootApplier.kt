@@ -33,6 +33,15 @@ object PerfRootApplier {
     const val KEY_THERMAL_DISABLE = "rootThermalDisable"
     const val KEY_FAN_MAX = "rootFanMax"
 
+    /**
+     * "Auto deep-clean on launch" toggle (Tier 2). Persisted like the other perf global defaults
+     * (via [PerformanceSettings] under "global_$KEY"), root-only, default OFF. Deliberately NOT in
+     * [ROOT_KEYS]: it's a launch-time ACTION, not a snapshot/reverted sysfs pin, so it stays out of the
+     * per-game override machinery, the drawer root-toggle grid and the revert registry. It is fired
+     * once at launch from [applyEffective] when its default is on and root is granted.
+     */
+    const val KEY_AUTO_DEEP_CLEAN = "rootAutoDeepCleanOnLaunch"
+
     /** Every key this applier owns, in display order (includes the dual-tier GPU pin). */
     val ROOT_KEYS = listOf(
         KEY_CPU_GOVERNOR, KEY_CPU_FREQ_LOCK, KEY_CORES_ONLINE,
@@ -173,24 +182,47 @@ object PerfRootApplier {
         return RootManager.readNode(maxStatePath)
     }
 
-    // ── Free memory now (one-shot; no revert needed) ───────────────────────────────────────────────
+    // ── TIER 1 — Drop file caches (one-shot; no revert needed) ─────────────────────────────────────
+    // Writes /proc/sys/vm/drop_caches=3: drops reclaimable page/dentry/inode caches. This is LIGHT by
+    // design — the kernel refills caches immediately, so almost no RAM appears "freed" to the user. It
+    // is NOT a background-app killer; that is Tier 2 ([deepCleanMemory]). Kept as a distinct, honestly
+    // labelled action.
     fun freeMemoryNow(): Boolean {
         if (!RootManager.isGranted) return false
         return RootManager.writeNode("/proc/sys/vm/drop_caches", "3")
     }
 
-    // TODO(next pass): background-app freeze — needs `am`/package enumeration + a safelist; bigger and
-    // riskier, deliberately deferred.
+    // ── TIER 2 — Deep clean (root-only; the real RAM free) ─────────────────────────────────────────
+    // Frees genuine RAM by force-closing SAFE background processes via `am kill-all`. This is the safe
+    // primitive on purpose: `am kill-all` asks ActivityManager to kill only the background processes
+    // the OS itself deems killable, which INHERENTLY spares foreground apps, persistent/system
+    // processes AND our own running game session (it runs as a foreground service — see
+    // GameSessionForegroundService). There is deliberately NO per-package force-stop sweep and NO
+    // safelist: a safelist that ever missed the game/container would crash the live session, so the
+    // OS's own foreground/persistent protection is used instead. Then we also drop caches (Tier 1) for
+    // good measure. Returns whether the kill command succeeded; false (no-op) when root isn't granted.
+    fun deepCleanMemory(): Boolean {
+        if (!RootManager.isGranted) return false
+        val killed = RootManager.runCommand("am kill-all")
+        freeMemoryNow() // belt-and-braces; harmless and near-invisible on its own
+        return killed
+    }
 
     /**
      * Apply the resolved effective state of every toggle this applier owns, at game launch.
      * The GPU pin runs even without root (non-root turbo path); the rest need the grant.
+     *
+     * [autoDeepClean] is the persisted "Auto deep-clean on launch" default (Tier 2): when true and
+     * root is granted, run one [deepCleanMemory] pass here — the same launch point the sysfs toggles
+     * apply from. It self-gates on root, so it's harmless to pass true without a grant.
      */
-    fun applyEffective(effective: Map<String, Boolean>) {
+    @JvmOverloads
+    fun applyEffective(effective: Map<String, Boolean>, autoDeepClean: Boolean = false) {
         if (!RootManager.isGranted) {
             apply(KEY_GPU_CLOCK_LOCK, effective[KEY_GPU_CLOCK_LOCK] ?: false)
             return
         }
         for (key in ROOT_KEYS) apply(key, effective[key] ?: false)
+        if (autoDeepClean) deepCleanMemory()
     }
 }

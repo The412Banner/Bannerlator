@@ -63,6 +63,8 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
     val bigCores by PerformanceSettings.preferBigCores.collectAsState()
     val rootState by PerformanceSettings.rootState.collectAsState()
     val harnessProven by PerformanceSettings.harnessProven.collectAsState()
+    // "Auto deep-clean on launch" (Tier 2) global default — persisted via the same root-default store.
+    val autoDeepClean by PerformanceSettings.rootDefaultFlow(PerfRootApplier.KEY_AUTO_DEEP_CLEAN).collectAsState()
 
     val scope = rememberCoroutineScope()
     var showRootDisclaimer by remember { mutableStateOf(false) }
@@ -153,17 +155,37 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
 
+                // ── Free memory (dual tier). Section "?" explains both tiers + the auto toggle. ──
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = { PerfRootApplier.freeMemoryNow() },
-                        enabled = granted,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Free memory now", color = MaterialTheme.colorScheme.onPrimary) }
-                    InfoButton { info = "Free memory now" to PerfCopy.FREE_MEM }
+                    Text("Free memory", color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    InfoButton { info = "Free memory" to PerfCopy.FREE_MEM_SECTION }
                 }
-                Text("Background-app freeze — coming in a later update.",
+
+                // TIER 1 — drop file caches (light; near-invisible RAM by design). Root-gated as before.
+                Button(
+                    onClick = { PerfRootApplier.freeMemoryNow() },
+                    enabled = granted,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Drop file caches", color = MaterialTheme.colorScheme.onPrimary) }
+                Text("Frees cached files. Little visible RAM; the system reclaims cache automatically.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+
+                // TIER 2 — deep clean (root-only; the real RAM free via `am kill-all`).
+                Button(
+                    onClick = { PerfRootApplier.deepCleanMemory() },
+                    enabled = granted,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Deep clean (free app memory)", color = MaterialTheme.colorScheme.onPrimary) }
+                Text("Force-closes background apps to free real memory. Won't touch your game or system.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+
+                // AUTO toggle — persists like the other root defaults; fires at game launch.
+                PerfToggle("Auto deep-clean on launch", autoDeepClean, enabled = granted,
+                    onInfo = { info = "Auto deep-clean on launch" to PerfCopy.AUTO_DEEP_CLEAN }) {
+                    PerformanceSettings.setRootDefault(PerfRootApplier.KEY_AUTO_DEEP_CLEAN, it)
+                }
             }
 
             // ── Temperature watchdog (device-wide; not root-gated). Shared control block, identical
@@ -304,7 +326,24 @@ private object PerfCopy {
         "On non-Adreno GPUs (Mali, Xclipse, PowerVR) this toggle needs root."
     const val THERMAL = "Removes your device's built-in heat protection. ⚠️ Can overheat — the Temperature Watchdog is your only safety net with this on. (Root)"
     const val FAN = "Runs the fan at full speed for max cooling (devices with a fan). (Root)"
-    const val FREE_MEM = "Clears cached memory to free RAM. One-time action — tap before a heavy game."
+    const val FREE_MEM_SECTION =
+        "Two ways to free memory, from lightest to strongest.\n\n" +
+        "Drop file caches (Tier 1)\n" +
+        "Writes to the kernel's drop-caches control to release cached files. This is light and " +
+        "near-invisible by design — the system refills the cache almost immediately, so you'll rarely " +
+        "see the free-RAM number move. It does NOT close any apps.\n\n" +
+        "Deep clean (Tier 2)\n" +
+        "The real RAM free. Force-closes background apps to reclaim memory. It uses Android's own " +
+        "\"kill background\" command (am kill-all), which only touches apps the system considers safe " +
+        "to kill — it will NOT close your running game, this app, or system/persistent apps. This is " +
+        "the same kind of thing a phone's built-in \"RAM cleaner\" / Game Turbo does.\n\n" +
+        "Auto deep-clean on launch\n" +
+        "When on, a deep clean runs automatically each time you start a game or container, so it opens " +
+        "with the most free RAM available.\n\n" +
+        "Root is required for deep clean (and for dropping caches)."
+    const val AUTO_DEEP_CLEAN =
+        "Runs a deep clean automatically every time a game/container launches — force-closes safe " +
+        "background apps (via am kill-all, never your game or system) to free real RAM before you start. (Root)"
 }
 
 /** Consolidated explainer body, grouped by root requirement. */
@@ -320,5 +359,5 @@ private fun explainAllBody(): String = buildString {
     append("• Keep all cores online\n${PerfCopy.CORES_ONLINE}\n\n")
     append("• Disable thermal throttling\n${PerfCopy.THERMAL}\n\n")
     append("• Fan to maximum\n${PerfCopy.FAN}\n\n")
-    append("• Free memory now\n${PerfCopy.FREE_MEM}\n")
+    append("• Free memory\n${PerfCopy.FREE_MEM_SECTION}\n")
 }

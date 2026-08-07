@@ -178,6 +178,29 @@ object RootManager {
     }
 
     /**
+     * Run a one-shot privileged command through the single root shell (e.g. `am kill-all`). Returns
+     * whether it exited successfully. No-ops (returns false, logs) unless root is [RootState.GRANTED].
+     *
+     * Use this for fire-and-forget privileged ACTIONS that need no snapshot/revert — anything that
+     * writes a sysfs node the safety pipeline must be able to unwind goes through [writeNode] instead,
+     * so this never touches [PerfRevertRegistry].
+     */
+    fun runCommand(cmd: String): Boolean {
+        if (!isGranted) {
+            Log.d(TAG, "runCommand skipped (state=${_state.value}): $cmd")
+            return false
+        }
+        return try {
+            val res = Shell.cmd(cmd).exec()
+            if (!res.isSuccess) Log.w(TAG, "runCommand($cmd) rc=${res.code} ${res.err}")
+            res.isSuccess
+        } catch (t: Throwable) {
+            Log.w(TAG, "runCommand($cmd) failed", t)
+            false
+        }
+    }
+
+    /**
      * App-startup entry point. Probes root, then hands off to the revert registry so a snapshot left
      * dirty by a hard kill / OOM last session is restored before anything else touches a node.
      * Also chains the crash + shutdown safety nets. Safe to call more than once.

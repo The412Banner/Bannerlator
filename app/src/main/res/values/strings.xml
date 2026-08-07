@@ -413,6 +413,12 @@
         <b>Correct SurfaceFlinger colours</b><br /><br />
         On the SurfaceFlinger renderer, a game\'s red and blue channels can come out swapped. This fixes that (BGRA→RGBA). Leave it <b>ON</b> — turn it off only if a game\'s colours already look correct without it, or look wrong with it on.
     ]]></string>
+    <string name="help_renderer_driver"><![CDATA[
+        <b>Renderer Driver</b><br /><br />
+        Which Vulkan driver the on-screen <b>compositor</b> runs on — the layer that takes your game\'s finished frame and puts it on screen. This is <b>not</b> where your game renders; that\'s the top-level <b>Graphics Driver</b>.<br /><br />
+        <b>System</b> (default) uses Android\'s own Vulkan driver — the safe, always-compatible choice. Picking an installed <b>Turnip</b> points the compositor at that build instead. It mostly affects present/compatibility behaviour, not your game\'s FPS (the compositor isn\'t where rendering happens).<br /><br />
+        Leave it on <b>System</b> unless you know you need otherwise: a Turnip compositor can black-screen on builds whose window-system support doesn\'t match your device. Vulkan renderer only — has no effect on SurfaceFlinger or OpenGL.
+    ]]></string>
     <string name="help_fps_limiter"><![CDATA[
         <b>FPS Limiter</b><br /><br />
         Loads the frame-rate limiter for this game. Turning it on just enables the feature — you set the actual cap (10–200 fps) live from the in-game FPS menu. Capping fps can cut heat and battery use, and smooth out an unstable frame rate. (Frame Generation loads the same limiter, so you only need this on its own if you want a cap without frame generation.)
@@ -1154,4 +1160,15 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="wrapper_catalog_download_failed">Couldn\'t download %1$s</string>
     <string name="wrapper_catalog_close">Done</string>
     <string name="no_wine_version_installed">No Wine version installed — download a Proton from the in-app catalog first (Containers → download icon).</string>
+    <string name="help_player_slots"><![CDATA[
+        <b>Player Slots</b><br /><br />
+        Decides which XInput <b>player</b> each controller becomes in the game. <b>Player 1</b> is slot 0, Player 2 is slot 1, and so on.<br /><br />
+        <b>Auto</b> — the controller takes the next free player in the order pads connect (the normal behaviour).<br />
+        <b>Player 1–4</b> — pins that controller to that exact player, every launch.<br />
+        <b>Ignore</b> — that controller never takes a player slot.<br /><br />
+        <b>Shared / combined control</b> — assign TWO (or more) devices to the SAME player and they BOTH drive that player at once (for example the on-screen controls plus a physical pad). Their inputs are combined, not fought over.<br /><br />
+        <b>On-screen controls</b> — the touch pad can be pinned to any player too. A physical pad connected BEFORE launch takes priority in the connect order. The On-screen priority setting decides what happens when a pad connects mid-game: <b>Keep</b> leaves the touch pad where it is, <b>Yield</b> hands Player 1 to the pad and moves the touch pad up, <b>Share</b> makes the pad share the touch pad\'s player.<br /><br />
+        <b>Reset Input</b> (in-game side menu) rebuilds the controller connection without restarting the game.<br /><br />
+        Changes made here (out of game) apply on the game\'s <b>next launch</b>; the in-game side menu changes players live. The app-drawer Input Controls copy of this sets the default for <b>newly-created</b> containers.
+    ]]></string>
 </resources>

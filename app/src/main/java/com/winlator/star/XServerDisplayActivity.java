@@ -171,6 +171,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
     public static int NOTIFICATION_ID = 9004;
     private XServerView xServerView;
     private InputControlsView inputControlsView;
+
+    // ---- Controller-status toast (P5b) — debounced hot-plug plumbing ----
+    // Coalesce a burst of add/remove/change callbacks (fast replug, or a pad that fans out into
+    // several sibling sub-devices) into ONE toast within this window.
+    private static final long CONTROLLER_TOAST_DEBOUNCE_MS = 300;
+    private final android.os.Handler controllerToastHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private String pendingToastReason = null;
+    private String pendingToastDescriptor = null;
+    private final Runnable fireControllerToast = () -> {
+        showControllerStatusToast(pendingToastReason != null ? pendingToastReason : "connected", pendingToastDescriptor);
+        pendingToastReason = null;
+        pendingToastDescriptor = null;
+    };
     private TouchpadView touchpadView;
     private XEnvironment environment;
     private DrawerLayout drawerLayout;
@@ -200,6 +213,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private ControlsProfile inGameEditorPreviousProfile;
     private Shortcut shortcut;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
+    // Which Vulkan driver the host compositor/present layer runs on ("system" = Android's own driver,
+    // or an installed adrenotools Turnip). Separate from graphicsDriver (which the guest game renders
+    // through). Default "system" — a Turnip compositor can black-screen on builds whose WSI doesn't
+    // support the surface, so it's opt-in. Applied via VulkanRenderer.setDriverInfo before nativeInit.
+    private String rendererDriverId = "system";
     private HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
     private String emulator = Container.DEFAULT_EMULATOR;
@@ -1176,6 +1194,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.onResetPerfKey = key -> resetPerfKey(key);
         state.onResetAllPerf = this::resetAllPerfOverrides;
         state.onFreeMemory = () -> com.winlator.star.perf.PerfRootApplier.INSTANCE.freeMemoryNow();
+        state.onDeepClean = () -> com.winlator.star.perf.PerfRootApplier.INSTANCE.deepCleanMemory();
         state.onRootReadoutPoll = this::refreshRootReadouts;
         // Cycle OFF -> FIT -> STRETCH -> FILL -> INTEGER -> OFF (legacy path; kept for any
         // cycle-style trigger). The drawer selector uses onSetFullscreenMode below instead.
@@ -1423,7 +1442,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             rootEffective.put(rk, resolvedRootBool(rk));
         }
         XServerDrawerState.INSTANCE.setRootToggles(rootEffective);
-        com.winlator.star.perf.PerfRootApplier.INSTANCE.applyEffective(rootEffective);
+        // Auto deep-clean on launch (Tier 2, root-only, global default). deepCleanMemory() self-gates
+        // on root and uses `am kill-all`, which never touches this game's foreground session.
+        boolean autoDeepClean = com.winlator.star.perf.PerformanceSettings.INSTANCE
+            .rootDefaultValue(com.winlator.star.perf.PerfRootApplier.KEY_AUTO_DEEP_CLEAN);
+        com.winlator.star.perf.PerfRootApplier.INSTANCE.applyEffective(rootEffective, autoDeepClean);
 
         // Unified per-game override tracking + two-way sync for ALL 9 keys: seed the overridden set
         // from the shortcut's extras (a key present = per-game override; absent = inherit + mirror the
@@ -1485,6 +1508,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         graphicsDriver = container.getGraphicsDriver();
+        rendererDriverId = container.getRendererDriverId();
         String graphicsDriverConfig = container.getGraphicsDriverConfig();
         audioDriver = container.getAudioDriver();
         emulator = container.getEmulator();
@@ -1502,6 +1526,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         if (shortcut != null) {
             graphicsDriver = shortcut.getExtra("graphicsDriver", container.getGraphicsDriver());
+            rendererDriverId = shortcut.getExtra("rendererDriverId", container.getRendererDriverId());
             graphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig());
             audioDriver = shortcut.getExtra("audioDriver", container.getAudioDriver());
             emulator = shortcut.getExtra("emulator", container.getEmulator());
@@ -1640,9 +1665,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     xServerView.getRenderer().setCursorVisible(true);
                     cancelLaunchTimers();
                     // First real game frame: hold the launch screen a few more seconds (the game
-                    // renders behind it) so the boot steps are actually seen, then close.
-                    new android.os.Handler(getMainLooper()).postDelayed(
-                        preloaderDialog::closeOnUiThread, LAUNCH_OVERLAY_GRACE_MS);
+                    // renders behind it) so the boot steps are actually seen, then close and pop the
+                    // controller-status toast (game now visible, preloader gone; runs on the main thread
+                    // so getPlayerSlotAssignments is safe).
+                    new android.os.Handler(getMainLooper()).postDelayed(() -> {
+                        preloaderDialog.closeOnUiThread();
+                        showControllerStatusToast("launch", null);
+                    }, LAUNCH_OVERLAY_GRACE_MS);
                 }
                     
                 // SHM/copyArea present path — count the frame (self-heals onto the real presenting
@@ -2784,6 +2813,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         unregisterGyroSensor();
         stopDxApiDetection();
         cancelLaunchTimers();
+        // Controller-status toast: drop the listener + any pending debounced toast so a late callback
+        // can't run against a tearing-down activity.
+        if (winHandler != null) winHandler.setControllerAssignmentListener(null);
+        controllerToastHandler.removeCallbacks(fireControllerToast);
         // Drop the failure-card callbacks so this activity isn't retained via the static holder.
         com.winlator.star.core.PreloaderState.setOnClose(null);
         com.winlator.star.core.PreloaderState.setOnOpenLog(null);
@@ -3335,6 +3368,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
              // Cleanup moved to onCreate
         }
 
+        // Manual per-device slot overrides (in-game Players sub-tab), per-container — pushed BEFORE
+        // pre-assignment so launch-time slotting honors the user's pins/ignores first (a pinned pad
+        // claims its exact player slot; an ignored device never takes one). Resolve shortcut-override
+        // -else-container, the same owner discipline as the vibration/gyro tuning.
+        winHandler.setManualSlotOverrides(parseSlotOverrides(resolvedControllerSlotOverridesJson()));
+
+        // Pre-assign any controllers that are already connected, BEFORE Wine boots. This opens
+        // their slot rings up front so the guest sees them from its first device enumeration
+        // instead of only after the first input event. The fake-input path was set in onCreate
+        // (setFakeInputPath), and the launcher component builds FAKE_EVDEV_MEMFD_PATHS during
+        // startEnvironmentComponents below, so this must sit here — after the path is known and
+        // before the guest starts reading the rings.
+        winHandler.preAssignConnectedControllers();
+
         // Start all environment components (XServer, Audio, Wine, etc.)
         preloaderDialog.step(4, "Launching Windows…");
         environment.startEnvironmentComponents();
@@ -3411,6 +3458,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (useVulkan && renderer instanceof com.winlator.star.renderer.vulkan.VulkanRenderer) {
             com.winlator.star.renderer.vulkan.VulkanRenderer vkRenderer =
                 (com.winlator.star.renderer.vulkan.VulkanRenderer) renderer;
+            // Compositor (present-layer) Vulkan driver. "system"/empty => leave driverPath null so
+            // nativeInit falls back to the system libvulkan (the safe default). An installed Turnip =>
+            // point the compositor at it. Vulkan-renderer only (SurfaceFlinger/OpenGL composite through
+            // the system path and have no ICD to swap). MUST run before the async surface nativeInit.
+            if (rendererDriverId != null && !rendererDriverId.isEmpty()
+                    && !rendererDriverId.equalsIgnoreCase("system")) {
+                try {
+                    AdrenotoolsManager adm = new AdrenotoolsManager(this);
+                    if (adm.enumarateInstalledDrivers().contains(rendererDriverId)) {
+                        String rp = adm.getDriverPath(rendererDriverId);
+                        String rl = adm.getLibraryName(rendererDriverId);
+                        if (rl != null && !rl.isEmpty()) {
+                            vkRenderer.setDriverInfo(rp, rl, getApplicationInfo().nativeLibraryDir);
+                            Log.d("RendererDriver", "compositor driver = " + rendererDriverId + " (" + rl + ")");
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w("RendererDriver", "failed to apply renderer driver '" + rendererDriverId + "', staying on system", e);
+                }
+            }
             // Present mode (with the mailbox-while-FG override) AND the drawer's live selector seed both
             // flow through the single choke point applyEffectivePresentMode() — see that method.
             applyEffectivePresentMode();
@@ -3961,6 +4028,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int vibMode = resolvedVibrationMode();
             int vibIntensity = resolvedVibrationIntensity();
             winHandler.setVibrationTuning(vibMode, vibIntensity);
+
+            // On-screen-controls priority (KEEP/YIELD/SHARE), same seed-after-container discipline as the
+            // vibration tuning above: resolve per-game override else the container value and push it in.
+            winHandler.setOnScreenControllerMode(resolvedOnScreenControllerMode());
             ds.setVibrationMode(vibMode);
             ds.setVibrationIntensity(vibIntensity);
             ds.onVibrationModeChanged = (mode) -> {
@@ -3983,6 +4054,38 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     container.saveData();
                 }
             };
+
+            // Player Slots (manual per-device slot assignment) — Controls > Players sub-tab. Seeds the
+            // drawer list from WinHandler's live device/slot state, then wires the refresh + change
+            // callbacks. A change is applied LIVE (WinHandler.setDeviceSlotAssignment: physical devices
+            // are torn down + re-seated so the guest sees the move; OSC softReleases and only its slot
+            // index changes) and the FULL override map is persisted per-container (shortcut-override
+            // -else-container, same owner as the vibration/gyro writes above), so it survives relaunch.
+            final Runnable refreshPlayerSlots = () -> ds.setPlayerSlots(buildPlayerSlotRows());
+            refreshPlayerSlots.run();
+            ds.onPlayerSlotsRefresh = refreshPlayerSlots;
+            ds.onPlayerSlotChanged = (descriptor, desiredSlot) -> {
+                winHandler.setDeviceSlotAssignment(descriptor, desiredSlot);
+                persistControllerSlotOverridesJson(buildSlotOverridesJson());
+                refreshPlayerSlots.run();
+                // Manual reassignment → status toast (may be a "PLAYER n · SHARED" state).
+                showControllerStatusToast("reassign", null);
+            };
+            ds.onResetInput = () -> {
+                winHandler.resetInputPipeline();
+                refreshPlayerSlots.run();
+                showControllerStatusToast("reset", null);
+            };
+
+            // Hot-plug (add/remove/progressive-change) → status toast. WinHandler fires a plain callback
+            // on the main looper; we DEBOUNCE a burst (a fast unplug/replug, or a pad that fans out into
+            // several sibling sub-devices) into a single toast, keeping only the latest reason/descriptor.
+            winHandler.setControllerAssignmentListener((reason, descriptor) -> {
+                pendingToastReason = reason;
+                pendingToastDescriptor = descriptor;
+                controllerToastHandler.removeCallbacks(fireControllerToast);
+                controllerToastHandler.postDelayed(fireControllerToast, CONTROLLER_TOAST_DEBOUNCE_MS);
+            });
 
             // Gyro (motion aim) state — WinHandler holds the live values (already resolved at launch
             // from the shortcut/container chain), so this seeds the drawer straight off it. Each
@@ -5024,6 +5127,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return inputControlsView;
     }
 
+    /** Snapshot the current input-device/slot state as UI rows. Main-thread only (reads
+     *  WinHandler.getPlayerSlotAssignments). Shared by the Players sub-tab refresh and the toast. */
+    private java.util.List<XServerDialogState.PlayerSlotRow> buildPlayerSlotRows() {
+        java.util.List<com.winlator.star.winhandler.WinHandler.PlayerSlotInfo> infos =
+                winHandler.getPlayerSlotAssignments();
+        java.util.List<XServerDialogState.PlayerSlotRow> uiRows = new java.util.ArrayList<>();
+        for (com.winlator.star.winhandler.WinHandler.PlayerSlotInfo info : infos) {
+            uiRows.add(new XServerDialogState.PlayerSlotRow(
+                    info.displayName, info.descriptor, info.currentSlot,
+                    info.override, info.isOnScreen, info.isGameController));
+        }
+        return uiRows;
+    }
+
+    /** Build + show the in-game controller-status toast for an event. Main-thread only. reason ∈
+     *  {"launch","connected","disconnected","reassign","reset"}; changedDescriptor marks a hot-plugged
+     *  row NEW (may be null). */
+    private void showControllerStatusToast(String reason, String changedDescriptor) {
+        if (winHandler == null) return;
+        XServerDialogState.INSTANCE.showControllerToastFor(reason, buildPlayerSlotRows(), changedDescriptor);
+    }
+
     protected boolean isInGameControlsEditorOpen() {
         return inGameControlsEditor != null;
     }
@@ -5774,6 +5899,16 @@ return true;
         }
     }
 
+    private int resolvedOnScreenControllerMode() {
+        int fallback = container != null ? container.getOnScreenControllerMode() : Container.ON_SCREEN_MODE_DEFAULT;
+        if (shortcut == null) return fallback;
+        try {
+            return Integer.parseInt(shortcut.getExtra("onScreenControllerMode", String.valueOf(fallback)));
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
     private int resolvedVibrationIntensity() {
         int fallback = container != null ? container.getVibrationIntensity() : Container.VIBRATION_INTENSITY_DEFAULT;
         if (shortcut == null) return fallback;
@@ -5782,6 +5917,36 @@ return true;
         } catch (NumberFormatException e) {
             return fallback;
         }
+    }
+
+    // Manual controller-slot overrides (Players sub-tab): the same per-game-override-else-container
+    // discipline as the vibration resolvers above. The value is an opaque JSON object string
+    // (descriptor -> desired slot); WinHandler parses/serializes it via parseSlotOverrides/
+    // buildSlotOverridesJson.
+    private String resolvedControllerSlotOverridesJson() {
+        String fallback = container != null ? container.getControllerSlotOverrides() : "{}";
+        if (shortcut == null) return fallback;
+        return shortcut.getExtra("controllerSlotOverrides", fallback);
+    }
+
+    private void persistControllerSlotOverridesJson(String json) {
+        if (shortcut != null && shortcut.hasExtra("controllerSlotOverrides")) {
+            shortcut.putExtra("controllerSlotOverrides", json);
+            shortcut.saveData();
+        } else if (container != null) {
+            container.setControllerSlotOverrides(json);
+            container.saveData();
+        }
+    }
+
+    // Delegate to the shared schema helpers on WinHandler so the in-game Players tab, launch
+    // pre-assign, and the out-of-game container/shortcut editors all read/write ONE JSON format.
+    private java.util.Map<String, Integer> parseSlotOverrides(String json) {
+        return com.winlator.star.winhandler.WinHandler.parseSlotOverridesJson(json);
+    }
+
+    private String buildSlotOverridesJson() {
+        return com.winlator.star.winhandler.WinHandler.buildSlotOverridesJson(winHandler.getManualSlotOverrides());
     }
 
     // bionic-fg interpolation model for this launch: per-game override else the container value.
@@ -7048,6 +7213,12 @@ return true;
             if (winHandler != null) winHandler.setProcessAffinity(pid, mask);
         };
 
+        ds.onTmQueryAffinity = pid -> {
+            if (winHandler == null) return -1;
+            Integer m = winHandler.getManualAffinity(pid);
+            return m != null ? m : -1;
+        };
+
         registerTmProcessInfoListener();
 
         ds.setTmContainerInfo(buildTmContainerInfo());
@@ -7081,6 +7252,7 @@ return true;
         if (winHandler != null) {
             winHandler.setOnGetProcessInfoListener(new OnGetProcessInfoListener() {
                 private final ArrayList<XServerDialogState.TmProcess> buffer = new ArrayList<>();
+                private final java.util.HashSet<Integer> livePids = new java.util.HashSet<>();
 
                 @Override
                 public void onGetProcessInfo(int index, int numProcesses, ProcessInfo info) {
@@ -7092,13 +7264,31 @@ return true;
 
                     final android.graphics.Bitmap finalIcon = icon;
                     runOnUiThread(() -> {
-                        if (index == 0) buffer.clear();
+                        if (index == 0) { buffer.clear(); livePids.clear(); }
+                        livePids.add(info.pid);
+                        // Show the mask the USER applied, not the guest's stale GetProcessAffinityMask
+                        // readback (which keeps reporting the full mask under wow64/FEX). Falls back to
+                        // the guest value when the user never set an affinity for this pid.
+                        Integer override = winHandler != null ? winHandler.getManualAffinity(info.pid) : null;
+                        int displayMask = override != null ? override : info.affinityMask;
                         buffer.add(new XServerDialogState.TmProcess(
                             index, info.pid, info.name,
-                            info.getFormattedMemoryUsage(), info.wow64Process, info.affinityMask, finalIcon));
+                            info.getFormattedMemoryUsage(), info.wow64Process, displayMask, finalIcon));
                         if (numProcesses == 0 || index == numProcesses - 1) {
                             ds.setTmProcesses(new ArrayList<>(buffer));
                             ds.setTmCount(numProcesses);
+                            if (winHandler != null) {
+                                // Enumerations overlap and share buffer/livePids (a concurrent one's
+                                // index-0 reset wipes livePids mid-cycle), so only prune on a clean,
+                                // complete pass -- every pid seen exactly once. Pruning off a truncated
+                                // livePids would wrongly drop a still-valid override the instant it's set.
+                                if (numProcesses > 0 && livePids.size() == numProcesses) {
+                                    winHandler.retainManualAffinities(livePids);
+                                }
+                                // Re-pin survivors so threads spawned since the last set (which escape
+                                // back to all cores) get bound. Idempotent and race-free.
+                                winHandler.reapplyManualAffinities();
+                            }
                         }
                     });
                 }

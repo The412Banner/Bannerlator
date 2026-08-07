@@ -69,8 +69,8 @@ android {
         // the same build number over-the-top works, so pre-build installs are unaffected.
         // NB: do NOT write the camel-case build-code token in these comments — release.yml greps
         //     for it and takes head -1; a comment match feeds jq an empty value and the job dies.
-        versionCode 68
-        versionName "2.9.6"
+        versionCode 69
+        versionName "2.9.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         externalNativeBuild {

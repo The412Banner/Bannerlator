@@ -30,6 +30,7 @@ import com.winlator.star.core.WinebusRumblePatcher;
 import com.winlator.star.fexcore.FEXCoreManager;
 import com.winlator.star.fexcore.FEXCorePreset;
 import com.winlator.star.fexcore.FEXCorePresetManager;
+import com.winlator.star.inputcontrols.FakeInputWriter;
 import com.winlator.star.xconnector.UnixSocketConfig;
 import com.winlator.star.xenvironment.EnvironmentComponent;
 import com.winlator.star.xenvironment.ImageFs;
@@ -482,6 +483,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
         envVars.put("FAKE_EVDEV_VIBRATION", "1");
+
+        // Fake-input transport is a fixed-size mmap ring per slot (see FakeInputWriter).
+        // Prepare all 4 slot rings and hand the native reader their canonical paths so
+        // an open() of /dev/input/eventN maps the matching ring. The static rings are
+        // shared with the WinHandler writers created later in this same process.
+        String ringPaths = FakeInputWriter.getRingEnv(devInputDir);
+        if (ringPaths != null && !ringPaths.isEmpty()) {
+            envVars.put("FAKE_EVDEV_MEMFD_PATHS", ringPaths);
+        }
 
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         envVars.put("LD_PRELOAD", ld_preload);

@@ -90,6 +90,7 @@ import com.winlator.star.widget.CPUListView
 import com.winlator.star.ui.components.CollapsibleRail
 import com.winlator.star.ui.components.ContainerGlossarySheet
 import com.winlator.star.ui.components.EnvVarsEditor
+import com.winlator.star.ui.components.PlayerSlotsEditor
 import com.winlator.star.ui.components.RailItem
 import com.winlator.star.ui.components.RailLink
 import com.winlator.star.ui.components.RailSection
@@ -637,10 +638,32 @@ internal fun VulkanSettingsDialog(
                     )
                 }
 
-                // NOTE: the "Renderer Driver" (System/Turnip) dropdown was removed — it was vestigial:
-                // its value (driverId) was stored + round-tripped but NEVER read at runtime (the actual
-                // driver is the top-level "Graphics Driver" setting). The `driverId` config field is
-                // still preserved below so existing containers round-trip byte-identically.
+                // Renderer (compositor) driver: which Vulkan driver the present layer itself runs on —
+                // "System" (Android's own driver, the safe default) or an installed Turnip. This is the
+                // compositor, NOT where your game renders (that's the top-level Graphics Driver). Applied
+                // at launch by XServerDisplayActivity (VulkanRenderer.setDriverInfo before nativeInit).
+                // Vulkan-renderer only; a no-op on SurfaceFlinger/OpenGL. Options = System + installed
+                // adrenotools drivers; default stays System because a Turnip compositor can black-screen
+                // on builds whose WSI doesn't support the surface.
+                val vkCtx = androidx.compose.ui.platform.LocalContext.current
+                val rendererDriverOptions = remember {
+                    val installed = try {
+                        com.winlator.star.contents.AdrenotoolsManager(vkCtx).enumarateInstalledDrivers()
+                    } catch (e: Exception) { arrayListOf<String>() }
+                    (listOf("system") + installed).distinct()
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LabeledDropdown(
+                        label = stringResource(R.string.renderer_driver_id),
+                        options = rendererDriverOptions,
+                        selectedOption = if (rendererDriverOptions.contains(driverId)) driverId else "system",
+                        onSelect = { driverId = it },
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { helpRes = R.string.help_renderer_driver }) {
+                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                    }
+                }
 
                 // Filter mode (Nearest/Linear) is no longer edited here: the in-game
                 // drawer's "Scaling mode" picker is the single source of truth for
@@ -1790,6 +1813,36 @@ private fun AdvancedTab(
                     valueRange = 0f..100f, steps = 99
                 )
             }
+        }
+
+        // Player Slots section — manual controller->player-slot pins that the launch pre-assignment
+        // applies. Same JSON schema and editor the in-game "Players" drawer tab uses, but here it's a
+        // saved default (applied on next launch), not a live reassignment.
+        SectionBox(title = "Player Slots") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Pin controllers to players; assign two to one player to share control.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { helpRes = R.string.help_player_slots }) {
+                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                }
+            }
+            // On-screen priority: what happens to the on-screen pad when a physical pad connects mid-game.
+            val onScreenModeLabels = listOf("Keep on-screen player", "Yield Player 1 to pad", "Share the player")
+            LabeledDropdown(
+                label = "On-screen priority",
+                options = onScreenModeLabels,
+                selectedOption = onScreenModeLabels.getOrElse(viewModel.onScreenControllerMode) { onScreenModeLabels[0] },
+                onSelect = { viewModel.onScreenControllerMode = onScreenModeLabels.indexOf(it).coerceAtLeast(0) },
+            )
+            Spacer(Modifier.height(8.dp))
+            PlayerSlotsEditor(
+                savedOverridesJson = viewModel.controllerSlotOverridesJson,
+                onOverridesChange = { viewModel.controllerSlotOverridesJson = it },
+            )
         }
 
         // Gyro (motion aim) section — the default a session (and a new shortcut) launches with.

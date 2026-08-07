@@ -1083,6 +1083,21 @@ private fun TopLevelFields(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
             )
+            // lsfg-vk FP16 shaders (conf.toml no_fp16, inverted). Also live-toggleable in-game.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = viewModel.lsfgFp16,
+                    onCheckedChange = { viewModel.lsfgFp16 = it }
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.fg_fp16), modifier = Modifier.weight(1f))
+            }
+            Text(
+                text = stringResource(R.string.fg_fp16_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+            )
             // lsfg-vk auto-enable at launch: start frame gen live at the saved multiplier from launch.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(

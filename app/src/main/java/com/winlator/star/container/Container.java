@@ -509,6 +509,17 @@ public class Container {
         putExtra("lsfgPerformanceMode", performanceMode ? "1" : "0");
     }
 
+    // lsfg-vk FP16 shaders (conf.toml no_fp16): FP16 halves the flow/interpolation shaders' precision
+    // for better throughput on Adreno; some titles show artifacting with it on, so it's exposed as a
+    // toggle. Per-container, default ON (no_fp16 = false) to match the pre-existing hardcoded config.
+    public boolean isLsfgFp16() {
+        return getExtra("lsfgFp16", "1").equals("1");
+    }
+
+    public void setLsfgFp16(boolean fp16) {
+        putExtra("lsfgFp16", fp16 ? "1" : "0");
+    }
+
     // lsfg-vk "auto-enable at launch": when ON, the container starts frame generation LIVE at its saved
     // multiplier from the first frame (GameNative-style) instead of the safe global default (layer loaded
     // but frame gen OFF, opt-in per session from the FG drawer). Per-container, default ON to match

@@ -815,6 +815,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val engine by state.frameGenEngine.collectAsState()
     val layerActive by state.bionicFgActive.collectAsState()
     val initLsfgPerf by state.lsfgPerformanceMode.collectAsState()
+    val initLsfgFp16 by state.lsfgFp16.collectAsState()
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -926,6 +927,22 @@ private fun FrameGenSection(state: XServerDrawerState) {
             }
             Text(
                 "Lower quality for higher FPS — helps on low-end devices.",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            )
+
+            // lsfg-vk only: FP16 shaders (conf.toml no_fp16, inverted). Same live-toggle path as
+            // Performance mode above.
+            var lsfgFp16 by remember(initLsfgFp16) { mutableStateOf(initLsfgFp16) }
+            Spacer(Modifier.height(8.dp))
+            ToggleRow("FP16", lsfgFp16) {
+                lsfgFp16 = it
+                state.setLsfgFp16(it)
+                applyFg()
+            }
+            Text(
+                "Half-precision shaders — faster on most Adreno GPUs. Disable if you see artifacting.",
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)

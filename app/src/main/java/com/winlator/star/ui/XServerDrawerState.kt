@@ -128,6 +128,11 @@ object XServerDrawerState {
     private val _lsfgPerformanceMode = MutableStateFlow(false)
     val lsfgPerformanceMode: StateFlow<Boolean> = _lsfgPerformanceMode
 
+    // lsfg-vk only: FP16 shaders (conf.toml no_fp16, inverted). Same seed/live-toggle pattern as
+    // lsfgPerformanceMode above — default true to match the pre-existing hardcoded no_fp16 = false.
+    private val _lsfgFp16 = MutableStateFlow(true)
+    val lsfgFp16: StateFlow<Boolean> = _lsfgFp16
+
     private val _fpsLimiterEnabled = MutableStateFlow(false)
     val fpsLimiterEnabled: StateFlow<Boolean> = _fpsLimiterEnabled
 
@@ -299,6 +304,7 @@ object XServerDrawerState {
     fun setFrameGenModel(v: Int)           { _frameGenModel.value = v.coerceIn(0, 4) }
     fun setFrameGenEngine(v: String)       { _frameGenEngine.value = v }
     fun setLsfgPerformanceMode(v: Boolean) { _lsfgPerformanceMode.value = v }
+    fun setLsfgFp16(v: Boolean)            { _lsfgFp16.value = v }
     fun setFpsLimiterEnabled(v: Boolean)   { _fpsLimiterEnabled.value = v }
     fun setFpsLimit(v: Int)                { _fpsLimit.value = v }
     fun setMatchRefreshRate(v: Boolean)    { _matchRefreshRate.value = v }
@@ -411,6 +417,7 @@ object XServerDrawerState {
         _presentModeLocked.value = false
         _rendererIsVulkan.value = false
         _lsfgPerformanceMode.value = false
+        _lsfgFp16.value = true
         _fpsLimiterEnabled.value = false
         _fpsLimit.value = 60
         _matchRefreshRate.value = true

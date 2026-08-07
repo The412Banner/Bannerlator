@@ -164,6 +164,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // live-toggleable from the in-game FG menu. Only meaningful when frameGenEngine == "lsfg".
     // Default ON for new/unset containers (see loadContainerData) — initial value mirrors that.
     var lsfgPerformanceMode by mutableStateOf(true)
+    // lsfg-vk FP16 shaders (conf.toml no_fp16, inverted): per-container, also live-toggleable from
+    // the in-game FG menu. Only meaningful when frameGenEngine == "lsfg". Default ON (see
+    // loadContainerData) — initial value mirrors that.
+    var lsfgFp16 by mutableStateOf(true)
     // lsfg-vk auto-enable at launch (per-container): start frame gen live at the saved multiplier
     // from launch instead of off. Only meaningful when frameGenEngine == "lsfg". Default ON (matches
     // GameNative; see loadContainerData) — initial value mirrors that.
@@ -490,6 +494,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         frameGenEngine     = seed?.frameGenEngine ?: "off"
         frameGenModel      = seed?.frameGenModel ?: 0
         lsfgPerformanceMode = seed?.isLsfgPerformanceMode != false   // default ON for new/unset containers
+        lsfgFp16            = seed?.isLsfgFp16 != false   // default ON for new/unset containers
         lsfgAutoEnable      = seed?.isLsfgAutoEnable != false   // default ON for new/unset containers (GameNative parity)
         fpsLimiterEnabled  = seed?.isFpsLimiterEnabled == true
         matchRefreshRate   = seed?.isMatchRefreshRate != false   // default ON for new/unset containers
@@ -888,6 +893,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setFrameGenEngine(frameGenEngine)
             c.setFrameGenModel(frameGenModel)
             c.setLsfgPerformanceMode(lsfgPerformanceMode)
+            c.setLsfgFp16(lsfgFp16)
             c.setLsfgAutoEnable(lsfgAutoEnable)
             c.setFpsLimiterEnabled(fpsLimiterEnabled)
             c.setMatchRefreshRate(matchRefreshRate)
@@ -951,6 +957,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                     created.setFrameGenEngine(frameGenEngine)
                     created.setFrameGenModel(frameGenModel)
                     created.setLsfgPerformanceMode(lsfgPerformanceMode)
+                    created.setLsfgFp16(lsfgFp16)
                     created.setLsfgAutoEnable(lsfgAutoEnable)
                     created.setVibrationMode(vibrationMode)
                     created.setVibrationIntensity(vibrationIntensity)
@@ -1086,6 +1093,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             template.setFrameGenEngine(frameGenEngine)
             template.setFrameGenModel(frameGenModel)
             template.setLsfgPerformanceMode(lsfgPerformanceMode)
+            template.setLsfgFp16(lsfgFp16)
             template.setLsfgAutoEnable(lsfgAutoEnable)
             template.setVibrationMode(vibrationMode)
             template.setVibrationIntensity(vibrationIntensity)

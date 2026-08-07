@@ -1737,6 +1737,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 try {
                     preloaderDialog.step(2, "Preparing Wine & graphics driver…");
                     setupWineSystemFiles();
+                    patchBundledWinhandler();
                     extractGraphicsDriverFiles();
                     changeWineAudioDriver();
                     applyGameRefreshRateUnlock();
@@ -6334,6 +6335,36 @@ return true;
         WineUtils.applySystemTweaks(this, wineInfo);
         container.putExtra("graphicsDriver", null);
         container.putExtra("desktopTheme", null);
+    }
+
+    // The guest-side Task Manager helper (C:\windows\winhandler.exe) is a plain x86-64 PE compiled
+    // from cpp/winlator/winhandler.c. It ships prebuilt inside the 184MB imagefs, so source fixes
+    // (e.g. the per-thread affinity pinning) wouldn't reach users without a full imagefs re-bake.
+    // Instead CI compiles winhandler.c with mingw into an APK asset, and this drops it over the
+    // prefix copy on launch — version-guarded so it only rewrites when WINHANDLER_VERSION changes.
+    // No-op on a dev/local build that never bundled the asset (compile happens only in CI).
+    private static final int WINHANDLER_VERSION = 1;
+
+    private void patchBundledWinhandler() {
+        try {
+            String[] bundled = getAssets().list("winhandler");
+            boolean haveAsset = false;
+            if (bundled != null) for (String f : bundled) if ("winhandler.exe".equals(f)) { haveAsset = true; break; }
+            if (!haveAsset) return; // dev build without the CI-compiled asset — leave the imagefs copy
+            File windowsDir = new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/drive_c/windows");
+            File dst = new File(windowsDir, "winhandler.exe");
+            File marker = new File(windowsDir, ".winhandler_version");
+            String want = String.valueOf(WINHANDLER_VERSION);
+            String have = marker.isFile() ? com.winlator.star.core.FileUtils.readString(marker) : null;
+            if (dst.isFile() && want.equals(have != null ? have.trim() : null)) return; // already current
+            windowsDir.mkdirs();
+            com.winlator.star.core.FileUtils.copy(this, "winhandler/winhandler.exe", dst);
+            com.winlator.star.core.FileUtils.chmod(dst, 0755);
+            com.winlator.star.core.FileUtils.writeString(marker, want);
+            Log.d("Winhandler", "patched bundled winhandler.exe -> v" + want + " at " + dst);
+        } catch (Exception e) {
+            Log.w("Winhandler", "winhandler patch skipped/failed, keeping existing copy", e);
+        }
     }
 
     // Pale Moon ships only as a START MENU launcher now — never as a desktop shortcut. The repacked

@@ -14,3 +14,6 @@
 
 # local agent worktrees (never commit)
 .claude/worktrees/
+
+# CI-compiled guest helper (built by _build.yml, not committed)
+app/src/main/assets/winhandler/

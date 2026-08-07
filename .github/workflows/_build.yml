@@ -223,6 +223,20 @@ jobs:
       if: steps.cache-lsfg.outputs.cache-hit != 'true'
       run: ./build-lsfg-android.sh
 
+    - name: Compile winhandler.exe (guest Task Manager helper, x86_64 mingw)
+      # winhandler.exe is a plain x86-64 PE (runs under the arm64ec wine's x64 emulation), so a
+      # standard mingw-w64 cross-compiler builds it — no arm64ec toolchain needed. Bundled as an
+      # asset and dropped into the wine prefix on launch (patchBundledWinhandler), so fixes to
+      # winhandler.c (per-thread affinity pinning, etc.) reach the guest without an imagefs re-bake.
+      # Bump WINHANDLER_VERSION in XServerDisplayActivity whenever winhandler.c changes.
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-mingw-w64-x86-64
+        mkdir -p app/src/main/assets/winhandler
+        x86_64-w64-mingw32-gcc app/src/main/cpp/winlator/winhandler.c -O2 -s \
+          -o app/src/main/assets/winhandler/winhandler.exe -lws2_32 -lpsapi
+        ls -la app/src/main/assets/winhandler/winhandler.exe
+
     - name: Build with Gradle
       # ONE flavor per job → only one ~588MB APK packages here, so the old
       # `--no-parallel --max-workers=1` OOM-guard is dropped; full workers now.

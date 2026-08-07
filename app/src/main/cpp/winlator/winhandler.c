@@ -6,13 +6,16 @@
 #define _WIN32_WINNT 0x0600
 #endif
 
+// Include order matters for mingw-w64: winsock2.h before windows.h (else windows.h pulls in the
+// v1 winsock and they clash), and windows.h before psapi.h/tlhelp32.h (which use its WINBOOL/DWORD/
+// LPVOID types). The original toolchain was lenient about this; standard mingw is not.
+#include <winsock2.h>
+#include <windows.h>
 #include <psapi.h>
+#include <tlhelp32.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <tlhelp32.h>
-#include <windows.h>
-#include <winsock2.h>
 
 
 #define SERVER_PORT 7946

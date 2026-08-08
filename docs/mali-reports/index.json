@@ -1,5 +1,25 @@
 [
   {
+    "id": "2026-08-08T05-28-30-2d5cef",
+    "created": "2026-08-08T05:28:30.622Z",
+    "reporter": "josh",
+    "device": "poco f5 pro",
+    "gpu": "adreno 730",
+    "game": "nba 2k16",
+    "symptom": "Other",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-08T00-38-07-a4ead5",
+    "created": "2026-08-08T00:38:07.202Z",
+    "reporter": "split",
+    "device": "vivo x200s",
+    "gpu": "Mali-G925-Immortalis MC12",
+    "game": "Forza Horizon 4",
+    "symptom": "图形故障(损坏、闪烁、缺少纹理)",
+    "logs": 3
+  },
+  {
     "id": "2026-08-07T14-41-10-021a5c",
     "created": "2026-08-07T14:41:10.621Z",
     "reporter": "Wawa",

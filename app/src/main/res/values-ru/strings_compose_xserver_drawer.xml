@@ -245,8 +245,6 @@
     <string name="compose_xserver_drawer_thermal_fan_locked_hint">Управление температурой и вентилятором заблокировано, пока на этом устройстве не проверено безопасное восстановление параметров.</string>
     <string name="compose_xserver_drawer_drop_file_caches">Очистить файловый кэш</string>
     <string name="compose_xserver_drawer_drop_file_caches_hint">Освобождает кэшированные файлы. Видимый объём RAM почти не изменится: система автоматически использует свободную память под кэш.</string>
-    <string name="compose_xserver_drawer_deep_clean">Глубокая очистка памяти приложений</string>
-    <string name="compose_xserver_drawer_deep_clean_hint">Принудительно закрывает фоновые приложения, освобождая физическую память. Игра и системные процессы не затрагиваются.</string>
 
     <!-- Диспетчер задач. -->
     <string name="compose_xserver_drawer_task_manager">Диспетчер задач</string>

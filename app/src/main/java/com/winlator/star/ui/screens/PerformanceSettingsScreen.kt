@@ -66,7 +66,6 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
     val rootState by PerformanceSettings.rootState.collectAsState()
     val harnessProven by PerformanceSettings.harnessProven.collectAsState()
     // "Auto deep-clean on launch" (Tier 2) global default — persisted via the same root-default store.
-    val autoDeepClean by PerformanceSettings.rootDefaultFlow(PerfRootApplier.KEY_AUTO_DEEP_CLEAN).collectAsState()
 
     val scope = rememberCoroutineScope()
     var showRootDisclaimer by remember { mutableStateOf(false) }
@@ -85,7 +84,6 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
     val thermalLabel = stringResource(R.string.perf_disable_thermal)
     val fanLabel = stringResource(R.string.perf_fan_max)
     val freeMemoryLabel = stringResource(R.string.perf_free_memory)
-    val autoDeepCleanLabel = stringResource(R.string.perf_auto_deep_clean)
     val sustainedInfo = stringResource(R.string.perf_info_sustained)
     val priorityInfo = stringResource(R.string.perf_info_priority)
     val bigCoresInfo = stringResource(R.string.perf_info_big_cores)
@@ -193,22 +191,6 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
                 ) { Text(stringResource(R.string.perf_drop_file_caches), color = MaterialTheme.colorScheme.onPrimary) }
                 Text(stringResource(R.string.perf_drop_file_caches_description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-
-                // TIER 2 — deep clean (root-only; the real RAM free via `am kill-all`).
-                Button(
-                    onClick = { PerfRootApplier.deepCleanMemory() },
-                    enabled = granted,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(stringResource(R.string.perf_deep_clean), color = MaterialTheme.colorScheme.onPrimary) }
-                Text(stringResource(R.string.perf_deep_clean_description),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-
-                // AUTO toggle — persists like the other root defaults; fires at game launch.
-                val autoDeepCleanInfo = stringResource(R.string.perf_info_auto_deep_clean)
-                PerfToggle(autoDeepCleanLabel, autoDeepClean, enabled = granted,
-                    onInfo = { info = autoDeepCleanLabel to autoDeepCleanInfo }) {
-                    PerformanceSettings.setRootDefault(PerfRootApplier.KEY_AUTO_DEEP_CLEAN, it)
-                }
             }
 
             // ── Temperature watchdog (device-wide; not root-gated). Shared control block, identical

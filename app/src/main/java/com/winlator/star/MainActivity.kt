@@ -65,7 +65,6 @@ import com.winlator.star.ui.topBarActionsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -146,17 +145,6 @@ class MainActivity : AppCompatActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         splashScreen.setKeepOnScreenCondition { !contentReady }
-
-        // This localized build is Russian-first. AppCompat owns persistence on Android 12 and
-        // older, while Android 13+ mirrors the choice into the system's per-app language setting.
-        // Only seed the preference once so an explicit English choice is never overwritten.
-        val languagePrefs = PreferenceManager.getDefaultSharedPreferences(this)
-        if (!languagePrefs.getBoolean("app_language_initialized", false)) {
-            languagePrefs.edit().putBoolean("app_language_initialized", true).apply()
-            if (AppCompatDelegate.getApplicationLocales().isEmpty) {
-                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("ru"))
-            }
-        }
 
         PACKAGE_NAME = applicationContext.packageName
         AppThemeState.init(this)

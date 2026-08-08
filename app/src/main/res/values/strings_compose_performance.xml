@@ -14,7 +14,6 @@
     <string name="perf_disable_thermal">Disable thermal throttling</string>
     <string name="perf_fan_max">Fan to maximum</string>
     <string name="perf_free_memory">Free memory</string>
-    <string name="perf_auto_deep_clean">Auto deep-clean on launch</string>
     <string name="perf_info_sustained">Keeps clock speeds steady instead of spiking and dropping, so long sessions stay smoother. Safe, no root.</string>
     <string name="perf_info_priority">Gives the game\'s rendering higher priority than other apps for more CPU time. Safe, no root.</string>
     <string name="perf_info_big_cores">Pins the game to your fastest CPU cores instead of the efficiency cores. Safe, no root.</string>
@@ -24,8 +23,7 @@
     <string name="perf_info_gpu_clock">Pins the GPU at top speed so it stops dropping clocks to save power. Smoother and more consistent, but hotter and heavier on battery.\n\nNo root is needed on Adreno (Qualcomm) GPUs: the app asks the GPU driver directly to stop scaling clocks down.\n\nWith root granted, it switches to a stronger system-level clock pin. The setting is undone when you exit the game, background the app, or it crashes.\n\nOn non-Adreno GPUs (Mali, Xclipse, PowerVR), this toggle needs root.</string>
     <string name="perf_info_thermal">Removes your device\'s built-in heat protection. ⚠️ Can overheat — the Temperature Watchdog is your only safety net with this on. (Root)</string>
     <string name="perf_info_fan">Runs the fan at full speed for maximum cooling (devices with a fan). (Root)</string>
-    <string name="perf_info_free_memory">Two ways to free memory, from lightest to strongest.\n\nDrop file caches (Tier 1)\nWrites to the kernel\'s drop-caches control to release cached files. This is light and near-invisible by design: the system refills the cache almost immediately. It does not close any apps.\n\nDeep clean (Tier 2)\nForce-closes safe background apps to reclaim memory using Android\'s am kill-all command. It does not close your running game, this app, or system apps.\n\nAuto deep-clean on launch\nRuns a deep clean each time you start a game or container.\n\nRoot is required for deep clean and for dropping caches.</string>
-    <string name="perf_info_auto_deep_clean">Runs a deep clean automatically whenever a game or container launches, force-closing safe background apps via am kill-all to free memory before you start. It never closes your game or the system. (Root)</string>
+    <string name="perf_info_free_memory">Drops reclaimable file-system caches through the kernel drop-caches control. It does not close applications. The visible amount of free RAM may change only briefly because Android uses available memory for caches. (Root)</string>
     <string name="perf_gpu_requires_adreno_or_root">Locking the GPU to its maximum clock requires an Adreno (Qualcomm) GPU, or root on other GPUs.</string>
     <string name="perf_root_controls">Root performance controls</string>
     <string name="perf_root_status">Root status: %1$s</string>
@@ -35,14 +33,12 @@
     <string name="perf_safety_controls_locked">Thermal and fan controls are locked until safety-revert is verified on this device.</string>
     <string name="perf_drop_file_caches">Drop file caches</string>
     <string name="perf_drop_file_caches_description">Frees cached files. Little visible RAM; the system reclaims cache automatically.</string>
-    <string name="perf_deep_clean">Deep clean (free app memory)</string>
-    <string name="perf_deep_clean_description">Force-closes background apps to free real memory. It won\'t touch your game or the system.</string>
     <string name="perf_temperature_watchdog">Temperature watchdog</string>
     <string name="perf_watchdog_description">Automatically reverts all performance settings before the device gets too hot, based on your device\'s own thermal trip points. Keep this on unless you know what you\'re doing.</string>
     <string name="perf_auto_revert_always_on">Auto-revert on game exit, app background, and crash is always on and cannot be disabled.</string>
     <string name="perf_explain_toggles">Explain toggles</string>
     <string name="perf_what_toggles_do">What the toggles do</string>
-    <string name="perf_explain_all_body">No root needed\n\n• Sustained Performance Mode\nKeeps clock speeds steady for smoother long sessions.\n\n• Thread Priority Boost\nGives the game more CPU time.\n\n• Prefer Big Cores\nPins the game to the fastest CPU cores.\n\n• Lock GPU to max clock\nKeeps GPU clocks at maximum; hotter and heavier on battery. Adreno can use this without root.\n\nRequires root\n\n• CPU governor → performance\nForces the CPU to run fast instead of ramping on demand.\n\n• Lock CPU frequency to max\nPins the CPU at its maximum clock.\n\n• Keep all cores online\nKeeps every CPU core available.\n\n• Disable thermal throttling\nRemoves built-in thermal protection; the watchdog becomes your safety net.\n\n• Fan to maximum\nRuns the device fan at full speed.\n\n• Free memory\nDrops file caches or force-closes safe background apps.</string>
+    <string name="perf_explain_all_body">No root needed\n\n• Sustained Performance Mode\nKeeps clock speeds steady for smoother long sessions.\n\n• Thread Priority Boost\nGives the game more CPU time.\n\n• Prefer Big Cores\nPins the game to the fastest CPU cores.\n\n• Lock GPU to max clock\nKeeps GPU clocks at maximum; hotter and heavier on battery. Adreno can use this without root.\n\nRequires root\n\n• CPU governor → performance\nForces the CPU to run fast instead of ramping on demand.\n\n• Lock CPU frequency to max\nPins the CPU at its maximum clock.\n\n• Keep all cores online\nKeeps every CPU core available.\n\n• Disable thermal throttling\nRemoves built-in thermal protection; the watchdog becomes your safety net.\n\n• Fan to maximum\nRuns the device fan at full speed.\n\n• Drop file caches\nReleases reclaimable file-system caches without closing applications.</string>
     <string name="perf_root_disclaimer_title">Power-user performance — read first</string>
     <string name="perf_root_risk">⚠️ USE AT YOUR OWN RISK — Power-user controls write directly to your device\'s system files (CPU/GPU clocks, thermal controls, fan). Misuse can cause overheating, instability, rapid battery drain, data loss, permanent hardware damage, and may void your warranty. Bannerlator provides these tools without warranty; you accept full responsibility for the outcome.</string>
     <string name="perf_root_checking">checking…</string>

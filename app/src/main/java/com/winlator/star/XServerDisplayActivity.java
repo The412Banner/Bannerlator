@@ -1185,7 +1185,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.onResetPerfKey = key -> resetPerfKey(key);
         state.onResetAllPerf = this::resetAllPerfOverrides;
         state.onFreeMemory = () -> com.winlator.star.perf.PerfRootApplier.INSTANCE.freeMemoryNow();
-        state.onDeepClean = () -> com.winlator.star.perf.PerfRootApplier.INSTANCE.deepCleanMemory();
         state.onRootReadoutPoll = this::refreshRootReadouts;
         // Cycle OFF -> FIT -> STRETCH -> FILL -> INTEGER -> OFF (legacy path; kept for any
         // cycle-style trigger). The drawer selector uses onSetFullscreenMode below instead.
@@ -1432,11 +1431,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             rootEffective.put(rk, resolvedRootBool(rk));
         }
         XServerDrawerState.INSTANCE.setRootToggles(rootEffective);
-        // Auto deep-clean on launch (Tier 2, root-only, global default). deepCleanMemory() self-gates
-        // on root and uses `am kill-all`, which never touches this game's foreground session.
-        boolean autoDeepClean = com.winlator.star.perf.PerformanceSettings.INSTANCE
-            .rootDefaultValue(com.winlator.star.perf.PerfRootApplier.KEY_AUTO_DEEP_CLEAN);
-        com.winlator.star.perf.PerfRootApplier.INSTANCE.applyEffective(rootEffective, autoDeepClean);
+        com.winlator.star.perf.PerfRootApplier.INSTANCE.applyEffective(rootEffective);
 
         // Unified per-game override tracking + two-way sync for ALL 9 keys: seed the overridden set
         // from the shortcut's extras (a key present = per-game override; absent = inherit + mirror the

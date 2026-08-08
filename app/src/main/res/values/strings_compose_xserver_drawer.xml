@@ -243,8 +243,6 @@
     <string name="compose_xserver_drawer_thermal_fan_locked_hint">Thermal and fan controls are locked until safety reversion is verified on this device.</string>
     <string name="compose_xserver_drawer_drop_file_caches">Drop file caches</string>
     <string name="compose_xserver_drawer_drop_file_caches_hint">Frees cached files. This releases little visible RAM; the system reclaims cache automatically.</string>
-    <string name="compose_xserver_drawer_deep_clean">Deep clean (free app memory)</string>
-    <string name="compose_xserver_drawer_deep_clean_hint">Force-closes background apps to free real memory. It will not touch your game or the system.</string>
 
     <!-- Task Manager. -->
     <string name="compose_xserver_drawer_task_manager">Task Manager</string>

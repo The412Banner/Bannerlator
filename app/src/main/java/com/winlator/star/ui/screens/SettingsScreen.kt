@@ -449,7 +449,11 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         FieldSetLabel(stringResource(R.string.language_title))
         FieldSet {
             val appLocales = AppCompatDelegate.getApplicationLocales()
-            val currentLanguage = if (appLocales.isEmpty) "ru" else appLocales[0]?.language ?: "ru"
+            val currentLanguage = if (appLocales.isEmpty) {
+                if (context.resources.configuration.locales[0].language == "ru") "ru" else "en"
+            } else {
+                if (appLocales[0]?.language == "ru") "ru" else "en"
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

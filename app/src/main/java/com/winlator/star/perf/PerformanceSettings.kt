@@ -83,6 +83,9 @@ object PerformanceSettings {
         for (key in PerfRootApplier.ROOT_KEYS) {
             rootDefaults[key] = MutableStateFlow(prefs.getBoolean("global_$key", false))
         }
+        // Bannerlator 2.9.7 exposed an "auto deep-clean" preference that executed Android's
+        // `am kill-all` at container launch. Discard any inherited value during upgrade.
+        prefs.edit().remove("global_${PerfRootApplier.KEY_AUTO_DEEP_CLEAN}").apply()
     }
 
     fun setSustainedPerfMode(v: Boolean) = put(KEY_SUSTAINED, v, _sustainedPerfMode)

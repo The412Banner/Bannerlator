@@ -178,7 +178,7 @@ object RootManager {
     }
 
     /**
-     * Run a one-shot privileged command through the single root shell (e.g. `am kill-all`). Returns
+     * Run a one-shot privileged command through the single root shell. Returns
      * whether it exited successfully. No-ops (returns false, logs) unless root is [RootState.GRANTED].
      *
      * Use this for fire-and-forget privileged ACTIONS that need no snapshot/revert — anything that

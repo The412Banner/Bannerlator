@@ -3304,11 +3304,6 @@ private fun RootPerformanceSection(state: XServerDrawerState) {
             stringResource(R.string.compose_xserver_drawer_drop_file_caches), R.drawable.icon_task_manager,
             subtitle = stringResource(R.string.compose_xserver_drawer_drop_file_caches_hint),
         ) { state.onFreeMemory?.run() }
-        // TIER 2 — the real RAM free (root-only). `am kill-all` never touches the running game/system.
-        AdvancedActionRow(
-            stringResource(R.string.compose_xserver_drawer_deep_clean), R.drawable.icon_task_manager,
-            subtitle = stringResource(R.string.compose_xserver_drawer_deep_clean_hint),
-        ) { state.onDeepClean?.run() }
     }
 
     // Temperature watchdog (device-wide; shared control block, identical + synced with App Settings).

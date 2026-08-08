@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Install state, progress, and executable selection. -->
+    <string name="compose_amazon_game_detail_fetching">Fetching…</string>
+    <string name="compose_amazon_game_detail_unknown_size">Unknown</string>
+    <string name="compose_amazon_game_detail_size_gb">%1$.1f GB</string>
+    <string name="compose_amazon_game_detail_size_mb">%1$.0f MB</string>
+    <string name="compose_amazon_game_detail_install">Install</string>
+    <string name="compose_amazon_game_detail_cancel">Cancel</string>
+    <string name="compose_amazon_game_detail_launch">Launch</string>
+    <string name="compose_amazon_game_detail_set_executable">Set .exe…</string>
+    <string name="compose_amazon_game_detail_uninstall">Uninstall</string>
+    <string name="compose_amazon_game_detail_downloading">Downloading…</string>
+    <string name="compose_amazon_game_detail_downloading_percent">Downloading… %1$d%%</string>
+    <string name="compose_amazon_game_detail_progress_with_bytes">%1$d%%  (%2$s / %3$s)</string>
+    <string name="compose_amazon_game_detail_executable_label">.exe: %1$s</string>
+    <string name="compose_amazon_game_detail_login_required">Login required</string>
+    <string name="compose_amazon_game_detail_download_failed">Download failed</string>
+    <string name="compose_amazon_game_detail_no_executable_found">No executable found</string>
+    <string name="compose_amazon_game_detail_error_with_message">Error: %1$s</string>
+    <string name="compose_amazon_game_detail_no_exe_files_found">No .exe files found</string>
+    <string name="compose_amazon_game_detail_executable_set">Executable set: %1$s</string>
+    <string name="compose_amazon_game_detail_uninstalled">%1$s uninstalled</string>
+    <string name="compose_amazon_game_detail_game_fallback">Game</string>
+    <string name="compose_amazon_game_detail_no_exe_in_install_directory">No .exe found in the install directory</string>
+    <string name="compose_amazon_game_detail_select_executable">Select game executable</string>
+    <string name="compose_amazon_game_detail_id_label">ID: %1$s</string>
+
+    <!-- Updates. -->
+    <string name="compose_amazon_game_detail_updates">Updates</string>
+    <string name="compose_amazon_game_detail_installed_version">Installed: v%1$s…</string>
+    <string name="compose_amazon_game_detail_version_not_recorded">Version not recorded — tap Check to verify</string>
+    <string name="compose_amazon_game_detail_install_first_for_updates">Install the game first to check for updates.</string>
+    <string name="compose_amazon_game_detail_checking">Checking…</string>
+    <string name="compose_amazon_game_detail_update_server_unreachable">Could not reach the update server.</string>
+    <string name="compose_amazon_game_detail_up_to_date">Up to date ✓</string>
+    <string name="compose_amazon_game_detail_update_available">Update available!\nInstalled: v%1$s… → Latest: v%2$s…</string>
+    <string name="compose_amazon_game_detail_check_failed">Check failed: %1$s</string>
+    <string name="compose_amazon_game_detail_update_now">Update Now</string>
+    <string name="compose_amazon_game_detail_check_for_updates">Check for Updates</string>
+
+    <!-- DLC. Protocol keys and entitlement/product IDs remain untranslated in code. -->
+    <string name="compose_amazon_game_detail_dlc">DLC</string>
+    <string name="compose_amazon_game_detail_dlc_read_error">Error reading DLC data</string>
+    <string name="compose_amazon_game_detail_no_dlc_owned">No DLC in your library for this game</string>
+    <plurals name="compose_amazon_game_detail_dlc_owned">
+        <item quantity="one">%1$d DLC owned</item>
+        <item quantity="few">%1$d DLCs owned</item>
+        <item quantity="many">%1$d DLCs owned</item>
+        <item quantity="other">%1$d DLCs owned</item>
+    </plurals>
+    <string name="compose_amazon_game_detail_unknown_dlc">Unknown DLC</string>
+    <string name="compose_amazon_game_detail_installed_symbol">✓</string>
+    <string name="compose_amazon_game_detail_reinstall">Reinstall</string>
+    <string name="compose_amazon_game_detail_starting">Starting…</string>
+</resources>

@@ -16,9 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.winlator.star.R
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -104,7 +106,7 @@ internal fun UninstallProgressDialog(gameName: String) {
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
                 Text(
-                    text = "Uninstalling $gameName…",
+                    text = stringResource(R.string.download_manager_uninstalling, gameName),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(start = 20.dp),

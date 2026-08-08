@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_games">Игры</string>
+    <string name="screen_containers">Контейнеры</string>
+    <string name="screen_contents">Компоненты</string>
+    <string name="screen_input_controls">Управление</string>
+    <string name="screen_adreno_tools">Драйверы GPU Adrenotools</string>
+    <string name="screen_manage_wrappers">Управление обёртками</string>
+    <string name="screen_saves">Сохранения</string>
+    <string name="screen_save_manager">Менеджер сохранений</string>
+    <string name="screen_file_manager">Файловый менеджер</string>
+    <string name="screen_settings">Настройки</string>
+    <string name="screen_appearance">Оформление</string>
+    <string name="screen_container">Контейнер</string>
+    <string name="screen_big_picture">Big Picture</string>
+
+    <string name="drawer_library">Библиотека</string>
+    <string name="drawer_system">Система</string>
+    <string name="drawer_stores">Магазины</string>
+    <string name="drawer_stores_note">· без изменений</string>
+    <string name="drawer_about">О приложении</string>
+    <string name="drawer_help_support">Помощь и поддержка</string>
+    <string name="drawer_my_account">Моя учётная запись</string>
+    <string name="drawer_sign_in_account">Войти / Моя учётная запись</string>
+    <string name="drawer_account_optional">Необязательно — для управления общими конфигурациями</string>
+    <string name="drawer_internal_storage">Внутренняя память</string>
+    <string name="drawer_new">НОВОЕ</string>
+    <string name="help_support_title">Помощь и поддержка</string>
+    <string name="help_support_message">Сообщить об ошибке, предложить функцию или получить поддержку можно в репозитории GitHub.</string>
+    <string name="help_github_repository">Репозиторий GitHub</string>
+    <string name="help_report_issue">Сообщить об ошибке</string>
+    <string name="help_discord_community">Сообщество Discord</string>
+
+    <string name="all_files_access_title">Нужен доступ ко всем файлам</string>
+    <string name="all_files_access_message">Чтобы использовать дополнительные накопители, например USB-диски, разрешите доступ ко всем файлам. Нажмите «ОК», чтобы открыть настройки Android.</string>
+    <string name="update_available_version">Доступно обновление — V %1$s</string>
+    <string name="update_action">Обновить</string>
+    <string name="skip_action">Пропустить</string>
+    <string name="app_version">V %1$s</string>
+    <string name="app_version_with_latest">V %1$s · последняя V %2$s</string>
+    <string name="update_now">Обновить сейчас</string>
+    <string name="powered_by">Работает на основе</string>
+    <string name="credits">Благодарности</string>
+    <string name="about_wine_description">Слой совместимости с Windows</string>
+    <string name="about_box64_description">Эмуляция x86_64 на ARM</string>
+    <string name="about_fex_description">Быстрый эмулятор x86</string>
+    <string name="about_turnip_description">Открытый драйвер Vulkan</string>
+    <string name="about_original_project">Winlator — исходный проект</string>
+    <string name="about_wine_project">Проект Wine</string>
+    <string name="about_turnip_driver">Драйвер Vulkan Turnip</string>
+    <string name="accessibility_back">Назад</string>
+    <string name="accessibility_open_menu">Открыть меню</string>
+</resources>

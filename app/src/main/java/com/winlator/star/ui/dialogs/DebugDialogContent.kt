@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import android.widget.Toast
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 
 @Composable
@@ -62,7 +64,7 @@ fun DebugDialogContent(state: XServerDialogState) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Logs",
+                    text = stringResource(R.string.logs),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -88,7 +90,7 @@ fun DebugDialogContent(state: XServerDialogState) {
                     if (logLines.isEmpty()) {
                         item {
                             Text(
-                                text = "No log output yet.",
+                                text = stringResource(R.string.dialog_no_log_output),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(8.dp)
@@ -107,19 +109,19 @@ fun DebugDialogContent(state: XServerDialogState) {
                     TextButton(onClick = {
                         // Copy the full accumulated log (incl. BCn transfer stats) to the clipboard.
                         clipboard.setText(AnnotatedString(logLines.joinToString("\n")))
-                        Toast.makeText(context, "Log copied", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, R.string.dialog_log_copied, Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Copy")
+                        Text(stringResource(R.string.copy))
                     }
                     TextButton(onClick = { state.clearLog() }) {
-                        Text("Clear")
+                        Text(stringResource(R.string.clear))
                     }
                     TextButton(onClick = { state.setLogPaused(!logPaused) }) {
-                        Text(if (logPaused) "Resume" else "Pause")
+                        Text(stringResource(if (logPaused) R.string.dialog_resume else R.string.dialog_pause))
                     }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { state.dismiss() }) {
-                        Text("Close")
+                        Text(stringResource(R.string.common_close))
                     }
                 }
             }

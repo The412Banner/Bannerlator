@@ -31,9 +31,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.reshade.ReshadeLoadout
 import com.winlator.star.reshade.ReshadeManager
 import org.json.JSONObject
@@ -189,7 +192,7 @@ fun ReshadeLoadoutEditor(
         ReshadeModeRow(state.mode) { state.changeMode(it) }
         if (state.order.size > 6) {
             Text(
-                "${state.order.size} effects — longer launch compile.",
+                pluralStringResource(R.plurals.reshade_longer_compile, state.order.size, state.order.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.padding(top = 2.dp),
@@ -209,7 +212,10 @@ private fun ReshadeModeRow(mode: String, onChange: (String) -> Unit) {
     val cs = MaterialTheme.colorScheme
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(ReshadeLoadout.MODE_SOLO to "Solo", ReshadeLoadout.MODE_STACK to "Stack").forEach { (value, label) ->
+            listOf(
+                ReshadeLoadout.MODE_SOLO to stringResource(R.string.reshade_mode_solo),
+                ReshadeLoadout.MODE_STACK to stringResource(R.string.reshade_mode_stack),
+            ).forEach { (value, label) ->
                 val selected = mode == value
                 Box(
                     modifier = Modifier
@@ -230,8 +236,7 @@ private fun ReshadeModeRow(mode: String, onChange: (String) -> Unit) {
             }
         }
         Text(
-            if (mode == ReshadeLoadout.MODE_SOLO) "One effect active at a time (A/B compare)."
-            else "Layer any subset of effects.",
+            stringResource(if (mode == ReshadeLoadout.MODE_SOLO) R.string.reshade_mode_solo_description else R.string.reshade_mode_stack_description),
             style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
             modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
         )
@@ -260,7 +265,7 @@ private fun ReshadeEffectEditorRow(
             modifier = Modifier.weight(1f).clickable { expanded = !expanded },
         )
         if (mode == ReshadeLoadout.MODE_SOLO && enabled) {
-            Text("active", style = MaterialTheme.typography.labelSmall, color = cs.primary,
+            Text(stringResource(R.string.reshade_active), style = MaterialTheme.typography.labelSmall, color = cs.primary,
                 modifier = Modifier.padding(end = 6.dp))
         }
         Icon(
@@ -271,7 +276,7 @@ private fun ReshadeEffectEditorRow(
     }
     if (expanded) {
         if (params.isEmpty()) {
-            Text("No tunable parameters.", style = MaterialTheme.typography.bodySmall,
+            Text(stringResource(R.string.reshade_no_tunable_parameters), style = MaterialTheme.typography.bodySmall,
                 color = cs.onSurfaceVariant, modifier = Modifier.padding(start = 12.dp))
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -282,7 +287,7 @@ private fun ReshadeEffectEditorRow(
                         ReshadeManager.seedValues(p, null, tmp)
                         tmp.forEach { (k, v) -> state.setParam(name, k, v) }
                     }
-                }) { Text("Reset", color = cs.primary) }
+                }) { Text(stringResource(R.string.reshade_reset), color = cs.primary) }
             }
             params.forEach { p -> ReshadeParamControl(state, name, p) }
         }

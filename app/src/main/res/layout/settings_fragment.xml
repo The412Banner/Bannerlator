@@ -234,12 +234,12 @@
                         android:id="@+id/CBDarkMode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Enable Dark Mode" />
+                        android:text="@string/enable_dark_mode" />
                 </LinearLayout>
                 <TextView
                     android:id="@+id/TVTheme"
                     style="@style/FieldSetLabel"
-                    android:text="Theme" />
+                    android:text="@string/theme" />
             </FrameLayout>
 
             <!-- Shortcuts -->
@@ -250,7 +250,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Winlator Path" />
+                        android:text="@string/winlator_path" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -267,13 +267,13 @@
                             android:id="@+id/BTChooseWinlatorPath"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Choose Path" />
+                            android:text="@string/choose_path" />
                     </LinearLayout>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Shortcut Export Path" />
+                        android:text="@string/shortcut_export_path" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -290,13 +290,13 @@
                             android:id="@+id/BTChooseShortcutExportPath"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Choose Path" />
+                            android:text="@string/choose_path" />
                     </LinearLayout>
                 </LinearLayout>
                 <TextView
                     android:id="@+id/TVShortcutSettings"
                     style="@style/FieldSetLabel"
-                    android:text="Path Settings" />
+                    android:text="@string/path_settings" />
             </FrameLayout>
 
 
@@ -313,7 +313,7 @@
                         android:id="@+id/CBEnableBigPictureMode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Enable Big Picture Mode on App Launch" />
+                        android:text="@string/enable_big_picture_on_launch" />
 
                     <FrameLayout
                         android:layout_width="match_parent"
@@ -331,7 +331,7 @@
                                     android:id="@+id/CBEnableCustomApiKey"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Set SteamGrid API Key? (Cover Art)" />
+                                    android:text="@string/set_steamgrid_api_key" />
 
                                 <ImageView
                                     android:id="@+id/BTHelpApiKey"
@@ -345,14 +345,14 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="8dp"
-                                android:hint="Enter your API Key here"
+                                android:hint="@string/enter_api_key"
                                 android:visibility="gone" />
                         </LinearLayout>
 
                         <TextView
                             android:id="@+id/TVCustomApiKey"
                             style="@style/FieldSetLabel"
-                            android:text="SteamGridDB API Key" />
+                            android:text="@string/steamgriddb_api_key" />
                     </FrameLayout>
 
                 </LinearLayout>
@@ -360,7 +360,7 @@
                 <TextView
                     android:id="@+id/TVBigPictureMode"
                     style="@style/FieldSetLabel"
-                    android:text="Big Picture Mode" />
+                    android:text="@string/big_picture_mode" />
             </FrameLayout>
 
             <FrameLayout
@@ -412,7 +412,7 @@
                         android:id="@+id/CBCursorLock"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="True Mouse Control (Deactivate with Volume Down)"
+                        android:text="@string/true_mouse_control"
                         android:layout_marginTop="8dp" />
 
                     <!-- New Xinput Toggle Checkbox -->
@@ -420,7 +420,7 @@
                         android:id="@+id/CBXinputToggle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Disable Xinput (Used for Exclusive M/KB support)"
+                        android:text="@string/disable_xinput_exclusive_keyboard_mouse"
                         android:layout_marginTop="8dp" />
 
                 </LinearLayout>
@@ -516,7 +516,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Downloadable Contents URL" />
+                            android:text="@string/downloadable_contents_url" />
 
                         <EditText
                             android:layout_width="match_parent"
@@ -553,7 +553,7 @@
                         android:layout_width="240dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
-                        android:text="Backup Data" />
+                        android:text="@string/backup_data" />
 
                     <Button
                         style="@style/ButtonPositive"
@@ -561,7 +561,7 @@
                         android:layout_width="240dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
-                        android:text="Restore Data" />
+                        android:text="@string/restore_data" />
 
                 </LinearLayout>
 

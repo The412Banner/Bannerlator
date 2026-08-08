@@ -12,7 +12,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.winlator.star.R
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +23,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
-class GogLoginActivity : ComponentActivity() {
+class GogLoginActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "BH_GOG"
@@ -129,7 +129,7 @@ class GogLoginActivity : ComponentActivity() {
             webViewRef?.loadData(
                 "<html><body style='background:#000;color:#ccc;font-family:sans-serif;" +
                 "font-size:20px;text-align:center;padding-top:40%'>" +
-                "Logging in to GOG...</body></html>",
+                getString(R.string.store_gog_logging_in) + "</body></html>",
                 "text/html", "UTF-8",
             )
 
@@ -141,7 +141,7 @@ class GogLoginActivity : ComponentActivity() {
 
     private suspend fun loginRunnable(accessToken: String, refreshToken: String?, userId: String?) {
         try {
-            var username = "Unknown"
+            var username = getString(R.string.store_unknown_user)
             try {
                 val url = URL("https://embed.gog.com/userData.json")
                 val conn = url.openConnection() as HttpURLConnection
@@ -178,8 +178,8 @@ class GogLoginActivity : ComponentActivity() {
                 // black-box Toast.
                 if (!isFinishing && !isDestroyed) {
                     android.app.AlertDialog.Builder(this@GogLoginActivity, R.style.StoreAlertDialogDark)
-                        .setMessage("Login error, please try again")
-                        .setPositiveButton("OK", null)
+                        .setMessage(R.string.store_gog_login_error)
+                        .setPositiveButton(R.string.common_ok, null)
                         .show()
                 }
                 webViewRef?.loadUrl(AUTH_URL)

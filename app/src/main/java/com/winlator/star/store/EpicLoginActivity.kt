@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,7 +23,7 @@ import kotlinx.coroutines.withContext
 import androidx.lifecycle.lifecycleScope
 import java.util.concurrent.atomic.AtomicBoolean
 
-class EpicLoginActivity : ComponentActivity() {
+class EpicLoginActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "BH_EPIC"
@@ -70,7 +71,7 @@ class EpicLoginActivity : ComponentActivity() {
             if (authCode.isNullOrEmpty()) {
                 Log.e(TAG, "authorizationCode not found in redirect page (len=${result.length})")
                 codeCaptured.set(false)
-                resultBarMsg = "Epic login failed, please try again"
+                            resultBarMsg = getString(R.string.store_epic_login_failed)
                 view.loadUrl(AUTH_URL)
                 return@evaluateJavascript
             }
@@ -82,7 +83,7 @@ class EpicLoginActivity : ComponentActivity() {
                     Log.e(TAG, "Epic token exchange failed")
                     withContext(Dispatchers.Main) {
                         codeCaptured.set(false)
-                        resultBarMsg = "Epic login failed, please try again"
+                        resultBarMsg = getString(R.string.store_epic_login_failed)
                         view.loadUrl(AUTH_URL)
                     }
                     return@launch

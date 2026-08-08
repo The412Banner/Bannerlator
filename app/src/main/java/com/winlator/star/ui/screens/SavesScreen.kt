@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,7 +113,7 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (saves.isEmpty() && !isLoading) {
             Text(
-                text = "No saves yet. Tap + to add one.",
+                text = stringResource(R.string.saves_empty),
                 color = OnSurfaceVariant,
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -146,19 +147,19 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
                     containerColor = Surface,
                     modifier = Modifier.size(48.dp),
                 ) {
-                    Icon(imageVector = Icons.Filled.FolderOpen, contentDescription = "Import save", tint = MaterialTheme.colorScheme.primary)
+                    Icon(imageVector = Icons.Filled.FolderOpen, contentDescription = stringResource(R.string.saves_import), tint = MaterialTheme.colorScheme.primary)
                 }
                 DropdownMenu(
                     expanded = showImportMenu,
                     onDismissRequest = { showImportMenu = false },
                     modifier = Modifier.outlinedMenuCard(),
                 ) {
-                    DropdownMenuItem(text = { Text("Browse files") }, onClick = {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.saves_browse_files)) }, onClick = {
                         showImportMenu = false
-                        importInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select save archive"))
+                        importInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, context.getString(R.string.saves_select_archive)))
                     })
                     MenuItemDivider()
-                    DropdownMenuItem(text = { Text("Pick via system…") }, onClick = {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.saves_pick_via_system)) }, onClick = {
                         showImportMenu = false
                         importLauncher.launch("*/*")
                     })
@@ -168,7 +169,7 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
                 onClick = { showNewSaveDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
             ) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = "Add save", tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(imageVector = Icons.Filled.Add, contentDescription = stringResource(R.string.saves_add), tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
 
@@ -218,7 +219,7 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
             onConfirm = { container ->
                 transferTarget = null
                 vm.transferSave(save, container) { ok, msg ->
-                    Toast.makeText(context, if (ok) "Transfer complete" else msg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, if (ok) context.getString(R.string.saves_transfer_complete) else msg, Toast.LENGTH_SHORT).show()
                 }
             },
         )
@@ -279,7 +280,7 @@ private fun SaveItem(
         }
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Options", tint = OnSurfaceVariant)
+                Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.saves_options), tint = OnSurfaceVariant)
             }
             DropdownMenu(
                 expanded = menuExpanded,
@@ -287,31 +288,31 @@ private fun SaveItem(
                 modifier = Modifier.outlinedMenuCard(),
             ) {
                 DropdownMenuItem(
-                    text = { Text("Edit") },
+                    text = { Text(stringResource(R.string.saves_edit)) },
                     leadingIcon = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onEdit() },
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Transfer Container") },
+                    text = { Text(stringResource(R.string.saves_transfer_container)) },
                     leadingIcon = { Icon(Icons.Filled.SwapHoriz, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onTransfer() },
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Export") },
+                    text = { Text(stringResource(R.string.saves_export)) },
                     leadingIcon = { Icon(Icons.Filled.FileDownload, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onExport() },
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Share") },
+                    text = { Text(stringResource(R.string.saves_share)) },
                     leadingIcon = { Icon(Icons.Filled.Share, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onShare() },
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Unregister") },
+                    text = { Text(stringResource(R.string.saves_unregister)) },
                     leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onUnregister() },
                 )
@@ -344,13 +345,13 @@ private fun NewSaveDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Save") },
+        title = { Text(stringResource(R.string.saves_new_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Save Title") },
+                    label = { Text(stringResource(R.string.saves_title_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -359,10 +360,10 @@ private fun NewSaveDialog(
                     onExpandedChange = { dropdownExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = selectedContainer?.getName() ?: if (containers.isEmpty()) "No containers" else "",
+                        value = selectedContainer?.getName() ?: if (containers.isEmpty()) stringResource(R.string.saves_no_containers) else "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Container") },
+                        label = { Text(stringResource(R.string.saves_container)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                     )
@@ -392,13 +393,13 @@ private fun NewSaveDialog(
                             }
                             filePickerLauncher.launch(intent)
                         } else {
-                            Toast.makeText(context, "Select a container first", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.saves_select_container_first), Toast.LENGTH_SHORT).show()
                         }
                     },
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Select Save Path", color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.saves_select_path), color = MaterialTheme.colorScheme.primary)
                 }
                 if (selectedPath.isNotEmpty()) {
                     Text(text = selectedPath, fontSize = 11.sp, color = OnSurfaceVariant)
@@ -410,12 +411,12 @@ private fun NewSaveDialog(
                 if (title.isNotBlank() && selectedPath.isNotEmpty() && selectedContainer != null) {
                     onConfirm(title.trim(), selectedPath, selectedContainer)
                 } else {
-                    Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.saves_fill_all_fields), Toast.LENGTH_SHORT).show()
                 }
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.saves_ok)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.saves_cancel)) }
         },
     )
 }
@@ -431,17 +432,17 @@ private fun EditSaveDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Save") },
+        title = { Text(stringResource(R.string.saves_edit_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Save Title") },
+                    label = { Text(stringResource(R.string.saves_title_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Text("Original Path", fontSize = 12.sp, color = OnSurfaceVariant)
+                Text(stringResource(R.string.saves_original_path), fontSize = 12.sp, color = OnSurfaceVariant)
                 Text(save.path, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
         },
@@ -450,12 +451,12 @@ private fun EditSaveDialog(
                 if (title.isNotBlank()) {
                     onConfirm(title.trim())
                 } else {
-                    Toast.makeText(context, "Name is required", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.saves_name_required), Toast.LENGTH_SHORT).show()
                 }
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.saves_ok)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.saves_cancel)) }
         },
     )
 }
@@ -473,11 +474,11 @@ private fun TransferSaveDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Transfer Container") },
+        title = { Text(stringResource(R.string.saves_transfer_container)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Transfer \"${save.getTitle()}\" to:",
+                    stringResource(R.string.saves_transfer_to, save.getTitle()),
                     fontSize = 13.sp,
                     color = OnSurfaceVariant,
                 )
@@ -486,10 +487,10 @@ private fun TransferSaveDialog(
                     onExpandedChange = { dropdownExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = containers.getOrNull(selectedIndex)?.getName() ?: "No containers",
+                        value = containers.getOrNull(selectedIndex)?.getName() ?: stringResource(R.string.saves_no_containers),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Container") },
+                        label = { Text(stringResource(R.string.saves_container)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                     )
@@ -512,10 +513,10 @@ private fun TransferSaveDialog(
         confirmButton = {
             TextButton(onClick = {
                 containers.getOrNull(selectedIndex)?.let { onConfirm(it) }
-            }) { Text("Transfer") }
+            }) { Text(stringResource(R.string.saves_transfer)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.saves_cancel)) }
         },
     )
 }
@@ -532,11 +533,11 @@ private fun ImportContainerSelectDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Import Save") },
+        title = { Text(stringResource(R.string.saves_import_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Select target container:",
+                    stringResource(R.string.saves_select_target_container),
                     fontSize = 13.sp,
                     color = OnSurfaceVariant,
                 )
@@ -545,10 +546,10 @@ private fun ImportContainerSelectDialog(
                     onExpandedChange = { dropdownExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = containers.getOrNull(selectedIndex)?.getName() ?: "No containers",
+                        value = containers.getOrNull(selectedIndex)?.getName() ?: stringResource(R.string.saves_no_containers),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Container") },
+                        label = { Text(stringResource(R.string.saves_container)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                     )
@@ -571,10 +572,10 @@ private fun ImportContainerSelectDialog(
         confirmButton = {
             TextButton(onClick = {
                 containers.getOrNull(selectedIndex)?.let { onConfirm(it) }
-            }) { Text("Import") }
+            }) { Text(stringResource(R.string.saves_import)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.saves_cancel)) }
         },
     )
 }

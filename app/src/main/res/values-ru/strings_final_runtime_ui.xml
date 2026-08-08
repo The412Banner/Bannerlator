@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="final_runtime_virtual_gamepad">Виртуальный геймпад</string>
+    <string name="final_runtime_controller_filtered">Контроллер · исключён</string>
+    <string name="final_runtime_pointer">Указатель</string>
+    <string name="final_runtime_keys">Клавиши</string>
+    <string name="final_runtime_controller">Контроллер</string>
+    <string name="final_runtime_controller_connected">КОНТРОЛЛЕР ПОДКЛЮЧЁН</string>
+    <string name="final_runtime_controller_disconnected">КОНТРОЛЛЕР ОТКЛЮЧЁН</string>
+    <string name="final_runtime_input_reset">ВВОД СБРОШЕН</string>
+    <string name="final_runtime_just_now">только что</string>
+    <string name="final_runtime_player_shared">ИГРОК %1$d · ОБЩИЙ</string>
+    <string name="final_runtime_updated">обновлено</string>
+    <string name="final_runtime_input_updated">ВВОД ОБНОВЛЁН</string>
+    <string name="final_runtime_input_detected">ВВОД ОБНАРУЖЕН</string>
+    <string name="final_runtime_controller_detected">КОНТРОЛЛЕР ОБНАРУЖЕН</string>
+    <string name="final_runtime_controllers_detected">КОНТРОЛЛЕРЫ ОБНАРУЖЕНЫ</string>
+    <string name="final_runtime_on_launch">при запуске</string>
+    <string name="final_runtime_hud_frametime">Время кадра</string>
+    <string name="final_runtime_hud_frame">КАДР</string>
+    <string name="final_runtime_hud_average">СРЕД.</string>
+    <string name="final_runtime_hud_average_inline">сред.</string>
+    <string name="final_runtime_hud_resolution">РАЗРЕШЕНИЕ</string>
+    <string name="final_runtime_hud_elapsed">прошло</string>
+    <string name="final_runtime_hud_memory_used">Использовано: %1$s / %2$s</string>
+    <string name="final_runtime_bug_report_title">Сообщение об ошибке</string>
+</resources>

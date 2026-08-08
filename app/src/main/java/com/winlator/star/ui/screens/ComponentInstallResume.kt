@@ -13,8 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
+import com.winlator.star.R
 import com.winlator.star.components.ComponentExecInstaller
 import com.winlator.star.components.ComponentInstallReturn
 import com.winlator.star.ui.ComponentReturnBus
@@ -48,7 +50,9 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
         val target = runCatching { ComponentInstallReturn.get(context) }.getOrNull()
         ComponentInstallReturn.clear(context)
         installedName?.let {
-            runCatching { Toast.makeText(context, "Installed $it.", Toast.LENGTH_SHORT).show() }
+            runCatching {
+                Toast.makeText(context, context.getString(R.string.component_resume_installed, it), Toast.LENGTH_SHORT).show()
+            }
         }
         // Tier 2: ask the Shortcuts screen to open this shortcut's settings once we arrive.
         target?.shortcutBase?.let { base ->
@@ -64,7 +68,7 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
             onDismissRequest = { message = null },
             containerColor = cs.surfaceContainerHigh,
             text = { Text(m, color = cs.onSurface) },
-            confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
+            confirmButton = { TextButton(onClick = { message = null }) { Text(stringResource(R.string.common_ok)) } },
         )
     }
 
@@ -73,13 +77,12 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
     OutlinedAlertDialog(
         onDismissRequest = { /* keep until the user chooses */ },
         containerColor = cs.surfaceContainerHigh,
-        title = { Text("Finish installing $name", color = cs.onSurface) },
+        title = { Text(stringResource(R.string.component_resume_title, name), color = cs.onSurface) },
         text = {
             Column {
                 Text(
-                    if (busy) "Working on $name…"
-                    else "The $name installer ran. Finish setting it up in the container? " +
-                        "If it needs another installer, the container will open again.",
+                    if (busy) stringResource(R.string.component_resume_working, name)
+                    else stringResource(R.string.component_resume_question, name),
                     color = cs.onSurface,
                 )
                 if (busy) {
@@ -107,11 +110,12 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
                         // stays persisted for the next resume after that session restarts the app.
                         is ComponentExecInstaller.Result.Launched -> { /* heading into the next session */ }
                         is ComponentExecInstaller.Result.Done -> consumeReturn(name)
-                        is ComponentExecInstaller.Result.Error -> message = "Couldn't finish $name: ${res.message}"
+                        is ComponentExecInstaller.Result.Error -> message =
+                            context.getString(R.string.component_resume_error, name, res.message)
                         null -> {}
                     }
                 }
-            }) { Text("Finish") }
+            }) { Text(stringResource(R.string.component_resume_finish)) }
         },
         dismissButton = {
             TextButton(enabled = !busy, onClick = {
@@ -121,7 +125,7 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
                 // No success toast (nothing was installed); Tier 2 still re-opens the shortcut so they
                 // can retry from its recommendations.
                 consumeReturn(null)
-            }) { Text("Discard", color = Color(0xFFE57373)) } // intentional: destructive-action red
+            }) { Text(stringResource(R.string.component_resume_discard), color = Color(0xFFE57373)) } // intentional: destructive-action red
         },
     )
 }

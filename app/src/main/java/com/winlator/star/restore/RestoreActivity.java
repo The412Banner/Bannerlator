@@ -1,10 +1,11 @@
 package com.winlator.star.restore;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.winlator.star.R;
 import com.winlator.star.core.AppUtils;
@@ -16,7 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 
-public class RestoreActivity extends Activity {
+public class RestoreActivity extends AppCompatActivity {
 
     private PreloaderDialog preloaderDialog;
 
@@ -84,7 +85,7 @@ public class RestoreActivity extends Activity {
     private void onRestoreSuccess() {
         runOnUiThread(() -> {
             preloaderDialog.closeOnUiThread();
-            AppUtils.showToast(this, "Data restored successfully.");
+            AppUtils.showToast(this, getString(R.string.restore_success));
             finish();
             // Restart the main application after restore
             Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
@@ -97,7 +98,7 @@ public class RestoreActivity extends Activity {
     private void onRestoreFailed() {
         runOnUiThread(() -> {
             preloaderDialog.closeOnUiThread();
-            AppUtils.showToast(this, "Data restore failed.");
+            AppUtils.showToast(this, getString(R.string.restore_failed));
             finish();
         });
     }

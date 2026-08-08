@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="unpack_runtime_freearc_repack">FreeArc repack</string>
+    <string name="unpack_runtime_innosetup_installer">InnoSetup installer</string>
+    <string name="unpack_runtime_execution_failed">Failed to start the extraction tool</string>
+    <string name="unpack_runtime_unpacking_inner_archive">Unpacking inner archive…</string>
+    <string name="unpack_runtime_seven_zip_exit_code">7-Zip exited with code %1$d</string>
+</resources>

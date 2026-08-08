@@ -17,7 +17,7 @@
             android:id="@+id/TVBoxLeftStick"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Left Analog Stick Settings"
+            android:text="@string/left_analog_stick_settings"
             android:textStyle="bold"
             android:textSize="16sp"
             android:layout_marginBottom="8dp" />
@@ -27,7 +27,7 @@
             android:id="@+id/TVLeftDeadzone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Deadzone: 10%"
+            android:text="@string/analog_deadzone_default"
             android:layout_marginTop="8dp" />
 
         <SeekBar
@@ -42,7 +42,7 @@
             android:id="@+id/TVLeftSensitivity"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sensitivity: 100%"
+            android:text="@string/analog_sensitivity_default"
             android:layout_marginTop="16dp" />
 
         <SeekBar
@@ -56,7 +56,7 @@
             android:id="@+id/CBLeftStickSquareDeadzone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Use Square Deadzone (Left Stick)" />
+            android:text="@string/analog_square_deadzone_left" />
 
 
         <!-- Divider -->
@@ -72,7 +72,7 @@
             android:id="@+id/TVBoxRightStick"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Right Analog Stick Settings"
+            android:text="@string/right_analog_stick_settings"
             android:textStyle="bold"
             android:textSize="16sp"
             android:layout_marginBottom="8dp" />
@@ -82,7 +82,7 @@
             android:id="@+id/TVRightDeadzone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Deadzone: 10%"
+            android:text="@string/analog_deadzone_default"
             android:layout_marginTop="8dp" />
 
         <SeekBar
@@ -97,7 +97,7 @@
             android:id="@+id/TVRightSensitivity"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sensitivity: 100%"
+            android:text="@string/analog_sensitivity_default"
             android:layout_marginTop="16dp" />
 
         <SeekBar
@@ -112,28 +112,28 @@
             android:id="@+id/CBInvertLeftStickX"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Invert X Axis (Left Stick)"
+            android:text="@string/invert_x_axis_left"
             android:layout_marginTop="24dp" />
 
         <CheckBox
             android:id="@+id/CBInvertLeftStickY"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Invert Y Axis (Left Stick)"
+            android:text="@string/invert_y_axis_left"
             android:layout_marginTop="8dp" />
 
         <CheckBox
             android:id="@+id/CBInvertRightStickX"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Invert X Axis (Right Stick)"
+            android:text="@string/invert_x_axis_right"
             android:layout_marginTop="24dp" />
 
         <CheckBox
             android:id="@+id/CBInvertRightStickY"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Invert Y Axis (Right Stick)"
+            android:text="@string/invert_y_axis_right"
             android:layout_marginTop="8dp" />
 
     </LinearLayout>

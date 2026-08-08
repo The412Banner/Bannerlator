@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.winlator.star.R
 import com.winlator.star.communityconfigs.AccountManager
 import com.winlator.star.communityconfigs.CanonicalDevice
 import com.winlator.star.communityconfigs.CanonicalGame
@@ -151,6 +152,9 @@ data class CommunityConfigDetail(
 )
 
 class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val localizedContext: Context
+        get() = ContextCompat.getContextForLanguage(getApplication())
 
     private val prefs = app.getSharedPreferences("shortcuts_prefs", Context.MODE_PRIVATE)
 
@@ -407,12 +411,19 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 val fetched = CommunityConfigFetcher.fetchForDevice(game, device)
                     ?: return@withContext CommunityConfigApply.ConfigApplyResult(
                         ok = false,
-                        message = "Couldn't fetch a config for ${device.model.ifBlank { "that device" }} " +
-                            "(offline, or no matching file in the repo).",
+                        message = localizedContext.getString(
+                            com.winlator.star.R.string.shortcuts_config_fetch_device_failed,
+                            device.model.ifBlank {
+                                localizedContext.getString(
+                                    com.winlator.star.R.string.shortcuts_config_that_device,
+                                )
+                            },
+                        ),
                     )
                 val config = ConfigTranslator.translate(fetched.json)
                 val installed = InstalledComponents.read(getApplication())
                 CommunityConfigApply.apply(
+                    context = getApplication(),
                     shortcut = shortcut,
                     config = config,
                     installed = installed,
@@ -441,11 +452,14 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 val fetched = CommunityConfigFetcher.fetchForFile(ref.workerGame, ref.filename, ref.ns)
                     ?: return@withContext CommunityConfigApply.ConfigApplyResult(
                         ok = false,
-                        message = "Couldn't fetch that config (offline, or it's no longer in the repo).",
+                        message = localizedContext.getString(
+                            com.winlator.star.R.string.shortcuts_config_fetch_failed,
+                        ),
                     )
                 val config = ConfigTranslator.translate(fetched.json)
                 val installed = InstalledComponents.read(getApplication())
                 CommunityConfigApply.apply(
+                    context = getApplication(),
                     shortcut = shortcut,
                     config = config,
                     installed = installed,
@@ -503,7 +517,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             val soc = meta?.optString("soc", "")?.trim().orEmpty()
             val device = meta?.optString("device", "")?.trim().orEmpty()
             if (token.isEmpty()) {
-                onResult(false, "Upload failed — check your connection and try again.")
+                onResult(false, localizedContext.getString(R.string.final_audit_community_upload_failed))
                 return@launch
             }
 
@@ -544,8 +558,11 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 true
             }
-            if (ok) onResult(true, "Shared \"${res.game}\" with the community.")
-            else onResult(false, "Upload failed — check your connection and try again.")
+            if (ok) {
+                onResult(true, localizedContext.getString(R.string.final_audit_shared_with_community, res.game))
+            } else {
+                onResult(false, localizedContext.getString(R.string.final_audit_community_upload_failed))
+            }
         }
     }
 
@@ -753,11 +770,14 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                         ?.bufferedReader()?.use { it.readText() }
                         ?: return@withContext CommunityConfigApply.ConfigApplyResult(
                             ok = false,
-                            message = "Couldn't read that file.",
+                            message = localizedContext.getString(
+                                com.winlator.star.R.string.shortcuts_config_read_failed,
+                            ),
                         )
                     val config = ConfigTranslator.translate(JSONObject(text))
                     val installed = InstalledComponents.read(getApplication())
                     CommunityConfigApply.apply(
+                        context = getApplication(),
                         shortcut = target,
                         config = config,
                         installed = installed,
@@ -765,9 +785,15 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                         isAdreno = GPUInformation.isAdrenoGPU(getApplication()),
                     )
                 } catch (e: Exception) {
+                    Log.e(TAG, "Failed to import shortcut config", e)
                     CommunityConfigApply.ConfigApplyResult(
                         ok = false,
-                        message = "That file isn't a valid config (${e.message ?: "parse error"}).",
+                        message = localizedContext.getString(
+                            com.winlator.star.R.string.shortcuts_config_invalid_file,
+                            localizedContext.getString(
+                                com.winlator.star.R.string.shortcuts_config_parse_error,
+                            ),
+                        ),
                     )
                 }
             }
@@ -796,6 +822,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 val meta = ConfigMeta.parse(fetched.json.optJSONObject("meta"), fetched.fileName)
                 val preview = target?.let {
                     CommunityConfigApply.preview(
+                        context = getApplication(),
                         shortcut = it,
                         config = config,
                         installed = InstalledComponents.read(getApplication()),
@@ -846,6 +873,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 val meta = ConfigMeta.parse(fetched.json.optJSONObject("meta"), fetched.fileName)
                 val preview = target?.let {
                     CommunityConfigApply.preview(
+                        context = getApplication(),
                         shortcut = it,
                         config = config,
                         installed = InstalledComponents.read(getApplication()),
@@ -1002,7 +1030,11 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     ): BulkImportSummary {
         val containers = liveContainers()
         if (containerIndex < 0 || containerIndex >= containers.size) {
-            return BulkImportSummary(0, candidates.size, listOf("That container no longer exists."))
+            return BulkImportSummary(
+                0,
+                candidates.size,
+                listOf(localizedContext.getString(R.string.final_audit_container_no_longer_exists)),
+            )
         }
         val container = containers[containerIndex]
         var added = 0
@@ -1016,7 +1048,10 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 added++
             } catch (e: Exception) {
                 Log.e(TAG, "Bulk import failed for ${c.name}", e)
-                failures += "${c.name}: ${e.message ?: e.javaClass.simpleName}"
+                failures += localizedContext.getString(
+                    R.string.final_errors_game_import_failed,
+                    c.name,
+                )
             }
         }
         refresh()
@@ -1026,29 +1061,39 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     fun importShortcut(containerIndex: Int, uri: Uri, context: Context): ImportResult {
         val containers = liveContainers()
         if (containerIndex < 0 || containerIndex >= containers.size) {
-            return ImportResult.Error("That container no longer exists. Pull to refresh and pick another.")
+            return ImportResult.Error(
+                localizedContext.getString(R.string.final_audit_container_missing_refresh),
+            )
         }
         val container = containers[containerIndex]
 
         // file:// (in-app picker) exposes no DocumentFile metadata, so read the name off the path.
         val sourceName = (if (uri.scheme == "file") uri.path?.substringAfterLast('/')
             else DocumentFile.fromSingleUri(context, uri)?.name)
-            ?: return ImportResult.Error("Could not read picked file.")
+            ?: return ImportResult.Error(
+                localizedContext.getString(R.string.final_audit_picked_file_name_unavailable),
+            )
         val ext = sourceName.substringAfterLast('.', "").lowercase()
 
         return when (ext) {
             "exe" -> importExe(container, uri, sourceName, context)
             "desktop", "lnk" -> importShortcutFile(container, uri, sourceName, ext, context)
-            else -> ImportResult.Error("Unsupported file type: .$ext (pick a .exe, .desktop, or .lnk).")
+            else -> ImportResult.Error(
+                localizedContext.getString(R.string.final_audit_unsupported_shortcut_file_type, ext),
+            )
         }
     }
 
     private fun importExe(container: Container, uri: Uri, sourceName: String, context: Context): ImportResult {
         val realPath = resolveLocalPath(context, uri)
-            ?: return ImportResult.Error("EXE must be on local storage. Cloud / SAF locations aren't supported.")
+            ?: return ImportResult.Error(
+                localizedContext.getString(R.string.final_audit_exe_requires_local_storage),
+            )
         val exeFile = File(realPath)
         if (!exeFile.isFile) {
-            return ImportResult.Error("Could not access EXE on disk: $realPath")
+            return ImportResult.Error(
+                localizedContext.getString(R.string.final_audit_exe_inaccessible, realPath),
+            )
         }
         // Identify the game from its on-disk footprint (steam_appid.txt / Steam & GOG
         // manifests / PE version info) so the shortcut gets the real title — which is
@@ -1076,14 +1121,10 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             ImportResult.Success(shortcutFile.nameWithoutExtension, identity.appId)
         } catch (e: WinePath.NoFreeDriveLetterException) {
             Log.e(TAG, "No free drive letter for ${e.mountPath}", e)
-            ImportResult.Error(
-                "This container has no free drive letters left. Remove a drive you no longer " +
-                    "need in the container's Drives tab, or move the game somewhere an " +
-                    "existing drive already covers."
-            )
+            ImportResult.Error(localizedContext.getString(R.string.final_audit_no_free_drive_letters))
         } catch (e: IOException) {
             Log.e(TAG, "Failed to write EXE shortcut", e)
-            ImportResult.Error("Failed to write shortcut: ${e.message ?: e.javaClass.simpleName}")
+            ImportResult.Error(localizedContext.getString(R.string.final_audit_shortcut_write_failed))
         }
     }
 
@@ -1100,7 +1141,9 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         return try {
             context.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(dest).use { output -> input.copyTo(output) }
-            } ?: return ImportResult.Error("Could not open picked file.")
+            } ?: return ImportResult.Error(
+                localizedContext.getString(R.string.final_audit_picked_file_open_failed),
+            )
             if (ext == "desktop") {
                 val lines = dest.readLines().map { line ->
                     if (line.startsWith("container_id:")) "container_id:${container.id}" else line
@@ -1111,7 +1154,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             ImportResult.Success(dest.nameWithoutExtension)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to import shortcut file", e)
-            ImportResult.Error("Failed to import: ${e.message ?: e.javaClass.simpleName}")
+            ImportResult.Error(localizedContext.getString(R.string.final_audit_shortcut_import_failed))
         }
     }
 
@@ -1210,9 +1253,10 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         fun disableOnScreen(context: Context, shortcut: Shortcut) {
             try {
                 val sm = ContextCompat.getSystemService(context, ShortcutManager::class.java)
+                val localizedContext = ContextCompat.getContextForLanguage(context)
                 sm?.disableShortcuts(
                     Collections.singletonList(shortcut.getExtra("uuid")),
-                    context.getString(com.winlator.star.R.string.shortcut_not_available),
+                    localizedContext.getString(com.winlator.star.R.string.shortcut_not_available),
                 )
             } catch (_: Exception) {}
         }

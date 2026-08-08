@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.winlator.star.store.DownloadManagerActivity
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -123,14 +124,14 @@ class DownloadForegroundService : Service() {
 
     private fun createNotificationChannel() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+        val strings = ContextCompat.getContextForLanguage(this)
 
         val ch = NotificationChannel(
             CHANNEL_ID,
-            "Downloads",
+            strings.getString(com.winlator.star.R.string.download_notification_channel),
             NotificationManager.IMPORTANCE_LOW,   // quiet: no sound/heads-up for a progress bar
         ).apply {
-            description = "Shows game download progress and keeps downloads running in the background"
+            description = strings.getString(com.winlator.star.R.string.download_notification_channel_description)
             setShowBadge(false)
         }
         nm.createNotificationChannel(ch)
@@ -142,9 +143,15 @@ class DownloadForegroundService : Service() {
      * body (so the shade always shows live movement).
      */
     private fun buildNotification(): Notification {
+        val strings = ContextCompat.getContextForLanguage(this)
         val count = active.size
-        val recent = active.values.maxByOrNull { it.seq }?.text ?: "Preparing…"
-        val title = if (count > 1) "$count downloads" else "Downloading"
+        val recent = active.values.maxByOrNull { it.seq }?.text
+            ?: strings.getString(com.winlator.star.R.string.download_notification_preparing)
+        val title = if (count > 1) strings.resources.getQuantityString(
+            com.winlator.star.R.plurals.download_notification_count,
+            count,
+            count,
+        ) else strings.getString(com.winlator.star.R.string.download_notification_downloading)
 
         val tapIntent = PendingIntent.getActivity(
             this, 0,

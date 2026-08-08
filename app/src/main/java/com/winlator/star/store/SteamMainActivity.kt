@@ -5,7 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,7 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.winlator.star.ui.theme.WinlatorTheme
 
-class SteamMainActivity : ComponentActivity() {
+class SteamMainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQ_NOTIFICATIONS = 1001

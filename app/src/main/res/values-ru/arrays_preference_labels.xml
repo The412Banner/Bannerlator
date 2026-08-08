@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="displayResolutionVariantEntries">
+        <item>Исходное</item><item>Масштабированное</item><item>Точное</item><item>Своё</item>
+    </string-array>
+    <string-array name="forceOrientationEntries">
+        <item>Авто</item><item>Книжная</item><item>Альбомная</item>
+        <item>Обратная книжная</item><item>Обратная альбомная</item>
+    </string-array>
+    <string-array name="userActionsEntries">
+        <item>Нет действия</item>
+        <item>Переключить экранную клавиатуру</item>
+        <item>Переключить панель дополнительных клавиш</item>
+        <item>Открыть настройки</item>
+        <item>Освободить захват указателя и клавиатуры</item>
+        <item>Переключить полноэкранный режим</item>
+        <item>Перезапустить экран</item>
+        <item>Выйти</item>
+    </string-array>
+    <string-array name="userActionsVolumeDownEntries">
+        <item>Нет действия</item><item>Переключить экранную клавиатуру</item><item>Переключить панель дополнительных клавиш</item>
+        <item>Открыть настройки</item><item>Освободить захват указателя и клавиатуры</item>
+        <item>Переключить полноэкранный режим</item><item>Перезапустить экран</item><item>Выйти</item><item>Уменьшить громкость</item>
+    </string-array>
+    <string-array name="userActionsVolumeUpEntries">
+        <item>Нет действия</item><item>Переключить экранную клавиатуру</item><item>Переключить панель дополнительных клавиш</item>
+        <item>Открыть настройки</item><item>Освободить захват указателя и клавиатуры</item>
+        <item>Переключить полноэкранный режим</item><item>Перезапустить экран</item><item>Выйти</item><item>Увеличить громкость</item>
+    </string-array>
+    <string-array name="userActionsMediaKeyEntries">
+        <item>Нет действия</item><item>Переключить экранную клавиатуру</item><item>Переключить панель дополнительных клавиш</item>
+        <item>Открыть настройки</item><item>Освободить захват указателя и клавиатуры</item>
+        <item>Переключить полноэкранный режим</item><item>Перезапустить экран</item><item>Выйти</item><item>Отправить действие мультимедиа</item>
+    </string-array>
+</resources>

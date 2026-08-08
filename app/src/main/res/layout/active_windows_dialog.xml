@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:padding="20dp"
-        android:text="No active windows found"
+        android:text="@string/legacy_no_active_windows"
         android:visibility="gone" />
 
     <ScrollView

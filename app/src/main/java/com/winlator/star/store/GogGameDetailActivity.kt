@@ -5,7 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Html
-import androidx.activity.ComponentActivity
+import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -40,9 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadState
 import com.winlator.star.store.download.DownloadsButton
@@ -70,39 +74,31 @@ import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
 
-class GogGameDetailActivity : ComponentActivity() {
+private enum class GogInstallAction { INSTALL, CANCEL }
+
+class GogGameDetailActivity : AppCompatActivity() {
 
     companion object {
         const val RESULT_REFRESH = 100
         private const val TAG = "BH_GOG_DETAIL"
         private const val REQUEST_FOLDER_PICKER = 200
 
-        fun formatBytes(bytes: Long): String {
-            if (bytes >= 1_073_741_824L) return "%.1f GB".format(bytes / 1_073_741_824.0)
-            return "%.0f MB".format(bytes / 1_048_576.0)
-        }
-
-        private fun formatDate(iso: String?): String {
-            if (iso == null || iso.length < 10) return iso ?: ""
-            val parts = iso.substring(0, 10).split("-")
-            if (parts.size != 3) return iso.substring(0, 10)
-            try {
-                val year = parts[0].toInt()
-                val month = parts[1].toInt()
-                val day = parts[2].toInt()
-                val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-                if (month < 1 || month > 12) return iso.substring(0, 10)
-                return "${months[month - 1]} $day, $year"
-            } catch (_: Exception) {
-                return iso.substring(0, 10)
-            }
-        }
-
         private fun shortenPath(path: String): String {
             val parts = path.split("/")
             if (parts.size <= 3) return path
             return "\u2026/${parts[parts.size - 2]}/${parts[parts.size - 1]}"
         }
+    }
+
+    private fun formatBytes(bytes: Long): String = when {
+        bytes >= 1_073_741_824L -> getString(
+            R.string.compose_gog_game_detail_size_gb,
+            bytes / 1_073_741_824.0,
+        )
+        else -> getString(
+            R.string.compose_gog_game_detail_size_mb,
+            bytes / 1_048_576.0,
+        )
     }
 
     private lateinit var prefs: android.content.SharedPreferences
@@ -122,7 +118,7 @@ class GogGameDetailActivity : ComponentActivity() {
     private var exeNameVisible by mutableStateOf(false)
     private var launchVisible by mutableStateOf(false)
     private var installVisible by mutableStateOf(true)
-    private var installBtnText by mutableStateOf("Install")
+    private var installAction by mutableStateOf(GogInstallAction.INSTALL)
     private var installBtnColor by mutableIntStateOf(0xFF5533CC.toInt())
     private var setExeVisible by mutableStateOf(false)
     private var uninstallVisible by mutableStateOf(false)
@@ -131,7 +127,7 @@ class GogGameDetailActivity : ComponentActivity() {
     private var progressValue by mutableIntStateOf(0)
     private var progressLabel by mutableStateOf("")
     private var progressLabelVisible by mutableStateOf(false)
-    private var sizeText by mutableStateOf("Fetching\u2026")
+    private var sizeText by mutableStateOf("")
 
     private var updatesInstalled by mutableStateOf(false)
     private var updateStatusText by mutableStateOf("")
@@ -141,7 +137,7 @@ class GogGameDetailActivity : ComponentActivity() {
     private var dlcJson by mutableStateOf<String?>(null)
 
     private var cloudSaveDir by mutableStateOf<String?>(null)
-    private var cloudSaveDirText by mutableStateOf("No save folder set")
+    private var cloudSaveDirText by mutableStateOf("")
     private var cloudSaveDirColor by mutableIntStateOf(0xFF555577.toInt())
     private var cloudSaveStatusText by mutableStateOf("")
     private var cloudSaveStatusVisible by mutableStateOf(false)
@@ -165,7 +161,7 @@ class GogGameDetailActivity : ComponentActivity() {
                 cloudSaveDirText = shortenPath(selectedPath)
                 cloudSaveDirColor = 0xFFCCCCCC.toInt()
                 cloudBtnsEnabled = true
-                resultBarMsg = "Save folder set"
+                resultBarMsg = getString(R.string.compose_gog_game_detail_save_folder_set)
             }
         }
     }
@@ -173,6 +169,7 @@ class GogGameDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("bh_gog_prefs", 0)
+        sizeText = getString(R.string.compose_gog_game_detail_fetching)
 
         // Cross-store Download Manager (Phase B): GOG can download without the Steam foreground
         // service ever running, so init the registry + seed/self-heal the installed library here
@@ -192,14 +189,18 @@ class GogGameDetailActivity : ComponentActivity() {
 
         dlcJson = prefs.getString("gog_dlcs_$gameId", null)
         updateStatusText = prefs.getString("gog_build_$gameId", null)?.let {
-            "Installed build: ${it.substring(0, minOf(12, it.length))}\u2026"
-        } ?: "Build ID not recorded \u2014 tap Check to verify"
+            getString(
+                R.string.compose_gog_game_detail_installed_build,
+                it.substring(0, minOf(12, it.length)),
+            )
+        } ?: getString(R.string.compose_gog_game_detail_build_id_not_recorded)
         updatesInstalled = prefs.getString("gog_exe_$gameId", null) != null
         if (!updatesInstalled) updateStatusText = ""
         checkUpdateEnabled = updatesInstalled
 
         cloudSaveDir = prefs.getString("gog_save_dir_$gameId", null)
-        cloudSaveDirText = cloudSaveDir?.let { shortenPath(it) } ?: "No save folder set"
+        cloudSaveDirText = cloudSaveDir?.let { shortenPath(it) }
+            ?: getString(R.string.compose_gog_game_detail_no_save_folder_set)
         cloudSaveDirColor = if (cloudSaveDir != null) 0xFFCCCCCC.toInt() else 0xFF555577.toInt()
         cloudBtnsEnabled = cloudSaveDir != null
 
@@ -220,7 +221,7 @@ class GogGameDetailActivity : ComponentActivity() {
                     exeNameVisible = exeNameVisible,
                     launchVisible = launchVisible,
                     installVisible = installVisible,
-                    installBtnText = installBtnText,
+                    installAction = installAction,
                     setExeVisible = setExeVisible,
                     uninstallVisible = uninstallVisible,
                     copyVisible = copyVisible,
@@ -252,7 +253,9 @@ class GogGameDetailActivity : ComponentActivity() {
                             val candidates = GogDownloadManager.collectExeCandidates(installPath)
                             if (candidates.isEmpty()) {
                                 withContext(Dispatchers.Main) {
-                                    resultBarMsg = "No .exe files found"
+                                    resultBarMsg = getString(
+                                        R.string.compose_gog_game_detail_no_executable_files_found,
+                                    )
                                 }
                                 return@launch
                             }
@@ -262,7 +265,10 @@ class GogGameDetailActivity : ComponentActivity() {
                                         prefs.edit().putString("gog_exe_$gameId", selected).apply()
                                         refreshActionState()
                                         setResult(RESULT_REFRESH)
-                                        resultBarMsg = "Exe set: ${File(selected).name}"
+                                        resultBarMsg = getString(
+                                            R.string.compose_gog_game_detail_executable_set,
+                                            File(selected).name,
+                                        )
                                     }
                                 }
                             }
@@ -270,19 +276,22 @@ class GogGameDetailActivity : ComponentActivity() {
                     },
                     onUninstall = { confirmUninstall() },
                     onCopy = {
-                        resultBarMsg = "Copying\u2026"
+                        resultBarMsg = getString(R.string.compose_gog_game_detail_copying)
                         lifecycleScope.launch(Dispatchers.IO) {
                             val dest = GogDownloadManager.copyToDownloads(this@GogGameDetailActivity, gameId)
                             withContext(Dispatchers.Main) {
-                                resultBarMsg = if (dest != null) "Copied to: $dest"
-                                else "Copy failed \u2014 check storage permission"
+                                resultBarMsg = if (dest != null) {
+                                    getString(R.string.compose_gog_game_detail_copied_to, dest)
+                                } else {
+                                    getString(R.string.compose_gog_game_detail_copy_failed_storage)
+                                }
                             }
                         }
                     },
                     onCheckUpdate = { doCheckUpdate() },
                     onUpdateNow = {
                         updateBtnVisible = false
-                        updateStatusText = "Updating\u2026"
+                        updateStatusText = getString(R.string.compose_gog_game_detail_updating)
                         startInstall()
                     },
                     onBrowseCloud = {
@@ -292,31 +301,41 @@ class GogGameDetailActivity : ComponentActivity() {
                     onUploadSaves = {
                         val dir = prefs.getString("gog_save_dir_$gameId", null)
                         if (dir == null) {
-                            resultBarMsg = "Set a save folder first"
+                            resultBarMsg = getString(
+                                R.string.compose_gog_game_detail_set_save_folder_first,
+                            )
                             return@GogGameDetailScreen
                         }
                         cloudBtnsEnabled = false
-                        showCloudStatus("Preparing upload\u2026")
+                        showCloudStatus(getString(R.string.compose_gog_game_detail_preparing_upload))
                         GogCloudSaveManager.uploadSaves(this@GogGameDetailActivity, gameId, File(dir),
                             object : GogCloudSaveManager.Callback {
                                 override fun onStatus(msg: String) { runOnUiThread { showCloudStatus(msg) } }
                                 override fun onDone(msg: String) { runOnUiThread { showCloudStatus(msg); cloudBtnsEnabled = true } }
-                                override fun onError(msg: String) { runOnUiThread { showCloudStatus("Error: $msg"); cloudBtnsEnabled = true } }
+                                override fun onError(msg: String) { runOnUiThread {
+                                    showCloudStatus(getString(R.string.compose_gog_game_detail_error_with_message, msg))
+                                    cloudBtnsEnabled = true
+                                } }
                             })
                     },
                     onDownloadSaves = {
                         val dir = prefs.getString("gog_save_dir_$gameId", null)
                         if (dir == null) {
-                            resultBarMsg = "Set a save folder first"
+                            resultBarMsg = getString(
+                                R.string.compose_gog_game_detail_set_save_folder_first,
+                            )
                             return@GogGameDetailScreen
                         }
                         cloudBtnsEnabled = false
-                        showCloudStatus("Preparing download\u2026")
+                        showCloudStatus(getString(R.string.compose_gog_game_detail_preparing_download))
                         GogCloudSaveManager.downloadSaves(this@GogGameDetailActivity, gameId, File(dir),
                             object : GogCloudSaveManager.Callback {
                                 override fun onStatus(msg: String) { runOnUiThread { showCloudStatus(msg) } }
                                 override fun onDone(msg: String) { runOnUiThread { showCloudStatus(msg); cloudBtnsEnabled = true } }
-                                override fun onError(msg: String) { runOnUiThread { showCloudStatus("Error: $msg"); cloudBtnsEnabled = true } }
+                                override fun onError(msg: String) { runOnUiThread {
+                                    showCloudStatus(getString(R.string.compose_gog_game_detail_error_with_message, msg))
+                                    cloudBtnsEnabled = true
+                                } }
                             })
                     },
                 )
@@ -378,14 +397,17 @@ class GogGameDetailActivity : ComponentActivity() {
             val size = GogDownloadManager.fetchInstallSizeBytes(gameId, token)
             if (size > 0) prefs.edit().putLong("gog_size_$gameId", size).apply()
             withContext(Dispatchers.Main) {
-                sizeText = if (size > 0) formatBytes(size) else "Unknown"
+                sizeText = if (size > 0) {
+                    formatBytes(size)
+                } else {
+                    getString(R.string.compose_gog_game_detail_unknown)
+                }
             }
         }
     }
 
     private fun onInstallClicked() {
-        val lbl = installBtnText
-        if (lbl == "Cancel") {
+        if (installAction == GogInstallAction.CANCEL) {
             cancelDownload?.run()
             cancelDownload = null
             return
@@ -394,7 +416,7 @@ class GogGameDetailActivity : ComponentActivity() {
     }
 
     private fun startInstall() {
-        installBtnText = "Cancel"
+        installAction = GogInstallAction.CANCEL
         installBtnColor = 0xFFCC3333.toInt()
         progressVisible = true
         progressLabelVisible = true
@@ -426,10 +448,15 @@ class GogGameDetailActivity : ComponentActivity() {
                 if (!isDestroyed && !isFinishing) runOnUiThread {
                     if (isDestroyed || isFinishing) return@runOnUiThread
                     progressValue = pct
-                    // Same live-% label the registry collector shows, so a locally-started
-                    // download reads identically to a list-started one (no flicker between the
-                    // engine status string and the "$pct%" the Manager/notification show).
-                    progressLabel = "Downloading… $pct%"
+                    progressLabel = if (msg.isNotBlank()) {
+                        getString(
+                            R.string.compose_gog_game_detail_progress_message_percent,
+                            msg,
+                            pct,
+                        )
+                    } else {
+                        getString(R.string.compose_gog_game_detail_downloading_percent, pct)
+                    }
                 }
             }
             override fun onComplete(exePath: String) {
@@ -448,7 +475,11 @@ class GogGameDetailActivity : ComponentActivity() {
                         bytes = prefs.getLong("gog_size_$gameId", 0L),
                     )
                 } else {
-                    StoreDownloadHooks.markFailed(Store.GOG, gameId, "No executable found")
+                    StoreDownloadHooks.markFailed(
+                        Store.GOG,
+                        gameId,
+                        getString(R.string.compose_gog_game_detail_no_executable_found),
+                    )
                 }
                 if (!isDestroyed && !isFinishing) runOnUiThread {
                     if (isDestroyed || isFinishing) return@runOnUiThread
@@ -466,11 +497,14 @@ class GogGameDetailActivity : ComponentActivity() {
                     if (isDestroyed || isFinishing) return@runOnUiThread
                     progressVisible = false
                     progressLabelVisible = false
-                    installBtnText = "Install"
+                    installAction = GogInstallAction.INSTALL
                     installBtnColor = 0xFF5533CC.toInt()
                     launchVisible = prefs.getString("gog_exe_$gameId", null) != null
                     setExeVisible = prefs.getString("gog_dir_$gameId", null) != null
-                    resultBarMsg = "Error: $msg"
+                    resultBarMsg = getString(
+                        R.string.compose_gog_game_detail_error_with_message,
+                        msg,
+                    )
                 }
             }
             override fun onCancelled() {
@@ -480,7 +514,7 @@ class GogGameDetailActivity : ComponentActivity() {
                     if (isDestroyed || isFinishing) return@runOnUiThread
                     progressVisible = false
                     progressLabelVisible = false
-                    installBtnText = "Install"
+                    installAction = GogInstallAction.INSTALL
                     installBtnColor = 0xFF5533CC.toInt()
                     launchVisible = prefs.getString("gog_exe_$gameId", null) != null
                     setExeVisible = prefs.getString("gog_dir_$gameId", null) != null
@@ -498,10 +532,12 @@ class GogGameDetailActivity : ComponentActivity() {
     private fun confirmUninstall() {
         val dlgTitle = title
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Uninstall $dlgTitle?")
-            .setMessage("This will delete all installed game files.")
-            .setPositiveButton("Uninstall") { _, _ -> doUninstall() }
-            .setNegativeButton("Cancel", null)
+            .setTitle(getString(R.string.compose_gog_game_detail_uninstall_title, dlgTitle))
+            .setMessage(getString(R.string.compose_gog_game_detail_uninstall_message))
+            .setPositiveButton(getString(R.string.compose_gog_game_detail_uninstall)) { _, _ ->
+                doUninstall()
+            }
+            .setNegativeButton(getString(R.string.compose_gog_game_detail_cancel), null)
             .show()
     }
 
@@ -518,7 +554,7 @@ class GogGameDetailActivity : ComponentActivity() {
             withContext(Dispatchers.Main) {
                 setResult(RESULT_REFRESH)
                 refreshActionState()
-                resultBarMsg = "$title uninstalled"
+                resultBarMsg = getString(R.string.compose_gog_game_detail_game_uninstalled, title)
             }
         }
     }
@@ -541,10 +577,13 @@ class GogGameDetailActivity : ComponentActivity() {
                     // Live percentage on the detail page, matching the Download Manager card and
                     // the notification (GOG is pct-only). Registry-driven so it stays live for a
                     // list-started / reopened download, not just the one this Activity launched.
-                    progressLabel = "Downloading… ${e.pct}%"
+                    progressLabel = getString(
+                        R.string.compose_gog_game_detail_downloading_percent,
+                        e.pct,
+                    )
                     progressLabelVisible = true
                     installVisible = true
-                    installBtnText = "Cancel"
+                    installAction = GogInstallAction.CANCEL
                     installBtnColor = 0xFFCC3333.toInt()
                     launchVisible = false
                     setExeVisible = false
@@ -571,7 +610,10 @@ class GogGameDetailActivity : ComponentActivity() {
         val installed = exe != null && dir != null
 
         if (installed) {
-            exeNameText = ".exe: ${File(exe).name}"
+            exeNameText = getString(
+                R.string.compose_gog_game_detail_executable_label,
+                File(exe).name,
+            )
             exeNameVisible = true
         } else {
             exeNameVisible = false
@@ -579,7 +621,7 @@ class GogGameDetailActivity : ComponentActivity() {
 
         launchVisible = installed
         installVisible = !installed
-        if (!installed) installBtnText = "Install"
+        if (!installed) installAction = GogInstallAction.INSTALL
         if (!installed) installBtnColor = 0xFF5533CC.toInt()
         setExeVisible = installed
         uninstallVisible = installed
@@ -587,7 +629,7 @@ class GogGameDetailActivity : ComponentActivity() {
     }
 
     private fun doCheckUpdate() {
-        updateStatusText = "Checking\u2026"
+        updateStatusText = getString(R.string.compose_gog_game_detail_checking)
         checkUpdateEnabled = false
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -629,26 +671,36 @@ class GogGameDetailActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     checkUpdateEnabled = true
                     if (latest == null) {
-                        updateStatusText = "Could not reach update server."
+                        updateStatusText = getString(
+                            R.string.compose_gog_game_detail_update_server_unreachable,
+                        )
                         return@withContext
                     }
                     val stored = prefs.getString("gog_build_$gameId", null)
                     if (stored == null) {
                         prefs.edit().putString("gog_build_$gameId", latest).apply()
-                        updateStatusText = "Up to date (build ${latest.substring(0, minOf(12, latest.length))}\u2026)"
+                        updateStatusText = getString(
+                            R.string.compose_gog_game_detail_up_to_date_build,
+                            latest.substring(0, minOf(12, latest.length)),
+                        )
                         updateBtnVisible = false
                     } else if (stored == latest) {
-                        updateStatusText = "Up to date \u2713"
+                        updateStatusText = getString(R.string.compose_gog_game_detail_up_to_date)
                         updateBtnVisible = false
                     } else {
-                        updateStatusText = "Update available!\nInstalled: ${stored.substring(0, minOf(10, stored.length))}\u2026  \u2192  Latest: ${latest.substring(0, minOf(10, latest.length))}\u2026"
+                        updateStatusText = getString(
+                            R.string.compose_gog_game_detail_update_available,
+                            stored.substring(0, minOf(10, stored.length)),
+                            latest.substring(0, minOf(10, latest.length)),
+                        )
                         updateBtnVisible = true
                     }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Update check failed", e)
                 withContext(Dispatchers.Main) {
                     checkUpdateEnabled = true
-                    updateStatusText = "Check failed: ${e.message}"
+                    updateStatusText = getString(R.string.compose_gog_game_detail_check_failed)
                 }
             }
         }
@@ -700,7 +752,7 @@ private fun GogGameDetailScreen(
     exeNameVisible: Boolean,
     launchVisible: Boolean,
     installVisible: Boolean,
-    installBtnText: String,
+    installAction: GogInstallAction,
     setExeVisible: Boolean,
     uninstallVisible: Boolean,
     copyVisible: Boolean,
@@ -777,7 +829,9 @@ private fun GogGameDetailScreen(
                 InfoChip(sizeText)
                 if (developer.isNotEmpty()) InfoChip(developer)
                 if (category.isNotEmpty()) InfoChip(category)
-                if (generation > 0) InfoChip("Gen $generation")
+                if (generation > 0) {
+                    InfoChip(stringResource(R.string.compose_gog_game_detail_generation, generation))
+                }
             }
             if (description.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
@@ -805,29 +859,33 @@ private fun GogGameDetailScreen(
         StoreActionRow {
             if (launchVisible) {
                 StoreActionButton(
-                    text = "Launch",
+                    text = stringResource(R.string.compose_gog_game_detail_launch),
                     onClick = onLaunch,
                     modifier = Modifier.weight(1f),
                 )
             }
             if (installVisible) {
+                val installButtonText = when (installAction) {
+                    GogInstallAction.INSTALL -> stringResource(R.string.compose_gog_game_detail_install)
+                    GogInstallAction.CANCEL -> stringResource(R.string.compose_gog_game_detail_cancel)
+                }
                 StoreActionButton(
-                    text = installBtnText,
+                    text = installButtonText,
                     onClick = onInstall,
                     modifier = Modifier.weight(1f),
-                    destructive = installBtnText == "Cancel",
+                    destructive = installAction == GogInstallAction.CANCEL,
                 )
             }
             if (setExeVisible) {
                 StoreActionButton(
-                    text = "Set .exe…",
+                    text = stringResource(R.string.compose_gog_game_detail_set_executable),
                     onClick = onSetExe,
                     modifier = Modifier.weight(1f),
                 )
             }
             if (uninstallVisible) {
                 StoreActionButton(
-                    text = "Uninstall",
+                    text = stringResource(R.string.compose_gog_game_detail_uninstall),
                     onClick = onUninstall,
                     modifier = Modifier.weight(1f),
                     destructive = true,
@@ -835,7 +893,7 @@ private fun GogGameDetailScreen(
             }
             if (copyVisible) {
                 StoreActionButton(
-                    text = "Copy to Downloads",
+                    text = stringResource(R.string.compose_gog_game_detail_copy_to_downloads),
                     onClick = onCopy,
                     modifier = Modifier.weight(1f),
                 )
@@ -843,7 +901,7 @@ private fun GogGameDetailScreen(
         }
 
         // Updates
-        StoreSection(title = "Updates") {
+        StoreSection(title = stringResource(R.string.compose_gog_game_detail_updates)) {
             GogUpdatesContent(
                 installed = updatesInstalled,
                 updateStatusText = updateStatusText,
@@ -855,12 +913,12 @@ private fun GogGameDetailScreen(
         }
 
         // DLC
-        StoreSection(title = "DLC") {
+        StoreSection(title = stringResource(R.string.compose_gog_game_detail_dlc)) {
             GogDlcContent(dlcJson = dlcJson)
         }
 
         // Cloud Saves
-        StoreSection(title = "Cloud Saves") {
+        StoreSection(title = stringResource(R.string.compose_gog_game_detail_cloud_saves)) {
             GogCloudSavesContent(
                 saveDirText = cloudSaveDirText,
                 saveDirColor = cloudSaveDirColor,
@@ -890,7 +948,7 @@ private fun GogUpdatesContent(
 ) {
     // Not installed yet — just the muted hint, no buttons.
     if (!installed) {
-        StoreStatusText("Install the game first to check for updates.")
+        StoreStatusText(stringResource(R.string.compose_gog_game_detail_install_first_for_updates))
         return
     }
 
@@ -898,14 +956,14 @@ private fun GogUpdatesContent(
     Spacer(Modifier.height(8.dp))
     if (updateBtnVisible) {
         StoreActionButton(
-            text = "Update Now",
+            text = stringResource(R.string.compose_gog_game_detail_update_now),
             onClick = onUpdateNow,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(8.dp))
     }
     StoreActionButton(
-        text = "Check for Updates",
+        text = stringResource(R.string.compose_gog_game_detail_check_for_updates),
         onClick = onCheckUpdate,
         modifier = Modifier.fillMaxWidth(),
         enabled = checkUpdateEnabled,
@@ -919,25 +977,30 @@ private fun GogDlcContent(dlcJson: String?) {
         else runCatching { org.json.JSONArray(dlcJson) }.getOrNull()
     }
     if (arr == null || arr.length() == 0) {
-        StoreStatusText("No DLCs in your library for this game")
+        StoreStatusText(stringResource(R.string.compose_gog_game_detail_no_dlcs_owned))
         return
     }
 
     Text(
-        text = "${arr.length()} DLC${if (arr.length() == 1) "" else "s"} owned",
+        text = pluralStringResource(
+            R.plurals.compose_gog_game_detail_dlcs_owned,
+            arr.length(),
+            arr.length(),
+        ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.Bold,
     )
     Text(
-        text = "DLC content is included in gen2 game installs.",
+        text = stringResource(R.string.compose_gog_game_detail_dlc_included_in_gen2),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 3.dp, bottom = 6.dp),
     )
+    val unknownDlc = stringResource(R.string.compose_gog_game_detail_unknown_dlc)
     for (i in 0 until arr.length()) {
         val dlc = arr.optJSONObject(i) ?: continue
-        val dlcTitle = dlc.optString("title", "Unknown DLC")
+        val dlcTitle = dlc.optString("title", unknownDlc).ifBlank { unknownDlc }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -952,7 +1015,7 @@ private fun GogDlcContent(dlcJson: String?) {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = "Owned",
+                text = stringResource(R.string.compose_gog_game_detail_owned),
                 style = MaterialTheme.typography.labelSmall,
                 color = INSTALLED_GREEN,
                 fontWeight = FontWeight.Bold,
@@ -988,7 +1051,10 @@ private fun GogCloudSavesContent(
             maxLines = 2,
             modifier = Modifier.weight(1f),
         )
-        StoreActionButton(text = "Browse", onClick = onBrowse)
+        StoreActionButton(
+            text = stringResource(R.string.compose_gog_game_detail_browse),
+            onClick = onBrowse,
+        )
     }
     if (statusVisible) {
         Spacer(Modifier.height(8.dp))
@@ -996,14 +1062,14 @@ private fun GogCloudSavesContent(
     }
     Spacer(Modifier.height(8.dp))
     StoreActionButton(
-        text = "Upload Saves",
+        text = stringResource(R.string.compose_gog_game_detail_upload_saves),
         onClick = onUpload,
         modifier = Modifier.fillMaxWidth(),
         enabled = btnsEnabled,
     )
     Spacer(Modifier.height(8.dp))
     StoreActionButton(
-        text = "Download Saves",
+        text = stringResource(R.string.compose_gog_game_detail_download_saves),
         onClick = onDownload,
         modifier = Modifier.fillMaxWidth(),
         enabled = btnsEnabled,
@@ -1018,7 +1084,7 @@ private fun ExePickerDialogGame(
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select game executable") },
+        title = { Text(stringResource(R.string.compose_gog_game_detail_select_game_executable)) },
         text = {
             Column {
                 candidates.forEach { path ->

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="adreno_download_gpu_drivers">Загрузка драйверов GPU</string>
+    <string name="adreno_manage_sources">Управление источниками</string>
+    <string name="adreno_no_drivers_found">Драйверы не найдены.</string>
+    <string name="adreno_download_driver_title">Загрузить драйвер?</string>
+    <string name="adreno_source">Источник: %1$s</string>
+    <string name="adreno_download_install_automatically">Драйвер будет автоматически загружен и установлен.</string>
+    <string name="adreno_installed">Установлено: %1$s</string>
+    <string name="adreno_invalid_driver_package">Не удалось установить: неверный пакет драйвера.</string>
+    <string name="adreno_download_failed">Не удалось загрузить: %1$s</string>
+    <string name="adreno_unknown_error">неизвестная ошибка</string>
+    <string name="adreno_download">Загрузить</string>
+    <string name="adreno_cancel">Отмена</string>
+    <string name="adreno_downloading">Загрузка</string>
+    <string name="adreno_installing">Установка</string>
+    <string name="adreno_loading_drivers">Загрузка списка драйверов…</string>
+    <string name="adreno_load_failed">Не удалось загрузить список драйверов</string>
+    <string name="adreno_retry">Повторить</string>
+    <string name="adreno_manage_driver_sources">Источники драйверов</string>
+    <string name="adreno_builtin_sources">Встроенные источники</string>
+    <string name="adreno_custom_sources">Пользовательские источники</string>
+    <string name="adreno_remove">Удалить</string>
+    <string name="adreno_add_source">Добавить источник</string>
+    <string name="adreno_name">Название</string>
+    <string name="adreno_json_url">URL файла JSON</string>
+    <string name="adreno_github_repo">Репозиторий GitHub</string>
+    <string name="adreno_github_owner">Владелец (или github.com/владелец/репозиторий)</string>
+    <string name="adreno_repo">Репозиторий</string>
+    <string name="adreno_enter_name">Введите название</string>
+    <string name="adreno_enter_json_url">Введите URL файла JSON</string>
+    <string name="adreno_enter_owner_repo">Введите владельца и репозиторий</string>
+    <string name="adreno_done">Готово</string>
+    <string name="adreno_install_gpu_driver">Установить драйвер GPU</string>
+    <string name="adreno_download_online_description">Загрузить драйверы GPU из сетевых источников</string>
+    <string name="adreno_no_installed_drivers">Драйверы GPU не установлены.</string>
+    <string name="adreno_select_gpu_driver">Выберите драйвер GPU</string>
+    <string name="adreno_browse_files">Выбрать файл</string>
+    <string name="adreno_pick_via_system">Выбрать через систему…</string>
+    <string name="adreno_remove_driver_title">Удалить драйвер?</string>
+    <string name="adreno_remove_driver_message">Удалить «%1$s»?</string>
+</resources>

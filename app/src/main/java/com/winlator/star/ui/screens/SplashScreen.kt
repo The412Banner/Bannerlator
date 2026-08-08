@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,11 +83,11 @@ private val SPARKLE_SPECS: List<SparkleSpec> = run {
 }
 
 private val STATUS_LABELS = listOf(
-    "Installing system files",
-    "Extracting Wine prefix",
-    "Setting up Proton",
-    "Configuring runtime",
-    "Finalizing setup",
+    R.string.splash_installing_system_files,
+    R.string.splash_extracting_wine_prefix,
+    R.string.splash_setting_up_proton,
+    R.string.splash_configuring_runtime,
+    R.string.splash_finalizing_setup,
 )
 
 @Composable
@@ -103,8 +104,10 @@ fun SplashScreen(
         label = "counter",
     )
 
-    val statusText = if (progress >= 100) "Installation complete"
-                     else STATUS_LABELS[minOf((progress / 22), STATUS_LABELS.size - 1)]
+    val statusText = stringResource(
+        if (progress >= 100) R.string.splash_installation_complete
+        else STATUS_LABELS[minOf((progress / 22), STATUS_LABELS.size - 1)],
+    )
 
     val dotPhase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -163,7 +166,7 @@ fun SplashScreen(
             Spacer(Modifier.height(12.dp))
 
             Text(
-                text = "V ${BuildConfig.VERSION_NAME}",
+                text = stringResource(R.string.splash_version, BuildConfig.VERSION_NAME),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -206,7 +209,11 @@ fun SplashScreen(
                         shape   = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Proceed", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            stringResource(R.string.splash_proceed),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                 }
             }

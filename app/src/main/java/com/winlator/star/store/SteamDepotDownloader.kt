@@ -3,7 +3,9 @@ package com.winlator.star.store
 import android.content.Context
 import android.os.PowerManager
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.winlator.star.BuildConfig
+import com.winlator.star.R
 import com.winlator.star.store.download.DownloadEntry
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadState
@@ -283,6 +285,7 @@ object SteamDepotDownloader {
         // firehose) and the JavaSteam bridge isn't wired; logcat + the always-on steam_session.txt
         // still record enough that a failure is never totally silent (see dlogError/emitFailed).
         val verbose = BuildConfig.DEBUG || debugLog
+        val localizedCtx = ContextCompat.getContextForLanguage(ctx)
         activeDownloads[appId] = Unit
         if (verbose) {
             initDebugLog(ctx, truncate = attempt == 0)
@@ -294,7 +297,7 @@ object SteamDepotDownloader {
         val steamClient = repo.steamClient
         if (steamClient == null) {
             dlog("FAIL: SteamClient is null — not connected to Steam")
-            emitFailed(appId, "Not connected to Steam")
+            emitFailed(appId, localizedCtx.getString(R.string.steam_error_not_connected))
             return
         }
         dlog("SteamClient: connected=${repo.isConnected}, loggedIn=${repo.isLoggedIn}")
@@ -312,7 +315,7 @@ object SteamDepotDownloader {
                 // record of the logon/logoff EResult (e.g. LogonSessionReplaced, InvalidPassword)
                 // is in logcat, which the user can't reach.
                 dlog("Session status at failure: ${repo.lastSessionStatus}")
-                emitFailed(appId, "Steam session not ready — sign in again or retry in a moment")
+                emitFailed(appId, localizedCtx.getString(R.string.steam_error_session_not_ready))
                 return
             }
         }
@@ -327,7 +330,7 @@ object SteamDepotDownloader {
         val row = db.getGame(appId)
         if (row == null) {
             dlog("FAIL: appId=$appId not found in database")
-            emitFailed(appId, "Game not found in database")
+            emitFailed(appId, localizedCtx.getString(R.string.steam_error_game_not_found))
             return
         }
         dlog("Game: name='${row.name}' type=${row.type} sizeBytes=${row.sizeBytes}")
@@ -469,7 +472,7 @@ object SteamDepotDownloader {
         } catch (e: Exception) {
             dlog("FAIL: DepotDownloader constructor threw")
             dlogError("DepotDownloader()", e)
-            emitFailed(appId, "DepotDownloader init failed: ${e.message}")
+            emitFailed(appId, localizedCtx.getString(R.string.steam_error_downloader_init_failed))
             return
         }
         dlog("DepotDownloader constructed OK")
@@ -591,10 +594,14 @@ object SteamDepotDownloader {
                 // connection status in the finally (repo.refreshFgsStatus()). No-op if the FGS is down.
                 if (lastNotifiedPct.getAndSet(pct) != pct) {
                     val extra = buildString {
-                        if (speedBps > 0L)    append(" · ${formatDownloadSpeed(speedBps)}")
-                        if (etaSeconds >= 0L) append(" · ${formatEta(etaSeconds)}")
+                        if (speedBps > 0L)    append(" · ${formatDownloadSpeed(ctx, speedBps)}")
+                        if (etaSeconds >= 0L) append(" · ${formatEta(ctx, etaSeconds)}")
                     }
-                    try { SteamForegroundService.setStatusText("Downloading ${row.name} — $pct%$extra") }
+                    try {
+                        SteamForegroundService.setStatusText(
+                            localizedCtx.getString(R.string.steam_notification_downloading, row.name, pct, extra),
+                        )
+                    }
                     catch (_: Throwable) {}
                 }
             }
@@ -651,7 +658,14 @@ object SteamDepotDownloader {
                     if (finalInstall < (realExpected * 90L / 100L)) {
                         dlog("INCOMPLETE: only ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} " +
                                 "(manifest-true) on disk (<90%) — refusing to mark installed")
-                        emitFailed(appId, "Download incomplete (${fmtSize(finalInstall)}/${fmtSize(realExpected)}) — please retry")
+                        emitFailed(
+                            appId,
+                            localizedCtx.getString(
+                                R.string.steam_error_download_incomplete,
+                                fmtSize(finalInstall),
+                                fmtSize(realExpected),
+                            ),
+                        )
                         return
                     }
                     dlog("Complete: ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} manifest-true (≥90%)")
@@ -669,7 +683,14 @@ object SteamDepotDownloader {
                         if (!everyDepotDelivered) {
                             dlog("INCOMPLETE: only ${fmtSize(finalInstall)} of ${fmtSize(picsExpected)} PICS-est on disk " +
                                     "(<90%) and a selected depot delivered nothing — refusing to mark installed")
-                            emitFailed(appId, "Download incomplete (${fmtSize(finalInstall)}/${fmtSize(picsExpected)}) — please retry")
+                            emitFailed(
+                                appId,
+                                localizedCtx.getString(
+                                    R.string.steam_error_download_incomplete,
+                                    fmtSize(finalInstall),
+                                    fmtSize(picsExpected),
+                                ),
+                            )
                             return
                         }
                         dlog("Complete: ${fmtSize(finalInstall)} < 90% of PICS-est ${fmtSize(picsExpected)} but all " +
@@ -845,7 +866,7 @@ object SteamDepotDownloader {
                             }
                         }
                         if (!retryAsResume) {
-                            emitFailed(appId, failure?.message ?: "Unknown error")
+                            emitFailed(appId, localizedCtx.getString(R.string.steam_error_unknown))
                         }
                     }
                 }

@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.winlator.star.R
 import com.winlator.star.contents.AdrenotoolsManager
@@ -93,13 +94,13 @@ fun AdrenoToolsScreen() {
             ) {
                 Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("Install GPU driver")
+                Text(stringResource(R.string.adreno_install_gpu_driver))
             }
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = { showDownloadSheet = true }) {
                 Icon(
                     imageVector = Icons.Filled.CloudDownload,
-                    contentDescription = "Download GPU drivers from online sources",
+                    contentDescription = stringResource(R.string.adreno_download_online_description),
                     tint = cs.primary,
                 )
             }
@@ -109,7 +110,7 @@ fun AdrenoToolsScreen() {
 
         if (drivers.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No GPU drivers installed.", color = cs.onSurfaceVariant)
+                Text(stringResource(R.string.adreno_no_installed_drivers), color = cs.onSurfaceVariant)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -134,8 +135,8 @@ fun AdrenoToolsScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     confirmInstallPrompt = false
-                    filePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DRIVER, "Select GPU driver"))
-                }) { Text("Browse files") }
+                    filePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DRIVER, context.getString(R.string.adreno_select_gpu_driver)))
+                }) { Text(stringResource(R.string.adreno_browse_files)) }
             },
             dismissButton = {
                 Row {
@@ -146,7 +147,7 @@ fun AdrenoToolsScreen() {
                             type = "*/*"
                         }
                         filePicker.launch(intent)
-                    }) { Text("Pick via system…") }
+                    }) { Text(stringResource(R.string.adreno_pick_via_system)) }
                     TextButton(onClick = { confirmInstallPrompt = false }) {
                         Text(context.getString(android.R.string.cancel))
                     }
@@ -159,18 +160,18 @@ fun AdrenoToolsScreen() {
     confirmRemoveIndex?.let { idx ->
         OutlinedAlertDialog(
             onDismissRequest = { confirmRemoveIndex = null },
-            title = { Text("Remove driver?") },
-            text = { Text("Remove \"${manager.getDriverName(drivers[idx])}\"?") },
+            title = { Text(stringResource(R.string.adreno_remove_driver_title)) },
+            text = { Text(stringResource(R.string.adreno_remove_driver_message, manager.getDriverName(drivers[idx]))) },
             confirmButton = {
                 TextButton(onClick = {
                     val id = drivers[idx]
                     manager.removeDriver(id)
                     drivers = drivers.toMutableList().also { it.removeAt(idx) }
                     confirmRemoveIndex = null
-                }) { Text("Remove") }
+                }) { Text(stringResource(R.string.adreno_remove)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmRemoveIndex = null }) { Text("Cancel") }
+                TextButton(onClick = { confirmRemoveIndex = null }) { Text(stringResource(R.string.adreno_cancel)) }
             },
         )
     }
@@ -213,7 +214,7 @@ private fun DriverItem(
             Text(text = version, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
         }
         IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = cs.onSurfaceVariant)
+            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.adreno_remove), tint = cs.onSurfaceVariant)
         }
     }
 }

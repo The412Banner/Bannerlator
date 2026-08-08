@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="preloader_cancel_launch">Cancel launch</string>
+    <string name="preloader_failed_stage">Failed · %1$s</string>
+    <string name="preloader_log_saved">Log saved to %1$s</string>
+    <string name="preloader_open_log_folder">Open log folder</string>
+    <string name="preloader_enable_logging_hint">Enable logging in Settings → Logs and relaunch to capture the cause.</string>
+    <string name="controller_badge_new">NEW</string>
+    <string name="controller_badge_share">P%1$d · share</string>
+    <string name="controller_badge_ignored">Ignored</string>
+    <string name="controller_badge_detected">Detected</string>
+    <string name="hud_diagnostics_saving">Saving HUD diagnostics…</string>
+    <string name="hud_diagnostics_saved">Saved to Downloads › %1$s</string>
+    <string name="hud_diagnostics_export_failed">Couldn\'t export diagnostics.</string>
+    <string name="dialog_no_windows_open">No windows open</string>
+    <string name="dialog_controller_vibration">Controller vibration</string>
+    <string name="dialog_no_log_output">No log output yet.</string>
+    <string name="dialog_log_copied">Log copied</string>
+    <string name="dialog_pause">Pause</string>
+    <string name="dialog_resume">Resume</string>
+    <string name="dialog_process_count">Processes: %1$d</string>
+    <string name="dialog_no_processes">No processes</string>
+    <string name="dialog_pid_memory">PID %1$d · %2$s</string>
+    <string name="dialog_options">Options</string>
+    <string name="dialog_bring_to_front">Bring to Front</string>
+    <string name="dialog_end_process">End Process</string>
+</resources>

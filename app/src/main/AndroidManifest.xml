@@ -57,6 +57,7 @@
         android:extractNativeLibs="true"
         android:allowBackup="false"
         android:allowAudioPlaybackCapture="true"
+        android:localeConfig="@xml/locale_config"
         android:networkSecurityConfig="@xml/network_security_config"
         android:hardwareAccelerated="true"
         android:supportsRtl="true"
@@ -270,6 +271,17 @@
         <!-- Held while a container/game session is running so the OS low-memory killer can't reap
              the guest while the app is backgrounded (else it "Shutting down" on return). -->
         <service android:name="com.winlator.star.core.GameSessionForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
+
+        <!-- AppCompat persists the in-app language choice on Android 12 and older.
+             Android 13+ stores the same choice through the platform LocaleManager. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
     </application>
 </manifest>
 

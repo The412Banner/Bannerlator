@@ -180,10 +180,18 @@ fun ContainersScreen(
             // the field state as the seed for future new containers) via the EDIT_DEFAULTS_ID sentinel.
             // Containers screen only. Sits next to the import action.
             IconButton(onClick = { onNavigateToDetail(ContainerDetailViewModel.EDIT_DEFAULTS_ID) }) {
-                Icon(Icons.Filled.Settings, contentDescription = "New container defaults", tint = androidx.compose.ui.graphics.Color.White)
+                Icon(
+                    Icons.Filled.Settings,
+                    contentDescription = stringResource(R.string.compose_containers_new_defaults_description),
+                    tint = androidx.compose.ui.graphics.Color.White,
+                )
             }
             IconButton(onClick = { showImportPicker = true }) {
-                Icon(Icons.Filled.FileDownload, contentDescription = "Import container", tint = androidx.compose.ui.graphics.Color.White)
+                Icon(
+                    Icons.Filled.FileDownload,
+                    contentDescription = stringResource(R.string.compose_containers_import_description),
+                    tint = androidx.compose.ui.graphics.Color.White,
+                )
             }
         }
     }
@@ -191,7 +199,7 @@ fun ContainersScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         if (containers.isEmpty() && !isLoading) {
             Text(
-                text = "No containers yet. Tap + to create one.",
+                text = stringResource(R.string.compose_containers_empty),
                 color = OnSurfaceVariant,
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -219,9 +227,9 @@ fun ContainersScreen(
                         onExport = {
                             vm.exportContainer(container) { path ->
                                 val msg = if (path != null)
-                                    "Exported to $path"
+                                    context.getString(R.string.compose_containers_exported_to, path)
                                 else
-                                    "Export failed or already exists"
+                                    context.getString(R.string.compose_containers_export_failed)
                                 Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                             }
                         },
@@ -244,7 +252,11 @@ fun ContainersScreen(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary),
         ) {
-            Icon(imageVector = Icons.Filled.Add, contentDescription = "Add container", tint = MaterialTheme.colorScheme.onPrimary)
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.compose_containers_add_description),
+                tint = MaterialTheme.colorScheme.onPrimary,
+            )
         }
 
         // Loading overlay
@@ -273,10 +285,10 @@ fun ContainersScreen(
         val backups = remember { vm.availableBackups() }
         OutlinedAlertDialog(
             onDismissRequest = { showImportPicker = false },
-            title = { Text("Import Container") },
+            title = { Text(stringResource(R.string.compose_containers_import_title)) },
             text = {
                 if (backups.isEmpty()) {
-                    Text("No exported containers found in Downloads/Winlator/Backups/Containers/.")
+                    Text(stringResource(R.string.compose_containers_import_empty))
                 } else {
                     androidx.compose.foundation.layout.Column(
                         modifier = Modifier
@@ -288,7 +300,11 @@ fun ContainersScreen(
                                 onClick = {
                                     showImportPicker = false
                                     vm.importContainer(dir) {
-                                        Toast.makeText(context, "Container imported: ${dir.name}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.compose_containers_imported, dir.name),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
@@ -300,7 +316,7 @@ fun ContainersScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showImportPicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showImportPicker = false }) { Text(stringResource(android.R.string.cancel)) }
             },
         )
     }
@@ -311,32 +327,32 @@ fun ContainersScreen(
             is ConfirmAction.Duplicate -> {
                 OutlinedAlertDialog(
                     onDismissRequest = { confirmDialog = null },
-                    title = { Text("Duplicate container?") },
-                    text = { Text("Duplicate \"${action.container.name}\"?") },
+                    title = { Text(stringResource(R.string.compose_containers_duplicate_title)) },
+                    text = { Text(stringResource(R.string.compose_containers_duplicate_message, action.container.name)) },
                     confirmButton = {
                         TextButton(onClick = {
                             confirmDialog = null
                             vm.duplicate(action.container) {}
-                        }) { Text("Duplicate") }
+                        }) { Text(stringResource(R.string.compose_containers_duplicate_action)) }
                     },
                     dismissButton = {
-                        TextButton(onClick = { confirmDialog = null }) { Text("Cancel") }
+                        TextButton(onClick = { confirmDialog = null }) { Text(stringResource(android.R.string.cancel)) }
                     },
                 )
             }
             is ConfirmAction.Remove -> {
                 OutlinedAlertDialog(
                     onDismissRequest = { confirmDialog = null },
-                    title = { Text("Remove container?") },
-                    text = { Text("Remove \"${action.container.name}\" permanently?") },
+                    title = { Text(stringResource(R.string.compose_containers_remove_title)) },
+                    text = { Text(stringResource(R.string.compose_containers_remove_message, action.container.name)) },
                     confirmButton = {
                         TextButton(onClick = {
                             confirmDialog = null
                             vm.remove(action.container, context) {}
-                        }) { Text("Remove") }
+                        }) { Text(stringResource(R.string.compose_containers_remove_action)) }
                     },
                     dismissButton = {
-                        TextButton(onClick = { confirmDialog = null }) { Text("Cancel") }
+                        TextButton(onClick = { confirmDialog = null }) { Text(stringResource(android.R.string.cancel)) }
                     },
                 )
             }
@@ -353,7 +369,7 @@ fun ContainersScreen(
         null -> {}
         is SaveFlow.Fork -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
-            title = { Text("Game saves") },
+            title = { Text(stringResource(R.string.compose_containers_game_saves_title)) },
             text = {
                 androidx.compose.foundation.layout.Column {
                     Text(flow.container.name, color = OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -361,32 +377,40 @@ fun ContainersScreen(
                     SaveFlowCaution()
                     Spacer(Modifier.size(8.dp))
                     TextButton(onClick = { saveFlow = SaveFlow.BackupScope(flow.container) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Back up this save", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_containers_backup_save), modifier = Modifier.weight(1f))
                     }
                     TextButton(onClick = { saveFlow = SaveFlow.RestoreSource(flow.container) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Restore a save", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_containers_restore_save), modifier = Modifier.weight(1f))
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { saveFlow = null }) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = { saveFlow = null }) { Text(stringResource(android.R.string.cancel)) } },
         )
         is SaveFlow.RestoreSource -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
-            title = { Text("Restore a save") },
+            title = { Text(stringResource(R.string.compose_containers_restore_save)) },
             text = {
                 androidx.compose.foundation.layout.Column {
-                    Text("Choose the backup source.", color = OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        stringResource(R.string.compose_containers_choose_backup_source),
+                        color = OnSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                     Spacer(Modifier.size(8.dp))
                     TextButton(
                         onClick = {
                             pendingRestoreContainer = flow.container
                             saveFlow = null
                             restoreInAppLauncher.launch(
-                                InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select backup (.zip)")
+                                InAppFilePicker.buildIntent(
+                                    context,
+                                    InAppFilePicker.SAVE,
+                                    context.getString(R.string.compose_containers_select_backup_file),
+                                )
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("GameHub backup (.zip)", modifier = Modifier.weight(1f)) }
+                    ) { Text(stringResource(R.string.compose_containers_gamehub_backup), modifier = Modifier.weight(1f)) }
                     TextButton(
                         onClick = {
                             pendingRestoreContainer = flow.container
@@ -394,18 +418,21 @@ fun ContainersScreen(
                             restorePickerLauncher.launch("application/zip")
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Pick via system…", modifier = Modifier.weight(1f)) }
+                    ) { Text(stringResource(R.string.compose_containers_pick_via_system), modifier = Modifier.weight(1f)) }
                 }
             },
-            confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.Fork(flow.container) }) { Text("Back") } },
+            confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.Fork(flow.container) }) { Text(stringResource(R.string.compose_containers_back)) } },
         )
         is SaveFlow.Confirm -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
-            title = { Text("Restore game save?") },
+            title = { Text(stringResource(R.string.compose_containers_restore_confirm_title)) },
             text = {
                 Text(
-                    "Restore the GameHub backup of \"${flow.gameName}\" into container " +
-                        "\"${flow.container.name}\"?\n\nThis may overwrite existing save data."
+                    stringResource(
+                        R.string.compose_containers_restore_confirm_message,
+                        flow.gameName,
+                        flow.container.name,
+                    )
                 )
             },
             confirmButton = {
@@ -414,15 +441,26 @@ fun ContainersScreen(
                     val uri = flow.uri
                     val name = flow.gameName
                     saveFlow = null
-                    busyMessage = "Restoring $name…"
+                    busyMessage = context.getString(R.string.compose_containers_restoring, name)
                     GameSaveBackup.restore(context, uri, c) { r ->
                         busyMessage = null
-                        resultMessage = if (r.ok) "Restored ${r.filesWritten} files to \"${c.name}\""
-                        else "Restore failed: ${r.error ?: "unknown error"}"
+                        resultMessage = if (r.ok) {
+                            context.resources.getQuantityString(
+                                R.plurals.compose_containers_restored_files,
+                                r.filesWritten,
+                                r.filesWritten,
+                                c.name,
+                            )
+                        } else {
+                            context.getString(
+                                R.string.compose_containers_restore_failed,
+                                r.error ?: context.getString(R.string.compose_containers_unknown_error),
+                            )
+                        }
                     }
-                }) { Text("Restore") }
+                }) { Text(stringResource(R.string.compose_containers_restore_action)) }
             },
-            dismissButton = { TextButton(onClick = { saveFlow = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { saveFlow = null }) { Text(stringResource(android.R.string.cancel)) } },
         )
         is SaveFlow.BackupScope -> OutlinedAlertDialog(
             onDismissRequest = { saveFlow = null },
@@ -438,10 +476,18 @@ fun ContainersScreen(
                     TextButton(
                         onClick = { saveFlow = SaveFlow.GamePicker(flow.container) },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("${stringResource(R.string.save_backup_scope_game)} ▸", modifier = Modifier.weight(1f)) }
+                    ) {
+                        Text(
+                            stringResource(
+                                R.string.compose_containers_navigate_to,
+                                stringResource(R.string.save_backup_scope_game),
+                            ),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             },
-            confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.Fork(flow.container) }) { Text("Back") } },
+            confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.Fork(flow.container) }) { Text(stringResource(R.string.compose_containers_back)) } },
         )
         is SaveFlow.GamePicker -> {
             val shortcuts = remember(flow.container.id) { vm.shortcutsFor(flow.container) }
@@ -467,7 +513,7 @@ fun ContainersScreen(
                         }
                     }
                 },
-                confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.BackupScope(flow.container) }) { Text("Back") } },
+                confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.BackupScope(flow.container) }) { Text(stringResource(R.string.compose_containers_back)) } },
             )
         }
         is SaveFlow.GameSaves -> GameSavesDialog(
@@ -500,7 +546,7 @@ fun ContainersScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { saveFlow = SaveFlow.BackupScope(flow.container) }) { Text("Back") }
+                TextButton(onClick = { saveFlow = SaveFlow.BackupScope(flow.container) }) { Text(stringResource(R.string.compose_containers_back)) }
             },
         )
     }
@@ -610,7 +656,7 @@ private fun ContainerItem(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.icon_popup_menu_run),
-                    contentDescription = "Run",
+                    contentDescription = stringResource(R.string.compose_containers_run_description),
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(26.dp),
                 )
@@ -623,7 +669,7 @@ private fun ContainerItem(
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(
                         imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = stringResource(R.string.compose_containers_settings_description),
                         tint = OnSurfaceVariant,
                     )
                 }
@@ -633,37 +679,37 @@ private fun ContainerItem(
                     modifier = Modifier.outlinedMenuCard(),
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Edit") },
+                        text = { Text(stringResource(R.string.compose_containers_edit_action)) },
                         leadingIcon = { Icon(Icons.Filled.Edit, null) },
                         onClick = { menuExpanded = false; onEdit() },
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Duplicate") },
+                        text = { Text(stringResource(R.string.compose_containers_duplicate_action)) },
                         leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
                         onClick = { menuExpanded = false; onDuplicate() },
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Remove") },
+                        text = { Text(stringResource(R.string.compose_containers_remove_action)) },
                         leadingIcon = { Icon(Icons.Filled.Delete, null) },
                         onClick = { menuExpanded = false; onRemove() },
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Export") },
+                        text = { Text(stringResource(R.string.compose_containers_export_action)) },
                         leadingIcon = { Icon(Icons.Filled.FileUpload, null) },
                         onClick = { menuExpanded = false; onExport() },
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Backup / Restore save") },
+                        text = { Text(stringResource(R.string.compose_containers_backup_restore_action)) },
                         leadingIcon = { Icon(Icons.Filled.SettingsBackupRestore, null) },
                         onClick = { menuExpanded = false; onBackupRestore() },
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Info") },
+                        text = { Text(stringResource(R.string.compose_containers_info_action)) },
                         leadingIcon = { Icon(Icons.Filled.Info, null) },
                         onClick = { menuExpanded = false; onInfo() },
                     )
@@ -720,12 +766,23 @@ private fun runScopedBackup(
 ) {
     val name = flow.gameName ?: flow.container.name
     dismiss()
-    setBusy("Backing up $name…")
+    setBusy(context.getString(R.string.compose_containers_backing_up, name))
     GameSaveBackup.backup(context, flow.container, flow.roots, flow.gameName, layout) { r ->
         setBusy(null)
         setResult(
-            if (r.ok) "Saved ${r.fileCount} files → ${r.path?.substringAfterLast('/')}"
-            else "Backup failed: ${r.error ?: "unknown error"}"
+            if (r.ok) {
+                context.resources.getQuantityString(
+                    R.plurals.compose_containers_saved_files,
+                    r.fileCount,
+                    r.fileCount,
+                    r.path?.substringAfterLast('/').orEmpty(),
+                )
+            } else {
+                context.getString(
+                    R.string.compose_containers_backup_failed,
+                    r.error ?: context.getString(R.string.compose_containers_unknown_error),
+                )
+            }
         )
     }
 }
@@ -924,7 +981,7 @@ private fun GameSavesDialog(
                 },
             ) { Text(stringResource(R.string.save_backup_next)) }
         },
-        dismissButton = { TextButton(onClick = onBack) { Text("Back") } },
+        dismissButton = { TextButton(onClick = onBack) { Text(stringResource(R.string.compose_containers_back)) } },
     )
 }
 
@@ -972,7 +1029,7 @@ private fun ManualAddDialog(container: Container, onPick: (File) -> Unit, onCanc
                 Text(stringResource(R.string.save_backup_add_folder_here))
             }
         },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(android.R.string.cancel)) } },
     )
 }
 
@@ -993,7 +1050,10 @@ private fun SaveFlowCaution() {
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(
-                text = "⚠  " + stringResource(R.string.save_flow_caution_title),
+                text = stringResource(
+                    R.string.compose_containers_caution_heading,
+                    stringResource(R.string.save_flow_caution_title),
+                ),
                 color = OnSurface,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
@@ -1059,7 +1119,7 @@ private fun StorageInfoDialog(container: Container, onDismiss: () -> Unit) {
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Storage Info") },
+        title = { Text(stringResource(R.string.compose_containers_storage_info_title)) },
         text = {
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -1070,13 +1130,13 @@ private fun StorageInfoDialog(container: Container, onDismiss: () -> Unit) {
                     modifier = androidx.compose.ui.Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Text("Drive C", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.compose_containers_drive_c), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(StringUtils.formatBytes(driveCSize), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = androidx.compose.ui.Modifier.size(6.dp))
-                    Text("Cache", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.compose_containers_cache), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(StringUtils.formatBytes(cacheSize), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = androidx.compose.ui.Modifier.size(6.dp))
-                    Text("Total", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.compose_containers_total), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(StringUtils.formatBytes(totalSize), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 // Right column — circular progress + label
@@ -1092,11 +1152,11 @@ private fun StorageInfoDialog(container: Container, onDismiss: () -> Unit) {
                             strokeWidth = 10.dp,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant,
                         )
-                        Text("${progress.toInt()}%", fontSize = 16.sp)
+                        Text(stringResource(R.string.compose_containers_percent, progress.toInt()), fontSize = 16.sp)
                     }
                     Spacer(modifier = androidx.compose.ui.Modifier.size(6.dp))
                     Text(
-                        "Estimated used space",
+                        stringResource(R.string.compose_containers_estimated_used_space),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1110,7 +1170,7 @@ private fun StorageInfoDialog(container: Container, onDismiss: () -> Unit) {
                 container.putExtra("desktopTheme", null)
                 container.saveData()
                 onDismiss()
-            }) { Text("Clear Cache") }
+            }) { Text(stringResource(R.string.compose_containers_clear_cache)) }
         },
     )
 }

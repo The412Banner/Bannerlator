@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.winlator.star.UnpackArchiveActivity
 import com.winlator.star.core.StringUtils
 import java.io.File
@@ -139,6 +140,7 @@ class UnpackService : Service() {
     private fun runExtraction(archive: File, destDir: File, mmt: Int, buffer: Int, isInno: Boolean, totalSize: Long, engine: String) {
         cancelled = false
         val ctx = applicationContext
+        val strings = ContextCompat.getContextForLanguage(ctx)
         // Speed/ETA and the reported size track the DATA the engine reads. For an InnoSetup installer
         // that is the Setup-*.bin payload total (passed in), not the small Setup.exe.
         val dataSize = if (totalSize > 0) totalSize else archive.length()
@@ -166,8 +168,12 @@ class UnpackService : Service() {
                 it.copy(
                     phase = UnpackPhase.EXTRACTING,
                     archiveType = when {
-                        engine == "unarc" -> "FreeArc repack"
-                        isInno -> "InnoSetup installer"
+                        engine == "unarc" -> strings.getString(
+                            com.winlator.star.R.string.unpack_runtime_freearc_repack,
+                        )
+                        isInno -> strings.getString(
+                            com.winlator.star.R.string.unpack_runtime_innosetup_installer,
+                        )
                         else -> info?.type
                     },
                 )
@@ -270,12 +276,25 @@ class UnpackService : Service() {
                         onProcess = { proc = it },
                     )
                 }
-            }.getOrElse { SevenZip.Result(-1, it.message ?: "exec failed") }
+            }.getOrElse { error ->
+                Log.e(TAG, "Extraction execution failed", error)
+                SevenZip.Result(
+                    -1,
+                    strings.getString(com.winlator.star.R.string.unpack_runtime_execution_failed),
+                )
+            }
 
             // Unwrap a single inner .tar (a .wcp/.tzst/.tar.gz decompresses to just its .tar) so one
             // action lands the real files. 7-Zip path only; best-effort; only when the first pass won.
             if (!isInno && !cancelled && result.exitCode <= 1) {
-                UnpackManager.update { it.copy(currentFile = "Unpacking inner archive…", percent = 0) }
+                UnpackManager.update {
+                    it.copy(
+                        currentFile = strings.getString(
+                            com.winlator.star.R.string.unpack_runtime_unpacking_inner_archive,
+                        ),
+                        percent = 0,
+                    )
+                }
                 refresh()
                 runCatching {
                     SevenZip.unwrapSingleTar(
@@ -309,7 +328,11 @@ class UnpackService : Service() {
                 )
                 else -> UnpackManager.current.copy(
                     phase = UnpackPhase.ERROR, elapsedMs = elapsed, filesExtracted = files,
-                    errorTail = result.stderrTail.takeIf { it.isNotBlank() } ?: "7-Zip exit code ${result.exitCode}",
+                    errorTail = result.stderrTail.takeIf { it.isNotBlank() }
+                        ?: strings.getString(
+                            com.winlator.star.R.string.unpack_runtime_seven_zip_exit_code,
+                            result.exitCode,
+                        ),
                 )
             }
             UnpackManager.set(terminal)
@@ -332,16 +355,21 @@ class UnpackService : Service() {
 
     private fun createChannel() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+        val strings = ContextCompat.getContextForLanguage(this)
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Unpacking", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Shows archive extraction progress and keeps it running in the background"
+            NotificationChannel(
+                CHANNEL_ID,
+                strings.getString(com.winlator.star.R.string.unpack_notification_channel),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = strings.getString(com.winlator.star.R.string.unpack_notification_channel_description)
                 setShowBadge(false)
             }
         )
     }
 
     private fun buildNotification(s: UnpackState): Notification {
+        val strings = ContextCompat.getContextForLanguage(this)
         val tap = PendingIntent.getActivity(
             this, 0,
             UnpackArchiveActivity.intent(this, s.archivePath.ifEmpty { s.archiveName }),
@@ -353,22 +381,33 @@ class UnpackService : Service() {
             PendingIntent.FLAG_IMMUTABLE,
         )
         val body = when (s.phase) {
-            UnpackPhase.LISTING -> "Reading ${s.archiveName}…"
+            UnpackPhase.LISTING -> strings.getString(com.winlator.star.R.string.unpack_notification_reading, s.archiveName)
             else -> buildString {
                 append("${s.percent}%")
                 if (s.speedBps > 0) append("  •  ${StringUtils.formatBytes(s.speedBps)}/s")
-                if (s.etaSeconds >= 0) append("  •  ETA ${formatDuration(s.etaSeconds * 1000)}")
+                if (s.etaSeconds >= 0) append(
+                    strings.getString(
+                        com.winlator.star.R.string.unpack_notification_eta,
+                        formatDuration(s.etaSeconds * 1000),
+                    )
+                )
             }
         }
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Unpacking ${s.archiveName}")
+            .setContentTitle(strings.getString(com.winlator.star.R.string.unpack_notification_unpacking, s.archiveName))
             .setContentText(body)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setProgress(100, s.percent, s.phase == UnpackPhase.LISTING)
             .setContentIntent(tap)
-            .addAction(Notification.Action.Builder(null, "Cancel", cancel).build())
+            .addAction(
+                Notification.Action.Builder(
+                    null,
+                    strings.getString(android.R.string.cancel),
+                    cancel,
+                ).build()
+            )
             .build()
     }
 
@@ -379,6 +418,7 @@ class UnpackService : Service() {
 
     /** Replace the ongoing notification with a dismissible terminal one (done / error / cancelled). */
     private fun postTerminalNotification(s: UnpackState) {
+        val strings = ContextCompat.getContextForLanguage(this)
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val tap = PendingIntent.getActivity(
             this, 0,
@@ -386,10 +426,19 @@ class UnpackService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val (title, text) = when (s.phase) {
-            UnpackPhase.DONE -> "Unpacked ${s.archiveName}" to
-                "${s.filesExtracted} files • ${StringUtils.formatBytes(s.archiveSize)} in ${formatDuration(s.elapsedMs)}"
-            UnpackPhase.CANCELLED -> "Unpack cancelled" to s.archiveName
-            else -> "Unpack failed" to (s.errorTail?.lineSequence()?.lastOrNull { it.isNotBlank() } ?: s.archiveName)
+            UnpackPhase.DONE -> strings.getString(
+                com.winlator.star.R.string.unpack_notification_done,
+                s.archiveName,
+            ) to strings.resources.getQuantityString(
+                com.winlator.star.R.plurals.unpack_notification_done_summary,
+                s.filesExtracted,
+                s.filesExtracted,
+                StringUtils.formatBytes(s.archiveSize),
+                formatDuration(s.elapsedMs),
+            )
+            UnpackPhase.CANCELLED -> strings.getString(com.winlator.star.R.string.unpack_notification_cancelled) to s.archiveName
+            else -> strings.getString(com.winlator.star.R.string.unpack_notification_failed) to
+                (s.errorTail?.lineSequence()?.lastOrNull { it.isNotBlank() } ?: s.archiveName)
         }
         val n = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
@@ -416,14 +465,15 @@ class UnpackService : Service() {
     }
 
     private fun formatDuration(ms: Long): String {
+        val strings = ContextCompat.getContextForLanguage(this)
         val totalSec = ms / 1000
         val h = totalSec / 3600
         val m = (totalSec % 3600) / 60
         val s = totalSec % 60
         return when {
-            h > 0 -> "${h}h ${m}m"
-            m > 0 -> "${m}m ${s}s"
-            else -> "${s}s"
+            h > 0 -> strings.getString(com.winlator.star.R.string.duration_hours_minutes, h, m)
+            m > 0 -> strings.getString(com.winlator.star.R.string.duration_minutes_seconds, m, s)
+            else -> strings.getString(com.winlator.star.R.string.duration_seconds, s)
         }
     }
 }

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reshade_loadout">ReShade loadout</string>
+    <string name="reshade_none">None</string>
+    <plurals name="reshade_effect_count_summary">
+        <item quantity="one">%1$d effect: %2$s</item>
+        <item quantity="other">%1$d effects: %2$s</item>
+    </plurals>
+    <string name="reshade_browse">Browse</string>
+    <string name="reshade_vulkan_only_warning">ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DX wrapper.</string>
+    <string name="reshade_download_failed">Failed to download %1$s.</string>
+    <string name="reshade_effects_title">ReShade effects</string>
+    <string name="reshade_clear_all">Clear all</string>
+    <string name="reshade_offline_cached">Offline — showing a cached list. Connect to download new effects.</string>
+    <string name="reshade_offline_installed_only">Offline — showing installed effects only. Connect to browse the catalog.</string>
+    <string name="reshade_search_effects">Search effects…</string>
+    <string name="reshade_clear">Clear</string>
+    <string name="reshade_installed_count">Installed (%1$d)</string>
+    <string name="reshade_available_count">Available (%1$d)</string>
+    <string name="reshade_no_effects_match">No effects match \"%1$s\".</string>
+    <string name="reshade_no_effects_available">No effects available. Connect to the internet to browse the catalog.</string>
+    <string name="reshade_done">Done</string>
+    <string name="reshade_delete_title">Delete %1$s?</string>
+    <string name="reshade_delete_message">This removes the downloaded effect from storage and from your loadout. You can download it again at any time.</string>
+    <string name="reshade_delete_failed">Couldn\'t delete %1$s.</string>
+    <string name="reshade_delete">Delete</string>
+    <string name="reshade_cancel">Cancel</string>
+    <string name="reshade_connect_to_download">Connect to the internet to download effects.</string>
+    <string name="reshade_needs_connection">Needs a connection to download</string>
+    <string name="reshade_delete_download">Delete download</string>
+    <string name="reshade_offline">Offline</string>
+    <string name="reshade_download">Download</string>
+    <string name="reshade_installing">Installing</string>
+    <string name="reshade_downloading">Downloading</string>
+    <plurals name="reshade_longer_compile">
+        <item quantity="one">%1$d effect — longer launch compilation.</item>
+        <item quantity="other">%1$d effects — longer launch compilation.</item>
+    </plurals>
+    <string name="reshade_mode_solo">Solo</string>
+    <string name="reshade_mode_stack">Stack</string>
+    <string name="reshade_mode_solo_description">One effect active at a time (A/B comparison).</string>
+    <string name="reshade_mode_stack_description">Layer any subset of effects.</string>
+    <string name="reshade_active">active</string>
+    <string name="reshade_no_tunable_parameters">No tunable parameters.</string>
+    <string name="reshade_reset">Reset</string>
+</resources>

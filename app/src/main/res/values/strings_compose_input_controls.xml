@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_input_profile_name">Profile name</string>
+    <string name="compose_input_enter_profile_name">Enter profile name</string>
+    <string name="compose_input_ok">OK</string>
+    <string name="compose_input_cancel">Cancel</string>
+    <string name="compose_input_profiles">Profiles</string>
+    <string name="compose_input_download_profiles">Download profiles</string>
+    <string name="compose_input_download">Download</string>
+    <string name="compose_input_profile">Profile</string>
+    <string name="compose_input_select_profile">— Select profile —</string>
+    <string name="compose_input_add_profile">Add profile</string>
+    <string name="compose_input_edit_profile">Edit profile</string>
+    <string name="compose_input_duplicate_profile">Duplicate profile</string>
+    <string name="compose_input_remove_profile">Remove profile</string>
+    <string name="compose_input_pick_via_system">Pick via system…</string>
+    <string name="compose_input_profile_exported_to">Profile exported to %1$s</string>
+    <string name="compose_input_controls_editor">Controls editor</string>
+    <string name="compose_input_external_controllers">External controllers</string>
+    <string name="compose_input_no_items_to_display">No items to display</string>
+    <plurals name="compose_input_bindings_count">
+        <item quantity="one">%1$d binding</item>
+        <item quantity="other">%1$d bindings</item>
+    </plurals>
+    <string name="compose_input_remove_controller">Remove controller</string>
+
+    <string name="compose_input_gyroscope">Gyroscope</string>
+    <string name="compose_input_no_gyroscope">No gyroscope on this device</string>
+    <string name="compose_input_gyro_calibration_description">Rest the device on a flat surface and calibrate to remove the gyroscope’s resting drift.</string>
+    <string name="compose_input_gyro_not_calibrated">Not calibrated</string>
+    <string name="compose_input_gyro_negligible_drift">Very little drift detected — your device already compensates</string>
+    <string name="compose_input_gyro_bias_removed">Bias removed: x %1$.4f, y %2$.4f rad/s</string>
+    <string name="compose_input_gyro_hold_still">Hold still…</string>
+    <string name="compose_input_gyro_calibrated_nothing_to_remove">Calibrated — nothing to remove</string>
+    <string name="compose_input_gyro_calibrated">Calibrated</string>
+    <string name="compose_input_gyro_keep_still">Hold the device still and try again</string>
+    <string name="compose_input_gyro_not_enough_samples">Couldn’t collect enough samples — try again</string>
+    <string name="compose_input_gyro_unavailable">Gyroscope unavailable</string>
+    <string name="compose_input_calibrate">Calibrate</string>
+    <string name="compose_input_gyro_calibration_reset">Calibration reset</string>
+    <string name="compose_input_reset">Reset</string>
+
+    <string name="compose_input_player_slots">Player slots</string>
+    <string name="compose_input_what_is_this">What is this?</string>
+    <string name="compose_input_player_slots_description">The default for newly created containers. Assign two devices to one player to share control. Applies to new containers only — existing containers keep their own settings.</string>
+    <string name="compose_input_on_screen_keep">Keep on-screen player</string>
+    <string name="compose_input_on_screen_yield">Yield Player 1 to pad</string>
+    <string name="compose_input_on_screen_share">Share the player</string>
+    <string name="compose_input_on_screen_priority">On-screen priority</string>
+
+    <string name="compose_input_disabled">— Disabled —</string>
+    <string name="compose_input_controls_title">Input controls</string>
+    <string name="compose_input_show_touchscreen_controls">Show touchscreen controls</string>
+    <string name="compose_input_enable_timeout">Enable timeout</string>
+    <string name="compose_input_enable_haptics">Enable haptics</string>
+    <string name="compose_input_profile_settings">Profile settings…</string>
+</resources>

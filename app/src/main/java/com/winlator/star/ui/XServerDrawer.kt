@@ -96,6 +96,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -351,7 +352,7 @@ private fun FpsTabButton(isSelected: Boolean, onClick: () -> Unit) {
             }
         }
         Text(
-            text = "FPS",
+            text = stringResource(R.string.compose_xserver_drawer_fps),
             color = textColor,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
@@ -429,7 +430,7 @@ private fun LabeledSlider(
     onValueChangeFinished: (() -> Unit)? = null,
     steps: Int = 0,
     enabled: Boolean = true,
-    format: (Float) -> String = { "%.0f".format(it) }
+    format: @Composable (Float) -> String = { it.roundToInt().toString() }
 ) {
     val accent = MaterialTheme.colorScheme.primary
     Column(modifier = Modifier.padding(vertical = 4.dp).then(if (enabled) Modifier else Modifier.alpha(0.4f))) {
@@ -499,7 +500,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
     // Title on the left, runtime-backend diagnostic chip pinned top-right.
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
-        Box(Modifier.weight(1f)) { SectionHeader("Graphics") }
+        Box(Modifier.weight(1f)) { SectionHeader(stringResource(R.string.compose_xserver_drawer_graphics)) }
         RuntimeBackendChip(state)
     }
 
@@ -561,7 +562,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         val initGlUpscalerMode by XServerDialogState.glUpscalerMode.collectAsState()
         var glUpscalerMode by remember(initGlUpscalerMode) { mutableIntStateOf(initGlUpscalerMode) }
 
-        Text("Scaling mode", color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(stringResource(R.string.compose_xserver_drawer_scaling_mode), color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
         UpscalerModeButtons(glUpscalerMode, glEnabled) {
             glUpscalerMode = it
@@ -574,7 +575,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
             Spacer(Modifier.height(4.dp))
             // Continuous for SGSR/FSR (3/4/5); snapped to 5 stops {0,25,50,75,100} for
             // Sharpen mode (6), where stop 0 = OFF (no CAS pass).
-            IntSlider("Sharpness", glUpscaleSharpness, 0..100,
+            IntSlider(stringResource(R.string.compose_xserver_drawer_sharpness), glUpscaleSharpness, 0..100,
                 onValueChange = { glUpscaleSharpness = it },
                 onValueChangeFinished = {
                     XServerDialogState.onGlUpscaleSharpnessApply?.invoke(glUpscaleSharpness)
@@ -593,23 +594,23 @@ private fun GraphicsContent(state: XServerDrawerState) {
         var sgsrSharpness by remember(initSgsrSharpness) { mutableIntStateOf(initSgsrSharpness) }
         var hdrEnabled    by remember(initHdrEnabled)    { mutableStateOf(initHdrEnabled) }
 
-        ToggleRow("Sharpen (CAS)", sgsrEnabled, glEnabled) { sgsrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
+        ToggleRow(stringResource(R.string.compose_xserver_drawer_sharpen_cas), sgsrEnabled, glEnabled) { sgsrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
         if (sgsrEnabled) {
             Spacer(Modifier.height(4.dp))
             // Standalone CAS sharpen: always snapped to 5 stops {0,25,50,75,100}, stop 0 = OFF.
-            IntSlider("Sharpness", sgsrSharpness, 0..100,
+            IntSlider(stringResource(R.string.compose_xserver_drawer_sharpness), sgsrSharpness, 0..100,
                 onValueChange = { sgsrSharpness = it },
                 onValueChangeFinished = { pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) },
                 steps = 3, enabled = glEnabled)
         }
-        ToggleRow("HDR", hdrEnabled, glEnabled) { hdrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
+        ToggleRow(stringResource(R.string.compose_xserver_drawer_hdr), hdrEnabled, glEnabled) { hdrEnabled = it; pushSgsrUpdate(sgsrEnabled, sgsrSharpness, hdrEnabled) }
 
         // Terminal debanding (TPDF dither) — kills 8-bit gradient banding. Drawer-only / session-live.
         DebandControls(glEnabled)
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
-        Text("Screen Effects", color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(stringResource(R.string.compose_xserver_drawer_screen_effects), color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
 
         val seBrightness by XServerDialogState.seBrightness.collectAsState()
@@ -631,14 +632,14 @@ private fun GraphicsContent(state: XServerDrawerState) {
             XServerDialogState.onScreenEffectsApply?.invoke(localBrightness, localContrast, localGamma, localFxaa, localCrt, localToon, localNtsc, 0)
         }
 
-        LabeledSlider("Brightness", localBrightness, -100f..100f, { localBrightness = it; applySe() }, enabled = glEnabled)
-        LabeledSlider("Contrast", localContrast, -100f..100f, { localContrast = it; applySe() }, enabled = glEnabled)
-        LabeledSlider("Gamma", localGamma, 0.5f..3.0f, { localGamma = it; applySe() }, enabled = glEnabled, format = { "%.2f".format(it) })
+        LabeledSlider(stringResource(R.string.compose_xserver_drawer_brightness), localBrightness, -100f..100f, { localBrightness = it; applySe() }, enabled = glEnabled)
+        LabeledSlider(stringResource(R.string.compose_xserver_drawer_contrast), localContrast, -100f..100f, { localContrast = it; applySe() }, enabled = glEnabled)
+        LabeledSlider(stringResource(R.string.compose_xserver_drawer_gamma), localGamma, 0.5f..3.0f, { localGamma = it; applySe() }, enabled = glEnabled, format = { "%.2f".format(it) })
 
-        SeShaderToggle("FXAA", localFxaa, glEnabled) { localFxaa = it; applySe() }
-        SeShaderToggle("CRT", localCrt, glEnabled) { localCrt = it; applySe() }
-        SeShaderToggle("Toon", localToon, glEnabled) { localToon = it; applySe() }
-        SeShaderToggle("NTSC", localNtsc, glEnabled) { localNtsc = it; applySe() }
+        SeShaderToggle(stringResource(R.string.compose_xserver_drawer_fxaa), localFxaa, glEnabled) { localFxaa = it; applySe() }
+        SeShaderToggle(stringResource(R.string.compose_xserver_drawer_crt), localCrt, glEnabled) { localCrt = it; applySe() }
+        SeShaderToggle(stringResource(R.string.compose_xserver_drawer_toon), localToon, glEnabled) { localToon = it; applySe() }
+        SeShaderToggle(stringResource(R.string.compose_xserver_drawer_ntsc), localNtsc, glEnabled) { localNtsc = it; applySe() }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
     }
@@ -651,7 +652,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         val initUpscalerMode by XServerDialogState.upscalerMode.collectAsState()
         var upscalerMode by remember(initUpscalerMode) { mutableIntStateOf(initUpscalerMode) }
 
-        Text("Scaling mode", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(stringResource(R.string.compose_xserver_drawer_scaling_mode), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
         UpscalerModeButtons(upscalerMode, true) {
             upscalerMode = it
@@ -664,7 +665,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
             val initUpscaleSharpness by XServerDialogState.upscaleSharpness.collectAsState()
             var upscaleSharpness by remember(initUpscaleSharpness) { mutableIntStateOf(initUpscaleSharpness) }
             Spacer(Modifier.height(4.dp))
-            IntSlider("Sharpness", upscaleSharpness, 0..100, { upscaleSharpness = it }, {
+            IntSlider(stringResource(R.string.compose_xserver_drawer_sharpness), upscaleSharpness, 0..100, { upscaleSharpness = it }, {
                 XServerDialogState.onUpscaleSharpnessApply?.invoke(upscaleSharpness)
             })
         }
@@ -679,17 +680,17 @@ private fun GraphicsContent(state: XServerDrawerState) {
         var casSharpness by remember(initCasSharpness) { mutableIntStateOf(initCasSharpness) }
         var hdrVkEnabled by remember(initHdrVkEnabled) { mutableStateOf(initHdrVkEnabled) }
 
-        ToggleRow("CAS", casEnabled, true) {
+        ToggleRow(stringResource(R.string.compose_xserver_drawer_cas), casEnabled, true) {
             casEnabled = it
             XServerDialogState.onCasApply?.invoke(casEnabled, casSharpness)
         }
         if (casEnabled) {
             Spacer(Modifier.height(4.dp))
-            IntSlider("CAS Sharpness", casSharpness, 0..100, { casSharpness = it }, {
+            IntSlider(stringResource(R.string.compose_xserver_drawer_cas_sharpness), casSharpness, 0..100, { casSharpness = it }, {
                 XServerDialogState.onCasApply?.invoke(casEnabled, casSharpness)
             })
         }
-        ToggleRow("HDR", hdrVkEnabled, true) {
+        ToggleRow(stringResource(R.string.compose_xserver_drawer_hdr), hdrVkEnabled, true) {
             hdrVkEnabled = it
             XServerDialogState.onHdrApply?.invoke(hdrVkEnabled)
         }
@@ -702,7 +703,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         // ---- Screen Effects (GL EffectComposer parity, ported to the Vulkan post
         //      chain). Color grade is always-applied via the sliders (neutral = no-op);
         //      FXAA/Toon/CRT/NTSC are toggles. Drawer-only / session-live. ----
-        Text("Screen Effects", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(stringResource(R.string.compose_xserver_drawer_screen_effects), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
 
         val initVkBrightness by XServerDialogState.vkBrightness.collectAsState()
@@ -725,18 +726,18 @@ private fun GraphicsContent(state: XServerDrawerState) {
                 vkBrightness, vkContrast, vkGamma, vkFxaa, vkToon, vkCrt, vkNtsc)
         }
 
-        LabeledSlider("Brightness", vkBrightness, -100f..100f, { vkBrightness = it; applyVkSe() }, enabled = true)
-        LabeledSlider("Contrast", vkContrast, -100f..100f, { vkContrast = it; applyVkSe() }, enabled = true)
-        LabeledSlider("Gamma", vkGamma, 0.5f..3.0f, { vkGamma = it; applyVkSe() }, enabled = true, format = { "%.2f".format(it) })
+        LabeledSlider(stringResource(R.string.compose_xserver_drawer_brightness), vkBrightness, -100f..100f, { vkBrightness = it; applyVkSe() }, enabled = true)
+        LabeledSlider(stringResource(R.string.compose_xserver_drawer_contrast), vkContrast, -100f..100f, { vkContrast = it; applyVkSe() }, enabled = true)
+        LabeledSlider(stringResource(R.string.compose_xserver_drawer_gamma), vkGamma, 0.5f..3.0f, { vkGamma = it; applyVkSe() }, enabled = true, format = { "%.2f".format(it) })
 
         // Four independent shader flags with identical wiring — one row of chips instead of four
         // switch rows. Same applyVkSe() round-trip as before.
         ToggleChipGrid(
             listOf(
-                ToggleChipItem("FXAA", vkFxaa) { vkFxaa = it; applyVkSe() },
-                ToggleChipItem("Toon", vkToon) { vkToon = it; applyVkSe() },
-                ToggleChipItem("CRT", vkCrt) { vkCrt = it; applyVkSe() },
-                ToggleChipItem("NTSC", vkNtsc) { vkNtsc = it; applyVkSe() },
+                ToggleChipItem(stringResource(R.string.compose_xserver_drawer_fxaa), vkFxaa) { vkFxaa = it; applyVkSe() },
+                ToggleChipItem(stringResource(R.string.compose_xserver_drawer_toon), vkToon) { vkToon = it; applyVkSe() },
+                ToggleChipItem(stringResource(R.string.compose_xserver_drawer_crt), vkCrt) { vkCrt = it; applyVkSe() },
+                ToggleChipItem(stringResource(R.string.compose_xserver_drawer_ntsc), vkNtsc) { vkNtsc = it; applyVkSe() },
             ),
             perRow = 4
         )
@@ -748,7 +749,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
         // ---- SurfaceFlinger: direct scanout bypasses the compositor, so no
         //      post-process / scaling controls apply. ----
         Text(
-            "No graphics enhancements are available with the SurfaceFlinger renderer.",
+            stringResource(R.string.compose_xserver_drawer_no_graphics_enhancements),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             fontSize = 12.sp,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -761,7 +762,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
     // on the OpenGL renderer, where the bespoke GL scanout path is disabled for now.
     val nativeRenderingSupported by state.nativeRenderingSupported.collectAsState()
     if (nativeRenderingSupported)
-        ToggleRow("Native Rendering", nativeRenderingEnabled) { state.onNativeRenderingToggle?.run() }
+        ToggleRow(stringResource(R.string.compose_xserver_drawer_native_rendering), nativeRenderingEnabled) { state.onNativeRenderingToggle?.run() }
 
 }
 
@@ -784,18 +785,18 @@ private fun RuntimeBackendChip(state: XServerDrawerState) {
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
         Text(
-            "${backend.arch} · ${backend.translator}",
+            stringResource(R.string.compose_xserver_drawer_runtime_backend, backend.arch, backend.translator),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium
         )
         if (backend.showsFexMode) {
             val (label, color) = when (backend.fexMode) {
-                FexMode.UNIXLIB -> "unixlib" to Color(0xFF4CAF50) // native .so loaded
-                FexMode.DLL     -> "DLL"     to muted             // self-contained DLL path
-                FexMode.NA      -> "N/A"     to muted             // maps not resolved yet
+                FexMode.UNIXLIB -> stringResource(R.string.compose_xserver_drawer_unixlib) to Color(0xFF4CAF50) // native .so loaded
+                FexMode.DLL     -> stringResource(R.string.compose_xserver_drawer_dll) to muted // self-contained DLL path
+                FexMode.NA      -> stringResource(R.string.compose_xserver_drawer_not_available_short) to muted // maps not resolved yet
             }
-            Text(" · ", color = muted, fontSize = 10.sp)
+            Text(stringResource(R.string.compose_xserver_drawer_backend_separator), color = muted, fontSize = 10.sp)
             Text(label, color = color, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
         }
     }
@@ -820,9 +821,9 @@ private fun FrameGenSection(state: XServerDrawerState) {
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
     // labeled twice. Badge shows bionic-fg / lsfg-vk depending on the container's selection.
     val engineLabel = when (engine) {
-        "lsfg"   -> "lsfg-vk"
-        "bionic" -> "bionic-fg"
-        else     -> "Off"
+        "lsfg"   -> stringResource(R.string.compose_xserver_drawer_lsfg_vk)
+        "bionic" -> stringResource(R.string.compose_xserver_drawer_bionic_fg)
+        else     -> stringResource(R.string.compose_xserver_drawer_off)
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0
     // (Off) every launch even when the container has an engine selected, so gate on initFgMult too
@@ -833,7 +834,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Frame Generation", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(stringResource(R.string.compose_xserver_drawer_frame_generation), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -882,7 +883,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
             Column {
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Model",
+                    stringResource(R.string.compose_xserver_drawer_model),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
@@ -900,12 +901,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
             Column {
                 Spacer(Modifier.height(8.dp))
                 LabeledSlider(
-                    "Flow Scale", fgFlow, 0.2f..1.0f,
+                    stringResource(R.string.compose_xserver_drawer_flow_scale), fgFlow, 0.2f..1.0f,
                     { fgFlow = it }, { applyFg() },
                     format = { "%.2f".format(it) }
                 )
                 Text(
-                    "Higher flow scale = smoother motion estimate, more GPU cost.",
+                    stringResource(R.string.compose_xserver_drawer_flow_scale_hint),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     fontSize = 11.sp,
                     modifier = Modifier.padding(start = 4.dp, top = 2.dp)
@@ -919,13 +920,13 @@ private fun FrameGenSection(state: XServerDrawerState) {
         if (engine == "lsfg") {
             var lsfgPerf by remember(initLsfgPerf) { mutableStateOf(initLsfgPerf) }
             Spacer(Modifier.height(8.dp))
-            ToggleRow("Performance mode", lsfgPerf) {
+            ToggleRow(stringResource(R.string.compose_xserver_drawer_performance_mode), lsfgPerf) {
                 lsfgPerf = it
                 state.setLsfgPerformanceMode(it)
                 applyFg()
             }
             Text(
-                "Lower quality for higher FPS — helps on low-end devices.",
+                stringResource(R.string.compose_xserver_drawer_performance_mode_hint),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)
@@ -933,7 +934,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
         }
     } else {
         Text(
-            "Enable Frame Generation in this container's settings to tune it here.",
+            stringResource(R.string.compose_xserver_drawer_enable_frame_generation_hint),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 4.dp, top = 2.dp)
@@ -950,7 +951,13 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
     // 4 ("FSR3+") is 3's optical flow reworked — per-block search, sub-pixel refinement
     // and a true bidirectional solve that gates the flow at occlusion edges. 3 is kept
     // alongside it so the two can be compared live in the same scene.
-    val options = listOf(0 to "Default", 1 to "Traced", 2 to "V2", 3 to "FSR3", 4 to "FSR3+")
+    val options = listOf(
+        0 to stringResource(R.string.compose_xserver_drawer_default),
+        1 to stringResource(R.string.compose_xserver_drawer_traced),
+        2 to stringResource(R.string.compose_xserver_drawer_v2),
+        3 to stringResource(R.string.compose_xserver_drawer_fsr3),
+        4 to stringResource(R.string.compose_xserver_drawer_fsr3_plus),
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -986,7 +993,12 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
 private fun FgMultiplierButtons(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
-    val options = listOf(0 to "Off", 2 to "2×", 3 to "3×", 4 to "4×")
+    val options = listOf(
+        0 to stringResource(R.string.compose_xserver_drawer_off),
+        2 to stringResource(R.string.compose_xserver_drawer_multiplier_2x),
+        3 to stringResource(R.string.compose_xserver_drawer_multiplier_3x),
+        4 to stringResource(R.string.compose_xserver_drawer_multiplier_4x),
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1027,7 +1039,7 @@ private fun pushSgsrUpdate(enabled: Boolean, sharpness: Int, hdr: Boolean) {
 // First-class drawer tab (peer to Graphics/FPS). Header + the ReShade section body.
 @Composable
 private fun ReshadeContent(state: XServerDrawerState) {
-    SectionHeader("ReShade")
+    SectionHeader(stringResource(R.string.compose_xserver_drawer_reshade))
     ReshadeSection()
 }
 
@@ -1050,7 +1062,7 @@ private fun ReshadeSection() {
 
     if (!supported || seed.isEmpty()) {
         Text(
-            "No ReShade effects selected. Add one or more in this game's settings (or the container's) to switch and tune them here.",
+            stringResource(R.string.compose_xserver_drawer_no_reshade_effects),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 4.dp, top = 6.dp)
@@ -1110,16 +1122,16 @@ private fun ReshadeSection() {
     // pulse; this just reports it. Independent of `master` so it can be set before enabling ReShade.
     var livePreview by remember { mutableStateOf(XServerDialogState.reshadeLivePreview.value) }
 
-    ToggleRow("ReShade", master, true) { master = it; apply() }
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_reshade), master, true) { master = it; apply() }
 
-    ToggleRow("Live preview", livePreview, true) {
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_live_preview), livePreview, true) {
         livePreview = it
         XServerDialogState.setReshadeLivePreview(it)
         XServerDialogState.onReshadeLivePreviewChange?.invoke(it)
     }
     Text(
-        if (livePreview) "Changes apply live; the game keeps running."
-        else "Game freezes while tuning; each change pulses briefly to preview, then re-freezes.",
+        if (livePreview) stringResource(R.string.compose_xserver_drawer_live_preview_on_hint)
+        else stringResource(R.string.compose_xserver_drawer_live_preview_off_hint),
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
         fontSize = 10.sp, modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
     )
@@ -1171,12 +1183,12 @@ private fun ReshadeSection() {
                         resetNonce++
                         apply()
                     }, enabled = item.params.isNotEmpty()) {
-                        Text("Reset", color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.compose_xserver_drawer_reset), color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 if (item.params.isEmpty()) {
                     Text(
-                        "No tunable parameters.",
+                        stringResource(R.string.compose_xserver_drawer_no_tunable_parameters),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         fontSize = 11.sp, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
                     )
@@ -1197,7 +1209,10 @@ private fun ReshadeModeSelector(mode: String, onChange: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        listOf(ReshadeLoadout.MODE_SOLO to "Solo", ReshadeLoadout.MODE_STACK to "Stack").forEach { (value, label) ->
+        listOf(
+            ReshadeLoadout.MODE_SOLO to stringResource(R.string.compose_xserver_drawer_solo),
+            ReshadeLoadout.MODE_STACK to stringResource(R.string.compose_xserver_drawer_stack),
+        ).forEach { (value, label) ->
             val selected = mode == value
             Box(
                 modifier = Modifier
@@ -1219,8 +1234,8 @@ private fun ReshadeModeSelector(mode: String, onChange: (String) -> Unit) {
         }
     }
     Text(
-        if (mode == ReshadeLoadout.MODE_SOLO) "One effect at a time (A/B compare)."
-        else "Layer any subset of effects.",
+        if (mode == ReshadeLoadout.MODE_SOLO) stringResource(R.string.compose_xserver_drawer_solo_hint)
+        else stringResource(R.string.compose_xserver_drawer_stack_hint),
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
         fontSize = 10.sp, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
     )
@@ -1379,12 +1394,12 @@ private fun ReshadeColorControl(
         }
         if (expanded) {
             GradientSlider(
-                "Hue", hue, 0f..360f,
+                stringResource(R.string.compose_xserver_drawer_hue), hue, 0f..360f,
                 Brush.horizontalGradient((0..12).map { Color(android.graphics.Color.HSVToColor(floatArrayOf(it * 30f, 1f, 1f))) }),
                 { hue = it; emit() }
             )
             GradientSlider(
-                "Saturation", sat, 0f..1f,
+                stringResource(R.string.compose_xserver_drawer_saturation), sat, 0f..1f,
                 Brush.horizontalGradient(listOf(
                     Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0f, valv))),
                     Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, valv)))
@@ -1392,13 +1407,13 @@ private fun ReshadeColorControl(
                 { sat = it; emit() }
             )
             GradientSlider(
-                "Brightness", valv, 0f..1f,
+                stringResource(R.string.compose_xserver_drawer_brightness), valv, 0f..1f,
                 Brush.horizontalGradient(listOf(Color.Black, Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, 1f))))),
                 { valv = it; emit() }
             )
             if (components >= 4) {
                 GradientSlider(
-                    "Alpha", alpha, 0f..1f,
+                    stringResource(R.string.compose_xserver_drawer_alpha), alpha, 0f..1f,
                     Brush.horizontalGradient(listOf(Color.Black, Color(rgbInt()))),
                     { alpha = it; emit() }
                 )
@@ -1466,13 +1481,13 @@ private fun DebandControls(enabled: Boolean = true) {
     val initDebandStrength by XServerDialogState.debandStrength.collectAsState()
     var debandEnabled  by remember(initDebandEnabled)  { mutableStateOf(initDebandEnabled) }
     var debandStrength by remember(initDebandStrength) { mutableIntStateOf(initDebandStrength) }
-    ToggleRow("Debanding", debandEnabled, enabled) {
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_debanding), debandEnabled, enabled) {
         debandEnabled = it
         XServerDialogState.onDebandApply?.invoke(debandEnabled, debandStrength)
     }
     if (debandEnabled) {
         Spacer(Modifier.height(4.dp))
-        IntSlider("Dither strength", debandStrength, 0..200,
+        IntSlider(stringResource(R.string.compose_xserver_drawer_dither_strength), debandStrength, 0..200,
             onValueChange = { debandStrength = it },
             onValueChangeFinished = {
                 XServerDialogState.onDebandApply?.invoke(debandEnabled, debandStrength)
@@ -1537,8 +1552,14 @@ private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int)
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
     val options = listOf(
-        0 to "None", 1 to "Linear", 2 to "Nearest",
-        3 to "SGSR", 4 to "FSR", 5 to "FSR (Fit)", 6 to "Sharpen", 7 to "NIS"
+        0 to stringResource(R.string.compose_xserver_drawer_none),
+        1 to stringResource(R.string.compose_xserver_drawer_linear),
+        2 to stringResource(R.string.compose_xserver_drawer_nearest),
+        3 to stringResource(R.string.compose_xserver_drawer_sgsr),
+        4 to stringResource(R.string.compose_xserver_drawer_fsr),
+        5 to stringResource(R.string.compose_xserver_drawer_fsr_fit),
+        6 to stringResource(R.string.compose_xserver_drawer_sharpen),
+        7 to stringResource(R.string.compose_xserver_drawer_nis),
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         options.chunked(4).forEach { row ->
@@ -1587,7 +1608,12 @@ private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int)
 private fun VibrationModeButtons(selected: Int, enabled: Boolean = true, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
-    val options = listOf(0 to "Off", 1 to "Controller", 2 to "Device", 3 to "Both")
+    val options = listOf(
+        0 to stringResource(R.string.compose_xserver_drawer_off),
+        1 to stringResource(R.string.compose_xserver_drawer_controller),
+        2 to stringResource(R.string.compose_xserver_drawer_device),
+        3 to stringResource(R.string.compose_xserver_drawer_both),
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1760,9 +1786,9 @@ private fun RefreshRateSlider(rates: List<Int>, selected: Int, enabled: Boolean,
     // display rate instead, kept in normal blue so it reads as a real value, not a greyed leftover.
     val showAuto = !enabled && autoRate > 0
     val rightText = when {
-        showAuto -> "$autoRate Hz"
-        stops[idx] == 0 -> "Off"
-        else -> "${stops[idx]} Hz"
+        showAuto -> stringResource(R.string.compose_xserver_drawer_refresh_rate_hz, autoRate)
+        stops[idx] == 0 -> stringResource(R.string.compose_xserver_drawer_off)
+        else -> stringResource(R.string.compose_xserver_drawer_refresh_rate_hz, stops[idx])
     }
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Row(
@@ -1770,7 +1796,7 @@ private fun RefreshRateSlider(rates: List<Int>, selected: Int, enabled: Boolean,
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Rate", style = MaterialTheme.typography.bodySmall, color = if (enabled) MaterialTheme.colorScheme.onSurface else dim)
+            Text(stringResource(R.string.compose_xserver_drawer_rate), style = MaterialTheme.typography.bodySmall, color = if (enabled) MaterialTheme.colorScheme.onSurface else dim)
             Text(
                 rightText,
                 style = MaterialTheme.typography.bodySmall,
@@ -1795,7 +1821,7 @@ private fun RefreshRateSlider(rates: List<Int>, selected: Int, enabled: Boolean,
         ) {
             stops.forEach { s ->
                 Text(
-                    if (s == 0) "Off" else "$s",
+                    if (s == 0) stringResource(R.string.compose_xserver_drawer_off) else s.toString(),
                     fontSize = 10.sp,
                     color = if (enabled) MaterialTheme.colorScheme.onSurface else dim
                 )
@@ -1817,7 +1843,7 @@ private fun IntSlider(label: String, value: Int, valueRange: IntRange, onValueCh
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-            Text(text = "$value", style = MaterialTheme.typography.bodySmall, color = accent, fontWeight = FontWeight.Medium)
+            Text(text = value.toString(), style = MaterialTheme.typography.bodySmall, color = accent, fontWeight = FontWeight.Medium)
         }
         Slider(
             value = value.toFloat(),
@@ -1870,7 +1896,7 @@ private fun HudContent(state: XServerDrawerState) {
     // open; the display listener keeps it current while the drawer stays open.
     LaunchedEffect(Unit) { state.onRefreshRatePoll?.run() }
 
-    SectionHeader("HUD")
+    SectionHeader(stringResource(R.string.compose_xserver_drawer_hud))
 
     // ── FPS Limiter state (standalone host-side cap; output-cap = on-screen fps, independent of
     //    frame gen). Declared here; its UI lives in the Performance accordion section below. ──
@@ -2044,31 +2070,35 @@ private fun HudContent(state: XServerDrawerState) {
     fun apply() { state.onFpsConfigApply?.invoke(buildConfig()) }
 
     // ═══ Master toggle: hides every HUD group below when off (matches the approved prototype). ═══
-    ToggleRow("Show HUD", hudEnabled) { hudEnabled = it; apply() }
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_show_hud), hudEnabled) { hudEnabled = it; apply() }
 
     // ── Performance group: always shown. The limiter + refresh live here regardless of the HUD. ──
-    HudGroupLabel("Performance")
-    CollapsibleSection("Frame rate & refresh", lead = "always on", initiallyExpanded = true) {
-        Text("FPS Limiter", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    HudGroupLabel(stringResource(R.string.compose_xserver_drawer_performance))
+    CollapsibleSection(
+        stringResource(R.string.compose_xserver_drawer_frame_rate_and_refresh),
+        lead = stringResource(R.string.compose_xserver_drawer_always_on),
+        initiallyExpanded = true,
+    ) {
+        Text(stringResource(R.string.compose_xserver_drawer_fps_limiter), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
-        ToggleRow("Limit FPS", limiterOn) { limiterOn = it; applyLimiter() }
+        ToggleRow(stringResource(R.string.compose_xserver_drawer_limit_fps), limiterOn) { limiterOn = it; applyLimiter() }
         if (limiterOn) {
             LabeledSlider(
-                "Max FPS", limitVal.toFloat(), 10f..200f,
+                stringResource(R.string.compose_xserver_drawer_max_fps), limitVal.toFloat(), 10f..200f,
                 { limitVal = it.roundToInt() }, { applyLimiter() },
-                format = { "${it.roundToInt()}" }
+                format = { it.roundToInt().toString() }
             )
             // Quick presets: set the cap in one tap. Shares limitVal with the slider above, so the
             // slider thumb snaps to the picked value (and the matching chip highlights on any value).
             Spacer(Modifier.height(6.dp))
             ModeChipGrid(
                 listOf(30, 60, 90, 120).map { preset ->
-                    Triple("$preset", limitVal == preset) { limitVal = preset; applyLimiter() }
+                    Triple(preset.toString(), limitVal == preset) { limitVal = preset; applyLimiter() }
                 },
                 perRow = 4
             )
             Text(
-                "Caps on-screen FPS. Works with any frame-gen engine or none.",
+                stringResource(R.string.compose_xserver_drawer_fps_limiter_hint),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)
@@ -2076,10 +2106,10 @@ private fun HudContent(state: XServerDrawerState) {
         }
 
         Spacer(Modifier.height(14.dp))
-        Text("Refresh rate", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(stringResource(R.string.compose_xserver_drawer_refresh_rate), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
         // Auto (match FPS) == the existing VRR toggle; behavior unchanged.
-        ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported, enabled = vrrSupported) {
+        ToggleRow(stringResource(R.string.compose_xserver_drawer_auto_match_fps), matchRefreshOn && vrrSupported, enabled = vrrSupported) {
             matchRefreshOn = it
             state.setMatchRefreshRate(it)
             state.onMatchRefreshChange?.run()
@@ -2094,14 +2124,10 @@ private fun HudContent(state: XServerDrawerState) {
         }
         Text(
             when {
-                !vrrSupported ->
-                    "Unavailable — this display has a single refresh rate, so there's nothing to match."
-                matchRefreshOn ->
-                    "Auto is on — the display follows your FPS."
-                manualRefreshRate > 0 ->
-                    "Display locked to ${manualRefreshRate} Hz."
-                else ->
-                    "Pick a rate to lock the display, or turn Auto on to follow your FPS."
+                !vrrSupported -> stringResource(R.string.compose_xserver_drawer_refresh_rate_unavailable_hint)
+                matchRefreshOn -> stringResource(R.string.compose_xserver_drawer_refresh_rate_auto_hint)
+                manualRefreshRate > 0 -> stringResource(R.string.compose_xserver_drawer_refresh_rate_locked_hint, manualRefreshRate)
+                else -> stringResource(R.string.compose_xserver_drawer_refresh_rate_pick_hint)
             },
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             fontSize = 11.sp,
@@ -2111,22 +2137,41 @@ private fun HudContent(state: XServerDrawerState) {
 
     // ── HUD group: hidden entirely when the master toggle is off. ──
     if (hudEnabled) {
-        HudGroupLabel("HUD")
+        HudGroupLabel(stringResource(R.string.compose_xserver_drawer_hud))
 
-        CollapsibleSection("Style & Size") {
-            HudChipRow("HUD style", listOf("Classic", "GameHub", "GameNative", "Fusion"), styles.indexOf(hudStyle).coerceAtLeast(0)) { hudStyle = styles[it]; apply() }
+        CollapsibleSection(stringResource(R.string.compose_xserver_drawer_style_and_size)) {
+            HudChipRow(
+                stringResource(R.string.compose_xserver_drawer_hud_style),
+                listOf(
+                    stringResource(R.string.compose_xserver_drawer_classic),
+                    stringResource(R.string.compose_xserver_drawer_gamehub),
+                    stringResource(R.string.compose_xserver_drawer_gamenative),
+                    stringResource(R.string.compose_xserver_drawer_fusion),
+                ),
+                styles.indexOf(hudStyle).coerceAtLeast(0),
+            ) { hudStyle = styles[it]; apply() }
             Text(
                 when (hudStyle) {
-                    "gamehub" -> "Rich overlay: skins, colored fields, live FPS graph. Style change applies on next launch."
-                    "gamenative" -> "GameNative-style overlay: compact pill or stacked list with live graphs. Style change applies on next launch."
-                    "fusion" -> "Fusion overlay: one color-coded look in 5 sizes with percentile lows, VRAM + a Mega everything-view. Tap the HUD to cycle size."
-                    else -> "Classic Bannerlator overlay."
+                    "gamehub" -> stringResource(R.string.compose_xserver_drawer_hud_style_gamehub_hint)
+                    "gamenative" -> stringResource(R.string.compose_xserver_drawer_hud_style_gamenative_hint)
+                    "fusion" -> stringResource(R.string.compose_xserver_drawer_hud_style_fusion_hint)
+                    else -> stringResource(R.string.compose_xserver_drawer_hud_style_classic_hint)
                 },
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), fontSize = 11.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 4.dp)
             )
             if (fusion) {
-                HudChipRow("Size", listOf("Full", "Tiles", "Pill", "Minimal", "Mega"), fusionSizes.indexOf(fusionSize).coerceAtLeast(0)) { fusionSize = fusionSizes[it]; apply() }
+                HudChipRow(
+                    stringResource(R.string.compose_xserver_drawer_size),
+                    listOf(
+                        stringResource(R.string.compose_xserver_drawer_full),
+                        stringResource(R.string.compose_xserver_drawer_tiles),
+                        stringResource(R.string.compose_xserver_drawer_pill),
+                        stringResource(R.string.compose_xserver_drawer_minimal),
+                        stringResource(R.string.compose_xserver_drawer_mega),
+                    ),
+                    fusionSizes.indexOf(fusionSize).coerceAtLeast(0),
+                ) { fusionSize = fusionSizes[it]; apply() }
             }
         }
 
@@ -2137,76 +2182,84 @@ private fun HudContent(state: XServerDrawerState) {
         // UI-only; buildConfig() still emits every key (strip-invariant), so toggles keep their state.
         fun show(label: String, styleOk: Boolean): Boolean = if (fusion) label in fusionChips else styleOk
         val metricChips = buildList<Triple<String, Boolean, () -> Unit>> {
-            if (show("FPS", true)) add(Triple("FPS", showFPS) { showFPS = !showFPS; apply() })
-            if (show("FPS graph", rich)) add(Triple("FPS graph", showGraph) { showGraph = !showGraph; apply() })
-            if (show("CPU", true)) add(Triple("CPU", showCPU) { showCPU = !showCPU; apply() })
-            if (!fusion && gameNative) add(Triple("CPU graph", showCpuGraph) { showCpuGraph = !showCpuGraph; apply() })
-            if (show("GPU", true)) add(Triple("GPU", showGPU) { showGPU = !showGPU; apply() })
-            if (!fusion && gameNative) add(Triple("GPU graph", showGpuGraph) { showGpuGraph = !showGpuGraph; apply() })
-            if (show("VRAM", false)) add(Triple("VRAM", showVram) { showVram = !showVram; apply() })
-            if (show("RAM", true)) add(Triple("RAM", showRAM) { showRAM = !showRAM; apply() })
-            if (show("Power", true)) add(Triple("Power", showPower) { showPower = !showPower; apply() })
-            if (show("Temp", true)) add(Triple("Temp", showTemp) { showTemp = !showTemp; apply() })
-            if (show("GPU temp", gameNative)) add(Triple("GPU temp", showGpuTemp) { showGpuTemp = !showGpuTemp; apply() })
-            if (show("Battery", gameNative)) add(Triple("Battery", showBattery) { showBattery = !showBattery; apply() })
-            if (!fusion && gameNative) add(Triple("Runtime", showRuntime) { showRuntime = !showRuntime; apply() })
-            if (show("0.01% low", false)) add(Triple("0.01% low", showLow001) { showLow001 = !showLow001; apply() })
-            if (show("FPS .1", false)) add(Triple("FPS .1", fpsDecimal) { fpsDecimal = !fpsDecimal; apply() })
+            if (show("FPS", true)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_fps), showFPS) { showFPS = !showFPS; apply() })
+            if (show("FPS graph", rich)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_fps_graph), showGraph) { showGraph = !showGraph; apply() })
+            if (show("CPU", true)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_cpu), showCPU) { showCPU = !showCPU; apply() })
+            if (!fusion && gameNative) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_cpu_graph), showCpuGraph) { showCpuGraph = !showCpuGraph; apply() })
+            if (show("GPU", true)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_gpu), showGPU) { showGPU = !showGPU; apply() })
+            if (!fusion && gameNative) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_gpu_graph), showGpuGraph) { showGpuGraph = !showGpuGraph; apply() })
+            if (show("VRAM", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_vram), showVram) { showVram = !showVram; apply() })
+            if (show("RAM", true)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_ram), showRAM) { showRAM = !showRAM; apply() })
+            if (show("Power", true)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_power), showPower) { showPower = !showPower; apply() })
+            if (show("Temp", true)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_temperature), showTemp) { showTemp = !showTemp; apply() })
+            if (show("GPU temp", gameNative)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_gpu_temperature), showGpuTemp) { showGpuTemp = !showGpuTemp; apply() })
+            if (show("Battery", gameNative)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_battery), showBattery) { showBattery = !showBattery; apply() })
+            if (!fusion && gameNative) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_runtime), showRuntime) { showRuntime = !showRuntime; apply() })
+            if (show("0.01% low", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_low_001), showLow001) { showLow001 = !showLow001; apply() })
+            if (show("FPS .1", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_fps_decimal), fpsDecimal) { fpsDecimal = !fpsDecimal; apply() })
             // Fusion Mega-only metrics
-            if (show("Per-core", false)) add(Triple("Per-core", showPerCore) { showPerCore = !showPerCore; apply() })
-            if (show("Swap", false)) add(Triple("Swap", showSwap) { showSwap = !showSwap; apply() })
-            if (show("Network", false)) add(Triple("Network", showNet) { showNet = !showNet; apply() })
-            if (show("Resolution", false)) add(Triple("Resolution", showResolution) { showResolution = !showResolution; apply() })
-            if (show("Proton", false)) add(Triple("Proton", showProton) { showProton = !showProton; apply() })
-            if (show("Wrapper", false)) add(Triple("Wrapper", showWrapper) { showWrapper = !showWrapper; apply() })
-            if (show("DX ver", false)) add(Triple("DX ver", showDxVer) { showDxVer = !showDxVer; apply() })
-            if (show("Session", false)) add(Triple("Session", showSession) { showSession = !showSession; apply() })
+            if (show("Per-core", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_per_core), showPerCore) { showPerCore = !showPerCore; apply() })
+            if (show("Swap", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_swap), showSwap) { showSwap = !showSwap; apply() })
+            if (show("Network", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_network), showNet) { showNet = !showNet; apply() })
+            if (show("Resolution", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_resolution), showResolution) { showResolution = !showResolution; apply() })
+            if (show("Proton", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_proton), showProton) { showProton = !showProton; apply() })
+            if (show("Wrapper", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_wrapper), showWrapper) { showWrapper = !showWrapper; apply() })
+            if (show("DX ver", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_dx_version), showDxVer) { showDxVer = !showDxVer; apply() })
+            if (show("Session", false)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_session), showSession) { showSession = !showSession; apply() })
             // Clock: gamenative's own chip, and every Fusion size (subtle corner readout)
-            if (show("Clock", gameNative)) add(Triple("Clock", showClock) { showClock = !showClock; apply() })
-            if (show("Engine", true)) add(Triple("Engine", showEngine) { showEngine = !showEngine; apply() })
-            if (show("GPU model", rich)) add(Triple("GPU model", showGpuModel) { showGpuModel = !showGpuModel; apply() })
-            if (!fusion && gameHub) add(Triple("Dual battery", dualBattery) { dualBattery = !dualBattery; apply() })
+            if (show("Clock", gameNative)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_clock), showClock) { showClock = !showClock; apply() })
+            if (show("Engine", true)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_engine), showEngine) { showEngine = !showEngine; apply() })
+            if (show("GPU model", rich)) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_gpu_model), showGpuModel) { showGpuModel = !showGpuModel; apply() })
+            if (!fusion && gameHub) add(Triple(stringResource(R.string.compose_xserver_drawer_metric_dual_battery), dualBattery) { dualBattery = !dualBattery; apply() })
             // Global appearance control, shown for every style/size.
-            add(Triple("Lock in place", hudLocked) { hudLocked = !hudLocked; apply() })
+            add(Triple(stringResource(R.string.compose_xserver_drawer_metric_lock_in_place), hudLocked) { hudLocked = !hudLocked; apply() })
         }
 
-        CollapsibleSection("Metrics", lead = "${metricChips.count { it.second }} on") {
+        val enabledMetricCount = metricChips.count { it.second }
+        CollapsibleSection(
+            stringResource(R.string.compose_xserver_drawer_metrics),
+            lead = pluralStringResource(
+                R.plurals.compose_xserver_drawer_metrics_enabled,
+                enabledMetricCount,
+                enabledMetricCount,
+            ),
+        ) {
             ModeChipGrid(metricChips, perRow = 3)
         }
 
-        CollapsibleSection("Appearance") {
-            LabeledSlider("HUD Scale", scaleValue, 50f..150f, { scaleValue = it }, { apply() }, format = { "${it.toInt()}%" })
-            if (rich) LabeledSlider("HUD Opacity", opacityValue, 0f..100f, { opacityValue = it }, { apply() }, format = { "${it.toInt()}%" })
-            else LabeledSlider("HUD Transparency", transValue, 0f..50f, { transValue = it }, { apply() }, format = { "${it.toInt()}" })
+        CollapsibleSection(stringResource(R.string.compose_xserver_drawer_appearance)) {
+            LabeledSlider(stringResource(R.string.compose_xserver_drawer_hud_scale), scaleValue, 50f..150f, { scaleValue = it }, { apply() }, format = { stringResource(R.string.compose_xserver_drawer_percent_value, it.toInt()) })
+            if (rich) LabeledSlider(stringResource(R.string.compose_xserver_drawer_hud_opacity), opacityValue, 0f..100f, { opacityValue = it }, { apply() }, format = { stringResource(R.string.compose_xserver_drawer_percent_value, it.toInt()) })
+            else LabeledSlider(stringResource(R.string.compose_xserver_drawer_hud_transparency), transValue, 0f..50f, { transValue = it }, { apply() }, format = { it.toInt().toString() })
             if (gameHub) {
-                HudChipRow("HUD skin", listOf("Classic", "Neon", "Mono"), skins.indexOf(skin)) { skin = skins[it]; apply() }
-                HudChipRow("HUD color", listOf("Soft", "Mid", "Vivid"), colors.indexOf(color)) { color = colors[it]; apply() }
-                LabeledSlider("HUD outline", outlineValue, 0f..100f, { outlineValue = it }, { apply() }, format = { "${it.toInt()}" })
-                HudChipRow("Outline color", listOf("Gray", "Accent"), if (outlineAccent) 1 else 0) { outlineAccent = it == 1; apply() }
+                HudChipRow(stringResource(R.string.compose_xserver_drawer_hud_skin), listOf(stringResource(R.string.compose_xserver_drawer_classic), stringResource(R.string.compose_xserver_drawer_neon), stringResource(R.string.compose_xserver_drawer_mono)), skins.indexOf(skin)) { skin = skins[it]; apply() }
+                HudChipRow(stringResource(R.string.compose_xserver_drawer_hud_color), listOf(stringResource(R.string.compose_xserver_drawer_soft), stringResource(R.string.compose_xserver_drawer_mid), stringResource(R.string.compose_xserver_drawer_vivid)), colors.indexOf(color)) { color = colors[it]; apply() }
+                LabeledSlider(stringResource(R.string.compose_xserver_drawer_hud_outline), outlineValue, 0f..100f, { outlineValue = it }, { apply() }, format = { it.toInt().toString() })
+                HudChipRow(stringResource(R.string.compose_xserver_drawer_outline_color), listOf(stringResource(R.string.compose_xserver_drawer_gray), stringResource(R.string.compose_xserver_drawer_accent)), if (outlineAccent) 1 else 0) { outlineAccent = it == 1; apply() }
             } else if (gameNative || fusion) {
-                HudChipRow("HUD color", listOf("Soft", "Mid", "Vivid"), colors.indexOf(color)) { color = colors[it]; apply() }
-                LabeledSlider("HUD outline", outlineValue, 0f..100f, { outlineValue = it }, { apply() }, format = { "${it.toInt()}" })
-                HudChipRow("Outline color", listOf("Gray", "Accent"), if (outlineAccent) 1 else 0) { outlineAccent = it == 1; apply() }
+                HudChipRow(stringResource(R.string.compose_xserver_drawer_hud_color), listOf(stringResource(R.string.compose_xserver_drawer_soft), stringResource(R.string.compose_xserver_drawer_mid), stringResource(R.string.compose_xserver_drawer_vivid)), colors.indexOf(color)) { color = colors[it]; apply() }
+                LabeledSlider(stringResource(R.string.compose_xserver_drawer_hud_outline), outlineValue, 0f..100f, { outlineValue = it }, { apply() }, format = { it.toInt().toString() })
+                HudChipRow(stringResource(R.string.compose_xserver_drawer_outline_color), listOf(stringResource(R.string.compose_xserver_drawer_gray), stringResource(R.string.compose_xserver_drawer_accent)), if (outlineAccent) 1 else 0) { outlineAccent = it == 1; apply() }
             }
         }
 
         // ── Temperature display ── only worth a section when a temperature is actually on screen.
         if (showTemp || ((gameNative || fusion) && (showGpuTemp || showBattery))) {
-            CollapsibleSection("Alerts & Temp") {
-                HudChipRow("Temp unit", listOf("°C", "°F"), if (tempUnitF) 1 else 0) {
+            CollapsibleSection(stringResource(R.string.compose_xserver_drawer_alerts_and_temperature)) {
+                HudChipRow(stringResource(R.string.compose_xserver_drawer_temperature_unit), listOf(stringResource(R.string.compose_xserver_drawer_celsius), stringResource(R.string.compose_xserver_drawer_fahrenheit)), if (tempUnitF) 1 else 0) {
                     tempUnitF = it == 1; apply()
                 }
                 val bandMode = if (!tempBands) 0 else if (tempAuto) 1 else 2
-                HudChipRow("Danger colors", listOf("Off", "Auto", "Manual"), bandMode) {
+                HudChipRow(stringResource(R.string.compose_xserver_drawer_danger_colors), listOf(stringResource(R.string.compose_xserver_drawer_off), stringResource(R.string.compose_xserver_drawer_auto), stringResource(R.string.compose_xserver_drawer_manual)), bandMode) {
                     tempBands = it != 0
                     tempAuto = it != 2
                     apply()
                 }
                 Text(
                     when (bandMode) {
-                        0 -> "Temperatures use their normal color."
-                        1 -> "Thresholds read from your device's own thermal trip points, falling back to safe defaults."
-                        else -> "Set the red point per sensor; amber sits just below it."
+                        0 -> stringResource(R.string.compose_xserver_drawer_danger_colors_off_hint)
+                        1 -> stringResource(R.string.compose_xserver_drawer_danger_colors_auto_hint)
+                        else -> stringResource(R.string.compose_xserver_drawer_danger_colors_manual_hint)
                     },
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), fontSize = 11.sp,
                     modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 4.dp)
@@ -2214,23 +2267,23 @@ private fun HudContent(state: XServerDrawerState) {
                 if (bandMode == 2) {
                     // Only the red point is exposed; amber is derived. Nobody knows their preferred amber
                     // in the abstract, and three sliders beat six. Values are always °C.
-                    LabeledSlider("CPU red at", tempRedCpu, 50f..110f, { tempRedCpu = it }, { apply() }, format = { "${it.toInt()}°C" })
+                    LabeledSlider(stringResource(R.string.compose_xserver_drawer_cpu_red_at), tempRedCpu, 50f..110f, { tempRedCpu = it }, { apply() }, format = { stringResource(R.string.compose_xserver_drawer_temperature_celsius_value, it.toInt()) })
                     if ((gameNative || fusion) && showGpuTemp)
-                        LabeledSlider("GPU red at", tempRedGpu, 50f..110f, { tempRedGpu = it }, { apply() }, format = { "${it.toInt()}°C" })
-                    LabeledSlider("Battery red at", tempRedBat, 35f..60f, { tempRedBat = it }, { apply() }, format = { "${it.toInt()}°C" })
+                        LabeledSlider(stringResource(R.string.compose_xserver_drawer_gpu_red_at), tempRedGpu, 50f..110f, { tempRedGpu = it }, { apply() }, format = { stringResource(R.string.compose_xserver_drawer_temperature_celsius_value, it.toInt()) })
+                    LabeledSlider(stringResource(R.string.compose_xserver_drawer_battery_red_at), tempRedBat, 35f..60f, { tempRedBat = it }, { apply() }, format = { stringResource(R.string.compose_xserver_drawer_temperature_celsius_value, it.toInt()) })
                 }
             }
         }
 
-        CollapsibleSection("Tools") {
+        CollapsibleSection(stringResource(R.string.compose_xserver_drawer_tools)) {
             // General HUD action (every style): export a device sensor report silently to Downloads, so
             // an owner can report which sysfs nodes their SoC actually exposes for any metric showing "—".
             val diagContext = LocalContext.current
             OutlinedButton(onClick = { exportHudDiagnostics(diagContext) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Export HUD diagnostics")
+                Text(stringResource(R.string.compose_xserver_drawer_export_hud_diagnostics))
             }
             Text(
-                "Saves a sensor report (CPU/GPU/temp/VRAM…) straight to your Downloads folder.",
+                stringResource(R.string.compose_xserver_drawer_export_hud_diagnostics_hint),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), fontSize = 11.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)
             )
@@ -2294,7 +2347,7 @@ private fun CollapsibleSection(
             Spacer(Modifier.weight(1f))
             // Text chevron rotated 0°→90° on expand (no icon dependency); ">" points right when closed.
             Text(
-                "›",
+                stringResource(R.string.compose_xserver_drawer_chevron),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
@@ -2414,7 +2467,7 @@ private fun ControlsContent(state: XServerDrawerState) {
     val controlsFollowTheme by state.controlsFollowTheme.collectAsState()
     val initControlsAccent by state.controlsAccentColor.collectAsState()
 
-    SectionHeader("Controls")
+    SectionHeader(stringResource(R.string.compose_xserver_drawer_controls))
 
     // Four unrelated feature areas live under this tab, so they're segmented rather than stacked —
     // exactly one renders at a time. ModeChipGrid is already the drawer's segmented-control language
@@ -2422,11 +2475,11 @@ private fun ControlsContent(state: XServerDrawerState) {
     val subTab by state.controlsSubTab.collectAsState()
     ModeChipGrid(
         listOf(
-            Triple("Touch", subTab == 0) { state.setControlsSubTab(0) },
-            Triple("Mouse", subTab == 1) { state.setControlsSubTab(1) },
-            Triple("Vibration", subTab == 2) { state.setControlsSubTab(2) },
-            Triple("Gyro", subTab == 3) { state.setControlsSubTab(3) },
-            Triple("Players", subTab == 4) { state.setControlsSubTab(4) },
+            Triple(stringResource(R.string.compose_xserver_drawer_touch), subTab == 0) { state.setControlsSubTab(0) },
+            Triple(stringResource(R.string.compose_xserver_drawer_mouse), subTab == 1) { state.setControlsSubTab(1) },
+            Triple(stringResource(R.string.compose_xserver_drawer_vibration), subTab == 2) { state.setControlsSubTab(2) },
+            Triple(stringResource(R.string.compose_xserver_drawer_gyro), subTab == 3) { state.setControlsSubTab(3) },
+            Triple(stringResource(R.string.compose_xserver_drawer_players), subTab == 4) { state.setControlsSubTab(4) },
         ),
         perRow = 3
     )
@@ -2438,20 +2491,21 @@ private fun ControlsContent(state: XServerDrawerState) {
     var showTouchscreen by remember(initTouchscreen) { mutableStateOf(initTouchscreen) }
     var timeoutEnabled by remember(initTimeout) { mutableStateOf(initTimeout) }
     var hapticsEnabled by remember(initHaptics) { mutableStateOf(initHaptics) }
-    val allItems = listOf("-- Disabled --") + profiles
+    val disabledProfileLabel = stringResource(R.string.compose_xserver_drawer_disabled_profile)
+    val allItems = listOf(disabledProfileLabel) + profiles
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     when (subTab) {
         // ── Touch ──
         0 -> {
-            Text("Input Controls", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(stringResource(R.string.compose_xserver_drawer_input_controls), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Spacer(Modifier.height(6.dp))
 
             ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
                 OutlinedTextField(
-                    value = allItems.getOrElse(selectedIdx) { "-- Disabled --" },
+                    value = allItems.getOrElse(selectedIdx) { disabledProfileLabel },
                     onValueChange = {}, readOnly = true,
-                    label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    label = { Text(stringResource(R.string.compose_xserver_drawer_profile), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     singleLine = true,
@@ -2473,15 +2527,15 @@ private fun ControlsContent(state: XServerDrawerState) {
             // packed as chips rather than full-width switch rows to keep the sub-tab short.
             ToggleChipGrid(
                 listOf(
-                    ToggleChipItem("Touch Controls", showTouchscreen) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_touch_controls), showTouchscreen) {
                         showTouchscreen = it
                         XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
                     },
-                    ToggleChipItem("Timeout", timeoutEnabled) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_timeout), timeoutEnabled) {
                         timeoutEnabled = it
                         XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
                     },
-                    ToggleChipItem("Haptics", hapticsEnabled) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_haptics), hapticsEnabled) {
                         hapticsEnabled = it
                         XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
                     },
@@ -2492,7 +2546,7 @@ private fun ControlsContent(state: XServerDrawerState) {
             // On-screen controls opacity — live, applied to the visible overlay as you drag.
             var overlayOpacity by remember(initOverlayOpacity) { mutableFloatStateOf(initOverlayOpacity) }
             LabeledSlider(
-                label = "Overlay Opacity",
+                label = stringResource(R.string.compose_xserver_drawer_overlay_opacity),
                 value = overlayOpacity,
                 valueRange = 0f..1f,
                 onValueChange = {
@@ -2500,7 +2554,7 @@ private fun ControlsContent(state: XServerDrawerState) {
                     state.setOverlayOpacity(it)
                     state.onOverlayOpacityChange?.run()
                 },
-                format = { "${(it * 100).toInt()}%" },
+                format = { stringResource(R.string.compose_xserver_drawer_percent_value, (it * 100).toInt()) },
             )
 
             // On-screen controls accent — per-profile override. Follow the app theme (default) or pick a
@@ -2508,7 +2562,7 @@ private fun ControlsContent(state: XServerDrawerState) {
             Spacer(Modifier.height(4.dp))
             ToggleChipGrid(
                 listOf(
-                    ToggleChipItem("App Theme", controlsFollowTheme) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_app_theme), controlsFollowTheme) {
                         state.setControlsFollowTheme(it)
                         state.onControlsColorChange?.run()
                     }
@@ -2517,7 +2571,7 @@ private fun ControlsContent(state: XServerDrawerState) {
             )
             if (!controlsFollowTheme) {
                 Spacer(Modifier.height(8.dp))
-                Text("Controls Accent", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text(stringResource(R.string.compose_xserver_drawer_controls_accent), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
                 ColorPicker(
                     initialColor = Color(initControlsAccent),
@@ -2538,11 +2592,11 @@ private fun ControlsContent(state: XServerDrawerState) {
                 enabled = selectedIdx > 0,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp),
-            ) { Text("Profile Settings\u2026") }
+            ) { Text(stringResource(R.string.compose_xserver_drawer_profile_settings)) }
 
             Spacer(Modifier.height(4.dp))
 
-            AccentButton("Apply & Close") {
+            AccentButton(stringResource(R.string.compose_xserver_drawer_apply_and_close)) {
                 XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
                 state.onClose?.run()
                 Unit
@@ -2551,20 +2605,20 @@ private fun ControlsContent(state: XServerDrawerState) {
 
         // ── Mouse ──
         1 -> {
-            Text("Mouse & Cursor", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(stringResource(R.string.compose_xserver_drawer_mouse_and_cursor), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Spacer(Modifier.height(4.dp))
 
             // Each of these flips its flag host-side and stays open — like the fullscreen selector, the
             // drawer keeps rendering so the chip's new on/off state is visible where you tapped it.
             ToggleChipGrid(
                 listOf(
-                    ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_cursor_to_touch), moveCursorToTouch) {
                         state.onMoveCursorToTouchpoint?.run()
                     },
-                    ToggleChipItem("Relative Mouse", isRelativeMouse) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_relative_mouse), isRelativeMouse) {
                         state.onRelativeMouseMovement?.run()
                     },
-                    ToggleChipItem("Disable Mouse", isMouseDisabled) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_disable_mouse), isMouseDisabled) {
                         state.onDisableMouse?.run()
                     },
                 ),
@@ -2579,7 +2633,7 @@ private fun ControlsContent(state: XServerDrawerState) {
 
         // ── Vibration ──
         2 -> {
-            Text("Vibration", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(stringResource(R.string.compose_xserver_drawer_vibration), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Spacer(Modifier.height(4.dp))
 
             // Master kill-switch — off suppresses ALL controller rumble regardless of slot (and hides the
@@ -2588,7 +2642,7 @@ private fun ControlsContent(state: XServerDrawerState) {
             val vibrationMasterOn by XServerDialogState.vibrationMasterEnabled.collectAsState()
             ToggleChipGrid(
                 listOf(
-                    ToggleChipItem("Enabled", vibrationMasterOn) {
+                    ToggleChipItem(stringResource(R.string.compose_xserver_drawer_enabled), vibrationMasterOn) {
                         XServerDialogState.setVibrationMasterEnabled(it)
                         XServerDialogState.onVibrationMasterChanged?.invoke(it)
                     }
@@ -2603,7 +2657,7 @@ private fun ControlsContent(state: XServerDrawerState) {
                 var vibrationMode by remember(initVibrationMode) { mutableIntStateOf(initVibrationMode) }
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Rumble Target",
+                    stringResource(R.string.compose_xserver_drawer_rumble_target),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2617,7 +2671,7 @@ private fun ControlsContent(state: XServerDrawerState) {
                 if (vibrationMode != 0) {
                     val initVibrationIntensity by XServerDialogState.vibrationIntensity.collectAsState()
                     var vibrationIntensity by remember(initVibrationIntensity) { mutableIntStateOf(initVibrationIntensity) }
-                    IntSlider("Intensity", vibrationIntensity, 0..100,
+                    IntSlider(stringResource(R.string.compose_xserver_drawer_intensity), vibrationIntensity, 0..100,
                         onValueChange = { vibrationIntensity = it },
                         onValueChangeFinished = {
                             XServerDialogState.setVibrationIntensity(vibrationIntensity)
@@ -2664,10 +2718,10 @@ private fun PlayersSection() {
     // Devices hot-plug, so pull a fresh snapshot whenever this sub-tab is shown.
     LaunchedEffect(Unit) { XServerDialogState.onPlayerSlotsRefresh?.run() }
 
-    Text("Player Slots", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Text(stringResource(R.string.compose_xserver_drawer_player_slots), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     Spacer(Modifier.height(4.dp))
     Text(
-        "Assign each device to a player, or ignore it. Applied immediately and saved for this container.",
+        stringResource(R.string.compose_xserver_drawer_player_slots_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -2675,7 +2729,7 @@ private fun PlayersSection() {
 
     if (rows.isEmpty()) {
         Text(
-            "No input devices detected.",
+            stringResource(R.string.compose_xserver_drawer_no_input_devices),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -2700,9 +2754,9 @@ private fun PlayersSection() {
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
-    ) { Text("Reset Input") }
+    ) { Text(stringResource(R.string.compose_xserver_drawer_reset_input)) }
     Text(
-        "Re-handshake controllers & on-screen if input stops responding.",
+        stringResource(R.string.compose_xserver_drawer_reset_input_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -2716,19 +2770,20 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
 
     // Selector option order: Auto, Player 1-4, Ignore. Value encodes the override the callback wants:
     // SLOT_AUTO / 0..3 / SLOT_IGNORE — the exact contract of onPlayerSlotChanged.
-    val options = remember {
-        buildList {
-            add("Auto" to XServerDialogState.SLOT_AUTO)
-            for (i in 0 until 4) add("Player ${i + 1}" to i)
-            add("Ignore" to XServerDialogState.SLOT_IGNORE)
+    val options = buildList {
+        add(stringResource(R.string.compose_xserver_drawer_auto) to XServerDialogState.SLOT_AUTO)
+        for (i in 0 until 4) {
+            add(stringResource(R.string.compose_xserver_drawer_player_number, i + 1) to i)
         }
+        add(stringResource(R.string.compose_xserver_drawer_ignore) to XServerDialogState.SLOT_IGNORE)
     }
-    val selectedLabel = options.firstOrNull { it.second == row.override }?.first ?: "Auto"
+    val selectedLabel = options.firstOrNull { it.second == row.override }?.first
+        ?: stringResource(R.string.compose_xserver_drawer_auto)
 
     val subtitle = when {
-        row.currentSlot >= 0 -> "Currently Player ${row.currentSlot + 1}"
-        row.override == XServerDialogState.SLOT_IGNORE -> "Ignored"
-        else -> "Unassigned"
+        row.currentSlot >= 0 -> stringResource(R.string.compose_xserver_drawer_currently_player, row.currentSlot + 1)
+        row.override == XServerDialogState.SLOT_IGNORE -> stringResource(R.string.compose_xserver_drawer_ignored)
+        else -> stringResource(R.string.compose_xserver_drawer_unassigned)
     }
 
     var expanded by remember(row.descriptor, row.override) { mutableStateOf(false) }
@@ -2743,7 +2798,11 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            subtitle + if (row.isOnScreen) " · on-screen controls" else "",
+            if (row.isOnScreen) {
+                stringResource(R.string.compose_xserver_drawer_on_screen_controls_suffix, subtitle)
+            } else {
+                subtitle
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -2752,7 +2811,7 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
             OutlinedTextField(
                 value = selectedLabel,
                 onValueChange = {}, readOnly = true,
-                label = { Text("Slot", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                label = { Text(stringResource(R.string.compose_xserver_drawer_slot), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier.fillMaxWidth().menuAnchor(),
                 singleLine = true,
@@ -2784,10 +2843,10 @@ private fun TouchGestureSettings(state: XServerDrawerState) {
     val longPress by state.gestureLongPressRightClick.collectAsState()
 
     Spacer(Modifier.height(10.dp))
-    Text("Touch Gestures", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Text(stringResource(R.string.compose_xserver_drawer_touch_gestures), color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     Spacer(Modifier.height(2.dp))
     Text(
-        "Drag to box-select, hold for right click. Two-finger drag scrolls the wheel.",
+        stringResource(R.string.compose_xserver_drawer_touch_gestures_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -2795,10 +2854,10 @@ private fun TouchGestureSettings(state: XServerDrawerState) {
 
     ToggleChipGrid(
         listOf(
-            ToggleChipItem("Box Select", dragSelect) {
+            ToggleChipItem(stringResource(R.string.compose_xserver_drawer_box_select), dragSelect) {
                 state.setGestureDragSelect(it); state.onGestureConfigChange?.run()
             },
-            ToggleChipItem("Hold = Right", longPress) {
+            ToggleChipItem(stringResource(R.string.compose_xserver_drawer_hold_equals_right), longPress) {
                 state.setGestureLongPressRightClick(it); state.onGestureConfigChange?.run()
             },
         ),
@@ -2810,7 +2869,7 @@ private fun TouchGestureSettings(state: XServerDrawerState) {
     if (longPress) {
         val initHoldMs by state.gestureLongPressMs.collectAsState()
         var holdMs by remember(initHoldMs) { mutableIntStateOf(initHoldMs) }
-        IntSlider("Hold Delay", holdMs, 150..800,
+        IntSlider(stringResource(R.string.compose_xserver_drawer_hold_delay), holdMs, 150..800,
             onValueChange = { holdMs = it },
             onValueChangeFinished = {
                 state.setGestureLongPressMs(holdMs); state.onGestureConfigChange?.run()
@@ -3056,21 +3115,21 @@ private fun setGyroActivationModeLive(mode: Int, reflect: (Int) -> Unit) {
 
 @Composable
 private fun AdvancedContent(state: XServerDrawerState) {
-    SectionHeader("Advanced")
+    SectionHeader(stringResource(R.string.compose_xserver_drawer_advanced))
 
-    AdvancedActionRow("Magnifier", R.drawable.icon_magnifier) {
+    AdvancedActionRow(stringResource(R.string.compose_xserver_drawer_magnifier), R.drawable.icon_magnifier) {
         state.onClose?.run(); state.onMagnifier?.run()
     }
-    AdvancedActionRow("Active Windows", R.drawable.icon_active_windows) {
+    AdvancedActionRow(stringResource(R.string.compose_xserver_drawer_active_windows), R.drawable.icon_active_windows) {
         state.onClose?.run(); state.onActiveWindows?.run()
     }
-    AdvancedActionRow("Debug Logs", R.drawable.icon_debug) {
+    AdvancedActionRow(stringResource(R.string.compose_xserver_drawer_debug_logs), R.drawable.icon_debug) {
         state.onClose?.run(); state.onLogs?.run()
     }
-    AdvancedActionRow("Picture-in-Picture", R.drawable.ic_picture_in_picture_alt) {
+    AdvancedActionRow(stringResource(R.string.compose_xserver_drawer_picture_in_picture), R.drawable.ic_picture_in_picture_alt) {
         state.onClose?.run(); state.onPipMode?.run()
     }
-    AdvancedActionRow("Show Keyboard", R.drawable.icon_keyboard) {
+    AdvancedActionRow(stringResource(R.string.compose_xserver_drawer_show_keyboard), R.drawable.icon_keyboard) {
         state.onClose?.run(); state.onKeyboard?.run()
     }
 
@@ -3079,24 +3138,24 @@ private fun AdvancedContent(state: XServerDrawerState) {
     // ── Performance ── non-root power-user toggles; always enabled, applied + persisted live.
     // Each row shows whether it's a per-game override or inheriting the App Settings global default,
     // with a "Reset to global" affordance (a per-game toggle is only saved when it differs).
-    SectionHeader("Performance")
+    SectionHeader(stringResource(R.string.compose_xserver_drawer_performance))
 
     val overridden by state.overriddenKeys.collectAsState()
 
     val sustainedPerf by state.sustainedPerfMode.collectAsState()
-    ToggleRow("Sustained Performance Mode", sustainedPerf) {
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_sustained_performance_mode), sustainedPerf) {
         state.setSustainedPerfMode(it); state.onSustainedPerfModeChange?.run()
     }
     PerfOverrideLine("sustainedPerfMode" in overridden) { state.onResetPerfKey?.accept("sustainedPerfMode") }
 
     val priorityBoost by state.perfPriorityBoost.collectAsState()
-    ToggleRow("Thread Priority Boost", priorityBoost) {
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_thread_priority_boost), priorityBoost) {
         state.setPerfPriorityBoost(it); state.onPerfPriorityBoostChange?.run()
     }
     PerfOverrideLine("perfPriorityBoost" in overridden) { state.onResetPerfKey?.accept("perfPriorityBoost") }
 
     val bigCores by state.preferBigCores.collectAsState()
-    ToggleRow("Prefer Big Cores", bigCores) {
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_prefer_big_cores), bigCores) {
         state.setPreferBigCores(it); state.onPreferBigCoresChange?.run()
     }
     PerfOverrideLine("preferBigCores" in overridden) { state.onResetPerfKey?.accept("preferBigCores") }
@@ -3112,7 +3171,7 @@ private fun AdvancedContent(state: XServerDrawerState) {
     if (overridden.isNotEmpty()) {
         Spacer(Modifier.height(8.dp))
         Text(
-            "↺ Reset all game overrides to global",
+            stringResource(R.string.compose_xserver_drawer_reset_all_game_overrides),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
@@ -3133,13 +3192,14 @@ private fun PerfOverrideLine(overridden: Boolean, onReset: () -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 1.dp, bottom = 6.dp)
     ) {
         Text(
-            if (overridden) "● Per-game override" else "○ Using global default",
+            if (overridden) stringResource(R.string.compose_xserver_drawer_per_game_override)
+            else stringResource(R.string.compose_xserver_drawer_using_global_default),
             fontSize = 10.sp,
             color = if (overridden) accent else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)
         )
         if (overridden) {
-            Text("Reset to global", fontSize = 10.sp, color = accent,
+            Text(stringResource(R.string.compose_xserver_drawer_reset_to_global), fontSize = 10.sp, color = accent,
                 modifier = Modifier.clickable { onReset() })
         }
     }
@@ -3160,13 +3220,13 @@ private fun GpuClockLockRow(state: XServerDrawerState, overridden: Set<String>) 
     val granted = rootState == RootManager.RootState.GRANTED
     val enabled = granted || PerfGpuTurbo.isSupported
 
-    ToggleRow("Lock GPU to max clock", toggles[key] ?: false, enabled = enabled) { on ->
+    ToggleRow(stringResource(R.string.compose_xserver_drawer_lock_gpu_max_clock), toggles[key] ?: false, enabled = enabled) { on ->
         state.setRootToggle(key, on)
         state.onRootToggleChange?.accept(key, on)
     }
     if (!enabled) {
         Text(
-            "🔒 Needs an Adreno GPU, or root on other GPUs.",
+            stringResource(R.string.compose_xserver_drawer_gpu_lock_requirement),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)
@@ -3197,13 +3257,13 @@ private fun RootPerformanceSection(state: XServerDrawerState) {
         }
     }
 
-    SectionHeader("Root Performance")
+    SectionHeader(stringResource(R.string.compose_xserver_drawer_root_performance))
 
     if (!granted) {
         Text(
-            "🔒 " + when (rootState) {
-                RootManager.RootState.UNAVAILABLE -> "No root manager detected."
-                else -> "Grant root in App Settings → Performance to enable these."
+            stringResource(R.string.compose_xserver_drawer_lock_prefix) + when (rootState) {
+                RootManager.RootState.UNAVAILABLE -> stringResource(R.string.compose_xserver_drawer_no_root_manager)
+                else -> stringResource(R.string.compose_xserver_drawer_grant_root_hint)
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -3216,22 +3276,22 @@ private fun RootPerformanceSection(state: XServerDrawerState) {
         val temp = readouts["socTemp"] ?: "—"
         val fan = readouts["fanRpm"] ?: "—"
         Text(
-            "Gov $gov · GPU $gpu · SoC $temp · Fan $fan",
+            stringResource(R.string.compose_xserver_drawer_root_readouts, gov, gpu, temp, fan),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 6.dp)
         )
     }
 
-    RootToggleRow(PerfRootApplier.KEY_CPU_GOVERNOR, "CPU governor → performance", state, toggles, granted, harnessProven, overridden)
-    RootToggleRow(PerfRootApplier.KEY_CPU_FREQ_LOCK, "Lock CPU frequency to max", state, toggles, granted, harnessProven, overridden)
-    RootToggleRow(PerfRootApplier.KEY_CORES_ONLINE, "Keep all cores online", state, toggles, granted, harnessProven, overridden)
-    RootToggleRow(PerfRootApplier.KEY_THERMAL_DISABLE, "Disable thermal throttling", state, toggles, granted, harnessProven, overridden)
-    RootToggleRow(PerfRootApplier.KEY_FAN_MAX, "Fan to maximum", state, toggles, granted, harnessProven, overridden)
+    RootToggleRow(PerfRootApplier.KEY_CPU_GOVERNOR, stringResource(R.string.compose_xserver_drawer_cpu_governor_performance), state, toggles, granted, harnessProven, overridden)
+    RootToggleRow(PerfRootApplier.KEY_CPU_FREQ_LOCK, stringResource(R.string.compose_xserver_drawer_lock_cpu_frequency), state, toggles, granted, harnessProven, overridden)
+    RootToggleRow(PerfRootApplier.KEY_CORES_ONLINE, stringResource(R.string.compose_xserver_drawer_keep_cores_online), state, toggles, granted, harnessProven, overridden)
+    RootToggleRow(PerfRootApplier.KEY_THERMAL_DISABLE, stringResource(R.string.compose_xserver_drawer_disable_thermal_throttling), state, toggles, granted, harnessProven, overridden)
+    RootToggleRow(PerfRootApplier.KEY_FAN_MAX, stringResource(R.string.compose_xserver_drawer_fan_maximum), state, toggles, granted, harnessProven, overridden)
 
     if (granted && !harnessProven) {
         Text(
-            "Thermal / fan locked until safety-revert is verified on this device.",
+            stringResource(R.string.compose_xserver_drawer_thermal_fan_locked_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -3241,13 +3301,13 @@ private fun RootPerformanceSection(state: XServerDrawerState) {
         Spacer(Modifier.height(6.dp))
         // TIER 1 — light, honest label. Drops file caches; the system reclaims cache automatically.
         AdvancedActionRow(
-            "Drop file caches", R.drawable.icon_task_manager,
-            subtitle = "Frees cached files. Little visible RAM; the system reclaims cache automatically.",
+            stringResource(R.string.compose_xserver_drawer_drop_file_caches), R.drawable.icon_task_manager,
+            subtitle = stringResource(R.string.compose_xserver_drawer_drop_file_caches_hint),
         ) { state.onFreeMemory?.run() }
         // TIER 2 — the real RAM free (root-only). `am kill-all` never touches the running game/system.
         AdvancedActionRow(
-            "Deep clean (free app memory)", R.drawable.icon_task_manager,
-            subtitle = "Force-closes background apps to free real memory. Won't touch your game or system.",
+            stringResource(R.string.compose_xserver_drawer_deep_clean), R.drawable.icon_task_manager,
+            subtitle = stringResource(R.string.compose_xserver_drawer_deep_clean_hint),
         ) { state.onDeepClean?.run() }
     }
 
@@ -3338,7 +3398,7 @@ private fun TmContent() {
         onDispose { XServerDialogState.onTmDismissed?.run() }
     }
 
-    SectionHeader("Task Manager")
+    SectionHeader(stringResource(R.string.compose_xserver_drawer_task_manager))
 
     // Enriched header: live perf stat grid + per-core clocks + collapsible container config.
     TmStatGrid(header)
@@ -3347,7 +3407,11 @@ private fun TmContent() {
     Spacer(Modifier.height(8.dp))
 
     Text(
-        text = "Processes: $count",
+        text = pluralStringResource(
+            R.plurals.compose_xserver_drawer_process_count,
+            count,
+            count,
+        ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 12.sp,
     )
@@ -3363,7 +3427,7 @@ private fun TmContent() {
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("No processes", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            Text(stringResource(R.string.compose_xserver_drawer_no_processes), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         }
     } else {
         // Each process is its own card (matching the app File Manager rows), not a flat
@@ -3383,9 +3447,9 @@ private fun TmContent() {
                 XServerDialogState.onTmDismissed?.run()
                 XServerDialogState.onTmNewTask?.run()
             }
-        ) { Text("New Task\u2026", color = accent) }
+        ) { Text(stringResource(R.string.compose_xserver_drawer_new_task), color = accent) }
         Spacer(Modifier.weight(1f))
-        TextButton(onClick = { XServerDialogState.onTmDismissed?.run() }) { Text("Clear", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        TextButton(onClick = { XServerDialogState.onTmDismissed?.run() }) { Text(stringResource(R.string.compose_xserver_drawer_clear), color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -3436,14 +3500,18 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = proc.name + if (proc.wow64) " *32" else "",
+                text = if (proc.wow64) {
+                    stringResource(R.string.compose_xserver_drawer_process_wow64, proc.name)
+                } else {
+                    proc.name
+                },
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "PID ${proc.pid}  \u2022  ${proc.formattedMemory}",
+                text = stringResource(R.string.compose_xserver_drawer_process_details, proc.pid, proc.formattedMemory),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp,
             )
@@ -3451,7 +3519,7 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
 
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.compose_xserver_drawer_options), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             DropdownMenu(
                 expanded = menuExpanded,
@@ -3459,7 +3527,7 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
                 modifier = Modifier.outlinedMenuCard()
             ) {
                 DropdownMenuItem(
-                    text = { Text("Processor Affinity") },
+                    text = { Text(stringResource(R.string.compose_xserver_drawer_processor_affinity)) },
                     leadingIcon = {
                         Icon(
                             Icons.Default.Memory,
@@ -3475,7 +3543,7 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Bring to Front") },
+                    text = { Text(stringResource(R.string.compose_xserver_drawer_bring_to_front)) },
                     leadingIcon = {
                         Icon(
                             Icons.Default.FlipToFront,
@@ -3491,7 +3559,7 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("End Process", color = MaterialTheme.colorScheme.error) },
+                    text = { Text(stringResource(R.string.compose_xserver_drawer_end_process), color = MaterialTheme.colorScheme.error) },
                     leadingIcon = {
                         Icon(
                             Icons.Default.Close,
@@ -3545,13 +3613,13 @@ private fun ProcessorAffinityDialog(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Processor Affinity", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.compose_xserver_drawer_processor_affinity), fontSize = 17.sp, fontWeight = FontWeight.Bold)
             }
         },
         text = {
             Column {
                 Text(
-                    "Which processors are allowed to run \"${proc.name}\"?",
+                    stringResource(R.string.compose_xserver_drawer_processor_affinity_question, proc.name),
                     fontSize = 12.5.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -3563,7 +3631,7 @@ private fun ProcessorAffinityDialog(
                 // regardless of an arm64ec vs x86-64 container. Laid out 4-per-row so 8 cores fit in
                 // two rows without scrolling; a heightIn + scroll fallback covers the 32-core cap.
                 AffinityCheckRow(
-                    label = "<All Processors>",
+                    label = stringResource(R.string.compose_xserver_drawer_all_processors),
                     checked = allChecked,
                     bold = true,
                     onToggle = { mask = if (allChecked) 0 else allMask },
@@ -3594,7 +3662,7 @@ private fun ProcessorAffinityDialog(
                                 modifier = Modifier.size(28.dp),
                             )
                             Spacer(Modifier.height(2.dp))
-                            Text("CPU$i", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            Text(stringResource(R.string.compose_xserver_drawer_cpu_number, i), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         }
                     }
                 }
@@ -3607,9 +3675,9 @@ private fun ProcessorAffinityDialog(
                     XServerDialogState.onTmSetAffinity?.invoke(proc.pid, mask and allMask)
                     onDismiss()
                 },
-            ) { Text("OK") }
+            ) { Text(stringResource(R.string.compose_xserver_drawer_ok)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.compose_xserver_drawer_cancel)) } },
     )
 }
 
@@ -3689,25 +3757,59 @@ private fun TmStatGrid(h: XServerDialogState.TmHeaderStats?) {
     // Leading numeric part of a "5.3GiB" style string, and a compact "GiB"->"G" unit form.
     fun numOf(s: String) = s.takeWhile { it.isDigit() || it == '.' }.ifEmpty { s }
     fun compact(s: String) = s.replace("iB", "")
+    val unavailable = stringResource(R.string.compose_xserver_drawer_value_unavailable)
 
     val tiles = buildList {
-        add(TmTile("CPU", h.cpuPct?.let { "$it%" } ?: "—", h.cpuTempC?.let { " $it°" } ?: "", accent))
-        add(TmTile("GPU", h.gpuPct?.let { "$it%" } ?: "—", h.gpuTempC?.let { " $it°" } ?: "", accent))
-        add(TmTile("GPU CLK", h.gpuClockMhz?.let { "$it" } ?: "—", if (h.gpuClockMhz != null) "MHz" else "", onSurf))
-        add(TmTile("FPS", "${h.fps}", if (h.fpsMin > 0) " ·${h.fpsMin}min" else "", ok))
-        add(TmTile("RAM", numOf(h.ramUsed), "/" + compact(h.ramTotal), onSurf))
+        add(TmTile(
+            stringResource(R.string.compose_xserver_drawer_tm_cpu),
+            h.cpuPct?.let { stringResource(R.string.compose_xserver_drawer_percent_value, it) } ?: unavailable,
+            h.cpuTempC?.let { stringResource(R.string.compose_xserver_drawer_temperature_suffix, it) } ?: "",
+            accent,
+        ))
+        add(TmTile(
+            stringResource(R.string.compose_xserver_drawer_tm_gpu),
+            h.gpuPct?.let { stringResource(R.string.compose_xserver_drawer_percent_value, it) } ?: unavailable,
+            h.gpuTempC?.let { stringResource(R.string.compose_xserver_drawer_temperature_suffix, it) } ?: "",
+            accent,
+        ))
+        add(TmTile(
+            stringResource(R.string.compose_xserver_drawer_tm_gpu_clock),
+            h.gpuClockMhz?.toString() ?: unavailable,
+            if (h.gpuClockMhz != null) stringResource(R.string.compose_xserver_drawer_mhz) else "",
+            onSurf,
+        ))
+        add(TmTile(
+            stringResource(R.string.compose_xserver_drawer_fps),
+            h.fps.toString(),
+            if (h.fpsMin > 0) stringResource(R.string.compose_xserver_drawer_fps_minimum_suffix, h.fpsMin) else "",
+            ok,
+        ))
+        add(TmTile(stringResource(R.string.compose_xserver_drawer_tm_ram), numOf(h.ramUsed), "/" + compact(h.ramTotal), onSurf))
         if (h.swap != null) {
-            add(TmTile("SWAP", numOf(h.swap.substringBefore("/")), "/" + compact(h.swap.substringAfter("/")), onSurf))
+            add(TmTile(stringResource(R.string.compose_xserver_drawer_tm_swap), numOf(h.swap.substringBefore("/")), "/" + compact(h.swap.substringAfter("/")), onSurf))
         } else {
-            add(TmTile("SWAP", "—", "", onSurf))
+            add(TmTile(stringResource(R.string.compose_xserver_drawer_tm_swap), unavailable, "", onSurf))
         }
-        add(TmTile("BAT", h.batteryPct?.let { "$it%" } ?: "—",
-            " " + String.format("%.1f", h.batteryWatts) + "W" + (if (h.charging) " ⚡" else ""), warn))
-        add(TmTile("BAT °C", h.batteryTempC?.let { "$it°" } ?: "—", "", onSurf))
+        add(TmTile(
+            stringResource(R.string.compose_xserver_drawer_tm_battery),
+            h.batteryPct?.let { stringResource(R.string.compose_xserver_drawer_percent_value, it) } ?: unavailable,
+            stringResource(
+                R.string.compose_xserver_drawer_battery_power_suffix,
+                h.batteryWatts,
+                if (h.charging) stringResource(R.string.compose_xserver_drawer_charging_suffix) else "",
+            ),
+            warn,
+        ))
+        add(TmTile(
+            stringResource(R.string.compose_xserver_drawer_tm_battery_temperature),
+            h.batteryTempC?.let { stringResource(R.string.compose_xserver_drawer_temperature_degrees, it) } ?: unavailable,
+            "",
+            onSurf,
+        ))
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        TmSectionLabel("PERFORMANCE")
+        TmSectionLabel(stringResource(R.string.compose_xserver_drawer_performance))
         Spacer(Modifier.height(4.dp))
         tiles.chunked(4).forEach { rowTiles ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.5.dp)) {
@@ -3770,6 +3872,8 @@ private fun TmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
     if (cores.isEmpty()) return
     val accent = MaterialTheme.colorScheme.primary
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val unavailable = stringResource(R.string.compose_xserver_drawer_value_unavailable)
+    val mhzSuffix = stringResource(R.string.compose_xserver_drawer_mhz_suffix)
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         CorePanel(count = cores.size) { i ->
             val mhz = cores[i]
@@ -3777,15 +3881,15 @@ private fun TmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp),
             ) {
-                Text("C$i", color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.compose_xserver_drawer_core_number, i), color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 Text(
                     buildAnnotatedString {
                         withStyle(SpanStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = accent)) {
-                            append(if (mhz > 0) "$mhz" else "—")
+                            append(if (mhz > 0) mhz.toString() else unavailable)
                         }
                         if (mhz > 0) {
                             withStyle(SpanStyle(fontSize = 8.sp, fontWeight = FontWeight.Medium, color = muted)) {
-                                append(" MHz")
+                                append(mhzSuffix)
                             }
                         }
                     },
@@ -3849,7 +3953,7 @@ private fun TmContainerPanel(info: XServerDialogState.TmContainerInfo?) {
     var expanded by remember { mutableStateOf(true) }
     Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         TmSectionLabel(
-            "CONTAINER",
+            stringResource(R.string.compose_xserver_drawer_container),
             modifier = Modifier
                 .clip(RoundedCornerShape(6.dp))
                 .clickable { expanded = !expanded },
@@ -3873,12 +3977,12 @@ private fun TmContainerPanel(info: XServerDialogState.TmContainerInfo?) {
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                ContainerInfoRow("Wine", info.wine)
-                ContainerInfoRow("DX wrapper", prettyDxWrapper(info.dxWrapper), accent)
-                ContainerInfoRow("Renderer", prettyRenderer(info.renderer), accent)
-                ContainerInfoRow("Graphics driver", info.graphicsDriver)
-                ContainerInfoRow("Resolution", info.resolution)
-                ContainerInfoRow("Device", tidyDevice(info.device))
+                ContainerInfoRow(stringResource(R.string.compose_xserver_drawer_wine), info.wine)
+                ContainerInfoRow(stringResource(R.string.compose_xserver_drawer_dx_wrapper), prettyDxWrapper(info.dxWrapper), accent)
+                ContainerInfoRow(stringResource(R.string.compose_xserver_drawer_renderer), prettyRenderer(info.renderer), accent)
+                ContainerInfoRow(stringResource(R.string.compose_xserver_drawer_graphics_driver), info.graphicsDriver)
+                ContainerInfoRow(stringResource(R.string.compose_xserver_drawer_resolution), info.resolution)
+                ContainerInfoRow(stringResource(R.string.compose_xserver_drawer_device), tidyDevice(info.device))
             }
         }
     }
@@ -3900,28 +4004,38 @@ private fun ContainerInfoRow(label: String, value: String, valueColor: Color? = 
 }
 
 /** Prettify a raw dxwrapper id (e.g. "dxvk+vkd3d") to its display form ("DXVK+VKD3D"). */
+@Composable
 private fun prettyDxWrapper(raw: String): String {
     if (raw.isBlank() || raw == "—") return raw
+    val dxvk = stringResource(R.string.compose_xserver_drawer_dxvk)
+    val vkd3d = stringResource(R.string.compose_xserver_drawer_vkd3d)
+    val wineD3d = stringResource(R.string.compose_xserver_drawer_wined3d)
+    val vegas = stringResource(R.string.compose_xserver_drawer_vegas)
     return raw.split("+").joinToString("+") { token ->
         when (token.trim().lowercase()) {
-            "dxvk" -> "DXVK"
-            "vkd3d" -> "VKD3D"
-            "wined3d" -> "WineD3D"
-            "vegas" -> "VEGAS"
+            "dxvk" -> dxvk
+            "vkd3d" -> vkd3d
+            "wined3d" -> wineD3d
+            "vegas" -> vegas
             else -> token.trim().uppercase()
         }
     }
 }
 
 /** Prettify a raw renderer id (e.g. "vulkan") to its display form ("Vulkan"). */
+@Composable
 private fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) {
     "" -> raw
-    "vulkan" -> "Vulkan"
-    "gl", "opengl", "gles" -> "OpenGL"
-    "vortek" -> "Vortek"
+    "vulkan" -> stringResource(R.string.compose_xserver_drawer_vulkan)
+    "gl", "opengl", "gles" -> stringResource(R.string.compose_xserver_drawer_opengl)
+    "vortek" -> stringResource(R.string.compose_xserver_drawer_vortek)
     else -> raw.trim().replaceFirstChar { it.uppercase() }
 }
 
 /** Tidy the device line: "8 cores" -> "8c" so it fits the narrow value column without wrapping to a
  *  dangling separator. */
-private fun tidyDevice(raw: String): String = raw.replace(" cores", "c")
+@Composable
+private fun tidyDevice(raw: String): String = raw.replace(
+    " cores",
+    stringResource(R.string.compose_xserver_drawer_core_suffix),
+)

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="adreno_download_gpu_drivers">Download GPU drivers</string>
+    <string name="adreno_manage_sources">Manage sources</string>
+    <string name="adreno_no_drivers_found">No drivers found.</string>
+    <string name="adreno_download_driver_title">Download driver?</string>
+    <string name="adreno_source">Source: %1$s</string>
+    <string name="adreno_download_install_automatically">The driver will be downloaded and installed automatically.</string>
+    <string name="adreno_installed">Installed: %1$s</string>
+    <string name="adreno_invalid_driver_package">Installation failed — invalid driver package.</string>
+    <string name="adreno_download_failed">Download failed: %1$s</string>
+    <string name="adreno_unknown_error">unknown error</string>
+    <string name="adreno_download">Download</string>
+    <string name="adreno_cancel">Cancel</string>
+    <string name="adreno_downloading">Downloading</string>
+    <string name="adreno_installing">Installing</string>
+    <string name="adreno_loading_drivers">Loading drivers…</string>
+    <string name="adreno_load_failed">Could not load drivers</string>
+    <string name="adreno_retry">Retry</string>
+    <string name="adreno_manage_driver_sources">Manage driver sources</string>
+    <string name="adreno_builtin_sources">Built-in sources</string>
+    <string name="adreno_custom_sources">Custom sources</string>
+    <string name="adreno_remove">Remove</string>
+    <string name="adreno_add_source">Add source</string>
+    <string name="adreno_name">Name</string>
+    <string name="adreno_json_url">JSON URL</string>
+    <string name="adreno_github_repo">GitHub repository</string>
+    <string name="adreno_github_owner">Owner (or github.com/owner/repo)</string>
+    <string name="adreno_repo">Repository</string>
+    <string name="adreno_enter_name">Enter a name</string>
+    <string name="adreno_enter_json_url">Enter a JSON URL</string>
+    <string name="adreno_enter_owner_repo">Enter the owner and repository</string>
+    <string name="adreno_done">Done</string>
+    <string name="adreno_install_gpu_driver">Install GPU driver</string>
+    <string name="adreno_download_online_description">Download GPU drivers from online sources</string>
+    <string name="adreno_no_installed_drivers">No GPU drivers installed.</string>
+    <string name="adreno_select_gpu_driver">Select GPU driver</string>
+    <string name="adreno_browse_files">Browse files</string>
+    <string name="adreno_pick_via_system">Pick via system…</string>
+    <string name="adreno_remove_driver_title">Remove driver?</string>
+    <string name="adreno_remove_driver_message">Remove \"%1$s\"?</string>
+</resources>

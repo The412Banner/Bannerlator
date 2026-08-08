@@ -4,6 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import androidx.core.content.ContextCompat;
+
+import com.winlator.star.R;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -45,25 +49,32 @@ public final class GogCloudSaveManager {
     }
 
     /** Scan local folder and upload files newer than cloud versions. */
-    public static void uploadSaves(Context ctx, String gameId, File localFolder, Callback cb) {
+    public static void uploadSaves(Context baseCtx, String gameId, File localFolder, Callback cb) {
+        Context ctx = ContextCompat.getContextForLanguage(baseCtx.getApplicationContext());
         new Thread(() -> {
             try {
                 SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
                 String galaxyToken = getValidToken(ctx, prefs);
-                if (galaxyToken == null) { cb.onError("Not logged in to GOG"); return; }
+                if (galaxyToken == null) {
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_not_logged_in_to_gog));
+                    return;
+                }
                 String userId = prefs.getString("user_id", null);
-                if (userId == null) { cb.onError("GOG user ID not found — please sign in again"); return; }
+                if (userId == null) {
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_user_id_not_found));
+                    return;
+                }
                 String clientId = GogDownloadManager.getOrFetchClientId(ctx, gameId, galaxyToken);
                 String token = getGameScopedToken(ctx, gameId, clientId, prefs);
                 if (token == null) token = galaxyToken; // fallback
                 debug(ctx, "GOG upload — gameId=" + gameId + " clientId=" + clientId + " scopedToken=" + (token.equals(galaxyToken) ? "fallback" : "ok"));
 
-                cb.onStatus("Fetching cloud file list…");
+                cb.onStatus(ctx.getString(R.string.compose_gog_game_detail_fetching_cloud_file_list));
                 List<CloudFile> cloudFiles = listCloudFiles(ctx, userId, clientId, token);
 
                 File[] localFiles = localFolder.listFiles();
                 if (localFiles == null || localFiles.length == 0) {
-                    cb.onDone("No local files to upload");
+                    cb.onDone(ctx.getString(R.string.compose_gog_game_detail_no_local_files_to_upload));
                     return;
                 }
 
@@ -80,53 +91,72 @@ public final class GogCloudSaveManager {
                         continue;
                     }
 
-                    cb.onStatus("Uploading: " + name);
+                    cb.onStatus(ctx.getString(R.string.compose_gog_game_detail_uploading_file, name));
                     byte[] data = readFile(local);
-                    if (data == null) { cb.onError("Failed to read: " + name); return; }
+                    if (data == null) {
+                        cb.onError(ctx.getString(R.string.compose_gog_game_detail_failed_to_read_file, name));
+                        return;
+                    }
 
                     boolean ok = putFile(userId, clientId, token, name, data);
-                    if (!ok) { cb.onError("Upload failed for: " + name); return; }
+                    if (!ok) {
+                        cb.onError(ctx.getString(R.string.compose_gog_game_detail_upload_failed_for_file, name));
+                        return;
+                    }
                     uploaded++;
                 }
 
                 if (uploaded == 0 && skipped > 0) {
-                    cb.onDone("Already up to date (" + skipped + " file" + (skipped == 1 ? "" : "s") + ")");
+                    cb.onDone(ctx.getResources().getQuantityString(
+                            R.plurals.compose_gog_game_detail_already_up_to_date_files,
+                            skipped,
+                            skipped));
                 } else if (uploaded > 0) {
-                    cb.onDone("Uploaded " + uploaded + " file" + (uploaded == 1 ? "" : "s"));
+                    cb.onDone(ctx.getResources().getQuantityString(
+                            R.plurals.compose_gog_game_detail_uploaded_files,
+                            uploaded,
+                            uploaded));
                 } else {
-                    cb.onDone("No files to upload");
+                    cb.onDone(ctx.getString(R.string.compose_gog_game_detail_no_files_to_upload));
                 }
 
             } catch (Exception e) {
                 Log.e(TAG, "uploadSaves failed", e);
                 debug(ctx, "uploadSaves exception: " + e.getClass().getSimpleName());
                 if ("CLOUD_SAVES_NOT_SUPPORTED".equals(e.getMessage()))
-                    cb.onError("This game does not support GOG cloud saves");
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_cloud_saves_not_supported));
                 else
-                    cb.onError("Upload error: " + e.getMessage());
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_upload_error));
             }
         }, "gog-cloud-upload-" + gameId).start();
     }
 
     /** Download all cloud save files to local folder, overwriting local copies. */
-    public static void downloadSaves(Context ctx, String gameId, File localFolder, Callback cb) {
+    public static void downloadSaves(Context baseCtx, String gameId, File localFolder, Callback cb) {
+        Context ctx = ContextCompat.getContextForLanguage(baseCtx.getApplicationContext());
         new Thread(() -> {
             try {
                 SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
                 String galaxyToken = getValidToken(ctx, prefs);
-                if (galaxyToken == null) { cb.onError("Not logged in to GOG"); return; }
+                if (galaxyToken == null) {
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_not_logged_in_to_gog));
+                    return;
+                }
                 String userId = prefs.getString("user_id", null);
-                if (userId == null) { cb.onError("GOG user ID not found — please sign in again"); return; }
+                if (userId == null) {
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_user_id_not_found));
+                    return;
+                }
                 String clientId = GogDownloadManager.getOrFetchClientId(ctx, gameId, galaxyToken);
                 String token = getGameScopedToken(ctx, gameId, clientId, prefs);
                 if (token == null) token = galaxyToken; // fallback
                 debug(ctx, "GOG download — gameId=" + gameId + " clientId=" + clientId + " scopedToken=" + (token.equals(galaxyToken) ? "fallback" : "ok"));
 
-                cb.onStatus("Fetching cloud file list…");
+                cb.onStatus(ctx.getString(R.string.compose_gog_game_detail_fetching_cloud_file_list));
                 List<CloudFile> cloudFiles = listCloudFiles(ctx, userId, clientId, token);
 
                 if (cloudFiles.isEmpty()) {
-                    cb.onDone("No cloud saves found");
+                    cb.onDone(ctx.getString(R.string.compose_gog_game_detail_no_cloud_saves_found));
                     return;
                 }
 
@@ -134,23 +164,29 @@ public final class GogCloudSaveManager {
 
                 int downloaded = 0;
                 for (CloudFile cf : cloudFiles) {
-                    cb.onStatus("Downloading: " + cf.name);
+                    cb.onStatus(ctx.getString(R.string.compose_gog_game_detail_downloading_file, cf.name));
                     byte[] data = getFile(userId, clientId, token, cf.name);
-                    if (data == null) { cb.onError("Download failed for: " + cf.name); return; }
+                    if (data == null) {
+                        cb.onError(ctx.getString(R.string.compose_gog_game_detail_download_failed_for_file, cf.name));
+                        return;
+                    }
                     File dest = new File(localFolder, cf.name);
                     writeFile(dest, data);
                     downloaded++;
                 }
 
-                cb.onDone("Downloaded " + downloaded + " file" + (downloaded == 1 ? "" : "s"));
+                cb.onDone(ctx.getResources().getQuantityString(
+                        R.plurals.compose_gog_game_detail_downloaded_files,
+                        downloaded,
+                        downloaded));
 
             } catch (Exception e) {
                 Log.e(TAG, "downloadSaves failed", e);
                 debug(ctx, "downloadSaves exception: " + e.getClass().getSimpleName());
                 if ("CLOUD_SAVES_NOT_SUPPORTED".equals(e.getMessage()))
-                    cb.onError("This game does not support GOG cloud saves");
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_cloud_saves_not_supported));
                 else
-                    cb.onError("Download error: " + e.getMessage());
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_download_error));
             }
         }, "gog-cloud-download-" + gameId).start();
     }

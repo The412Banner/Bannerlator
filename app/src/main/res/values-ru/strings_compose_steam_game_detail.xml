@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_steam_game_detail_loading">Загрузка…</string>
+    <string name="compose_steam_game_detail_type_game">ИГРА</string>
+    <string name="compose_steam_game_detail_size_unknown">Размер неизвестен</string>
+    <string name="compose_steam_game_detail_not_installed">Не установлена</string>
+    <string name="compose_steam_game_detail_installed">Установлена</string>
+    <string name="compose_steam_game_detail_install">Установить</string>
+    <string name="compose_steam_game_detail_uninstall">Удалить</string>
+    <string name="compose_steam_game_detail_cancel">Отмена</string>
+    <string name="compose_steam_game_detail_cancel_download">Отменить</string>
+    <string name="compose_steam_game_detail_pause">Приостановить</string>
+    <string name="compose_steam_game_detail_resume">Продолжить</string>
+    <string name="compose_steam_game_detail_retry">Повторить</string>
+    <string name="compose_steam_game_detail_starting">Запуск…</string>
+    <string name="compose_steam_game_detail_resuming">Возобновление…</string>
+    <string name="compose_steam_game_detail_applying">Применение…</string>
+    <string name="compose_steam_game_detail_working">Выполнение…</string>
+    <string name="compose_steam_game_detail_ok">ОК</string>
+    <string name="compose_steam_game_detail_done">Готово</string>
+    <string name="compose_steam_game_detail_back">Назад</string>
+    <string name="compose_steam_game_detail_launch">Запустить</string>
+    <string name="compose_steam_game_detail_choose_dlc">Выбрать DLC</string>
+    <string name="compose_steam_game_detail_i_understand">Понятно</string>
+
+    <string name="compose_steam_game_detail_app_id_fallback">Приложение %1$d</string>
+    <string name="compose_steam_game_detail_size_gigabytes">%1$.1f ГБ</string>
+    <string name="compose_steam_game_detail_size_megabytes">%1$.1f МБ</string>
+    <string name="compose_steam_game_detail_size_kilobytes">%1$.0f КБ</string>
+    <string name="compose_steam_game_detail_size_on_disk">%1$s на диске</string>
+    <string name="compose_steam_game_detail_size_on_disk_estimate">около %1$s на диске</string>
+    <string name="compose_steam_game_detail_download_size">Загрузка: %1$s</string>
+    <string name="compose_steam_game_detail_pics_estimate">Оценка PICS (Steam): %1$s</string>
+    <string name="compose_steam_game_detail_free_space">Свободно: %1$s</string>
+    <string name="compose_steam_game_detail_free_space_wont_fit">Свободно: %1$s — недостаточно места</string>
+    <string name="compose_steam_game_detail_dlc_none_selected">DLC: ничего не выбрано</string>
+    <string name="compose_steam_game_detail_includes_dlc">Включает DLC: %1$s</string>
+
+    <string name="compose_steam_game_detail_download_speed">%1$s/с</string>
+    <string name="compose_steam_game_detail_eta_less_than_minute">осталось менее 1 мин</string>
+    <plurals name="compose_steam_game_detail_eta_minutes">
+        <item quantity="one">осталась ~%1$d минута</item>
+        <item quantity="few">осталось ~%1$d минуты</item>
+        <item quantity="many">осталось ~%1$d минут</item>
+        <item quantity="other">осталось ~%1$d минуты</item>
+    </plurals>
+    <plurals name="compose_steam_game_detail_eta_hours">
+        <item quantity="one">остался ~%1$d час</item>
+        <item quantity="few">осталось ~%1$d часа</item>
+        <item quantity="many">осталось ~%1$d часов</item>
+        <item quantity="other">осталось ~%1$d часа</item>
+    </plurals>
+    <string name="compose_steam_game_detail_eta_hours_minutes">осталось ~%1$d ч %2$d мин</string>
+    <string name="compose_steam_game_detail_progress_segment">\u0020\u0020·\u0020\u0020%1$s</string>
+    <string name="compose_steam_game_detail_downloading_progress">Загрузка… %1$d%%  (%2$s / %3$s)%4$s</string>
+    <string name="compose_steam_game_detail_downloading_percent">Загрузка… %1$d%%</string>
+    <string name="compose_steam_game_detail_paused_progress">Приостановлено — %1$d%%  (%2$s / %3$s)</string>
+    <string name="compose_steam_game_detail_pausing_percent">Приостановка… %1$d%%</string>
+    <string name="compose_steam_game_detail_download_cancelled">Загрузка отменена</string>
+    <string name="compose_steam_game_detail_download_failed">Ошибка загрузки: %1$s\nЖурнал отладки: %2$s</string>
+
+    <string name="compose_steam_game_detail_uninstalled">Игра «%1$s» удалена</string>
+    <string name="compose_steam_game_detail_uninstall_incomplete">Не удалось полностью удалить игру «%1$s»</string>
+    <string name="compose_steam_game_detail_game_not_installed">Игра не установлена</string>
+    <string name="compose_steam_game_detail_no_executable">В каталоге установки не найден файл .exe</string>
+    <string name="compose_steam_game_detail_error">Ошибка: %1$s</string>
+
+    <string name="compose_steam_game_detail_third_party_cloud_title">Сторонняя синхронизация с облаком</string>
+    <string name="compose_steam_game_detail_third_party_cloud_body">Сохранения синхронизируются со Steam Cloud с помощью стороннего инструмента, а не официального клиента Steam. Такая работа с сохранениями может привести к их повреждению или потере. Используйте эту функцию на свой страх и риск.</string>
+    <string name="compose_steam_game_detail_third_party_cloud_short_warning">⚠️ Сторонняя синхронизация с облаком — используйте на свой страх и риск.</string>
+    <string name="compose_steam_game_detail_third_party_cloud_reminder">Сторонняя синхронизация с облаком — используйте на свой страх и риск.</string>
+    <string name="compose_steam_game_detail_staleness_warning">⚠️ В этом контейнере есть более новые сохранения, чем в Библиотеке. Сначала собрать их?</string>
+    <string name="compose_steam_game_detail_preparing_download">Подготовка загрузки…</string>
+    <string name="compose_steam_game_detail_preparing_upload">Подготовка отправки…</string>
+    <string name="compose_steam_game_detail_applying_to_container">Применение в контейнере…</string>
+    <string name="compose_steam_game_detail_collecting_from_container">Сбор из контейнера…</string>
+    <string name="compose_steam_game_detail_syncing_from_cloud">Синхронизация из Steam Cloud…</string>
+    <string name="compose_steam_game_detail_syncing_to_cloud">Синхронизация со Steam Cloud…</string>
+
+    <string name="compose_steam_game_detail_dlc_to_download">DLC для загрузки</string>
+    <string name="compose_steam_game_detail_dlc_unchecked_hint">Неотмеченные DLC не будут загружены вместе с игрой.</string>
+
+    <string name="compose_steam_game_detail_goldberg_title">Эмулятор Steam (Goldberg)</string>
+    <string name="compose_steam_game_detail_goldberg_description">Позволяет запускать без Steam игры, которым требуется его клиент. Не поможет сетевым играм, которые не могут подключиться к собственным серверам.</string>
+    <string name="compose_steam_game_detail_goldberg_warning">Обратите внимание: это решение подходит не для всех игр, которым для запуска нужен клиент Steam. Работа не гарантируется — используйте на свой страх и риск.</string>
+    <string name="compose_steam_game_detail_goldberg_off">Выключен</string>
+    <string name="compose_steam_game_detail_goldberg_regular">Обычный</string>
+    <string name="compose_steam_game_detail_goldberg_experimental">Экспериментальный</string>
+    <string name="compose_steam_game_detail_goldberg_cold_client_loader">Cold Client Loader</string>
+    <string name="compose_steam_game_detail_download_steam_emulator">Загрузить эмулятор Steam</string>
+    <string name="compose_steam_game_detail_download_steam_emulator_with_size">Загрузить эмулятор Steam (~%1$s)</string>
+    <string name="compose_steam_game_detail_goldberg_tier_hint">Обычный режим подходит большинству игр. Если игра не запускается, попробуйте Экспериментальный, а затем Cold Client Loader.</string>
+    <string name="compose_steam_game_detail_goldberg_download_succeeded">Эмулятор Steam установлен. Выберите режим ниже.</string>
+    <string name="compose_steam_game_detail_goldberg_download_failed">Не удалось загрузить или установить эмулятор Steam. Проверьте подключение и повторите попытку.</string>
+    <string name="compose_steam_game_detail_goldberg_disabled_result">Goldberg отключён — исходные файлы «%1$s» восстановлены.</string>
+    <string name="compose_steam_game_detail_goldberg_regular_result">К «%1$s» применён обычный режим Goldberg. Запустите игру; если она по-прежнему не запускается, попробуйте экспериментальный режим.</string>
+    <string name="compose_steam_game_detail_goldberg_experimental_result">К «%1$s» применён экспериментальный режим Goldberg. Запустите игру; если она по-прежнему не запускается, попробуйте Cold Client Loader.</string>
+    <string name="compose_steam_game_detail_goldberg_cold_client_result">К «%1$s» применён Cold Client Loader. Снова добавьте игру в раздел «Ярлыки», чтобы она запускалась через загрузчик.</string>
+    <string name="compose_steam_game_detail_goldberg_apply_failed">Не удалось применить выбранный режим Goldberg.</string>
+
+    <string name="compose_steam_game_detail_cloud_saves_title">Сохранения Steam Cloud</string>
+    <string name="compose_steam_game_detail_cloud_saves_description">Синхронизируйте сохранения игры со Steam Cloud в любом направлении одним действием. По пути локальная Библиотека используется как промежуточная копия, которая остаётся у вас.</string>
+    <string name="compose_steam_game_detail_checking_container">Проверка контейнера игры…</string>
+    <string name="compose_steam_game_detail_set_up_container_hint">Сначала настройте игру в контейнере. Сохранения относятся к тому контейнеру, в который добавлена игра; после этого их можно синхронизировать с облаком здесь.</string>
+    <string name="compose_steam_game_detail_set_up_container">Настроить в контейнере</string>
+    <string name="compose_steam_game_detail_container_label">Контейнер: %1$s</string>
+    <string name="compose_steam_game_detail_library_label">Библиотека: %1$s</string>
+    <string name="compose_steam_game_detail_sync_from_cloud">⬇ Синхронизировать из Steam Cloud</string>
+    <string name="compose_steam_game_detail_sync_from_cloud_hint">Загрузить сохранения из Steam Cloud и поместить их в игру.</string>
+    <string name="compose_steam_game_detail_sync_to_cloud">⬆ Синхронизировать со Steam Cloud</string>
+    <string name="compose_steam_game_detail_sync_to_cloud_hint">Отправить текущие сохранения игры в Steam Cloud.</string>
+    <string name="compose_steam_game_detail_advanced_expanded">▾ Дополнительно</string>
+    <string name="compose_steam_game_detail_advanced_collapsed">▸ Дополнительно</string>
+    <string name="compose_steam_game_detail_advanced_hint">отдельные операции Загрузить / Применить / Собрать / Отправить</string>
+    <string name="compose_steam_game_detail_cloud">Облако</string>
+    <string name="compose_steam_game_detail_container">Контейнер</string>
+    <string name="compose_steam_game_detail_download_arrow">⬇ Загрузить</string>
+    <string name="compose_steam_game_detail_upload_arrow">⬆ Отправить</string>
+    <string name="compose_steam_game_detail_apply_arrow">→ Применить</string>
+    <string name="compose_steam_game_detail_collect_arrow">← Собрать</string>
+
+    <string name="compose_steam_game_detail_download">Загрузить</string>
+    <string name="compose_steam_game_detail_upload">Отправить</string>
+    <string name="compose_steam_game_detail_apply">Применить</string>
+    <string name="compose_steam_game_detail_collect">Собрать</string>
+    <string name="compose_steam_game_detail_sync_from_cloud_action">Синхронизировать из Steam Cloud</string>
+    <string name="compose_steam_game_detail_sync_to_cloud_action">Синхронизировать со Steam Cloud</string>
+    <string name="compose_steam_game_detail_confirm_download_title">Загрузить из Steam Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_download_body">Загрузить сохранения игры из Steam Cloud в локальную Библиотеку. Облачные версии заменят соответствующие файлы в Библиотеке. Контейнер игры не изменится: чтобы поместить сохранения туда, после загрузки выполните «Применить».</string>
+    <string name="compose_steam_game_detail_confirm_apply_title">Применить в контейнере?</string>
+    <string name="compose_steam_game_detail_confirm_apply_body">Скопировать сохранения из Библиотеки в %1$s (контейнер этой игры). Они заменят соответствующие файлы в контейнере. Библиотека не изменится.</string>
+    <string name="compose_steam_game_detail_confirm_collect_title">Собрать из контейнера?</string>
+    <string name="compose_steam_game_detail_confirm_collect_body">Скопировать сохранения из %1$s (контейнера этой игры) в Библиотеку, сохранив достигнутый прогресс. Они заменят соответствующие файлы в Библиотеке. Контейнер не изменится.</string>
+    <string name="compose_steam_game_detail_confirm_upload_title">Отправить в Steam Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_upload_body">Отправить сохранения из локальной Библиотеки в Steam Cloud. Эта операция только ДОБАВЛЯЕТ или ЗАМЕНЯЕТ облачные файлы и никогда их не удаляет. Если Библиотека пуста, ничего не будет отправлено. Убедитесь, что в ней находятся последние сохранения (после игры выполните «Собрать»).</string>
+    <string name="compose_steam_game_detail_confirm_sync_from_title">Синхронизировать из Steam Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_sync_from_body">Загрузить сохранения из Steam Cloud в %1$s (контейнер этой игры). Облачная копия заменит сохранения в этом контейнере.</string>
+    <string name="compose_steam_game_detail_confirm_sync_to_title">Синхронизировать со Steam Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_sync_to_body">Отправить текущие сохранения игры из %1$s в Steam Cloud. Убедитесь, что именно в этом контейнере находятся последние сохранения. Операция только ДОБАВЛЯЕТ или ЗАМЕНЯЕТ облачные файлы и никогда их не удаляет.</string>
+
+    <string name="compose_steam_game_detail_download_speed_title">Скорость загрузки</string>
+    <string name="compose_steam_game_detail_speed_slow">Низкая — минимальная нагрузка на ОЗУ и ЦП</string>
+    <string name="compose_steam_game_detail_speed_medium">Средняя — сбалансированный режим</string>
+    <string name="compose_steam_game_detail_speed_fast">Высокая — рекомендуется</string>
+    <string name="compose_steam_game_detail_speed_blazing">Максимальная — наибольшая нагрузка на ОЗУ и ЦП</string>
+    <string name="compose_steam_game_detail_debug_log_session">Записывать журнал отладки</string>
+    <string name="compose_steam_game_detail_debug_log_description">Создаёт подробный журнал для диагностики проблем с загрузкой.</string>
+    <string name="compose_steam_game_detail_debug_log_warning">⚠️ Не публикуйте этот журнал. Передавайте его только разработчику или человеку, которому доверяете, если не разбираете проблему самостоятельно.</string>
+    <string name="compose_steam_game_detail_select_executable">Выберите исполняемый файл для «%1$s»</string>
+</resources>

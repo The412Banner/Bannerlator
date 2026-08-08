@@ -23,10 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 
 /**
  * The app's shared top header band (glyph/nav + screen title + optional actions), used across every
@@ -43,6 +45,7 @@ fun AppTopBar(
     avatarUrl: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
+    val openMenuDescription = stringResource(R.string.accessibility_open_menu)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -60,17 +63,17 @@ fun AppTopBar(
             when {
                 showBack -> Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.accessibility_back),
                     tint = MaterialTheme.colorScheme.onSurface,
                 )
                 avatarUrl != null -> AccountAvatar(
                     avatarUrl = avatarUrl,
                     size = 28.dp,
-                    modifier = Modifier.semantics { contentDescription = "Open menu" },
+                    modifier = Modifier.semantics { contentDescription = openMenuDescription },
                 )
                 else -> Icon(
                     imageVector = Icons.Filled.Menu,
-                    contentDescription = "Open menu",
+                    contentDescription = openMenuDescription,
                     tint = MaterialTheme.colorScheme.onSurface,
                 )
             }

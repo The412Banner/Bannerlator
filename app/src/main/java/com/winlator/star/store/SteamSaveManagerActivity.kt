@@ -6,8 +6,9 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -66,10 +67,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.core.CustomSaveVault
@@ -103,7 +107,7 @@ import kotlinx.coroutines.withContext
  * game), plus the side-nav drawer's Library section (rendered directly by the NavHost, no focus).
  * Tapping a row opens that game's detail Cloud Saves section.
  */
-class SteamSaveManagerActivity : ComponentActivity() {
+class SteamSaveManagerActivity : AppCompatActivity() {
 
     companion object {
         /** appId to scroll to / highlight when opened from a per-game menu (0 = no focus). */
@@ -234,10 +238,12 @@ internal fun SaveManagerScreen(
     // Upload (game → to cloud). onStatus now spans both phases; the manager guards not-set-up itself
     // (returns onError with the "add to a container first" message), and we also disable the buttons
     // for NOT_SET_UP rows up front.
+    val preparingSyncFromCloud = stringResource(R.string.compose_steam_saves_preparing_sync_from_cloud)
+    val preparingSyncToCloud = stringResource(R.string.compose_steam_saves_preparing_sync_to_cloud)
     fun runQuickMove(appId: Int, syncFrom: Boolean) {
         if (appId in busyAppIds) return
         busyAppIds = busyAppIds + appId
-        rowProgress[appId] = RowProgress(if (syncFrom) "Preparing sync from Cloud…" else "Preparing sync to Cloud…")
+        rowProgress[appId] = RowProgress(if (syncFrom) preparingSyncFromCloud else preparingSyncToCloud)
         // The manager may call back on a worker thread, so marshal every UI write onto the
         // composition scope (main) before touching state.
         val cb = object : SteamCloudSaveManager.Callback {
@@ -259,7 +265,10 @@ internal fun SaveManagerScreen(
             override fun onError(message: String) {
                 scope.launch {
                     busyAppIds = busyAppIds - appId
-                    rowProgress[appId] = RowProgress("Error: $message", isError = true)
+                    rowProgress[appId] = RowProgress(
+                        context.getString(R.string.compose_steam_saves_error_with_message, message),
+                        isError = true,
+                    )
                     kotlinx.coroutines.delay(PROGRESS_LINGER_MS)
                     rowProgress.remove(appId)
                 }
@@ -294,13 +303,13 @@ internal fun SaveManagerScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.compose_steam_saves_back),
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }
             Text(
-                text = "Save Manager",
+                text = stringResource(R.string.compose_steam_saves_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
@@ -327,22 +336,22 @@ internal fun SaveManagerScreen(
         val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         val cols = if (isLandscape) 2 else 1
         val activeSection = when (selectedTab) {
-            0 -> "Steam"
-            1 -> "Custom"
-            else -> "Settings"
+            0 -> stringResource(R.string.compose_steam_saves_tab_steam)
+            1 -> stringResource(R.string.compose_steam_saves_tab_custom)
+            else -> stringResource(R.string.compose_steam_saves_tab_settings)
         }
 
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             CollapsibleRail(
                 state = railState,
-                title = "Save Manager",
+                title = stringResource(R.string.compose_steam_saves_title),
                 sections = listOf(
                     RailSection(
                         header = null,
                         items = listOf(
-                            RailItem("Steam", Icons.Filled.VideogameAsset, selectedTab == 0, badge = needSync, onClick = { selectedTab = 0 }),
-                            RailItem("Custom", Icons.Filled.Folder, selectedTab == 1) { selectedTab = 1 },
-                            RailItem("Settings", Icons.Filled.Settings, selectedTab == 2) { selectedTab = 2 },
+                            RailItem(stringResource(R.string.compose_steam_saves_tab_steam), Icons.Filled.VideogameAsset, selectedTab == 0, badge = needSync, onClick = { selectedTab = 0 }),
+                            RailItem(stringResource(R.string.compose_steam_saves_tab_custom), Icons.Filled.Folder, selectedTab == 1) { selectedTab = 1 },
+                            RailItem(stringResource(R.string.compose_steam_saves_tab_settings), Icons.Filled.Settings, selectedTab == 2) { selectedTab = 2 },
                         ),
                     ),
                 ),
@@ -376,7 +385,11 @@ internal fun SaveManagerScreen(
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
                         Text(
-                            text = "⚠️ $needSync game${plural(needSync)} need syncing",
+                            text = pluralStringResource(
+                                R.plurals.compose_steam_saves_games_need_syncing,
+                                needSync,
+                                needSync,
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             fontWeight = FontWeight.Medium,
@@ -401,7 +414,7 @@ internal fun SaveManagerScreen(
                         statuses.isEmpty() -> {
                             Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "Nothing to sync yet.\nDownload a game's cloud save from its detail page to start.",
+                                    text = stringResource(R.string.compose_steam_saves_nothing_to_sync),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -468,16 +481,16 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
         SettingsToggleRow(
-            title = "Steam games: auto-collect on exit",
-            subtitle = "Snapshot Steam-library saves to your local Library when a game exits.",
+            title = stringResource(R.string.compose_steam_saves_settings_steam_auto_collect_title),
+            subtitle = stringResource(R.string.compose_steam_saves_settings_steam_auto_collect_subtitle),
             checked = steamOn,
             // Don't flip/write here — route through the confirm (OFF) / info (ON) prompt.
             onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.STEAM, it) },
         )
         Spacer(Modifier.height(16.dp))
         SettingsToggleRow(
-            title = "Custom games: auto-back up on exit",
-            subtitle = "Snapshot custom-import saves to the local vault when a game exits.",
+            title = stringResource(R.string.compose_steam_saves_settings_custom_auto_backup_title),
+            subtitle = stringResource(R.string.compose_steam_saves_settings_custom_auto_backup_subtitle),
             checked = customOn,
             onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.CUSTOM, it) },
         )
@@ -501,27 +514,24 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
                 // OFF → warning confirm. Write + flip only on Continue; Cancel leaves the switch ON.
                 OutlinedAlertDialog(
                     onDismissRequest = { pendingToggle = null },
-                    title = { Text("Turn off auto-backup?") },
+                    title = { Text(stringResource(R.string.compose_steam_saves_turn_off_auto_backup_title)) },
                     text = {
                         Text(
                             when (prompt.kind) {
-                                ToggleKind.STEAM ->
-                                    "Automatic save backup on exit will be OFF for your Steam library games. " +
-                                        "Their saves won't be captured when a game closes — you'll need to back " +
-                                        "them up yourself via a container's backup option or the Save Manager. Continue?"
-                                ToggleKind.CUSTOM ->
-                                    "Automatic save backup on exit will be OFF for your custom-imported games. " +
-                                        "Their saves won't be captured when a game closes — you'll need to back them " +
-                                        "up yourself via a container's backup option or the game's ⋮ menu → " +
-                                        "'Back up saves'. Continue?"
+                                ToggleKind.STEAM -> stringResource(R.string.compose_steam_saves_disable_steam_auto_backup_warning)
+                                ToggleKind.CUSTOM -> stringResource(R.string.compose_steam_saves_disable_custom_auto_backup_warning)
                             },
                         )
                     },
                     confirmButton = {
-                        TextButton(onClick = { commit(false); pendingToggle = null }) { Text("Continue") }
+                        TextButton(onClick = { commit(false); pendingToggle = null }) {
+                            Text(stringResource(R.string.compose_steam_saves_continue))
+                        }
                     },
                     dismissButton = {
-                        TextButton(onClick = { pendingToggle = null }) { Text("Cancel") }
+                        TextButton(onClick = { pendingToggle = null }) {
+                            Text(stringResource(R.string.compose_steam_saves_cancel))
+                        }
                     },
                 )
             } else {
@@ -529,19 +539,19 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
                 LaunchedEffect(prompt) { commit(true) }
                 OutlinedAlertDialog(
                     onDismissRequest = { pendingToggle = null },
-                    title = { Text("Auto-backup on") },
+                    title = { Text(stringResource(R.string.compose_steam_saves_auto_backup_on_title)) },
                     text = {
                         Text(
                             when (prompt.kind) {
-                                ToggleKind.STEAM ->
-                                    "Automatic save backup on exit is ON for your Steam library games."
-                                ToggleKind.CUSTOM ->
-                                    "Automatic save backup on exit is ON for your custom-imported games."
+                                ToggleKind.STEAM -> stringResource(R.string.compose_steam_saves_steam_auto_backup_on_message)
+                                ToggleKind.CUSTOM -> stringResource(R.string.compose_steam_saves_custom_auto_backup_on_message)
                             },
                         )
                     },
                     confirmButton = {
-                        TextButton(onClick = { pendingToggle = null }) { Text("OK") }
+                        TextButton(onClick = { pendingToggle = null }) {
+                            Text(stringResource(R.string.compose_steam_saves_ok))
+                        }
                     },
                 )
             }
@@ -615,15 +625,30 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
     fun runBackup(s: CustomSaveVault.CustomGameStatus, layout: GameSaveBackup.BackupLayout) {
         val key = s.shortcut.file.path
         busyKeys = busyKeys + key
-        Toast.makeText(context, "Backing up saves for \"${s.name}\"…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.compose_steam_saves_backing_up_game, s.name),
+            Toast.LENGTH_SHORT,
+        ).show()
         CustomSaveVault.manualBackup(context, s.shortcut.container, s.shortcut, layout) { r ->
             if (r.wholeContainer && r.ok) {
-                Toast.makeText(context, "No per-game saves detected — backed up the whole container.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.compose_steam_saves_whole_container_backed_up),
+                    Toast.LENGTH_LONG,
+                ).show()
             }
             Toast.makeText(
                 context,
-                if (r.ok) "Backed up ${r.fileCount} files → ${r.path?.substringAfterLast('/')}"
-                else "Backup failed: ${r.error ?: "unknown error"}",
+                if (r.ok) context.resources.getQuantityString(
+                    R.plurals.compose_steam_saves_backup_success,
+                    r.fileCount,
+                    r.fileCount,
+                    r.path?.substringAfterLast('/').orEmpty(),
+                ) else context.getString(
+                    R.string.compose_steam_saves_backup_failed,
+                    r.error ?: context.getString(R.string.compose_steam_saves_unknown_error),
+                ),
                 Toast.LENGTH_LONG,
             ).show()
             busyKeys = busyKeys - key
@@ -634,12 +659,23 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
     fun runRestore(s: CustomSaveVault.CustomGameStatus, target: Container) {
         val key = s.shortcut.file.path
         busyKeys = busyKeys + key
-        Toast.makeText(context, "Restoring saves into \"${target.name}\"…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.compose_steam_saves_restoring_into, target.name),
+            Toast.LENGTH_SHORT,
+        ).show()
         CustomSaveVault.restoreLatest(context, s.shortcut, target) { r ->
             Toast.makeText(
                 context,
-                if (r.ok) "Restored ${r.filesWritten} files to \"${target.name}\""
-                else "Restore failed: ${r.error ?: "unknown error"}",
+                if (r.ok) context.resources.getQuantityString(
+                    R.plurals.compose_steam_saves_restore_success,
+                    r.filesWritten,
+                    r.filesWritten,
+                    target.name,
+                ) else context.getString(
+                    R.string.compose_steam_saves_restore_failed,
+                    r.error ?: context.getString(R.string.compose_steam_saves_unknown_error),
+                ),
                 Toast.LENGTH_LONG,
             ).show()
             busyKeys = busyKeys - key
@@ -651,12 +687,23 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
     fun runFileRestore(s: CustomSaveVault.CustomGameStatus, uri: Uri, target: Container) {
         val key = s.shortcut.file.path
         busyKeys = busyKeys + key
-        Toast.makeText(context, "Restoring saves into \"${target.name}\"…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.compose_steam_saves_restoring_into, target.name),
+            Toast.LENGTH_SHORT,
+        ).show()
         GameSaveBackup.restore(context, uri, target) { r ->
             Toast.makeText(
                 context,
-                if (r.ok) "Restored ${r.filesWritten} files to \"${target.name}\""
-                else "Restore failed: ${r.error ?: "unknown error"}",
+                if (r.ok) context.resources.getQuantityString(
+                    R.plurals.compose_steam_saves_restore_success,
+                    r.filesWritten,
+                    r.filesWritten,
+                    target.name,
+                ) else context.getString(
+                    R.string.compose_steam_saves_restore_failed,
+                    r.error ?: context.getString(R.string.compose_steam_saves_unknown_error),
+                ),
                 Toast.LENGTH_LONG,
             ).show()
             busyKeys = busyKeys - key
@@ -671,7 +718,7 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
             }
             rows.isEmpty() -> Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text(
-                    text = "No custom games found.\nImport a game (exe/folder), then back its saves up here.",
+                    text = stringResource(R.string.compose_steam_saves_no_custom_games),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -697,11 +744,11 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
     backupFor?.let { s ->
         OutlinedAlertDialog(
             onDismissRequest = { backupFor = null },
-            title = { Text("Backup format") },
+            title = { Text(stringResource(R.string.compose_steam_saves_backup_format_title)) },
             text = {
                 Column {
                     Text(
-                        "Which tool is this backup for?",
+                        stringResource(R.string.compose_steam_saves_backup_format_prompt),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -712,8 +759,8 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
                             .clickable { backupFor = null; runBackup(s, GameSaveBackup.BackupLayout.WINLATOR) }
                             .padding(vertical = 8.dp),
                     ) {
-                        Text("Winlator-native .zip", color = MaterialTheme.colorScheme.primary)
-                        Text("Sibling Winlator / WinNative builds", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.compose_steam_saves_winlator_native_zip), color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.compose_steam_saves_winlator_native_zip_description), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                     Column(
                         modifier = Modifier
@@ -721,13 +768,17 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
                             .clickable { backupFor = null; runBackup(s, GameSaveBackup.BackupLayout.GAMEHUB) }
                             .padding(vertical = 8.dp),
                     ) {
-                        Text("GameHub-compatible .zip", color = MaterialTheme.colorScheme.primary)
-                        Text("GameHub, Proton-based tools (default)", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.compose_steam_saves_gamehub_compatible_zip), color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.compose_steam_saves_gamehub_compatible_zip_description), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { backupFor = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { backupFor = null }) {
+                    Text(stringResource(R.string.compose_steam_saves_cancel))
+                }
+            },
         )
     }
 
@@ -753,7 +804,7 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
     restoreChooser?.let { s ->
         OutlinedAlertDialog(
             onDismissRequest = { restoreChooser = null },
-            title = { Text("Restore saves") },
+            title = { Text(stringResource(R.string.compose_steam_saves_restore_saves_title)) },
             text = {
                 Column {
                     if (s.hasBackup) {
@@ -763,8 +814,12 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
                                 .clickable { restoreChooser = null; restoreFor = s }
                                 .padding(vertical = 8.dp),
                         ) {
-                            Text("Restore latest backup", color = MaterialTheme.colorScheme.primary)
-                            Text("Backed up ${relTime(s.lastBackupMillis)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.compose_steam_saves_restore_latest_backup), color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                stringResource(R.string.compose_steam_saves_backed_up_time, relTime(s.lastBackupMillis)),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                     Column(
@@ -773,17 +828,27 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1) {
                             .clickable {
                                 restoreChooser = null
                                 fileRestoreFor = s
-                                filePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select a save .zip"))
+                                filePicker.launch(
+                                    InAppFilePicker.buildIntent(
+                                        context,
+                                        InAppFilePicker.SAVE,
+                                        context.getString(R.string.compose_steam_saves_select_save_zip),
+                                    ),
+                                )
                             }
                             .padding(vertical = 8.dp),
                     ) {
-                        Text("Restore from a file…", color = MaterialTheme.colorScheme.primary)
-                        Text("Browse for a GameHub or Bannerlator save .zip", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.compose_steam_saves_restore_from_file), color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.compose_steam_saves_browse_save_zip), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { restoreChooser = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { restoreChooser = null }) {
+                    Text(stringResource(R.string.compose_steam_saves_cancel))
+                }
+            },
         )
     }
 
@@ -862,14 +927,20 @@ private fun CustomSaveRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = status.containerLabel?.let { "Container: $it" } ?: "No container",
+                text = status.containerLabel?.let {
+                    stringResource(R.string.compose_steam_saves_container_label, it)
+                } ?: stringResource(R.string.compose_steam_saves_no_container),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = if (status.hasBackup) "Backed up ${relTime(status.lastBackupMillis)}" else "No backup yet",
+                text = if (status.hasBackup) {
+                    stringResource(R.string.compose_steam_saves_backed_up_time, relTime(status.lastBackupMillis))
+                } else {
+                    stringResource(R.string.compose_steam_saves_no_backup_yet)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (status.hasBackup) MaterialTheme.colorScheme.onSurfaceVariant
                         else MaterialTheme.colorScheme.primary,
@@ -886,10 +957,10 @@ private fun CustomSaveRow(
             )
         } else {
             Column(horizontalAlignment = Alignment.End) {
-                TextButton(onClick = onBackup) { Text("Back up") }
+                TextButton(onClick = onBackup) { Text(stringResource(R.string.compose_steam_saves_back_up)) }
                 // Restore is always available: latest vault snapshot if present, else browse for a
                 // GameHub/Bannerlator save file (the chooser decides).
-                TextButton(onClick = onRestore) { Text("Restore") }
+                TextButton(onClick = onRestore) { Text(stringResource(R.string.compose_steam_saves_restore)) }
             }
         }
     }
@@ -927,7 +998,7 @@ private fun SaveStatusRow(
             .clickable(onClick = onOpen)
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
     ) {
-        val (pillColor, pillLabel) = pillFor(status.state)
+        val (pillColor, pillLabelRes) = pillFor(status.state)
 
         // Real Steam poster (library_600x900 → header.jpg), cached per appId; shows its own
         // spinner while loading and "×" if the art is missing.
@@ -949,7 +1020,9 @@ private fun SaveStatusRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = status.containerLabel?.let { "Container: $it" } ?: "Not set up in a container",
+                text = status.containerLabel?.let {
+                    stringResource(R.string.compose_steam_saves_container_label, it)
+                } ?: stringResource(R.string.compose_steam_saves_not_set_up_in_container),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -981,7 +1054,7 @@ private fun SaveStatusRow(
                 // Can't sync without a container — tell the user how to enable it (tap-through opens
                 // the detail page where they can set it up).
                 Text(
-                    text = "Add this game to a container first to sync.",
+                    text = stringResource(R.string.compose_steam_saves_add_game_to_container_to_sync),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
@@ -1001,7 +1074,7 @@ private fun SaveStatusRow(
             }
             // Status pill.
             Spacer(Modifier.height(6.dp))
-            StatusPill(color = pillColor, label = pillLabel)
+            StatusPill(color = pillColor, label = stringResource(pillLabelRes))
         }
 
         // Per-row quick actions: the two end-to-end combos — Sync from Cloud (⬇) / Sync to Cloud (⬆).
@@ -1011,14 +1084,14 @@ private fun SaveStatusRow(
             IconButton(onClick = onSyncFrom, enabled = syncFromEnabled) {
                 Icon(
                     imageVector = Icons.Filled.CloudDownload,
-                    contentDescription = "Sync from Cloud",
+                    contentDescription = stringResource(R.string.compose_steam_saves_sync_from_cloud),
                     tint = if (syncFromEnabled) MaterialTheme.colorScheme.primary else disabledTint,
                 )
             }
             IconButton(onClick = onSyncTo, enabled = actionsEnabled) {
                 Icon(
                     imageVector = Icons.Filled.CloudUpload,
-                    contentDescription = "Sync to Cloud",
+                    contentDescription = stringResource(R.string.compose_steam_saves_sync_to_cloud),
                     tint = if (actionsEnabled) MaterialTheme.colorScheme.primary else disabledTint,
                 )
             }
@@ -1049,15 +1122,17 @@ private data class RowProgress(val message: String, val isError: Boolean = false
 private const val PROGRESS_LINGER_MS = 2500L
 
 // Green = settled, amber/orange = local drift, blue = cloud drift, grey = nothing to do / unset.
-private fun pillFor(state: SaveState): Pair<Color, String> = when (state) {
-    SaveState.IN_SYNC        -> Color(0xFF3BA55D) to "In sync"
-    SaveState.LOCAL_ONLY     -> Color(0xFFE0662E) to "Not backed up"
-    SaveState.LOCAL_AHEAD    -> Color(0xFFE0A82E) to "Local ahead"
-    SaveState.CLOUD_AHEAD    -> Color(0xFF4B9CE0) to "Cloud ahead"
-    SaveState.NEVER_SYNCED   -> Color(0xFFE07B2E) to "Never synced"
-    SaveState.NO_CLOUD_SAVES -> Color(0xFF9AA0A6) to "No cloud saves"
-    SaveState.NOT_SET_UP     -> Color(0xFF9AA0A6) to "Not set up"
-    SaveState.UNKNOWN        -> Color(0xFF9AA0A6) to "Unknown"
+private data class SavePill(val color: Color, @StringRes val labelRes: Int)
+
+private fun pillFor(state: SaveState): SavePill = when (state) {
+    SaveState.IN_SYNC        -> SavePill(Color(0xFF3BA55D), R.string.compose_steam_saves_status_in_sync)
+    SaveState.LOCAL_ONLY     -> SavePill(Color(0xFFE0662E), R.string.compose_steam_saves_status_not_backed_up)
+    SaveState.LOCAL_AHEAD    -> SavePill(Color(0xFFE0A82E), R.string.compose_steam_saves_status_local_ahead)
+    SaveState.CLOUD_AHEAD    -> SavePill(Color(0xFF4B9CE0), R.string.compose_steam_saves_status_cloud_ahead)
+    SaveState.NEVER_SYNCED   -> SavePill(Color(0xFFE07B2E), R.string.compose_steam_saves_status_never_synced)
+    SaveState.NO_CLOUD_SAVES -> SavePill(Color(0xFF9AA0A6), R.string.compose_steam_saves_status_no_cloud_saves)
+    SaveState.NOT_SET_UP     -> SavePill(Color(0xFF9AA0A6), R.string.compose_steam_saves_status_not_set_up)
+    SaveState.UNKNOWN        -> SavePill(Color(0xFF9AA0A6), R.string.compose_steam_saves_status_unknown)
 }
 
 private fun SaveState.needsAttention(): Boolean = when (this) {
@@ -1065,16 +1140,24 @@ private fun SaveState.needsAttention(): Boolean = when (this) {
     else -> false
 }
 
+@Composable
 private fun syncedTimesLine(status: SaveStatus): String {
-    val parts = ArrayList<String>(2)
-    if (status.lastDownloadAt > 0L) parts.add("Downloaded ${relTime(status.lastDownloadAt)}")
-    if (status.lastUploadAt > 0L) parts.add("Uploaded ${relTime(status.lastUploadAt)}")
-    return parts.joinToString(" · ")
+    val downloaded = if (status.lastDownloadAt > 0L) {
+        stringResource(R.string.compose_steam_saves_downloaded_time, relTime(status.lastDownloadAt))
+    } else null
+    val uploaded = if (status.lastUploadAt > 0L) {
+        stringResource(R.string.compose_steam_saves_uploaded_time, relTime(status.lastUploadAt))
+    } else null
+    return when {
+        downloaded != null && uploaded != null ->
+            stringResource(R.string.compose_steam_saves_downloaded_and_uploaded_times, downloaded, uploaded)
+        downloaded != null -> downloaded
+        uploaded != null -> uploaded
+        else -> ""
+    }
 }
 
 private fun relTime(millis: Long): String =
     DateUtils.getRelativeTimeSpanString(
         millis, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS,
     ).toString()
-
-private fun plural(n: Int) = if (n == 1) "" else "s"

@@ -360,7 +360,7 @@ public class SettingsFragment extends Fragment {
                 requireActivity().getOnBackPressedDispatcher().onBackPressed();
             }
 
-			AppUtils.showToast(context, "Settings saved!");
+			AppUtils.showToast(context, R.string.compose_settings_saved);
         });
 
 
@@ -530,7 +530,7 @@ public class SettingsFragment extends Fragment {
         Callback<String> onExportPreset = (String prefix) -> {
             final String presetId = Box64PresetManager.getSpinnerSelectedId(spinners.get(prefix));
             if (!presetId.startsWith(Box64Preset.CUSTOM)) {
-                AppUtils.showToast(context, "Cannot export this preset");
+                AppUtils.showToast(context, R.string.compose_settings_cannot_export_preset);
                 return;
             }
             getActivity().runOnUiThread(() ->  {
@@ -592,7 +592,7 @@ public class SettingsFragment extends Fragment {
         Callback<String> onExportPreset = (String prefix) -> {
             final String presetId = FEXCorePresetManager.getSpinnerSelectedId(sFEXCorePreset);
             if (!presetId.startsWith(FEXCorePreset.CUSTOM)) {
-                AppUtils.showToast(context, "Cannot export this preset");
+                AppUtils.showToast(context, R.string.compose_settings_cannot_export_preset);
                 return;
             }
             getActivity().runOnUiThread(() ->  {
@@ -686,10 +686,10 @@ public class SettingsFragment extends Fragment {
 
 	private void showBackupConfirmationDialog() {
         new AlertDialog.Builder(getContext())
-                .setTitle("Backup Data")
-                .setMessage("Do you want to create a backup of the app's data directory?")
-                .setPositiveButton("Yes", (dialog, which) -> backupAppData())
-                .setNegativeButton("No", null)
+                .setTitle(R.string.compose_settings_backup_title)
+                .setMessage(R.string.compose_settings_backup_question)
+                .setPositiveButton(R.string.compose_settings_yes, (dialog, which) -> backupAppData())
+                .setNegativeButton(R.string.compose_settings_no, null)
                 .show();
     }
 
@@ -711,12 +711,12 @@ public class SettingsFragment extends Fragment {
                 });
                 getActivity().runOnUiThread(() -> {
                     preloaderDialog.closeOnUiThread();
-                    AppUtils.showToast(getContext(), "Backup completed: " + backupFile.getPath());
+                    AppUtils.showToast(getContext(), getString(R.string.compose_settings_backup_completed, backupFile.getPath()));
                 });
             } catch (Exception e) {
                 getActivity().runOnUiThread(() -> {
                     preloaderDialog.closeOnUiThread();
-                    AppUtils.showToast(getContext(), "Backup failed.");
+                    AppUtils.showToast(getContext(), R.string.compose_settings_backup_failed);
                 });
             }
         });
@@ -758,7 +758,7 @@ public class SettingsFragment extends Fragment {
                                     Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                             );
                         } catch (SecurityException e) {
-                            AppUtils.showToast(getContext(), "Unable to take persistable permissions: " + e.getMessage());
+                            AppUtils.showToast(getContext(), R.string.persistable_permission_failed);
                         }
 
                         // Convert the URI to an absolute path and display it
@@ -781,7 +781,7 @@ public class SettingsFragment extends Fragment {
                                     Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                             );
                         } catch (SecurityException e) {
-                            AppUtils.showToast(getContext(), "Unable to take persistable permissions: " + e.getMessage());
+                            AppUtils.showToast(getContext(), R.string.persistable_permission_failed);
                         }
 
                         // Convert the URI to an absolute path and display it
@@ -845,7 +845,7 @@ public class SettingsFragment extends Fragment {
     private void onRestoreSuccess() {
         getActivity().runOnUiThread(() -> {
             preloaderDialog.closeOnUiThread();
-            AppUtils.showToast(getContext(), "Data restored successfully.");
+            AppUtils.showToast(getContext(), R.string.restore_success);
             AppUtils.restartApplication(getActivity());  // Restart the app to apply changes
         });
     }
@@ -853,7 +853,7 @@ public class SettingsFragment extends Fragment {
     private void onRestoreFailed() {
         getActivity().runOnUiThread(() -> {
             preloaderDialog.closeOnUiThread();
-            AppUtils.showToast(getContext(), "Data restore failed.");
+            AppUtils.showToast(getContext(), R.string.restore_failed);
         });
 	}
 

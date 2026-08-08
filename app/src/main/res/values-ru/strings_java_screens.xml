@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="folder_picker_app_files">Файлы приложения (контейнеры Wine)</string>
+    <string name="folder_picker_internal_storage">Внутренняя память</string>
+    <string name="folder_picker_sd_card">SD-карта</string>
+    <string name="folder_picker_title">Выбор папки</string>
+    <string name="folder_picker_location">Расположение:</string>
+    <string name="folder_picker_select">✓  Выбрать эту папку</string>
+    <string name="folder_picker_new">+ Создать</string>
+    <string name="folder_picker_up">↑  Вверх</string>
+    <string name="folder_picker_empty_unreadable">(пусто или нет разрешения на чтение)</string>
+    <string name="folder_picker_no_subdirectories">(нет вложенных папок — нажмите «+ Создать»)</string>
+    <string name="folder_picker_folder_name_hint">Название папки</string>
+    <string name="folder_picker_new_folder_title">Новая папка</string>
+    <string name="folder_picker_create">Создать</string>
+    <string name="folder_picker_enter_name">Введите название папки</string>
+    <string name="folder_picker_invalid_name">Название папки не может содержать косую черту</string>
+    <string name="folder_picker_already_exists">Папка уже существует</string>
+    <string name="folder_picker_created">Создано: %1$s</string>
+    <string name="folder_picker_create_failed">Не удалось создать папку</string>
+    <string name="restore_success">Данные успешно восстановлены.</string>
+    <string name="restore_failed">Не удалось восстановить данные.</string>
+    <string name="preset_exported">Предустановка %1$s успешно экспортирована в %2$s</string>
+    <string name="preset_export_failed">Не удалось экспортировать предустановку</string>
+    <string name="active_windows_unnamed">Окно без названия</string>
+    <string name="active_windows_application">Приложение</string>
+    <string name="shortcut_device_unsupported">Возможно, ваше устройство не поддерживается</string>
+    <string name="shortcut_add_failed">Не удалось добавить ярлык.</string>
+    <string name="shortcut_added">Ярлык успешно добавлен.</string>
+    <string name="shortcut_broadcast_failed">Не удалось добавить ярлык через системную рассылку.</string>
+    <string name="store_no_container">Контейнер Wine не найден — сначала создайте его на экране «Контейнеры».</string>
+    <string name="store_default_container">Контейнер %1$d</string>
+    <string name="store_add_game_to">Добавить «%1$s» в…</string>
+    <string name="store_container_load_error">Не удалось загрузить контейнеры: %1$s</string>
+    <string name="open_log_folder">Открыть папку журналов</string>
+    <string name="log_folder_path">Папка журналов: %1$s</string>
+    <string name="installing_percent">Установка… %1$d%%</string>
+    <string name="persistable_permission_failed">Не удалось сохранить доступ к выбранному расположению</string>
+</resources>

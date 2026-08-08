@@ -1,5 +1,9 @@
 package com.winlator.star.store.download
 
+import android.content.Context
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
+
 /**
  * Store-agnostic download model shared by the cross-store Download Manager.
  *
@@ -25,17 +29,30 @@ fun formatDownloadSize(bytes: Long): String = when {
 }
 
 /** Download speed, e.g. "12.4 MB/s". <=0 → "". Shared by the manager, detail page and notification. */
-fun formatDownloadSpeed(bytesPerSec: Long): String =
-    if (bytesPerSec <= 0L) "" else "${formatDownloadSize(bytesPerSec)}/s"
+fun formatDownloadSpeed(context: Context, bytesPerSec: Long): String =
+    if (bytesPerSec <= 0L) ""
+    else ContextCompat.getContextForLanguage(context)
+        .getString(R.string.download_speed_per_second, formatDownloadSize(bytesPerSec))
 
 /** Human ETA, e.g. "<1 min left", "~8 min left", "~1 h 20 m left". Negative → "" (unknown). */
-fun formatEta(seconds: Long): String = when {
+fun formatEta(context: Context, seconds: Long): String = when {
     seconds < 0L    -> ""
-    seconds < 60L   -> "<1 min left"
-    seconds < 3600L -> "~${seconds / 60} min left"
+    seconds < 60L   -> ContextCompat.getContextForLanguage(context)
+        .getString(R.string.download_eta_less_than_minute)
+    seconds < 3600L -> {
+        val minutes = (seconds / 60L).toInt()
+        ContextCompat.getContextForLanguage(context).resources
+            .getQuantityString(R.plurals.download_eta_minutes, minutes, minutes)
+    }
     else            -> {
-        val h = seconds / 3600L; val m = (seconds % 3600L) / 60L
-        if (m == 0L) "~$h h left" else "~$h h $m m left"
+        val localized = ContextCompat.getContextForLanguage(context)
+        val hours = (seconds / 3600L).toInt()
+        val minutes = ((seconds % 3600L) / 60L).toInt()
+        if (minutes == 0) {
+            localized.resources.getQuantityString(R.plurals.download_eta_hours, hours, hours)
+        } else {
+            localized.getString(R.string.download_eta_hours_minutes, hours, minutes)
+        }
     }
 }
 

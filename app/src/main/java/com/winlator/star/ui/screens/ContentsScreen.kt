@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager
@@ -66,7 +67,6 @@ import com.winlator.star.container.ContainerManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.core.TarCompressorUtils
-import com.winlator.star.store.download.formatEta
 import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.SurfaceVariant
 import com.winlator.star.util.ImportEtaTracker
@@ -178,7 +178,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
         ) {
             Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.size(8.dp))
-            Text("Install content from file")
+            Text(stringResource(R.string.compose_content_install_from_file))
         }
 
         Divider(color = MaterialTheme.colorScheme.outline)
@@ -191,7 +191,10 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                     .weight(1f, fill = false),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("No content available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.compose_content_no_content_available),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         } else {
             // Installed (local) content floats to the top of the list.
@@ -243,8 +246,19 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
             confirmButton = {
                 TextButton(onClick = {
                     confirmInstallPrompt = false
-                    filePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP, "Select content file"))
-                }) { Text("Browse files", color = MaterialTheme.colorScheme.primary) }
+                    filePicker.launch(
+                        InAppFilePicker.buildIntent(
+                            context,
+                            InAppFilePicker.WCP,
+                            context.getString(R.string.compose_content_select_content_file),
+                        )
+                    )
+                }) {
+                    Text(
+                        stringResource(R.string.compose_content_browse_files),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             },
             dismissButton = {
                 Row {
@@ -255,7 +269,12 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                             type = "*/*"
                         }
                         filePicker.launch(intent)
-                    }) { Text("Pick via system…", color = MaterialTheme.colorScheme.primary) }
+                    }) {
+                        Text(
+                            stringResource(R.string.compose_content_pick_via_system),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     TextButton(onClick = { confirmInstallPrompt = false }) {
                         Text(context.getString(android.R.string.cancel), color = MaterialTheme.colorScheme.primary)
                     }
@@ -290,9 +309,11 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(Modifier.height(12.dp))
-                        val pctLabel = "${(fraction * 100).toInt()}%"
-                        val etaLabel = loadingEta?.takeIf { it.isNotEmpty() }?.let { " · $it" } ?: ""
-                        Text("$msg  $pctLabel$etaLabel", color = MaterialTheme.colorScheme.onSurface)
+                        val percent = (fraction * 100).toInt()
+                        val progressText = loadingEta?.takeIf { it.isNotEmpty() }?.let { eta ->
+                            stringResource(R.string.compose_content_progress_with_eta, msg, percent, eta)
+                        } ?: stringResource(R.string.compose_content_progress, msg, percent)
+                        Text(progressText, color = MaterialTheme.colorScheme.onSurface)
                     } else {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.height(16.dp))
@@ -382,14 +403,19 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
 @Composable
 private fun ContentInfoDialog(
     profile: ContentProfile,
-    confirmLabel: String = "OK",
+    confirmLabel: String? = null,
     onConfirm: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
+        title = {
+            Text(
+                stringResource(R.string.compose_content_content_info),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -397,16 +423,16 @@ private fun ContentInfoDialog(
                     .verticalScroll(rememberScrollState()),
             ) {
                 // ── Info section ──────────────────────────────────────────────
-                SectionBox(header = "Info") {
-                    InfoRow("Type",    profile.type.toString())
-                    InfoRow("Version", profile.verName)
-                    InfoRow("Code",    profile.verCode.toString())
+                SectionBox(header = stringResource(R.string.compose_content_info)) {
+                    InfoRow(stringResource(R.string.compose_content_type), profile.type.toString())
+                    InfoRow(stringResource(R.string.compose_content_version), profile.verName)
+                    InfoRow(stringResource(R.string.compose_content_code), profile.verCode.toString())
                 }
 
                 // ── Description section ───────────────────────────────────────
                 if (!profile.desc.isNullOrEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    SectionBox(header = "Description") {
+                    SectionBox(header = stringResource(R.string.compose_content_description)) {
                         Text(
                             text = profile.desc,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -418,7 +444,7 @@ private fun ContentInfoDialog(
                 // ── Files section ─────────────────────────────────────────────
                 if (!profile.fileList.isNullOrEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    SectionBox(header = "Files") {
+                    SectionBox(header = stringResource(R.string.compose_content_files)) {
                         profile.fileList.forEach { file ->
                             Text(
                                 text = "${file.source} → ${file.target}",
@@ -432,10 +458,20 @@ private fun ContentInfoDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(confirmLabel, color = MaterialTheme.colorScheme.primary) }
+            TextButton(onClick = onConfirm) {
+                Text(
+                    confirmLabel ?: stringResource(R.string.compose_content_ok),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    stringResource(R.string.compose_content_cancel),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         },
     )
 }
@@ -449,16 +485,24 @@ private fun UntrustedDialog(
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        title = { Text("Warning", color = Color(0xFFFF8A80)) },
+        title = {
+            Text(
+                stringResource(R.string.compose_content_warning),
+                color = Color(0xFFFF8A80),
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
             ) {
-                SectionBox(header = "Unverified Files", borderColor = Color(0xFFFF8A80)) {
+                SectionBox(
+                    header = stringResource(R.string.compose_content_unverified_files),
+                    borderColor = Color(0xFFFF8A80),
+                ) {
                     Text(
-                        "These files could not be verified. Continue only if you trust the source.",
+                        stringResource(R.string.compose_content_unverified_files_warning),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -475,10 +519,20 @@ private fun UntrustedDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Continue", color = MaterialTheme.colorScheme.primary) }
+            TextButton(onClick = onConfirm) {
+                Text(
+                    stringResource(R.string.compose_content_continue),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    stringResource(R.string.compose_content_cancel),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         },
     )
 }
@@ -512,7 +566,11 @@ private fun SectionBox(
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
-        Text("$label: ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Text(
+            stringResource(R.string.compose_content_label_with_colon, label),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
         Text(value,      color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -548,8 +606,16 @@ private fun ContentItem(
         Column(modifier = Modifier
             .weight(1f)
             .padding(horizontal = 12.dp)) {
-            Text("Version: ${profile.verName}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            Text("Code: ${profile.verCode}",    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                stringResource(R.string.compose_content_version_value, profile.verName),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                stringResource(R.string.compose_content_code_value, profile.verCode.toString()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         if (!isLocal) {
@@ -557,7 +623,11 @@ private fun ContentItem(
                 CircularProgressIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 3.dp)
             } else {
                 IconButton(onClick = onDownload) {
-                    Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Filled.Download,
+                        contentDescription = stringResource(R.string.compose_content_download),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
@@ -565,14 +635,18 @@ private fun ContentItem(
         if (isLocal) {
             Icon(
                 imageVector = Icons.Filled.CheckCircle,
-                contentDescription = "Installed",
+                contentDescription = stringResource(R.string.compose_content_installed),
                 tint = Color(0xFF4FC3F7), // intentional: distinct "installed" status blue, not the accent
 
                 modifier = Modifier.size(24.dp),
             )
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.compose_content_options),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 DropdownMenu(
                     expanded = menuExpanded,
@@ -580,13 +654,13 @@ private fun ContentItem(
                     modifier = Modifier.outlinedMenuCard(),
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Info") },
+                        text = { Text(stringResource(R.string.compose_content_info)) },
                         leadingIcon = { Icon(Icons.Filled.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                         onClick = { menuExpanded = false; onInfo() },
                     )
                     MenuItemDivider()
                     DropdownMenuItem(
-                        text = { Text("Remove") },
+                        text = { Text(stringResource(R.string.compose_content_remove)) },
                         leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                         onClick = { menuExpanded = false; onRemove() },
                     )
@@ -641,7 +715,10 @@ private fun launchInstall(
             activity.runOnUiThread {
                 onDone()
                 onDialog(InstallDialogState.Alert(
-                    message  = "${context.getString(R.string.install_failed)}: ${context.getString(msgId)}",
+                    message = context.getString(
+                        R.string.compose_content_install_failed_reason,
+                        context.getString(msgId),
+                    ),
                     onDismiss = {},
                 ))
             }
@@ -694,7 +771,9 @@ private fun launchInstall(
             if (total > 0L) {
                 val progress = TarCompressorUtils.OnReadProgressListener { bytesRead, srcTotal ->
                     val p = etaTracker.update(bytesRead, if (srcTotal > 0L) srcTotal else total)
-                    activity.runOnUiThread { onProgress(p.pct / 100f, formatEta(p.etaSeconds)) }
+                    activity.runOnUiThread {
+                        onProgress(p.pct / 100f, formatContentEta(context, p.etaSeconds))
+                    }
                 }
                 vm.manager.extraContentFile(uri, total, progress, callback)
             } else {
@@ -709,8 +788,10 @@ private fun launchInstall(
                 onDone()
                 onDialog(
                     InstallDialogState.Alert(
-                        message = "${context.getString(R.string.install_failed)}: " +
+                        message = context.getString(
+                            R.string.compose_content_install_failed_reason,
                             context.getString(R.string.file_cannot_be_recognied),
+                        ),
                         onDismiss = {},
                     )
                 )

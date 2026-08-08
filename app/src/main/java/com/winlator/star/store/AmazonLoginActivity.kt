@@ -7,7 +7,7 @@ import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -17,13 +17,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
+import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
-class AmazonLoginActivity : ComponentActivity() {
+class AmazonLoginActivity : AppCompatActivity() {
 
     private var pendingVerifier: String? = null
     private var pendingSerial: String? = null
@@ -86,7 +87,7 @@ class AmazonLoginActivity : ComponentActivity() {
                 Log.e(TAG, "Device registration failed")
                 withContext(Dispatchers.Main) {
                     codeCaptured.set(false)
-                    resultBarMsg = "Amazon login failed, please try again"
+                            resultBarMsg = getString(R.string.store_amazon_login_failed)
                 }
                 return@launch
             }

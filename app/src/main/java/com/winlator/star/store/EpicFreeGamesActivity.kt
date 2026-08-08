@@ -4,7 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,6 +53,8 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import androidx.lifecycle.lifecycleScope
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 private data class FreeGameEntry(
     val title: String,
@@ -60,19 +63,20 @@ private data class FreeGameEntry(
     val dateRange: String,
 )
 
-class EpicFreeGamesActivity : ComponentActivity() {
+class EpicFreeGamesActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "BH_EPIC_FREE"
     }
 
-    private var statusText by mutableStateOf("Loading free games\u2026")
+    private var statusText by mutableStateOf("")
     private var isLoading by mutableStateOf(true)
     private var currentFree by mutableStateOf<List<FreeGameEntry>>(emptyList())
     private var upcomingFree by mutableStateOf<List<FreeGameEntry>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        statusText = getString(com.winlator.star.R.string.epic_free_loading)
         setContent {
             WinlatorTheme {
                 EpicFreeGamesScreen(
@@ -110,7 +114,7 @@ class EpicFreeGamesActivity : ComponentActivity() {
                 if (code != 200) {
                     conn.disconnect()
                     withContext(Dispatchers.Main) {
-                        setStatus("Could not load free games (HTTP $code)", false)
+                        setStatus(getString(com.winlator.star.R.string.epic_free_http_error, code), false)
                     }
                     return@launch
                 }
@@ -128,7 +132,9 @@ class EpicFreeGamesActivity : ComponentActivity() {
                     ?.optJSONArray("elements")
 
                 if (elements == null) {
-                    withContext(Dispatchers.Main) { setStatus("No data returned from Epic", false) }
+                    withContext(Dispatchers.Main) {
+                        setStatus(getString(com.winlator.star.R.string.epic_free_no_data), false)
+                    }
                     return@launch
                 }
 
@@ -137,7 +143,9 @@ class EpicFreeGamesActivity : ComponentActivity() {
 
                 for (i in 0 until elements.length()) {
                     val el = elements.getJSONObject(i)
-                    val title = el.optString("title", "Unknown")
+                    val title = el.optString("title").ifBlank {
+                        getString(com.winlator.star.R.string.epic_free_unknown_game)
+                    }
 
                     var pageSlug = ""
                     val catalogNs = el.optJSONObject("catalogNs")
@@ -229,18 +237,30 @@ class EpicFreeGamesActivity : ComponentActivity() {
                     upcomingFree = upcoming
                     isLoading = false
                     if (current.isEmpty() && upcoming.isEmpty()) {
-                        setStatus("No free games available right now", false)
+                        setStatus(getString(com.winlator.star.R.string.epic_free_none_available), false)
                     } else {
+                        val currentLabel = resources.getQuantityString(
+                            com.winlator.star.R.plurals.epic_free_now_count,
+                            current.size,
+                            current.size,
+                        )
+                        val upcomingLabel = if (upcoming.isEmpty()) "" else resources.getQuantityString(
+                            com.winlator.star.R.plurals.epic_free_coming_count,
+                            upcoming.size,
+                            upcoming.size,
+                        )
                         setStatus(
-                            "${current.size} free now" +
-                                    (if (upcoming.isEmpty()) "" else "  \u2022  ${upcoming.size} coming soon"),
+                            if (upcomingLabel.isEmpty()) currentLabel
+                            else getString(com.winlator.star.R.string.epic_free_status_joined, currentLabel, upcomingLabel),
                             false,
                         )
                     }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "fetchFreeGames failed: ${e.message}")
-                withContext(Dispatchers.Main) { setStatus("Failed to load free games", false) }
+                withContext(Dispatchers.Main) {
+                    setStatus(getString(com.winlator.star.R.string.epic_free_load_failed), false)
+                }
             }
         }
     }
@@ -254,22 +274,19 @@ class EpicFreeGamesActivity : ComponentActivity() {
         val s = formatIsoDate(start)
         val e = formatIsoDate(end)
         if (s.isNotEmpty() && e.isNotEmpty()) return "$s \u2192 $e"
-        if (s.isNotEmpty()) return "From $s"
-        if (e.isNotEmpty()) return "Until $e"
+        if (s.isNotEmpty()) return getString(com.winlator.star.R.string.epic_free_from_date, s)
+        if (e.isNotEmpty()) return getString(com.winlator.star.R.string.epic_free_until_date, e)
         return ""
     }
 
     private fun formatIsoDate(iso: String): String {
         if (iso.length < 10) return ""
         return try {
-            val parts = iso.substring(0, 10).split("-")
-            if (parts.size < 3) return iso.substring(0, 10)
-            val month = parts[1].toInt()
-            val day = parts[2].toInt()
-            val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-            val mon = if (month in 1..12) months[month - 1] else parts[1]
-            "$mon $day"
+            val locale = resources.configuration.locales[0]
+            val parser = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).apply { isLenient = false }
+            val formatter = SimpleDateFormat("MMM d", locale)
+            val parsed = parser.parse(iso.substring(0, 10))
+            if (parsed != null) formatter.format(parsed) else iso.substring(0, 10)
         } catch (_: Exception) {
             iso.substring(0, 10)
         }
@@ -304,7 +321,7 @@ private fun EpicFreeGamesScreen(
                 modifier = Modifier.height(40.dp),
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp) }
             Text(
-                text = "Free Games",
+                text = stringResource(com.winlator.star.R.string.epic_free_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = StoreStyle.accent(Store.EPIC), // Epic brand blue (store identity)
@@ -344,7 +361,7 @@ private fun EpicFreeGamesScreen(
         ) {
             if (currentFree.isNotEmpty()) {
                 item {
-                    SectionLabel("FREE THIS WEEK", Color(0xFF00C853))
+                    SectionLabel(stringResource(com.winlator.star.R.string.epic_free_this_week), Color(0xFF00C853))
                 }
                 items(currentFree, key = { it.title + "_current" }) { game ->
                     FreeGameCard(game = game, isFree = true, onClick = { onGameClick(game) })
@@ -352,7 +369,7 @@ private fun EpicFreeGamesScreen(
             }
             if (upcomingFree.isNotEmpty()) {
                 item {
-                    SectionLabel("FREE NEXT WEEK", Color(0xFFFFAA00))
+                    SectionLabel(stringResource(com.winlator.star.R.string.epic_free_next_week), Color(0xFFFFAA00))
                 }
                 items(upcomingFree, key = { it.title + "_upcoming" }) { game ->
                     FreeGameCard(game = game, isFree = false, onClick = { onGameClick(game) })
@@ -398,7 +415,10 @@ private fun FreeGameCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (isFree) "FREE" else "SOON",
+                text = stringResource(
+                    if (isFree) com.winlator.star.R.string.epic_free_badge_free
+                    else com.winlator.star.R.string.epic_free_badge_soon,
+                ),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isFree) Color(0xFF00C853) else Color(0xFFFFAA00),

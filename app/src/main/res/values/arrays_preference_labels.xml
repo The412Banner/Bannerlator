@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="displayResolutionVariantEntries">
+        <item>Native</item><item>Scaled</item><item>Exact</item><item>Custom</item>
+    </string-array>
+    <string-array name="forceOrientationEntries">
+        <item>Auto</item><item>Portrait</item><item>Landscape</item>
+        <item>Reverse portrait</item><item>Reverse landscape</item>
+    </string-array>
+    <string-array name="userActionsEntries">
+        <item>No action</item>
+        <item>Toggle soft keyboard</item>
+        <item>Toggle additional key bar</item>
+        <item>Open preferences</item>
+        <item>Release pointer and keyboard capture</item>
+        <item>Toggle fullscreen</item>
+        <item>Restart activity</item>
+        <item>Exit</item>
+    </string-array>
+    <string-array name="userActionsVolumeDownEntries">
+        <item>No action</item><item>Toggle soft keyboard</item><item>Toggle additional key bar</item>
+        <item>Open preferences</item><item>Release pointer and keyboard capture</item>
+        <item>Toggle fullscreen</item><item>Restart activity</item><item>Exit</item><item>Send volume down</item>
+    </string-array>
+    <string-array name="userActionsVolumeUpEntries">
+        <item>No action</item><item>Toggle soft keyboard</item><item>Toggle additional key bar</item>
+        <item>Open preferences</item><item>Release pointer and keyboard capture</item>
+        <item>Toggle fullscreen</item><item>Restart activity</item><item>Exit</item><item>Send volume up</item>
+    </string-array>
+    <string-array name="userActionsMediaKeyEntries">
+        <item>No action</item><item>Toggle soft keyboard</item><item>Toggle additional key bar</item>
+        <item>Open preferences</item><item>Release pointer and keyboard capture</item>
+        <item>Toggle fullscreen</item><item>Restart activity</item><item>Exit</item><item>Send media action</item>
+    </string-array>
+</resources>

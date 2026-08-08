@@ -3,7 +3,7 @@ package com.winlator.star
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +26,7 @@ import java.io.File
  *  - {@code pickerTitle}      optional header title.
  * Result: {@code selectedFile} (absolute path) on RESULT_OK.
  */
-class FilePickerActivity : ComponentActivity() {
+class FilePickerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

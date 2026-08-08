@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_epic_game_detail_install">Install</string>
+    <string name="compose_epic_game_detail_cancel_download">Cancel</string>
+    <string name="compose_epic_game_detail_cancel">Cancel</string>
+    <string name="compose_epic_game_detail_launch">Launch</string>
+    <string name="compose_epic_game_detail_uninstall">Uninstall</string>
+    <string name="compose_epic_game_detail_set_executable">Set .exe…</string>
+    <string name="compose_epic_game_detail_reinstall">Reinstall</string>
+    <string name="compose_epic_game_detail_game">Game</string>
+    <string name="compose_epic_game_detail_unknown">Unknown</string>
+    <string name="compose_epic_game_detail_unknown_error">Unknown error</string>
+    <string name="compose_epic_game_detail_error">Error: %1$s</string>
+
+    <string name="compose_epic_game_detail_fetching">Fetching…</string>
+    <string name="compose_epic_game_detail_fetching_manifest">Fetching manifest…</string>
+    <string name="compose_epic_game_detail_downloading_percent">Downloading… %1$d%%</string>
+    <string name="compose_epic_game_detail_login_required">Login required</string>
+    <string name="compose_epic_game_detail_manifest_fetch_failed">Failed to fetch manifest</string>
+    <string name="compose_epic_game_detail_download_failed">Download failed</string>
+    <string name="compose_epic_game_detail_no_executable_found">No executable found</string>
+
+    <string name="compose_epic_game_detail_no_save_folder">No save folder selected</string>
+    <string name="compose_epic_game_detail_save_folder_set">Save folder set</string>
+    <string name="compose_epic_game_detail_set_save_folder_first">Select a save folder first</string>
+
+    <string name="compose_epic_game_detail_executable_label">.exe: %1$s</string>
+    <string name="compose_epic_game_detail_no_executable_files">No .exe files found</string>
+    <string name="compose_epic_game_detail_executable_set">Executable set: %1$s</string>
+    <string name="compose_epic_game_detail_select_executable">Select game executable</string>
+
+    <string name="compose_epic_game_detail_uninstall_title">Uninstall “%1$s”?</string>
+    <string name="compose_epic_game_detail_uninstall_message">This will delete all installed game files.</string>
+    <string name="compose_epic_game_detail_uninstalled">“%1$s” uninstalled</string>
+
+    <string name="compose_epic_game_detail_size_gigabytes">%1$.1f GB</string>
+    <string name="compose_epic_game_detail_size_megabytes">%1$.0f MB</string>
+    <string name="compose_epic_game_detail_size_bytes">%1$d B</string>
+
+    <string name="compose_epic_game_detail_checking">Checking…</string>
+    <string name="compose_epic_game_detail_updating">Updating…</string>
+    <string name="compose_epic_game_detail_update_server_unavailable">Could not reach the update server.</string>
+    <string name="compose_epic_game_detail_up_to_date">Up to date ✓</string>
+    <string name="compose_epic_game_detail_update_available">Update available!\nInstalled: %1$s…  →  Latest: %2$s…</string>
+    <string name="compose_epic_game_detail_update_check_failed">Update check failed.</string>
+
+    <string name="compose_epic_game_detail_dlc_manifest_fetch_failed">Failed to fetch the DLC manifest</string>
+    <string name="compose_epic_game_detail_dlc_download_failed">DLC download failed</string>
+    <string name="compose_epic_game_detail_dlc_installed">“%1$s” installed</string>
+    <string name="compose_epic_game_detail_dlc_install_error">Could not install the DLC</string>
+
+    <string name="compose_epic_game_detail_preparing_upload">Preparing upload…</string>
+    <string name="compose_epic_game_detail_uploading_saves">Uploading saves…</string>
+    <string name="compose_epic_game_detail_upload_complete">Save upload complete</string>
+    <string name="compose_epic_game_detail_upload_failed">Could not upload saves</string>
+    <string name="compose_epic_game_detail_preparing_download">Preparing download…</string>
+    <string name="compose_epic_game_detail_downloading_saves">Downloading saves…</string>
+    <string name="compose_epic_game_detail_download_complete">Save download complete</string>
+    <string name="compose_epic_game_detail_cloud_download_failed">Could not download saves</string>
+
+    <string name="compose_epic_game_detail_app_label">App: %1$s</string>
+    <string name="compose_epic_game_detail_updates">Updates</string>
+    <string name="compose_epic_game_detail_install_before_updates">Install the game first to check for updates.</string>
+    <string name="compose_epic_game_detail_installed_version">Installed: %1$s…</string>
+    <string name="compose_epic_game_detail_version_not_recorded">Version not recorded — tap Check to verify</string>
+    <string name="compose_epic_game_detail_update_now">Update Now</string>
+    <string name="compose_epic_game_detail_check_for_updates">Check for Updates</string>
+
+    <string name="compose_epic_game_detail_dlc">DLC</string>
+    <string name="compose_epic_game_detail_no_dlc">No DLC in your library for this game</string>
+    <string name="compose_epic_game_detail_dlc_data_error">Error reading DLC data</string>
+    <string name="compose_epic_game_detail_unknown_dlc">Unknown DLC</string>
+    <string name="compose_epic_game_detail_installed_marker">✓ Installed</string>
+    <plurals name="compose_epic_game_detail_owned_dlc_count">
+        <item quantity="one">%1$d DLC owned</item>
+        <item quantity="few">%1$d DLC owned</item>
+        <item quantity="many">%1$d DLC owned</item>
+        <item quantity="other">%1$d DLC owned</item>
+    </plurals>
+
+    <string name="compose_epic_game_detail_cloud_saves">Cloud Saves</string>
+    <string name="compose_epic_game_detail_browse">Browse</string>
+    <string name="compose_epic_game_detail_upload_saves">Upload Saves</string>
+    <string name="compose_epic_game_detail_download_saves">Download Saves</string>
+</resources>

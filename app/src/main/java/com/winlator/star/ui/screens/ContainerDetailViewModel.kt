@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
@@ -52,6 +53,8 @@ data class WinComponentEntry(val key: String, var selectedIndex: Int, val label:
 class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     private val context: Context = app.applicationContext
+    private val localizedContext: Context
+        get() = ContextCompat.getContextForLanguage(getApplication())
     private lateinit var manager: ContainerManager
     private lateinit var contentsManager: ContentsManager
 
@@ -83,6 +86,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var containerName by mutableStateOf("")
 
     var screenSizeEntries by mutableStateOf(emptyList<String>()); private set
+    var customScreenLabel by mutableStateOf(
+        localizedContext.resources.getStringArray(R.array.screen_size_entries).firstOrNull().orEmpty()
+    ); private set
     var selectedScreenSize by mutableStateOf(Container.DEFAULT_SCREEN_SIZE)
     var customWidth  by mutableStateOf("")
     var customHeight by mutableStateOf("")
@@ -345,10 +351,11 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun loadStaticResources() {
-        val res = context.resources
+        val res = localizedContext.resources
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
 
         screenSizeEntries = res.getStringArray(R.array.screen_size_entries).toList()
+        customScreenLabel = screenSizeEntries.firstOrNull().orEmpty()
 
         // Wine versions (base + downloaded profiles)
         val wineList = res.getStringArray(R.array.wine_entries).toMutableList()
@@ -372,9 +379,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         lcAllEntries      = res.getStringArray(R.array.some_lc_all).toList()
         startupSelectionEntries = res.getStringArray(R.array.startup_selection_entries).toList()
         mouseWarpEntries  = listOf(
-            context.getString(R.string.disable),
-            context.getString(R.string.enable),
-            context.getString(R.string.force)
+            localizedContext.getString(R.string.disable),
+            localizedContext.getString(R.string.enable),
+            localizedContext.getString(R.string.force)
         )
         primaryControllerEntries = res.getStringArray(R.array.xr_controllers).toList()
         xrKeycodeNames = XKeycode.values().map { it.name }
@@ -390,7 +397,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         fexCorePresetIds     = fexPresets.map { it.id }
 
         // MIDI
-        val midiList = mutableListOf("-- ${context.getString(R.string.disabled)} --")
+        val midiList = mutableListOf("-- ${localizedContext.getString(R.string.disabled)} --")
         midiList.add(MidiManager.DEFAULT_SF2_FILE)
         try {
             val sfDir = File(context.filesDir, MidiManager.SF_DIR)
@@ -440,7 +447,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         val template = buildTemplateContainer(seedArch)
         val seed = c ?: template
 
-        containerName = if (c != null) c.name else "${context.getString(R.string.container)}-${manager.getNextContainerId()}"
+        containerName = if (c != null) c.name else "${localizedContext.getString(R.string.container)}-${manager.getNextContainerId()}"
         wineVersionEnabled = !isEditMode
 
         // Screen size
@@ -449,9 +456,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             StringUtils.parseIdentifier(it).equals(ssValue, ignoreCase = true)
         }
         if (ssFound >= 0) {
-            selectedScreenSize = ssValue
+            selectedScreenSize = screenSizeEntries[ssFound]
         } else {
-            selectedScreenSize = "custom"
+            selectedScreenSize = customScreenLabel
             val parts = ssValue.split("x")
             customWidth  = parts.getOrElse(0) { "" }
             customHeight = parts.getOrElse(1) { "" }
@@ -520,7 +527,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // on load — not only after the user re-picks from the list.
         selectedRenderer = identifierToDisplay(seed?.renderer ?: "opengl", rendererEntries)
 
-        val locale = java.util.Locale.getDefault()
+        // AppCompat's per-app locale may update Locale.getDefault() on Android 12 and older.
+        // The UI-language picker must not silently change the Windows guest locale for new
+        // containers, so continue deriving LC_ALL from the phone's system configuration.
+        val locale = android.content.res.Resources.getSystem().configuration.locales[0]
         lcAll = seed?.getLC_ALL() ?: "${locale.language}_${locale.country}.UTF-8"
 
         // Input type
@@ -708,7 +718,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun loadWinComponents(wincomponents: String) {
         winComponents.clear()
-        val res = context.resources
+        val res = localizedContext.resources
         for (parts in com.winlator.star.core.KeyValueSet(wincomponents)) {
             val key   = parts[0]
             val idx   = parts[1].toIntOrNull() ?: 0
@@ -819,7 +829,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         isSaving = true
-        PreloaderState.show(context.getString(R.string.creating_container))
+        PreloaderState.show(localizedContext.getString(R.string.creating_container))
         val cleanup = {
             PreloaderState.hide()
             isSaving = false
@@ -1168,7 +1178,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun buildScreenSize(): String {
-        if (selectedScreenSize.equals("custom", ignoreCase = true)) {
+        if (selectedScreenSize == customScreenLabel) {
             val w = customWidth.trim()
             val h = customHeight.trim()
             if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {

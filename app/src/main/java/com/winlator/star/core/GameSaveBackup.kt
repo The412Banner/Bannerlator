@@ -6,6 +6,8 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.xenvironment.ImageFs
 import java.io.BufferedInputStream
@@ -46,9 +48,16 @@ object GameSaveBackup {
      * segment to [ImageFs.USER], so steamuser→xuser and xuser→xuser both land correctly.
      */
     enum class BackupLayout { GAMEHUB, WINLATOR }
+    enum class BackupError { NO_SAVE_PROFILE, NO_SAVE_FILES }
 
     data class RestoreResult(val ok: Boolean, val filesWritten: Int, val error: String?)
-    data class BackupResult(val ok: Boolean, val path: String?, val fileCount: Int, val error: String?)
+    data class BackupResult(
+        val ok: Boolean,
+        val path: String?,
+        val fileCount: Int,
+        val error: String?,
+        val errorKind: BackupError? = null,
+    )
 
     // ---------------------------------------------------------------- restore (import)
 
@@ -64,12 +73,17 @@ object GameSaveBackup {
 
     /** Unzips [uri] into [container]'s drive_c off the UI thread; posts [onResult] on the main thread. */
     fun restore(context: Context, uri: Uri, container: Container, onResult: (RestoreResult) -> Unit) {
-        val appContext = context.applicationContext
+        val appContext = ContextCompat.getContextForLanguage(context.applicationContext)
         Thread {
             val res = try {
                 doRestore(appContext, uri, container)
             } catch (e: Exception) {
-                RestoreResult(false, 0, e.message ?: e.javaClass.simpleName)
+                android.util.Log.e("GameSaveBackup", "Save restore failed", e)
+                RestoreResult(
+                    false,
+                    0,
+                    appContext.getString(R.string.final_errors_unknown_error),
+                )
             }
             Handler(Looper.getMainLooper()).post { onResult(res) }
         }.start()
@@ -84,7 +98,11 @@ object GameSaveBackup {
         var written = 0
 
         val input = context.contentResolver.openInputStream(uri)
-            ?: return RestoreResult(false, 0, "Could not open backup file")
+            ?: return RestoreResult(
+                false,
+                0,
+                context.getString(R.string.compose_steam_saves_could_not_open_backup_file),
+            )
 
         input.use { rawIn ->
             ZipInputStream(BufferedInputStream(rawIn)).use { zis ->
@@ -175,9 +193,19 @@ object GameSaveBackup {
             val res = try {
                 doBackup(container, roots, gameName, layout)
             } catch (e: Exception) {
-                BackupResult(false, null, 0, e.message ?: e.javaClass.simpleName)
+                android.util.Log.e("GameSaveBackup", "Save backup failed", e)
+                BackupResult(
+                    false,
+                    null,
+                    0,
+                    ContextCompat.getContextForLanguage(context)
+                        .getString(R.string.final_errors_unknown_error),
+                )
             }
-            Handler(Looper.getMainLooper()).post { onResult(res) }
+            val localized = if (res.error == null && res.errorKind != null) {
+                res.copy(error = backupErrorMessage(context, res.errorKind))
+            } else res
+            Handler(Looper.getMainLooper()).post { onResult(localized) }
         }.start()
     }
 
@@ -213,7 +241,7 @@ object GameSaveBackup {
     ): BackupResult {
         val profile = File(container.rootDir, ".wine/drive_c/users/${ImageFs.USER}")
         if (!profile.isDirectory) {
-            return BackupResult(false, null, 0, "No save profile found in this container")
+            return BackupResult(false, null, 0, null, BackupError.NO_SAVE_PROFILE)
         }
 
         // The only per-layout state: the entry root prefix + which user segment to write.
@@ -256,9 +284,21 @@ object GameSaveBackup {
 
         if (count == 0) {
             outFile.delete()
-            return BackupResult(false, null, 0, "No save files to back up")
+            return BackupResult(false, null, 0, null, BackupError.NO_SAVE_FILES)
         }
         return BackupResult(true, outFile.absolutePath, count, null)
+    }
+
+    /** Resolve a stable backup failure kind at the UI boundary without branching on display text. */
+    fun backupErrorMessage(context: Context, errorKind: BackupError?): String? {
+        val localizedContext = ContextCompat.getContextForLanguage(context)
+        return when (errorKind) {
+            BackupError.NO_SAVE_PROFILE ->
+                localizedContext.getString(R.string.compose_steam_saves_no_save_profile_in_container)
+            BackupError.NO_SAVE_FILES ->
+                localizedContext.getString(R.string.compose_steam_saves_no_save_files_to_back_up)
+            null -> null
+        }
     }
 
     /** AppData/Local/Temp and crash dumps are pure churn, never save data. */

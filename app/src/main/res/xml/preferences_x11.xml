@@ -10,7 +10,7 @@
         <Preference app:key="version" app:title="@string/pref_version" />
     </PreferenceScreen>
     <PreferenceScreen app:key="output">
-        <ListPreference app:key="displayResolutionMode" app:defaultValue="native" app:entries="@array/displayResolutionVariants" app:entryValues="@array/displayResolutionVariants"  />
+        <ListPreference app:key="displayResolutionMode" app:defaultValue="native" app:entries="@array/displayResolutionVariantEntries" app:entryValues="@array/displayResolutionVariants"  />
         <SeekBarPreference app:key="displayScale" app:defaultValue="100" app:min="30" android:max="300" app:seekBarIncrement="10" app:showSeekBarValue="true" app:updatesContinuously="true" />
         <ListPreference app:key="displayResolutionExact" app:defaultValue="1280x1024" app:entries="@array/displayResolution" app:entryValues="@array/displayResolution" tools:ignore="DuplicateSpeakableTextCheck" />
         <EditTextPreference app:key="displayResolutionCustom" app:defaultValue="1280x1024" app:useSimpleSummaryProvider="true" />
@@ -19,7 +19,7 @@
         <SwitchPreferenceCompat app:key="Reseed" app:defaultValue="true" />
         <SwitchPreferenceCompat app:key="PIP" app:defaultValue="false" />
         <SwitchPreferenceCompat app:key="fullscreen" app:defaultValue="false" />
-        <ListPreference app:key="forceOrientation" app:defaultValue="no" app:entries="@array/forceOrientationVariants" app:entryValues="@array/forceOrientationVariants" />
+        <ListPreference app:key="forceOrientation" app:defaultValue="no" app:entries="@array/forceOrientationEntries" app:entryValues="@array/forceOrientationVariants" />
         <SwitchPreferenceCompat app:key="hideCutout" app:defaultValue="false" />
         <SwitchPreferenceCompat app:defaultValue="true" app:key="keepScreenOn" />
     </PreferenceScreen>
@@ -64,14 +64,14 @@
         <EditTextPreference app:key="extra_keys_config" />
     </PreferenceScreen>
     <PreferenceScreen app:key="userActions">
-        <ListPreference app:key="swipeUpAction" app:defaultValue="no action" app:entries="@array/userActionsValues" app:entryValues="@array/userActionsValues" />
-        <ListPreference app:key="swipeDownAction" app:defaultValue="toggle additional key bar" app:entries="@array/userActionsValues" app:entryValues="@array/userActionsValues" />
-        <ListPreference app:key="volumeUpAction" app:defaultValue="no action" app:entries="@array/userActionsVolumeUpValues" app:entryValues="@array/userActionsVolumeUpValues" />
-        <ListPreference app:key="volumeDownAction" app:defaultValue="no action" app:entries="@array/userActionsVolumeDownValues" app:entryValues="@array/userActionsVolumeDownValues" />
-        <ListPreference app:key="backButtonAction" app:defaultValue="toggle soft keyboard" app:entries="@array/userActionsValues" app:entryValues="@array/userActionsValues" />
-        <ListPreference app:key="notificationTapAction" app:defaultValue="open preferences" app:entries="@array/userActionsValues" app:entryValues="@array/userActionsValues" />
-        <ListPreference app:key="notificationButton0Action" app:defaultValue="open preferences" app:entries="@array/userActionsValues" app:entryValues="@array/userActionsValues" />
-        <ListPreference app:key="notificationButton1Action" app:defaultValue="exit" app:entries="@array/userActionsValues" app:entryValues="@array/userActionsValues" />
-        <ListPreference app:key="mediaKeysAction" app:defaultValue="no action" app:entries="@array/userActionsMediaKeyValues" app:entryValues="@array/userActionsMediaKeyValues" />
+        <ListPreference app:key="swipeUpAction" app:defaultValue="no action" app:entries="@array/userActionsEntries" app:entryValues="@array/userActionsValues" />
+        <ListPreference app:key="swipeDownAction" app:defaultValue="toggle additional key bar" app:entries="@array/userActionsEntries" app:entryValues="@array/userActionsValues" />
+        <ListPreference app:key="volumeUpAction" app:defaultValue="no action" app:entries="@array/userActionsVolumeUpEntries" app:entryValues="@array/userActionsVolumeUpValues" />
+        <ListPreference app:key="volumeDownAction" app:defaultValue="no action" app:entries="@array/userActionsVolumeDownEntries" app:entryValues="@array/userActionsVolumeDownValues" />
+        <ListPreference app:key="backButtonAction" app:defaultValue="toggle soft keyboard" app:entries="@array/userActionsEntries" app:entryValues="@array/userActionsValues" />
+        <ListPreference app:key="notificationTapAction" app:defaultValue="open preferences" app:entries="@array/userActionsEntries" app:entryValues="@array/userActionsValues" />
+        <ListPreference app:key="notificationButton0Action" app:defaultValue="open preferences" app:entries="@array/userActionsEntries" app:entryValues="@array/userActionsValues" />
+        <ListPreference app:key="notificationButton1Action" app:defaultValue="exit" app:entries="@array/userActionsEntries" app:entryValues="@array/userActionsValues" />
+        <ListPreference app:key="mediaKeysAction" app:defaultValue="no action" app:entries="@array/userActionsMediaKeyEntries" app:entryValues="@array/userActionsMediaKeyValues" />
     </PreferenceScreen>
 </PreferenceScreen>

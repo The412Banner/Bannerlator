@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_manager_install_dir_missing">Install directory is not set.</string>
+    <string name="download_manager_no_executable">No .exe file was found in the install directory.</string>
+    <string name="download_manager_uninstalled">%1$s uninstalled</string>
+    <string name="download_manager_remove_incomplete">Couldn\'t fully remove %1$s</string>
+    <string name="download_manager_title">Downloads &amp; Library</string>
+    <string name="download_manager_back">Back</string>
+    <string name="download_manager_clear_finished">Clear ✓</string>
+    <string name="download_manager_empty">No downloads or installed games yet.</string>
+    <string name="download_manager_downloading">Downloading</string>
+    <string name="download_manager_library">Library</string>
+    <string name="download_manager_installed_update">● Installed — Update available</string>
+    <string name="download_manager_installed">● Installed</string>
+    <string name="download_manager_launch">Launch</string>
+    <string name="download_manager_uninstall">Uninstall</string>
+    <string name="download_manager_failed_detail">Failed: %1$s</string>
+    <string name="download_manager_download_failed">Download failed</string>
+    <string name="download_manager_dismiss">Dismiss</string>
+    <string name="download_manager_cancelled">Cancelled</string>
+    <string name="download_manager_paused_status">Paused — %1$d%%%2$s</string>
+    <string name="download_manager_queued">Queued…</string>
+    <string name="download_manager_downloading_status">Downloading… %1$d%%%2$s%3$s</string>
+    <string name="download_manager_cancel">✕ Cancel</string>
+    <string name="download_manager_resume">Resume</string>
+    <string name="download_manager_pause">Pause</string>
+    <string name="download_manager_select_executable">Select executable for \"%1$s\"</string>
+    <string name="download_manager_uninstalling">Uninstalling %1$s…</string>
+
+    <string name="store_shortcut_add_to_container">Add \"%1$s\" to container</string>
+    <string name="store_shortcut_no_containers">No containers yet — create one on the Containers screen first.</string>
+    <string name="store_shortcut_container_fallback">Container %1$d</string>
+    <string name="store_shortcut_cancel">Cancel</string>
+    <string name="store_shortcut_added_title">Added to Shortcuts</string>
+    <string name="store_shortcut_added_message">\"%1$s\" is ready in Shortcuts.</string>
+    <string name="store_shortcut_open_shortcuts">Open Shortcuts</string>
+    <string name="store_shortcut_close">Close</string>
+    <string name="store_shortcut_add_failed">Couldn\'t add shortcut</string>
+    <string name="store_shortcut_ok">OK</string>
+</resources>

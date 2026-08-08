@@ -15,12 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HelpDialog — a plain, CENTERED Compose dialog for the per-field "?" help. Uses
@@ -66,6 +68,6 @@ internal fun HelpDialog(textResId: Int, onDismiss: () -> Unit) {
                     .verticalScroll(rememberScrollState())
             )
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.help_got_it)) } }
     )
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="surface_flinger_warning_title">SurfaceFlinger renderer — Experimental</string>
+    <string name="surface_flinger_warning_body">The SurfaceFlinger renderer composites game frames directly through your device\'s display hardware, bypassing the GL/Vulkan compositor.\n\nOn some devices and SoCs this can fault the display/GPU driver and REBOOT your device — possibly losing unsaved game progress or corrupting the container. It is validated only on recent Adreno GPUs.\n\nUse at your own risk.</string>
+    <string name="surface_flinger_warning_confirm">I understand, use it</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_ok">OK</string>
+    <string name="common_close">Close</string>
+    <string name="perf_disclaimer_scroll_to_end">Scroll to the end to continue.</string>
+    <string name="perf_disclaimer_accept_risk">I understand and accept all risk</string>
+    <string name="component_resume_installed">Installed %1$s.</string>
+    <string name="component_resume_title">Finish installing %1$s</string>
+    <string name="component_resume_working">Working on %1$s…</string>
+    <string name="component_resume_question">The %1$s installer ran. Finish setting it up in the container? If it needs another installer, the container will open again.</string>
+    <string name="component_resume_error">Couldn\'t finish %1$s: %2$s</string>
+    <string name="component_resume_finish">Finish</string>
+    <string name="component_resume_discard">Discard</string>
+</resources>

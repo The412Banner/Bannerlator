@@ -4,7 +4,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,17 +34,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color as ComposeColor
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
 
-class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
+class QrLoginActivity : AppCompatActivity(), SteamQrAuthManager.QrAuthListener {
 
     private var qrBitmap by mutableStateOf<Bitmap?>(null)
-    private var statusText by mutableStateOf("Connecting\u2026")
+    private var statusText by mutableStateOf("")
     private var isLoading by mutableStateOf(true)
     private var isError by mutableStateOf(false)
     private var showRetry by mutableStateOf(false)
@@ -56,10 +58,10 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
         connectWaitListener?.let { SteamRepository.getInstance().removeListener(it) }
         connectWaitListener = null
         val msg = when (reachState) {
-            REACH_OK       -> "Steam servers are reachable but CM connection timed out.\nPort 27017 may be blocked \u2014 try a VPN or mobile data."
-            REACH_BLOCKED  -> "Steam servers are blocked on your network.\nYou need a VPN to use Steam here."
-            REACH_NO_NET   -> "No internet connection detected.\nCheck your Wi-Fi or mobile data."
-            else           -> "Connection timed out. Check your network."
+            REACH_OK       -> getString(R.string.steam_qr_timeout_reachable)
+            REACH_BLOCKED  -> getString(R.string.steam_qr_blocked)
+            REACH_NO_NET   -> getString(R.string.steam_qr_no_internet_detail)
+            else           -> getString(R.string.steam_qr_timeout)
         }
         onFailure(msg)
     }
@@ -98,7 +100,7 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
         connectWaitListener = null
         reachState = REACH_UNKNOWN
 
-        statusText = "Connecting to Steam\u2026"
+        statusText = getString(R.string.steam_connecting)
         isLoading = true
         isError = false
         qrBitmap = null
@@ -113,19 +115,19 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
                     when {
                         event == "Reachable" -> {
                             reachState = REACH_OK
-                            runOnUiThread { statusText = "Connecting to Steam CM server\u2026"; isLoading = true; isError = false }
+                            runOnUiThread { statusText = getString(R.string.steam_connecting_cm); isLoading = true; isError = false }
                         }
                         event == "SteamBlocked" -> {
                             reachState = REACH_BLOCKED
                             runOnUiThread {
-                                statusText = "Steam is blocked on your network.\nA VPN is required."
+                                statusText = getString(R.string.steam_network_blocked)
                                 isLoading = false; isError = true; showRetry = true
                             }
                         }
                         event == "NoInternet" -> {
                             reachState = REACH_NO_NET
                             runOnUiThread {
-                                statusText = "No internet connection."
+                                statusText = getString(R.string.steam_no_internet)
                                 isLoading = false; isError = true; showRetry = true
                             }
                         }
@@ -139,7 +141,7 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
                             repo.removeListener(this)
                             connectWaitListener = null
                             mainHandler.removeCallbacks(connectTimeoutRunnable)
-                            runOnUiThread { onFailure("Disconnected from Steam.") }
+                            runOnUiThread { onFailure(getString(R.string.steam_disconnected)) }
                         }
                     }
                 }
@@ -151,7 +153,7 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
     }
 
     override fun onQrReady(challengeUrl: String) {
-        statusText = "Scan with the Steam app on your phone"
+        statusText = getString(R.string.steam_qr_scan_phone)
         isLoading = false
         isError = false
         showQr(challengeUrl)
@@ -163,7 +165,7 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
 
     override fun onSuccess(username: String, refreshToken: String) {
         SteamRepository.getInstance().loginWithToken(username, refreshToken)
-        statusText = "Signed in as $username"
+        statusText = getString(R.string.steam_signed_in_as_plain, username)
         isLoading = false
         isError = false
         startActivity(Intent(this, SteamGamesActivity::class.java))
@@ -171,7 +173,11 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
     }
 
     override fun onFailure(reason: String) {
-        statusText = "Failed: $reason"
+        statusText = if (reason.isBlank()) {
+            getString(R.string.steam_qr_auth_failed_generic)
+        } else {
+            getString(R.string.steam_failed_reason, reason)
+        }
         isLoading = false
         isError = true
         qrBitmap = null
@@ -191,7 +197,7 @@ class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
             }
             qrBitmap = bmp
         } catch (e: Exception) {
-            statusText = "QR error \u2014 open in browser:\n$url"
+            statusText = getString(R.string.steam_qr_error_browser, url)
             isError = true
         }
     }
@@ -223,13 +229,13 @@ private fun QrLoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Sign in via QR Code",
+            text = stringResource(R.string.steam_qr_title),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Open the Steam app \u2192 \u2630 \u2192 Sign in via QR code",
+            text = stringResource(R.string.steam_qr_instructions),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -246,7 +252,7 @@ private fun QrLoginScreen(
             if (qrBitmap != null) {
                 Image(
                     bitmap = qrBitmap!!.asImageBitmap(),
-                    contentDescription = "QR Code",
+                    contentDescription = stringResource(R.string.steam_qr_code_description),
                     modifier = Modifier.size(260.dp),
                 )
             } else {
@@ -296,9 +302,7 @@ private fun QrLoginScreen(
                 .padding(12.dp),
         ) {
             Text(
-                text = "If downloads or your session keep dropping after signing in with " +
-                        "QR, sign out and use the Username + Password method instead — " +
-                        "it's the more reliable sign-in.",
+                text = stringResource(R.string.steam_qr_reliability_note),
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -311,12 +315,12 @@ private fun QrLoginScreen(
                 onClick = onRetry,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(8.dp),
-            ) { Text("Retry") }
+            ) { Text(stringResource(R.string.steam_retry)) }
             Spacer(Modifier.height(8.dp))
         }
 
         TextButton(onClick = onCancel) {
-            Text("\u2190 Back")
+            Text(stringResource(R.string.common_back_arrow))
         }
     }
 }

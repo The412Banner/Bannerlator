@@ -63,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -139,6 +140,7 @@ fun WrapperManagerDialog(onDismiss: () -> Unit) {
 @Composable
 fun WrapperManagerBody(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val unknownGpuLabel = stringResource(R.string.wrapper_this_gpu)
     // WrapperManager only needs a Context (it calls getApplicationContext). Do NOT cast to Activity:
     // when this body is hosted inside a dialog, LocalContext is a ContextThemeWrapper, not an
     // Activity, and the cast crashes (device-verified). Pass the context straight through.
@@ -147,10 +149,10 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
 
     // Resolve the real GPU once (native probe): vendor 0x5143 = Qualcomm/Adreno, plus a friendly model
     // name for the applicability lines. Wrapped defensively so a probe hiccup never crashes the screen.
-    val gpu = remember {
+    val gpu = remember(unknownGpuLabel) {
         val vendor = runCatching { GPUInformation.getVendorID(null, null) }.getOrDefault(0)
         val model = runCatching { GPUInformation.extractModelName(GPUInformation.getRenderer(null, null)) }
-            .getOrNull()?.takeIf { it.isNotBlank() } ?: "this GPU"
+            .getOrNull()?.takeIf { it.isNotBlank() } ?: unknownGpuLabel
         GpuInfo(isQualcomm = vendor == 0x5143, model = model)
     }
 
@@ -264,7 +266,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                         val base = (path?.substringAfterLast('/') ?: uri.lastPathSegment?.substringAfterLast('/'))
                             ?.substringBeforeLast('.')
                             ?.takeIf { it.isNotBlank() }
-                            ?: "Imported wrapper"
+                            ?: context.getString(R.string.wrapper_imported_fallback)
                         importNameDraft = base
                         pendingInspection = inspection
                         pendingImportUri = uri
@@ -463,7 +465,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                             context.getString(R.string.wrapper_select_title),
                         )
                     )
-                }) { Text("Browse files") }
+                }) { Text(stringResource(R.string.wrapper_browse_files)) }
             },
             dismissButton = {
                 Row {
@@ -474,7 +476,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                             type = "*/*"
                         }
                         filePicker.launch(intent)
-                    }) { Text("Pick via system…") }
+                    }) { Text(stringResource(R.string.wrapper_pick_via_system)) }
                     TextButton(onClick = {
                         confirmInstallPrompt = false; pendingFileName = null; importMode = false
                     }) {
@@ -497,9 +499,9 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
             text = {
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                     // What it is.
-                    DetailRow("What it is", importDescription(inspection.caps))
+                    DetailRow(stringResource(R.string.wrapper_what_it_is), importDescription(inspection.caps))
                     DetailRow(
-                        "Version",
+                        stringResource(R.string.wrapper_version),
                         if (inspection.notes.isNotBlank()) "${inspection.version} · ${inspection.notes}"
                         else inspection.version,
                     )
@@ -507,7 +509,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                     if (labels.isNotEmpty()) {
                         Spacer(Modifier.size(8.dp))
                         Text(
-                            "Detected capabilities",
+                            stringResource(R.string.wrapper_detected_capabilities),
                             style = MaterialTheme.typography.labelMedium,
                             color = cs.onSurfaceVariant,
                         )
@@ -517,7 +519,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                     // What will be added / needs to work.
                     Spacer(Modifier.size(10.dp))
                     Text(
-                        "What will be added",
+                        stringResource(R.string.wrapper_what_will_be_added),
                         style = MaterialTheme.typography.labelMedium,
                         color = cs.onSurfaceVariant,
                     )
@@ -533,7 +535,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                     if (inspection.envKeys.isNotEmpty()) {
                         Spacer(Modifier.size(10.dp))
                         Text(
-                            "Detected settings (${inspection.envKeys.size})",
+                            stringResource(R.string.wrapper_detected_settings_count, inspection.envKeys.size),
                             style = MaterialTheme.typography.labelMedium,
                             color = cs.onSurfaceVariant,
                         )
@@ -742,51 +744,56 @@ internal fun WrapperCardFrame(
 private data class GpuInfo(val isQualcomm: Boolean, val model: String)
 
 /** Chip labels for the true capabilities of a wrapper (in a stable order). */
+@Composable
 private fun capLabels(caps: WrapperManager.WrapperCaps): List<String> {
     val out = ArrayList<String>()
-    if (caps.hasIcd) out.add("Vulkan ICD")
-    if (caps.hasBcnLayer) out.add("BCn layer")
-    if (caps.hasCompatLayer) out.add("DX12/compat layer")
+    if (caps.hasIcd) out.add(stringResource(R.string.wrapper_cap_vulkan_icd))
+    if (caps.hasBcnLayer) out.add(stringResource(R.string.wrapper_cap_bcn_layer))
+    if (caps.hasCompatLayer) out.add(stringResource(R.string.wrapper_cap_dx12_compat))
     return out
 }
 
 /** One-line "what is this" summary for the inspection page (a valid import always carries an ICD). */
-private fun importDescription(caps: WrapperManager.WrapperCaps): String = when {
-    caps.hasIcd && (caps.hasBcnLayer || caps.hasCompatLayer) -> "Vulkan ICD wrapper with extra layers"
-    caps.hasIcd -> "Vulkan ICD wrapper"
-    caps.hasBcnLayer -> "BCn layer"
-    caps.hasCompatLayer -> "DX12 compat layer"
-    else -> "Wrapper"
-}
+@Composable
+private fun importDescription(caps: WrapperManager.WrapperCaps): String = stringResource(when {
+    caps.hasIcd && (caps.hasBcnLayer || caps.hasCompatLayer) -> R.string.wrapper_desc_icd_extra
+    caps.hasIcd -> R.string.wrapper_desc_icd
+    caps.hasBcnLayer -> R.string.wrapper_cap_bcn_layer
+    caps.hasCompatLayer -> R.string.wrapper_desc_dx12_compat
+    else -> R.string.wrapper_desc_generic
+})
 
 /** GPU-applicability one-liner for the detail view; null when there are no GPU-gated layers. */
+@Composable
 private fun gpuApplicability(caps: WrapperManager.WrapperCaps, gpu: GpuInfo): String? {
     val layerish = caps.hasBcnLayer || caps.hasCompatLayer
     return when {
         layerish && gpu.isQualcomm ->
-            "BCn/compat layers apply to Mali/non-Qualcomm GPUs — inert on this Adreno (${gpu.model})"
-        layerish -> "Applies to this GPU (${gpu.model})"
+            stringResource(R.string.wrapper_layers_inert_adreno, gpu.model)
+        layerish -> stringResource(R.string.wrapper_applies_to_gpu, gpu.model)
         else -> null
     }
 }
 
 /** Plain "what will be added / needs to work" lines for the inspection page. */
+@Composable
 private fun importNeeds(caps: WrapperManager.WrapperCaps, gpu: GpuInfo, version: String): List<String> {
     val out = ArrayList<String>()
     if (caps.hasBcnLayer) {
         out.add(
-            "Contains a BCn layer → the BCn Layer Settings become available; requires a Mali/non-Qualcomm GPU to take effect" +
-                if (gpu.isQualcomm) " (this device is Adreno — inert)." else "."
+            stringResource(
+                if (gpu.isQualcomm) R.string.wrapper_need_bcn_adreno_inert else R.string.wrapper_need_bcn,
+            )
         )
     }
     if (caps.hasCompatLayer) {
-        out.add("Contains a DX12/compat layer → compat options (Mali-branch feature).")
+        out.add(stringResource(R.string.wrapper_need_dx12_compat))
     }
     if (!caps.hasBcnLayer && !caps.hasCompatLayer) {
-        out.add("Plain Vulkan ICD wrapper — no extra layer settings.")
+        out.add(stringResource(R.string.wrapper_need_plain_icd))
     }
     if (version == "Unknown") {
-        out.add("No version.txt — version will show Unknown.")
+        out.add(stringResource(R.string.wrapper_need_unknown_version))
     }
     return out
 }
@@ -861,15 +868,15 @@ private fun WrapperDetailBox(
     envSourceId: String,
 ) {
     val cs = MaterialTheme.colorScheme
-    DetailRow("File", fileName)
-    DetailRow("State", stateLabel)
-    DetailRow("Version", version)
-    if (notes.isNotBlank()) DetailRow("Notes", notes)
+    DetailRow(stringResource(R.string.wrapper_file), fileName)
+    DetailRow(stringResource(R.string.wrapper_state), stateLabel)
+    DetailRow(stringResource(R.string.wrapper_version), version)
+    if (notes.isNotBlank()) DetailRow(stringResource(R.string.wrapper_notes), notes)
     val labels = capLabels(caps)
     if (labels.isNotEmpty()) {
         Spacer(Modifier.size(8.dp))
         Text(
-            "Detected capabilities",
+            stringResource(R.string.wrapper_detected_capabilities),
             style = MaterialTheme.typography.labelMedium,
             color = cs.onSurfaceVariant,
         )
@@ -895,6 +902,7 @@ private fun EnvVarSection(
     isImported: Boolean,
     envSourceId: String,
 ) {
+    val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
     var expanded by remember(envSourceId) { mutableStateOf(false) }
     // null = not yet scanned (show a spinner); non-null = resolved (possibly empty) list.
@@ -925,7 +933,8 @@ private fun EnvVarSection(
             .padding(vertical = 4.dp),
     ) {
         Text(
-            text = keys?.let { "Environment variables (${it.size})" } ?: "Environment variables",
+            text = keys?.let { stringResource(R.string.wrapper_environment_variables_count, it.size) }
+                ?: stringResource(R.string.wrapper_environment_variables),
             style = MaterialTheme.typography.labelMedium,
             color = cs.onSurfaceVariant,
             modifier = Modifier.weight(1f),
@@ -948,14 +957,14 @@ private fun EnvVarSection(
                     CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "Scanning…",
+                        stringResource(R.string.wrapper_scanning),
                         style = MaterialTheme.typography.bodySmall,
                         color = cs.onSurfaceVariant,
                     )
                 }
             resolved.isEmpty() ->
                 Text(
-                    "No environment variables detected.",
+                    stringResource(R.string.wrapper_no_environment_variables),
                     style = MaterialTheme.typography.bodySmall,
                     color = cs.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 2.dp),
@@ -969,7 +978,8 @@ private fun EnvVarSection(
                         .verticalScroll(rememberScrollState()),
                 ) {
                     resolved.forEach { key ->
-                        EnvVarRow(label = WrapperSettingsDictionary.defFor(key).label, rawKey = key)
+                        val def = WrapperSettingsDictionary.defFor(key)
+                        EnvVarRow(label = WrapperSettingsDictionary.label(context, def), rawKey = key)
                     }
                 }
         }
@@ -1018,7 +1028,7 @@ private fun WrapperSlotCard(
     // 2-line cap and truncate ("Bruno l…"), so they live in the expanded detail box below instead.
     val subtitle = buildString {
         append(slot.fileName)
-        append(" · Version: ").append(slot.version).append(" (").append(stateLabel).append(")")
+        append(stringResource(R.string.wrapper_version_summary, slot.version, stateLabel))
     }
     WrapperCardFrame(
         icon = Icons.Filled.Layers,
@@ -1328,7 +1338,7 @@ private fun EditWrapperSettingsDialog(
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(8.dp))
-                            Text("Scanning…", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                            Text(stringResource(R.string.wrapper_scanning), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                         }
                     resolved.isEmpty() ->
                         Text(
@@ -1361,7 +1371,10 @@ private fun EditWrapperSettingsDialog(
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            WrapperSettingsDictionary.defFor(key).label,
+                                            WrapperSettingsDictionary.label(
+                                                context,
+                                                WrapperSettingsDictionary.defFor(key),
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = cs.onSurface,
                                         )

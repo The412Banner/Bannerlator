@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="env_compatibility">Compatibility</string>
+    <string name="env_prefer_game_dlls">Prefer game-folder DLLs</string>
+    <string name="env_prefer_game_dlls_description">Loads the game\'s own copies of %1$s instead of Wine\'s. Needed by many wrappers and mod loaders. Graphics DLLs are never included — DXVK/VKD3D own those.</string>
+    <string name="env_dlls_found">%1$s found in the game folder. This game may need the option above.</string>
+    <string name="env_enable">Enable</string>
+    <string name="env_environment_variables">Environment Variables</string>
+    <string name="env_raw_format_hint">NAME=VALUE, separated by spaces</string>
+    <string name="env_none_set">No environment variables set</string>
+    <string name="env_add_variable">Add Variable</string>
+    <string name="env_done">Done</string>
+    <string name="env_edit_as_text">Edit as text</string>
+    <string name="env_remove">Remove %1$s</string>
+    <string name="env_spaces_not_allowed">Spaces aren\'t allowed here — variables are separated by spaces.</string>
+    <string name="env_presets_for">Presets for %1$s</string>
+    <string name="env_collapse">Collapse %1$s</string>
+    <string name="env_expand">Expand %1$s</string>
+    <string name="env_none_selected">None selected</string>
+    <string name="env_wont_save_name">Won\'t be saved — enter a variable name</string>
+    <string name="env_already_exists">&quot;%1$s&quot; is already in the list</string>
+    <string name="env_saves_empty">Saves as %1$s= (empty value)</string>
+    <string name="env_saves_value">Saves as %1$s = %2$s</string>
+    <string name="env_split_note">No &quot;=&quot; needed — the Value box handles that. Split it for you.</string>
+    <string name="env_add_title">Add environment variable</string>
+    <string name="env_name_label">Name (search or type)</string>
+    <string name="env_name_example">e.g. DXVK_FRAME_RATE</string>
+    <string name="env_value_label">Value (optional)</string>
+    <string name="env_value_example">e.g. 60</string>
+    <string name="env_add_named">Add %1$s</string>
+    <string name="env_add_named_value">Add %1$s = %2$s</string>
+    <string name="env_no_matches">No matches</string>
+</resources>

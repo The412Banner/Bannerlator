@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="folder_picker_app_files">App Files (Wine containers)</string>
+    <string name="folder_picker_internal_storage">Internal Storage</string>
+    <string name="folder_picker_sd_card">SD Card</string>
+    <string name="folder_picker_title">Select Folder</string>
+    <string name="folder_picker_location">Location:</string>
+    <string name="folder_picker_select">✓  Select this folder</string>
+    <string name="folder_picker_new">+ New</string>
+    <string name="folder_picker_up">↑  Up</string>
+    <string name="folder_picker_empty_unreadable">(empty or no read permission)</string>
+    <string name="folder_picker_no_subdirectories">(no subdirectories — use "+ New" to create one)</string>
+    <string name="folder_picker_folder_name_hint">Folder name</string>
+    <string name="folder_picker_new_folder_title">New Folder</string>
+    <string name="folder_picker_create">Create</string>
+    <string name="folder_picker_enter_name">Enter a folder name</string>
+    <string name="folder_picker_invalid_name">Folder name cannot contain slashes</string>
+    <string name="folder_picker_already_exists">Folder already exists</string>
+    <string name="folder_picker_created">Created: %1$s</string>
+    <string name="folder_picker_create_failed">Failed to create folder</string>
+    <string name="restore_success">Data restored successfully.</string>
+    <string name="restore_failed">Data restore failed.</string>
+    <string name="preset_exported">Preset %1$s exported successfully to %2$s</string>
+    <string name="preset_export_failed">Failed to export preset</string>
+    <string name="active_windows_unnamed">Unnamed Window</string>
+    <string name="active_windows_application">Application</string>
+    <string name="shortcut_device_unsupported">Sorry, your device may not be supported</string>
+    <string name="shortcut_add_failed">Failed to add shortcut.</string>
+    <string name="shortcut_added">Shortcut added successfully.</string>
+    <string name="shortcut_broadcast_failed">Failed to add shortcut via broadcast.</string>
+    <string name="store_no_container">No Wine container found — create one first on the Containers screen.</string>
+    <string name="store_default_container">Container %1$d</string>
+    <string name="store_add_game_to">Add &quot;%1$s&quot; to…</string>
+    <string name="store_container_load_error">Error loading containers: %1$s</string>
+    <string name="open_log_folder">Open log folder</string>
+    <string name="log_folder_path">Log folder: %1$s</string>
+    <string name="installing_percent">Installing… %1$d%%</string>
+    <string name="persistable_permission_failed">Could not retain access to the selected location</string>
+</resources>

@@ -2,7 +2,7 @@ package com.winlator.star.store
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -54,12 +54,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.winlator.star.R
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
@@ -91,7 +93,7 @@ import java.io.File
  * reach those package-private Java launch helpers, exactly like the other Steam Activities.
  * Epic/GOG/Amazon land in a later phase.
  */
-class DownloadManagerActivity : ComponentActivity() {
+class DownloadManagerActivity : AppCompatActivity() {
 
     // Add-to-shortcuts flow state (mirrors SteamGamesActivity / SteamGameDetailActivity).
     private var showExePicker by mutableStateOf<ExePickerDataDm?>(null)
@@ -255,7 +257,7 @@ class DownloadManagerActivity : ComponentActivity() {
     private fun launch(entry: DownloadEntry) {
         val dir = entry.installPath
         if (dir.isNullOrEmpty()) {
-            uninstallResult = "Install directory not set"
+            uninstallResult = getString(R.string.download_manager_install_dir_missing)
             return
         }
         val appId = entry.id.toIntOrNull() ?: 0
@@ -265,7 +267,7 @@ class DownloadManagerActivity : ComponentActivity() {
             AmazonLaunchHelper.collectExe(installDir, exeFiles)
             if (exeFiles.isEmpty()) {
                 runOnUiThread {
-                    uninstallResult = "No .exe found in install directory"
+                    uninstallResult = getString(R.string.download_manager_no_executable)
                 }
                 return@Thread
             }
@@ -311,7 +313,11 @@ class DownloadManagerActivity : ComponentActivity() {
             DownloadRegistry.removeLibraryEntry(entry.key)
             purgeNativeInstall(entry)
             uninstallingName = null
-            uninstallResult = if (ok) "${entry.name} uninstalled" else "Couldn't fully remove ${entry.name}"
+            uninstallResult = if (ok) {
+                getString(R.string.download_manager_uninstalled, entry.name)
+            } else {
+                getString(R.string.download_manager_remove_incomplete, entry.name)
+            }
         }
     }
 
@@ -358,17 +364,17 @@ private fun DownloadManagerScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Downloads & Library") },
+                title = { Text(stringResource(R.string.download_manager_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.download_manager_back),
                         )
                     }
                 },
                 actions = {
-                    TextButton(onClick = onClear) { Text("Clear ✓") }
+                    TextButton(onClick = onClear) { Text(stringResource(R.string.download_manager_clear_finished)) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -386,7 +392,7 @@ private fun DownloadManagerScreen(
         ) {
             if (entries.isEmpty()) {
                 Text(
-                    text = "No downloads or installed games yet.",
+                    text = stringResource(R.string.download_manager_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
@@ -402,12 +408,12 @@ private fun DownloadManagerScreen(
                     contentPadding = PaddingValues(vertical = 6.dp),
                 ) {
                     if (active.isNotEmpty()) {
-                        item(key = "hdr_downloading") { SectionHeader("Downloading") }
+                        item(key = "hdr_downloading") { SectionHeader(stringResource(R.string.download_manager_downloading)) }
                         items(active, key = { it.key }) { entry ->
                             DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
                         }
                         if (rest.isNotEmpty()) {
-                            item(key = "hdr_library") { SectionHeader("Library") }
+                            item(key = "hdr_library") { SectionHeader(stringResource(R.string.download_manager_library)) }
                         }
                     }
                     items(rest, key = { it.key }) { entry ->
@@ -439,6 +445,7 @@ private fun DownloadCard(
     onPauseResume: (DownloadEntry) -> Unit,
     onDismiss: (DownloadEntry) -> Unit,
 ) {
+    val context = LocalContext.current
     // Same floating card as SteamGamesActivity.GameListItem: rounded surfaceVariant panel,
     // outline border, side margins, tall poster + info column.
     Card(
@@ -489,13 +496,13 @@ private fun DownloadCard(
                         // entry.updateAvailable gets the same marker.
                         if (entry.updateAvailable) {
                             Text(
-                                text = "● Installed — Update available",
+                                text = stringResource(R.string.download_manager_installed_update),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = UPDATE_AMBER,
                             )
                         } else {
                             Text(
-                                text = "● Installed",
+                                text = stringResource(R.string.download_manager_installed),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = INSTALLED_GREEN,
                             )
@@ -507,7 +514,7 @@ private fun DownloadCard(
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.height(32.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                            ) { Text("Launch", style = MaterialTheme.typography.labelSmall) }
+                            ) { Text(stringResource(R.string.download_manager_launch), style = MaterialTheme.typography.labelSmall) }
                             OutlinedButton(
                                 onClick = { onUninstall(entry) },
                                 shape = RoundedCornerShape(8.dp),
@@ -516,13 +523,14 @@ private fun DownloadCard(
                                 ),
                                 modifier = Modifier.height(32.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                            ) { Text("Uninstall", style = MaterialTheme.typography.labelSmall) }
+                            ) { Text(stringResource(R.string.download_manager_uninstall), style = MaterialTheme.typography.labelSmall) }
                         }
                     }
 
                     DownloadState.FAILED -> {
                         Text(
-                            text = entry.error?.let { "Failed: $it" } ?: "Download failed",
+                            text = entry.error?.let { stringResource(R.string.download_manager_failed_detail, it) }
+                                ?: stringResource(R.string.download_manager_download_failed),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             maxLines = 3,
@@ -534,12 +542,12 @@ private fun DownloadCard(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.height(32.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                        ) { Text("Dismiss", style = MaterialTheme.typography.labelSmall) }
+                        ) { Text(stringResource(R.string.download_manager_dismiss), style = MaterialTheme.typography.labelSmall) }
                     }
 
                     DownloadState.CANCELLED -> {
                         Text(
-                            text = "Cancelled",
+                            text = stringResource(R.string.download_manager_cancelled),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -549,7 +557,7 @@ private fun DownloadCard(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.height(32.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                        ) { Text("Dismiss", style = MaterialTheme.typography.labelSmall) }
+                        ) { Text(stringResource(R.string.download_manager_dismiss), style = MaterialTheme.typography.labelSmall) }
                     }
                 }
             }
@@ -564,6 +572,7 @@ private fun ActiveContent(
     onCancel: (DownloadEntry) -> Unit,
     onPauseResume: (DownloadEntry) -> Unit,
 ) {
+    val context = LocalContext.current
     // Byte-driven fraction only when the store actually feeds byte progress (installDone > 0);
     // pct-only stores (GOG reports pct with no byte pairs) fall back to entry.pct so the bar
     // isn't stuck at 0 when a size happens to be known (installTotal > 0 but installDone == 0).
@@ -606,14 +615,14 @@ private fun ActiveContent(
     val sizePart = if (hasBytes) "  (${fmtSizeDm(entry.installDone)} / ${fmtSizeDm(entry.installTotal)})" else ""
     // Speed + ETA only while actively downloading (unknown when paused/queued).
     val speedEta = buildString {
-        val s = formatDownloadSpeed(entry.speedBps); if (s.isNotEmpty()) append("  ·  $s")
-        val e = formatEta(entry.etaSeconds);          if (e.isNotEmpty()) append("  ·  $e")
+        val s = formatDownloadSpeed(context, entry.speedBps); if (s.isNotEmpty()) append("  ·  $s")
+        val e = formatEta(context, entry.etaSeconds);          if (e.isNotEmpty()) append("  ·  $e")
     }
     Text(
         text = when (entry.state) {
-            DownloadState.PAUSED -> "Paused — $pct%$sizePart"
-            DownloadState.QUEUED -> "Queued…"
-            else -> "Downloading… $pct%$sizePart$speedEta"
+            DownloadState.PAUSED -> stringResource(R.string.download_manager_paused_status, pct, sizePart)
+            DownloadState.QUEUED -> stringResource(R.string.download_manager_queued)
+            else -> stringResource(R.string.download_manager_downloading_status, pct, sizePart, speedEta)
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -628,7 +637,7 @@ private fun ActiveContent(
             ),
             modifier = Modifier.height(32.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-        ) { Text("✕ Cancel", style = MaterialTheme.typography.labelSmall) }
+        ) { Text(stringResource(R.string.download_manager_cancel), style = MaterialTheme.typography.labelSmall) }
 
         if (entry.supportsPause) {
             Button(
@@ -646,7 +655,7 @@ private fun ActiveContent(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
             ) {
                 Text(
-                    text = if (entry.state == DownloadState.PAUSED) "Resume" else "Pause",
+                    text = stringResource(if (entry.state == DownloadState.PAUSED) R.string.download_manager_resume else R.string.download_manager_pause),
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
@@ -716,7 +725,7 @@ private fun ExePickerDialogDm(
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select executable for \"$gameName\"") },
+        title = { Text(stringResource(R.string.download_manager_select_executable, gameName)) },
         text = {
             // Cap at ~half the screen height so a long bin/*.exe list still scrolls to the
             // real game exe (same treatment as the Steam screens' exe pickers).

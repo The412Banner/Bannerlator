@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -209,7 +210,7 @@ fun PreloaderOverlay() {
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = HeroText),
                     border = BorderStroke(1.dp, HeroText.copy(alpha = 0.45f)),
                 ) {
-                    Text("Cancel launch")
+                    Text(stringResource(R.string.preloader_cancel_launch))
                 }
                 }
             }
@@ -478,7 +479,7 @@ private fun FailureCard(failure: Failure?) {
                 shape = RoundedCornerShape(999.dp),
             ) {
                 Text(
-                    text = "Failed · ${failure.stage}",
+            text = stringResource(R.string.preloader_failed_stage, failure.stage),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
@@ -503,30 +504,30 @@ private fun FailureCard(failure: Failure?) {
             Spacer(Modifier.height(14.dp))
             if (failure.loggingEnabled && !failure.logDir.isNullOrEmpty()) {
                 Text(
-                    text = "Log saved to ${failure.logDir}",
+                text = stringResource(R.string.preloader_log_saved, failure.logDir),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(onClick = { PreloaderState.onOpenLog?.run() }) {
-                        Text("Open log folder")
+                Text(stringResource(R.string.preloader_open_log_folder))
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = { PreloaderState.onClose?.run() }) {
-                        Text("Close")
+                Text(stringResource(R.string.common_close))
                     }
                 }
             } else {
                 Text(
-                    text = "Enable logging in Settings → Logs and relaunch to capture the cause.",
+            text = stringResource(R.string.preloader_enable_logging_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                     Button(onClick = { PreloaderState.onClose?.run() }) {
-                        Text("Close")
+            Text(stringResource(R.string.common_close))
                     }
                 }
             }

@@ -3,8 +3,10 @@ package com.winlator.star.store
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.StringRes
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,16 +70,44 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
-class AmazonGameDetailActivity : ComponentActivity() {
+private enum class AmazonInstallAction { INSTALL, CANCEL }
+
+private enum class AmazonInstallError(@StringRes val messageRes: Int) {
+    LOGIN_REQUIRED(R.string.compose_amazon_game_detail_login_required),
+    DOWNLOAD_FAILED(R.string.compose_amazon_game_detail_download_failed),
+    NO_EXECUTABLE(R.string.compose_amazon_game_detail_no_executable_found),
+}
+
+private enum class AmazonUpdateStatusKind {
+    INSTALLED_VERSION,
+    VERSION_UNKNOWN,
+    NOT_INSTALLED,
+    CHECKING,
+    LOGIN_REQUIRED,
+    SERVER_ERROR,
+    UP_TO_DATE,
+    UPDATE_AVAILABLE,
+    CHECK_FAILED,
+}
+
+private enum class AmazonDlcAction { INSTALL, REINSTALL, DOWNLOADING }
+
+class AmazonGameDetailActivity : AppCompatActivity() {
 
     companion object {
         const val RESULT_REFRESH = 100
         private const val TAG = "BH_AMAZON_DETAIL"
+    }
 
-        fun formatBytes(bytes: Long): String = when {
-            bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
-            else -> "%.0f MB".format(bytes / 1_048_576.0)
-        }
+    private fun formatBytes(bytes: Long): String = when {
+        bytes >= 1_073_741_824L -> getString(
+            R.string.compose_amazon_game_detail_size_gb,
+            bytes / 1_073_741_824.0,
+        )
+        else -> getString(
+            R.string.compose_amazon_game_detail_size_mb,
+            bytes / 1_048_576.0,
+        )
     }
 
     private var prefs: SharedPreferences? = null
@@ -99,7 +131,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
     private var launchBtnVisible by mutableStateOf(false)
     private var launchBtnEnabled by mutableStateOf(false)
     private var installBtnVisible by mutableStateOf(true)
-    private var installBtnText by mutableStateOf("Install")
+    private var installAction by mutableStateOf(AmazonInstallAction.INSTALL)
     private var installBtnColor by mutableIntStateOf(0xFFFF9900.toInt())
     private var installBtnEnabled by mutableStateOf(true)
     private var setExeBtnVisible by mutableStateOf(false)
@@ -108,10 +140,11 @@ class AmazonGameDetailActivity : ComponentActivity() {
     // this ROM (targetSDK 28) — same issue Steam hit; reuse its UninstallResultBar for readable
     // uninstall/launch feedback instead of Toast.makeText.
     private var resultBarMsg by mutableStateOf<String?>(null)
-    private var sizeText by mutableStateOf("Fetching\u2026")
+    private var sizeText by mutableStateOf("")
 
     // Updates section state
     private var updateStatusText by mutableStateOf("")
+    private var updateStatusKind by mutableStateOf(AmazonUpdateStatusKind.NOT_INSTALLED)
     private var checkUpdatesEnabled by mutableStateOf(true)
     private var updateBtnVisible by mutableStateOf(false)
 
@@ -133,6 +166,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
         publisher = i.getStringExtra("publisher")
         artUrl = i.getStringExtra("art_url")
         productSku = i.getStringExtra("product_sku")
+        sizeText = getString(R.string.compose_amazon_game_detail_fetching)
 
         if (productId == null) {
             finish()
@@ -170,12 +204,13 @@ class AmazonGameDetailActivity : ComponentActivity() {
                     launchBtnVisible = launchBtnVisible,
                     launchBtnEnabled = launchBtnEnabled,
                     installBtnVisible = installBtnVisible,
-                    installBtnText = installBtnText,
+                    installAction = installAction,
                     installBtnEnabled = installBtnEnabled,
                     setExeBtnVisible = setExeBtnVisible,
                     uninstallBtnVisible = uninstallBtnVisible,
                     sizeText = sizeText,
                     updateStatusText = updateStatusText,
+                    updateStatusKind = updateStatusKind,
                     checkUpdatesEnabled = checkUpdatesEnabled,
                     updateBtnVisible = updateBtnVisible,
                     dlcJson = dlcJson,
@@ -222,12 +257,19 @@ class AmazonGameDetailActivity : ComponentActivity() {
                     progressValue = e.pct
                     // Live label on the detail page, matching the Manager card. Registry-driven so
                     // it's live for a list-started / reopened download, not just this Activity's.
-                    progressLabel = if (e.installTotal > 0 && e.installDone > 0)
-                        "${e.pct}%  (${formatDownloadSize(e.installDone)} / ${formatDownloadSize(e.installTotal)})"
-                    else "Downloading… ${e.pct}%"
+                    progressLabel = if (e.installTotal > 0 && e.installDone > 0) {
+                        getString(
+                            R.string.compose_amazon_game_detail_progress_with_bytes,
+                            e.pct,
+                            formatDownloadSize(e.installDone),
+                            formatDownloadSize(e.installTotal),
+                        )
+                    } else {
+                        getString(R.string.compose_amazon_game_detail_downloading_percent, e.pct)
+                    }
                     progressLabelVisible = true
                     installBtnVisible = true
-                    installBtnText = "Cancel"
+                    installAction = AmazonInstallAction.CANCEL
                     installBtnColor = 0xFFCC3333.toInt()
                     installBtnEnabled = true
                     launchBtnEnabled = false
@@ -254,12 +296,14 @@ class AmazonGameDetailActivity : ComponentActivity() {
         val installed = exe != null
 
         exeNameVisible = installed
-        exeNameText = if (installed) ".exe: ${File(exe).name}" else ""
+        exeNameText = if (installed) {
+            getString(R.string.compose_amazon_game_detail_executable_label, File(exe).name)
+        } else ""
 
         launchBtnVisible = installed
         launchBtnEnabled = installed
         installBtnVisible = !installed
-        if (!installed) installBtnText = "Install"
+        if (!installed) installAction = AmazonInstallAction.INSTALL
         setExeBtnVisible = installed
         uninstallBtnVisible = dir != null
     }
@@ -268,13 +312,13 @@ class AmazonGameDetailActivity : ComponentActivity() {
 
     private fun onInstallClicked() {
         val pid = productId ?: return
-        if (installBtnText == "Cancel") {
+        if (installAction == AmazonInstallAction.CANCEL) {
             cancelDownload?.invoke()
             cancelDownload = null
             return
         }
 
-        installBtnText = "Cancel"
+        installAction = AmazonInstallAction.CANCEL
         installBtnColor = 0xFFCC3333.toInt()
         progressVisible = true
         progressLabelVisible = true
@@ -296,11 +340,12 @@ class AmazonGameDetailActivity : ComponentActivity() {
         // this Activity being destroyed / the app being backgrounded. Use applicationContext
         // throughout so the coroutine never pins the Activity.
         val appCtx = applicationContext
+        val localizedCtx = ContextCompat.getContextForLanguage(appCtx)
         DownloadScope.io.launch {
             val token = AmazonCredentialStore.getValidAccessToken(appCtx)
             if (token == null) {
                 withContext(Dispatchers.Main) {
-                    onInstallError("Login required")
+                    onInstallError(AmazonInstallError.LOGIN_REQUIRED)
                 }
                 return@launch
             }
@@ -342,8 +387,16 @@ class AmazonGameDetailActivity : ComponentActivity() {
                     // Detail-page label mirrors the Manager card ("$pct%  (done / total)");
                     // the raw archive filename (e.g. "level23") is no longer surfaced. Guarded:
                     // this coroutine can now outlive the Activity, so only touch UI while it's live.
-                    val label = if (pct <= 0) "Downloading\u2026"
-                        else "$pct%  (${formatDownloadSize(dl)} / ${formatDownloadSize(total)})"
+                    val label = if (pct <= 0) {
+                        localizedCtx.getString(R.string.compose_amazon_game_detail_downloading)
+                    } else {
+                        localizedCtx.getString(
+                            R.string.compose_amazon_game_detail_progress_with_bytes,
+                            pct,
+                            formatDownloadSize(dl),
+                            formatDownloadSize(total),
+                        )
+                    }
                     if (!isDestroyed && !isFinishing) runOnUiThread {
                         if (isDestroyed || isFinishing) return@runOnUiThread
                         progressValue = pct
@@ -358,14 +411,14 @@ class AmazonGameDetailActivity : ComponentActivity() {
                 return@launch
             }
             if (!ok) {
-                withContext(Dispatchers.Main) { onInstallError("Download failed") }
+                withContext(Dispatchers.Main) { onInstallError(AmazonInstallError.DOWNLOAD_FAILED) }
                 return@launch
             }
 
             val exeFiles = mutableListOf<File>()
             AmazonLaunchHelper.collectExe(installDir, exeFiles)
             if (exeFiles.isEmpty()) {
-                withContext(Dispatchers.Main) { onInstallError("No executable found") }
+                withContext(Dispatchers.Main) { onInstallError(AmazonInstallError.NO_EXECUTABLE) }
                 return@launch
             }
 
@@ -408,25 +461,26 @@ class AmazonGameDetailActivity : ComponentActivity() {
         refreshActionState()
     }
 
-    private fun onInstallError(msg: String) {
+    private fun onInstallError(error: AmazonInstallError) {
+        val msg = getString(error.messageRes)
         cancelDownload = null
         progressVisible = false
         progressLabelVisible = false
-        installBtnText = "Install"
+        installAction = AmazonInstallAction.INSTALL
         installBtnColor = 0xFFFF9900.toInt()
         launchBtnEnabled = true
         setExeBtnVisible = true
         productId?.let { StoreDownloadHooks.markFailed(Store.AMAZON, it, msg) }
         // applicationContext: this handler can run after the Activity is gone (download now
         // outlives it), and the registry/notification updates above must still happen.
-        resultBarMsg = "Error: $msg"
+        resultBarMsg = getString(R.string.compose_amazon_game_detail_error_with_message, msg)
     }
 
     private fun onInstallCancelled() {
         cancelDownload = null
         progressVisible = false
         progressLabelVisible = false
-        installBtnText = "Install"
+        installAction = AmazonInstallAction.INSTALL
         installBtnColor = 0xFFFF9900.toInt()
         launchBtnEnabled = true
         setExeBtnVisible = true
@@ -442,7 +496,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
             AmazonLaunchHelper.collectExe(File(dir), exeFiles)
             if (exeFiles.isEmpty()) {
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "No .exe files found"
+                    resultBarMsg = getString(R.string.compose_amazon_game_detail_no_exe_files_found)
                 }
                 return@launch
             }
@@ -455,7 +509,10 @@ class AmazonGameDetailActivity : ComponentActivity() {
                             .apply()
                         setResult(RESULT_REFRESH)
                         refreshActionState()
-                        resultBarMsg = "Exe set: ${File(selected).name}"
+                        resultBarMsg = getString(
+                            R.string.compose_amazon_game_detail_executable_set,
+                            File(selected).name,
+                        )
                     }
                 }
             }
@@ -480,7 +537,10 @@ class AmazonGameDetailActivity : ComponentActivity() {
                 setResult(RESULT_REFRESH)
                 refreshActionState()
                 loadUpdateStatus()   // clear the stale "Installed: v…" line now that prefs are purged
-                resultBarMsg = "$titleText uninstalled"
+                resultBarMsg = getString(
+                    R.string.compose_amazon_game_detail_uninstalled,
+                    titleText ?: getString(R.string.compose_amazon_game_detail_game_fallback),
+                )
             }
         }
     }
@@ -489,7 +549,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
 
     private fun onLaunchClicked() {
         val dir = prefs!!.getString("amazon_dir_$productId", null) ?: return
-        val name = titleText ?: productId ?: "Game"
+        val name = titleText ?: productId ?: getString(R.string.compose_amazon_game_detail_game_fallback)
         // The exe choice happens HERE (not at install completion): scan the install dir, and if
         // there's more than one candidate let the user pick before the container picker. Exactly
         // one → straight to the container picker. Uses the same working StarLaunchBridge flow the
@@ -500,7 +560,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
             AmazonLaunchHelper.collectExe(File(dir), exeFiles)
             if (exeFiles.isEmpty()) {
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "No .exe found in install directory"
+                    resultBarMsg = getString(R.string.compose_amazon_game_detail_no_exe_in_install_directory)
                 }
                 return@launch
             }
@@ -529,16 +589,20 @@ class AmazonGameDetailActivity : ComponentActivity() {
         val storedVer = prefs!!.getString("amazon_manifest_version_$productId", null)
         val installed = prefs!!.getString("amazon_exe_$productId", null) != null
         updateStatusText = if (storedVer != null) {
-            "Installed: v${storedVer.take(12)}\u2026"
+            updateStatusKind = AmazonUpdateStatusKind.INSTALLED_VERSION
+            getString(R.string.compose_amazon_game_detail_installed_version, storedVer.take(12))
         } else if (installed) {
-            "Version not recorded \u2014 tap Check to verify"
+            updateStatusKind = AmazonUpdateStatusKind.VERSION_UNKNOWN
+            getString(R.string.compose_amazon_game_detail_version_not_recorded)
         } else {
-            "Install the game first to check for updates."
+            updateStatusKind = AmazonUpdateStatusKind.NOT_INSTALLED
+            getString(R.string.compose_amazon_game_detail_install_first_for_updates)
         }
     }
 
     private fun onCheckUpdatesClick() {
-        updateStatusText = "Checking\u2026"
+        updateStatusKind = AmazonUpdateStatusKind.CHECKING
+        updateStatusText = getString(R.string.compose_amazon_game_detail_checking)
         checkUpdatesEnabled = false
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -547,7 +611,8 @@ class AmazonGameDetailActivity : ComponentActivity() {
                 if (token == null) {
                     withContext(Dispatchers.Main) {
                         checkUpdatesEnabled = true
-                        updateStatusText = "Login required."
+                        updateStatusKind = AmazonUpdateStatusKind.LOGIN_REQUIRED
+                        updateStatusText = getString(R.string.compose_amazon_game_detail_login_required)
                     }
                     return@launch
                 }
@@ -556,7 +621,8 @@ class AmazonGameDetailActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     checkUpdatesEnabled = true
                     if (latestVer.isNullOrEmpty()) {
-                        updateStatusText = "Could not reach update server."
+                        updateStatusKind = AmazonUpdateStatusKind.SERVER_ERROR
+                        updateStatusText = getString(R.string.compose_amazon_game_detail_update_server_unreachable)
                         return@withContext
                     }
                     val stored = prefs!!.getString(
@@ -566,22 +632,32 @@ class AmazonGameDetailActivity : ComponentActivity() {
                         prefs!!.edit()
                             .putString("amazon_manifest_version_$productId", latestVer)
                             .apply()
-                        updateStatusText = "Up to date \u2713"
+                        updateStatusKind = AmazonUpdateStatusKind.UP_TO_DATE
+                        updateStatusText = getString(R.string.compose_amazon_game_detail_up_to_date)
                         updateBtnVisible = false
                     } else if (stored == latestVer) {
-                        updateStatusText = "Up to date \u2713"
+                        updateStatusKind = AmazonUpdateStatusKind.UP_TO_DATE
+                        updateStatusText = getString(R.string.compose_amazon_game_detail_up_to_date)
                         updateBtnVisible = false
                     } else {
-                        updateStatusText = "Update available!\n" +
-                            "Installed: v${stored.take(12)}\u2026 " +
-                            " \u2192  Latest: v${latestVer.take(12)}\u2026"
+                        updateStatusKind = AmazonUpdateStatusKind.UPDATE_AVAILABLE
+                        updateStatusText = getString(
+                            R.string.compose_amazon_game_detail_update_available,
+                            stored.take(12),
+                            latestVer.take(12),
+                        )
                         updateBtnVisible = true
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "Update check failed", e)
                 withContext(Dispatchers.Main) {
                     checkUpdatesEnabled = true
-                    updateStatusText = "Check failed: ${e.message}"
+                    updateStatusKind = AmazonUpdateStatusKind.CHECK_FAILED
+                    updateStatusText = getString(
+                        R.string.compose_amazon_game_detail_check_failed,
+                        getString(R.string.final_errors_unknown_error),
+                    )
                 }
             }
         }
@@ -682,7 +758,11 @@ class AmazonGameDetailActivity : ComponentActivity() {
             }
             val finalSize = size
             withContext(Dispatchers.Main) {
-                sizeText = if (finalSize > 0) formatBytes(finalSize) else "Unknown"
+                sizeText = if (finalSize > 0) {
+                    formatBytes(finalSize)
+                } else {
+                    getString(R.string.compose_amazon_game_detail_unknown_size)
+                }
             }
         }
     }
@@ -702,7 +782,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
 
         // Themed (StoreAlertDialogDark) so it matches the dark app instead of a white light dialog.
         android.app.AlertDialog.Builder(this, R.style.StoreAlertDialogDark)
-            .setTitle("Select game executable")
+            .setTitle(getString(R.string.compose_amazon_game_detail_select_executable))
             .setItems(labels) { _, which ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     onSelected(candidates[which])
@@ -742,12 +822,13 @@ private fun AmazonGameDetailScreen(
     launchBtnVisible: Boolean,
     launchBtnEnabled: Boolean,
     installBtnVisible: Boolean,
-    installBtnText: String,
+    installAction: AmazonInstallAction,
     installBtnEnabled: Boolean,
     setExeBtnVisible: Boolean,
     uninstallBtnVisible: Boolean,
     sizeText: String,
     updateStatusText: String,
+    updateStatusKind: AmazonUpdateStatusKind,
     checkUpdatesEnabled: Boolean,
     updateBtnVisible: Boolean,
     dlcJson: String,
@@ -814,7 +895,7 @@ private fun AmazonGameDetailScreen(
                     val dot = productId.lastIndexOf('.')
                     val shortId = if (dot in 0 until productId.length - 1)
                         productId.substring(dot + 1) else productId
-                    InfoChip("ID: $shortId")
+                    InfoChip(stringResource(R.string.compose_amazon_game_detail_id_label, shortId))
                 }
             }
             if (exeNameVisible) {
@@ -837,31 +918,35 @@ private fun AmazonGameDetailScreen(
         StoreActionRow {
             if (launchBtnVisible) {
                 StoreActionButton(
-                    text = "Launch",
+                    text = stringResource(R.string.compose_amazon_game_detail_launch),
                     onClick = onLaunchClick,
                     modifier = Modifier.weight(1f),
                     enabled = launchBtnEnabled,
                 )
             }
             if (installBtnVisible) {
+                val installButtonText = when (installAction) {
+                    AmazonInstallAction.INSTALL -> stringResource(R.string.compose_amazon_game_detail_install)
+                    AmazonInstallAction.CANCEL -> stringResource(R.string.compose_amazon_game_detail_cancel)
+                }
                 StoreActionButton(
-                    text = installBtnText,
+                    text = installButtonText,
                     onClick = onInstallClick,
                     modifier = Modifier.weight(1f),
                     enabled = installBtnEnabled,
-                    destructive = installBtnText == "Cancel",
+                    destructive = installAction == AmazonInstallAction.CANCEL,
                 )
             }
             if (setExeBtnVisible) {
                 StoreActionButton(
-                    text = "Set .exe…",
+                    text = stringResource(R.string.compose_amazon_game_detail_set_executable),
                     onClick = onSetExeClick,
                     modifier = Modifier.weight(1f),
                 )
             }
             if (uninstallBtnVisible) {
                 StoreActionButton(
-                    text = "Uninstall",
+                    text = stringResource(R.string.compose_amazon_game_detail_uninstall),
                     onClick = onUninstallClick,
                     modifier = Modifier.weight(1f),
                     destructive = true,
@@ -870,9 +955,10 @@ private fun AmazonGameDetailScreen(
         }
 
         // Updates
-        StoreSection(title = "Updates") {
+        StoreSection(title = stringResource(R.string.compose_amazon_game_detail_updates)) {
             AmazonUpdatesContent(
                 updateStatusText = updateStatusText,
+                updateStatusKind = updateStatusKind,
                 checkUpdatesEnabled = checkUpdatesEnabled,
                 updateBtnVisible = updateBtnVisible,
                 onCheckUpdatesClick = onCheckUpdatesClick,
@@ -881,7 +967,7 @@ private fun AmazonGameDetailScreen(
         }
 
         // DLC
-        StoreSection(title = "DLC") {
+        StoreSection(title = stringResource(R.string.compose_amazon_game_detail_dlc)) {
             AmazonDlcContent(
                 dlcJson = dlcJson,
                 onDlcInstall = onDlcInstall,
@@ -897,13 +983,14 @@ private fun AmazonGameDetailScreen(
 @Composable
 private fun AmazonUpdatesContent(
     updateStatusText: String,
+    updateStatusKind: AmazonUpdateStatusKind,
     checkUpdatesEnabled: Boolean,
     updateBtnVisible: Boolean,
     onCheckUpdatesClick: () -> Unit,
     onUpdateNowClick: () -> Unit,
 ) {
     // Not installed yet — just the muted hint, no buttons.
-    if (updateStatusText.startsWith("Install the game")) {
+    if (updateStatusKind == AmazonUpdateStatusKind.NOT_INSTALLED) {
         StoreStatusText(updateStatusText)
         return
     }
@@ -912,14 +999,14 @@ private fun AmazonUpdatesContent(
     Spacer(Modifier.height(8.dp))
     if (updateBtnVisible) {
         StoreActionButton(
-            text = "Update Now",
+            text = stringResource(R.string.compose_amazon_game_detail_update_now),
             onClick = onUpdateNowClick,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(8.dp))
     }
     StoreActionButton(
-        text = "Check for Updates",
+        text = stringResource(R.string.compose_amazon_game_detail_check_for_updates),
         onClick = onCheckUpdatesClick,
         modifier = Modifier.fillMaxWidth(),
         enabled = checkUpdatesEnabled,
@@ -944,33 +1031,43 @@ private fun AmazonDlcContent(
     }
 
     if (parseError) {
-        StoreStatusText("Error reading DLC data")
+        StoreStatusText(stringResource(R.string.compose_amazon_game_detail_dlc_read_error))
         return
     }
     if (dlcArr == null || dlcArr.length() == 0) {
-        StoreStatusText("No DLCs in your library for this game")
+        StoreStatusText(stringResource(R.string.compose_amazon_game_detail_no_dlc_owned))
         return
     }
 
     Text(
-        text = "${dlcArr.length()} DLC${if (dlcArr.length() == 1) "" else "s"} owned",
+        text = pluralStringResource(
+            R.plurals.compose_amazon_game_detail_dlc_owned,
+            dlcArr.length(),
+            dlcArr.length(),
+        ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.Bold,
     )
 
+    val unknownDlc = stringResource(R.string.compose_amazon_game_detail_unknown_dlc)
     for (i in 0 until dlcArr.length()) {
         val dlc = dlcArr.optJSONObject(i) ?: continue
         val dlcEid = dlc.optString("eid", "")
         val dlcPid = dlc.optString("pid", "")
-        val dlcTitleText = dlc.optString("title", "Unknown DLC")
+        val dlcTitleText = dlc.optString("title", unknownDlc).ifBlank { unknownDlc }
 
         val dlcInstalled = dlcPid.isNotEmpty() &&
             prefs.getString("amazon_exe_$dlcPid", null) != null
 
         var dlcStatusText by remember { mutableStateOf("") }
-        var dlcBtnText by remember {
-            mutableStateOf(if (dlcInstalled) "Reinstall" else "Install")
+        var dlcAction by remember {
+            mutableStateOf(if (dlcInstalled) AmazonDlcAction.REINSTALL else AmazonDlcAction.INSTALL)
+        }
+        val dlcButtonText = when (dlcAction) {
+            AmazonDlcAction.INSTALL -> stringResource(R.string.compose_amazon_game_detail_install)
+            AmazonDlcAction.REINSTALL -> stringResource(R.string.compose_amazon_game_detail_reinstall)
+            AmazonDlcAction.DOWNLOADING -> stringResource(R.string.compose_amazon_game_detail_downloading)
         }
 
         Spacer(Modifier.height(8.dp))
@@ -990,7 +1087,7 @@ private fun AmazonDlcContent(
                 )
                 if (dlcInstalled) {
                     Text(
-                        text = "✓",
+                        text = stringResource(R.string.compose_amazon_game_detail_installed_symbol),
                         style = MaterialTheme.typography.bodyMedium,
                         color = INSTALLED_GREEN,
                         fontWeight = FontWeight.Bold,
@@ -1006,15 +1103,15 @@ private fun AmazonDlcContent(
             if (dlcEid.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 StoreActionButton(
-                    text = dlcBtnText,
+                    text = dlcButtonText,
                     onClick = {
-                        if (dlcBtnText == "Downloading…") return@StoreActionButton
-                        dlcBtnText = "Downloading…"
-                        dlcStatusText = "Starting…"
+                        if (dlcAction == AmazonDlcAction.DOWNLOADING) return@StoreActionButton
+                        dlcAction = AmazonDlcAction.DOWNLOADING
+                        dlcStatusText = context.getString(R.string.compose_amazon_game_detail_starting)
                         onDlcInstall(dlcEid, dlcPid, dlcTitleText)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = dlcBtnText != "Downloading…",
+                    enabled = dlcAction != AmazonDlcAction.DOWNLOADING,
                 )
             }
         }

@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -108,13 +109,13 @@ fun AppDrawerContent(
 
         DrawerAccountHeader(account = account, onMyAccount = onMyAccount)
 
-        DrawerSectionHeader("Library")
+        DrawerSectionHeader(stringResource(R.string.drawer_library))
         DrawerItem(Screen.Games,         currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.FileManager,   currentRoute, onNavigate)
         DrawerItem(Screen.SaveManager,   currentRoute, onNavigate)
 
-        DrawerSectionHeader("System", showDivider = true)
+        DrawerSectionHeader(stringResource(R.string.drawer_system), showDivider = true)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
         DrawerItem(Screen.Appearance,    currentRoute, onNavigate)
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
@@ -124,7 +125,11 @@ fun AppDrawerContent(
         // leaves no orphaned divider behind.
         val showStores by AppThemeState.showStores.collectAsState()
         if (showStores) {
-            DrawerSectionHeader("Stores", note = "· unchanged", showDivider = true)
+            DrawerSectionHeader(
+                stringResource(R.string.drawer_stores),
+                note = stringResource(R.string.drawer_stores_note),
+                showDivider = true
+            )
             Screen.storeItems.forEach { screen ->
                 DrawerStoreItem(screen, onLaunchStore)
             }
@@ -136,12 +141,12 @@ fun AppDrawerContent(
         )
 
         DrawerIconItem(
-            label = "About",
+            label = stringResource(R.string.drawer_about),
             icon = Icons.Filled.Info,
             onClick = onAbout,
         )
         DrawerIconItem(
-            label = "Help and Support",
+            label = stringResource(R.string.drawer_help_support),
             icon = Icons.Filled.HelpOutline,
             onClick = { showHelp = true },
         )
@@ -176,19 +181,19 @@ private fun DrawerAccountHeader(account: AccountManager.Account?, onMyAccount: (
                     maxLines = 1,
                 )
                 Text(
-                    text = "My account",
+                    text = stringResource(R.string.drawer_my_account),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
             } else {
                 Text(
-                    text = "Sign in / My account",
+                    text = stringResource(R.string.drawer_sign_in_account),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    text = "Optional — to manage your shared configs",
+                    text = stringResource(R.string.drawer_account_optional),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     maxLines = 1,
@@ -288,7 +293,7 @@ private fun StorageWidget() {
     // dead gap at the bottom of the drawer.
     if (anyShown) Spacer(Modifier.height(8.dp))
     if (showInternal) {
-        StorageCard("Internal Storage", usedBytes, totalBytes)
+        StorageCard(stringResource(R.string.drawer_internal_storage), usedBytes, totalBytes)
     }
     sdCards.forEachIndexed { index, (label, used, total) ->
         if (showInternal || index > 0) Spacer(Modifier.height(4.dp))
@@ -409,7 +414,7 @@ private fun DrawerItem(
             )
             Spacer(Modifier.width(13.dp))
             Text(
-                text = screen.label,
+                text = stringResource(screen.labelRes),
                 style = MaterialTheme.typography.bodyLarge,
                 color = contentColor,
             )
@@ -430,7 +435,7 @@ private fun NewBadge() {
             .padding(horizontal = 5.dp, vertical = 1.dp),
     ) {
         Text(
-            text = "NEW",
+            text = stringResource(R.string.drawer_new),
             color = MaterialTheme.colorScheme.onPrimary,
             fontSize = 8.5.sp,
             fontWeight = FontWeight.Bold,
@@ -456,7 +461,7 @@ private fun DrawerStoreItem(screen: Screen, onLaunchStore: (Screen) -> Unit) {
         )
         Spacer(Modifier.width(14.dp))
         Text(
-            text = screen.label,
+            text = stringResource(screen.labelRes),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -491,32 +496,32 @@ private fun DrawerIconItem(label: String, icon: ImageVector, onClick: () -> Unit
 private fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Help & Support") },
+        title = { Text(stringResource(R.string.help_support_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "For bug reports, feature requests, and support, visit the GitHub repository.",
+                    stringResource(R.string.help_support_message),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 SupportLink(
-                    label = "GitHub Repository",
+                    label = stringResource(R.string.help_github_repository),
                     url = "https://github.com/The412Banner/Bannerlator",
                     onOpenUrl = onOpenUrl
                 )
                 SupportLink(
-                    label = "Report an Issue",
+                    label = stringResource(R.string.help_report_issue),
                     url = "https://github.com/The412Banner/Bannerlator/issues",
                     onOpenUrl = onOpenUrl
                 )
                 SupportLink(
-                    label = "Discord Community",
+                    label = stringResource(R.string.help_discord_community),
                     url = "https://discord.gg/kk6GR3C2pX",
                     onOpenUrl = onOpenUrl
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         }
     )
 }

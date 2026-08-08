@@ -109,6 +109,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -222,7 +224,9 @@ fun BigPictureScreen(navController: NavController) {
         communityImportTarget = target
         communityImportLauncher.launch(
             com.winlator.star.util.InAppFilePicker.buildIntent(
-                context, com.winlator.star.util.InAppFilePicker.JSON, "Select a config .json"
+                context,
+                com.winlator.star.util.InAppFilePicker.JSON,
+                context.getString(R.string.bp_picker_select_config),
             )
         )
     }
@@ -454,28 +458,28 @@ fun BigPictureScreen(navController: NavController) {
             ) {
                 RailButton(
                     icon = Icons.Filled.Public,
-                    label = "Community Configs",
+                    label = stringResource(R.string.bp_community_configs),
                     focused = zone == BpZone.RAIL && railIndex == 0,
                     onClick = { zone = BpZone.RAIL; railIndex = 0; showCommunity = true },
                 )
                 Spacer(Modifier.width(12.dp))
                 RailButton(
                     icon = Icons.Filled.Settings,
-                    label = "App Settings",
+                    label = stringResource(R.string.bp_app_settings),
                     focused = zone == BpZone.RAIL && railIndex == 1,
                     onClick = { zone = BpZone.RAIL; railIndex = 1; navController.navigate(Screen.Settings.route) },
                 )
                 Spacer(Modifier.width(12.dp))
                 RailButton(
                     icon = Icons.Filled.Apps,
-                    label = "Tools",
+                    label = stringResource(R.string.bp_tools),
                     focused = zone == BpZone.RAIL && railIndex == 2,
                     onClick = { zone = BpZone.RAIL; railIndex = 2; activeSheet = BpSheet.TOOLS },
                 )
                 Spacer(Modifier.width(12.dp))
                 RailButton(
                     icon = Icons.Filled.PowerSettingsNew,
-                    label = "Power",
+                    label = stringResource(R.string.bp_power),
                     focused = zone == BpZone.RAIL && railIndex == 3,
                     onClick = { zone = BpZone.RAIL; railIndex = 3; activeSheet = BpSheet.POWER },
                 )
@@ -488,9 +492,9 @@ fun BigPictureScreen(navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text("No games yet", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.bp_no_games_yet), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = { navController.navigate(Screen.Games.route) }) { Text("Add games") }
+                    Button(onClick = { navController.navigate(Screen.Games.route) }) { Text(stringResource(R.string.bp_add_games)) }
                 }
             } else {
                 // Hero — fills the band between the rail and the carousel (a weighted sibling, so its
@@ -502,11 +506,11 @@ fun BigPictureScreen(navController: NavController) {
                 val spec = selected?.let { buildLaunchSpec(it, context.resources) }
                 val chips = spec?.let {
                     listOf(
-                        "Renderer" to it.rendererLabel,
-                        "Driver" to it.driverLabel,
+                        stringResource(R.string.bp_spec_renderer) to it.rendererLabel,
+                        stringResource(R.string.bp_spec_driver) to it.driverLabel,
                         "DXVK" to it.dxvkVersion,
                         "VKD3D" to it.vkd3dVersion,
-                        "Frame Gen" to it.frameGenLabel,
+                        stringResource(R.string.bp_spec_frame_generation) to it.frameGenLabel,
                         "x86" to it.backendLabel,
                     ).filter { p -> p.second.isNotBlank() }
                 }.orEmpty()
@@ -540,7 +544,7 @@ fun BigPictureScreen(navController: NavController) {
                                 Spacer(Modifier.height(4.dp))
                                 val stats = playtimeStats(context, selected?.name ?: "")
                                 Text(
-                                    "Played ${stats.first}×  ·  ${stats.second}",
+                                    stringResource(R.string.bp_played_stats, stats.first, stats.second),
                                     color = Color.White.copy(alpha = 0.85f),
                                     fontSize = 13.sp,
                                 )
@@ -575,7 +579,7 @@ fun BigPictureScreen(navController: NavController) {
                                 ) {
                                     Icon(Icons.Filled.PlayArrow, contentDescription = null)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Play", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                                    Text(stringResource(R.string.bp_play), fontSize = 17.sp, fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 OutlinedButton(
@@ -591,7 +595,7 @@ fun BigPictureScreen(navController: NavController) {
                                 ) {
                                     Icon(Icons.Filled.Tune, contentDescription = null, tint = Color.White)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Game options", color = Color.White)
+                                    Text(stringResource(R.string.bp_game_options), color = Color.White)
                                 }
                             }
                         }
@@ -752,12 +756,14 @@ fun BigPictureScreen(navController: NavController) {
     communityApplyResult?.let { res ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { communityApplyResult = null },
-            title = { Text(if (res.ok) "Config applied" else "Couldn't apply") },
+            title = {
+                Text(stringResource(if (res.ok) R.string.bp_config_applied else R.string.bp_config_apply_failed))
+            },
             text = {
                 Column {
                     Text(res.message, color = Color.White.copy(alpha = 0.85f))
                     if (res.ok) Text(
-                        "Applied to \"${selected?.name.orEmpty()}\".",
+                        stringResource(R.string.bp_applied_to_game, selected?.name.orEmpty()),
                         color = Color.White.copy(alpha = 0.55f),
                         fontSize = 12.sp,
                     )
@@ -768,27 +774,31 @@ fun BigPictureScreen(navController: NavController) {
                         Spacer(Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "Needs ${mc.label}${mc.wanted.ifBlank { "" }.let { if (it.isBlank()) "" else " ($it)" }}",
+                                if (mc.wanted.isBlank()) {
+                                    stringResource(R.string.bp_needs_component, mc.label)
+                                } else {
+                                    stringResource(R.string.bp_needs_component_version, mc.label, mc.wanted)
+                                },
                                 color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f),
                             )
-                            androidx.compose.material3.TextButton(onClick = { bpInstallFor = mc }) { Text("Install") }
+                            androidx.compose.material3.TextButton(onClick = { bpInstallFor = mc }) { Text(stringResource(R.string.bp_install)) }
                         }
                     }
                     res.missingDrivers.forEach { md ->
                         Spacer(Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "Needs GPU driver ${md.wanted}",
+                                stringResource(R.string.bp_needs_gpu_driver, md.wanted),
                                 color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f),
                             )
-                            androidx.compose.material3.TextButton(onClick = { bpDriverFor = md }) { Text("Install") }
+                            androidx.compose.material3.TextButton(onClick = { bpDriverFor = md }) { Text(stringResource(R.string.bp_install)) }
                         }
                     }
                     res.advisories.forEach { Text("• $it", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp) }
                 }
             },
             confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { communityApplyResult = null }) { Text("Done") }
+                androidx.compose.material3.TextButton(onClick = { communityApplyResult = null }) { Text(stringResource(R.string.bp_done)) }
             },
         )
     }
@@ -919,18 +929,20 @@ private fun GameOptionsSheet(
     // Rows built inline (not remembered) so the passed-in callbacks never go stale. The Change-cover row
     // captures the launcher; the Remove-cover row only appears when there's a custom cover to remove.
     val rows = buildList {
-        add(BpRow(Icons.Filled.Edit, "Edit shortcut", onEditShortcut))
-        add(BpRow(Icons.Filled.Tune, "Container settings", onContainerSettings))
-        add(BpRow(Icons.Filled.Public, "Community configs", onCommunityConfigs))
-        add(BpRow(Icons.Filled.Image, "Change cover art") {
+        add(BpRow(Icons.Filled.Edit, stringResource(R.string.bp_edit_shortcut), onEditShortcut))
+        add(BpRow(Icons.Filled.Tune, stringResource(R.string.bp_container_settings), onContainerSettings))
+        add(BpRow(Icons.Filled.Public, stringResource(R.string.bp_community_configs), onCommunityConfigs))
+        add(BpRow(Icons.Filled.Image, stringResource(R.string.bp_change_cover_art)) {
             coverPicker.launch(
                 com.winlator.star.util.InAppFilePicker.buildIntent(
-                    context, com.winlator.star.util.InAppFilePicker.IMAGES, "Select cover art"
+                    context,
+                    com.winlator.star.util.InAppFilePicker.IMAGES,
+                    context.getString(R.string.bp_picker_select_cover_art),
                 )
             )
         })
         if (!shortcut.customCoverArtPath.isNullOrEmpty()) {
-            add(BpRow(Icons.Filled.Delete, "Remove cover art") { onRemoveCover(); onDismiss() })
+            add(BpRow(Icons.Filled.Delete, stringResource(R.string.bp_remove_cover_art)) { onRemoveCover(); onDismiss() })
         }
     }
     BpSheetScaffold(title = shortcut.name, rows = rows, onDismiss = onDismiss)
@@ -944,11 +956,11 @@ private fun ToolsSheet(
     onDownloads: () -> Unit,
 ) {
     BpSheetScaffold(
-        title = "Tools",
+        title = stringResource(R.string.bp_tools),
         rows = listOf(
-            BpRow(Icons.Filled.FolderOpen, "File Manager", onFileManager),
-            BpRow(Icons.Filled.Layers, "Manage Wrappers", onWrappers),
-            BpRow(Icons.Filled.Download, "Downloads", onDownloads),
+            BpRow(Icons.Filled.FolderOpen, stringResource(R.string.bp_file_manager), onFileManager),
+            BpRow(Icons.Filled.Layers, stringResource(R.string.bp_manage_wrappers), onWrappers),
+            BpRow(Icons.Filled.Download, stringResource(R.string.bp_downloads), onDownloads),
         ),
         onDismiss = onDismiss,
     )
@@ -962,11 +974,11 @@ private fun PowerSheet(
     onQuit: () -> Unit,
 ) {
     BpSheetScaffold(
-        title = "Power",
+        title = stringResource(R.string.bp_power),
         rows = listOf(
-            BpRow(Icons.Filled.ExitToApp, "Exit Big Picture", onExit),
-            BpRow(Icons.Filled.PowerSettingsNew, "Turn off Big Picture mode", onTurnOff),
-            BpRow(Icons.Filled.Close, "Quit", onQuit),
+            BpRow(Icons.Filled.ExitToApp, stringResource(R.string.bp_exit_big_picture), onExit),
+            BpRow(Icons.Filled.PowerSettingsNew, stringResource(R.string.bp_turn_off_big_picture), onTurnOff),
+            BpRow(Icons.Filled.Close, stringResource(R.string.bp_quit), onQuit),
         ),
         onDismiss = onDismiss,
     )
@@ -1087,12 +1099,12 @@ private fun GameCommunitySheet(
                             type = "application/json"
                             putExtra(Intent.EXTRA_STREAM, uri)
                             putExtra(Intent.EXTRA_SUBJECT, res.game)
-                            putExtra(Intent.EXTRA_TEXT, "Bannerlator config for ${res.game}")
+                            putExtra(Intent.EXTRA_TEXT, context.getString(R.string.bp_share_subject, res.game))
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        context.startActivity(Intent.createChooser(send, "Share config"))
+                        context.startActivity(Intent.createChooser(send, context.getString(R.string.bp_share_config)))
                     } catch (e: Exception) {
-                        Toast.makeText(context, "Couldn't share the config.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.bp_share_failed), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -1184,7 +1196,7 @@ private fun GameCommunitySheet(
                     }
                 },
         ) {
-            SheetTitle("Community configs")
+            SheetTitle(stringResource(R.string.bp_community_configs))
             Text(
                 shortcut.name,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1198,14 +1210,14 @@ private fun GameCommunitySheet(
                     OutlinedButton(onClick = shareConfig, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Share")
+                        Text(stringResource(R.string.bp_share))
                     }
                 }
                 DpadHighlight(focused = focusRow == 0 && curCol == 1, modifier = Modifier.weight(1f)) {
                     OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Filled.FileUpload, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Import")
+                        Text(stringResource(R.string.bp_import))
                     }
                 }
             }
@@ -1215,11 +1227,11 @@ private fun GameCommunitySheet(
                     if (uploading) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(6.dp))
-                        Text(if (uploadStarted) "Uploading…" else "Preparing…")
+                        Text(stringResource(if (uploadStarted) R.string.bp_uploading else R.string.bp_preparing))
                     } else {
                         Icon(Icons.Filled.CloudUpload, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Upload to community")
+                        Text(stringResource(R.string.bp_upload_to_community))
                     }
                 }
             }
@@ -1232,7 +1244,7 @@ private fun GameCommunitySheet(
                         if (q.trim().length >= 2) vm.searchCommunityGames(q) { searchResults = it }
                         else searchResults = emptyList()
                     },
-                    label = { Text("Search all games") },
+                    label = { Text(stringResource(R.string.bp_search_all_games)) },
                     leadingIcon = { Icon(Icons.Filled.Search, null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -1252,7 +1264,7 @@ private fun GameCommunitySheet(
                 // Search results (touch-select) replace the match list while a query is active.
                 searching -> {
                     if (searchResults.isEmpty()) {
-                        Text("No games match \"$search\".", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.bp_no_games_match, search), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         searchResults.forEach { cg ->
                             CommunityCard(onClick = {
@@ -1275,8 +1287,8 @@ private fun GameCommunitySheet(
                         }
                     }
                 }
-                matchLoading -> Text("Matching \"${shortcut.name}\"…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                game == null -> Text("No auto-match for \"${shortcut.name}\" — search above to pick one.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                matchLoading -> Text(stringResource(R.string.bp_matching_game, shortcut.name), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                game == null -> Text(stringResource(R.string.bp_no_auto_match, shortcut.name), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else -> {
                     // Genuine tie (e.g. "Dragon Age" → Inquisition vs Veilguard): offer the alternatives
                     // so the user picks the right game instead of silently trusting the top candidate.
@@ -1285,7 +1297,7 @@ private fun GameCommunitySheet(
                     val tieOptions = match?.alternatives.orEmpty()
                     if (tieOptions.size > 1) {
                         Text(
-                            "Which game is this?",
+                            stringResource(R.string.bp_which_game),
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
@@ -1320,21 +1332,21 @@ private fun GameCommunitySheet(
                         )
                         CommunityStoreBadge(isSteam = game.isSteam)
                     }
-                    val devWord = if (game.devices.size == 1) "device" else "devices"
-                    val cfgWord = if (game.configCount == 1) "config" else "configs"
-                    Text("${game.configCount} $cfgWord · ${game.devices.size} $devWord", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    Text("Your device: ${deviceHeaderLabel(DeviceIdentity.deviceModel(), match?.userHardwareLabel)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    val configCount = pluralStringResource(R.plurals.bp_config_count, game.configCount, game.configCount)
+                    val deviceCount = pluralStringResource(R.plurals.bp_device_count, game.devices.size, game.devices.size)
+                    Text(stringResource(R.string.bp_counts_summary, configCount, deviceCount), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text(stringResource(R.string.bp_your_device, deviceHeaderLabel(DeviceIdentity.deviceModel(), match?.userHardwareLabel)), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     Spacer(Modifier.height(6.dp))
                     FilterChip(
                         selected = matchesMine,
                         onClick = { matchesMine = !matchesMine },
-                        label = { Text("Matches my device") },
+                        label = { Text(stringResource(R.string.bp_matches_my_device)) },
                         enabled = hwEnabled,
                     )
                     Spacer(Modifier.height(8.dp))
                     if (cards.isEmpty()) {
                         Text(
-                            if (matchesMine) "No uploaded configs match your device." else "No configs listed.",
+                            stringResource(if (matchesMine) R.string.bp_no_device_matches else R.string.bp_no_configs_listed),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
@@ -1348,7 +1360,7 @@ private fun GameCommunitySheet(
                                     CommunityCard(onClick = { onApply(c.pick) }) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                device.model.ifBlank { "Unknown device" },
+                                                device.model.ifBlank { stringResource(R.string.bp_unknown_device) },
                                                 color = if (c.isMatch) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
@@ -1366,7 +1378,7 @@ private fun GameCommunitySheet(
             }
             Spacer(Modifier.height(8.dp))
             DpadHighlight(focused = focusRow == closeRow) {
-                OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Close") }
+                OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.bp_close)) }
             }
         }
     }
@@ -1382,10 +1394,10 @@ private fun GameCommunitySheet(
         }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = dismissReplace,
-            title = { Text("Replace your shared config?") },
-            text = { Text("You've already shared a config for \"${existing.game}\". Replace it with this one?") },
-            confirmButton = { TextButton(onClick = { replacePrompt = null; proceed() }) { Text("Replace") } },
-            dismissButton = { TextButton(onClick = dismissReplace) { Text("Cancel") } },
+            title = { Text(stringResource(R.string.bp_replace_shared_config_title)) },
+            text = { Text(stringResource(R.string.bp_replace_shared_config_message, existing.game)) },
+            confirmButton = { TextButton(onClick = { replacePrompt = null; proceed() }) { Text(stringResource(R.string.bp_replace)) } },
+            dismissButton = { TextButton(onClick = dismissReplace) { Text(stringResource(R.string.bp_cancel)) } },
         )
     }
 }
@@ -1495,7 +1507,7 @@ private fun playtimeStats(context: Context, name: String): Pair<Int, String> {
     val minutes = (totalMs / (1000 * 60)) % 60
     val hours   = (totalMs / (1000 * 60 * 60)) % 24
     val days    = (totalMs / (1000 * 60 * 60 * 24))
-    return playCount to String.format("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
+    return playCount to context.getString(R.string.bp_playtime_duration, days, hours, minutes, seconds)
 }
 
 // Resolve a cover: existing custom art first, then a SteamGridDB grid (persisted as the custom cover).

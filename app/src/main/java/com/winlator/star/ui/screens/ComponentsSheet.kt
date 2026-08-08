@@ -15,7 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.components.Component
 import com.winlator.star.components.ComponentCatalog
 import com.winlator.star.components.ComponentExecInstaller
@@ -79,7 +81,11 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                 is ComponentExecInstaller.Result.Launched -> { /* session launched; return target consumed after restart */ }
                 is ComponentExecInstaller.Result.Done -> { markInstalled(c.name); ComponentInstallReturn.clear(context) }
                 is ComponentExecInstaller.Result.Error -> {
-                    message = "Couldn't install ${c.name}: ${res.message}"
+                    message = context.getString(
+                        R.string.compose_content_component_install_failed_detail,
+                        c.name,
+                        res.message,
+                    )
                     ComponentInstallReturn.clear(context)
                 }
             }
@@ -103,7 +109,11 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
             onDismissRequest = { message = null },
             containerColor = cs.surfaceContainerHigh,
             text = { Text(m, color = cs.onSurface) },
-            confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
+            confirmButton = {
+                TextButton(onClick = { message = null }) {
+                    Text(stringResource(R.string.compose_content_ok))
+                }
+            },
         )
     }
 
@@ -111,34 +121,44 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
         OutlinedAlertDialog(
             onDismissRequest = { confirmExec = null },
             containerColor = cs.surfaceContainerHigh,
-            title = { Text("Run ${c.name} installer", color = cs.onSurface) },
+            title = {
+                Text(
+                    stringResource(R.string.compose_content_run_installer_title, c.name),
+                    color = cs.onSurface,
+                )
+            },
             text = {
                 Text(
-                    "This opens the container to a Windows desktop and runs the ${c.name} installer. " +
-                        "Click through the installer window that appears, then close the container when it's " +
-                        "done — you'll be brought back to finish setup.",
+                    stringResource(R.string.compose_content_run_installer_description, c.name),
                     color = cs.onSurface,
                 )
             },
             confirmButton = {
-                TextButton(onClick = { val comp = c; confirmExec = null; runExecInstall(comp) }) { Text("Continue") }
+                TextButton(onClick = { val comp = c; confirmExec = null; runExecInstall(comp) }) {
+                    Text(stringResource(R.string.compose_content_continue))
+                }
             },
-            dismissButton = { TextButton(onClick = { confirmExec = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { confirmExec = null }) {
+                    Text(stringResource(R.string.compose_content_cancel))
+                }
+            },
         )
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState,
         containerColor = cs.surface, contentColor = cs.onSurface) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f).padding(bottom = 12.dp)) {
-            Text("Components", style = MaterialTheme.typography.titleLarge,
+            Text(stringResource(R.string.compose_content_components),
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp))
-            Text("Install Wine dependencies into this container",
+            Text(stringResource(R.string.compose_content_components_subtitle),
                 style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp))
             OutlinedTextField(
                 value = query, onValueChange = { query = it },
                 singleLine = true,
-                placeholder = { Text("Search components") },
+                placeholder = { Text(stringResource(R.string.compose_content_search_components)) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
             Spacer(Modifier.height(8.dp))
@@ -149,7 +169,10 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                     CircularProgressIndicator(color = cs.primary)
                 }
                 loadError -> Box(Modifier.fillMaxWidth().padding(28.dp), contentAlignment = Alignment.Center) {
-                    Text("Couldn't load the component catalog.", color = cs.onSurfaceVariant)
+                    Text(
+                        stringResource(R.string.compose_content_component_catalog_load_failed),
+                        color = cs.onSurfaceVariant,
+                    )
                 }
                 else -> {
                     // Name → component, for routing a base install to its file-drop `_dll` variant below.
@@ -199,7 +222,13 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                                                     }
                                                     installing = null
                                                     if (err == null) markInstalled(c.name)
-                                                    else message = "Couldn't install ${c.name}: $err"
+                                                    else {
+                                                        message = context.getString(
+                                                            R.string.compose_content_component_install_failed_detail,
+                                                            c.name,
+                                                            err,
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -212,7 +241,9 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("Close", color = cs.primary) }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.compose_content_close), color = cs.primary)
+                }
             }
         }
     }
@@ -227,19 +258,23 @@ private fun ComponentRow(
     enabled: Boolean,
     onInstall: () -> Unit,
 ) {
+    val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
     val installedBlue = Color(0xFF4FC3F7) // intentional: status color (installed indicator, distinct from action accent)
     // Components needing the exec engine (installer steps, or set_windows/uninstall) are gated by it;
     // the rest by the file-drop installer.
-    val reason = if (ComponentExecInstaller.handlesComponent(c)) ComponentExecInstaller.execBlockedReason(c)
-                 else ComponentInstaller.blockedReason(c)
+    val reason = if (ComponentExecInstaller.handlesComponent(c)) {
+        ComponentExecInstaller.execBlockedReason(context, c)
+    } else {
+        ComponentInstaller.blockedReason(context, c)
+    }
     val installable = reason == null
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
                 Text(c.name, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                 val sub = when {
-                    isInstalled -> "Installed"
+                    isInstalled -> stringResource(R.string.compose_content_installed)
                     !installable -> reason ?: ""
                     c.description.isNotEmpty() -> c.description
                     else -> c.provider
@@ -251,15 +286,26 @@ private fun ComponentRow(
             }
             when {
                 isInstalling -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                isInstalled -> Icon(Icons.Filled.CheckCircle, contentDescription = "Installed",
+                isInstalled -> Icon(Icons.Filled.CheckCircle,
+                    contentDescription = stringResource(R.string.compose_content_installed),
                     tint = installedBlue, modifier = Modifier.size(22.dp))
                 installable -> IconButton(onClick = onInstall, enabled = enabled) {
-                    Icon(Icons.Filled.Download, contentDescription = "Install", tint = cs.primary)
+                    Icon(
+                        Icons.Filled.Download,
+                        contentDescription = stringResource(R.string.compose_content_install),
+                        tint = cs.primary,
+                    )
                 }
                 else -> Box(
                     Modifier.background(cs.surfaceContainerHigh, RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) { Text("N/A", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant) }
+                ) {
+                    Text(
+                        stringResource(R.string.compose_content_not_available),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = cs.onSurfaceVariant,
+                    )
+                }
             }
         }
         if (isInstalling) {

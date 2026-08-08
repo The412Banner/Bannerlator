@@ -29,7 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,12 +48,13 @@ fun InputControlsDialog(state: XServerDialogState) {
     var timeoutEnabled   by remember(initTimeout)      { mutableStateOf(initTimeout) }
     var hapticsEnabled   by remember(initHaptics)      { mutableStateOf(initHaptics) }
 
-    val allItems = listOf("-- Disabled --") + profiles
+    val disabledLabel = stringResource(R.string.compose_input_disabled)
+    val allItems = listOf(disabledLabel) + profiles
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     OutlinedAlertDialog(
         onDismissRequest = { state.dismiss() },
-        title = { Text("Input Controls") },
+        title = { Text(stringResource(R.string.compose_input_controls_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 // Profile dropdown
@@ -60,10 +63,10 @@ fun InputControlsDialog(state: XServerDialogState) {
                     onExpandedChange = { dropdownExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = allItems.getOrElse(selectedIdx) { "-- Disabled --" },
+                        value = allItems.getOrElse(selectedIdx) { disabledLabel },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Profile") },
+                        label = { Text(stringResource(R.string.compose_input_profile)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -89,9 +92,15 @@ fun InputControlsDialog(state: XServerDialogState) {
 
                 Spacer(Modifier.height(8.dp))
 
-                CheckRow("Show Touchscreen Controls", showTouchscreen) { showTouchscreen = it }
-                CheckRow("Enable Timeout", timeoutEnabled) { timeoutEnabled = it }
-                CheckRow("Enable Haptics", hapticsEnabled) { hapticsEnabled = it }
+                CheckRow(stringResource(R.string.compose_input_show_touchscreen_controls), showTouchscreen) {
+                    showTouchscreen = it
+                }
+                CheckRow(stringResource(R.string.compose_input_enable_timeout), timeoutEnabled) {
+                    timeoutEnabled = it
+                }
+                CheckRow(stringResource(R.string.compose_input_enable_haptics), hapticsEnabled) {
+                    hapticsEnabled = it
+                }
 
                 Spacer(Modifier.height(8.dp))
 
@@ -105,7 +114,7 @@ fun InputControlsDialog(state: XServerDialogState) {
                     enabled = selectedIdx > 0,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Profile Settings…")
+                    Text(stringResource(R.string.compose_input_profile_settings))
                 }
             }
         },
@@ -116,10 +125,12 @@ fun InputControlsDialog(state: XServerDialogState) {
                     selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled
                 )
                 state.dismiss()
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.compose_input_ok)) }
         },
         dismissButton = {
-            TextButton(onClick = { state.dismiss() }) { Text("Cancel") }
+            TextButton(onClick = { state.dismiss() }) {
+                Text(stringResource(R.string.compose_input_cancel))
+            }
         }
     )
 }

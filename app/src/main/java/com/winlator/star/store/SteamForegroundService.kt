@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.winlator.star.store.download.DownloadRegistry
 
 /**
@@ -72,7 +73,11 @@ class SteamForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         instance = this        // re-publish on every (re)start — START_STICKY may recreate us
-        startForeground(NOTIFICATION_ID, buildNotification("Connecting to Steam…"))
+        val strings = ContextCompat.getContextForLanguage(this)
+        startForeground(
+            NOTIFICATION_ID,
+            buildNotification(strings.getString(com.winlator.star.R.string.steam_status_connecting)),
+        )
         Log.i(TAG, "Service started")
 
         SteamRepository.getInstance().initialize(this)
@@ -103,14 +108,14 @@ class SteamForegroundService : Service() {
 
     private fun createNotificationChannel() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+        val strings = ContextCompat.getContextForLanguage(this)
 
         val ch = NotificationChannel(
             CHANNEL_ID,
-            "Steam Connection",
+            strings.getString(com.winlator.star.R.string.steam_notification_channel),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Keeps Steam connection alive while browsing or downloading games"
+            description = strings.getString(com.winlator.star.R.string.steam_notification_channel_description)
             setShowBadge(false)
         }
         nm.createNotificationChannel(ch)

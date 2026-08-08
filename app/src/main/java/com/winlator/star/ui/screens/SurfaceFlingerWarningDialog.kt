@@ -4,6 +4,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.winlator.star.R
 
 /**
  * Opt-in confirmation shown when the user selects the experimental SurfaceFlinger (ASR) renderer.
@@ -14,18 +16,11 @@ import androidx.compose.runtime.Composable
 fun SurfaceFlingerWarningDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("SurfaceFlinger renderer — Experimental") },
+        title = { Text(stringResource(R.string.surface_flinger_warning_title)) },
         text = {
-            Text(
-                "The SurfaceFlinger renderer composites game frames directly through your device's " +
-                "display hardware, bypassing the GL/Vulkan compositor.\n\n" +
-                "On some devices and SoCs this can fault the display/GPU driver and REBOOT your device — " +
-                "possibly losing unsaved game progress or corrupting the container. It is validated only " +
-                "on recent Adreno GPUs.\n\n" +
-                "Use at your own risk."
-            )
+            Text(stringResource(R.string.surface_flinger_warning_body))
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("I understand, use it") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.surface_flinger_warning_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
 }

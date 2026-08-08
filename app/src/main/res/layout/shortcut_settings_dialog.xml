@@ -162,7 +162,7 @@
                 android:id="@+id/TVWrapperVersionLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Current Version:"
+                android:text="@string/current_version"
                 android:textStyle="bold"
                 android:paddingRight="8dp" />
 
@@ -237,7 +237,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="64bit Emulator" />
+                android:text="@string/emulator_64bit" />
             <Spinner
                 style="@style/ComboBox"
                 android:layout_width="match_parent"
@@ -411,13 +411,13 @@
                     android:background="#ffffff"
                     android:text="@string/box64" />
             </FrameLayout>
-            
+
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id="@+id/fexcoreFrame"
                 android:layout_marginTop="8dp">
-                
+
                 <LinearLayout style="@style/FieldSet">
                     <TextView
                         android:layout_width="wrap_content"
@@ -439,12 +439,12 @@
                         android:id="@+id/SFEXCorePreset"
                         android:layout_width="match_parent" />
                 </LinearLayout>
-                    
+
                 <TextView
                     style="@style/FieldSetLabel"
                     android:background="#ffffff"
                     android:text="@string/fexcore_config" />
-                    
+
             </FrameLayout>
 
             <FrameLayout
@@ -564,13 +564,13 @@
                             android:id="@+id/CBExclusiveXInput"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Exclusive Input" />
+                            android:text="@string/exclusive_input" />
                         <ImageView
                             android:id="@+id/BTExclusiveXInputHelp"
                             style="@style/HelpButton"
                             android:layout_gravity="center" />
                     </LinearLayout>
-                    
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

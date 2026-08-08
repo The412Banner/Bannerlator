@@ -57,10 +57,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.contents.AdrenotoolsManager
 import kotlinx.coroutines.launch
+
+private enum class DriverDownloadStage { DOWNLOADING, INSTALLING }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +91,7 @@ fun AdrenoDriverDownloadSheet(
     var pendingEntry by remember { mutableStateOf<RemoteDriverEntry?>(null) }
     var downloading by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf(0) }
-    var downloadStage by remember { mutableStateOf("") }
+    var downloadStage by remember { mutableStateOf(DriverDownloadStage.DOWNLOADING) }
     var refreshKey by remember { mutableStateOf(0) }
 
     // Keep the selected chip in range if a source is disabled/removed out from under it.
@@ -106,7 +110,7 @@ fun AdrenoDriverDownloadSheet(
         entries = emptyList()
         repo.fetchEntries(source).fold(
             onSuccess = { entries = it },
-            onFailure = { errorMessage = it.message ?: it::class.java.simpleName },
+            onFailure = { errorMessage = context.getString(R.string.adreno_load_failed) },
         )
         loading = false
     }
@@ -129,13 +133,13 @@ fun AdrenoDriverDownloadSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Download GPU drivers",
+                    text = stringResource(R.string.adreno_download_gpu_drivers),
                     style = MaterialTheme.typography.titleLarge,
                     color = cs.onSurface,
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = { showManage = true }) {
-                    Icon(Icons.Filled.Tune, contentDescription = "Manage sources", tint = cs.onSurfaceVariant)
+                    Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.adreno_manage_sources), tint = cs.onSurfaceVariant)
                 }
             }
 
@@ -169,7 +173,7 @@ fun AdrenoDriverDownloadSheet(
                     )
                     entries.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            "No drivers found.",
+                            stringResource(R.string.adreno_no_drivers_found),
                             color = cs.onSurfaceVariant,
                         )
                     }
@@ -196,19 +200,19 @@ fun AdrenoDriverDownloadSheet(
         if (!downloading) {
             OutlinedAlertDialog(
                 onDismissRequest = { pendingEntry = null },
-                title = { Text("Download driver?") },
+                title = { Text(stringResource(R.string.adreno_download_driver_title)) },
                 text = {
                     Column {
                         Text(entry.displayName, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "Source: ${entry.source}",
+                            stringResource(R.string.adreno_source, entry.source),
                             style = MaterialTheme.typography.bodySmall,
                             color = cs.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "The driver will be downloaded and installed automatically.",
+                            stringResource(R.string.adreno_download_install_automatically),
                             style = MaterialTheme.typography.bodySmall,
                             color = cs.onSurfaceVariant,
                         )
@@ -218,12 +222,12 @@ fun AdrenoDriverDownloadSheet(
                     TextButton(onClick = {
                         downloading = true
                         downloadProgress = 0
-                        downloadStage = "Downloading"
+                        downloadStage = DriverDownloadStage.DOWNLOADING
                         scope.launch {
                             repo.downloadEntry(entry) { pct -> downloadProgress = pct }
                                 .fold(
                                     onSuccess = { file ->
-                                        downloadStage = "Installing"
+                                        downloadStage = DriverDownloadStage.INSTALLING
                                         val activity = context as? Activity ?: context
                                         val manager = AdrenotoolsManager(activity)
                                         val driverId = manager.installDriver(Uri.fromFile(file))
@@ -231,12 +235,12 @@ fun AdrenoDriverDownloadSheet(
                                         downloading = false
                                         pendingEntry = null
                                         if (driverId.isNotEmpty()) {
-                                            Toast.makeText(context, "Installed: $driverId", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.adreno_installed, driverId), Toast.LENGTH_SHORT).show()
                                             onDriverInstalled(driverId)
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                "Install failed — invalid driver package",
+                                                context.getString(R.string.adreno_invalid_driver_package),
                                                 Toast.LENGTH_LONG,
                                             ).show()
                                         }
@@ -246,22 +250,27 @@ fun AdrenoDriverDownloadSheet(
                                         pendingEntry = null
                                         Toast.makeText(
                                             context,
-                                            "Download failed: ${t.message ?: "unknown error"}",
+                                            context.getString(
+                                                R.string.adreno_download_failed,
+                                                context.getString(R.string.adreno_unknown_error),
+                                            ),
                                             Toast.LENGTH_LONG,
                                         ).show()
                                     },
                                 )
                         }
-                    }) { Text("Download") }
+                    }) { Text(stringResource(R.string.adreno_download)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { pendingEntry = null }) { Text("Cancel") }
+                    TextButton(onClick = { pendingEntry = null }) { Text(stringResource(R.string.adreno_cancel)) }
                 },
             )
         } else {
             OutlinedAlertDialog(
                 onDismissRequest = { /* block dismiss while busy */ },
-                title = { Text(downloadStage) },
+                title = {
+                    Text(stringResource(if (downloadStage == DriverDownloadStage.DOWNLOADING) R.string.adreno_downloading else R.string.adreno_installing))
+                },
                 text = {
                     Column {
                         Text(
@@ -270,7 +279,7 @@ fun AdrenoDriverDownloadSheet(
                             color = cs.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(12.dp))
-                        if (downloadStage == "Downloading") {
+                        if (downloadStage == DriverDownloadStage.DOWNLOADING) {
                             LinearProgressIndicator(
                                 progress = downloadProgress / 100f,
                                 modifier = Modifier.fillMaxWidth(),
@@ -343,7 +352,7 @@ private fun EntryRow(entry: RemoteDriverEntry, onClick: () -> Unit) {
         )
         Icon(
             imageVector = Icons.Filled.CloudDownload,
-            contentDescription = "Download",
+            contentDescription = stringResource(R.string.adreno_download),
             tint = cs.primary,
             modifier = Modifier.size(22.dp),
         )
@@ -358,7 +367,7 @@ private fun CenteredLoading() {
             CircularProgressIndicator()
             Spacer(Modifier.height(8.dp))
             Text(
-                "Loading drivers…",
+                stringResource(R.string.adreno_loading_drivers),
                 color = cs.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -382,7 +391,7 @@ private fun CenteredError(message: String, onRetry: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Could not load drivers",
+                stringResource(R.string.adreno_load_failed),
                 color = cs.onSurface,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -393,7 +402,7 @@ private fun CenteredError(message: String, onRetry: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
-            TextButton(onClick = onRetry) { Text("Retry") }
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.adreno_retry)) }
         }
     }
 }
@@ -424,10 +433,10 @@ private fun ManageSourcesDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Manage driver sources") },
+        title = { Text(stringResource(R.string.adreno_manage_driver_sources)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text("Built-in sources", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+                Text(stringResource(R.string.adreno_builtin_sources), style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 DriverSources.BUILT_IN.forEach { src ->
                     Row(
@@ -446,7 +455,7 @@ private fun ManageSourcesDialog(
                     Spacer(Modifier.height(12.dp))
                     Divider(color = cs.outline.copy(alpha = 0.3f))
                     Spacer(Modifier.height(8.dp))
-                    Text("Custom sources", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+                    Text(stringResource(R.string.adreno_custom_sources), style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
                     custom.forEach { src ->
                         Row(
@@ -458,7 +467,7 @@ private fun ManageSourcesDialog(
                                 Text(feedSummary(src), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                             }
                             IconButton(onClick = { mutate { store.removeCustom(src.name) } }) {
-                                Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = cs.error)
+                                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.adreno_remove), tint = cs.error)
                             }
                         }
                     }
@@ -467,26 +476,26 @@ private fun ManageSourcesDialog(
                 Spacer(Modifier.height(12.dp))
                 Divider(color = cs.outline.copy(alpha = 0.3f))
                 Spacer(Modifier.height(8.dp))
-                Text("Add source", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+                Text(stringResource(R.string.adreno_add_source), style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
                 OutlinedTextField(
                     value = newName,
                     onValueChange = { newName = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.adreno_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SourceChip("JSON URL", selected = !isGithub, onClick = { isGithub = false })
-                    SourceChip("GitHub repo", selected = isGithub, onClick = { isGithub = true })
+                    SourceChip(stringResource(R.string.adreno_json_url), selected = !isGithub, onClick = { isGithub = false })
+                    SourceChip(stringResource(R.string.adreno_github_repo), selected = isGithub, onClick = { isGithub = true })
                 }
                 Spacer(Modifier.height(8.dp))
                 if (!isGithub) {
                     OutlinedTextField(
                         value = newUrl,
                         onValueChange = { newUrl = it },
-                        label = { Text("JSON URL") },
+                        label = { Text(stringResource(R.string.adreno_json_url)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -494,7 +503,7 @@ private fun ManageSourcesDialog(
                     OutlinedTextField(
                         value = newOwner,
                         onValueChange = { newOwner = it },
-                        label = { Text("Owner (or github.com/owner/repo)") },
+                        label = { Text(stringResource(R.string.adreno_github_owner)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -502,7 +511,7 @@ private fun ManageSourcesDialog(
                     OutlinedTextField(
                         value = newRepo,
                         onValueChange = { newRepo = it },
-                        label = { Text("Repo") },
+                        label = { Text(stringResource(R.string.adreno_repo)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -512,9 +521,9 @@ private fun ManageSourcesDialog(
                     val name = newName.trim()
                     when {
                         name.isEmpty() ->
-                            Toast.makeText(context, "Enter a name", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.adreno_enter_name), Toast.LENGTH_SHORT).show()
                         !isGithub && newUrl.isBlank() ->
-                            Toast.makeText(context, "Enter a JSON URL", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.adreno_enter_json_url), Toast.LENGTH_SHORT).show()
                         !isGithub -> {
                             mutate { store.addCustom(name, DriverFeed.Json(newUrl.trim())) }
                             newName = ""; newUrl = ""; newOwner = ""; newRepo = ""
@@ -522,7 +531,7 @@ private fun ManageSourcesDialog(
                         else -> {
                             val gh = DriverSourceStore.parseGithubRepo(newOwner, newRepo)
                             if (gh == null) {
-                                Toast.makeText(context, "Enter owner and repo", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.adreno_enter_owner_repo), Toast.LENGTH_SHORT).show()
                             } else {
                                 mutate { store.addCustom(name, DriverFeed.GithubReleases(gh.first, gh.second)) }
                                 newName = ""; newUrl = ""; newOwner = ""; newRepo = ""
@@ -532,12 +541,12 @@ private fun ManageSourcesDialog(
                 }) {
                     Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Add source")
+                    Text(stringResource(R.string.adreno_add_source))
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.adreno_done)) }
         },
     )
 }

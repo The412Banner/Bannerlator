@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="unpack_runtime_freearc_repack">Репак FreeArc</string>
+    <string name="unpack_runtime_innosetup_installer">Установщик InnoSetup</string>
+    <string name="unpack_runtime_execution_failed">Не удалось запустить средство распаковки</string>
+    <string name="unpack_runtime_unpacking_inner_archive">Распаковка внутреннего архива…</string>
+    <string name="unpack_runtime_seven_zip_exit_code">7-Zip завершил работу с кодом %1$d</string>
+</resources>

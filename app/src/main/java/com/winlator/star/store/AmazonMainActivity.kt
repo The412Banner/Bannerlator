@@ -2,7 +2,7 @@ package com.winlator.star.store
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -23,12 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
 
-class AmazonMainActivity : ComponentActivity() {
+class AmazonMainActivity : AppCompatActivity() {
 
     private var isLoggedIn by mutableStateOf(false)
     private var statusText by mutableStateOf("")
@@ -66,7 +68,7 @@ class AmazonMainActivity : ComponentActivity() {
             val creds = AmazonCredentialStore.load(this)
             if (creds != null) {
                 val minutesLeft = (creds.expiresAt - System.currentTimeMillis()) / 60000L
-                statusText = "Signed in to Amazon Games\nToken expires in ~${minutesLeft}min"
+                statusText = getString(R.string.store_amazon_status, minutesLeft)
             }
         }
     }
@@ -79,7 +81,7 @@ class AmazonMainActivity : ComponentActivity() {
         }
         AmazonCredentialStore.clear(this)
         refreshView()
-        resultBarMsg = "Signed out of Amazon Games"
+        resultBarMsg = getString(R.string.store_signed_out_amazon)
     }
 }
 
@@ -115,7 +117,7 @@ private fun AmazonLoginCard(onLoginClick: () -> Unit) {
         Text("Amazon Games", fontSize = 32.sp, color = Color(0xFF0055FF), fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text(
-            "Sign in to access your Amazon game library",
+            stringResource(R.string.store_sign_in_amazon),
             fontSize = 14.sp,
             color = Color(0xFFAAAAAA),
         )
@@ -125,7 +127,7 @@ private fun AmazonLoginCard(onLoginClick: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0055FF)),
             modifier = Modifier.height(48.dp),
             shape = RoundedCornerShape(8.dp),
-        ) { Text("Login with Amazon", color = Color.White) }
+        ) { Text(stringResource(R.string.store_login_amazon), color = Color.White) }
     }
 }
 
@@ -151,13 +153,13 @@ private fun AmazonLoggedInCard(
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0055FF)),
             modifier = Modifier.height(48.dp),
             shape = RoundedCornerShape(8.dp),
-        ) { Text("View Game Library", color = Color.White) }
+        ) { Text(stringResource(R.string.store_view_game_library), color = Color.White) }
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onSignOut,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0055FF)),
             modifier = Modifier.height(48.dp),
             shape = RoundedCornerShape(8.dp),
-        ) { Text("Sign Out", color = Color.White) }
+        ) { Text(stringResource(R.string.store_sign_out), color = Color.White) }
     }
 }

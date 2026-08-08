@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="language_title">Язык интерфейса</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_english">English</string>
+</resources>

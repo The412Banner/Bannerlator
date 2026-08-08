@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_effects_default_profile">— Default —</string>
+    <string name="screen_effects_title">Screen effects</string>
+    <string name="screen_effects_profile">Profile</string>
+    <string name="screen_effects_add">Add</string>
+    <string name="screen_effects_remove">Remove</string>
+    <string name="screen_effects_color_adjustment">Color adjustment</string>
+    <string name="screen_effects_brightness">Brightness: %1$d</string>
+    <string name="screen_effects_contrast">Contrast: %1$d</string>
+    <string name="screen_effects_gamma">Gamma: %1$.2f</string>
+    <string name="screen_effects_shaders">Shaders</string>
+    <string name="screen_effects_enable_fxaa">Enable FXAA</string>
+    <string name="screen_effects_enable_crt">Enable CRT shader</string>
+    <string name="screen_effects_enable_toon">Enable toon shader</string>
+    <string name="screen_effects_enable_ntsc">Enable NTSC effect</string>
+    <string name="screen_effects_reset">Reset</string>
+    <string name="screen_effects_cancel">Cancel</string>
+    <string name="screen_effects_apply">Apply</string>
+    <string name="screen_effects_add_profile">Add profile</string>
+    <string name="screen_effects_profile_name">Profile name</string>
+    <string name="screen_effects_remove_profile">Remove profile</string>
+    <string name="screen_effects_remove_profile_message">Remove \"%1$s\"?</string>
+</resources>

@@ -238,9 +238,10 @@ public class FEXCorePresetManager {
             }
         }
         if (presetFile != null && presetFile.exists())
-            AppUtils.showToast(context, "Preset " + presetFile.getName() + " exported successfully at " + presetFile.getParentFile().getPath());
+            AppUtils.showToast(context, context.getString(R.string.preset_exported,
+                    presetFile.getName(), presetFile.getParentFile().getPath()));
         else
-            AppUtils.showToast(context, "Failed to export preset");
+            AppUtils.showToast(context, R.string.preset_export_failed);
     }
 
     public static void importPreset(Context context, InputStream stream) {

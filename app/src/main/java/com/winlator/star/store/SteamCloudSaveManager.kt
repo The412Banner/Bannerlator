@@ -3,6 +3,8 @@ package com.winlator.star.store
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
@@ -66,16 +68,6 @@ object SteamCloudSaveManager {
      *  Bounded low so we never hammer the CDN or the CM job dispatcher; tune here if needed. */
     private const val TRANSFER_CONCURRENCY = 4
 
-    /** Honest message shown when a game has no Steam Cloud store (or an upload didn't persist).
-     *  The saves are never lost — they stay in the local Library — we just don't lie about the cloud. */
-    private const val NO_CLOUD_MESSAGE =
-        "This game doesn't support Steam Cloud — your saves are backed up locally in the Library."
-
-    /** Honest message when a game ACKS the upload commit but Steam retains nothing (an empty manifest
-     *  right after a committed N>0 upload — old titles like FlatOut 2). Saves are safe in the Library. */
-    private const val NO_RETENTION_MESSAGE =
-        "This game doesn't keep Steam Cloud saves — your saves are backed up locally in the Library."
-
     /** Per-app cloud-support cache (PICS `ufs/savefiles` is stable per app). Only DEFINITIVE
      *  true/false is cached; an "unknown" (null) is never stored so it can be retried later. */
     private val cloudSupportCache = java.util.concurrent.ConcurrentHashMap<Int, Boolean>()
@@ -92,17 +84,24 @@ object SteamCloudSaveManager {
 
     /** Download every cloud save file for [appId] into [localFolder], preserving the cloud path
      *  layout. Overwrites local copies; never touches the cloud. */
-    fun downloadSaves(ctx: Context, appId: Int, localFolder: File, cb: Callback) {
+    fun downloadSaves(baseCtx: Context, appId: Int, localFolder: File, cb: Callback) {
+        val ctx = ContextCompat.getContextForLanguage(baseCtx)
         Thread({
             try {
-                val steamCloud = requireCloud() ?: run { cb.onError("Not signed in to Steam"); return@Thread }
+                val steamCloud = requireCloud() ?: run {
+                    cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_not_signed_in))
+                    return@Thread
+                }
 
-                cb.onStatus("Fetching cloud file list…")
+                cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_fetching_file_list))
                 val fileList: AppFileChangeList =
                     steamCloud.getAppFileListChange(appId).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
 
                 val files = fileList.files
-                if (files.isEmpty()) { cb.onDone("No cloud saves found for this game"); return@Thread }
+                if (files.isEmpty()) {
+                    cb.onDone(ctx.getString(R.string.compose_steam_saves_cloud_no_saves_for_game))
+                    return@Thread
+                }
 
                 if (!localFolder.exists()) localFolder.mkdirs()
 
@@ -127,7 +126,7 @@ object SteamCloudSaveManager {
                 val failures = ConcurrentLinkedQueue<String>()   // filenames that failed/threw
                 runConcurrently(work, "steam-cloud-dl-$appId") { (name, remotePath, dest) ->
                     try {
-                        cb.onStatus("Downloading: $name")
+                        cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_downloading_file, name))
                         if (downloadOne(steamCloud, appId, remotePath, dest)) {
                             downloaded.incrementAndGet()
                         } else {
@@ -141,16 +140,28 @@ object SteamCloudSaveManager {
 
                 if (failures.isNotEmpty()) {
                     val first = failures.peek()
-                    val more = if (failures.size > 1) " (+${failures.size - 1} more)" else ""
-                    cb.onError("Download failed for: $first$more")
+                    val more = failures.size - 1
+                    cb.onError(
+                        if (more > 0) ctx.resources.getQuantityString(
+                            R.plurals.compose_steam_saves_cloud_download_failed_more,
+                            more,
+                            first,
+                            more,
+                        ) else ctx.getString(R.string.compose_steam_saves_cloud_download_failed, first),
+                    )
                     return@Thread
                 }
 
-                val suffix = if (skipped > 0) " ($skipped skipped)" else ""
-                cb.onDone("Downloaded ${downloaded.get()} file${plural(downloaded.get())}$suffix")
+                val downloadedCount = downloaded.get()
+                val summary = ctx.resources.getQuantityString(
+                    R.plurals.compose_steam_saves_cloud_downloaded_files,
+                    downloadedCount,
+                    downloadedCount,
+                )
+                cb.onDone(withSkippedCount(ctx, summary, skipped))
             } catch (e: Exception) {
                 Log.e(TAG, "downloadSaves failed", e)
-                cb.onError("Download error: ${e.message ?: e.javaClass.simpleName}")
+                cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_download_error))
             }
         }, "steam-cloud-download-$appId").start()
     }
@@ -168,12 +179,16 @@ object SteamCloudSaveManager {
      *  local folder has no files. If a cloud SHA is unavailable (manifest fetch failed, or the
      *  entry carries no usable sha), that file is uploaded — correctness over efficiency; we never
      *  skip a file we can't prove is identical. */
-    fun uploadSaves(ctx: Context, appId: Int, localFolder: File, cb: Callback) {
+    fun uploadSaves(baseCtx: Context, appId: Int, localFolder: File, cb: Callback) {
+        val ctx = ContextCompat.getContextForLanguage(baseCtx)
         Thread({
             try {
-                val steamCloud = requireCloud() ?: run { cb.onError("Not signed in to Steam"); return@Thread }
+                val steamCloud = requireCloud() ?: run {
+                    cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_not_signed_in))
+                    return@Thread
+                }
 
-                cb.onStatus("Scanning local saves…")
+                cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_scanning_local_saves))
                 val localFiles = enumerateLocal(localFolder)   // List<Pair<File, cloudRelPath>>
 
                 // ── BELT-AND-SUSPENDERS GUARD (unchanged) ──────────────────────────────
@@ -181,7 +196,7 @@ object SteamCloudSaveManager {
                 // beginAppUploadBatch. This makes an empty/absent save folder a pure no-op and
                 // removes any chance of an "upload nothing" turning into a cloud wipe.
                 if (localFiles.isEmpty()) {
-                    cb.onDone("No local save files found — nothing was sent to the cloud")
+                    cb.onDone(ctx.getString(R.string.compose_steam_saves_cloud_no_local_saves))
                     return@Thread
                 }
 
@@ -189,7 +204,7 @@ object SteamCloudSaveManager {
                 // If a prior upload committed files but Steam kept nothing, we marked this game.
                 // Short-circuit before opening any batch — no work, honest message, no false success.
                 if (SaveSyncStore.isMarkedNoSteamCloud(appId)) {
-                    cb.onError(NO_RETENTION_MESSAGE)
+                    cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_no_retention))
                     return@Thread
                 }
 
@@ -202,7 +217,7 @@ object SteamCloudSaveManager {
                 // NOT fire — we must not stamp a lastUploadAt "cloud sync" that never happened.
                 val support: Boolean? = hasCloudSupport(ctx, appId)
                 if (support == false) {
-                    cb.onError(NO_CLOUD_MESSAGE)
+                    cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_not_supported))
                     return@Thread
                 }
 
@@ -211,7 +226,7 @@ object SteamCloudSaveManager {
                 // SHA-1 (AppFileInfo.shaFile — a 20-byte digest). A failed fetch, or an entry with a
                 // missing/short sha, simply leaves that path OUT of the map, so it counts as
                 // "changed" and gets uploaded. We never skip a file we can't prove is byte-identical.
-                cb.onStatus("Comparing with cloud…")
+                cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_comparing))
                 val cloudShaByPath: Map<String, ByteArray> = try {
                     val fileList = steamCloud.getAppFileListChange(appId)
                         .get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
@@ -250,7 +265,13 @@ object SteamCloudSaveManager {
                 // Same belt-and-suspenders as the empty-folder guard: if the diff found no new/
                 // changed files we return WITHOUT ever opening a batch.
                 if (toUpload.isEmpty()) {
-                    cb.onDone("Uploaded 0 changed, $upToDate already up-to-date")
+                    cb.onDone(
+                        ctx.getString(
+                            R.string.compose_steam_saves_cloud_upload_summary,
+                            0,
+                            upToDate,
+                        ),
+                    )
                     return@Thread
                 }
 
@@ -262,7 +283,7 @@ object SteamCloudSaveManager {
                 // only ever SHRINKS the upload set; it never produces a deletion.
                 val filesToDelete: List<String> = emptyList()
 
-                cb.onStatus("Opening cloud upload batch…")
+                cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_opening_upload_batch))
                 // Signature (JavaSteam 1.8.0):
                 //   beginAppUploadBatch(appId, machineName, filesToUpload, filesToDelete, clientId, appBuildId)
                 // clientId/appBuildId are best-effort 0L (classic token logon exposes no auth-session
@@ -285,7 +306,7 @@ object SteamCloudSaveManager {
                 val allOk = AtomicBoolean(true)
                 runConcurrently(toUpload, "steam-cloud-ul-$appId") { (file, cloudPath) ->
                     try {
-                        cb.onStatus("Uploading: ${file.name}")
+                        cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_uploading_file, file.name))
                         if (uploadOne(steamCloud, appId, file, cloudPath, batchId)) {
                             uploaded.incrementAndGet()
                         } else {
@@ -316,16 +337,28 @@ object SteamCloudSaveManager {
                     val emptyAfterUpload = if (uploaded.get() > 0) isCloudManifestEmpty(steamCloud, appId) else null
                     if (emptyAfterUpload == true) {
                         SaveSyncStore.markNoSteamCloud(ctx, appId)   // remember → short-circuit next time
-                        cb.onError(NO_RETENTION_MESSAGE)             // onError: no false success, no lastUploadAt stamp
+                        cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_no_retention)) // onError: no false success, no lastUploadAt stamp
                     } else {
-                        cb.onDone("Uploaded ${uploaded.get()} changed, $upToDate already up-to-date")
+                        cb.onDone(
+                            ctx.getString(
+                                R.string.compose_steam_saves_cloud_upload_summary,
+                                uploaded.get(),
+                                upToDate,
+                            ),
+                        )
                     }
                 } else {
-                    cb.onError("Uploaded ${uploaded.get()} of ${toUpload.size} changed; some files failed")
+                    cb.onError(
+                        ctx.getString(
+                            R.string.compose_steam_saves_cloud_upload_partial_failure,
+                            uploaded.get(),
+                            toUpload.size,
+                        ),
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "uploadSaves failed", e)
-                cb.onError("Upload error: ${e.message ?: e.javaClass.simpleName}")
+                cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_upload_error))
             }
         }, "steam-cloud-upload-$appId").start()
     }
@@ -436,9 +469,10 @@ object SteamCloudSaveManager {
 
     /** ⬇ Sync from Cloud — Download (Cloud→Library) THEN Apply (Library→Container). No work + a
      *  single [Callback.onError] if the game isn't in a container yet. */
-    fun syncFromCloud(ctx: Context, appId: Int, installDir: String, cb: Callback) {
+    fun syncFromCloud(baseCtx: Context, appId: Int, installDir: String, cb: Callback) {
+        val ctx = ContextCompat.getContextForLanguage(baseCtx)
         if (SteamCloudSavePaths.resolveContainer(ctx, appId, installDir) == null) {
-            cb.onError("This game needs to be added to a container first.")
+            cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_add_to_container_first))
             return
         }
         // Phase 1: Download. Its onDone chains into phase 2; its onError stops the whole combo.
@@ -451,7 +485,13 @@ object SteamCloudSaveManager {
                     override fun onStatus(message: String) = cb.onStatus(message)
                     override fun onError(message: String) = cb.onError(message)
                     override fun onDone(applySummary: String) {
-                        cb.onDone("Synced from cloud ($downloadSummary; $applySummary)")
+                        cb.onDone(
+                            ctx.getString(
+                                R.string.compose_steam_saves_cloud_synced_from_cloud,
+                                downloadSummary,
+                                applySummary,
+                            ),
+                        )
                     }
                 })
             }
@@ -460,9 +500,10 @@ object SteamCloudSaveManager {
 
     /** ⬆ Sync to Cloud — Collect (Container→Library) THEN Upload (Library→Cloud, strictly additive).
      *  No work + a single [Callback.onError] if the game isn't in a container yet. */
-    fun syncToCloud(ctx: Context, appId: Int, installDir: String, cb: Callback) {
+    fun syncToCloud(baseCtx: Context, appId: Int, installDir: String, cb: Callback) {
+        val ctx = ContextCompat.getContextForLanguage(baseCtx)
         if (SteamCloudSavePaths.resolveContainer(ctx, appId, installDir) == null) {
-            cb.onError("This game needs to be added to a container first.")
+            cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_add_to_container_first))
             return
         }
         // Phase 1: Collect. Its onDone chains into phase 2; its onError stops the whole combo.
@@ -475,7 +516,13 @@ object SteamCloudSaveManager {
                     override fun onStatus(message: String) = cb.onStatus(message)
                     override fun onError(message: String) = cb.onError(message)
                     override fun onDone(uploadSummary: String) {
-                        cb.onDone("Synced to cloud ($collectSummary; $uploadSummary)")
+                        cb.onDone(
+                            ctx.getString(
+                                R.string.compose_steam_saves_cloud_synced_to_cloud,
+                                collectSummary,
+                                uploadSummary,
+                            ),
+                        )
                     }
                 })
             }
@@ -505,18 +552,22 @@ object SteamCloudSaveManager {
      *  absolute container path via [SteamCloudSavePaths.toContainerPath] and copy it in (mkdirs,
      *  mtime preserved). Overwrites the container's copies; never deletes anything, never touches the
      *  cloud. Files whose leading root token is unknown/unsafe are skipped (logged), never guessed. */
-    fun applyToContainer(ctx: Context, appId: Int, installDir: String, outerCb: Callback) {
+    fun applyToContainer(baseCtx: Context, appId: Int, installDir: String, outerCb: Callback) {
+        val ctx = ContextCompat.getContextForLanguage(baseCtx)
         val cb = hooked(outerCb) { SaveSyncStore.recordAfterApply(ctx, appId) }
         Thread({
             try {
                 val library = SteamCloudSavePaths.libraryDir(ctx, appId)
                 val container = SteamCloudSavePaths.resolveContainer(ctx, appId, installDir)
-                    ?: run { cb.onError("This game isn't set up in a container yet"); return@Thread }
+                    ?: run {
+                        cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_not_set_up_in_container_yet))
+                        return@Thread
+                    }
 
-                cb.onStatus("Scanning Library…")
+                cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_scanning_library))
                 val files = enumerateLocal(library)
                 if (files.isEmpty()) {
-                    cb.onDone("Library is empty — download from the cloud first")
+                    cb.onDone(ctx.getString(R.string.compose_steam_saves_cloud_library_empty))
                     return@Thread
                 }
 
@@ -529,17 +580,21 @@ object SteamCloudSaveManager {
                         skipped++
                         continue
                     }
-                    cb.onStatus("Applying: ${file.name}")
+                    cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_applying_file, file.name))
                     copyPreserving(file, dest)
                     applied++
                 }
 
-                val suffix = if (skipped > 0) " ($skipped skipped)" else ""
-                cb.onDone("Applied $applied file${plural(applied)} to " +
-                    "${SteamCloudSavePaths.containerLabel(container)}$suffix")
+                val summary = ctx.resources.getQuantityString(
+                    R.plurals.compose_steam_saves_cloud_applied_files,
+                    applied,
+                    applied,
+                    SteamCloudSavePaths.containerLabel(container),
+                )
+                cb.onDone(withSkippedCount(ctx, summary, skipped))
             } catch (e: Exception) {
                 Log.e(TAG, "applyToContainer failed", e)
-                cb.onError("Apply error: ${e.message ?: e.javaClass.simpleName}")
+                cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_apply_error))
             }
         }, "steam-cloud-apply-$appId").start()
     }
@@ -550,19 +605,27 @@ object SteamCloudSaveManager {
      *  maps each file back to its `%Root%/rest` layout via [SteamCloudSavePaths.toLibraryRel], and
      *  copies it into the Library (mkdirs, mtime preserved). Overwrites the Library's copies; never
      *  deletes anything from the container, never touches the cloud. */
-    fun collectFromContainer(ctx: Context, appId: Int, installDir: String, outerCb: Callback) {
+    fun collectFromContainer(baseCtx: Context, appId: Int, installDir: String, outerCb: Callback) {
+        val ctx = ContextCompat.getContextForLanguage(baseCtx)
         val cb = hooked(outerCb) { SaveSyncStore.recordAfterCollect(ctx, appId) }
         Thread({
             try {
                 val library = SteamCloudSavePaths.libraryDir(ctx, appId)
                 val shortcut = resolveShortcut(ctx, installDir)
-                    ?: run { cb.onError("This game isn't set up in a container yet"); return@Thread }
+                    ?: run {
+                        cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_not_set_up_in_container_yet))
+                        return@Thread
+                    }
 
-                cb.onStatus("Scanning container saves…")
+                cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_scanning_container_saves))
                 val saves = enumerateContainerSaves(ctx, appId, shortcut, installDir)
                 if (saves.isEmpty()) {
-                    cb.onDone("No saves found in " +
-                        "${SteamCloudSavePaths.containerLabel(shortcut.container)} to collect")
+                    cb.onDone(
+                        ctx.getString(
+                            R.string.compose_steam_saves_cloud_no_saves_to_collect,
+                            SteamCloudSavePaths.containerLabel(shortcut.container),
+                        ),
+                    )
                     return@Thread
                 }
 
@@ -575,16 +638,20 @@ object SteamCloudSaveManager {
                         skipped++
                         continue
                     }
-                    cb.onStatus("Collecting: ${file.name}")
+                    cb.onStatus(ctx.getString(R.string.compose_steam_saves_cloud_collecting_file, file.name))
                     copyPreserving(file, File(library, relLocal))
                     collected++
                 }
 
-                val suffix = if (skipped > 0) " ($skipped skipped)" else ""
-                cb.onDone("Collected $collected file${plural(collected)} into your Library$suffix")
+                val summary = ctx.resources.getQuantityString(
+                    R.plurals.compose_steam_saves_cloud_collected_files,
+                    collected,
+                    collected,
+                )
+                cb.onDone(withSkippedCount(ctx, summary, skipped))
             } catch (e: Exception) {
                 Log.e(TAG, "collectFromContainer failed", e)
-                cb.onError("Collect error: ${e.message ?: e.javaClass.simpleName}")
+                cb.onError(ctx.getString(R.string.compose_steam_saves_cloud_collect_error))
             }
         }, "steam-cloud-collect-$appId").start()
     }
@@ -903,5 +970,13 @@ object SteamCloudSaveManager {
 
     private fun machineName(): String = "Bannerlator (${Build.MODEL})"
 
-    private fun plural(n: Int) = if (n == 1) "" else "s"
+    private fun withSkippedCount(ctx: Context, summary: String, skipped: Int): String {
+        if (skipped <= 0) return summary
+        val skippedText = ctx.resources.getQuantityString(
+            R.plurals.compose_steam_saves_cloud_skipped_files,
+            skipped,
+            skipped,
+        )
+        return ctx.getString(R.string.compose_steam_saves_cloud_summary_with_detail, summary, skippedText)
+    }
 }

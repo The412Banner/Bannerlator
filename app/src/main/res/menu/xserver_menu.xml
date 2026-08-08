@@ -11,17 +11,17 @@
             android:title="@string/input_controls" />
         <item
             android:id="@+id/header_cursor"
-            android:title="Mouse and​ Cursor Option"
+            android:title="@string/mouse_cursor_options"
             android:icon="@drawable/cursor" />
         <group
             android:id="@+id/group_cursor"
             android:checkableBehavior="none">
             <item
                 android:id="@+id/main_menu_move_cursor_to_touchpoint"
-                android:title="Move Cursor to Touchpoint" />
+                android:title="@string/move_cursor_to_touchpoint" />
             <item
                 android:id="@+id/main_menu_relative_mouse_movement"
-                android:title="Toggle Relative Mouse Movement" />
+                android:title="@string/toggle_relative_mouse_movement" />
             <item
                 android:id="@+id/main_menu_disable_mouse"
                 android:title="@string/disable_mouse" />
@@ -34,7 +34,7 @@
             android:icon="@drawable/icon_settings"
             app:iconTint="@color/colorAccent"
             android:id="@+id/main_menu_fsr_control"
-            android:title="Graphic Engine"/>
+            android:title="@string/graphics_engine"/>
         <item
             android:icon="@drawable/icon_input_controls"
             android:id="@+id/main_menu_vibration"
@@ -46,7 +46,7 @@
         <item
             android:icon="@drawable/icon_pause"
             android:id="@+id/main_menu_pause"
-            android:title="Pause/Resume" />
+            android:title="@string/pause_resume" />
         <item
             android:icon="@drawable/ic_picture_in_picture_alt"
             android:id="@+id/main_menu_pip_mode"
@@ -54,7 +54,7 @@
         <item
             android:icon="@drawable/icon_active_windows"
             android:id="@+id/main_menu_active_windows"
-            android:title="Active Windows" />
+            android:title="@string/active_windows" />
         <item
             android:icon="@drawable/icon_task_manager"
             android:id="@+id/main_menu_task_manager"

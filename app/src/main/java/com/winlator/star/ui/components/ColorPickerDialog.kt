@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.winlator.star.R
 import com.winlator.star.core.Callback
 import com.winlator.star.ui.theme.WinlatorTheme
 
@@ -41,7 +42,7 @@ fun showControlsColorPickerDialog(activity: ComponentActivity, initialArgb: Int,
         }
     }
     AlertDialog.Builder(activity)
-        .setTitle("Controls accent color")
+        .setTitle(R.string.color_controls_accent)
         .setView(composeView)
         .setPositiveButton(android.R.string.ok, null)
         .show()

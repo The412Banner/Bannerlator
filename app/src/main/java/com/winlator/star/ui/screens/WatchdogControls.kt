@@ -25,28 +25,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 import com.winlator.star.perf.TempWatchdog
 import com.winlator.star.perf.TempWatchdog.ThresholdMode
 import com.winlator.star.widget.HudMetrics
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
-
-private const val WATCHDOG_WHATS_THIS =
-    "A safety backstop. If your device gets too hot, it automatically undoes the performance " +
-    "settings you've turned on and restores your device to how it was.\n\n" +
-    "It is NOT what throttles your device. Your device has its own built-in thermal protection " +
-    "that lowers clocks when it heats up. The watchdog is separate — it only reverts Bannerlator's " +
-    "changes.\n\n" +
-    "It only becomes important once you enable \"Disable thermal throttling,\" which removes your " +
-    "device's own protection — then the watchdog is your only software safety net.\n\n" +
-    "Presets: Conservative (reverts near your device's normal throttle point) · Balanced " +
-    "(recommended — runs hot, reverts before the hard limit) · Aggressive (max performance, little " +
-    "margin) · Manual (set your own).\n\n" +
-    "Reverting when you exit a game, background the app, or if it crashes is always on and can't be " +
-    "disabled."
 
 /**
  * The Temperature Watchdog controls, shared verbatim by the App Settings Performance menu and the
@@ -86,12 +74,12 @@ fun WatchdogSection() {
     // Dynamic ON/OFF row with a "What's this?" info button.
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(
-            "Thermal auto-revert (~$ceiling °C · ${modeLabel(mode)})",
+            stringResource(R.string.watchdog_auto_revert, ceiling, modeLabel(mode)),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
         IconButton(onClick = { showWhatsThis = true }, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Outlined.Info, "What is the Temperature Watchdog?",
+            Icon(Icons.Outlined.Info, stringResource(R.string.watchdog_what_is_title),
                 tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(4.dp))
@@ -103,25 +91,31 @@ fun WatchdogSection() {
 
     // Live temps.
     Text(
-        "CPU ${cpuTemp?.let { "$it °C" } ?: "—"} · GPU ${gpuTemp?.let { "$it °C" } ?: "—"}",
+        stringResource(
+            R.string.watchdog_live_temperatures,
+            cpuTemp?.let { "$it °C" } ?: "—",
+            gpuTemp?.let { "$it °C" } ?: "—",
+        ),
         color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Medium
     )
 
     // Device default thermal points.
-    if (TempWatchdog.hasDeviceTrips) {
+    val firstTripC = TempWatchdog.firstTripC
+    val topTripC = TempWatchdog.topTripC
+    if (firstTripC != null && topTripC != null) {
         Text(
-            "Your device: throttles ~${TempWatchdog.firstTripC} °C · hard limit ${TempWatchdog.topTripC} °C",
+            stringResource(R.string.watchdog_device_limits, firstTripC, topTripC),
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp
         )
     } else {
         Text(
-            "Your device didn't expose thermal limits — using a safe ${TempWatchdog.FALLBACK_CEILING_C} °C fallback.",
+            stringResource(R.string.watchdog_fallback_limit, TempWatchdog.FALLBACK_CEILING_C),
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp
         )
     }
 
     // Preset selector.
-    Text("Threshold", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+    Text(stringResource(R.string.watchdog_threshold), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     ThresholdMode.values().forEach { m ->
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -137,7 +131,7 @@ fun WatchdogSection() {
                 if (m != ThresholdMode.MANUAL) infoMode = m
             })
             Spacer(Modifier.width(4.dp))
-            Text(modeLabel(m) + "  ·  ~${TempWatchdog.resolvedCeilingFor(m)} °C",
+            Text(stringResource(R.string.watchdog_mode_temperature, modeLabel(m), TempWatchdog.resolvedCeilingFor(m)),
                 color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
         }
     }
@@ -150,7 +144,11 @@ fun WatchdogSection() {
         var sliderVal by remember(manual) { mutableStateOf(manual.toFloat()) }
         val warn = sliderVal.roundToInt() > (top - 5)
         Text(
-            "Manual: ${sliderVal.roundToInt()} °C" + if (warn) "  ⚠ close to the hard limit ($top °C)" else "",
+            if (warn) {
+                stringResource(R.string.watchdog_manual_temperature_warning, sliderVal.roundToInt(), top)
+            } else {
+                stringResource(R.string.watchdog_manual_temperature, sliderVal.roundToInt())
+            },
             color = if (warn) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             fontSize = 13.sp, fontWeight = FontWeight.Medium
         )
@@ -166,8 +164,8 @@ fun WatchdogSection() {
     // "What is the Temperature Watchdog?" explainer.
     if (showWhatsThis) {
         PerfInfoDialog(
-            title = "What is the Temperature Watchdog?",
-            body = WATCHDOG_WHATS_THIS,
+            title = stringResource(R.string.watchdog_what_is_title),
+            body = stringResource(R.string.watchdog_what_is_body),
             onDismiss = { showWhatsThis = false }
         )
     }
@@ -175,7 +173,7 @@ fun WatchdogSection() {
     // Info dialog for the selected preset.
     infoMode?.let { m ->
         PerfInfoDialog(
-            title = modeLabel(m) + " · ~${TempWatchdog.resolvedCeilingFor(m)} °C",
+            title = stringResource(R.string.watchdog_mode_temperature, modeLabel(m), TempWatchdog.resolvedCeilingFor(m)),
             body = presetInfo(m),
             onDismiss = { infoMode = null }
         )
@@ -184,35 +182,31 @@ fun WatchdogSection() {
     // Hard disclaimer to disarm the watchdog.
     if (showOffDisclaimer) {
         PerfDisclaimerDialog(
-            title = "Disable thermal safety?",
-            body = PerfDisclaimerCopy.WATCHDOG_OFF,
-            confirmLabel = "Turn watchdog OFF",
+            title = stringResource(R.string.watchdog_disable_safety_title),
+            body = stringResource(R.string.watchdog_off_risk),
+            confirmLabel = stringResource(R.string.watchdog_turn_off),
             onDismiss = { showOffDisclaimer = false },
             onConfirm = { showOffDisclaimer = false; TempWatchdog.setWatchdogEnabled(false) }
         )
     }
 }
 
-private fun modeLabel(mode: ThresholdMode): String = when (mode) {
-    ThresholdMode.CONSERVATIVE -> "Conservative"
-    ThresholdMode.BALANCED -> "Balanced"
-    ThresholdMode.AGGRESSIVE -> "Aggressive"
-    ThresholdMode.MANUAL -> "Manual"
-}
+@Composable
+private fun modeLabel(mode: ThresholdMode): String = stringResource(when (mode) {
+    ThresholdMode.CONSERVATIVE -> R.string.watchdog_mode_conservative
+    ThresholdMode.BALANCED -> R.string.watchdog_mode_balanced
+    ThresholdMode.AGGRESSIVE -> R.string.watchdog_mode_aggressive
+    ThresholdMode.MANUAL -> R.string.watchdog_mode_manual
+})
 
+@Composable
 private fun presetInfo(mode: ThresholdMode): String {
     val first = TempWatchdog.firstTripC ?: TempWatchdog.FALLBACK_CEILING_C
     val ceiling = TempWatchdog.resolvedCeilingFor(mode)
     return when (mode) {
-        ThresholdMode.CONSERVATIVE ->
-            "Reverts near where your device would normally start throttling (~$first°C). " +
-                "Safest, least extra performance."
-        ThresholdMode.BALANCED ->
-            "Lets it run hot but reverts ~10°C before your device's hard limit (~$ceiling°C). Recommended."
-        ThresholdMode.AGGRESSIVE ->
-            "Maximum sustained clocks, only ~3°C of margin before the hard limit (~$ceiling°C). " +
-                "For users who know their device."
-        ThresholdMode.MANUAL ->
-            "You choose the exact revert temperature."
+        ThresholdMode.CONSERVATIVE -> stringResource(R.string.watchdog_info_conservative, first)
+        ThresholdMode.BALANCED -> stringResource(R.string.watchdog_info_balanced, ceiling)
+        ThresholdMode.AGGRESSIVE -> stringResource(R.string.watchdog_info_aggressive, ceiling)
+        ThresholdMode.MANUAL -> stringResource(R.string.watchdog_info_manual)
     }
 }

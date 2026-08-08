@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="surface_flinger_warning_title">Рендерер SurfaceFlinger — экспериментальная функция</string>
+    <string name="surface_flinger_warning_body">Рендерер SurfaceFlinger выводит кадры игры напрямую через аппаратные средства экрана устройства, минуя композитор GL/Vulkan.\n\nНа некоторых устройствах и системах на кристалле это может вызвать сбой драйвера экрана или GPU и ПЕРЕЗАГРУЗКУ устройства — с возможной потерей несохранённого прогресса или повреждением контейнера. Функция проверена только на новых GPU Adreno.\n\nИспользуйте на свой страх и риск.</string>
+    <string name="surface_flinger_warning_confirm">Я понимаю, использовать</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_ok">ОК</string>
+    <string name="common_close">Закрыть</string>
+    <string name="perf_disclaimer_scroll_to_end">Прокрутите текст до конца, чтобы продолжить.</string>
+    <string name="perf_disclaimer_accept_risk">Я всё понимаю и принимаю все риски</string>
+    <string name="component_resume_installed">Компонент %1$s установлен.</string>
+    <string name="component_resume_title">Завершение установки %1$s</string>
+    <string name="component_resume_working">Настройка %1$s…</string>
+    <string name="component_resume_question">Установщик %1$s завершил работу. Закончить настройку компонента в контейнере? Если потребуется ещё один установщик, контейнер откроется снова.</string>
+    <string name="component_resume_error">Не удалось завершить установку %1$s: %2$s</string>
+    <string name="component_resume_finish">Завершить</string>
+    <string name="component_resume_discard">Отменить установку</string>
+</resources>

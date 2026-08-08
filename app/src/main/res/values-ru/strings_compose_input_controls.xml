@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_input_profile_name">Имя профиля</string>
+    <string name="compose_input_enter_profile_name">Введите имя профиля</string>
+    <string name="compose_input_ok">ОК</string>
+    <string name="compose_input_cancel">Отмена</string>
+    <string name="compose_input_profiles">Профили</string>
+    <string name="compose_input_download_profiles">Скачать профили</string>
+    <string name="compose_input_download">Скачать</string>
+    <string name="compose_input_profile">Профиль</string>
+    <string name="compose_input_select_profile">— Выберите профиль —</string>
+    <string name="compose_input_add_profile">Добавить профиль</string>
+    <string name="compose_input_edit_profile">Переименовать профиль</string>
+    <string name="compose_input_duplicate_profile">Дублировать профиль</string>
+    <string name="compose_input_remove_profile">Удалить профиль</string>
+    <string name="compose_input_pick_via_system">Выбрать через системный проводник…</string>
+    <string name="compose_input_profile_exported_to">Профиль экспортирован в %1$s</string>
+    <string name="compose_input_controls_editor">Редактор управления</string>
+    <string name="compose_input_external_controllers">Внешние контроллеры</string>
+    <string name="compose_input_no_items_to_display">Нет элементов для отображения</string>
+    <plurals name="compose_input_bindings_count">
+        <item quantity="one">%1$d привязка</item>
+        <item quantity="few">%1$d привязки</item>
+        <item quantity="many">%1$d привязок</item>
+        <item quantity="other">%1$d привязки</item>
+    </plurals>
+    <string name="compose_input_remove_controller">Удалить контроллер</string>
+
+    <string name="compose_input_gyroscope">Гироскоп</string>
+    <string name="compose_input_no_gyroscope">На этом устройстве нет гироскопа</string>
+    <string name="compose_input_gyro_calibration_description">Положите устройство на ровную поверхность и выполните калибровку, чтобы устранить смещение гироскопа в состоянии покоя.</string>
+    <string name="compose_input_gyro_not_calibrated">Не откалиброван</string>
+    <string name="compose_input_gyro_negligible_drift">Обнаружено минимальное смещение — устройство уже компенсирует его</string>
+    <string name="compose_input_gyro_bias_removed">Устранено смещение: x %1$.4f, y %2$.4f рад/с</string>
+    <string name="compose_input_gyro_hold_still">Не двигайте устройство…</string>
+    <string name="compose_input_gyro_calibrated_nothing_to_remove">Калибровка завершена — корректировать нечего</string>
+    <string name="compose_input_gyro_calibrated">Откалибровано</string>
+    <string name="compose_input_gyro_keep_still">Не двигайте устройство и повторите попытку</string>
+    <string name="compose_input_gyro_not_enough_samples">Не удалось собрать достаточно данных — повторите попытку</string>
+    <string name="compose_input_gyro_unavailable">Гироскоп недоступен</string>
+    <string name="compose_input_calibrate">Калибровать</string>
+    <string name="compose_input_gyro_calibration_reset">Калибровка сброшена</string>
+    <string name="compose_input_reset">Сбросить</string>
+
+    <string name="compose_input_player_slots">Слоты игроков</string>
+    <string name="compose_input_what_is_this">Что это?</string>
+    <string name="compose_input_player_slots_description">Настройки по умолчанию для новых контейнеров. Назначьте два устройства одному игроку для совместного управления. Применяется только к новым контейнерам — существующие сохраняют свои настройки.</string>
+    <string name="compose_input_on_screen_keep">Сохранить экранного игрока</string>
+    <string name="compose_input_on_screen_yield">Передать игрока 1 геймпаду</string>
+    <string name="compose_input_on_screen_share">Совместное управление игроком</string>
+    <string name="compose_input_on_screen_priority">Приоритет экранного управления</string>
+
+    <string name="compose_input_disabled">— Отключено —</string>
+    <string name="compose_input_controls_title">Элементы управления</string>
+    <string name="compose_input_show_touchscreen_controls">Показывать экранные элементы управления</string>
+    <string name="compose_input_enable_timeout">Включить тайм-аут</string>
+    <string name="compose_input_enable_haptics">Включить виброотклик</string>
+    <string name="compose_input_profile_settings">Настройки профиля…</string>
+</resources>

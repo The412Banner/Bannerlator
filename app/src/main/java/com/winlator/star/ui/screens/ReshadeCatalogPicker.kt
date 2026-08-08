@@ -51,8 +51,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.reshade.ReshadeCatalog
 import com.winlator.star.reshade.ReshadeCatalogEntry
 import com.winlator.star.reshade.ReshadeDownloader
@@ -61,6 +64,8 @@ import com.winlator.star.ui.findActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private enum class ReshadeInstallStage { DOWNLOADING, INSTALLING }
 
 /**
  * Pre-launch ReShade LOADOUT picker (Tier 1) — used by the container editor + per-game shortcut
@@ -84,22 +89,22 @@ fun ReshadeLoadoutPicker(
 
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f)) {
-            Text("ReShade loadout", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+            Text(stringResource(R.string.reshade_loadout), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             Text(
-                if (selectedNames.isEmpty()) "None"
-                else "${selectedNames.size} effect${if (selectedNames.size == 1) "" else "s"}: ${selectedNames.joinToString(", ")}",
+                if (selectedNames.isEmpty()) stringResource(R.string.reshade_none)
+                else pluralStringResource(R.plurals.reshade_effect_count_summary, selectedNames.size, selectedNames.size, selectedNames.joinToString(", ")),
                 style = MaterialTheme.typography.bodyLarge, color = cs.onSurface,
             )
         }
         OutlinedButton(onClick = { showSheet = true }) {
             Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Browse")
+            Text(stringResource(R.string.reshade_browse))
         }
     }
     if (!supported && selectedNames.isNotEmpty()) {
         Text(
-            "ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DX wrapper.",
+            stringResource(R.string.reshade_vulkan_only_warning),
             style = MaterialTheme.typography.bodySmall, color = cs.error,
             modifier = Modifier.padding(top = 2.dp),
         )
@@ -136,7 +141,7 @@ private fun ReshadeCatalogSheet(
     var loading by remember { mutableStateOf(true) }
     var query by remember { mutableStateOf("") }
     var downloadingId by remember { mutableStateOf<String?>(null) }
-    var phaseLabel by remember { mutableStateOf("") }
+    var installStage by remember { mutableStateOf(ReshadeInstallStage.DOWNLOADING) }
     var progress by remember { mutableStateOf(0f) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var pendingDelete by remember { mutableStateOf<ReshadeCatalogEntry?>(null) }
@@ -164,7 +169,7 @@ private fun ReshadeCatalogSheet(
         val q = query.trim()
         val catIds = catalog.map { it.id }.toSet()
         val extras = installed.filter { it !in catIds }
-            .map { ReshadeCatalogEntry(it, it, "", "Installed", "", "", "", 0L, "", 1) }
+            .map { ReshadeCatalogEntry(it, it, "", "", "", "", "", 0L, "", 1) }
         val all = (catalog + extras).filter { e ->
             q.isEmpty() || e.name.contains(q, true) || e.author.contains(q, true) || e.category.contains(q, true)
         }
@@ -179,11 +184,11 @@ private fun ReshadeCatalogSheet(
 
     fun startDownload(entry: ReshadeCatalogEntry) {
         downloadingId = entry.id
-        phaseLabel = "Downloading"; progress = 0f; errorMsg = null
+        installStage = ReshadeInstallStage.DOWNLOADING; progress = 0f; errorMsg = null
         scope.launch {
             val ok = ReshadeDownloader.install(context, entry) { phase, f ->
                 activity?.runOnUiThread {
-                    phaseLabel = if (phase == ReshadeDownloader.Phase.EXTRACT) "Installing" else "Downloading"
+                    installStage = if (phase == ReshadeDownloader.Phase.EXTRACT) ReshadeInstallStage.INSTALLING else ReshadeInstallStage.DOWNLOADING
                     progress = f
                 }
             }
@@ -192,7 +197,7 @@ private fun ReshadeCatalogSheet(
                 installed = installed + entry.id
                 onCatalogChanged()      // parent rescans → params seed
                 onToggle(entry.id, true) // auto-add the freshly installed effect to the loadout
-            } else errorMsg = "Failed to download ${entry.name}."
+            } else errorMsg = context.getString(R.string.reshade_download_failed, entry.name)
         }
     }
 
@@ -206,19 +211,19 @@ private fun ReshadeCatalogSheet(
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f).padding(bottom = 12.dp)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "ReShade Effects",
+                    stringResource(R.string.reshade_effects_title),
                     color = cs.onSurface, style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
                 if (selectedNames.isNotEmpty()) {
-                    TextButton(onClick = onClear) { Text("Clear all", color = cs.primary) }
+                    TextButton(onClick = onClear) { Text(stringResource(R.string.reshade_clear_all), color = cs.primary) }
                 }
             }
             if (offline && !loading) {
                 Text(
                     if (source == ReshadeCatalog.Source.CACHE)
-                        "Offline — showing a cached list. Connect to download new effects."
-                    else "Offline — showing installed effects only. Connect to browse the catalog.",
+                        stringResource(R.string.reshade_offline_cached)
+                    else stringResource(R.string.reshade_offline_installed_only),
                     color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 2.dp),
                 )
@@ -230,11 +235,11 @@ private fun ReshadeCatalogSheet(
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
-                placeholder = { Text("Search effects…") },
+                placeholder = { Text(stringResource(R.string.reshade_search_effects)) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
-                        Icon(Icons.Filled.Close, contentDescription = "Clear",
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.reshade_clear),
                             modifier = Modifier.size(20.dp).clickable { query = "" })
                     }
                 },
@@ -256,18 +261,18 @@ private fun ReshadeCatalogSheet(
                 Box(Modifier.fillMaxWidth().weight(1f)) {
                     LazyColumn(Modifier.fillMaxSize()) {
                         if (installedRows.isNotEmpty()) {
-                            item("__installed_hdr__") { GroupHeader("Installed (${installedRows.size})") }
+                            item("__installed_hdr__") { GroupHeader(stringResource(R.string.reshade_installed_count, installedRows.size)) }
                             items(installedRows, key = { "i_${it.id}" }) { entry ->
-                                CatalogRowItem(entry, installed, ::isSelected, downloadingId, phaseLabel, progress, offline, cs,
+                                CatalogRowItem(entry, installed, ::isSelected, downloadingId, installStage, progress, offline, cs,
                                     onToggle, { startDownload(it) }, { pendingDelete = entry }) { errorMsg = it }
                                 Divider(color = cs.outlineVariant.copy(alpha = 0.5f))
                             }
                         }
 
                         if (availableRows.isNotEmpty()) {
-                            item("__available_hdr__") { GroupHeader("Available (${availableRows.size})") }
+                            item("__available_hdr__") { GroupHeader(stringResource(R.string.reshade_available_count, availableRows.size)) }
                             items(availableRows, key = { "a_${it.id}" }) { entry ->
-                                CatalogRowItem(entry, installed, ::isSelected, downloadingId, phaseLabel, progress, offline, cs,
+                                CatalogRowItem(entry, installed, ::isSelected, downloadingId, installStage, progress, offline, cs,
                                     onToggle, { startDownload(it) }, { pendingDelete = entry }) { errorMsg = it }
                                 Divider(color = cs.outlineVariant.copy(alpha = 0.5f))
                             }
@@ -276,8 +281,8 @@ private fun ReshadeCatalogSheet(
                         if (installedRows.isEmpty() && availableRows.isEmpty()) {
                             item("__empty__") {
                                 Text(
-                                    if (query.isNotBlank()) "No effects match \"$query\"."
-                                    else "No effects available. Connect to the internet to browse the catalog.",
+                                    if (query.isNotBlank()) stringResource(R.string.reshade_no_effects_match, query)
+                                    else stringResource(R.string.reshade_no_effects_available),
                                     color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(24.dp),
                                 )
@@ -287,7 +292,7 @@ private fun ReshadeCatalogSheet(
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("Done", color = cs.primary) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.reshade_done), color = cs.primary) }
             }
         }
     }
@@ -297,8 +302,8 @@ private fun ReshadeCatalogSheet(
     pendingDelete?.let { entry ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete ${entry.name}?") },
-            text = { Text("This removes the downloaded effect from storage and takes it out of your loadout. You can re-download it any time.") },
+            title = { Text(stringResource(R.string.reshade_delete_title, entry.name)) },
+            text = { Text(stringResource(R.string.reshade_delete_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     val id = entry.id
@@ -309,12 +314,12 @@ private fun ReshadeCatalogSheet(
                             installed = installed - id      // row drops back to the "Available" group
                             onToggle(id, false)             // and out of the current loadout
                             onCatalogChanged()              // parent rescans the drop-in folder
-                        } else errorMsg = "Couldn't delete ${entry.name}."
+                        } else errorMsg = context.getString(R.string.reshade_delete_failed, entry.name)
                     }
-                }) { Text("Delete", color = cs.error) }
+                }) { Text(stringResource(R.string.reshade_delete), color = cs.error) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("Cancel", color = cs.primary) }
+                TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.reshade_cancel), color = cs.primary) }
             },
         )
     }
@@ -328,7 +333,7 @@ private fun CatalogRowItem(
     installed: Set<String>,
     isSelected: (String) -> Boolean,
     downloadingId: String?,
-    phaseLabel: String,
+    installStage: ReshadeInstallStage,
     progress: Float,
     offline: Boolean,
     cs: ColorScheme,
@@ -340,13 +345,14 @@ private fun CatalogRowItem(
     val isInstalled = entry.id in installed
     val isBusy = downloadingId == entry.id
     val selected = isSelected(entry.id)
+    val connectionHint = stringResource(R.string.reshade_connect_to_download)
     ReshadeCatalogRow(
         entry = entry,
         isInstalled = isInstalled,
         isSelected = selected,
         isBusy = isBusy,
         offline = offline,
-        phaseLabel = if (isBusy) phaseLabel else "",
+        installStage = installStage,
         progress = if (isBusy) progress else null,
         // Delete only makes sense for a downloaded effect; hidden while a download is in flight.
         onDelete = if (isInstalled && !isBusy) onDelete else null,
@@ -354,7 +360,7 @@ private fun CatalogRowItem(
             when {
                 isInstalled -> onToggle(entry.id, !selected)             // toggle membership
                 downloadingId != null -> {}                              // one at a time
-                offline -> onHint("Connect to the internet to download effects.")
+                offline -> onHint(connectionHint)
                 else -> onDownload(entry)
             }
         },
@@ -380,7 +386,7 @@ private fun ReshadeCatalogRow(
     isSelected: Boolean,
     isBusy: Boolean,
     offline: Boolean,
-    phaseLabel: String,
+    installStage: ReshadeInstallStage,
     progress: Float?,
     onDelete: (() -> Unit)?,
     onClick: () -> Unit,
@@ -412,7 +418,7 @@ private fun ReshadeCatalogRow(
                 }
                 // Offline + not yet downloaded: tell the user a connection is needed.
                 if (!isInstalled && offline && !isBusy) {
-                    Text("Needs connection to download", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant.copy(alpha = contentAlpha))
+                    Text(stringResource(R.string.reshade_needs_connection), style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant.copy(alpha = contentAlpha))
                 }
             }
             when {
@@ -421,7 +427,7 @@ private fun ReshadeCatalogRow(
                     // Trash: its own tap target, so it never triggers the row's loadout toggle.
                     onDelete?.let { del ->
                         IconButton(onClick = del, modifier = Modifier.size(34.dp)) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete download",
+                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.reshade_delete_download),
                                 tint = cs.onSurfaceVariant, modifier = Modifier.size(19.dp))
                         }
                     }
@@ -431,16 +437,16 @@ private fun ReshadeCatalogRow(
                         modifier = Modifier.size(22.dp),
                     )
                 }
-                offline -> Icon(Icons.Filled.CloudOff, contentDescription = "Offline", tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                else -> Icon(Icons.Filled.CloudDownload, contentDescription = "Download", tint = cs.primary, modifier = Modifier.size(22.dp))
+                offline -> Icon(Icons.Filled.CloudOff, contentDescription = stringResource(R.string.reshade_offline), tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                else -> Icon(Icons.Filled.CloudDownload, contentDescription = stringResource(R.string.reshade_download), tint = cs.primary, modifier = Modifier.size(22.dp))
             }
         }
         if (isBusy) {
             Spacer(Modifier.height(6.dp))
             val frac = progress?.coerceIn(0f, 1f) ?: 0f
-            val barColor = if (phaseLabel == "Installing") Color(0xFF4CAF50) else cs.primary // intentional: status color (green = installing/extract phase)
+            val barColor = if (installStage == ReshadeInstallStage.INSTALLING) Color(0xFF4CAF50) else cs.primary // intentional: status color (green = installing/extract phase)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(phaseLabel, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                Text(stringResource(if (installStage == ReshadeInstallStage.INSTALLING) R.string.reshade_installing else R.string.reshade_downloading), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                 Text("${(frac * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
             Spacer(Modifier.height(3.dp))

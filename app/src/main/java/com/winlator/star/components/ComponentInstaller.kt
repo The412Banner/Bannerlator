@@ -1,6 +1,7 @@
 package com.winlator.star.components
 
 import android.content.Context
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.contents.Downloader
 import com.winlator.star.core.TarCompressorUtils
@@ -29,10 +30,13 @@ object ComponentInstaller {
         c.ready && c.steps.isNotEmpty() && c.steps.all { it.action in FILE_DROP_ACTIONS }
 
     /** Reason a component can't be installed yet (or null if it can). */
-    fun blockedReason(c: Component): String? = when {
-        c.status == "needs-upstream" -> "Needs a large package that isn't mirrored yet"
-        c.status == "pending-manual" -> "Source unavailable — awaiting a re-hosted file"
-        !isInstallable(c) -> "Needs an installer step not yet supported"
+    fun blockedReason(context: Context, c: Component): String? = when {
+        c.status == "needs-upstream" ->
+            context.getString(R.string.compose_content_component_large_package_not_mirrored)
+        c.status == "pending-manual" ->
+            context.getString(R.string.compose_content_component_source_unavailable)
+        !isInstallable(c) ->
+            context.getString(R.string.compose_content_component_installer_step_unsupported)
         else -> null
     }
 
@@ -42,18 +46,20 @@ object ComponentInstaller {
         val system32 = File(root, ".wine/drive_c/windows/system32")
         val syswow64 = File(root, ".wine/drive_c/windows/syswow64")
         val userReg = File(root, ".wine/user.reg")
-        if (!File(root, ".wine").isDirectory) return "Container has no Wine prefix yet — launch it once first."
+        if (!File(root, ".wine").isDirectory) {
+            return context.getString(R.string.compose_content_component_no_wine_prefix)
+        }
         val tmp = File(context.cacheDir, "comp_${c.name}_${System.currentTimeMillis()}").apply { mkdirs() }
         return try {
             val total = c.steps.size.coerceAtLeast(1)
             c.steps.forEachIndexed { idx, step ->
-                runStep(step, tmp, system32, syswow64, userReg)
+                runStep(context, step, tmp, system32, syswow64, userReg)
                 onProgress((idx + 1).toFloat() / total)
             }
             null
         } catch (e: Exception) {
-            e.printStackTrace()
-            e.message ?: e.javaClass.simpleName
+            android.util.Log.e("ComponentInstaller", "Component install failed: ${c.name}", e)
+            context.getString(R.string.final_errors_unknown_error)
         } finally {
             tmp.deleteRecursively()
         }
@@ -63,14 +69,25 @@ object ComponentInstaller {
      * Apply a single file-drop step. Shared with [ComponentExecInstaller] so installer-based
      * components reuse the exact same download/extract/copy/registry logic for their non-exec steps.
      */
-    internal fun runStep(step: ComponentStep, tmp: File, system32: File, syswow64: File, userReg: File) {
+    internal fun runStep(
+        context: Context,
+        step: ComponentStep,
+        tmp: File,
+        system32: File,
+        syswow64: File,
+        userReg: File,
+    ) {
         when (step.action) {
             "download_archive", "archive_extract" -> {
                 val url = step.str("url")
                 if (url.startsWith("http")) {
                     val name = step.str("file_name").ifEmpty { url.substringBefore('?').substringAfterLast('/') }
                     val dl = File(tmp, name)
-                    if (!Downloader.downloadFile(url, dl) { _ -> }) throw Exception("download failed: $name")
+                    if (!Downloader.downloadFile(url, dl) { _ -> }) {
+                        throw Exception(
+                            context.getString(R.string.compose_content_component_file_download_failed, name)
+                        )
+                    }
                     extractArchive(dl, tmp)
                 }
             }
@@ -117,7 +134,12 @@ object ComponentInstaller {
                     }
                 }
             }
-            else -> throw Exception("unsupported action: ${step.action}")
+            else -> throw Exception(
+                context.getString(
+                    R.string.compose_content_component_unsupported_action,
+                    step.action,
+                )
+            )
         }
     }
 

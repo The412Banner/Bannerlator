@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="epic_free_loading">Loading free games…</string>
+    <string name="epic_free_http_error">Could not load free games (HTTP %1$d)</string>
+    <string name="epic_free_no_data">Epic returned no data</string>
+    <string name="epic_free_unknown_game">Unknown game</string>
+    <string name="epic_free_none_available">No free games are available right now</string>
+    <plurals name="epic_free_now_count">
+        <item quantity="one">%1$d game free now</item>
+        <item quantity="other">%1$d games free now</item>
+    </plurals>
+    <plurals name="epic_free_coming_count">
+        <item quantity="one">%1$d coming soon</item>
+        <item quantity="other">%1$d coming soon</item>
+    </plurals>
+    <string name="epic_free_status_joined">%1$s · %2$s</string>
+    <string name="epic_free_load_failed">Failed to load free games</string>
+    <string name="epic_free_from_date">From %1$s</string>
+    <string name="epic_free_until_date">Until %1$s</string>
+    <string name="epic_free_title">Free Games</string>
+    <string name="epic_free_this_week">FREE THIS WEEK</string>
+    <string name="epic_free_next_week">FREE NEXT WEEK</string>
+    <string name="epic_free_badge_free">FREE</string>
+    <string name="epic_free_badge_soon">SOON</string>
+</resources>

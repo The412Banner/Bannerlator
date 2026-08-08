@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Запуск X-сервера и сообщения рендерера. -->
+    <string name="final_audit_native_rendering_unavailable">Нативный рендеринг пока недоступен с рендерером OpenGL — выберите Vulkan.</string>
+    <string name="final_audit_native_rendering_single_fullscreen">Нативный рендеринг лучше всего работает с одним полноэкранным окном — дополнительные окна могут быть скрыты.</string>
+    <string name="final_audit_preparing_container">Подготовка контейнера…</string>
+    <string name="final_audit_game_window_detected">Окно игры обнаружено…</string>
+    <string name="final_audit_preparing_wine_graphics_stage">Подготовка Wine и графического драйвера</string>
+    <string name="final_audit_preparing_wine_graphics">Подготовка Wine и графического драйвера…</string>
+    <string name="final_audit_building_environment_stage">Формирование окружения</string>
+    <string name="final_audit_building_environment">Формирование окружения…</string>
+    <string name="final_audit_setup_step_failed">Сбой этапа настройки</string>
+    <string name="final_audit_launching_windows_stage">Запуск Windows</string>
+    <string name="final_audit_launching_windows">Запуск Windows…</string>
+    <string name="final_audit_game_exited_before_rendering">Игра завершилась до появления изображения</string>
+    <string name="final_audit_exit_code">Код завершения: %1$d</string>
+    <string name="final_audit_waiting_for_game_render">Ожидание изображения от «%1$s»…</string>
+    <string name="final_audit_launch_taking_longer">Запуск занимает больше времени, чем обычно — при первом запуске могут компилироваться шейдеры. Приложение продолжает работать, подождите.</string>
+    <string name="final_audit_launch_still_working">Запуск продолжается. Если он завис, проверьте журнал.</string>
+    <string name="final_audit_native_rendering_disabled_for_post_processing">Нативный рендеринг отключён — он необходим для постобработки.</string>
+    <string name="final_audit_gamenative_dx12_unsupported_gpu">Wrapper + compat + bcn: для движка GameNative DX12 требуется GPU Valhall Mali (r32p1+). На этом устройстве (%1$s) движок отключён, переопределения DX12 не применены.</string>
+    <string name="final_audit_dx12_compat_unsupported_gpu">Wrapper + compat + bcn: для слоя совместимости DX12 требуется GPU Valhall Mali (r32p1+). На этом устройстве (%1$s) слой отключён; транскодирование текстур BCn остаётся активным.</string>
+    <string name="final_audit_task_manager_cpu">CPU (%1$d%%)</string>
+    <string name="final_audit_task_manager_memory">Память (%1$d%%)</string>
+
+    <!-- Результаты операций с контейнерами и ярлыками. -->
+    <string name="final_audit_container_duplicate_failed">Не удалось создать копию контейнера</string>
+    <string name="final_audit_container_duplicate_succeeded">Копия контейнера создана</string>
+    <string name="final_audit_container_desktop_directory_not_found">Каталог рабочего стола контейнера не найден.</string>
+    <string name="final_audit_container_desktop_directory_create_failed">Не удалось создать каталог рабочего стола контейнера.</string>
+    <string name="final_audit_container_load_failed">Не удалось загрузить контейнеры.</string>
+    <string name="final_audit_shortcut_added">Ярлык «%1$s» добавлен.\nОткройте боковое меню → «Ярлыки», чтобы запустить и настроить игру.</string>
+    <string name="final_audit_shortcut_add_failed">Не удалось добавить ярлык.</string>
+    <string name="final_audit_community_upload_failed">Не удалось отправить конфигурацию — проверьте подключение и повторите попытку.</string>
+    <string name="final_audit_shared_with_community">Конфигурация «%1$s» опубликована в сообществе.</string>
+    <string name="final_audit_container_no_longer_exists">Этот контейнер больше не существует.</string>
+    <string name="final_audit_container_missing_refresh">Этот контейнер больше не существует. Обновите список и выберите другой контейнер.</string>
+    <string name="final_audit_picked_file_name_unavailable">Не удалось определить имя выбранного файла.</string>
+    <string name="final_audit_unsupported_shortcut_file_type">Неподдерживаемый тип файла: .%1$s (выберите файл .exe, .desktop или .lnk).</string>
+    <string name="final_audit_exe_requires_local_storage">EXE-файл должен находиться в локальном хранилище. Облачные расположения и SAF не поддерживаются.</string>
+    <string name="final_audit_exe_inaccessible">Не удалось получить доступ к EXE-файлу на диске: %1$s</string>
+    <string name="final_audit_no_free_drive_letters">В контейнере не осталось свободных букв дисков. Удалите ненужный диск на вкладке «Диски» или переместите игру в каталог, уже доступный через существующий диск.</string>
+    <string name="final_audit_shortcut_write_failed">Не удалось создать ярлык.</string>
+    <string name="final_audit_picked_file_open_failed">Не удалось открыть выбранный файл.</string>
+    <string name="final_audit_shortcut_import_failed">Не удалось импортировать ярлык.</string>
+    <string name="final_audit_log_read_failed">Не удалось прочитать файл журнала.</string>
+
+    <!-- Оставшееся время работы аккумулятора в компактном HUD. -->
+    <string name="final_audit_hud_charging">ЗАРЯДКА</string>
+    <string name="final_audit_hud_time_left">ОСТАЛОСЬ %1$s</string>
+    <string name="final_audit_hud_hours_minutes">%1$d ч %2$d мин</string>
+    <string name="final_audit_hud_hours">%1$d ч</string>
+    <string name="final_audit_hud_minutes">%1$d мин</string>
+</resources>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_epic_game_detail_install">Установить</string>
+    <string name="compose_epic_game_detail_cancel_download">Отменить</string>
+    <string name="compose_epic_game_detail_cancel">Отмена</string>
+    <string name="compose_epic_game_detail_launch">Запустить</string>
+    <string name="compose_epic_game_detail_uninstall">Удалить</string>
+    <string name="compose_epic_game_detail_set_executable">Выбрать .exe…</string>
+    <string name="compose_epic_game_detail_reinstall">Переустановить</string>
+    <string name="compose_epic_game_detail_game">Игра</string>
+    <string name="compose_epic_game_detail_unknown">Неизвестно</string>
+    <string name="compose_epic_game_detail_unknown_error">Неизвестная ошибка</string>
+    <string name="compose_epic_game_detail_error">Ошибка: %1$s</string>
+
+    <string name="compose_epic_game_detail_fetching">Получение данных…</string>
+    <string name="compose_epic_game_detail_fetching_manifest">Получение манифеста…</string>
+    <string name="compose_epic_game_detail_downloading_percent">Загрузка… %1$d%%</string>
+    <string name="compose_epic_game_detail_login_required">Требуется вход в Epic Games</string>
+    <string name="compose_epic_game_detail_manifest_fetch_failed">Не удалось получить манифест</string>
+    <string name="compose_epic_game_detail_download_failed">Ошибка загрузки</string>
+    <string name="compose_epic_game_detail_no_executable_found">Исполняемый файл не найден</string>
+
+    <string name="compose_epic_game_detail_no_save_folder">Папка сохранений не выбрана</string>
+    <string name="compose_epic_game_detail_save_folder_set">Папка сохранений выбрана</string>
+    <string name="compose_epic_game_detail_set_save_folder_first">Сначала выберите папку сохранений</string>
+
+    <string name="compose_epic_game_detail_executable_label">.exe: %1$s</string>
+    <string name="compose_epic_game_detail_no_executable_files">Файлы .exe не найдены</string>
+    <string name="compose_epic_game_detail_executable_set">Выбран исполняемый файл: %1$s</string>
+    <string name="compose_epic_game_detail_select_executable">Выберите исполняемый файл игры</string>
+
+    <string name="compose_epic_game_detail_uninstall_title">Удалить «%1$s»?</string>
+    <string name="compose_epic_game_detail_uninstall_message">Все установленные файлы игры будут удалены.</string>
+    <string name="compose_epic_game_detail_uninstalled">Игра «%1$s» удалена</string>
+
+    <string name="compose_epic_game_detail_size_gigabytes">%1$.1f ГБ</string>
+    <string name="compose_epic_game_detail_size_megabytes">%1$.0f МБ</string>
+    <string name="compose_epic_game_detail_size_bytes">%1$d Б</string>
+
+    <string name="compose_epic_game_detail_checking">Проверка…</string>
+    <string name="compose_epic_game_detail_updating">Обновление…</string>
+    <string name="compose_epic_game_detail_update_server_unavailable">Не удалось подключиться к серверу обновлений.</string>
+    <string name="compose_epic_game_detail_up_to_date">Установлена последняя версия ✓</string>
+    <string name="compose_epic_game_detail_update_available">Доступно обновление!\nУстановлено: %1$s…  →  Последняя версия: %2$s…</string>
+    <string name="compose_epic_game_detail_update_check_failed">Не удалось проверить обновления.</string>
+
+    <string name="compose_epic_game_detail_dlc_manifest_fetch_failed">Не удалось получить манифест DLC</string>
+    <string name="compose_epic_game_detail_dlc_download_failed">Не удалось загрузить DLC</string>
+    <string name="compose_epic_game_detail_dlc_installed">DLC «%1$s» установлено</string>
+    <string name="compose_epic_game_detail_dlc_install_error">Не удалось установить DLC</string>
+
+    <string name="compose_epic_game_detail_preparing_upload">Подготовка отправки…</string>
+    <string name="compose_epic_game_detail_uploading_saves">Отправка сохранений…</string>
+    <string name="compose_epic_game_detail_upload_complete">Сохранения отправлены</string>
+    <string name="compose_epic_game_detail_upload_failed">Не удалось отправить сохранения</string>
+    <string name="compose_epic_game_detail_preparing_download">Подготовка загрузки…</string>
+    <string name="compose_epic_game_detail_downloading_saves">Загрузка сохранений…</string>
+    <string name="compose_epic_game_detail_download_complete">Сохранения загружены</string>
+    <string name="compose_epic_game_detail_cloud_download_failed">Не удалось загрузить сохранения</string>
+
+    <string name="compose_epic_game_detail_app_label">Приложение: %1$s</string>
+    <string name="compose_epic_game_detail_updates">Обновления</string>
+    <string name="compose_epic_game_detail_install_before_updates">Сначала установите игру, чтобы проверить обновления.</string>
+    <string name="compose_epic_game_detail_installed_version">Установлено: %1$s…</string>
+    <string name="compose_epic_game_detail_version_not_recorded">Версия не записана — нажмите «Проверить обновления»</string>
+    <string name="compose_epic_game_detail_update_now">Обновить сейчас</string>
+    <string name="compose_epic_game_detail_check_for_updates">Проверить обновления</string>
+
+    <string name="compose_epic_game_detail_dlc">DLC</string>
+    <string name="compose_epic_game_detail_no_dlc">Для этой игры в вашей библиотеке нет DLC</string>
+    <string name="compose_epic_game_detail_dlc_data_error">Не удалось прочитать данные DLC</string>
+    <string name="compose_epic_game_detail_unknown_dlc">Неизвестное DLC</string>
+    <string name="compose_epic_game_detail_installed_marker">✓ Установлено</string>
+    <plurals name="compose_epic_game_detail_owned_dlc_count">
+        <item quantity="one">В библиотеке %1$d DLC</item>
+        <item quantity="few">В библиотеке %1$d DLC</item>
+        <item quantity="many">В библиотеке %1$d DLC</item>
+        <item quantity="other">В библиотеке %1$d DLC</item>
+    </plurals>
+
+    <string name="compose_epic_game_detail_cloud_saves">Облачные сохранения</string>
+    <string name="compose_epic_game_detail_browse">Выбрать папку</string>
+    <string name="compose_epic_game_detail_upload_saves">Отправить сохранения</string>
+    <string name="compose_epic_game_detail_download_saves">Загрузить сохранения</string>
+</resources>

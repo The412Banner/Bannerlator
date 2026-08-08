@@ -5,6 +5,10 @@ import android.content.SharedPreferences;
 import android.os.Environment;
 import android.util.Log;
 
+import androidx.core.content.ContextCompat;
+
+import com.winlator.star.R;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -80,9 +84,10 @@ public final class GogDownloadManager {
      * partially downloaded files for this game.
      */
     public static Runnable startDownload(Context ctx, GogGame game, Callback cb) {
+        Context localizedCtx = ContextCompat.getContextForLanguage(ctx.getApplicationContext());
         AtomicBoolean cancelled = new AtomicBoolean(false);
         AtomicReference<File> installDirRef = new AtomicReference<>(null);
-        Thread t = new Thread(() -> doDownload(ctx, game, cb, cancelled, installDirRef),
+        Thread t = new Thread(() -> doDownload(localizedCtx, game, cb, cancelled, installDirRef),
                 "gog-dl-" + game.gameId);
         t.start();
         return () -> {
@@ -104,25 +109,31 @@ public final class GogDownloadManager {
            .append(" title=").append(game.title).append("\n");
         try {
             if (cancelled.get()) return;
-            cb.onProgress("Checking token…", 0);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_checking_token), 0);
 
             SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
             String token = prefs.getString("access_token", null);
-            if (token == null) { cb.onError("Not logged in to GOG"); return; }
+            if (token == null) {
+                cb.onError(ctx.getString(R.string.compose_gog_game_detail_not_logged_in_to_gog));
+                return;
+            }
 
             int loginTime  = prefs.getInt("bh_gog_login_time", 0);
             int expiresIn  = prefs.getInt("bh_gog_expires_in", 3600);
             int nowSec     = (int) (System.currentTimeMillis() / 1000L);
             if (loginTime == 0 || nowSec >= loginTime + expiresIn) {
-                cb.onProgress("Refreshing token…", 0);
+                cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_refreshing_token), 0);
                 String newToken = GogTokenRefresh.refresh(ctx);
-                if (newToken == null) { cb.onError("Token expired — please sign in again"); return; }
+                if (newToken == null) {
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_token_expired));
+                    return;
+                }
                 token = newToken;
             }
             dbg.append("token OK\n");
 
             if (cancelled.get()) return;
-            cb.onProgress("Fetching builds…", 2);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_fetching_builds), 2);
 
             // Try Gen 2 — builds list is public, no auth needed; fall back to authed if null
             String buildsUrl = "https://content-system.gog.com/products/" + game.gameId
@@ -140,7 +151,7 @@ public final class GogDownloadManager {
             }
 
             if (cancelled.get()) return;
-            cb.onProgress("Gen 2 unavailable, trying Gen 1…", 10);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_gen2_unavailable), 10);
 
             // Fallback Gen 1
             String builds1Url = "https://content-system.gog.com/products/" + game.gameId
@@ -151,7 +162,8 @@ public final class GogDownloadManager {
                     : builds1Json.substring(0, Math.min(300, builds1Json.length()))).append("\n");
             if (builds1Json == null) {
                 writeDebug(ctx, dbg);
-                cb.onError("No builds available for this game"); return;
+                cb.onError(ctx.getString(R.string.compose_gog_game_detail_no_builds_available));
+                return;
             }
             String err1 = runGen1(ctx, game, token, builds1Json, cb, dbg, cancelled, installDirRef);
             if (err1 != null) {
@@ -159,15 +171,15 @@ public final class GogDownloadManager {
 
                 // Both gen1 and gen2 empty → old installer system, fall back to direct download
                 if ("NO_CS_BUILDS".equals(err1)) {
-                    cb.onProgress("No Galaxy builds — trying installer download…", 12);
+                    cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_no_galaxy_builds), 12);
                     String installerErr = runInstaller(ctx, game, token, cb, dbg, cancelled, installDirRef);
                     if (installerErr == null) { writeDebug(ctx, dbg); return; }
                     dbg.append("installer_failed=").append(installerErr).append("\n");
                     writeDebug(ctx, dbg);
-                    cb.onError("No downloadable builds for this game");
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_no_downloadable_builds));
                 } else {
                     writeDebug(ctx, dbg);
-                    cb.onError("Download failed: " + err1);
+                    cb.onError(ctx.getString(R.string.compose_gog_game_detail_download_failed));
                 }
             } else {
                 writeDebug(ctx, dbg);
@@ -175,7 +187,7 @@ public final class GogDownloadManager {
         } catch (Exception e) {
             dbg.append("EXCEPTION=").append(e).append("\n");
             writeDebug(ctx, dbg);
-            cb.onError("Download error: " + e.getMessage());
+            cb.onError(ctx.getString(R.string.compose_gog_game_detail_download_failed));
         }
     }
 
@@ -226,7 +238,7 @@ public final class GogDownloadManager {
             dbg.append("buildId=").append(buildId).append("\nmanifestUrl=")
                .append(manifestUrl.substring(0, Math.min(120, manifestUrl.length()))).append("\n");
 
-            cb.onProgress("Fetching manifest…", 5);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_fetching_manifest), 5);
             byte[] manifestRaw = fetchBytes(manifestUrl, token);
             if (manifestRaw == null) return "manifest fetch returned null";
             dbg.append("manifestRaw bytes=").append(manifestRaw.length)
@@ -255,7 +267,7 @@ public final class GogDownloadManager {
             dbg.append("tempExe=").append(tempExe).append("\n");
 
             // Collect DepotFiles from each language-compatible depot
-            cb.onProgress("Reading depot manifests…", 10);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_reading_depot_manifests), 10);
             List<DepotFile> files = new ArrayList<>();
             for (int i = 0; i < depots.length(); i++) {
                 JSONObject depot = depots.getJSONObject(i);
@@ -303,7 +315,7 @@ public final class GogDownloadManager {
             dbg.append("total files=").append(files.size()).append("\n");
 
             // Fetch CDN base URL via secure_link
-            cb.onProgress("Fetching CDN link…", 15);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_fetching_cdn_link), 15);
             String baseProductId = game.gameId;
             if (products != null && products.length() > 0) {
                 String pid = products.getJSONObject(0).optString("productId", null);
@@ -354,7 +366,7 @@ public final class GogDownloadManager {
                     if (outFile.exists() && outFile.length() > 0) {
                         int done = doneCount.incrementAndGet();
                         int pct  = 15 + (int) ((done / (float) total) * 80);
-                        cb.onProgress("Resuming…", pct);
+                        cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_resuming), pct);
                         return null;
                     }
 
@@ -395,12 +407,16 @@ public final class GogDownloadManager {
                                 long dt = nowMs - prevMs;
                                 if (dt > 0) speedBps.set((tb - prevB) * 1000L / dt);
                             }
-                            String speedStr = formatSpeed(speedBps.get());
+                            String speedStr = formatSpeed(ctx, speedBps.get());
                             String name = df.relativePath.contains("/")
                                     ? df.relativePath.substring(df.relativePath.lastIndexOf('/') + 1)
                                     : df.relativePath;
-                            cb.onProgress("Downloading: " + name
-                                    + (speedStr.isEmpty() ? "" : "  " + speedStr), pct);
+                            cb.onProgress(speedStr.isEmpty()
+                                    ? ctx.getString(R.string.compose_gog_game_detail_downloading_file, name)
+                                    : ctx.getString(
+                                            R.string.compose_gog_game_detail_downloading_file_with_speed,
+                                            name,
+                                            speedStr), pct);
                             return null;
                         }
                         fileLog2.add("RETRY attempt=" + attempt + " file=" + df.relativePath);
@@ -436,7 +452,7 @@ public final class GogDownloadManager {
             // Delete chunks temp dir
             deleteDir(chunksDir);
 
-            cb.onProgress("Install complete!", 100);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_install_complete), 100);
 
             // Save install dir + build ID + client ID before exe resolution
             SharedPreferences.Editor ed0 = ctx.getSharedPreferences("bh_gog_prefs", 0).edit();
@@ -515,7 +531,7 @@ public final class GogDownloadManager {
                 return "no windows manifest URL";
             dbg.append("manifestUrl=").append(manifestUrl.substring(0, Math.min(80, manifestUrl.length()))).append("\n");
 
-            cb.onProgress("Fetching Gen 1 manifest…", 12);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_fetching_gen1_manifest), 12);
             byte[] raw = fetchBytes(manifestUrl, token);
             if (raw == null) return "manifest fetch null";
             String manifestStr = decompressBytes(raw);
@@ -575,7 +591,7 @@ public final class GogDownloadManager {
                     if (outFile.exists() && outFile.length() == gf.size) {
                         int done = doneG1.incrementAndGet();
                         int pct  = 15 + (int) ((done / (float) totalG1) * 80);
-                        cb.onProgress("Resuming…", pct);
+                        cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_resuming), pct);
                         return null;
                     }
 
@@ -594,11 +610,15 @@ public final class GogDownloadManager {
                                 long dt = nowMs - prevMs;
                                 if (dt > 0) speedBpsG1.set((tb - prevB) * 1000L / dt);
                             }
-                            String speedStr = formatSpeed(speedBpsG1.get());
+                            String speedStr = formatSpeed(ctx, speedBpsG1.get());
                             String name = gf.path.contains("/")
                                     ? gf.path.substring(gf.path.lastIndexOf('/') + 1) : gf.path;
-                            cb.onProgress("Downloading: " + name
-                                    + (speedStr.isEmpty() ? "" : "  " + speedStr), pct);
+                            cb.onProgress(speedStr.isEmpty()
+                                    ? ctx.getString(R.string.compose_gog_game_detail_downloading_file, name)
+                                    : ctx.getString(
+                                            R.string.compose_gog_game_detail_downloading_file_with_speed,
+                                            name,
+                                            speedStr), pct);
                             return null;
                         }
                         fileLog1.add("RETRY attempt=" + attempt + " file=" + gf.path);
@@ -625,7 +645,7 @@ public final class GogDownloadManager {
             if (anyFailedG1.get()) return "one or more gen1 files failed to download";
             dbg.append("gen1 download complete: ").append(doneG1.get()).append(" files OK\n");
 
-            cb.onProgress("Install complete!", 100);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_install_complete), 100);
 
             SharedPreferences.Editor ed0 = ctx.getSharedPreferences("bh_gog_prefs", 0).edit();
             ed0.putString("gog_dir_" + game.gameId, installDir);
@@ -716,8 +736,10 @@ public final class GogDownloadManager {
             if (cancelled.get()) return "cancelled";
             File outFile = new File(installDir, fileName);
 
-            cb.onProgress("Downloading installer: " + fileName, 15);
-            downloadWithProgress(downloadUrl, outFile, cb, cancelled);
+            cb.onProgress(
+                    ctx.getString(R.string.compose_gog_game_detail_downloading_installer, fileName),
+                    15);
+            downloadWithProgress(ctx, downloadUrl, outFile, cb, cancelled);
 
             // Save prefs
             SharedPreferences.Editor ed = ctx.getSharedPreferences("bh_gog_prefs", 0).edit();
@@ -725,7 +747,7 @@ public final class GogDownloadManager {
             ed.putString("gog_exe_" + game.gameId, outFile.getAbsolutePath());
             ed.apply();
 
-            cb.onProgress("Installer downloaded!", 100);
+            cb.onProgress(ctx.getString(R.string.compose_gog_game_detail_installer_downloaded), 100);
             cb.onComplete(outFile.getAbsolutePath());
             return null; // success
         } catch (Exception e) {
@@ -788,14 +810,19 @@ public final class GogDownloadManager {
         }
     }
 
-    private static String formatSpeed(long bps) {
+    private static String formatSpeed(Context ctx, long bps) {
         if (bps <= 0) return "";
-        if (bps >= 1048576) return String.format("%.1f MB/s", bps / 1048576.0);
-        return (bps / 1024) + " KB/s";
+        if (bps >= 1048576) {
+            return ctx.getString(
+                    R.string.compose_gog_game_detail_speed_mbps,
+                    bps / 1048576.0);
+        }
+        return ctx.getString(R.string.compose_gog_game_detail_speed_kbps, bps / 1024);
     }
 
     /** Downloads url to outFile, reporting progress via cb. */
-    private static void downloadWithProgress(String url, File out, Callback cb, AtomicBoolean cancelled) {
+    private static void downloadWithProgress(Context ctx, String url, File out, Callback cb,
+                                             AtomicBoolean cancelled) {
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setConnectTimeout(TIMEOUT);
@@ -821,9 +848,15 @@ public final class GogDownloadManager {
                     }
                     if (total > 0) {
                         int pct = 15 + (int) ((downloaded / (float) total) * 80);
-                        String speed = formatSpeed(speedBps);
-                        cb.onProgress("Downloading: " + out.getName()
-                                + (speed.isEmpty() ? "" : "  " + speed), pct);
+                        String speed = formatSpeed(ctx, speedBps);
+                        cb.onProgress(speed.isEmpty()
+                                ? ctx.getString(
+                                        R.string.compose_gog_game_detail_downloading_file,
+                                        out.getName())
+                                : ctx.getString(
+                                        R.string.compose_gog_game_detail_downloading_file_with_speed,
+                                        out.getName(),
+                                        speed), pct);
                     }
                 }
             }

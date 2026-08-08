@@ -31,10 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 
 @Composable
@@ -52,12 +54,12 @@ fun ActiveWindowsDialog(state: XServerDialogState) {
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Active Windows", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.active_windows), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
 
                 if (windows.isEmpty()) {
                     Text(
-                        text = "No windows open",
+                        text = stringResource(R.string.dialog_no_windows_open),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -82,7 +84,7 @@ fun ActiveWindowsDialog(state: XServerDialogState) {
 
                 Spacer(Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { state.dismiss() }) { Text("Close") }
+                    TextButton(onClick = { state.dismiss() }) { Text(stringResource(R.string.common_close)) }
                 }
             }
         }

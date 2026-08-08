@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="final_runtime_virtual_gamepad">Virtual gamepad</string>
+    <string name="final_runtime_controller_filtered">Controller · filtered</string>
+    <string name="final_runtime_pointer">Pointer</string>
+    <string name="final_runtime_keys">Keys</string>
+    <string name="final_runtime_controller">Controller</string>
+    <string name="final_runtime_controller_connected">CONTROLLER CONNECTED</string>
+    <string name="final_runtime_controller_disconnected">CONTROLLER DISCONNECTED</string>
+    <string name="final_runtime_input_reset">INPUT RESET</string>
+    <string name="final_runtime_just_now">just now</string>
+    <string name="final_runtime_player_shared">PLAYER %1$d · SHARED</string>
+    <string name="final_runtime_updated">updated</string>
+    <string name="final_runtime_input_updated">INPUT UPDATED</string>
+    <string name="final_runtime_input_detected">INPUT DETECTED</string>
+    <string name="final_runtime_controller_detected">CONTROLLER DETECTED</string>
+    <string name="final_runtime_controllers_detected">CONTROLLERS DETECTED</string>
+    <string name="final_runtime_on_launch">on launch</string>
+    <string name="final_runtime_hud_frametime">Frametime</string>
+    <string name="final_runtime_hud_frame">FRAME</string>
+    <string name="final_runtime_hud_average">AVG</string>
+    <string name="final_runtime_hud_average_inline">avg</string>
+    <string name="final_runtime_hud_resolution">RES</string>
+    <string name="final_runtime_hud_elapsed">elapsed</string>
+    <string name="final_runtime_hud_memory_used">%1$s used / %2$s</string>
+    <string name="final_runtime_bug_report_title">Bug report</string>
+</resources>

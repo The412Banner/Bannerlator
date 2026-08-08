@@ -13,7 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
@@ -89,10 +91,14 @@ fun VegasDownloadSheet(
                 }
                 releases = list
             } catch (e: Exception) {
-                errorMsg = "Failed to parse releases: ${e.message}"
+                android.util.Log.e("VegasDownloadSheet", "Failed to parse release list", e)
+                errorMsg = context.getString(
+                    R.string.compose_content_failed_to_parse_releases,
+                    context.getString(R.string.final_errors_unknown_error),
+                )
             }
         } else {
-            errorMsg = "Failed to fetch releases from GitHub"
+            errorMsg = context.getString(R.string.compose_content_failed_to_fetch_releases)
         }
         isLoading = false
     }
@@ -108,7 +114,10 @@ fun VegasDownloadSheet(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(16.dp))
-                    Text("Installing VEGAS\u2026", color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        stringResource(R.string.compose_content_installing_vegas),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
         }
@@ -118,16 +127,30 @@ fun VegasDownloadSheet(
     errorMsg?.let { msg ->
         OutlinedAlertDialog(
             onDismissRequest = { errorMsg = null },
-            title = { Text("Error", color = MaterialTheme.colorScheme.onSurface) },
+            title = {
+                Text(
+                    stringResource(R.string.compose_content_error),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
             text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },
-            confirmButton = { TextButton(onClick = { errorMsg = null }) { Text("OK") } }
+            confirmButton = {
+                TextButton(onClick = { errorMsg = null }) {
+                    Text(stringResource(R.string.compose_content_ok))
+                }
+            }
         )
     }
 
     // Main dialog
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("VEGAS Downloads", color = MaterialTheme.colorScheme.onSurface) },
+        title = {
+            Text(
+                stringResource(R.string.compose_content_vegas_downloads),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
         text = {
             if (isLoading) {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -136,7 +159,11 @@ fun VegasDownloadSheet(
             } else if (releases.isEmpty()) {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        if (errorMsg != null) "Could not load releases." else "No releases available.",
+                        if (errorMsg != null) {
+                            stringResource(R.string.compose_content_could_not_load_releases)
+                        } else {
+                            stringResource(R.string.compose_content_no_releases_available)
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -182,16 +209,24 @@ fun VegasDownloadSheet(
                                                         onContentChanged()
                                                         onDismiss()
                                                     } else {
-                                                        errorMsg = "Install failed."
+                                                        errorMsg = context.getString(
+                                                            R.string.compose_content_install_failed
+                                                        )
                                                     }
                                                 }
                                             } else {
-                                                errorMsg = "Download failed."
+                                                errorMsg = context.getString(
+                                                    R.string.compose_content_download_failed
+                                                )
                                             }
                                         }
                                     }
                                 ) {
-                                    Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+                                    Icon(
+                                        Icons.Filled.Download,
+                                        contentDescription = stringResource(R.string.compose_content_download),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
                                 }
                             }
                         }
@@ -200,7 +235,11 @@ fun VegasDownloadSheet(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.compose_content_close))
+            }
+        },
     )
 }
 

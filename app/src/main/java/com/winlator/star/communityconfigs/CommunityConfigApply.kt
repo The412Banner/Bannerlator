@@ -1,6 +1,8 @@
 package com.winlator.star.communityconfigs
 
+import android.content.Context
 import android.util.Log
+import com.winlator.star.R
 import com.winlator.star.container.Shortcut
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.ui.screens.adrenodownload.RemoteDriverEntry
@@ -116,6 +118,7 @@ object CommunityConfigApply {
      *                             driver offered as an installable [MissingDriver] (else plain advisory).
      */
     fun apply(
+        context: Context,
         shortcut: Shortcut,
         config: ShortcutConfig,
         installed: InstalledComponents,
@@ -124,7 +127,7 @@ object CommunityConfigApply {
     ): ConfigApplyResult {
         // Write-through: build() computes the diff and pushes each field via putExtra as it goes,
         // exactly as before; then persist once if anything actually changed.
-        val result = build(shortcut, config, installed, containerWineVersion, isAdreno) { key, value ->
+        val result = build(context, shortcut, config, installed, containerWineVersion, isAdreno) { key, value ->
             shortcut.putExtra(key, value)
         }
         if (result.changed.isNotEmpty()) {
@@ -134,7 +137,7 @@ object CommunityConfigApply {
                 Log.w(TAG, "Failed to persist shortcut after apply", e)
                 return result.copy(
                     ok = false,
-                    message = "Failed to save shortcut: ${e.message ?: e.javaClass.simpleName}",
+                    message = context.getString(R.string.shortcuts_config_save_failed),
                 )
             }
         }
@@ -151,13 +154,14 @@ object CommunityConfigApply {
      * any thread (pure reads).
      */
     fun preview(
+        context: Context,
         shortcut: Shortcut,
         config: ShortcutConfig,
         installed: InstalledComponents,
         containerWineVersion: String?,
         isAdreno: Boolean,
     ): ConfigApplyResult =
-        build(shortcut, config, installed, containerWineVersion, isAdreno) { _, _ -> }
+        build(context, shortcut, config, installed, containerWineVersion, isAdreno) { _, _ -> }
 
     /**
      * Shared change-computation for [apply] and [preview]. Reads the shortcut's current values (each
@@ -166,6 +170,7 @@ object CommunityConfigApply {
      * [apply], a no-op for [preview]. Does NOT persist; the caller owns {@code saveData()}.
      */
     private fun build(
+        context: Context,
         shortcut: Shortcut,
         config: ShortcutConfig,
         installed: InstalledComponents,
@@ -195,7 +200,7 @@ object CommunityConfigApply {
                     missing.add(
                         MissingComponent(
                             ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
-                            "config uses FEXCore $wantedFex — not installed; install it to switch x86 translator.",
+                            context.getString(R.string.shortcuts_config_missing_fexcore, wantedFex),
                             wantedFex,
                             shortcut.getExtra("fexcoreVersion").takeIf { it.isNotBlank() },
                         )
@@ -221,13 +226,13 @@ object CommunityConfigApply {
         val dxwUpdates = LinkedHashMap<String, String>()
         config.dxwrapperConfig["version"]?.let { wanted ->
             resolveInto(
-                "DXVK", "DXVK", wanted, subValue(dxwCurrent, ",", "version"), installed, advisories,
+                context, "DXVK", "DXVK", wanted, subValue(dxwCurrent, ",", "version"), installed, advisories,
                 missing, ContentProfile.ContentType.CONTENT_TYPE_DXVK,
             )?.let { dxwUpdates["version"] = it }
         }
         config.dxwrapperConfig["vkd3dVersion"]?.let { wanted ->
             resolveInto(
-                "VKD3D", "VKD3D", wanted, subValue(dxwCurrent, ",", "vkd3dVersion"), installed, advisories,
+                context, "VKD3D", "VKD3D", wanted, subValue(dxwCurrent, ",", "vkd3dVersion"), installed, advisories,
                 missing, ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
             )?.let { dxwUpdates["vkd3dVersion"] = it }
         }
@@ -266,8 +271,12 @@ object CommunityConfigApply {
                     if (isAdreno) {
                         missingDrivers.add(MissingDriver(wanted, have))
                     } else {
-                        val had = have?.let { " you have $it —" } ?: ""
-                        advisories.add("config wants Turnip $wanted;$had install it to honor.")
+                        val text = if (have != null) {
+                            context.getString(R.string.shortcuts_config_missing_component_have, "Turnip", wanted, have)
+                        } else {
+                            context.getString(R.string.shortcuts_config_missing_component, "Turnip", wanted)
+                        }
+                        advisories.add(text)
                     }
                 }
             }
@@ -293,17 +302,25 @@ object CommunityConfigApply {
         config.advisories["wineVersion"]?.let { proton ->
             val containerKey = containerWineVersion?.takeIf { it.isNotBlank() }?.let { ConfigTranslator.protonKey(it) }
             if (containerKey == null || !containerKey.equals(proton, ignoreCase = true)) {
-                val have = containerWineVersion?.takeIf { it.isNotBlank() } ?: "your container's"
-                advisories.add("config used $proton (container-only) — your container is $have; change it in the container editor if needed.")
+                val have = containerWineVersion?.takeIf { it.isNotBlank() }
+                    ?: context.getString(R.string.shortcuts_config_container_unspecified)
+                advisories.add(
+                    context.getString(R.string.shortcuts_config_proton_advisory, proton, have)
+                )
             }
         }
 
         val message = when {
             changed.isEmpty() && advisories.isEmpty() && missing.isEmpty() && missingDrivers.isEmpty() ->
-                "Already aligned — your shortcut matches this config; nothing to change."
+                context.getString(R.string.shortcuts_config_already_aligned)
             changed.isEmpty() ->
-                "Nothing changed — this config needs components you don't have installed yet."
-            else -> "Applied ${changed.size} change${if (changed.size == 1) "" else "s"} to \"${shortcut.name}\"."
+                context.getString(R.string.shortcuts_config_nothing_changed)
+            else -> context.resources.getQuantityString(
+                R.plurals.shortcuts_config_applied_changes,
+                changed.size,
+                changed.size,
+                shortcut.name,
+            )
         }
         return ConfigApplyResult(true, message, changed, missing, advisories, missingDrivers)
     }
@@ -517,6 +534,7 @@ object CommunityConfigApply {
      * skip (either already aligned, or not installed → an advisory is added).
      */
     private fun resolveInto(
+        context: Context,
         label: String,
         installedType: String,
         wanted: String,
@@ -528,8 +546,12 @@ object CommunityConfigApply {
     ): String? = when (val r = installed.resolve(installedType, wanted, current)) {
         is InstalledComponents.Resolution.Match -> r.token // null = already aligned
         InstalledComponents.Resolution.Missing -> {
-            val have = current?.takeIf { it.isNotBlank() }?.let { " you have $it —" } ?: ""
-            val text = "config wants $label $wanted;$have install it to honor."
+            val have = current?.takeIf { it.isNotBlank() }
+            val text = if (have != null) {
+                context.getString(R.string.shortcuts_config_missing_component_have, label, wanted, have)
+            } else {
+                context.getString(R.string.shortcuts_config_missing_component, label, wanted)
+            }
             // Sheet-installable types get a structured entry (→ Install button); anything without a
             // missingType falls through to a plain advisory line. (Turnip has its own MissingDriver path.)
             if (missing != null && missingType != null) {

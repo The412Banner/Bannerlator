@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="saves_empty">Сохранений пока нет. Нажмите +, чтобы добавить.</string>
+    <string name="saves_import">Импорт</string>
+    <string name="saves_browse_files">Выбрать файл</string>
+    <string name="saves_select_archive">Выберите архив сохранения</string>
+    <string name="saves_pick_via_system">Выбрать через систему…</string>
+    <string name="saves_add">Добавить сохранение</string>
+    <string name="saves_transfer_complete">Перенос завершён</string>
+    <string name="saves_options">Параметры</string>
+    <string name="saves_edit">Изменить</string>
+    <string name="saves_transfer_container">Перенести в контейнер</string>
+    <string name="saves_export">Экспорт</string>
+    <string name="saves_share">Поделиться</string>
+    <string name="saves_unregister">Убрать из списка</string>
+    <string name="saves_new_title">Новое сохранение</string>
+    <string name="saves_title_label">Название сохранения</string>
+    <string name="saves_no_containers">Контейнеров нет</string>
+    <string name="saves_container">Контейнер</string>
+    <string name="saves_select_container_first">Сначала выберите контейнер</string>
+    <string name="saves_select_path">Выбрать путь к сохранениям</string>
+    <string name="saves_fill_all_fields">Заполните все поля</string>
+    <string name="saves_ok">ОК</string>
+    <string name="saves_cancel">Отмена</string>
+    <string name="saves_edit_title">Изменение сохранения</string>
+    <string name="saves_original_path">Исходный путь</string>
+    <string name="saves_name_required">Укажите название</string>
+    <string name="saves_transfer_to">Перенести «%1$s» в:</string>
+    <string name="saves_transfer">Перенести</string>
+    <string name="saves_import_title">Импорт сохранения</string>
+    <string name="saves_select_target_container">Выберите целевой контейнер:</string>
+    <string name="saves_add_failed">Не удалось добавить сохранение.</string>
+    <string name="saves_update_failed">Не удалось обновить сохранение.</string>
+    <string name="saves_transfer_failed">Не удалось перенести сохранение.</string>
+    <string name="saves_invalid_directory">Папка сохранений недоступна.</string>
+    <string name="saves_json_missing">Файл сохранения .json не найден.</string>
+    <string name="saves_exported_to">Сохранение экспортировано в %1$s</string>
+    <string name="saves_share_archive">Поделиться архивом сохранения</string>
+    <string name="saves_export_failed">Не удалось экспортировать сохранение.</string>
+    <string name="saves_decompress_failed">Не удалось распаковать архив.</string>
+    <string name="saves_unexpected_archive">Неверная структура архива.</string>
+    <string name="saves_archive_json_missing">В архиве не найден файл JSON.</string>
+    <string name="saves_import_success">Сохранение успешно импортировано.</string>
+    <string name="saves_import_failed">Не удалось импортировать сохранение.</string>
+</resources>

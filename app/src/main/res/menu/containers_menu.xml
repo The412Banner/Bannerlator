@@ -5,13 +5,13 @@
 
     <item
         android:id="@+id/containers_menu_import"
-        android:title="Import Container"
+        android:title="@string/import_container"
         android:icon="@drawable/icon_action_bar_import"
     app:showAsAction="ifRoom" />
-    
+
     <item
         android:id="@+id/action_big_picture_mode"
-        android:title="Big Picture Mode"
+        android:title="@string/big_picture_mode"
         android:icon="@drawable/ic_big_picture_mode"
         android:color="#FFFFFF"
         app:showAsAction="ifRoom" />

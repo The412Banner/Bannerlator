@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="saves_empty">No saves yet. Tap + to add one.</string>
+    <string name="saves_import">Import</string>
+    <string name="saves_browse_files">Browse files</string>
+    <string name="saves_select_archive">Select save archive</string>
+    <string name="saves_pick_via_system">Pick via system…</string>
+    <string name="saves_add">Add save</string>
+    <string name="saves_transfer_complete">Transfer complete</string>
+    <string name="saves_options">Options</string>
+    <string name="saves_edit">Edit</string>
+    <string name="saves_transfer_container">Transfer container</string>
+    <string name="saves_export">Export</string>
+    <string name="saves_share">Share</string>
+    <string name="saves_unregister">Unregister</string>
+    <string name="saves_new_title">New save</string>
+    <string name="saves_title_label">Save title</string>
+    <string name="saves_no_containers">No containers</string>
+    <string name="saves_container">Container</string>
+    <string name="saves_select_container_first">Select a container first</string>
+    <string name="saves_select_path">Select save path</string>
+    <string name="saves_fill_all_fields">Fill all fields</string>
+    <string name="saves_ok">OK</string>
+    <string name="saves_cancel">Cancel</string>
+    <string name="saves_edit_title">Edit save</string>
+    <string name="saves_original_path">Original path</string>
+    <string name="saves_name_required">Name is required</string>
+    <string name="saves_transfer_to">Transfer \"%1$s\" to:</string>
+    <string name="saves_transfer">Transfer</string>
+    <string name="saves_import_title">Import save</string>
+    <string name="saves_select_target_container">Select target container:</string>
+    <string name="saves_add_failed">Failed to add save.</string>
+    <string name="saves_update_failed">Failed to update save.</string>
+    <string name="saves_transfer_failed">Failed to transfer save.</string>
+    <string name="saves_invalid_directory">Save directory is invalid.</string>
+    <string name="saves_json_missing">Save .json file is missing.</string>
+    <string name="saves_exported_to">Save exported to %1$s</string>
+    <string name="saves_share_archive">Share save archive</string>
+    <string name="saves_export_failed">Failed to export save.</string>
+    <string name="saves_decompress_failed">Failed to decompress archive.</string>
+    <string name="saves_unexpected_archive">Unexpected archive structure.</string>
+    <string name="saves_archive_json_missing">JSON file not found in the archive.</string>
+    <string name="saves_import_success">Save imported successfully.</string>
+    <string name="saves_import_failed">Failed to import save.</string>
+</resources>

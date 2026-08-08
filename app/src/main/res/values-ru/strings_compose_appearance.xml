@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appearance_theme_presets">Готовые темы</string>
+    <string name="appearance_custom_accent">Свой цвет акцента</string>
+    <string name="appearance_custom_accent_hint">Выбор цвета ниже переключит тему на «Своя»</string>
+    <string name="appearance_side_menu">Боковое меню</string>
+    <string name="appearance_show_stores">Показывать магазины игр</string>
+    <string name="appearance_show_stores_hint">Ярлыки GOG, Epic, Amazon и Steam в боковом меню</string>
+    <string name="appearance_show_internal_storage">Показывать внутреннюю память</string>
+    <string name="appearance_show_internal_storage_hint">Полоса памяти внизу бокового меню</string>
+    <string name="appearance_show_sd_storage">Показывать SD-карту</string>
+    <string name="appearance_show_sd_storage_hint">Отображается, только если карта установлена</string>
+    <string name="appearance_orientation">Ориентация приложения</string>
+    <string name="appearance_orientation_hint">Применяется только к экранам приложения; ориентация игр не меняется.</string>
+    <string name="appearance_orientation_auto">Авто</string>
+    <string name="appearance_orientation_portrait">Книжная</string>
+    <string name="appearance_orientation_landscape">Альбомная</string>
+    <string name="appearance_orientation_auto_hint">Авто следует повороту устройства (по умолчанию).</string>
+
+    <string name="appearance_preset_classic_dark">Классическая тёмная</string>
+    <string name="appearance_preset_amoled">AMOLED</string>
+    <string name="appearance_preset_ocean">Океан</string>
+    <string name="appearance_preset_forest">Лес</string>
+    <string name="appearance_preset_sunset">Закат</string>
+    <string name="appearance_preset_rose">Роза</string>
+    <string name="appearance_preset_steel">Сталь</string>
+    <string name="appearance_preset_midnight_cobalt">Полуночный кобальт</string>
+    <string name="appearance_preset_phosphor">Фосфор</string>
+    <string name="appearance_preset_carbon_ember">Уголь и жар</string>
+    <string name="appearance_preset_amethyst">Аметист</string>
+    <string name="appearance_preset_crimson">Багрянец</string>
+    <string name="appearance_preset_synthwave">Синтвейв</string>
+    <string name="appearance_preset_royal_gold">Королевское золото</string>
+    <string name="appearance_preset_frost">Иней</string>
+    <string name="appearance_preset_monochrome">Монохром</string>
+    <string name="appearance_preset_custom">Своя</string>
+</resources>

@@ -49,12 +49,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.winlator.star.R
 import com.winlator.star.core.LogInventory
 import com.winlator.star.core.LogReport
 import kotlinx.coroutines.Dispatchers
@@ -104,7 +107,7 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
     LaunchedEffect(selected, following) {
         val f = selected ?: return@LaunchedEffect
         do {
-            val (text, from) = withContext(Dispatchers.IO) { readTail(f) }
+            val (text, from) = withContext(Dispatchers.IO) { readTail(context, f) }
             lines = text
             truncatedFrom = from
             if (following) {
@@ -123,18 +126,18 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    if (entry.isAppBucket) "App & crash logs" else entry.name,
+                    if (entry.isAppBucket) stringResource(R.string.log_viewer_app_crash_logs) else entry.name,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Default.Close, stringResource(R.string.log_viewer_close), tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
 
             if (files.isEmpty()) {
-                Text("This folder has no log files right now.",
+                Text(stringResource(R.string.log_viewer_folder_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                     modifier = Modifier.padding(top = 12.dp))
                 return@Column
@@ -148,7 +151,7 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
                 ) {
                     runs.forEach { r ->
                         FileChip(
-                            if (r.current) "Current" else runLabel(r.millis),
+                            if (r.current) stringResource(R.string.log_viewer_current) else runLabel(context, r.millis),
                             r == selectedRun
                         ) {
                             selectedRun = r
@@ -187,7 +190,7 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
                     )
                     Spacer(Modifier.width(5.dp))
                     Text(
-                        if (following) "following" else "follow",
+                        stringResource(if (following) R.string.log_viewer_following else R.string.log_viewer_follow),
                         color = if (following) Color(0xFF5FBF6B) else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
                     )
@@ -222,7 +225,7 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
                             // rather than emitted as a sibling.
                             Box {
                                 if (query.isEmpty()) {
-                                    Text("Find in this log…",
+                                    Text(stringResource(R.string.log_viewer_find_placeholder),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                                 }
                                 inner()
@@ -231,11 +234,11 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        if (query.isBlank()) "" else "${shown.size} line${if (shown.size == 1) "" else "s"}",
+                        if (query.isBlank()) "" else pluralStringResource(R.plurals.log_viewer_line_count, shown.size, shown.size),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp
                     )
                     IconButton(onClick = { findOpen = false; query = "" }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, "Close search",
+                        Icon(Icons.Default.Close, stringResource(R.string.log_viewer_close_search),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
                     }
                 }
@@ -253,7 +256,7 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
             ) {
                 if (shown.isEmpty()) {
                     Text(
-                        if (query.isBlank()) "This log is empty." else "No lines match \"$query\".",
+                        if (query.isBlank()) stringResource(R.string.log_viewer_log_empty) else stringResource(R.string.log_viewer_no_lines_match, query),
                         color = Color(0xFF8A7F7A), fontSize = 11.sp
                     )
                 } else {
@@ -261,8 +264,11 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
                         if (truncatedFrom > 0) {
                             item {
                                 Text(
-                                    "… showing the last ${LogInventory.humanBytes(TAIL_BYTES)} of " +
+                                    stringResource(
+                                        R.string.log_viewer_showing_tail,
+                                        LogInventory.humanBytes(TAIL_BYTES),
                                         LogInventory.humanBytes(truncatedFrom),
+                                    ),
                                     color = Color(0xFF8A7F7A), fontSize = 10.5.sp,
                                     fontFamily = FontFamily.Monospace,
                                     modifier = Modifier.padding(bottom = 4.dp)
@@ -292,22 +298,22 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
             ) {
-                ViewerAction("Wrap", active = wrap, modifier = Modifier.weight(1f)) { wrap = !wrap }
-                ViewerAction("Find", active = findOpen, modifier = Modifier.weight(1f)) {
+                ViewerAction(stringResource(R.string.log_viewer_wrap), active = wrap, modifier = Modifier.weight(1f)) { wrap = !wrap }
+                ViewerAction(stringResource(R.string.log_viewer_find), active = findOpen, modifier = Modifier.weight(1f)) {
                     findOpen = !findOpen
                     if (!findOpen) query = ""
                 }
-                ViewerAction("Copy", modifier = Modifier.weight(1f)) {
+                ViewerAction(stringResource(R.string.log_viewer_copy), modifier = Modifier.weight(1f)) {
                     clipboard.setText(AnnotatedString(shown.joinToString("\n")))
-                    Toast.makeText(context, "Copied ${shown.size} lines", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.resources.getQuantityString(R.plurals.log_viewer_copied_lines, shown.size, shown.size), Toast.LENGTH_SHORT).show()
                 }
-                ViewerAction("Share", primary = true, modifier = Modifier.weight(1f)) {
+                ViewerAction(stringResource(R.string.log_viewer_share), primary = true, modifier = Modifier.weight(1f)) {
                     selected?.let { shareLogFile(context, it) }
                 }
             }
 
             ViewerAction(
-                "Report a problem",
+                stringResource(R.string.log_viewer_report_problem),
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
             ) { reportOpen = true }
         }
@@ -340,13 +346,13 @@ private fun ReportDialog(entry: LogInventory.Entry, runDir: File, onDismiss: () 
 
     OutlinedAlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text("Report a problem") },
+        title = { Text(stringResource(R.string.log_viewer_report_problem)) },
         text = {
             Column(modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("What went wrong?") },
+                    label = { Text(stringResource(R.string.log_viewer_what_went_wrong)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -354,12 +360,12 @@ private fun ReportDialog(entry: LogInventory.Entry, runDir: File, onDismiss: () 
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Any detail that helps (optional)") },
+                    label = { Text(stringResource(R.string.log_viewer_optional_details)) },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(10.dp))
-                Text("Will be attached", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                Text(stringResource(R.string.log_viewer_will_be_attached), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 willAttach.forEach {
                     Text("• $it", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                 }
@@ -368,15 +374,11 @@ private fun ReportDialog(entry: LogInventory.Entry, runDir: File, onDismiss: () 
                     modifier = Modifier.fillMaxWidth().clickable { includeApp = !includeApp }
                 ) {
                     Checkbox(checked = includeApp, onCheckedChange = { includeApp = it })
-                    Text("Also app logcat and crash reports",
+                    Text(stringResource(R.string.log_viewer_include_app_logs),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
                 }
                 Text(
-                    "Saved as a zip in Downloads. E-mail addresses, auth tokens and your Steam " +
-                        "account name are stripped; file paths are kept so they stay useful for " +
-                        "debugging, so glance over them if a folder name identifies you. GitHub " +
-                        "can't receive a file from a link, so attach the zip with 📎 once the " +
-                        "form opens.",
+                    stringResource(R.string.log_viewer_report_privacy_note),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -394,26 +396,32 @@ private fun ReportDialog(entry: LogInventory.Entry, runDir: File, onDismiss: () 
                         }
                         busy = false
                         if (bundle == null) {
-                            Toast.makeText(context, "Couldn't build the report.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.log_viewer_report_build_failed), Toast.LENGTH_SHORT).show()
                             return@launch
                         }
                         onDismiss()
                         Toast.makeText(
-                            context, "Saved ${bundle.zip.name} to Downloads", Toast.LENGTH_LONG
+                            context, context.getString(R.string.log_viewer_saved_to_downloads, bundle.zip.name), Toast.LENGTH_LONG
                         ).show()
                         try {
                             context.startActivity(
                                 Intent(Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(LogReport.issueUrl(title, description, bundle.facts)))
+                                    android.net.Uri.parse(
+                                        LogReport.issueUrl(
+                                            title.ifBlank { context.getString(R.string.final_runtime_bug_report_title) },
+                                            description,
+                                            bundle.facts
+                                        )
+                                    ))
                             )
                         } catch (e: Exception) {
-                            Toast.makeText(context, "No browser to open GitHub with.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.log_viewer_no_browser), Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
-            ) { Text(if (busy) "Working…" else "Continue on GitHub") }
+            ) { Text(stringResource(if (busy) R.string.log_viewer_working else R.string.log_viewer_continue_github)) }
         },
-        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text(stringResource(R.string.log_viewer_cancel)) } }
     )
 }
 
@@ -468,15 +476,15 @@ private fun ViewerAction(
  * Label for an archived run. Recent ones read better as an age ("2 hr ago"), older ones as a date —
  * "6 days ago" is not something anyone can line up against when a game broke.
  */
-private fun runLabel(millis: Long): String {
-    if (millis <= 0) return "earlier"
+private fun runLabel(context: Context, millis: Long): String {
+    if (millis <= 0) return context.getString(R.string.log_viewer_earlier)
     val mins = (System.currentTimeMillis() - millis) / 60000
     return when {
-        mins < 1 -> "just now"
-        mins < 60 -> "$mins min ago"
-        mins < 60 * 24 -> "${mins / 60} hr ago"
-        mins < 60 * 48 -> "yesterday"
-        else -> java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US)
+        mins < 1 -> context.getString(R.string.log_viewer_just_now)
+        mins < 60 -> context.resources.getQuantityString(R.plurals.log_viewer_minutes_ago, mins.toInt(), mins)
+        mins < 60 * 24 -> context.resources.getQuantityString(R.plurals.log_viewer_hours_ago, (mins / 60).toInt(), mins / 60)
+        mins < 60 * 48 -> context.getString(R.string.log_viewer_yesterday)
+        else -> java.text.SimpleDateFormat("d MMM HH:mm", context.resources.configuration.locales[0])
             .format(java.util.Date(millis))
     }
 }
@@ -499,7 +507,7 @@ private fun lineColor(line: String): Color {
  * Last [TAIL_BYTES] of the file as lines, plus the original size when we had to truncate (0 when
  * the whole file fitted). A partial first line is dropped rather than shown half-read.
  */
-private fun readTail(f: File): Pair<List<String>, Long> {
+private fun readTail(context: Context, f: File): Pair<List<String>, Long> {
     return try {
         val len = f.length()
         if (len == 0L) return emptyList<String>() to 0L
@@ -515,7 +523,8 @@ private fun readTail(f: File): Pair<List<String>, Long> {
         val capped = if (all.size > MAX_LINES) all.subList(all.size - MAX_LINES, all.size) else all
         capped to (if (from > 0) len else 0L)
     } catch (e: Exception) {
-        listOf("Could not read this file: ${e.message}") to 0L
+        android.util.Log.e("LogViewerScreen", "Failed to read log: ${f.absolutePath}", e)
+        listOf(context.getString(R.string.final_audit_log_read_failed)) to 0L
     }
 }
 
@@ -537,9 +546,9 @@ private fun shareLogFile(context: Context, file: File) {
             putExtra(Intent.EXTRA_SUBJECT, file.name)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, "Share log"))
+        context.startActivity(Intent.createChooser(send, context.getString(R.string.log_viewer_share_log)))
     } catch (e: Exception) {
-        Toast.makeText(context, "Couldn't share that log.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.log_viewer_share_one_failed), Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -547,7 +556,7 @@ private fun shareLogFile(context: Context, file: File) {
 fun shareLogGroup(context: Context, entry: LogInventory.Entry) {
     val files = LogInventory.filesIn(entry.dir)
     if (files.isEmpty()) {
-        Toast.makeText(context, "Nothing to share yet.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.log_viewer_nothing_to_share), Toast.LENGTH_SHORT).show()
         return
     }
     if (files.size == 1) {
@@ -566,11 +575,11 @@ fun shareLogGroup(context: Context, entry: LogInventory.Entry) {
         val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "text/plain"
             putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-            putExtra(Intent.EXTRA_SUBJECT, if (entry.isAppBucket) "App & crash logs" else entry.name)
+            putExtra(Intent.EXTRA_SUBJECT, if (entry.isAppBucket) context.getString(R.string.log_viewer_app_crash_logs) else entry.name)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, "Share logs"))
+        context.startActivity(Intent.createChooser(send, context.getString(R.string.log_viewer_share_logs)))
     } catch (e: Exception) {
-        Toast.makeText(context, "Couldn't share those logs.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.log_viewer_share_many_failed), Toast.LENGTH_SHORT).show()
     }
 }

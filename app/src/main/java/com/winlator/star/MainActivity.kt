@@ -48,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +65,7 @@ import com.winlator.star.ui.topBarActionsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -144,6 +146,17 @@ class MainActivity : AppCompatActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         splashScreen.setKeepOnScreenCondition { !contentReady }
+
+        // This localized build is Russian-first. AppCompat owns persistence on Android 12 and
+        // older, while Android 13+ mirrors the choice into the system's per-app language setting.
+        // Only seed the preference once so an explicit English choice is never overwritten.
+        val languagePrefs = PreferenceManager.getDefaultSharedPreferences(this)
+        if (!languagePrefs.getBoolean("app_language_initialized", false)) {
+            languagePrefs.edit().putBoolean("app_language_initialized", true).apply()
+            if (AppCompatDelegate.getApplicationLocales().isEmpty) {
+                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("ru"))
+            }
+        }
 
         PACKAGE_NAME = applicationContext.packageName
         AppThemeState.init(this)
@@ -392,7 +405,10 @@ private fun AppShell(
                 else -> context.getString(R.string.new_container)
             }
         }
-        else -> Screen.drawerItems.firstOrNull { it.route == currentRoute }?.label ?: "Winlator"
+        else -> {
+            val screen = Screen.drawerItems.firstOrNull { it.route == currentRoute }
+            if (screen != null) stringResource(screen.labelRes) else stringResource(R.string.app_name)
+        }
     }
 
     CompositionLocalProvider(LocalTopBarActions provides topBarActionsState) {
@@ -498,15 +514,12 @@ private fun AppShell(
 private fun AllFilesAccessDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("All Files Access Required") },
+        title = { Text(stringResource(R.string.all_files_access_title)) },
         text = {
-            Text(
-                "In order to grant access to additional storage devices such as USB storage, " +
-                "the All Files Access permission must be granted. Press OK to open Android Settings."
-            )
+            Text(stringResource(R.string.all_files_access_message))
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.ok)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -521,17 +534,17 @@ private fun UpdateBanner(versionName: String, onUpdate: () -> Unit, onDismiss: (
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "Update available — V $versionName",
+            text = stringResource(R.string.update_available_version, versionName),
             color = ink,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onUpdate) {
-            Text("Update", color = ink, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.update_action), color = ink, fontWeight = FontWeight.Bold)
         }
         TextButton(onClick = onDismiss) {
-            Text("Skip", color = ink)
+            Text(stringResource(R.string.skip_action), color = ink)
         }
     }
 }
@@ -568,7 +581,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                         .padding(horizontal = 8.dp)
                 )
                 Text(
-                    text = "Bannerlator Bionic",
+                    text = stringResource(R.string.app_name),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
@@ -577,8 +590,15 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                 Text(
                     // Read from BuildConfig so it tracks the gradle versionName automatically
                     // and never drifts from the real app version again.
-                    text = "V ${BuildConfig.VERSION_NAME}" +
-                        (newer?.let { " · latest V ${it.versionName}" } ?: ""),
+                    text = if (newer != null) {
+                        stringResource(
+                            R.string.app_version_with_latest,
+                            BuildConfig.VERSION_NAME,
+                            newer.versionName
+                        )
+                    } else {
+                        stringResource(R.string.app_version, BuildConfig.VERSION_NAME)
+                    },
                     fontSize = 13.sp,
                     color = com.winlator.star.ui.theme.OnSurfaceVariant
                 )
@@ -589,7 +609,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                             containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50)
                         ),
                         modifier = androidx.compose.ui.Modifier.fillMaxWidth()
-                    ) { Text("Update now", color = androidx.compose.ui.graphics.Color.White) }
+                    ) { Text(stringResource(R.string.update_now), color = androidx.compose.ui.graphics.Color.White) }
                 }
 
                 Spacer(androidx.compose.ui.Modifier.height(4.dp))
@@ -597,11 +617,11 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                 Spacer(androidx.compose.ui.Modifier.height(4.dp))
 
                 // Powered by
-                AboutSection(title = "Powered By") {
-                    AboutRow("Wine",    "Windows compatibility layer")
-                    AboutRow("Box64",   "x86_64 emulation on ARM")
-                    AboutRow("FEX-Emu", "Fast x86 emulator")
-                    AboutRow("Turnip",  "Open-source Vulkan driver")
+                AboutSection(title = stringResource(R.string.powered_by)) {
+                    AboutRow("Wine", stringResource(R.string.about_wine_description))
+                    AboutRow("Box64", stringResource(R.string.about_box64_description))
+                    AboutRow("FEX-Emu", stringResource(R.string.about_fex_description))
+                    AboutRow("Turnip", stringResource(R.string.about_turnip_description))
                 }
 
                 Spacer(androidx.compose.ui.Modifier.height(4.dp))
@@ -609,20 +629,20 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                 Spacer(androidx.compose.ui.Modifier.height(4.dp))
 
                 // Credits
-                AboutSection(title = "Credits") {
-                    AboutRow("brunodev85",      "Winlator — original project")
+                AboutSection(title = stringResource(R.string.credits)) {
+                    AboutRow("brunodev85", stringResource(R.string.about_original_project))
                     AboutRow("MishaMixXx",      "Winlator Bionic")
                     AboutRow("The412Banner",    "Bannerlator")
                     AboutRow("ptitSeb",         "Box64")
-                    AboutRow("WineHQ",          "Wine project")
-                    AboutRow("Mesa / Freedreno","Turnip Vulkan driver")
+                    AboutRow("WineHQ", stringResource(R.string.about_wine_project))
+                    AboutRow("Mesa / Freedreno", stringResource(R.string.about_turnip_driver))
                 }
 
                 Spacer(androidx.compose.ui.Modifier.height(8.dp))
                 TextButton(
                     onClick = onDismiss,
                     modifier = androidx.compose.ui.Modifier.fillMaxWidth()
-                ) { Text("Close") }
+                ) { Text(stringResource(R.string.common_close)) }
             }
         }
     }

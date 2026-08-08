@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_steam_game_detail_loading">Loading…</string>
+    <string name="compose_steam_game_detail_type_game">GAME</string>
+    <string name="compose_steam_game_detail_size_unknown">Size unknown</string>
+    <string name="compose_steam_game_detail_not_installed">Not installed</string>
+    <string name="compose_steam_game_detail_installed">Installed</string>
+    <string name="compose_steam_game_detail_install">Install</string>
+    <string name="compose_steam_game_detail_uninstall">Uninstall</string>
+    <string name="compose_steam_game_detail_cancel">Cancel</string>
+    <string name="compose_steam_game_detail_cancel_download">Cancel</string>
+    <string name="compose_steam_game_detail_pause">Pause</string>
+    <string name="compose_steam_game_detail_resume">Resume</string>
+    <string name="compose_steam_game_detail_retry">Retry</string>
+    <string name="compose_steam_game_detail_starting">Starting…</string>
+    <string name="compose_steam_game_detail_resuming">Resuming…</string>
+    <string name="compose_steam_game_detail_applying">Applying…</string>
+    <string name="compose_steam_game_detail_working">Working…</string>
+    <string name="compose_steam_game_detail_ok">OK</string>
+    <string name="compose_steam_game_detail_done">Done</string>
+    <string name="compose_steam_game_detail_back">Back</string>
+    <string name="compose_steam_game_detail_launch">Launch</string>
+    <string name="compose_steam_game_detail_choose_dlc">Choose DLC</string>
+    <string name="compose_steam_game_detail_i_understand">I understand</string>
+
+    <string name="compose_steam_game_detail_app_id_fallback">App %1$d</string>
+    <string name="compose_steam_game_detail_size_gigabytes">%1$.1f GB</string>
+    <string name="compose_steam_game_detail_size_megabytes">%1$.1f MB</string>
+    <string name="compose_steam_game_detail_size_kilobytes">%1$.0f KB</string>
+    <string name="compose_steam_game_detail_size_on_disk">%1$s on disk</string>
+    <string name="compose_steam_game_detail_size_on_disk_estimate">~%1$s on disk</string>
+    <string name="compose_steam_game_detail_download_size">Download: %1$s</string>
+    <string name="compose_steam_game_detail_pics_estimate">PICS estimate (Steam): %1$s</string>
+    <string name="compose_steam_game_detail_free_space">Free space: %1$s</string>
+    <string name="compose_steam_game_detail_free_space_wont_fit">Free space: %1$s — won’t fit</string>
+    <string name="compose_steam_game_detail_dlc_none_selected">DLC: none selected</string>
+    <string name="compose_steam_game_detail_includes_dlc">Includes DLC: %1$s</string>
+
+    <string name="compose_steam_game_detail_download_speed">%1$s/s</string>
+    <string name="compose_steam_game_detail_eta_less_than_minute">&lt;1 min left</string>
+    <plurals name="compose_steam_game_detail_eta_minutes">
+        <item quantity="one">~%1$d min left</item>
+        <item quantity="few">~%1$d min left</item>
+        <item quantity="many">~%1$d min left</item>
+        <item quantity="other">~%1$d min left</item>
+    </plurals>
+    <plurals name="compose_steam_game_detail_eta_hours">
+        <item quantity="one">~%1$d h left</item>
+        <item quantity="few">~%1$d h left</item>
+        <item quantity="many">~%1$d h left</item>
+        <item quantity="other">~%1$d h left</item>
+    </plurals>
+    <string name="compose_steam_game_detail_eta_hours_minutes">~%1$d h %2$d min left</string>
+    <string name="compose_steam_game_detail_progress_segment">\u0020\u0020·\u0020\u0020%1$s</string>
+    <string name="compose_steam_game_detail_downloading_progress">Downloading… %1$d%%  (%2$s / %3$s)%4$s</string>
+    <string name="compose_steam_game_detail_downloading_percent">Downloading… %1$d%%</string>
+    <string name="compose_steam_game_detail_paused_progress">Paused — %1$d%%  (%2$s / %3$s)</string>
+    <string name="compose_steam_game_detail_pausing_percent">Pausing… %1$d%%</string>
+    <string name="compose_steam_game_detail_download_cancelled">Download cancelled</string>
+    <string name="compose_steam_game_detail_download_failed">Download failed: %1$s\nDebug log: %2$s</string>
+
+    <string name="compose_steam_game_detail_uninstalled">%1$s uninstalled</string>
+    <string name="compose_steam_game_detail_uninstall_incomplete">Couldn’t fully remove %1$s</string>
+    <string name="compose_steam_game_detail_game_not_installed">Game not installed</string>
+    <string name="compose_steam_game_detail_no_executable">No .exe file found in the install directory</string>
+    <string name="compose_steam_game_detail_error">Error: %1$s</string>
+
+    <string name="compose_steam_game_detail_third_party_cloud_title">Third-party cloud sync</string>
+    <string name="compose_steam_game_detail_third_party_cloud_body">Steam Cloud save syncing here is handled by a third-party tool, not official Steam. Managing game saves this way can corrupt or lose your saves. Use at your own risk.</string>
+    <string name="compose_steam_game_detail_third_party_cloud_short_warning">⚠️ Third-party cloud sync — use at your own risk.</string>
+    <string name="compose_steam_game_detail_third_party_cloud_reminder">Third-party cloud sync — use at your own risk.</string>
+    <string name="compose_steam_game_detail_staleness_warning">⚠️ This container has newer saves than your Library — Collect first?</string>
+    <string name="compose_steam_game_detail_preparing_download">Preparing download…</string>
+    <string name="compose_steam_game_detail_preparing_upload">Preparing upload…</string>
+    <string name="compose_steam_game_detail_applying_to_container">Applying to container…</string>
+    <string name="compose_steam_game_detail_collecting_from_container">Collecting from container…</string>
+    <string name="compose_steam_game_detail_syncing_from_cloud">Syncing from Cloud…</string>
+    <string name="compose_steam_game_detail_syncing_to_cloud">Syncing to Cloud…</string>
+
+    <string name="compose_steam_game_detail_dlc_to_download">DLC to download</string>
+    <string name="compose_steam_game_detail_dlc_unchecked_hint">Unchecked DLC won’t download with the game.</string>
+
+    <string name="compose_steam_game_detail_goldberg_title">Steam Emulator (Goldberg)</string>
+    <string name="compose_steam_game_detail_goldberg_description">Lets games that require Steam start without it. Won’t fix online-only games that can’t reach their own servers.</string>
+    <string name="compose_steam_game_detail_goldberg_warning">Please note: this is not a fix for all Steam games that require a Steam client to run. It is not a guaranteed fix-all — use at your own risk!</string>
+    <string name="compose_steam_game_detail_goldberg_off">Off</string>
+    <string name="compose_steam_game_detail_goldberg_regular">Regular</string>
+    <string name="compose_steam_game_detail_goldberg_experimental">Experimental</string>
+    <string name="compose_steam_game_detail_goldberg_cold_client_loader">Cold Client Loader</string>
+    <string name="compose_steam_game_detail_download_steam_emulator">Download Steam Emulator</string>
+    <string name="compose_steam_game_detail_download_steam_emulator_with_size">Download Steam Emulator (~%1$s)</string>
+    <string name="compose_steam_game_detail_goldberg_tier_hint">Regular works for most games; try Experimental, then Cold Client Loader if a game still won’t start.</string>
+    <string name="compose_steam_game_detail_goldberg_download_succeeded">Steam Emulator installed. Choose a mode below.</string>
+    <string name="compose_steam_game_detail_goldberg_download_failed">Couldn’t download or install Steam Emulator. Check your connection and try again.</string>
+    <string name="compose_steam_game_detail_goldberg_disabled_result">Goldberg disabled — original files for “%1$s” restored.</string>
+    <string name="compose_steam_game_detail_goldberg_regular_result">Regular Goldberg applied to “%1$s”. Launch the game; if it still won’t start, try Experimental.</string>
+    <string name="compose_steam_game_detail_goldberg_experimental_result">Experimental Goldberg applied to “%1$s”. Launch the game; if it still won’t start, try Cold Client Loader.</string>
+    <string name="compose_steam_game_detail_goldberg_cold_client_result">Cold Client Loader applied to “%1$s”. Add the game to Shortcuts again so it launches through the loader.</string>
+    <string name="compose_steam_game_detail_goldberg_apply_failed">Couldn’t apply the selected Goldberg mode.</string>
+
+    <string name="compose_steam_game_detail_cloud_saves_title">Steam Cloud Saves</string>
+    <string name="compose_steam_game_detail_cloud_saves_description">Sync this game’s saves with your Steam Cloud in one step, either direction. A local Library you own is kept as an internal middle copy along the way.</string>
+    <string name="compose_steam_game_detail_checking_container">Checking this game’s container…</string>
+    <string name="compose_steam_game_detail_set_up_container_hint">Set this game up in a container first. Its saves follow whichever container you add it to — then you can sync them with the cloud here.</string>
+    <string name="compose_steam_game_detail_set_up_container">Set up in a container</string>
+    <string name="compose_steam_game_detail_container_label">Container: %1$s</string>
+    <string name="compose_steam_game_detail_library_label">Library: %1$s</string>
+    <string name="compose_steam_game_detail_sync_from_cloud">⬇ Sync from Cloud</string>
+    <string name="compose_steam_game_detail_sync_from_cloud_hint">Bring your Steam Cloud saves down and into this game.</string>
+    <string name="compose_steam_game_detail_sync_to_cloud">⬆ Sync to Cloud</string>
+    <string name="compose_steam_game_detail_sync_to_cloud_hint">Send this game’s current saves up to Steam Cloud.</string>
+    <string name="compose_steam_game_detail_advanced_expanded">▾ Advanced</string>
+    <string name="compose_steam_game_detail_advanced_collapsed">▸ Advanced</string>
+    <string name="compose_steam_game_detail_advanced_hint">individual Download / Apply / Collect / Upload</string>
+    <string name="compose_steam_game_detail_cloud">Cloud</string>
+    <string name="compose_steam_game_detail_container">Container</string>
+    <string name="compose_steam_game_detail_download_arrow">⬇ Download</string>
+    <string name="compose_steam_game_detail_upload_arrow">⬆ Upload</string>
+    <string name="compose_steam_game_detail_apply_arrow">→ Apply</string>
+    <string name="compose_steam_game_detail_collect_arrow">← Collect</string>
+
+    <string name="compose_steam_game_detail_download">Download</string>
+    <string name="compose_steam_game_detail_upload">Upload</string>
+    <string name="compose_steam_game_detail_apply">Apply</string>
+    <string name="compose_steam_game_detail_collect">Collect</string>
+    <string name="compose_steam_game_detail_sync_from_cloud_action">Sync from Cloud</string>
+    <string name="compose_steam_game_detail_sync_to_cloud_action">Sync to Cloud</string>
+    <string name="compose_steam_game_detail_confirm_download_title">Download from Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_download_body">Download this game’s Steam Cloud saves into your local save Library. This replaces the Library’s copy of those files with the cloud versions. It doesn’t touch the game’s container — use Apply afterwards to put them where the game reads them.</string>
+    <string name="compose_steam_game_detail_confirm_apply_title">Apply to container?</string>
+    <string name="compose_steam_game_detail_confirm_apply_body">Copy the saves from your Library into %1$s (this game’s container). This overwrites that container’s copy of those files with your Library copy. Your Library isn’t changed.</string>
+    <string name="compose_steam_game_detail_confirm_collect_title">Collect from container?</string>
+    <string name="compose_steam_game_detail_confirm_collect_body">Copy the saves from %1$s (this game’s container) into your Library, capturing any progress you’ve made. This overwrites the Library’s copy of those files. The container isn’t changed.</string>
+    <string name="compose_steam_game_detail_confirm_upload_title">Upload to Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_upload_body">Upload the saves in your local Library to your Steam Cloud. This only ADDS or REPLACES cloud files — it never deletes anything from the cloud. If the Library is empty, nothing is sent. Make sure your Library has your latest saves (Collect after playing).</string>
+    <string name="compose_steam_game_detail_confirm_sync_from_title">Sync from Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_sync_from_body">Bring your Steam Cloud saves down and into %1$s (this game’s container). This overwrites this container’s saves with the cloud copy.</string>
+    <string name="compose_steam_game_detail_confirm_sync_to_title">Sync to Cloud?</string>
+    <string name="compose_steam_game_detail_confirm_sync_to_body">Send this game’s current saves from %1$s up to your Steam Cloud. Make sure this is the container with your latest saves — this only ADDS or REPLACES cloud files; it never deletes anything from the cloud.</string>
+
+    <string name="compose_steam_game_detail_download_speed_title">Download speed</string>
+    <string name="compose_steam_game_detail_speed_slow">Slow — lowest RAM/CPU</string>
+    <string name="compose_steam_game_detail_speed_medium">Medium — balanced</string>
+    <string name="compose_steam_game_detail_speed_fast">Fast — recommended</string>
+    <string name="compose_steam_game_detail_speed_blazing">Blazing — fastest, highest RAM/CPU</string>
+    <string name="compose_steam_game_detail_debug_log_session">Log debug session</string>
+    <string name="compose_steam_game_detail_debug_log_description">Writes a detailed log to help diagnose download problems.</string>
+    <string name="compose_steam_game_detail_debug_log_warning">⚠️ Don’t post this log publicly. Share it only directly with the developer or someone you trust — unless you’re debugging it yourself.</string>
+    <string name="compose_steam_game_detail_select_executable">Select executable for “%1$s”</string>
+</resources>

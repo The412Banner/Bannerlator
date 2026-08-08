@@ -268,9 +268,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private static final long LAUNCH_STILL_WORKING_MS = 90_000L;
     private final Handler launchTimerHandler = new Handler(Looper.getMainLooper());
     private final Runnable launchSlowHintRunnable = () -> preloaderDialog.hint(
-            "Taking longer than usual — first launch can compile shaders. Not frozen, please wait.");
+            getString(R.string.final_audit_launch_taking_longer));
     private final Runnable launchStillWorkingRunnable = () -> preloaderDialog.hint(
-            "Still working. If this seems stuck, check the log.");
+            getString(R.string.final_audit_launch_still_working));
     private Runnable configChangedCallback = null;
     private boolean isPaused = false;
     // ReShade "freeze-frame preview" (Live preview OFF): the guest is SIGSTOP'd while tuning and each
@@ -792,8 +792,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private EnvVars overrideEnvVars;
 
     private void createNotifcationChannel() {
-        String name = "Winlator";
-        String description = "Winlator XServer Messages";
+        String name = getString(R.string.xserver_notification_channel_name);
+        String description = getString(R.string.xserver_notification_channel_description);
         int importance = NotificationManager.IMPORTANCE_HIGH;
         NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance);
         channel.setDescription(description);
@@ -1017,7 +1017,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // The drawer toggle is hidden on GL, but guard here too so it can never engage on GL.
             if (xServerView.getRenderer() instanceof GLRenderer) {
                 XServerDrawerState.INSTANCE.setNativeRenderingEnabled(false);
-                showToast(this, "Native Rendering isn't available on the OpenGL renderer yet — use the Vulkan renderer");
+                showToast(this, getString(R.string.final_audit_native_rendering_unavailable));
                 return;
             }
             boolean next = !XServerDrawerState.INSTANCE.getNativeRenderingEnabled();
@@ -1027,7 +1027,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // warn (don't block — the count can be transiently >1 during splash/child popups) when
             // the user enables it with more than one mapped application window on screen.
             if (next && countMappedAppWindows() > 1)
-                showToast(this, "Native Rendering is best with a single fullscreen window — extra windows may be hidden");
+                showToast(this, getString(R.string.final_audit_native_rendering_single_fullscreen));
             // Actually drive the renderer (this was previously only flipping the UI flag, so the
             // toggle had no effect and no "Native Rendering+ Enabled" toast). Native (direct
             // scanout) only exists on the Vulkan renderer.
@@ -1602,7 +1602,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 com.winlator.star.ui.screens.LaunchSpecBuilderKt.buildLaunchSpec(shortcut, getResources()),
                 com.winlator.star.ui.screens.LaunchSpecBuilderKt.buildLaunchDetails(shortcut));
         }
-        preloaderDialog.step(1, "Preparing container…");
+        preloaderDialog.step(1, getString(R.string.final_audit_preparing_container));
 
         // Supersampling ("Render scale"): multiply the game's render resolution so it renders above
         // display res, then let the Vulkan compositor Lanczos-downscale it (see setHqDownscale below).
@@ -1673,7 +1673,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 Log.d("XServerDisplayActivity", "onMapWindow: Detected window className: " + window.getClassName());
                 // A window mapped (before its content paints) — nudge the tail label so the user sees
                 // progress past the guest-boot spinner. The real dismiss is still onUpdateWindowContent.
-                if (!winStarted) preloaderDialog.enterGuest("Game window detected…");
+                if (!winStarted) preloaderDialog.enterGuest(
+                        getString(R.string.final_audit_game_window_detected));
                 assignTaskAffinity(window);
             }
 
@@ -1733,24 +1734,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
             Executors.newSingleThreadExecutor().execute(() -> {
                 // Track which app-side stage is running so a failure surfaces on the right card.
-                final String[] stage = { "Preparing Wine & graphics driver" };
+                final String[] stage = { getString(R.string.final_audit_preparing_wine_graphics_stage) };
                 try {
-                    preloaderDialog.step(2, "Preparing Wine & graphics driver…");
+                    preloaderDialog.step(2, getString(R.string.final_audit_preparing_wine_graphics));
                     setupWineSystemFiles();
                     extractGraphicsDriverFiles();
                     changeWineAudioDriver();
                     applyGameRefreshRateUnlock();
-                    stage[0] = "Building environment";
+                    stage[0] = getString(R.string.final_audit_building_environment_stage);
                     setupXEnvironment();
                 } catch (Exception e) {
                     Log.e("XServerDisplayActivity", "Launch setup failed at stage: " + stage[0], e);
                     final String stageName = stage[0];
-                    final String detail = e.getMessage();
                     final String logDir = com.winlator.star.core.LogLocation.resolveLogDir(this).getAbsolutePath();
                     final boolean loggingEnabled = isLaunchLoggingEnabled();
                     runOnUiThread(() -> {
                         cancelLaunchTimers();
-                        preloaderDialog.fail(stageName, "Setup step failed", detail, logDir, loggingEnabled);
+                        preloaderDialog.fail(
+                                stageName,
+                                getString(R.string.final_audit_setup_step_failed),
+                                null,
+                                logDir,
+                                loggingEnabled);
                     });
                 }
             });
@@ -2781,9 +2786,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(Uri.parse(dir.getAbsolutePath()), "resource/folder");
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(Intent.createChooser(intent, "Open log folder"));
+            startActivity(Intent.createChooser(intent, getString(R.string.open_log_folder)));
         } catch (Exception e) {
-            Toast.makeText(this, "Log folder: " + dir.getAbsolutePath(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.log_folder_path, dir.getAbsolutePath()), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -3283,7 +3288,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         // Create our overall XEnvironment with various components
-        preloaderDialog.step(3, "Building environment…");
+        preloaderDialog.step(3, getString(R.string.final_audit_building_environment));
         environment = new XEnvironment(this, imageFs);
         environment.addComponent(
                 new SysVSharedMemoryComponent(
@@ -3335,9 +3340,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     cancelLaunchTimers();
                     preloaderDialog.fail(
-                            "Launching Windows",
-                            "The game exited before rendering",
-                            "exit code " + status,
+                            getString(R.string.final_audit_launching_windows_stage),
+                            getString(R.string.final_audit_game_exited_before_rendering),
+                            getString(R.string.final_audit_exit_code, status),
                             logDir,
                             launchLoggingEnabled);
                 });
@@ -3371,13 +3376,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         winHandler.preAssignConnectedControllers();
 
         // Start all environment components (XServer, Audio, Wine, etc.)
-        preloaderDialog.step(4, "Launching Windows…");
+        preloaderDialog.step(4, getString(R.string.final_audit_launching_windows));
         environment.startEnvironmentComponents();
 
         // Guest is now booting — the tail is unmeasurable, so switch to the indeterminate spinner and
         // arm the not-frozen reassurance timers (cancelled on first render or termination).
         String preloaderGameName = (shortcut != null) ? shortcut.name : container.getName();
-        preloaderDialog.enterGuest("Waiting for " + preloaderGameName + " to render…");
+        preloaderDialog.enterGuest(
+                getString(R.string.final_audit_waiting_for_game_render, preloaderGameName));
         runOnUiThread(this::startLaunchTimers);
 
         // Start the WinHandler (writes events to the file)
@@ -3769,7 +3775,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         else if (r instanceof GLRenderer)
             ((GLRenderer) r).setNativeMode(false); // GL direct scanout bypasses the EffectComposer too
         XServerDrawerState.INSTANCE.setNativeRenderingEnabled(false); // flips the toggle UI off
-        showToast(this, "Native Rendering off — needed for post-processing");
+        showToast(this, getString(R.string.final_audit_native_rendering_disabled_for_post_processing));
     }
 
     /** Count mapped, real-sized top-level application windows. Native Rendering (direct scanout)
@@ -4921,9 +4927,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     + gnRenderer + "' — WRAPPER_SAFE_CREATE_DEVICE=1 WRAPPER_DRIVER_ID=24(ARM_PROPRIETARY)"
                     + " WRAPPER_EMULATE_BCN=3 WRAPPER_DIAG=1 (leegao bcn_layer/compat_layer left dormant)");
         } else {
-            showToast(this, "Wrapper + compat + bcn: GameNative DX12 engine needs a Valhall Mali (r32p1+)"
-                    + " GPU — it is disabled on this device (" + GPUInformation.extractModelName(gnRenderer)
-                    + "). No DX12 overrides applied.");
+            showToast(this, getString(
+                    R.string.final_audit_gamenative_dx12_unsupported_gpu,
+                    GPUInformation.extractModelName(gnRenderer)));
             Log.w("GraphicsDriverExtraction", "GameNative DX12 engine disabled: GPU '" + gnRenderer
                     + "' is not on the Valhall (r32p1+) allowlist — no DX12 envs emitted");
         }
@@ -4977,9 +4983,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     envVars.put("COMPAT_EMULATE_SPARSE_BINDING", "1");
             }
             else {
-                showToast(this, "Wrapper + compat + bcn: the DX12 compat layer needs a Valhall Mali (r32p1+)"
-                        + " GPU — it is disabled on this device (" + GPUInformation.extractModelName(renderer)
-                        + "). BCn texture transcode is still active.");
+                showToast(this, getString(
+                        R.string.final_audit_dx12_compat_unsupported_gpu,
+                        GPUInformation.extractModelName(renderer)));
                 Log.w("GraphicsDriverExtraction", "compat_layer disabled: GPU '" + renderer
                         + "' is not on the Valhall (r32p1+) allowlist");
             }
@@ -6826,7 +6832,7 @@ return true;
             String title = w.getName();
             String cls   = w.getClassName() != null ? w.getClassName() : "";
             if (title == null || title.isEmpty()) title = cls;
-            if (title.isEmpty()) title = "Unnamed Window";
+            if (title.isEmpty()) title = getString(R.string.xserver_unnamed_window);
             windowInfoList.add(new XServerDialogState.ActiveWindow(
                 title, cls, activeIcons.get(i), null, w.getHandle()));
         }
@@ -7278,7 +7284,7 @@ return true;
             int avg = clocks.length > 0 ? total / clocks.length : 0;
             int pct = maxClock > 0 ? (int)(((float) avg / maxClock) * 100) : 0;
             ds.setTmCpuCores(cores);
-            ds.setTmCpuTitle("CPU (" + pct + "%)");
+            ds.setTmCpuTitle(getString(R.string.final_audit_task_manager_cpu, pct));
 
             android.app.ActivityManager am =
                 (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
@@ -7286,7 +7292,7 @@ return true;
             am.getMemoryInfo(mi);
             long used = mi.totalMem - mi.availMem;
             int memPct = (int)(((double) used / mi.totalMem) * 100);
-            ds.setTmMemTitle("Memory (" + memPct + "%)");
+            ds.setTmMemTitle(getString(R.string.final_audit_task_manager_memory, memPct));
             ds.setTmMemInfo(StringUtils.formatBytes(used, false) + " / " +
                 StringUtils.formatBytes(mi.totalMem));
         } catch (Exception ignored) {}

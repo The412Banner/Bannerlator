@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.LruCache
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -63,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -72,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.winlator.star.store.compose.AddResultDialog
+import com.winlator.star.R
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
 import com.winlator.star.store.compose.ContainerPickerDialog
@@ -84,10 +86,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
-class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListener {
+class SteamGamesActivity : AppCompatActivity(), SteamRepository.SteamEventListener {
 
     private var games by mutableStateOf<List<SteamGame>>(emptyList())
-    private var statusText by mutableStateOf("Loading library\u2026")
+    private var statusText by mutableStateOf("")
     private var isLoading by mutableStateOf(true)
     private var showSignOutDialog by mutableStateOf(false)
     private var showExePicker by mutableStateOf<SteamExePickerData?>(null)
@@ -109,6 +111,7 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
         super.onCreate(savedInstanceState)
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
+        statusText = getString(R.string.store_games_loading_library)
 
         setContent {
             WinlatorTheme {
@@ -136,7 +139,11 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
                             mark = { SteamRepository.getInstance().database.markUninstalled(game.appId) },
                         ) { ok ->
                             uninstallingName = null
-                            uninstallResult = if (ok) "${game.name} uninstalled" else "Couldn't fully remove ${game.name}"
+                            uninstallResult = if (ok) {
+                                getString(R.string.store_games_named_uninstalled, game.name)
+                            } else {
+                                getString(R.string.store_games_could_not_fully_remove, game.name)
+                            }
                             loadGames()
                         }
                     },
@@ -146,23 +153,28 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
                 if (showSignOutDialog) {
                     OutlinedAlertDialog(
                         onDismissRequest = { showSignOutDialog = false },
-                        title = { Text("Sign out of Steam?") },
-                        text = { Text("Your saved login will be removed. You will need to sign in again.") },
+                        title = { Text(stringResource(R.string.store_games_steam_sign_out_question)) },
+                        text = { Text(stringResource(R.string.store_games_steam_sign_out_message)) },
                         confirmButton = {
                             TextButton(onClick = {
                                 showSignOutDialog = false
                                 Thread { SteamRepository.getInstance().logout() }.start()
-                            }) { Text("Sign Out") }
+                            }) { Text(stringResource(R.string.store_games_action_sign_out)) }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                            TextButton(onClick = { showSignOutDialog = false }) {
+                                Text(stringResource(R.string.store_games_action_cancel))
+                            }
                         },
                     )
                 }
 
                 showExePicker?.let { data ->
                     ExePickerDialog(
-                        title = "Select executable for \"${data.gameName}\"",
+                        title = stringResource(
+                            R.string.store_games_select_executable_for_named,
+                            data.gameName,
+                        ),
                         candidates = data.candidates,
                         onDismiss = { showExePicker = null },
                         onSelected = { chosen ->
@@ -230,14 +242,26 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
                 // small batches (SteamRepository.requestNextAppBatch) \u2014 counts up as "N/372".
                 val total = parts.getOrNull(3)?.toIntOrNull() ?: 0
                 statusText = when {
-                    phase == 0            -> "Syncing packages ($count)\u2026"
-                    phase == 2 && total > 0 -> "Fetching app records ($count/$total)\u2026"
-                    else                  -> "Fetching $count app records\u2026"
+                    phase == 0 -> getString(R.string.store_games_steam_syncing_packages, count)
+                    phase == 2 && total > 0 -> getString(
+                        R.string.store_games_steam_fetching_app_records_progress,
+                        count,
+                        total,
+                    )
+                    else -> resources.getQuantityString(
+                        R.plurals.store_games_steam_fetching_app_records,
+                        count,
+                        count,
+                    )
                 }
             }
             event.startsWith("LibrarySynced:") -> {
                 loadGames()
-                statusText = "${games.size} games in library"
+                statusText = resources.getQuantityString(
+                    R.plurals.store_games_library_count,
+                    games.size,
+                    games.size,
+                )
             }
             event.startsWith("SteamStatus:") -> {
                 val name = event.substringAfter("SteamStatus:")
@@ -248,11 +272,13 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
                 // the screen so the "Signed in elsewhere" pill stays tappable to reconnect.
                 if (SteamRepository.getInstance().status != SteamRepository.SteamStatus.SIGNED_IN_ELSEWHERE) finish()
             }
-            event == "Disconnected" -> { statusText = "Disconnected \u2014 reconnecting\u2026" }
+            event == "Disconnected" -> {
+                statusText = getString(R.string.store_games_steam_disconnected_reconnecting)
+            }
             event == "Connected" -> {
                 val repo = SteamRepository.getInstance()
                 if (games.isEmpty() && repo.isLoggedIn) {
-                    statusText = "Reconnected \u2014 syncing library\u2026"
+                    statusText = getString(R.string.store_games_steam_reconnected_syncing)
                     repo.syncLibrary()
                 }
             }
@@ -274,7 +300,11 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
             .sortedBy { it.name.lowercase() }
         isLoading = false
         if (games.isNotEmpty()) {
-            statusText = "${games.size} games in library"
+            statusText = resources.getQuantityString(
+                R.plurals.store_games_library_count,
+                games.size,
+                games.size,
+            )
         }
     }
 
@@ -284,14 +314,18 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
         val staleThresholdSec = 4 * 60 * 60L
         val elapsed = System.currentTimeMillis() / 1000L - repo.lastSyncTime
         if (games.isEmpty() || elapsed > staleThresholdSec) {
-            statusText = if (games.isEmpty()) "Syncing library\u2026" else "Refreshing library\u2026"
+            statusText = if (games.isEmpty()) {
+                getString(R.string.store_games_syncing_library)
+            } else {
+                getString(R.string.store_games_refreshing_library)
+            }
             repo.syncLibrary()
         }
     }
 
     private fun launchInstalledGame(game: SteamGame) {
         if (game.installDir.isEmpty()) {
-            uninstallResult = "Install directory not set"
+            uninstallResult = getString(R.string.store_games_install_directory_not_set)
             return
         }
         val installDir = java.io.File(game.installDir)
@@ -300,7 +334,7 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
             AmazonLaunchHelper.collectExe(installDir, exeFiles)
             if (exeFiles.isEmpty()) {
                 runOnUiThread {
-                    uninstallResult = "No .exe found in install directory"
+                    uninstallResult = getString(R.string.store_games_no_exe_in_install_directory)
                 }
                 return@Thread
             }
@@ -365,12 +399,12 @@ private fun SteamGamesScreen(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.store_games_action_back),
                     tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Text(
-                text = "Steam Library",
+                text = stringResource(R.string.store_games_steam_library),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(start = 4.dp),
@@ -390,14 +424,18 @@ private fun SteamGamesScreen(
             IconButton(onClick = onViewToggle) {
                 Icon(
                     imageVector = if (viewMode == "grid") Icons.Filled.ViewList else Icons.Filled.GridView,
-                    contentDescription = if (viewMode == "grid") "List view" else "Grid view",
+                    contentDescription = if (viewMode == "grid") {
+                        stringResource(R.string.store_games_list_view)
+                    } else {
+                        stringResource(R.string.store_games_grid_view)
+                    },
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
             IconButton(onClick = onRefresh) {
                 Icon(
                     imageVector = Icons.Filled.Refresh,
-                    contentDescription = "Refresh",
+                    contentDescription = stringResource(R.string.store_games_action_refresh),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -408,7 +446,7 @@ private fun SteamGamesScreen(
             }) {
                 Icon(
                     imageVector = Icons.Filled.CloudSync,
-                    contentDescription = "Save Manager",
+                    contentDescription = stringResource(R.string.store_games_save_manager),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -416,7 +454,7 @@ private fun SteamGamesScreen(
             IconButton(onClick = onLogout) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = "Sign out",
+                    contentDescription = stringResource(R.string.store_games_action_sign_out),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -436,7 +474,7 @@ private fun SteamGamesScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (games.isEmpty() && !isLoading) {
                 Text(
-                    text = "No games found.\nIf sync just finished, tap Refresh.",
+                    text = stringResource(R.string.store_games_steam_no_games_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
@@ -519,7 +557,9 @@ private fun GameListItem(
             // Info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = game.name.ifEmpty { "App ${game.appId}" },
+                    text = game.name.ifEmpty {
+                        stringResource(R.string.store_games_app_id, game.appId)
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
@@ -552,7 +592,10 @@ private fun GameListItem(
                 }
                 if (game.metacriticScore > 0) {
                     Text(
-                        text = "Metacritic: ${game.metacriticScore}",
+                        text = stringResource(
+                            R.string.store_games_metacritic_score,
+                            game.metacriticScore,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         // Semantic review-score colours, deliberately not themed.
                         color = when {
@@ -564,7 +607,7 @@ private fun GameListItem(
                 }
                 if (game.isInstalled) {
                     Text(
-                        text = "\u25CF Installed",
+                        text = stringResource(R.string.store_games_installed_bullet),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF4CAF50), // semantic installed-green
                         modifier = Modifier.padding(top = 2.dp),
@@ -576,7 +619,12 @@ private fun GameListItem(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.height(32.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                        ) { Text("Launch / Add", style = MaterialTheme.typography.labelSmall) }
+                        ) {
+                            Text(
+                                stringResource(R.string.store_games_launch_or_add),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                         OutlinedButton(
                             onClick = onUninstall,
                             shape = RoundedCornerShape(8.dp),
@@ -585,7 +633,12 @@ private fun GameListItem(
                             ),
                             modifier = Modifier.height(32.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                        ) { Text("Uninstall", style = MaterialTheme.typography.labelSmall) }
+                        ) {
+                            Text(
+                                stringResource(R.string.store_games_action_uninstall),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                     }
                 }
             }
@@ -669,7 +722,9 @@ private fun GameGridTile(
                 .padding(horizontal = 8.dp, vertical = 6.dp),
         ) {
             Text(
-                text = game.name.ifEmpty { "App ${game.appId}" },
+                text = game.name.ifEmpty {
+                    stringResource(R.string.store_games_app_id, game.appId)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,

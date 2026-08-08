@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="log_manager_title">Log Manager</string>
+    <string name="log_manager_action_close">Close</string>
+    <string name="log_manager_where_logs_go">Where logs go</string>
+    <string name="log_manager_download">Download</string>
+    <string name="log_manager_custom_folder">Custom folder</string>
+    <string name="log_manager_choose_folder">Choose folder</string>
+    <string name="log_manager_documents">Documents</string>
+    <string name="log_manager_action_change">Change</string>
+    <string name="log_manager_select_log_folder">Select log folder</string>
+    <string name="log_manager_folder_for_each_game">Folder for each game</string>
+    <string name="log_manager_folder_for_each_game_hint">Keeps each game\'s logs together</string>
+    <string name="log_manager_what_to_record">What to record</string>
+    <string name="log_manager_wine_debug">Wine debug</string>
+    <string name="log_manager_wine_debug_hint">Detailed Wine messages (slows games down)</string>
+    <string name="log_manager_box64_fexcore">Box64 / FEXCore</string>
+    <string name="log_manager_box64_fexcore_hint">x86 translation diagnostics</string>
+    <string name="log_manager_dxvk_vkd3d">DXVK &amp; VKD3D</string>
+    <string name="log_manager_dxvk_vkd3d_hint">Graphics translation diagnostics</string>
+    <string name="log_manager_android_logcat">Android logcat</string>
+    <string name="log_manager_android_logcat_hint">Bannerlator\'s Android-side output</string>
+    <string name="log_manager_crash_reports">Crash reports</string>
+    <string name="log_manager_crash_reports_hint">Saved when Bannerlator crashes</string>
+    <string name="log_manager_capture_logcat_now">Capture logcat now</string>
+    <string name="log_manager_housekeeping">Housekeeping</string>
+    <string name="log_manager_keep_last">Keep last</string>
+    <string name="log_manager_no_history_each_run">No history — each run replaces the last</string>
+    <string name="log_manager_no_history">No history</string>
+    <string name="log_manager_keep_last_launches">Keep last launches</string>
+    <string name="log_manager_total_size">Total size</string>
+    <string name="log_manager_action_browse">Browse</string>
+    <string name="log_manager_action_clear_all">Clear all</string>
+    <string name="log_manager_logs_by_game">Logs by game</string>
+    <string name="log_manager_no_logs_yet">No logs yet.</string>
+    <string name="log_manager_explain_log_types">Explain the log types</string>
+    <string name="log_manager_privacy_note">E-mail addresses, auth tokens and your Steam account name are scrubbed as logs are written. File paths are kept so they stay useful for debugging — glance over them before sharing if a folder name identifies you. Logcat only ever contains Bannerlator\'s own output.</string>
+    <string name="log_manager_delete_app_crash_question">Delete app &amp; crash logs?</string>
+    <string name="log_manager_delete_bucket_question">Delete %1$s?</string>
+    <string name="log_manager_delete_named_logs_question">Delete %1$s logs?</string>
+    <string name="log_manager_nothing_to_delete_message">Nothing here was written by Bannerlator, so there is nothing to delete. The files in this folder are yours and are left alone.</string>
+    <string name="log_manager_action_delete">Delete</string>
+    <string name="log_manager_action_ok">OK</string>
+    <string name="log_manager_action_cancel">Cancel</string>
+    <string name="log_manager_clear_all_question">Clear all logs?</string>
+    <string name="log_manager_clear_all_message">Deletes %1$s across %2$s, including kept history.\n\nOnly files Bannerlator wrote are removed. Other files in your log folder — including anything you put there yourself — are left alone.</string>
+    <string name="log_manager_action_delete_all">Delete all</string>
+    <string name="log_manager_what_each_log_for">What each log is for</string>
+    <string name="log_manager_channels">Channels</string>
+    <string name="log_manager_collapse_channels">Collapse channels</string>
+    <string name="log_manager_expand_channels">Expand channels</string>
+    <string name="log_manager_none_selected">None selected</string>
+    <string name="log_manager_no_channel_matches">No channel matches “%1$s”.</string>
+    <string name="log_manager_reset_defaults">Reset to defaults</string>
+    <string name="log_manager_all_wine_channels">All Wine channels</string>
+    <string name="log_manager_channel_counts_summary">%1$s · %2$s</string>
+    <string name="log_manager_whats_this">What\'s this?</string>
+    <string name="log_manager_on_only">On only</string>
+    <string name="log_manager_search">Search</string>
+    <string name="log_manager_no_channels_on">No channels are on.</string>
+    <string name="log_manager_nothing_matches">Nothing matches “%1$s”.</string>
+    <string name="log_manager_app_crash_logs">App &amp; crash logs</string>
+    <string name="log_manager_older_logs">Older logs</string>
+    <string name="log_manager_all_logs">All logs</string>
+    <string name="log_manager_action_view">View</string>
+    <string name="log_manager_action_share">Share</string>
+    <string name="log_manager_just_now">just now</string>
+    <string name="log_manager_yesterday">yesterday</string>
+
+    <plurals name="log_manager_launches_per_game">
+        <item quantity="one">%1$d launch per game</item>
+        <item quantity="other">%1$d launches per game</item>
+    </plurals>
+    <plurals name="log_manager_launches">
+        <item quantity="one">%1$d launch</item>
+        <item quantity="other">%1$d launches</item>
+    </plurals>
+    <plurals name="log_manager_total_size_across_folders">
+        <item quantity="one">%1$s across %2$d folder</item>
+        <item quantity="other">%1$s across %2$d folders</item>
+    </plurals>
+    <plurals name="log_manager_delete_group_message">
+        <item quantity="one">Deletes %1$d log file, including any kept history.\n\nOnly files Bannerlator wrote are removed — anything else in that folder is left alone.</item>
+        <item quantity="other">Deletes %1$d log files, including any kept history.\n\nOnly files Bannerlator wrote are removed — anything else in that folder is left alone.</item>
+    </plurals>
+    <plurals name="log_manager_deleted_files">
+        <item quantity="one">Deleted %1$d file</item>
+        <item quantity="other">Deleted %1$d files</item>
+    </plurals>
+    <plurals name="log_manager_log_file_count">
+        <item quantity="one">%1$d log file</item>
+        <item quantity="other">%1$d log files</item>
+    </plurals>
+    <plurals name="log_manager_folder_count">
+        <item quantity="one">%1$d folder</item>
+        <item quantity="other">%1$d folders</item>
+    </plurals>
+    <plurals name="log_manager_kept_run_count">
+        <item quantity="one">%1$d kept run</item>
+        <item quantity="other">%1$d kept runs</item>
+    </plurals>
+    <plurals name="log_manager_search_all_channels">
+        <item quantity="one">Search %1$d channel</item>
+        <item quantity="other">Search all %1$d channels</item>
+    </plurals>
+    <plurals name="log_manager_browse_all_channels">
+        <item quantity="one">Browse %1$d channel…</item>
+        <item quantity="other">Browse all %1$d channels…</item>
+    </plurals>
+    <plurals name="log_manager_channels_available">
+        <item quantity="one">%1$d available</item>
+        <item quantity="other">%1$d available</item>
+    </plurals>
+    <plurals name="log_manager_channels_on">
+        <item quantity="one">%1$d on</item>
+        <item quantity="other">%1$d on</item>
+    </plurals>
+    <plurals name="log_manager_minutes_ago">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="log_manager_hours_ago">
+        <item quantity="one">%1$d hr ago</item>
+        <item quantity="other">%1$d hr ago</item>
+    </plurals>
+    <plurals name="log_manager_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+
+    <string name="log_manager_copy_per_game">No performance cost.\n\nGives each game its own folder inside your log location, named after the game, so one game\'s logs don\'t get mixed up with another\'s. Turn it off to keep everything in a single folder like older versions did.\n\nLogs written before you turned this on are left exactly where they are.</string>
+    <string name="log_manager_copy_wine">⚠️ SLOWS GAMES DOWN. Only turn this on to diagnose a problem, then turn it back off.\n\nRecords what Wine itself is doing. Every message is written to disk as the game runs, and Wine produces a lot of them — the “seh” channel alone logs an entry every time the game raises an exception, which normal Windows programs do constantly. Adding heavier channels such as “relay” can make a game many times slower.\n\nThis is the log to enable when a game won\'t start, crashes, or dies at launch.</string>
+    <string name="log_manager_copy_box64">⚠️ SLOWS GAMES DOWN at higher verbosity.\n\nRecords what the x86 translator (Box64 or FEXCore) is doing while it converts the game\'s PC instructions to run on your phone. Useful for a game that crashes in a way Wine\'s own log doesn\'t explain, or one that misbehaves only under one emulator.\n\nLeave off for normal play.</string>
+    <string name="log_manager_copy_dxvk">Little to no performance cost.\n\nRecords what the graphics translation layers report — DXVK for DirectX 9/10/11, VKD3D for DirectX 12. Almost everything they write happens while the game is starting: which GPU and driver were picked, which features are missing, why a shader failed.\n\nThis is the log to check for black screens, missing textures or a game that refuses a graphics feature. Safe to leave on.</string>
+    <string name="log_manager_copy_logcat">No performance cost.\n\nAndroid\'s own system log, as it relates to Bannerlator. It is captured on demand — when you tap “Capture logcat now”, or when the app crashes — not continuously, so switching it on does not cost you any frames.\n\nIt contains BANNERLATOR\'S OUTPUT ONLY. Android does not let an app read other apps\' logs without root, and we deliberately don\'t offer a system-wide capture even with root: it would sweep up other apps\' private data into a file you\'re likely to share. If you have root and need the full system log, use a dedicated logcat reader.</string>
+    <string name="log_manager_copy_crash">No performance cost — nothing runs until something actually crashes.\n\nIf Bannerlator itself crashes, a report is saved with your device model, Android version, app version, what went wrong, and the last few hundred lines of the app\'s log. That is exactly what\'s needed to work out a crash after the fact.\n\nReports are kept with your other logs under “App &amp; crash logs”.</string>
+    <string name="log_manager_copy_capture_now">Takes a snapshot of Bannerlator\'s recent Android log right now and saves it with your other logs.\n\nUseful when something went wrong but the app didn\'t crash — capture it while the problem is fresh, then share it.</string>
+    <string name="log_manager_copy_keep_last">How many past runs to keep for each game.\n\nWhen a game launches, the previous run\'s logs are moved into a “previous” folder rather than being overwritten, and anything older than this many runs is deleted. The current run\'s files keep their normal names, so the newest log is always the obvious one.\n\nSet it to 0 to keep no history at all.</string>
+    <string name="log_manager_copy_explain_all">Costs performance while on\n\n• Wine debug\n⚠️ SLOWS GAMES DOWN. Only turn this on to diagnose a problem, then turn it back off.\n\nRecords what Wine itself is doing. Every message is written to disk as the game runs, and Wine produces a lot of them — the “seh” channel alone logs an entry every time the game raises an exception, which normal Windows programs do constantly. Adding heavier channels such as “relay” can make a game many times slower.\n\nThis is the log to enable when a game won\'t start, crashes, or dies at launch.\n\n• Box64 / FEXCore\n⚠️ SLOWS GAMES DOWN at higher verbosity.\n\nRecords what the x86 translator (Box64 or FEXCore) is doing while it converts the game\'s PC instructions to run on your phone. Useful for a game that crashes in a way Wine\'s own log doesn\'t explain, or one that misbehaves only under one emulator.\n\nLeave off for normal play.\n\n\nSafe to leave on\n\n• DXVK &amp; VKD3D\nLittle to no performance cost.\n\nRecords what the graphics translation layers report — DXVK for DirectX 9/10/11, VKD3D for DirectX 12. Almost everything they write happens while the game is starting: which GPU and driver were picked, which features are missing, why a shader failed.\n\nThis is the log to check for black screens, missing textures or a game that refuses a graphics feature. Safe to leave on.\n\n• Android logcat\nNo performance cost.\n\nAndroid\'s own system log, as it relates to Bannerlator. It is captured on demand — when you tap “Capture logcat now”, or when the app crashes — not continuously, so switching it on does not cost you any frames.\n\nIt contains BANNERLATOR\'S OUTPUT ONLY. Android does not let an app read other apps\' logs without root, and we deliberately don\'t offer a system-wide capture even with root: it would sweep up other apps\' private data into a file you\'re likely to share. If you have root and need the full system log, use a dedicated logcat reader.\n\n• Crash reports\nNo performance cost — nothing runs until something actually crashes.\n\nIf Bannerlator itself crashes, a report is saved with your device model, Android version, app version, what went wrong, and the last few hundred lines of the app\'s log. That is exactly what\'s needed to work out a crash after the fact.\n\nReports are kept with your other logs under “App &amp; crash logs”.\n\n\nOrganisation\n\n• Folder for each game\nNo performance cost.\n\nGives each game its own folder inside your log location, named after the game, so one game\'s logs don\'t get mixed up with another\'s. Turn it off to keep everything in a single folder like older versions did.\n\nLogs written before you turned this on are left exactly where they are.\n\n• Keep last runs\nHow many past runs to keep for each game.\n\nWhen a game launches, the previous run\'s logs are moved into a “previous” folder rather than being overwritten, and anything older than this many runs is deleted. The current run\'s files keep their normal names, so the newest log is always the obvious one.\n\nSet it to 0 to keep no history at all.</string>
+</resources>

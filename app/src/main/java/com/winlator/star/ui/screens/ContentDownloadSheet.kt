@@ -30,11 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.winlator.star.R
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
@@ -42,7 +44,6 @@ import com.winlator.star.core.TarCompressorUtils
 import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
 import com.winlator.star.store.download.ContentDownloadState
-import com.winlator.star.store.download.formatEta
 import com.winlator.star.store.download.startContentDownload
 import com.winlator.star.ui.findActivity
 import com.winlator.star.util.ImportEtaTracker
@@ -110,7 +111,8 @@ fun ContentDownloadSheet(
         (result.data?.data ?: InAppFilePicker.pickedUri(result.data))?.let { uri ->
             // Version/desc aren't known until the archive is parsed — seed the card with the filename +
             // (single-type screens) the content type, then let the % bar carry the rest.
-            val fname = uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotEmpty() } ?: "Content file"
+            val fname = uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotEmpty() }
+                ?: context.getString(R.string.compose_content_file)
             installDialog = InstallCardState(
                 title = fname,
                 type = contentTypes.singleOrNull()?.toString(),
@@ -125,7 +127,10 @@ fun ContentDownloadSheet(
                     refreshKey++
                     onContentChanged()
                 } else {
-                    installDialog = installDialog?.copy(phase = InstallCardPhase.ERROR, error = "Install failed.")
+                    installDialog = installDialog?.copy(
+                        phase = InstallCardPhase.ERROR,
+                        error = context.getString(R.string.compose_content_install_failed),
+                    )
                 }
             }
         }
@@ -136,13 +141,18 @@ fun ContentDownloadSheet(
         OutlinedAlertDialog(
             onDismissRequest = { showInfoProfile = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
+            title = {
+                Text(
+                    stringResource(R.string.compose_content_content_info),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
             text = {
                 androidx.compose.foundation.rememberScrollState().let { scroll ->
                     Column(Modifier.verticalScroll(scroll)) {
-                        InfoField("Type", profile.type.toString())
-                        InfoField("Version", profile.verName)
-                        InfoField("Code", profile.verCode.toString())
+                        InfoField(stringResource(R.string.compose_content_type), profile.type.toString())
+                        InfoField(stringResource(R.string.compose_content_version), profile.verName)
+                        InfoField(stringResource(R.string.compose_content_code), profile.verCode.toString())
                         if (!profile.desc.isNullOrEmpty()) {
                             Spacer(Modifier.height(8.dp))
                             Text(profile.desc, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
@@ -150,7 +160,11 @@ fun ContentDownloadSheet(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showInfoProfile = null }) { Text("OK") } }
+            confirmButton = {
+                TextButton(onClick = { showInfoProfile = null }) {
+                    Text(stringResource(R.string.compose_content_ok))
+                }
+            }
         )
     }
 
@@ -159,8 +173,18 @@ fun ContentDownloadSheet(
         OutlinedAlertDialog(
             onDismissRequest = { confirmRemoveProfile = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            title = { Text("Remove content?", color = MaterialTheme.colorScheme.onSurface) },
-            text = { Text("Remove \"${profile.verName}\"?", color = MaterialTheme.colorScheme.onSurface) },
+            title = {
+                Text(
+                    stringResource(R.string.compose_content_remove_content_title),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
+            text = {
+                Text(
+                    stringResource(R.string.compose_content_remove_named, profile.verName),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     cm.removeContent(profile)
@@ -168,9 +192,13 @@ fun ContentDownloadSheet(
                     loadProfiles(cm, contentTypes) { profiles = it }
                     confirmRemoveProfile = null
                     onContentChanged()
-                }) { Text("Remove") }
+                }) { Text(stringResource(R.string.compose_content_remove)) }
             },
-            dismissButton = { TextButton(onClick = { confirmRemoveProfile = null }) { Text("Cancel") } }
+            dismissButton = {
+                TextButton(onClick = { confirmRemoveProfile = null }) {
+                    Text(stringResource(R.string.compose_content_cancel))
+                }
+            }
         )
     }
 
@@ -180,7 +208,11 @@ fun ContentDownloadSheet(
             onDismissRequest = { errorMsg = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },
-            confirmButton = { TextButton(onClick = { errorMsg = null }) { Text("OK") } }
+            confirmButton = {
+                TextButton(onClick = { errorMsg = null }) {
+                    Text(stringResource(R.string.compose_content_ok))
+                }
+            }
         )
     }
 
@@ -235,7 +267,14 @@ fun ContentDownloadSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        if (multiType) "Compatibility Layer" else "${contentTypes.first()} Downloads",
+                        if (multiType) {
+                            stringResource(R.string.compose_content_compatibility_layer)
+                        } else {
+                            stringResource(
+                                R.string.compose_content_type_downloads,
+                                contentTypes.first().toString(),
+                            )
+                        },
                         color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )
@@ -243,7 +282,8 @@ fun ContentDownloadSheet(
                     var showPickMenu by remember { mutableStateOf(false) }
                     Box {
                         IconButton(onClick = { showPickMenu = true }) {
-                            Icon(Icons.Filled.FolderOpen, contentDescription = "Install from file",
+                            Icon(Icons.Filled.FolderOpen,
+                                contentDescription = stringResource(R.string.compose_content_install_from_file),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
                         // Outlined-card look to match the content rows / FileManager idiom (shared
@@ -253,12 +293,22 @@ fun ContentDownloadSheet(
                             onDismissRequest = { showPickMenu = false },
                             modifier = Modifier.outlinedMenuCard(),
                         ) {
-                            DropdownMenuItem(text = { Text("Browse files") }, onClick = {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.compose_content_browse_files)) },
+                                onClick = {
                                 showPickMenu = false
-                                filePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP, "Select content file"))
+                                filePicker.launch(
+                                    InAppFilePicker.buildIntent(
+                                        context,
+                                        InAppFilePicker.WCP,
+                                        context.getString(R.string.compose_content_select_content_file),
+                                    )
+                                )
                             })
                             MenuItemDivider()
-                            DropdownMenuItem(text = { Text("Pick via system…") }, onClick = {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.compose_content_pick_via_system)) },
+                                onClick = {
                                 showPickMenu = false
                                 filePicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                                     addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
@@ -293,7 +343,10 @@ fun ContentDownloadSheet(
                     }
                     if (shown.isEmpty()) {
                         Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            Text("No content available.", color = MaterialTheme.colorScheme.onSurface)
+                            Text(
+                                stringResource(R.string.compose_content_no_content_available),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
                         }
                     } else {
                         Box(Modifier.fillMaxWidth().weight(1f)) {
@@ -332,7 +385,12 @@ fun ContentDownloadSheet(
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Close", color = MaterialTheme.colorScheme.primary) }
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            stringResource(R.string.compose_content_close),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
@@ -384,8 +442,8 @@ private fun DownloadContentItem(
                 Column(Modifier.weight(1f)) {
                     Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                     val sub = when {
-                        isInUse -> "In use"
-                        isLocal -> "Installed"
+                        isInUse -> stringResource(R.string.compose_content_in_use)
+                        isLocal -> stringResource(R.string.compose_content_installed)
                         !profile.desc.isNullOrEmpty() -> profile.desc
                         else -> null
                     }
@@ -400,16 +458,24 @@ private fun DownloadContentItem(
                 when {
                     busy -> {}
                     isLocal -> {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = "Installed", tint = installedBlue,
+                        Icon(Icons.Filled.CheckCircle,
+                            contentDescription = stringResource(R.string.compose_content_installed),
+                            tint = installedBlue,
                             modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(14.dp))
-                        Icon(Icons.Filled.Info, contentDescription = "Info", tint = cs.onSurfaceVariant,
+                        Icon(Icons.Filled.Info,
+                            contentDescription = stringResource(R.string.compose_content_info),
+                            tint = cs.onSurfaceVariant,
                             modifier = Modifier.size(20.dp).clickable(onClick = onInfo))
                         Spacer(Modifier.width(14.dp))
-                        Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350), // intentional: destructive-action red
+                        Icon(Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.compose_content_remove),
+                            tint = Color(0xFFEF5350), // intentional: destructive-action red
                             modifier = Modifier.size(20.dp).clickable(onClick = onRemove))
                     }
-                    else -> Icon(Icons.Filled.CloudDownload, contentDescription = "Download", tint = cs.primary,
+                    else -> Icon(Icons.Filled.CloudDownload,
+                        contentDescription = stringResource(R.string.compose_content_download),
+                        tint = cs.primary,
                         modifier = Modifier.size(22.dp))
                 }
             }
@@ -419,9 +485,14 @@ private fun DownloadContentItem(
                 val frac = (if (isInstalling) installProgress else progress)?.coerceIn(0f, 1f) ?: 0f
                 val barColor = if (isInstalling) Color(0xFF4CAF50) else cs.primary // intentional: green = "installing" phase, distinct from blue download phase
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(if (isInstalling) "Installing" else "Downloading",
+                    Text(
+                        if (isInstalling) {
+                            stringResource(R.string.compose_content_installing)
+                        } else {
+                            stringResource(R.string.compose_content_downloading)
+                        },
                         style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-                    Text("${(frac * 100).toInt()}%",
+                    Text(stringResource(R.string.compose_content_percent, (frac * 100).toInt()),
                         style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(3.dp))
@@ -452,7 +523,11 @@ private fun TypeChip(text: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun InfoField(label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
-        Text("$label: ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Text(
+            stringResource(R.string.compose_content_label_with_colon, label),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
         Text(value, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -524,31 +599,41 @@ private fun InstallProgressDialog(state: InstallCardState, onClose: () -> Unit) 
                         modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(12.dp))
-                state.type?.let { InfoField("Type", it) }
-                state.verName?.let { InfoField("Version", it) }
-                state.verCode?.let { InfoField("Code", it) }
+                state.type?.let { InfoField(stringResource(R.string.compose_content_type), it) }
+                state.verName?.let { InfoField(stringResource(R.string.compose_content_version), it) }
+                state.verCode?.let { InfoField(stringResource(R.string.compose_content_code), it) }
                 if (!state.desc.isNullOrEmpty()) {
                     Spacer(Modifier.height(6.dp))
                     Text(state.desc, color = cs.onSurface, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.height(16.dp))
                 if (state.phase == InstallCardPhase.ERROR) {
-                    Text(state.error ?: "Install failed.", color = cs.error, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        state.error ?: stringResource(R.string.compose_content_install_failed),
+                        color = cs.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = onClose) { Text("Close", color = cs.primary) }
+                        TextButton(onClick = onClose) {
+                            Text(stringResource(R.string.compose_content_close), color = cs.primary)
+                        }
                     }
                 } else {
                     val frac = state.fraction.coerceIn(0f, 1f)
                     val label = when (state.phase) {
-                        InstallCardPhase.DOWNLOADING -> "Downloading"
-                        InstallCardPhase.DONE -> "Done"
-                        else -> "Installing"
+                        InstallCardPhase.DOWNLOADING -> stringResource(R.string.compose_content_downloading)
+                        InstallCardPhase.DONE -> stringResource(R.string.compose_content_done)
+                        else -> stringResource(R.string.compose_content_installing)
                     }
                     val barColor = if (state.phase == InstallCardPhase.DONE) Color(0xFF4CAF50) else cs.primary
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(label, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-                        Text("${(frac * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                        Text(
+                            stringResource(R.string.compose_content_percent, (frac * 100).toInt()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = cs.onSurfaceVariant,
+                        )
                     }
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(progress = frac, modifier = Modifier.fillMaxWidth().height(6.dp),
@@ -607,7 +692,12 @@ internal fun installContent(
             val progress = TarCompressorUtils.OnReadProgressListener { read, tot ->
                 if (tot > 0) {
                     val p = etaTracker.update(read, tot)
-                    activity.runOnUiThread { onProgress((read.toFloat() / tot).coerceIn(0f, 1f), formatEta(p.etaSeconds)) }
+                    activity.runOnUiThread {
+                        onProgress(
+                            (read.toFloat() / tot).coerceIn(0f, 1f),
+                            formatContentEta(context, p.etaSeconds),
+                        )
+                    }
                 }
             }
             cm.extraContentFile(uri, total, progress, object : ContentsManager.OnInstallFinishedCallback {
@@ -646,4 +736,40 @@ internal fun installContent(
             activity.runOnUiThread { onDone(false) }
         }
     }
+}
+
+internal fun formatContentEta(context: Context, seconds: Long): String {
+    if (seconds < 0L) return ""
+    if (seconds < 60L) return context.getString(R.string.compose_content_eta_less_than_minute)
+
+    val hours = (seconds / 3600L).toInt()
+    val minutes = ((seconds % 3600L) / 60L).toInt()
+    val duration = if (hours == 0) {
+        context.resources.getQuantityString(
+            R.plurals.compose_content_eta_minutes_short,
+            minutes,
+            minutes,
+        )
+    } else {
+        val hoursText = context.resources.getQuantityString(
+            R.plurals.compose_content_eta_hours_short,
+            hours,
+            hours,
+        )
+        if (minutes == 0) {
+            hoursText
+        } else {
+            val minutesText = context.resources.getQuantityString(
+                R.plurals.compose_content_eta_minutes_short,
+                minutes,
+                minutes,
+            )
+            context.getString(
+                R.string.compose_content_eta_hours_minutes,
+                hoursText,
+                minutesText,
+            )
+        }
+    }
+    return context.getString(R.string.compose_content_eta_remaining, duration)
 }

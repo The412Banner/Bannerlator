@@ -183,6 +183,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -252,6 +253,7 @@ import com.winlator.star.ui.components.EnvVarsEditor
 import com.winlator.star.ui.components.PlayerSlotsEditor
 import com.winlator.star.winhandler.WinHandler
 import android.net.Uri
+import android.util.Log
 import android.os.Build
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
@@ -443,12 +445,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         type = "application/json"
                         putExtra(Intent.EXTRA_STREAM, uri)
                         putExtra(Intent.EXTRA_SUBJECT, res.game)
-                        putExtra(Intent.EXTRA_TEXT, "Bannerlator config for ${res.game}")
+                        putExtra(Intent.EXTRA_TEXT, context.getString(R.string.shortcuts_share_intent_text, res.game))
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(Intent.createChooser(send, "Share config"))
+                    context.startActivity(Intent.createChooser(send, context.getString(R.string.shortcuts_share_config)))
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Couldn't share the config.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.shortcuts_share_config_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -470,8 +472,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 null
             }
             withContext(Dispatchers.Main) {
-                if (ok != null) Toast.makeText(context, "Saved to $ok", Toast.LENGTH_LONG).show()
-                else Toast.makeText(context, "Couldn't save the config.", Toast.LENGTH_SHORT).show()
+                if (ok != null) {
+                    Toast.makeText(context, context.getString(R.string.shortcuts_saved_to, ok), Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, context.getString(R.string.shortcuts_save_config_failed), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -543,11 +548,15 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 if (resolved) {
                     if (mc.label !in resolvedMissing) resolvedMissing.add(mc.label)
                     vm.refresh()
-                    Toast.makeText(context, "Installed and applied to \"${target.name}\".", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.shortcuts_installed_and_applied_to, target.name),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 } else {
                     Toast.makeText(
                         context,
-                        "Installed, but couldn't auto-apply — open \"Browse all versions\" to finish.",
+                        context.getString(R.string.shortcuts_installed_auto_apply_failed),
                         Toast.LENGTH_LONG,
                     ).show()
                 }
@@ -599,15 +608,35 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // thread, posting its result on the main thread.
     fun runCustomBackup(shortcut: Shortcut, layout: GameSaveBackup.BackupLayout) {
         val name = shortcut.name
-        Toast.makeText(context, "Backing up saves for \"$name\"…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.shortcuts_backing_up_saves_for, name),
+            Toast.LENGTH_SHORT,
+        ).show()
         CustomSaveVault.manualBackup(context, shortcut.container, shortcut, layout) { r ->
             if (r.wholeContainer && r.ok) {
-                Toast.makeText(context, "No per-game saves detected — backed up the whole container.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shortcuts_backup_whole_container),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            val message = if (r.ok) {
+                context.resources.getQuantityString(
+                    R.plurals.shortcuts_backup_success_files,
+                    r.fileCount,
+                    r.fileCount,
+                    r.path?.substringAfterLast('/').orEmpty(),
+                )
+            } else {
+                context.getString(
+                    R.string.shortcuts_backup_failed,
+                    r.error ?: context.getString(R.string.shortcuts_unknown_error),
+                )
             }
             Toast.makeText(
                 context,
-                if (r.ok) "Backed up ${r.fileCount} files → ${r.path?.substringAfterLast('/')}"
-                else "Backup failed: ${r.error ?: "unknown error"}",
+                message,
                 Toast.LENGTH_LONG,
             ).show()
         }
@@ -616,7 +645,13 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Restore: pick a .zip (SAF) → then choose the target container (ContainerPickerDialog) → restore.
     fun startSaveRestore(shortcut: Shortcut) {
         restoreForName = shortcut.name
-        restoreSaveLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select a save .zip"))
+        restoreSaveLauncher.launch(
+            InAppFilePicker.buildIntent(
+                context,
+                InAppFilePicker.SAVE,
+                context.getString(R.string.shortcuts_picker_select_save_zip),
+            )
+        )
     }
     // Built-in in-app file picker (primary).
     val importFileInAppLauncher = rememberLauncherForActivityResult(
@@ -645,7 +680,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             folderScanSelected = found.filter { !it.alreadyAdded }.map { it.exe.absolutePath }.toSet()
             folderScanRunning = false
             if (found.isEmpty()) {
-                Toast.makeText(context, "No games found in that folder", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shortcuts_no_games_found_in_folder),
+                    Toast.LENGTH_LONG,
+                ).show()
                 pendingImportContainerIndex = -1
             }
         }
@@ -667,7 +706,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     val launchConfigImport: (Shortcut?) -> Unit = { target ->
         importPendingTarget = target
         importConfigInAppLauncher.launch(
-            InAppFilePicker.buildIntent(context, InAppFilePicker.JSON, "Select a config .json")
+            InAppFilePicker.buildIntent(
+                context,
+                InAppFilePicker.JSON,
+                context.getString(R.string.shortcuts_picker_select_config_json),
+            )
         )
     }
     // Open the My-uploads manager (shared by the per-game dialog button AND the My-account sheet).
@@ -710,7 +753,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             IconButton(onClick = { showCommunityBrowser = true }) {
                 Icon(
                     imageVector = Icons.Filled.Public,
-                    contentDescription = "Community configs",
+                    contentDescription = stringResource(R.string.shortcuts_community_configs),
                     tint = androidx.compose.ui.graphics.Color.White,
                 )
             }
@@ -726,7 +769,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 ) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Remove selected",
+                        contentDescription = stringResource(R.string.shortcuts_remove_selected),
                         tint = if (selectedPaths.isEmpty())
                             androidx.compose.ui.graphics.Color.White.copy(alpha = 0.4f)
                         else DangerRed,
@@ -739,7 +782,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             }) {
                 Icon(
                     imageVector = if (selectionMode) Icons.Filled.Close else Icons.Filled.Checklist,
-                    contentDescription = if (selectionMode) "Cancel selection" else "Select shortcuts",
+                    contentDescription = stringResource(
+                        if (selectionMode) R.string.shortcuts_cancel_selection
+                        else R.string.shortcuts_select_shortcuts
+                    ),
                     tint = androidx.compose.ui.graphics.Color.White,
                 )
             }
@@ -753,22 +799,26 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         ShortcutViewMode.GRID_COMPACT -> Icons.Filled.ViewList
                     },
                     contentDescription = when (viewMode) {
-                        ShortcutViewMode.LIST -> "Grid view"
-                        ShortcutViewMode.GRID -> "Compact grid view"
-                        ShortcutViewMode.GRID_COMPACT -> "List view"
+                        ShortcutViewMode.LIST -> stringResource(R.string.shortcuts_grid_view)
+                        ShortcutViewMode.GRID -> stringResource(R.string.shortcuts_compact_grid_view)
+                        ShortcutViewMode.GRID_COMPACT -> stringResource(R.string.shortcuts_list_view)
                     },
                     tint = androidx.compose.ui.graphics.Color.White,
                 )
             }
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
-                    Icon(Icons.Filled.SwapVert, contentDescription = "Sort", tint = androidx.compose.ui.graphics.Color.White)
+                    Icon(
+                        Icons.Filled.SwapVert,
+                        contentDescription = stringResource(R.string.shortcuts_sort),
+                        tint = androidx.compose.ui.graphics.Color.White,
+                    )
                 }
                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                     val orders = listOf(
-                        ShortcutSortOrder.NAME_ASC  to "Name A→Z",
-                        ShortcutSortOrder.NAME_DESC to "Name Z→A",
-                        ShortcutSortOrder.CONTAINER to "Container",
+                        ShortcutSortOrder.NAME_ASC to stringResource(R.string.shortcuts_sort_name_ascending),
+                        ShortcutSortOrder.NAME_DESC to stringResource(R.string.shortcuts_sort_name_descending),
+                        ShortcutSortOrder.CONTAINER to stringResource(R.string.shortcuts_sort_container),
                     )
                     orders.forEach { (order, label) ->
                         DropdownMenuItem(
@@ -803,7 +853,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (shortcuts.isEmpty()) {
                 Text(
-                    text = "No shortcuts yet.",
+                    text = stringResource(R.string.shortcuts_no_shortcuts),
                     color = OnSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center),
                 )
@@ -901,7 +951,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             ) {
                 Icon(
                     Icons.Filled.Add,
-                    contentDescription = "Add Shortcut",
+                    contentDescription = stringResource(R.string.shortcuts_add_shortcut),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp),
                 )
@@ -950,7 +1000,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             onDismissRequest = { exePickerFor = null },
             title = {
                 Column {
-                    Text("Choose the game's .exe")
+                    Text(stringResource(R.string.shortcuts_choose_game_exe))
                     Text(
                         target.name,
                         color = OnSurfaceVariant,
@@ -999,7 +1049,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     .removePrefix(target.folder.absolutePath)
                                     .removePrefix("/")
                                 Text(
-                                    if (rel.contains('/')) rel.substringBeforeLast('/') else "(folder root)",
+                                    if (rel.contains('/')) {
+                                        rel.substringBeforeLast('/')
+                                    } else {
+                                        stringResource(R.string.shortcuts_folder_root)
+                                    },
                                     color = OnSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -1018,12 +1072,18 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     exeBrowseForPath = target.exe.absolutePath
                     exePickerFor = null
                     importExeBrowseLauncher.launch(
-                        InAppFilePicker.buildIntent(context, InAppFilePicker.SHORTCUT, "Select the game's .exe")
+                        InAppFilePicker.buildIntent(
+                            context,
+                            InAppFilePicker.SHORTCUT,
+                            context.getString(R.string.shortcuts_picker_select_game_exe),
+                        )
                     )
-                }) { Text("Browse…") }
+                }) { Text(stringResource(R.string.shortcuts_action_browse)) }
             },
             dismissButton = {
-                TextButton(onClick = { exePickerFor = null }) { Text("Cancel") }
+                TextButton(onClick = { exePickerFor = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
             },
         )
     }
@@ -1035,28 +1095,35 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 showImportMethodPicker = false
                 pendingImportContainerIndex = -1
             },
-            title = { Text("Add games") },
+            title = { Text(stringResource(R.string.shortcuts_add_games)) },
             text = {
                 Column {
                     MenuOptionCard(
-                        title = "Add game EXE",
-                        subtitle = "Pick one game's .exe file",
+                        title = stringResource(R.string.shortcuts_add_game_exe),
+                        subtitle = stringResource(R.string.shortcuts_add_game_exe_description),
                         icon = Icons.Default.InsertDriveFile,
                     ) {
                         showImportMethodPicker = false
                         if (importUseSystemPicker) importFileLauncher.launch("*/*")
                         else importFileInAppLauncher.launch(
-                            InAppFilePicker.buildIntent(context, InAppFilePicker.SHORTCUT, "Select .exe / .desktop / .lnk")
+                            InAppFilePicker.buildIntent(
+                                context,
+                                InAppFilePicker.SHORTCUT,
+                                context.getString(R.string.shortcuts_picker_select_shortcut_file),
+                            )
                         )
                     }
                     MenuOptionCard(
-                        title = "Add games folder",
-                        subtitle = "Pick the folder holding all your games — each one is scanned for its .exe",
+                        title = stringResource(R.string.shortcuts_add_games_folder),
+                        subtitle = stringResource(R.string.shortcuts_add_games_folder_description),
                         icon = Icons.Default.Folder,
                     ) {
                         showImportMethodPicker = false
                         importFolderLauncher.launch(
-                            InAppFilePicker.buildDirIntent(context, "Select your games folder")
+                            InAppFilePicker.buildDirIntent(
+                                context,
+                                context.getString(R.string.shortcuts_picker_select_games_folder),
+                            )
                         )
                     }
                 }
@@ -1066,7 +1133,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 TextButton(onClick = {
                     showImportMethodPicker = false
                     pendingImportContainerIndex = -1
-                }) { Text("Cancel") }
+                }) { Text(stringResource(R.string.shortcuts_action_cancel)) }
             },
         )
     }
@@ -1075,7 +1142,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     if (folderScanRunning) {
         OutlinedAlertDialog(
             onDismissRequest = {},
-            title = { Text("Scanning for games") },
+            title = { Text(stringResource(R.string.shortcuts_scanning_for_games)) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -1106,11 +1173,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             },
             title = {
                 Column {
-                    Text("Found ${importable.size} game${if (importable.size == 1) "" else "s"}")
+                    Text(
+                        pluralStringResource(
+                            R.plurals.shortcuts_found_games,
+                            importable.size,
+                            importable.size,
+                        )
+                    )
                     val skipped = folderScanResults.size - importable.size
                     if (skipped > 0) {
                         Text(
-                            "$skipped already added",
+                            pluralStringResource(
+                                R.plurals.shortcuts_already_added_count,
+                                skipped,
+                                skipped,
+                            ),
                             color = OnSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -1153,15 +1230,31 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             folderScanSelected = emptySet()
                             pendingImportContainerIndex = -1
                             val message = if (summary.failed == 0) {
-                                "Added ${summary.added} game${if (summary.added == 1) "" else "s"}"
+                                context.resources.getQuantityString(
+                                    R.plurals.shortcuts_games_added,
+                                    summary.added,
+                                    summary.added,
+                                )
                             } else {
-                                "Added ${summary.added}, ${summary.failed} failed — ${summary.failures.firstOrNull().orEmpty()}"
+                                context.resources.getQuantityString(
+                                    R.plurals.shortcuts_games_added_with_failures,
+                                    summary.failed,
+                                    summary.added,
+                                    summary.failed,
+                                    summary.failures.firstOrNull().orEmpty(),
+                                )
                             }
                             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                         }
                     },
                 ) {
-                    Text(if (folderImportRunning) "Adding…" else "Add $selectedCount")
+                    Text(
+                        if (folderImportRunning) {
+                            stringResource(R.string.shortcuts_adding)
+                        } else {
+                            stringResource(R.string.shortcuts_add_count, selectedCount)
+                        }
+                    )
                 }
             },
             dismissButton = {
@@ -1172,7 +1265,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         folderScanSelected = emptySet()
                         pendingImportContainerIndex = -1
                     },
-                ) { Text("Cancel") }
+                ) { Text(stringResource(R.string.shortcuts_action_cancel)) }
             },
         )
     }
@@ -1182,11 +1275,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val containers = vm.containers()
         OutlinedAlertDialog(
             onDismissRequest = { showImportContainerPicker = false },
-            title = { Text("Select container") },
+            title = { Text(stringResource(R.string.shortcuts_select_container)) },
             text = {
                 Column {
                     if (containers.isEmpty()) {
-                        Text("No containers found.", color = OnSurfaceVariant)
+                        Text(stringResource(R.string.shortcuts_no_containers_found), color = OnSurfaceVariant)
                     } else {
                         // Scroll the container list so it can't be clipped when there are many
                         // containers and vertical space is tight (landscape). "Pick via system…"
@@ -1211,13 +1304,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                             Checkbox(checked = importUseSystemPicker, onCheckedChange = { importUseSystemPicker = it })
-                            Text("Pick via system…", color = OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                stringResource(R.string.shortcuts_pick_via_system),
+                                color = OnSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { showImportContainerPicker = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { showImportContainerPicker = false }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -1240,7 +1341,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val confirmContainer = vm.containers().getOrNull(renameDialogContainerIndex)
         OutlinedAlertDialog(
             onDismissRequest = { showRenameDialog = false },
-            title = { Text("Confirm game") },
+            title = { Text(stringResource(R.string.shortcuts_confirm_game)) },
             text = {
                 Column(
                     modifier = Modifier
@@ -1252,12 +1353,15 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     OutlinedTextField(
                         value = confirmNameField,
                         onValueChange = { confirmNameField = it; confirmNameEdited = true },
-                        label = { Text("Game name") },
+                        label = { Text(stringResource(R.string.shortcuts_game_name)) },
                         singleLine = true,
                         trailingIcon = {
                             if (confirmNameField.isNotEmpty()) {
                                 IconButton(onClick = { confirmNameField = ""; confirmNameEdited = true }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear")
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = stringResource(R.string.shortcuts_clear),
+                                    )
                                 }
                             }
                         },
@@ -1284,17 +1388,17 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         if (steamSearching) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(8.dp))
-                            Text("Searching…")
+                            Text(stringResource(R.string.shortcuts_searching))
                         } else {
                             Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Search Steam")
+                            Text(stringResource(R.string.shortcuts_search_steam))
                         }
                     }
 
                     if (steamSearchResults.isNotEmpty()) {
                         Text(
-                            "Tap a result to set the name + cover art:",
+                            stringResource(R.string.shortcuts_tap_result_set_name_cover),
                             color = OnSurfaceVariant,
                             fontSize = 12.sp,
                         )
@@ -1330,13 +1434,17 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                 SteamResultThumbnail(hit.appId)
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(hit.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("App ID: ${hit.appId}", fontSize = 11.sp, color = OnSurfaceVariant)
+                                    Text(
+                                        stringResource(R.string.shortcuts_app_id, hit.appId),
+                                        fontSize = 11.sp,
+                                        color = OnSurfaceVariant,
+                                    )
                                 }
                             }
                         }
                     } else if (!steamSearching) {
                         Text(
-                            "Not the right game? Edit the name and tap Search Steam to pick the correct one.",
+                            stringResource(R.string.shortcuts_wrong_game_hint),
                             color = OnSurfaceVariant,
                             fontSize = 12.sp,
                         )
@@ -1376,14 +1484,22 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         vm.renameImportedShortcut(renameDialogContainerIndex, renameDialogName, name)
                     }
                     showRenameDialog = false
-                    Toast.makeText(context, "Shortcut imported.", Toast.LENGTH_SHORT).show()
-                }) { Text("Save") }
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.shortcuts_shortcut_imported),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }) { Text(stringResource(R.string.shortcuts_action_save)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showRenameDialog = false
-                    Toast.makeText(context, "Shortcut imported.", Toast.LENGTH_SHORT).show()
-                }) { Text("Skip") }
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.shortcuts_shortcut_imported),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }) { Text(stringResource(R.string.shortcuts_action_skip)) }
             },
         )
     }
@@ -1392,20 +1508,27 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     confirmRemove?.let { s ->
         OutlinedAlertDialog(
             onDismissRequest = { confirmRemove = null },
-            title = { Text("Remove shortcut?") },
-            text = { Text("Remove \"${s.name}\"?") },
+            title = { Text(stringResource(R.string.shortcuts_remove_shortcut_title)) },
+            text = { Text(stringResource(R.string.shortcuts_remove_named_shortcut, s.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     val ok = vm.remove(s, context)
                     confirmRemove = null
                     Toast.makeText(
                         context,
-                        if (ok) "Shortcut removed." else "Failed to remove shortcut.",
+                        context.getString(
+                            if (ok) R.string.shortcuts_shortcut_removed
+                            else R.string.shortcuts_remove_shortcut_failed
+                        ),
                         Toast.LENGTH_SHORT,
                     ).show()
-                }) { Text("Remove") }
+                }) { Text(stringResource(R.string.shortcuts_action_remove)) }
             },
-            dismissButton = { TextButton(onClick = { confirmRemove = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -1415,12 +1538,22 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val targets = shortcuts.filter { it.file.path in selectedPaths }
         OutlinedAlertDialog(
             onDismissRequest = { confirmRemoveSelected = false },
-            title = { Text("Remove ${targets.size} shortcut${if (targets.size == 1) "" else "s"}?") },
+            title = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.shortcuts_remove_shortcuts_title,
+                        targets.size,
+                        targets.size,
+                    )
+                )
+            },
             text = {
                 Text(
-                    if (targets.size == 1) "Remove \"${targets.first().name}\"?"
-                    else "Remove these ${targets.size} shortcuts? The games themselves are left " +
-                         "on disk — only the shortcuts go."
+                    if (targets.size == 1) {
+                        stringResource(R.string.shortcuts_remove_named_shortcut, targets.first().name)
+                    } else {
+                        stringResource(R.string.shortcuts_remove_shortcuts_explanation, targets.size)
+                    }
                 )
             },
             confirmButton = {
@@ -1432,14 +1565,23 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     selectionMode = false
                     Toast.makeText(
                         context,
-                        if (ok == targets.size) "Removed $ok shortcut${if (ok == 1) "" else "s"}."
-                        else "Removed $ok of ${targets.size} — the rest could not be deleted.",
+                        if (ok == targets.size) {
+                            context.resources.getQuantityString(
+                                R.plurals.shortcuts_removed_shortcuts,
+                                ok,
+                                ok,
+                            )
+                        } else {
+                            context.getString(R.string.shortcuts_removed_shortcuts_partial, ok, targets.size)
+                        },
                         Toast.LENGTH_SHORT,
                     ).show()
-                }) { Text("Remove", color = DangerRed) }
+                }) { Text(stringResource(R.string.shortcuts_action_remove), color = DangerRed) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmRemoveSelected = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmRemoveSelected = false }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
             },
         )
     }
@@ -1449,7 +1591,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val containers = vm.containers()
         OutlinedAlertDialog(
             onDismissRequest = { cloneTarget = null },
-            title = { Text("Select container") },
+            title = { Text(stringResource(R.string.shortcuts_select_container)) },
             text = {
                 // Scroll so a long container list isn't clipped in landscape / on short screens.
                 Column(
@@ -1467,7 +1609,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     cloneTarget = null
                                     Toast.makeText(
                                         context,
-                                        if (ok) "Shortcut cloned." else "Failed to clone shortcut.",
+                                        context.getString(
+                                            if (ok) R.string.shortcuts_shortcut_cloned
+                                            else R.string.shortcuts_clone_shortcut_failed
+                                        ),
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                     if (ok) vm.refresh()
@@ -1479,7 +1624,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { cloneTarget = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { cloneTarget = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -1492,12 +1641,28 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             onDismiss = { restoreZipUri = null },
             onSelected = { chosen ->
                 restoreZipUri = null
-                Toast.makeText(context, "Restoring saves into \"${chosen.name}\"…", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shortcuts_restoring_saves_into, chosen.name),
+                    Toast.LENGTH_SHORT,
+                ).show()
                 GameSaveBackup.restore(context, uri, chosen) { r ->
+                    val message = if (r.ok) {
+                        context.resources.getQuantityString(
+                            R.plurals.shortcuts_restore_success_files,
+                            r.filesWritten,
+                            r.filesWritten,
+                            chosen.name,
+                        )
+                    } else {
+                        context.getString(
+                            R.string.shortcuts_restore_failed,
+                            r.error ?: context.getString(R.string.shortcuts_unknown_error),
+                        )
+                    }
                     Toast.makeText(
                         context,
-                        if (r.ok) "Restored ${r.filesWritten} files to \"${chosen.name}\""
-                        else "Restore failed: ${r.error ?: "unknown error"}",
+                        message,
                         Toast.LENGTH_LONG,
                     ).show()
                 }
@@ -1546,7 +1711,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { backupFormatShortcut = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { backupFormatShortcut = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -1570,19 +1739,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         } else {
             OutlinedAlertDialog(
                 onDismissRequest = { logsShortcut = null },
-                title = { Text("No logs for ${s.name}") },
+                title = { Text(stringResource(R.string.shortcuts_no_logs_for, s.name)) },
                 text = {
                     Text(
-                        if (perGameOff)
-                            "Per-game log folders are turned off, so everything is written to one " +
-                            "shared folder and logs can't be traced back to a single game. Turn them " +
-                            "on in Settings › Logs, then play ${s.name} once."
-                        else
-                            "Nothing has been captured for ${s.name} yet. Logs are written while a " +
-                            "game runs — play it once, then check back here."
+                        if (perGameOff) {
+                            stringResource(R.string.shortcuts_per_game_logs_disabled, s.name)
+                        } else {
+                            stringResource(R.string.shortcuts_no_logs_captured, s.name)
+                        }
                     )
                 },
-                confirmButton = { TextButton(onClick = { logsShortcut = null }) { Text("OK") } },
+                confirmButton = {
+                    TextButton(onClick = { logsShortcut = null }) {
+                        Text(stringResource(R.string.shortcuts_action_ok))
+                    }
+                },
             )
         }
     }
@@ -1598,25 +1769,43 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val minutes = (totalMs / (1000 * 60)) % 60
         val hours   = (totalMs / (1000 * 60 * 60)) % 24
         val days    = (totalMs / (1000 * 60 * 60 * 24))
-        val formatted = String.format("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
         var didReset by remember { mutableStateOf(false) }
         OutlinedAlertDialog(
             onDismissRequest = { propertiesShortcut = null },
-            title = { Text("Properties") },
+            title = { Text(stringResource(R.string.shortcuts_properties)) },
             text = {
+                val displayedPlayCount = if (didReset) 0 else playCount
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(if (didReset) "Number of times played: 0" else "Number of times played: $playCount")
-                    Text(if (didReset) "Playtime: 0d 00h 00m 00s" else "Playtime: $formatted")
+                    Text(
+                        pluralStringResource(
+                            R.plurals.shortcuts_times_played,
+                            displayedPlayCount,
+                            displayedPlayCount,
+                        )
+                    )
+                    Text(
+                        stringResource(
+                            R.string.shortcuts_playtime,
+                            if (didReset) 0L else days,
+                            if (didReset) 0L else hours,
+                            if (didReset) 0L else minutes,
+                            if (didReset) 0L else seconds,
+                        )
+                    )
                     Button(
                         onClick = {
                             playtimePrefs.edit().remove(playtimeKey).remove(playCountKey).apply()
                             didReset = true
                         },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Reset Properties") }
+                    ) { Text(stringResource(R.string.shortcuts_reset_properties)) }
                 }
             },
-            confirmButton = { TextButton(onClick = { propertiesShortcut = null }) { Text("Close") } }
+            confirmButton = {
+                TextButton(onClick = { propertiesShortcut = null }) {
+                    Text(stringResource(R.string.shortcuts_action_close))
+                }
+            }
         )
     }
 
@@ -1625,12 +1814,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     if (sc != null) {
         OutlinedAlertDialog(
             onDismissRequest = { scrapeTarget = null },
-            title = { Text("Scrape cover for \"${sc.name}\"") },
+            title = { Text(stringResource(R.string.shortcuts_scrape_cover_for, sc.name)) },
             text = {
                 if (scrapeLoading) {
-                    Text("Searching SteamGridDB...", color = OnSurfaceVariant)
+                    Text(stringResource(R.string.shortcuts_searching_steamgriddb), color = OnSurfaceVariant)
                 } else if (scrapeCovers.isEmpty()) {
-                    Text("No covers found.", color = OnSurfaceVariant)
+                    Text(stringResource(R.string.shortcuts_no_covers_found), color = OnSurfaceVariant)
                 } else {
                     Column(
                         modifier = Modifier
@@ -1664,7 +1853,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                             withContext(Dispatchers.Main) {
                                                 scrapeTarget = null
                                                 vm.reloadShortcut(sc.file.path, full)
-                                                Toast.makeText(context, "Cover saved.", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.shortcuts_cover_saved),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
                                             }
                                         }
                                     },
@@ -1683,7 +1876,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { scrapeTarget = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { scrapeTarget = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -1701,7 +1898,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             // Outline the whole dialog box (AlertDialog has no border param) so it reads as a bordered
             // panel like the catalog browser, matched to the dialog's rounded shape.
             modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, communityDialogShape),
-            title = { Text("Community configs") },
+            title = { Text(stringResource(R.string.shortcuts_community_configs)) },
             text = {
                 val result = communityResult
                 val game = result?.match
@@ -1715,7 +1912,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     ) {
                         Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Share config")
+                        Text(stringResource(R.string.shortcuts_share_config))
                     }
                     OutlinedButton(
                         onClick = { launchConfigImport(s) },
@@ -1723,7 +1920,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     ) {
                         Icon(Icons.Filled.FileUpload, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Import")
+                        Text(stringResource(R.string.shortcuts_action_import))
                     }
                 }
                 // Phase 3 (online sharing) — UPLOAD this shortcut's effective config to OUR community repo
@@ -1753,11 +1950,16 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     if (uploadingConfig) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(6.dp))
-                        Text(if (uploadStarted) "Uploading…" else "Preparing…")
+                        Text(
+                            stringResource(
+                                if (uploadStarted) R.string.shortcuts_uploading
+                                else R.string.shortcuts_preparing
+                            )
+                        )
                     } else {
                         Icon(Icons.Filled.CloudUpload, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Upload to community")
+                        Text(stringResource(R.string.shortcuts_upload_to_community))
                     }
                 }
                 // Manage the configs the user has shared (list / delete / edit description). Reinstall-
@@ -1768,7 +1970,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 ) {
                     Icon(Icons.Filled.AccountCircle, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("My uploads")
+                    Text(stringResource(R.string.shortcuts_my_uploads))
                 }
                 Divider(color = DividerColor)
                 OutlinedTextField(
@@ -1778,13 +1980,16 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         if (q.trim().length >= 2) vm.searchCommunityGames(q) { communitySearchResults = it }
                         else communitySearchResults = emptyList()
                     },
-                    label = { Text("Search all games") },
+                    label = { Text(stringResource(R.string.shortcuts_search_all_games)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (communitySearch.trim().length >= 2) {
                     if (communitySearchResults.isEmpty()) {
-                        Text("No games match \"$communitySearch\".", color = OnSurfaceVariant)
+                        Text(
+                            stringResource(R.string.shortcuts_no_games_match_query, communitySearch),
+                            color = OnSurfaceVariant,
+                        )
                     } else {
                         Column(
                             modifier = Modifier
@@ -1824,8 +2029,14 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     }
                 } else {
                 when {
-                    communityLoading -> Text("Matching \"${s.name}\"…", color = OnSurfaceVariant)
-                    game == null -> Text("No auto-match for \"${s.name}\" — search above to pick one.", color = OnSurfaceVariant)
+                    communityLoading -> Text(
+                        stringResource(R.string.shortcuts_matching_game, s.name),
+                        color = OnSurfaceVariant,
+                    )
+                    game == null -> Text(
+                        stringResource(R.string.shortcuts_no_auto_match, s.name),
+                        color = OnSurfaceVariant,
+                    )
                     else -> {
                         Column(
                             modifier = Modifier
@@ -1840,7 +2051,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             val tieOptions = result?.alternatives.orEmpty()
                             if (tieOptions.size > 1) {
                                 Text(
-                                    text = "Which game is this?",
+                                    text = stringResource(R.string.shortcuts_which_game_is_this),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = OnSurface,
                                 )
@@ -1883,15 +2094,19 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                 )
                                 CommunityStoreBadge(isSteam = game.isSteam)
                             }
-                            val devWord = if (game.devices.size == 1) "device" else "devices"
-                            val cfgWord = if (game.configCount == 1) "config" else "configs"
                             Text(
-                                text = "${game.configCount} $cfgWord · ${game.devices.size} $devWord",
+                                text = communityCountSummary(game.configCount, game.devices.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = OnSurfaceVariant,
                             )
                             Text(
-                                text = "Your device: ${deviceHeaderLabel(DeviceIdentity.deviceModel(), result?.userHardwareLabel)}",
+                                text = stringResource(
+                                    R.string.shortcuts_your_device,
+                                    deviceHeaderLabel(
+                                        DeviceIdentity.deviceModel(),
+                                        result?.userHardwareLabel,
+                                    ),
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = OnSurfaceVariant,
                             )
@@ -1904,7 +2119,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             FilterChip(
                                 selected = matchesMine,
                                 onClick = { matchesMine = !matchesMine },
-                                label = { Text("Matches my device") },
+                                label = { Text(stringResource(R.string.shortcuts_matches_my_device)) },
                                 enabled = uSoc != null || uGpu != null,
                             )
                             Divider(color = DividerColor)
@@ -1918,14 +2133,20 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             val myFolder = s.name.replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
                             val cfg = rememberGameConfigs(vm, game, extraBannerlatorFolders = listOf(myFolder))
                             when {
-                                cfg.loading -> Text("Loading configs…", color = OnSurfaceVariant)
+                                cfg.loading -> Text(
+                                    stringResource(R.string.shortcuts_loading_configs),
+                                    color = OnSurfaceVariant,
+                                )
                                 cfg.entries.isNotEmpty() -> {
                                     val shown = if (!matchesMine) cfg.entries
                                         else cfg.entries.filter {
                                             GameMatcher.hardwareMatchesUser(uSoc, uGpu, listOf(it.second.device, it.second.soc))
                                         }
                                     if (shown.isEmpty()) {
-                                        Text("No uploaded configs match your device.", color = OnSurfaceVariant)
+                                        Text(
+                                            stringResource(R.string.shortcuts_no_uploaded_configs_match_device),
+                                            color = OnSurfaceVariant,
+                                        )
                                     } else {
                                         shown.forEach { (folder, e) ->
                                             val isMatch = (uSoc != null || uGpu != null) &&
@@ -1940,10 +2161,13 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                         }
                                     }
                                 }
-                                result?.rankedDevices.isNullOrEmpty() -> Text("No device configs listed.", color = OnSurfaceVariant)
+                                result?.rankedDevices.isNullOrEmpty() -> Text(
+                                    stringResource(R.string.shortcuts_no_device_configs),
+                                    color = OnSurfaceVariant,
+                                )
                                 else -> {
                                     Text(
-                                        "Showing device configs (vote counts unavailable offline).",
+                                        stringResource(R.string.shortcuts_showing_device_configs_offline),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = OnSurfaceVariant,
                                     )
@@ -1960,7 +2184,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                         CommunityCard(onClick = { configAction = CommunityPick.Device(game, d) to s }) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(
-                                                    text = d.model.ifBlank { "Unknown device" },
+                                                    text = d.model.ifBlank {
+                                                        stringResource(R.string.shortcuts_unknown_device)
+                                                    },
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = if (isMatch) MaterialTheme.colorScheme.primary else OnSurface,
                                                     maxLines = 1,
@@ -1988,7 +2214,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = dismiss) { Text("Close") } },
+            dismissButton = {
+                TextButton(onClick = dismiss) {
+                    Text(stringResource(R.string.shortcuts_action_close))
+                }
+            },
         )
 
         // Replace-confirm for an already-shared config (surfaced by uploadShortcutConfig's onExisting).
@@ -2003,10 +2233,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             }
             OutlinedAlertDialog(
                 onDismissRequest = dismissReplace,
-                title = { Text("Replace your shared config?") },
+                title = { Text(stringResource(R.string.shortcuts_replace_shared_config_title)) },
                 text = {
                     Text(
-                        "You already shared a config for \"${s.name}\". Replace it?",
+                        stringResource(R.string.shortcuts_replace_shared_config_message, s.name),
                         color = OnSurface,
                     )
                 },
@@ -2014,10 +2244,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     TextButton(onClick = {
                         replaceUploadPrompt = null
                         proceed()
-                    }) { Text("Replace") }
+                    }) { Text(stringResource(R.string.shortcuts_action_replace)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = dismissReplace) { Text("Cancel") }
+                    TextButton(onClick = dismissReplace) {
+                        Text(stringResource(R.string.shortcuts_action_cancel))
+                    }
                 },
             )
         }
@@ -2044,16 +2276,19 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             shape = myUploadsShape,
             modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, myUploadsShape),
-            title = { Text("My uploads") },
+            title = { Text(stringResource(R.string.shortcuts_my_uploads)) },
             text = {
                 when (val rows = myUploads) {
                     null -> Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
-                        Text("Loading…", color = OnSurfaceVariant)
+                        Text(stringResource(R.string.shortcuts_loading), color = OnSurfaceVariant)
                     }
                     else -> if (rows.isEmpty()) {
-                        Text("You haven't shared any configs yet.", color = OnSurfaceVariant)
+                        Text(
+                            stringResource(R.string.shortcuts_no_shared_configs_yet),
+                            color = OnSurfaceVariant,
+                        )
                     } else {
                         Column(
                             modifier = Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
@@ -2061,7 +2296,13 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         ) {
                             // Summary header — aggregate across every uploaded config.
                             Text(
-                                "Shared ${rows.size} config${if (rows.size == 1) "" else "s"} · ↓ ${rows.sumOf { it.downloads }} · ★ ${rows.sumOf { it.votes }}",
+                                pluralStringResource(
+                                    R.plurals.shortcuts_shared_configs_summary,
+                                    rows.size,
+                                    rows.size,
+                                    rows.sumOf { it.downloads },
+                                    rows.sumOf { it.votes },
+                                ),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = Color(0xFFE0701C),
                             )
@@ -2095,19 +2336,37 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                                     .format(java.util.Date(row.record.date))
                                                 val sub = listOf(row.record.device, row.record.soc, dateStr)
                                                     .filter { it.isNotBlank() }.joinToString(" · ") +
-                                                    if (!row.stillOnline) " · offline" else ""
+                                                    if (!row.stillOnline) {
+                                                        stringResource(R.string.shortcuts_offline_suffix)
+                                                    } else {
+                                                        ""
+                                                    }
                                                 Text(sub, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             }
-                                            Text("★${row.votes}  ↓${row.downloads}", style = MaterialTheme.typography.labelMedium, color = OnSurfaceVariant)
+                                            Text(
+                                                stringResource(
+                                                    R.string.shortcuts_votes_downloads_summary,
+                                                    row.votes,
+                                                    row.downloads,
+                                                ),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = OnSurfaceVariant,
+                                            )
                                             Icon(
                                                 if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                                contentDescription = if (expanded) "Collapse" else "Expand",
+                                                contentDescription = stringResource(
+                                                    if (expanded) R.string.shortcuts_collapse
+                                                    else R.string.shortcuts_expand
+                                                ),
                                             )
                                         }
                                         if (expanded) {
                                             Spacer(Modifier.height(8.dp))
                                             Text(
-                                                if (row.stillOnline) "● Online" else "● Removed",
+                                                stringResource(
+                                                    if (row.stillOnline) R.string.shortcuts_online
+                                                    else R.string.shortcuts_removed
+                                                ),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = if (row.stillOnline) Color(0xFF3BA55D) else MaterialTheme.colorScheme.error,
                                             )
@@ -2115,11 +2374,26 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                             OutlinedTextField(
                                                 value = uploadDescText,
                                                 onValueChange = { if (it.length <= 500) uploadDescText = it },
-                                                label = { Text(if (uploadDescLoading) "Loading description…" else "Description") },
+                                                label = {
+                                                    Text(
+                                                        stringResource(
+                                                            if (uploadDescLoading) R.string.shortcuts_loading_description
+                                                            else R.string.shortcuts_description
+                                                        )
+                                                    )
+                                                },
                                                 enabled = !uploadDescLoading,
                                                 modifier = Modifier.fillMaxWidth(),
                                             )
-                                            Text("${uploadDescText.length}/500", style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
+                                            Text(
+                                                stringResource(
+                                                    R.string.shortcuts_character_count,
+                                                    uploadDescText.length,
+                                                    500,
+                                                ),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = OnSurfaceVariant,
+                                            )
                                             Spacer(Modifier.height(6.dp))
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
@@ -2129,7 +2403,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                                 OutlinedButton(onClick = { deleteUploadRow = row }) {
                                                     Icon(Icons.Filled.Delete, null, modifier = Modifier.size(18.dp))
                                                     Spacer(Modifier.width(6.dp))
-                                                    Text("Delete")
+                                                    Text(stringResource(R.string.shortcuts_action_delete))
                                                 }
                                                 Spacer(Modifier.weight(1f))
                                                 Button(
@@ -2139,12 +2413,15 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                                         vm.editMyUploadDescription(row, text) { ok ->
                                                             Toast.makeText(
                                                                 context,
-                                                                if (ok) "Description updated." else "Couldn't reach the server.",
+                                                                context.getString(
+                                                                    if (ok) R.string.shortcuts_description_updated
+                                                                    else R.string.shortcuts_server_unreachable
+                                                                ),
                                                                 Toast.LENGTH_SHORT,
                                                             ).show()
                                                         }
                                                     },
-                                                ) { Text("Save") }
+                                                ) { Text(stringResource(R.string.shortcuts_action_save)) }
                                             }
                                         }
                                     }
@@ -2155,7 +2432,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = closeMyUploads) { Text("Close") } },
+            dismissButton = {
+                TextButton(onClick = closeMyUploads) {
+                    Text(stringResource(R.string.shortcuts_action_close))
+                }
+            },
         )
     }
 
@@ -2163,22 +2444,39 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     deleteUploadRow?.let { row ->
         OutlinedAlertDialog(
             onDismissRequest = { deleteUploadRow = null },
-            title = { Text("Delete shared config?") },
-            text = { Text("Delete your shared config for \"${row.record.game}\"?", color = OnSurface) },
+            title = { Text(stringResource(R.string.shortcuts_delete_shared_config_title)) },
+            text = {
+                Text(
+                    stringResource(R.string.shortcuts_delete_shared_config_message, row.record.game),
+                    color = OnSurface,
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     deleteUploadRow = null
                     vm.deleteMyUpload(row) { ok ->
                         if (ok) {
                             myUploads = myUploads?.filterNot { it.record.sha == row.record.sha }
-                            Toast.makeText(context, "Deleted your shared config.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.shortcuts_deleted_shared_config),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                         } else {
-                            Toast.makeText(context, "Couldn't reach the server.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.shortcuts_server_unreachable),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                         }
                     }
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.shortcuts_action_delete)) }
             },
-            dismissButton = { TextButton(onClick = { deleteUploadRow = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { deleteUploadRow = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -2215,10 +2513,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Config-row chooser — "Apply to game… | View details" before any apply happens. Gated only on an
     // open install sheet (it IS one of the layers communityDialogsGated hides beneath itself).
     if (!installSheetOpen) configAction?.let { (pick, ctxShortcut) ->
-        val subtitle = when (pick) {
-            is CommunityPick.File -> "Config from ${pick.entry.device.ifBlank { pick.entry.soc.ifBlank { "that device" } }}."
-            is CommunityPick.Device -> "Config from ${pick.device.model.ifBlank { "that device" }}."
+        val unknownDevice = stringResource(R.string.shortcuts_that_device)
+        val sourceDevice = when (pick) {
+            is CommunityPick.File -> pick.entry.device.ifBlank { pick.entry.soc.ifBlank { unknownDevice } }
+            is CommunityPick.Device -> pick.device.model.ifBlank { unknownDevice }
         }
+        val subtitle = stringResource(R.string.shortcuts_config_from_device, sourceDevice)
         OutlinedAlertDialog(
             onDismissRequest = { configAction = null },
             title = { Text(pick.game.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
@@ -2229,13 +2529,13 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 TextButton(onClick = {
                     configAction = null
                     startConfigApply(pick, ctxShortcut)
-                }) { Text("Apply to game…") }
+                }) { Text(stringResource(R.string.shortcuts_apply_to_game)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     configAction = null
                     detailFor = pick to ctxShortcut
-                }) { Text("View details") }
+                }) { Text(stringResource(R.string.shortcuts_view_details)) }
             },
         )
     }
@@ -2284,22 +2584,23 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Apply-target picker — choose which of your shortcuts to apply a browser-selected config to.
     if (!communityDialogsGated) applyPicker?.let { pick ->
         val shortcutList = vm.currentShortcuts()
+        val unknownDevice = stringResource(R.string.shortcuts_a_device)
         val fromLabel = when (pick) {
-            is CommunityPick.File -> pick.entry.device.ifBlank { pick.entry.soc.ifBlank { "a device" } }
-            is CommunityPick.Device -> pick.device.model.ifBlank { "a device" }
+            is CommunityPick.File -> pick.entry.device.ifBlank { pick.entry.soc.ifBlank { unknownDevice } }
+            is CommunityPick.Device -> pick.device.model.ifBlank { unknownDevice }
         }
         OutlinedAlertDialog(
             onDismissRequest = { applyPicker = null },
-            title = { Text("Apply to game…") },
+            title = { Text(stringResource(R.string.shortcuts_apply_to_game)) },
             text = {
                 if (shortcutList.isEmpty()) {
-                    Text("You have no shortcuts yet.", color = OnSurfaceVariant)
+                    Text(stringResource(R.string.shortcuts_you_have_no_shortcuts), color = OnSurfaceVariant)
                 } else {
                     Column(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp).verticalScroll(rememberScrollState()),
                     ) {
                         Text(
-                            "Config from $fromLabel for \"${pick.game.name}\".",
+                            stringResource(R.string.shortcuts_config_from_device_for_game, fromLabel, pick.game.name),
                             style = MaterialTheme.typography.bodySmall,
                             color = OnSurfaceVariant,
                             modifier = Modifier.padding(bottom = 6.dp),
@@ -2318,7 +2619,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { applyPicker = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { applyPicker = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -2326,15 +2631,27 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     applyMismatch?.let { (sc, pick) ->
         OutlinedAlertDialog(
             onDismissRequest = { applyMismatch = null },
-            title = { Text("Different game") },
-            text = { Text("This config is for \"${pick.game.name}\" — apply to \"${sc.name}\" anyway?") },
+            title = { Text(stringResource(R.string.shortcuts_different_game)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.shortcuts_apply_different_game_message,
+                        pick.game.name,
+                        sc.name,
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     applyMismatch = null
                     runCommunityApply(sc, pick)
-                }) { Text("Apply anyway") }
+                }) { Text(stringResource(R.string.shortcuts_apply_anyway)) }
             },
-            dismissButton = { TextButton(onClick = { applyMismatch = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { applyMismatch = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -2343,10 +2660,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     exportResult?.let { res ->
         OutlinedAlertDialog(
             onDismissRequest = { exportResult = null },
-            title = { Text("Share this game's config") },
+            title = { Text(stringResource(R.string.shortcuts_share_game_config_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("A config file for \"${res.game}\" is ready.", color = OnSurface)
+                    Text(stringResource(R.string.shortcuts_config_file_ready, res.game), color = OnSurface)
                     Text(res.fileName, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
                 }
             },
@@ -2355,16 +2672,20 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     TextButton(onClick = { saveExportToDownloads(res) }) {
                         Icon(Icons.Filled.Download, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Save to Downloads")
+                        Text(stringResource(R.string.shortcuts_save_to_downloads))
                     }
                     TextButton(onClick = { shareExport(res) }) {
                         Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Share")
+                        Text(stringResource(R.string.shortcuts_action_share))
                     }
                 }
             },
-            dismissButton = { TextButton(onClick = { exportResult = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { exportResult = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -2374,10 +2695,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val shortcutList = vm.currentShortcuts()
         OutlinedAlertDialog(
             onDismissRequest = { importedConfigUri = null },
-            title = { Text("Apply imported config to…") },
+            title = { Text(stringResource(R.string.shortcuts_apply_imported_config_to)) },
             text = {
                 if (shortcutList.isEmpty()) {
-                    Text("You have no shortcuts yet.", color = OnSurfaceVariant)
+                    Text(stringResource(R.string.shortcuts_you_have_no_shortcuts), color = OnSurfaceVariant)
                 } else {
                     Column(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp).verticalScroll(rememberScrollState()),
@@ -2399,7 +2720,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { importedConfigUri = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { importedConfigUri = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 
@@ -2407,11 +2732,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     if (applyBusy) {
         OutlinedAlertDialog(
             onDismissRequest = {},
-            title = { Text("Applying config") },
+            title = { Text(stringResource(R.string.shortcuts_applying_config)) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Text("Fetching and merging…", color = OnSurfaceVariant)
+                    Text(stringResource(R.string.shortcuts_fetching_and_merging), color = OnSurfaceVariant)
                 }
             },
             confirmButton = {},
@@ -2441,7 +2766,14 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         }
         OutlinedAlertDialog(
             onDismissRequest = { applyResult = null },
-            title = { Text(if (res.ok) "Config applied" else "Couldn't apply") },
+            title = {
+                Text(
+                    stringResource(
+                        if (res.ok) R.string.shortcuts_config_applied
+                        else R.string.shortcuts_config_apply_failed
+                    )
+                )
+            },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
@@ -2450,14 +2782,28 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     Text(res.message, color = OnSurface)
                     if (res.changed.isNotEmpty()) {
                         Divider(color = DividerColor)
-                        Text("Changed", style = MaterialTheme.typography.labelLarge, color = OnSurface)
-                        res.changed.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant) }
+                        Text(
+                            stringResource(R.string.shortcuts_changed),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = OnSurface,
+                        )
+                        res.changed.forEach {
+                            Text(
+                                stringResource(R.string.shortcuts_bullet_item, it),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = OnSurfaceVariant,
+                            )
+                        }
                     }
                     // Missing components — smart inline installer: exact-match confirm, or a shortlist of
                     // the closest catalog versions, with "Browse all versions" as the full-menu fallback.
                     if (res.missingComponents.isNotEmpty()) {
                         Divider(color = DividerColor)
-                        Text("Needs a component", style = MaterialTheme.typography.labelLarge, color = OnSurface)
+                        Text(
+                            stringResource(R.string.shortcuts_needs_component),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = OnSurface,
+                        )
                         res.missingComponents.forEach { mc ->
                             SmartComponentInstallRow(
                                 mc = mc,
@@ -2475,7 +2821,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     // then the full driver browser. Adreno-only (the apply engine gates emission).
                     if (res.missingDrivers.isNotEmpty()) {
                         Divider(color = DividerColor)
-                        Text("Needs a GPU driver", style = MaterialTheme.typography.labelLarge, color = OnSurface)
+                        Text(
+                            stringResource(R.string.shortcuts_needs_gpu_driver),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = OnSurface,
+                        )
                         res.missingDrivers.forEach { md ->
                             SmartDriverInstallRow(
                                 md = md,
@@ -2494,9 +2844,20 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                                     resolvedMissing.add("driver:" + md.wanted)
                                                 }
                                                 vm.refresh()
-                                                Toast.makeText(context, "Driver installed and applied to \"${target.name}\".", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(
+                                                        R.string.shortcuts_driver_installed_and_applied,
+                                                        target.name,
+                                                    ),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
                                             } else {
-                                                Toast.makeText(context, "Installed, but couldn't apply the driver.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.shortcuts_driver_installed_apply_failed),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
                                             }
                                         }
                                     }
@@ -2506,12 +2867,26 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     }
                     if (res.advisories.isNotEmpty()) {
                         Divider(color = DividerColor)
-                        Text("Heads up", style = MaterialTheme.typography.labelLarge, color = OnSurface)
-                        res.advisories.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant) }
+                        Text(
+                            stringResource(R.string.shortcuts_heads_up),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = OnSurface,
+                        )
+                        res.advisories.forEach {
+                            Text(
+                                stringResource(R.string.shortcuts_bullet_item, it),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = OnSurfaceVariant,
+                            )
+                        }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { applyResult = null }) { Text("Done") } },
+            confirmButton = {
+                TextButton(onClick = { applyResult = null }) {
+                    Text(stringResource(R.string.shortcuts_action_done))
+                }
+            },
         )
     }
 
@@ -2544,7 +2919,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                 resolvedMissing.add("driver:" + md.wanted)
                             }
                             vm.refresh()
-                            Toast.makeText(context, "Driver applied to \"${target.name}\".", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.shortcuts_driver_applied_to, target.name),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                         }
                     }
                 }
@@ -2582,7 +2961,7 @@ private fun BannerlatorSourceBadge() {
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
-            text = "BANNERLATOR",
+            text = stringResource(R.string.shortcuts_bannerlator_badge),
             style = MaterialTheme.typography.labelSmall,
             color = Color.White,
         )
@@ -2601,32 +2980,53 @@ internal fun CommunityStoreBadge(isSteam: Boolean) {
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
-            text = if (isSteam) "STEAM" else "TITLE",
+            text = stringResource(
+                if (isSteam) R.string.shortcuts_store_steam_uppercase
+                else R.string.shortcuts_store_title
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = fg,
         )
     }
 }
 
+@Composable
+private fun communityCountSummary(configCount: Int, deviceCount: Int): String {
+    val configs = pluralStringResource(
+        R.plurals.shortcuts_config_count,
+        configCount,
+        configCount,
+    )
+    val devices = pluralStringResource(
+        R.plurals.shortcuts_device_count,
+        deviceCount,
+        deviceCount,
+    )
+    return stringResource(R.string.shortcuts_config_device_count_summary, configs, devices)
+}
+
 // Map a worker account error code to a human message. Reset reads "invalid" as a bad recovery key; every
 // other flow reads it as bad credentials; unknown / "network" collapses to a connection message.
-private fun accountErrorMessage(code: String, isReset: Boolean): String = when (code) {
-    "invalid_username" -> "Usernames are 3–20 characters: letters, numbers, _ or -."
-    "username_reserved" -> "That username is reserved — pick another."
-    "weak_password" -> "Password must be at least 6 characters."
-    "username_taken" -> "That username is taken."
-    "rate_limited" -> "Too many attempts — please wait a bit and try again."
-    "invalid" -> if (isReset) "That recovery key isn't right for this username." else "Wrong username or password."
-    else -> "Couldn't reach the server. Check your connection and try again."
+private fun accountErrorMessage(context: Context, code: String, isReset: Boolean): String = when (code) {
+    "invalid_username" -> context.getString(R.string.shortcuts_account_error_invalid_username)
+    "username_reserved" -> context.getString(R.string.shortcuts_account_error_username_reserved)
+    "weak_password" -> context.getString(R.string.shortcuts_account_error_weak_password)
+    "username_taken" -> context.getString(R.string.shortcuts_account_error_username_taken)
+    "rate_limited" -> context.getString(R.string.shortcuts_account_error_rate_limited)
+    "invalid" -> context.getString(
+        if (isReset) R.string.shortcuts_account_error_invalid_recovery_key
+        else R.string.shortcuts_account_error_invalid_credentials
+    )
+    else -> context.getString(R.string.shortcuts_account_error_connection)
 }
 
 /** Phase 3 (optional accounts) — the worker's typed avatar-upload rejections, in plain language. */
-private fun avatarErrorMessage(code: String): String = when (code) {
-    "bad_type" -> "That image type isn't supported — pick a JPEG, PNG, or WebP."
-    "bad_size" -> "That image is too large — pick a smaller one."
-    "bad_image" -> "That file isn't a valid image."
-    "not_signed_in" -> "Sign in first to set a profile picture."
-    else -> "Couldn't reach the server. Check your connection and try again."
+private fun avatarErrorMessage(context: Context, code: String): String = when (code) {
+    "bad_type" -> context.getString(R.string.shortcuts_avatar_error_bad_type)
+    "bad_size" -> context.getString(R.string.shortcuts_avatar_error_bad_size)
+    "bad_image" -> context.getString(R.string.shortcuts_avatar_error_bad_image)
+    "not_signed_in" -> context.getString(R.string.shortcuts_avatar_error_not_signed_in)
+    else -> context.getString(R.string.shortcuts_account_error_connection)
 }
 
 /**
@@ -2703,7 +3103,11 @@ internal fun MyAccountDialog(
             val bytes = withContext(Dispatchers.IO) { compressAvatar(context, uri) }
             if (bytes == null) {
                 avatarBusy = false
-                Toast.makeText(context, "Couldn't read that image.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shortcuts_avatar_read_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
                 return@launch
             }
             val result = withContext(Dispatchers.IO) {
@@ -2716,10 +3120,14 @@ internal fun MyAccountDialog(
                     // displayAvatarUrl, and refresh() propagates it to the ☰ / drawer / browser 👤 too.
                     account = AccountManager.current(context)
                     AccountUiBus.refresh(context)
-                    Toast.makeText(context, "Profile picture updated.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.shortcuts_profile_picture_updated),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
                 is AccountManager.AccountResult.Error ->
-                    Toast.makeText(context, avatarErrorMessage(result.code), Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, avatarErrorMessage(context, result.code), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -2739,7 +3147,7 @@ internal fun MyAccountDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Filled.AccountCircle, contentDescription = null, tint = orange)
-                Text("My account")
+                Text(stringResource(R.string.shortcuts_my_account))
             }
         },
         text = {
@@ -2752,11 +3160,15 @@ internal fun MyAccountDialog(
                     justCreated != null -> {
                         val data = justCreated!!
                         Text(
-                            "Account \"${data.username}\" created.",
+                            stringResource(R.string.shortcuts_account_created, data.username),
                             style = MaterialTheme.typography.bodyMedium,
                             color = OnSurface,
                         )
-                        Text("Your recovery key", style = MaterialTheme.typography.labelLarge, color = orange)
+                        Text(
+                            stringResource(R.string.shortcuts_your_recovery_key),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = orange,
+                        )
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceContainer,
                             shape = RoundedCornerShape(10.dp),
@@ -2771,25 +3183,29 @@ internal fun MyAccountDialog(
                             )
                         }
                         Text(
-                            "⚠️ Save this — it's the only way to reset your password if you forget it.",
+                            stringResource(R.string.shortcuts_save_recovery_key_warning),
                             style = MaterialTheme.typography.bodySmall,
                             color = OnSurfaceVariant,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = {
                                 clipboard.setText(AnnotatedString(data.recoveryKey))
-                                Toast.makeText(context, "Recovery key copied.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.shortcuts_recovery_key_copied),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             }) {
                                 Icon(Icons.Filled.ContentCopy, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Copy")
+                                Text(stringResource(R.string.shortcuts_action_copy))
                             }
                             Spacer(Modifier.weight(1f))
                             Button(onClick = {
                                 justCreated = null
                                 account = AccountManager.current(context)
                                 AccountUiBus.refresh(context)
-                            }) { Text("I've saved it") }
+                            }) { Text(stringResource(R.string.shortcuts_recovery_key_saved)) }
                         }
                     }
 
@@ -2824,14 +3240,26 @@ internal fun MyAccountDialog(
                                     onClick = { avatarPicker.launch("image/*") },
                                     enabled = !avatarBusy,
                                     contentPadding = PaddingValues(vertical = 2.dp),
-                                ) { Text("Change picture", style = MaterialTheme.typography.labelMedium) }
+                                ) {
+                                    Text(
+                                        stringResource(R.string.shortcuts_change_picture),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                }
                             }
                         }
                         Divider(color = DividerColor)
                         OutlinedButton(
                             onClick = { revealRecovery = !revealRecovery },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text(if (revealRecovery) "Hide my recovery key" else "Show my recovery key") }
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (revealRecovery) R.string.shortcuts_hide_recovery_key
+                                    else R.string.shortcuts_show_recovery_key
+                                )
+                            )
+                        }
                         if (revealRecovery) {
                             val key = AccountManager.recoveryKey(context)
                             if (key != null) {
@@ -2848,13 +3276,23 @@ internal fun MyAccountDialog(
                                         Text(key, style = MaterialTheme.typography.titleMedium, color = OnSurface, modifier = Modifier.weight(1f))
                                         IconButton(onClick = {
                                             clipboard.setText(AnnotatedString(key))
-                                            Toast.makeText(context, "Recovery key copied.", Toast.LENGTH_SHORT).show()
-                                        }) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy recovery key", modifier = Modifier.size(18.dp)) }
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.shortcuts_recovery_key_copied),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        }) {
+                                            Icon(
+                                                Icons.Filled.ContentCopy,
+                                                contentDescription = stringResource(R.string.shortcuts_copy_recovery_key),
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
                                     }
                                 }
                             } else {
                                 Text(
-                                    "No recovery key is saved on this device.",
+                                    stringResource(R.string.shortcuts_no_recovery_key_saved),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = OnSurfaceVariant,
                                 )
@@ -2863,7 +3301,7 @@ internal fun MyAccountDialog(
                         OutlinedButton(onClick = onOpenMyUploads, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.CloudUpload, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("My uploads")
+                            Text(stringResource(R.string.shortcuts_my_uploads))
                         }
                         OutlinedButton(
                             onClick = {
@@ -2874,21 +3312,25 @@ internal fun MyAccountDialog(
                                 AccountUiBus.refresh(context)
                             },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Log out") }
+                        ) { Text(stringResource(R.string.shortcuts_log_out)) }
                     }
 
                     // --- LOGGED OUT: reset flow ---------------------------------------------------
                     showReset -> {
-                        Text("Reset password", style = MaterialTheme.typography.labelLarge, color = orange)
                         Text(
-                            "Enter your username, your recovery key, and a new password.",
+                            stringResource(R.string.shortcuts_reset_password),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = orange,
+                        )
+                        Text(
+                            stringResource(R.string.shortcuts_reset_password_instructions),
                             style = MaterialTheme.typography.bodySmall,
                             color = OnSurfaceVariant,
                         )
                         OutlinedTextField(
                             value = username,
                             onValueChange = { username = it; error = null },
-                            label = { Text("Username") },
+                            label = { Text(stringResource(R.string.shortcuts_username)) },
                             singleLine = true,
                             enabled = !busy,
                             modifier = Modifier.fillMaxWidth(),
@@ -2896,7 +3338,7 @@ internal fun MyAccountDialog(
                         OutlinedTextField(
                             value = recoveryKeyInput,
                             onValueChange = { recoveryKeyInput = it; error = null },
-                            label = { Text("Recovery key") },
+                            label = { Text(stringResource(R.string.shortcuts_recovery_key)) },
                             singleLine = true,
                             enabled = !busy,
                             modifier = Modifier.fillMaxWidth(),
@@ -2904,7 +3346,7 @@ internal fun MyAccountDialog(
                         OutlinedTextField(
                             value = newPassword,
                             onValueChange = { newPassword = it; error = null },
-                            label = { Text("New password") },
+                            label = { Text(stringResource(R.string.shortcuts_new_password)) },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             enabled = !busy,
@@ -2912,7 +3354,9 @@ internal fun MyAccountDialog(
                         )
                         ErrorText()
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { showReset = false; error = null }, enabled = !busy) { Text("Back") }
+                            TextButton(onClick = { showReset = false; error = null }, enabled = !busy) {
+                                Text(stringResource(R.string.shortcuts_action_back))
+                            }
                             Spacer(Modifier.weight(1f))
                             Button(
                                 enabled = !busy && username.isNotBlank() && recoveryKeyInput.isNotBlank() && newPassword.isNotBlank(),
@@ -2926,27 +3370,45 @@ internal fun MyAccountDialog(
                                                 AccountUiBus.refresh(context)
                                                 showReset = false
                                                 password = ""; newPassword = ""; recoveryKeyInput = ""
-                                                Toast.makeText(context, "Password reset — you're signed in.", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.shortcuts_password_reset_signed_in),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
                                             }
                                             is AccountManager.AccountResult.Error ->
-                                                error = accountErrorMessage(result.code, isReset = true)
+                                                error = accountErrorMessage(context, result.code, isReset = true)
                                         }
                                     }
                                 },
-                            ) { if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Reset") }
+                            ) {
+                                if (busy) {
+                                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text(stringResource(R.string.shortcuts_action_reset))
+                                }
+                            }
                         }
                     }
 
                     // --- LOGGED OUT: create / login tabs ------------------------------------------
                     else -> {
                         TabRow(selectedTabIndex = tab, containerColor = Color.Transparent, contentColor = orange) {
-                            Tab(selected = tab == 0, onClick = { tab = 0; error = null }, text = { Text("Create") })
-                            Tab(selected = tab == 1, onClick = { tab = 1; error = null }, text = { Text("Log in") })
+                            Tab(
+                                selected = tab == 0,
+                                onClick = { tab = 0; error = null },
+                                text = { Text(stringResource(R.string.shortcuts_action_create)) },
+                            )
+                            Tab(
+                                selected = tab == 1,
+                                onClick = { tab = 1; error = null },
+                                text = { Text(stringResource(R.string.shortcuts_log_in)) },
+                            )
                         }
                         OutlinedTextField(
                             value = username,
                             onValueChange = { username = it; error = null },
-                            label = { Text("Username") },
+                            label = { Text(stringResource(R.string.shortcuts_username)) },
                             singleLine = true,
                             enabled = !busy,
                             modifier = Modifier.fillMaxWidth(),
@@ -2954,7 +3416,7 @@ internal fun MyAccountDialog(
                         OutlinedTextField(
                             value = password,
                             onValueChange = { password = it; error = null },
-                            label = { Text("Password") },
+                            label = { Text(stringResource(R.string.shortcuts_password)) },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             enabled = !busy,
@@ -2962,7 +3424,7 @@ internal fun MyAccountDialog(
                         )
                         if (tab == 0) {
                             Text(
-                                "This is just to recover your shared configs — use a throwaway password, not one you use elsewhere.",
+                                stringResource(R.string.shortcuts_account_password_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = OnSurfaceVariant,
                             )
@@ -2982,7 +3444,7 @@ internal fun MyAccountDialog(
                                                 password = ""
                                             }
                                             is AccountManager.AccountResult.Error ->
-                                                error = accountErrorMessage(result.code, isReset = false)
+                                                error = accountErrorMessage(context, result.code, isReset = false)
                                         }
                                     }
                                 } else {
@@ -2996,29 +3458,44 @@ internal fun MyAccountDialog(
                                                 // Phase 4: the login already folded the account's uploads into
                                                 // the local store — refresh My uploads if that sheet is open.
                                                 onLoggedIn()
-                                                Toast.makeText(context, "Signed in.", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.shortcuts_signed_in),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
                                             }
                                             is AccountManager.AccountResult.Error ->
-                                                error = accountErrorMessage(result.code, isReset = false)
+                                                error = accountErrorMessage(context, result.code, isReset = false)
                                         }
                                     }
                                 }
                             },
                         ) {
                             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            else Text(if (tab == 0) "Create account" else "Log in")
+                            else {
+                                Text(
+                                    stringResource(
+                                        if (tab == 0) R.string.shortcuts_create_account
+                                        else R.string.shortcuts_log_in
+                                    )
+                                )
+                            }
                         }
                         TextButton(
                             onClick = { showReset = true; error = null },
                             enabled = !busy,
                             modifier = Modifier.align(Alignment.End),
-                        ) { Text("Forgot password? Reset with recovery key") }
+                        ) { Text(stringResource(R.string.shortcuts_forgot_password)) }
                     }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = { if (!busy) onDismiss() }) { Text("Close") } },
+        dismissButton = {
+            TextButton(onClick = { if (!busy) onDismiss() }) {
+                Text(stringResource(R.string.shortcuts_action_close))
+            }
+        },
     )
 }
 
@@ -3066,7 +3543,11 @@ private fun SmartComponentInstallRow(
             }
             if (uri == null) {
                 busy = false
-                Toast.makeText(context, "Download failed.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shortcuts_download_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
                 return@launch
             }
             installing = true
@@ -3075,7 +3556,11 @@ private fun SmartComponentInstallRow(
             installContent(context, cm, uri, onProgress = { f, _ -> progress = maxOf(progress, f) }) { ok ->
                 busy = false
                 if (ok) onProfileInstalled()
-                else Toast.makeText(context, "Install failed.", Toast.LENGTH_SHORT).show()
+                else Toast.makeText(
+                    context,
+                    context.getString(R.string.shortcuts_install_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         }
     }
@@ -3087,14 +3572,15 @@ private fun SmartComponentInstallRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                "• ${mc.label}",
+                stringResource(R.string.shortcuts_bullet_item, mc.label),
                 style = MaterialTheme.typography.bodySmall,
                 color = OnSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
             when {
                 done -> Icon(
-                    Icons.Filled.CheckCircle, contentDescription = "Installed",
+                    Icons.Filled.CheckCircle,
+                    contentDescription = stringResource(R.string.shortcuts_installed),
                     tint = installedBlue, modifier = Modifier.size(20.dp),
                 )
                 busy || catalogLoading -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -3106,7 +3592,12 @@ private fun SmartComponentInstallRow(
                             shortlist.closest.isEmpty() -> onBrowseAll()
                             else -> expanded = !expanded
                         }
-                    }) { Text("Install", color = MaterialTheme.colorScheme.primary) }
+                    }) {
+                        Text(
+                            stringResource(R.string.shortcuts_action_install),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
@@ -3115,7 +3606,11 @@ private fun SmartComponentInstallRow(
         if (busy) {
             val frac = progress.coerceIn(0f, 1f)
             Text(
-                if (installing) "Installing…" else "Downloading ${(frac * 100).toInt()}%…",
+                if (installing) {
+                    stringResource(R.string.shortcuts_installing)
+                } else {
+                    stringResource(R.string.shortcuts_downloading_percent, (frac * 100).toInt())
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = OnSurfaceVariant,
                 modifier = Modifier.padding(start = 10.dp, top = 2.dp),
@@ -3135,7 +3630,7 @@ private fun SmartComponentInstallRow(
             ) {
                 shortlist.closest.forEach { p ->
                     Text(
-                        "Install ${p.verName}",
+                        stringResource(R.string.shortcuts_install_named, p.verName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
@@ -3145,7 +3640,7 @@ private fun SmartComponentInstallRow(
                     )
                 }
                 Text(
-                    "Browse all versions…",
+                    stringResource(R.string.shortcuts_browse_all_versions),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -3161,10 +3656,26 @@ private fun SmartComponentInstallRow(
     confirmProfile?.let { p ->
         OutlinedAlertDialog(
             onDismissRequest = { confirmProfile = null },
-            title = { Text("Install ${p.verName}?") },
-            text = { Text("Download and install ${mc.type} ${p.verName}, then apply it to this shortcut?") },
-            confirmButton = { TextButton(onClick = { install(p) }) { Text("Install") } },
-            dismissButton = { TextButton(onClick = { confirmProfile = null }) { Text("Cancel") } },
+            title = { Text(stringResource(R.string.shortcuts_install_named_question, p.verName)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.shortcuts_download_install_component_message,
+                        mc.type,
+                        p.verName,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { install(p) }) {
+                    Text(stringResource(R.string.shortcuts_action_install))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmProfile = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 }
@@ -3190,12 +3701,10 @@ private fun SmartDriverInstallRow(
     val installedBlue = Color(0xFF4FC3F7) // matches the component row's installed/in-use status blue
     val repo = remember { RemoteDriverRepository(context) }
 
-    val label = remember(md) {
-        buildString {
-            append("config wants ")
-            append(md.wanted)
-            md.current?.let { append("; you have ").append(it) }
-        }
+    val label = if (md.current == null) {
+        stringResource(R.string.shortcuts_config_wants_driver, md.wanted)
+    } else {
+        stringResource(R.string.shortcuts_config_wants_driver_with_current, md.wanted, md.current)
     }
 
     var loading by remember { mutableStateOf(false) }                         // fetching + ranking repos
@@ -3239,11 +3748,20 @@ private fun SmartDriverInstallRow(
                     file.delete()
                     busy = false
                     if (driverId.isNotEmpty()) onApplied(driverId)
-                    else Toast.makeText(context, "Install failed — invalid driver package", Toast.LENGTH_LONG).show()
+                    else Toast.makeText(
+                        context,
+                        context.getString(R.string.shortcuts_invalid_driver_package),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 },
                 onFailure = { t ->
                     busy = false
-                    Toast.makeText(context, "Download failed: ${t.message ?: "unknown error"}", Toast.LENGTH_LONG).show()
+                    Log.e("ShortcutsScreen", "Driver download failed", t)
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.shortcuts_download_failed),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 },
             )
         }
@@ -3256,19 +3774,23 @@ private fun SmartDriverInstallRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                "• $label",
+                stringResource(R.string.shortcuts_bullet_item, label),
                 style = MaterialTheme.typography.bodySmall,
                 color = OnSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
             when {
                 done -> Icon(
-                    Icons.Filled.CheckCircle, contentDescription = "Installed",
+                    Icons.Filled.CheckCircle,
+                    contentDescription = stringResource(R.string.shortcuts_installed),
                     tint = installedBlue, modifier = Modifier.size(20.dp),
                 )
                 busy || loading -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 else -> TextButton(onClick = { onInstallClick() }) {
-                    Text("Install", color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        stringResource(R.string.shortcuts_action_install),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
@@ -3277,7 +3799,11 @@ private fun SmartDriverInstallRow(
         if (busy) {
             val frac = (progress / 100f).coerceIn(0f, 1f)
             Text(
-                if (installing) "Installing…" else "Downloading $progress%…",
+                if (installing) {
+                    stringResource(R.string.shortcuts_installing)
+                } else {
+                    stringResource(R.string.shortcuts_downloading_percent, progress)
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = OnSurfaceVariant,
                 modifier = Modifier.padding(start = 10.dp, top = 2.dp),
@@ -3299,7 +3825,7 @@ private fun SmartDriverInstallRow(
             ) {
                 sl.exactMatches.forEach { e ->
                     Text(
-                        "Install ${e.source} · ${e.displayName}",
+                        stringResource(R.string.shortcuts_install_source_name, e.source, e.displayName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
@@ -3310,7 +3836,7 @@ private fun SmartDriverInstallRow(
                 }
                 sl.closest.forEach { e ->
                     Text(
-                        "Install ${e.source} · ${e.displayName}",
+                        stringResource(R.string.shortcuts_install_source_name, e.source, e.displayName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
@@ -3320,7 +3846,7 @@ private fun SmartDriverInstallRow(
                     )
                 }
                 Text(
-                    "Browse all drivers…",
+                    stringResource(R.string.shortcuts_browse_all_drivers),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -3336,10 +3862,20 @@ private fun SmartDriverInstallRow(
     confirmEntry?.let { e ->
         OutlinedAlertDialog(
             onDismissRequest = { confirmEntry = null },
-            title = { Text("Quick install ${e.displayName}?") },
-            text = { Text("Download and install this Turnip driver from ${e.source}, then apply it to this shortcut?") },
-            confirmButton = { TextButton(onClick = { install(e) }) { Text("Install") } },
-            dismissButton = { TextButton(onClick = { confirmEntry = null }) { Text("Cancel") } },
+            title = { Text(stringResource(R.string.shortcuts_quick_install_named, e.displayName)) },
+            text = {
+                Text(stringResource(R.string.shortcuts_download_install_turnip_message, e.source))
+            },
+            confirmButton = {
+                TextButton(onClick = { install(e) }) {
+                    Text(stringResource(R.string.shortcuts_action_install))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmEntry = null }) {
+                    Text(stringResource(R.string.shortcuts_action_cancel))
+                }
+            },
         )
     }
 }
@@ -3540,7 +4076,10 @@ internal fun CommunityCatalogBrowser(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        "Your device: ${deviceHeaderLabel(catalog?.deviceModel, catalog?.hardwareLabel)}",
+                        stringResource(
+                            R.string.shortcuts_your_device,
+                            deviceHeaderLabel(catalog?.deviceModel, catalog?.hardwareLabel),
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = OnSurfaceVariant,
                     )
@@ -3549,7 +4088,7 @@ internal fun CommunityCatalogBrowser(
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            label = { Text("Search all games") },
+                            label = { Text(stringResource(R.string.shortcuts_search_all_games)) },
                             leadingIcon = { Icon(Icons.Filled.Search, null) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -3567,13 +4106,13 @@ internal fun CommunityCatalogBrowser(
                     // Left-pane control 1 — store filter group (Left/Right cycles the focused chip).
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         DpadHighlight(focused = leftZone && leftRow == 1 && storeChipFocus == 0) {
-                            FilterChip(selected = storeFilter == CatalogStoreFilter.ALL, onClick = { storeFilter = CatalogStoreFilter.ALL; leftZone = true; leftRow = 1; storeChipFocus = 0 }, label = { Text("All") })
+                            FilterChip(selected = storeFilter == CatalogStoreFilter.ALL, onClick = { storeFilter = CatalogStoreFilter.ALL; leftZone = true; leftRow = 1; storeChipFocus = 0 }, label = { Text(stringResource(R.string.shortcuts_filter_all)) })
                         }
                         DpadHighlight(focused = leftZone && leftRow == 1 && storeChipFocus == 1) {
-                            FilterChip(selected = storeFilter == CatalogStoreFilter.STEAM, onClick = { storeFilter = CatalogStoreFilter.STEAM; leftZone = true; leftRow = 1; storeChipFocus = 1 }, label = { Text("Steam") })
+                            FilterChip(selected = storeFilter == CatalogStoreFilter.STEAM, onClick = { storeFilter = CatalogStoreFilter.STEAM; leftZone = true; leftRow = 1; storeChipFocus = 1 }, label = { Text(stringResource(R.string.shortcuts_store_steam)) })
                         }
                         DpadHighlight(focused = leftZone && leftRow == 1 && storeChipFocus == 2) {
-                            FilterChip(selected = storeFilter == CatalogStoreFilter.TITLE, onClick = { storeFilter = CatalogStoreFilter.TITLE; leftZone = true; leftRow = 1; storeChipFocus = 2 }, label = { Text("Title") })
+                            FilterChip(selected = storeFilter == CatalogStoreFilter.TITLE, onClick = { storeFilter = CatalogStoreFilter.TITLE; leftZone = true; leftRow = 1; storeChipFocus = 2 }, label = { Text(stringResource(R.string.shortcuts_store_title)) })
                         }
                     }
                     // Left-pane control 2 — Matches my device.
@@ -3581,25 +4120,33 @@ internal fun CommunityCatalogBrowser(
                         FilterChip(
                             selected = matchesMyDevice,
                             onClick = { matchesMyDevice = !matchesMyDevice; leftZone = true; leftRow = 2 },
-                            label = { Text("Matches my device") },
+                            label = { Text(stringResource(R.string.shortcuts_matches_my_device)) },
                             enabled = userSoc != null || userGpu != null,
                         )
                     }
                     // Left-pane control 3 — sort group (Left/Right cycles the focused chip).
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Sort:", style = MaterialTheme.typography.labelMedium, color = OnSurfaceVariant)
+                        Text(
+                            stringResource(R.string.shortcuts_sort_label),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = OnSurfaceVariant,
+                        )
                         DpadHighlight(focused = leftZone && leftRow == 3 && sortChipFocus == 0) {
-                            FilterChip(selected = sort == CatalogSort.CONFIGS, onClick = { sort = CatalogSort.CONFIGS; leftZone = true; leftRow = 3; sortChipFocus = 0 }, label = { Text("Configs") })
+                            FilterChip(selected = sort == CatalogSort.CONFIGS, onClick = { sort = CatalogSort.CONFIGS; leftZone = true; leftRow = 3; sortChipFocus = 0 }, label = { Text(stringResource(R.string.shortcuts_configs)) })
                         }
                         DpadHighlight(focused = leftZone && leftRow == 3 && sortChipFocus == 1) {
-                            FilterChip(selected = sort == CatalogSort.NAME, onClick = { sort = CatalogSort.NAME; leftZone = true; leftRow = 3; sortChipFocus = 1 }, label = { Text("Name") })
+                            FilterChip(selected = sort == CatalogSort.NAME, onClick = { sort = CatalogSort.NAME; leftZone = true; leftRow = 3; sortChipFocus = 1 }, label = { Text(stringResource(R.string.shortcuts_name)) })
                         }
                         DpadHighlight(focused = leftZone && leftRow == 3 && sortChipFocus == 2) {
-                            FilterChip(selected = sort == CatalogSort.DEVICES, onClick = { sort = CatalogSort.DEVICES; leftZone = true; leftRow = 3; sortChipFocus = 2 }, label = { Text("Devices") })
+                            FilterChip(selected = sort == CatalogSort.DEVICES, onClick = { sort = CatalogSort.DEVICES; leftZone = true; leftRow = 3; sortChipFocus = 2 }, label = { Text(stringResource(R.string.shortcuts_devices)) })
                         }
                     }
                     Text(
-                        "${visible.size} game${if (visible.size == 1) "" else "s"}",
+                        pluralStringResource(
+                            R.plurals.shortcuts_game_count,
+                            visible.size,
+                            visible.size,
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = OnSurfaceVariant,
                     )
@@ -3611,7 +4158,7 @@ internal fun CommunityCatalogBrowser(
             fun GameList(modifier: Modifier) {
                 if (visible.isEmpty()) {
                     Text(
-                        "No games match your filters.",
+                        stringResource(R.string.shortcuts_no_games_match_filters),
                         color = OnSurfaceVariant,
                         modifier = Modifier.padding(24.dp),
                     )
@@ -3642,11 +4189,14 @@ internal fun CommunityCatalogBrowser(
                 ) {
                     if (selectedGame != null) {
                         IconButton(onClick = { selectedIdentity = null }) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(
+                                Icons.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.shortcuts_action_back),
+                            )
                         }
                     }
                     Text(
-                        text = selectedGame?.name ?: "Community configs",
+                        text = selectedGame?.name ?: stringResource(R.string.shortcuts_community_configs),
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -3664,13 +4214,17 @@ internal fun CommunityCatalogBrowser(
                                         catalog = fresh
                                         Toast.makeText(
                                             context,
-                                            "Community index refreshed (${fresh.games.size} games)",
+                                            context.resources.getQuantityString(
+                                                R.plurals.shortcuts_community_index_refreshed,
+                                                fresh.games.size,
+                                                fresh.games.size,
+                                            ),
                                             Toast.LENGTH_SHORT,
                                         ).show()
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            "Couldn't refresh the community index.",
+                                            context.getString(R.string.shortcuts_community_index_refresh_failed),
                                             Toast.LENGTH_SHORT,
                                         ).show()
                                     }
@@ -3681,7 +4235,10 @@ internal fun CommunityCatalogBrowser(
                             if (refreshing) {
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                             } else {
-                                Icon(Icons.Filled.Refresh, contentDescription = "Refresh community index")
+                                Icon(
+                                    Icons.Filled.Refresh,
+                                    contentDescription = stringResource(R.string.shortcuts_refresh_community_index),
+                                )
                             }
                         }
                     }
@@ -3695,11 +4252,19 @@ internal fun CommunityCatalogBrowser(
                             if (myAvatarUrl != null) {
                                 AccountAvatar(avatarUrl = myAvatarUrl, size = 28.dp)
                             } else {
-                                Icon(Icons.Filled.AccountCircle, contentDescription = "My account")
+                                Icon(
+                                    Icons.Filled.AccountCircle,
+                                    contentDescription = stringResource(R.string.shortcuts_my_account),
+                                )
                             }
                         }
                     }
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Close") }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.shortcuts_action_close),
+                        )
+                    }
                 }
                 Divider(color = DividerColor)
 
@@ -3722,7 +4287,7 @@ internal fun CommunityCatalogBrowser(
                             onPicks = { drilledPicks = it },
                         )
                         games.isEmpty() -> Text(
-                            "No community configs available yet (offline, or the index hasn't been fetched).",
+                            stringResource(R.string.shortcuts_no_community_configs_available),
                             color = OnSurfaceVariant,
                             modifier = Modifier.align(Alignment.Center).padding(24.dp),
                             textAlign = TextAlign.Center,
@@ -3857,8 +4422,16 @@ internal fun CommunityConfigEntryCard(entry: WorkerConfigEntry, isMatch: Boolean
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (entry.appSource == "bannerlator") BannerlatorSourceBadge()
-            Text("★ ${entry.votes}", style = MaterialTheme.typography.labelMedium, color = OnSurface)
-            Text("↓ ${entry.downloads}", style = MaterialTheme.typography.labelMedium, color = OnSurfaceVariant)
+            Text(
+                stringResource(R.string.shortcuts_votes_symbol_count, entry.votes),
+                style = MaterialTheme.typography.labelMedium,
+                color = OnSurface,
+            )
+            Text(
+                stringResource(R.string.shortcuts_downloads_symbol_count, entry.downloads),
+                style = MaterialTheme.typography.labelMedium,
+                color = OnSurfaceVariant,
+            )
         }
     }
 }
@@ -3875,10 +4448,8 @@ private fun CommunityGameRow(game: CanonicalGame, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val cfgWord = if (game.configCount == 1) "config" else "configs"
-            val devWord = if (game.devices.size == 1) "device" else "devices"
             Text(
-                text = "${game.configCount} $cfgWord · ${game.devices.size} $devWord",
+                text = communityCountSummary(game.configCount, game.devices.size),
                 style = MaterialTheme.typography.labelSmall,
                 color = OnSurfaceVariant,
             )
@@ -3892,14 +4463,16 @@ private fun CommunityGameRow(game: CanonicalGame, onClick: () -> Unit) {
 // value was found and which wasn't. The both-missing case collapses to a single "Unresolved" (never
 // "Unresolved · Unresolved"). Display-only; the caller decides which values to pass and this never
 // affects device matching.
+@Composable
 internal fun deviceHeaderLabel(model: String?, hardware: String?): String {
     val m = model?.takeIf { it.isNotBlank() }
     val hw = hardware?.takeIf { it.isNotBlank() }
+    val unresolved = stringResource(R.string.shortcuts_unresolved)
     return when {
         m != null && hw != null -> "$m · $hw"
-        m != null -> "$m · Unresolved"
-        hw != null -> "Unresolved · $hw"
-        else -> "Unresolved"
+        m != null -> "$m · $unresolved"
+        hw != null -> "$unresolved · $hw"
+        else -> unresolved
     }
 }
 
@@ -3956,10 +4529,8 @@ private fun CommunityDevicePanel(
     @Composable
     fun Header() {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val cfgWord = if (game.configCount == 1) "config" else "configs"
-            val devWord = if (game.devices.size == 1) "device" else "devices"
             Text(
-                "${game.configCount} $cfgWord · ${game.devices.size} $devWord",
+                communityCountSummary(game.configCount, game.devices.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = OnSurfaceVariant,
                 modifier = Modifier.weight(1f),
@@ -3967,14 +4538,17 @@ private fun CommunityDevicePanel(
             CommunityStoreBadge(isSteam = game.isSteam)
         }
         Text(
-            "Your device: ${deviceHeaderLabel(deviceModel, hardwareLabel)}",
+            stringResource(
+                R.string.shortcuts_your_device,
+                deviceHeaderLabel(deviceModel, hardwareLabel),
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = OnSurfaceVariant,
         )
         FilterChip(
             selected = matchesMyDevice,
             onClick = { matchesMyDevice = !matchesMyDevice },
-            label = { Text("Matches my device") },
+            label = { Text(stringResource(R.string.shortcuts_matches_my_device)) },
             enabled = hwEnabled,
         )
     }
@@ -3987,12 +4561,15 @@ private fun CommunityDevicePanel(
                 cfg.loading -> {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Text("Loading configs…", color = OnSurfaceVariant)
+                        Text(stringResource(R.string.shortcuts_loading_configs), color = OnSurfaceVariant)
                     }
                 }
                 cfg.entries.isNotEmpty() -> {
                     if (shownEntries.isEmpty()) {
-                        Text("No uploaded configs match your device.", color = OnSurfaceVariant)
+                        Text(
+                            stringResource(R.string.shortcuts_no_uploaded_configs_match_device),
+                            color = OnSurfaceVariant,
+                        )
                     } else {
                         shownEntries.forEachIndexed { idx, (folder, e) ->
                             val isMatch = hwEnabled &&
@@ -4011,11 +4588,14 @@ private fun CommunityDevicePanel(
                         }
                     }
                 }
-                fallback.isEmpty() -> Text("No configs listed.", color = OnSurfaceVariant)
+                fallback.isEmpty() -> Text(
+                    stringResource(R.string.shortcuts_no_configs_listed),
+                    color = OnSurfaceVariant,
+                )
                 else -> {
                     // Offline fallback: per-device index rows (best-matching file resolved at apply).
                     Text(
-                        "Showing device configs (vote counts unavailable offline).",
+                        stringResource(R.string.shortcuts_showing_device_configs_offline),
                         style = MaterialTheme.typography.labelSmall,
                         color = OnSurfaceVariant,
                     )
@@ -4029,7 +4609,9 @@ private fun CommunityDevicePanel(
                             CommunityCard(onClick = { onPick(CommunityPick.Device(game, d)) }) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = d.model.ifBlank { "Unknown device" },
+                                        text = d.model.ifBlank {
+                                            stringResource(R.string.shortcuts_unknown_device)
+                                        },
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = if (isMatch) MaterialTheme.colorScheme.primary else OnSurface,
                                         maxLines = 1,
@@ -4095,23 +4677,51 @@ private fun communitySourceLabel(appSource: String?): String = when (appSource?.
 // Turn a translated config into "what it sets" lines in OUR component terms (the same fields the apply
 // engine consumes). Only present fields are listed; Proton/wineVersion is advisory (container-only) so
 // it is surfaced separately, not here.
+@Composable
 private fun configSummaryLines(config: ShortcutConfig): List<Pair<String, String>> {
     val out = ArrayList<Pair<String, String>>()
     config.dxwrapperConfig["version"]?.takeIf { it.isNotBlank() }?.let { out.add("DXVK" to it) }
     config.dxwrapperConfig["vkd3dVersion"]?.takeIf { it.isNotBlank() }?.let { out.add("VKD3D" to it) }
-    config.dxwrapperConfig["async"]?.let { out.add("DXVK async" to if (it == "1") "on" else "off") }
-    config.graphicsDriverConfig["version"]?.takeIf { it.isNotBlank() }?.let { out.add("Turnip driver" to it) }
-    config.scalars["dxwrapper"]?.takeIf { it.isNotBlank() }?.let { out.add("DX wrapper" to it) }
+    val enabled = stringResource(R.string.shortcuts_enabled)
+    val disabled = stringResource(R.string.shortcuts_disabled)
+    config.dxwrapperConfig["async"]?.let {
+        out.add(stringResource(R.string.shortcuts_dxvk_async) to if (it == "1") enabled else disabled)
+    }
+    config.graphicsDriverConfig["version"]?.takeIf { it.isNotBlank() }?.let {
+        out.add(stringResource(R.string.shortcuts_turnip_driver) to it)
+    }
+    config.scalars["dxwrapper"]?.takeIf { it.isNotBlank() }?.let {
+        out.add(stringResource(R.string.shortcuts_dx_wrapper) to it)
+    }
     config.scalars["emulator"]?.let { emu ->
         val fex = config.scalars["fexcoreVersion"]
-        out.add("x86 translator" to if (emu == "fexcore" && !fex.isNullOrBlank()) "FEXCore $fex" else emu)
+        out.add(
+            stringResource(R.string.shortcuts_x86_translator) to
+                if (emu == "fexcore" && !fex.isNullOrBlank()) "FEXCore $fex" else emu
+        )
     }
-    config.scalars["audioDriver"]?.takeIf { it.isNotBlank() }?.let { out.add("Audio driver" to it) }
-    config.scalars["inputType"]?.let { out.add("XInput" to if (((it.toIntOrNull() ?: 0) and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0) "on" else "off") }
-    config.scalars["screenSize"]?.takeIf { it.isNotBlank() }?.let { out.add("Resolution" to it) }
-    config.scalars["renderer"]?.takeIf { it.isNotBlank() }?.let { out.add("Renderer" to it) }
-    config.scalars["execArgs"]?.takeIf { it.isNotBlank() }?.let { out.add("Launch args" to it) }
-    config.scalars["envVars"]?.takeIf { it.isNotBlank() }?.let { out.add("Env vars" to it) }
+    config.scalars["audioDriver"]?.takeIf { it.isNotBlank() }?.let {
+        out.add(stringResource(R.string.shortcuts_audio_driver) to it)
+    }
+    config.scalars["inputType"]?.let {
+        out.add(
+            "XInput" to
+                if (((it.toIntOrNull() ?: 0) and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0) enabled
+                else disabled
+        )
+    }
+    config.scalars["screenSize"]?.takeIf { it.isNotBlank() }?.let {
+        out.add(stringResource(R.string.shortcuts_resolution) to it)
+    }
+    config.scalars["renderer"]?.takeIf { it.isNotBlank() }?.let {
+        out.add(stringResource(R.string.shortcuts_renderer) to it)
+    }
+    config.scalars["execArgs"]?.takeIf { it.isNotBlank() }?.let {
+        out.add(stringResource(R.string.shortcuts_launch_args) to it)
+    }
+    config.scalars["envVars"]?.takeIf { it.isNotBlank() }?.let {
+        out.add(stringResource(R.string.shortcuts_env_vars) to it)
+    }
     return out
 }
 
@@ -4151,8 +4761,16 @@ private fun CommunityConfigDetailDialog(
     fun Social(d: CommunityConfigDetail) {
         Divider(color = DividerColor)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("★ $votes", style = MaterialTheme.typography.bodyMedium, color = OnSurface)
-            Text("↓ ${d.downloads}", style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariant)
+            Text(
+                stringResource(R.string.shortcuts_votes_symbol_count, votes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = OnSurface,
+            )
+            Text(
+                stringResource(R.string.shortcuts_downloads_symbol_count, d.downloads),
+                style = MaterialTheme.typography.bodyMedium,
+                color = OnSurfaceVariant,
+            )
         }
         if (d.description.isNotBlank()) {
             Text(d.description, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
@@ -4170,7 +4788,11 @@ private fun CommunityConfigDetailDialog(
                             voted = true
                             votePrefs.edit().putBoolean(sha, true).apply()
                         } else {
-                            Toast.makeText(context, "Couldn't record your vote.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.shortcuts_vote_failed),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                         }
                     }
                 },
@@ -4180,14 +4802,27 @@ private fun CommunityConfigDetailDialog(
                 if (voting) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(if (voted) "Voted ✓" else "Upvote")
+                    Text(
+                        stringResource(
+                            if (voted) R.string.shortcuts_voted
+                            else R.string.shortcuts_upvote
+                        )
+                    )
                 }
             }
         }
 
-        Text("Comments", style = MaterialTheme.typography.labelLarge, color = OnSurface)
+        Text(
+            stringResource(R.string.shortcuts_comments),
+            style = MaterialTheme.typography.labelLarge,
+            color = OnSurface,
+        )
         if (comments.isEmpty()) {
-            Text("No comments yet.", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+            Text(
+                stringResource(R.string.shortcuts_no_comments),
+                style = MaterialTheme.typography.bodySmall,
+                color = OnSurfaceVariant,
+            )
         } else {
             comments.forEach { c ->
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -4205,7 +4840,7 @@ private fun CommunityConfigDetailDialog(
             OutlinedTextField(
                 value = commentText,
                 onValueChange = { if (it.length <= 500) commentText = it },
-                label = { Text("Add a comment") },
+                label = { Text(stringResource(R.string.shortcuts_add_comment)) },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3,
             )
@@ -4222,12 +4857,23 @@ private fun CommunityConfigDetailDialog(
                                 comments = refreshed
                                 commentText = ""
                             } else {
-                                Toast.makeText(context, "Couldn't post your comment.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.shortcuts_post_comment_failed),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             }
                         }
                     },
                     enabled = commentText.isNotBlank() && !commenting,
-                ) { Text(if (commenting) "Sending…" else "Send") }
+                ) {
+                    Text(
+                        stringResource(
+                            if (commenting) R.string.shortcuts_sending
+                            else R.string.shortcuts_action_send
+                        )
+                    )
+                }
             }
         }
     }
@@ -4252,14 +4898,21 @@ private fun CommunityConfigDetailDialog(
                 Text(hw, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
             }
             meta?.uploadedDate?.let {
-                Text("Uploaded $it", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                Text(
+                    stringResource(R.string.shortcuts_uploaded_date, it),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OnSurfaceVariant,
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CommunityStoreBadge(isSteam = game.isSteam)
                 if (meta != null) {
                     // Name the actual source project (meta.app_source distinguishes BannerHub vs
                     // BannerHub Lite vs a future Bannerlator upload), with the version appended if present.
-                    val label = "From ${communitySourceLabel(meta.appSource)}" + (meta.bhVersion?.let { " $it" } ?: "")
+                    val source = communitySourceLabel(meta.appSource)
+                    val label = meta.bhVersion?.let {
+                        stringResource(R.string.shortcuts_from_source_version, source, it)
+                    } ?: stringResource(R.string.shortcuts_from_source, source)
                     Surface(
                         color = SurfaceVariantColor,
                         shape = MaterialTheme.shapes.small,
@@ -4277,7 +4930,9 @@ private fun CommunityConfigDetailDialog(
             // meta.uploader → "by <username>" plus its avatar when set; an anonymous config has none →
             // "Anonymous user" with the person-icon placeholder (AccountAvatar's null fallback).
             if (meta != null) {
-                val uploaderLabel = meta.uploaderName?.let { "by $it" } ?: "Anonymous user"
+                val uploaderLabel = meta.uploaderName?.let {
+                    stringResource(R.string.shortcuts_by_user, it)
+                } ?: stringResource(R.string.shortcuts_anonymous_user)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     AccountAvatar(
                         avatarUrl = meta.uploaderAvatarUrl,
@@ -4301,24 +4956,32 @@ private fun CommunityConfigDetailDialog(
                 loading -> {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Text("Loading config…", color = OnSurfaceVariant)
+                        Text(stringResource(R.string.shortcuts_loading_config), color = OnSurfaceVariant)
                     }
                 }
                 failed || detail == null -> {
                     Text(
-                        "Couldn't fetch this config (offline, or no matching file in the repo).",
+                        stringResource(R.string.shortcuts_fetch_config_failed),
                         color = OnSurfaceVariant,
                     )
                 }
                 else -> {
-                    Text("What this config sets", style = MaterialTheme.typography.labelLarge, color = OnSurface)
+                    Text(
+                        stringResource(R.string.shortcuts_what_config_sets),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = OnSurface,
+                    )
                     val lines = configSummaryLines(detail.config)
                     if (lines.isEmpty()) {
-                        Text("Nothing this app can set.", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                        Text(
+                            stringResource(R.string.shortcuts_nothing_to_set),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OnSurfaceVariant,
+                        )
                     } else {
                         lines.forEach { (label, value) ->
                             Text(
-                                "• $label: $value",
+                                stringResource(R.string.shortcuts_bullet_label_value, label, value),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = OnSurfaceVariant,
                             )
@@ -4326,7 +4989,7 @@ private fun CommunityConfigDetailDialog(
                     }
                     detail.config.advisories["wineVersion"]?.let { proton ->
                         Text(
-                            "• Proton (container-only): $proton",
+                            stringResource(R.string.shortcuts_proton_container_only, proton),
                             style = MaterialTheme.typography.bodySmall,
                             color = OnSurfaceVariant,
                         )
@@ -4335,26 +4998,75 @@ private fun CommunityConfigDetailDialog(
                     // Pre-apply diff — only when a target shortcut was in context.
                     detail.preview?.let { pre ->
                         Divider(color = DividerColor)
-                        Text("Changes to \"${game.name}\"", style = MaterialTheme.typography.labelLarge, color = OnSurface)
+                        Text(
+                            stringResource(R.string.shortcuts_changes_to_game, game.name),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = OnSurface,
+                        )
                         Text(pre.message, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
                         if (pre.changed.isNotEmpty()) {
-                            Text("Would change", style = MaterialTheme.typography.labelMedium, color = OnSurface)
-                            pre.changed.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant) }
+                            Text(
+                                stringResource(R.string.shortcuts_would_change),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = OnSurface,
+                            )
+                            pre.changed.forEach {
+                                Text(
+                                    stringResource(R.string.shortcuts_bullet_item, it),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OnSurfaceVariant,
+                                )
+                            }
                         }
                         if (pre.missingComponents.isNotEmpty()) {
-                            Text("Needs a component", style = MaterialTheme.typography.labelMedium, color = OnSurface)
-                            pre.missingComponents.forEach { Text("• ${it.label}", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant) }
+                            Text(
+                                stringResource(R.string.shortcuts_needs_component),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = OnSurface,
+                            )
+                            pre.missingComponents.forEach {
+                                Text(
+                                    stringResource(R.string.shortcuts_bullet_item, it.label),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OnSurfaceVariant,
+                                )
+                            }
                         }
                         if (pre.missingDrivers.isNotEmpty()) {
-                            Text("Needs a GPU driver", style = MaterialTheme.typography.labelMedium, color = OnSurface)
+                            Text(
+                                stringResource(R.string.shortcuts_needs_gpu_driver),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = OnSurface,
+                            )
                             pre.missingDrivers.forEach {
-                                val had = it.current?.let { c -> " (you have $c)" } ?: ""
-                                Text("• Turnip ${it.wanted}$had", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                Text(
+                                    if (it.current == null) {
+                                        stringResource(R.string.shortcuts_bullet_turnip_driver, it.wanted)
+                                    } else {
+                                        stringResource(
+                                            R.string.shortcuts_bullet_turnip_driver_with_current,
+                                            it.wanted,
+                                            it.current,
+                                        )
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OnSurfaceVariant,
+                                )
                             }
                         }
                         if (pre.advisories.isNotEmpty()) {
-                            Text("Heads up", style = MaterialTheme.typography.labelMedium, color = OnSurface)
-                            pre.advisories.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant) }
+                            Text(
+                                stringResource(R.string.shortcuts_heads_up),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = OnSurface,
+                            )
+                            pre.advisories.forEach {
+                                Text(
+                                    stringResource(R.string.shortcuts_bullet_item, it),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OnSurfaceVariant,
+                                )
+                            }
                         }
                     }
 
@@ -4382,11 +5094,16 @@ private fun CommunityConfigDetailDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Config details",
+                        stringResource(R.string.shortcuts_config_details),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Close") }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.shortcuts_action_close),
+                        )
+                    }
                 }
                 Divider(color = DividerColor)
 
@@ -4427,8 +5144,12 @@ private fun CommunityConfigDetailDialog(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = onDismiss) { Text("Close") }
-                    TextButton(onClick = onApply, enabled = detail != null) { Text("Apply") }
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.shortcuts_action_close))
+                    }
+                    TextButton(onClick = onApply, enabled = detail != null) {
+                        Text(stringResource(R.string.shortcuts_action_apply))
+                    }
                 }
             }
         }
@@ -4626,7 +5347,11 @@ private fun ShortcutOverflowButton(
     var menuExpanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { menuExpanded = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = OnSurfaceVariant)
+            Icon(
+                Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.shortcuts_options),
+                tint = OnSurfaceVariant,
+            )
         }
         DropdownMenu(
             expanded = menuExpanded,
@@ -4634,37 +5359,37 @@ private fun ShortcutOverflowButton(
             modifier = Modifier.outlinedMenuCard(),
         ) {
             DropdownMenuItem(
-                text = { Text("Settings") },
+                text = { Text(stringResource(R.string.shortcuts_settings)) },
                 leadingIcon = { Icon(Icons.Filled.Settings, null) },
                 onClick = { menuExpanded = false; onSettings() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Remove") },
+                text = { Text(stringResource(R.string.shortcuts_action_remove)) },
                 leadingIcon = { Icon(Icons.Filled.Delete, null) },
                 onClick = { menuExpanded = false; onRemove() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Clone to container") },
+                text = { Text(stringResource(R.string.shortcuts_clone_to_container)) },
                 leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
                 onClick = { menuExpanded = false; onClone() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Add to home screen") },
+                text = { Text(stringResource(R.string.shortcuts_add_to_home_screen)) },
                 leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) },
                 onClick = { menuExpanded = false; onAddToHome() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Export") },
+                text = { Text(stringResource(R.string.shortcuts_action_export)) },
                 leadingIcon = { Icon(Icons.Filled.Upload, null) },
                 onClick = { menuExpanded = false; onExport() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Game Details") },
+                text = { Text(stringResource(R.string.shortcuts_game_details)) },
                 leadingIcon = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { menuExpanded = false; onGameDetails() },
             )
@@ -4672,7 +5397,7 @@ private fun ShortcutOverflowButton(
             if (onCloudSaves != null) {
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Cloud Saves") },
+                    text = { Text(stringResource(R.string.shortcuts_cloud_saves)) },
                     leadingIcon = { Icon(Icons.Filled.CloudSync, null, tint = MaterialTheme.colorScheme.primary) },
                     onClick = { menuExpanded = false; onCloudSaves() },
                 )
@@ -4681,7 +5406,7 @@ private fun ShortcutOverflowButton(
             if (onBackupSaves != null) {
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Back up saves") },
+                    text = { Text(stringResource(R.string.shortcuts_back_up_saves)) },
                     leadingIcon = { Icon(Icons.Filled.Archive, null, tint = MaterialTheme.colorScheme.primary) },
                     onClick = { menuExpanded = false; onBackupSaves() },
                 )
@@ -4689,32 +5414,32 @@ private fun ShortcutOverflowButton(
             if (onRestoreSaves != null) {
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("Restore saves") },
+                    text = { Text(stringResource(R.string.shortcuts_restore_saves)) },
                     leadingIcon = { Icon(Icons.Filled.Unarchive, null, tint = MaterialTheme.colorScheme.primary) },
                     onClick = { menuExpanded = false; onRestoreSaves() },
                 )
             }
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Scrape cover") },
+                text = { Text(stringResource(R.string.shortcuts_scrape_cover)) },
                 leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { menuExpanded = false; onScrapeCover() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Community configs") },
+                text = { Text(stringResource(R.string.shortcuts_community_configs)) },
                 leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { menuExpanded = false; onCommunityConfigs() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("View logs") },
+                text = { Text(stringResource(R.string.shortcuts_view_logs)) },
                 leadingIcon = { Icon(Icons.Filled.Description, null) },
                 onClick = { menuExpanded = false; onViewLogs() },
             )
             MenuItemDivider()
             DropdownMenuItem(
-                text = { Text("Properties") },
+                text = { Text(stringResource(R.string.shortcuts_properties)) },
                 leadingIcon = { Icon(Icons.Filled.Info, null) },
                 onClick = { menuExpanded = false; onProperties() },
             )
@@ -4855,39 +5580,39 @@ private fun ShortcutGridItem(
             onDismissRequest = { menuExpanded = false },
             modifier = Modifier.outlinedMenuCard(),
         ) {
-            DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_settings)) }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Remove") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_action_remove)) }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_clone_to_container)) }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_add_to_home_screen)) }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_action_export)) }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Game Details") }, leadingIcon = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onGameDetails() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_game_details)) }, leadingIcon = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onGameDetails() })
             // Steam-origin only — opens the Save Manager focused on this game.
             if (onCloudSaves != null) {
                 MenuItemDivider()
-                DropdownMenuItem(text = { Text("Cloud Saves") }, leadingIcon = { Icon(Icons.Filled.CloudSync, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCloudSaves() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_cloud_saves)) }, leadingIcon = { Icon(Icons.Filled.CloudSync, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCloudSaves() })
             }
             // Custom-import games only — local save backup/restore (the non-Steam equivalent).
             if (onBackupSaves != null) {
                 MenuItemDivider()
-                DropdownMenuItem(text = { Text("Back up saves") }, leadingIcon = { Icon(Icons.Filled.Archive, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onBackupSaves() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_back_up_saves)) }, leadingIcon = { Icon(Icons.Filled.Archive, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onBackupSaves() })
             }
             if (onRestoreSaves != null) {
                 MenuItemDivider()
-                DropdownMenuItem(text = { Text("Restore saves") }, leadingIcon = { Icon(Icons.Filled.Unarchive, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onRestoreSaves() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_restore_saves)) }, leadingIcon = { Icon(Icons.Filled.Unarchive, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onRestoreSaves() })
             }
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Scrape cover") }, leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onScrapeCover() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_scrape_cover)) }, leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onScrapeCover() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Community configs") }, leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCommunityConfigs() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_community_configs)) }, leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCommunityConfigs() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("View logs") }, leadingIcon = { Icon(Icons.Filled.Description, null) }, onClick = { menuExpanded = false; onViewLogs() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_view_logs)) }, leadingIcon = { Icon(Icons.Filled.Description, null) }, onClick = { menuExpanded = false; onViewLogs() })
             MenuItemDivider()
-            DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_properties)) }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
         }
     }
 }
@@ -4940,7 +5665,9 @@ private fun GameDetailsSheet(
             val results = SteamStoreSearch.searchByName(query)
             withContext(Dispatchers.Main) {
                 searchResults = results
-                if (results.isEmpty()) searchError = "No results found for \"$query\""
+                if (results.isEmpty()) {
+                    searchError = context.getString(R.string.shortcuts_no_results_for_query, query)
+                }
                 searching = false
             }
         }
@@ -5023,10 +5750,14 @@ private fun GameDetailsSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel", tint = OnSurface)
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.shortcuts_action_cancel),
+                            tint = OnSurface,
+                        )
                     }
                     Text(
-                        text = "Edit Game",
+                        text = stringResource(R.string.shortcuts_edit_game),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = OnSurface,
@@ -5038,7 +5769,11 @@ private fun GameDetailsSheet(
                         if (saving) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
-                            Text("Save", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                stringResource(R.string.shortcuts_action_save),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
                         }
                     }
                 }
@@ -5057,7 +5792,11 @@ private fun GameDetailsSheet(
                             SteamResultThumbnail(id)
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Text("Linked to Steam App ID:", fontSize = 11.sp, color = OnSurfaceVariant)
+                                Text(
+                                    stringResource(R.string.shortcuts_linked_steam_app_id),
+                                    fontSize = 11.sp,
+                                    color = OnSurfaceVariant,
+                                )
                                 Text(
                                     "$id",
                                     fontSize = 13.sp,
@@ -5068,24 +5807,39 @@ private fun GameDetailsSheet(
                                     onClick = { linkedAppId = null },
                                     contentPadding = PaddingValues(0.dp),
                                     modifier = Modifier.height(28.dp),
-                                ) { Text("Unlink", fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+                                ) {
+                                    Text(
+                                        stringResource(R.string.shortcuts_unlink),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
                             }
                         }
                         Divider(color = DividerColor)
                     }
 
                     // Game name + Search Steam.
-                    Text("Game Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                    Text(
+                        stringResource(R.string.shortcuts_game_name),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = OnSurfaceVariant,
+                    )
                     OutlinedTextField(
                         value = nameField,
                         onValueChange = { nameField = it; searchResults = emptyList(); searchError = null },
-                        placeholder = { Text("Enter game name") },
+                        placeholder = { Text(stringResource(R.string.shortcuts_enter_game_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
                             if (nameField.isNotBlank()) {
                                 IconButton(onClick = { nameField = ""; searchResults = emptyList() }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = stringResource(R.string.shortcuts_clear),
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 }
                             }
                         },
@@ -5101,17 +5855,21 @@ private fun GameDetailsSheet(
                                 Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
                             Spacer(Modifier.width(6.dp))
-                            Text("Search Steam", fontSize = 13.sp)
+                            Text(stringResource(R.string.shortcuts_search_steam), fontSize = 13.sp)
                         }
                         if (filling) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(6.dp))
-                            Text("Loading…", fontSize = 12.sp, color = OnSurfaceVariant)
+                            Text(stringResource(R.string.shortcuts_loading), fontSize = 12.sp, color = OnSurfaceVariant)
                         }
                     }
                     searchError?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
                     if (searchResults.isNotEmpty()) {
-                        Text("Tap a result to auto-fill all fields:", fontSize = 11.sp, color = OnSurfaceVariant)
+                        Text(
+                            stringResource(R.string.shortcuts_tap_result_autofill),
+                            fontSize = 11.sp,
+                            color = OnSurfaceVariant,
+                        )
                         searchResults.forEach { hit ->
                             Row(
                                 modifier = Modifier
@@ -5125,7 +5883,11 @@ private fun GameDetailsSheet(
                                 SteamResultThumbnail(hit.appId)
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(hit.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("App ID: ${hit.appId}", fontSize = 11.sp, color = OnSurfaceVariant)
+                                    Text(
+                                        stringResource(R.string.shortcuts_app_id, hit.appId),
+                                        fontSize = 11.sp,
+                                        color = OnSurfaceVariant,
+                                    )
                                 }
                             }
                         }
@@ -5134,22 +5896,36 @@ private fun GameDetailsSheet(
                     Divider(color = DividerColor)
 
                     // Genres.
-                    Text("Genres", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                    Text(
+                        stringResource(R.string.shortcuts_genres),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = OnSurfaceVariant,
+                    )
                     OutlinedTextField(
                         value = genresField,
                         onValueChange = { genresField = it },
-                        placeholder = { Text("e.g. Action, RPG, Strategy") },
+                        placeholder = { Text(stringResource(R.string.shortcuts_genres_example)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        supportingText = { Text("Comma-separated", fontSize = 10.sp) },
+                        supportingText = {
+                            Text(stringResource(R.string.shortcuts_comma_separated), fontSize = 10.sp)
+                        },
                     )
 
                     // Description.
-                    Text("Description", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                    Text(
+                        stringResource(R.string.shortcuts_description),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = OnSurfaceVariant,
+                    )
                     OutlinedTextField(
                         value = descField,
                         onValueChange = { descField = it },
-                        placeholder = { Text("Short description shown on the launch screen") },
+                        placeholder = {
+                            Text(stringResource(R.string.shortcuts_description_launch_screen_hint))
+                        },
                         minLines = 3,
                         maxLines = 5,
                         modifier = Modifier.fillMaxWidth(),
@@ -5158,27 +5934,39 @@ private fun GameDetailsSheet(
                     // Release year + Metacritic.
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Release Year", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                            Text(
+                                stringResource(R.string.shortcuts_release_year),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = OnSurfaceVariant,
+                            )
                             Spacer(Modifier.height(4.dp))
                             OutlinedTextField(
                                 value = yearField,
                                 onValueChange = { if (it.length <= 4) yearField = it.filter { c -> c.isDigit() } },
-                                placeholder = { Text("e.g. 2023") },
+                                placeholder = { Text(stringResource(R.string.shortcuts_year_example)) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Metacritic", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                            Text(
+                                stringResource(R.string.shortcuts_metacritic),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = OnSurfaceVariant,
+                            )
                             Spacer(Modifier.height(4.dp))
                             OutlinedTextField(
                                 value = metaField,
                                 onValueChange = { if (it.length <= 3) metaField = it.filter { c -> c.isDigit() } },
-                                placeholder = { Text("1–100") },
+                                placeholder = { Text(stringResource(R.string.shortcuts_metacritic_range)) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                supportingText = { Text("Leave blank to hide", fontSize = 10.sp) },
+                                supportingText = {
+                                    Text(stringResource(R.string.shortcuts_leave_blank_to_hide), fontSize = 10.sp)
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
@@ -5343,12 +6131,12 @@ private fun DpCheck(dp: SettingsDpad, id: String, checked: Boolean, onCheckedCha
 
 // Labels for the six root perf keys (extraData name -> display label), matching PerfRootApplier.KEY_*.
 private val ROOT_PERF_LABELS = mapOf(
-    "rootCpuGovernorPerf" to "CPU governor → performance",
-    "rootCpuFreqLockMax" to "Lock CPU frequency to max",
-    "rootAllCoresOnline" to "Keep all cores online",
-    "rootGpuMaxClockLock" to "Lock GPU to max clock",
-    "rootThermalDisable" to "Disable thermal throttling",
-    "rootFanMax" to "Fan to maximum",
+    "rootCpuGovernorPerf" to R.string.shortcuts_perf_cpu_governor,
+    "rootCpuFreqLockMax" to R.string.shortcuts_perf_lock_cpu_frequency,
+    "rootAllCoresOnline" to R.string.shortcuts_perf_keep_all_cores_online,
+    "rootGpuMaxClockLock" to R.string.shortcuts_perf_lock_gpu_clock,
+    "rootThermalDisable" to R.string.shortcuts_perf_disable_thermal_throttling,
+    "rootFanMax" to R.string.shortcuts_perf_fan_maximum,
 )
 
 /** Per-game override value to persist, or null (clear the extra) when it equals the global default. */
@@ -5369,10 +6157,12 @@ private fun PerfEditRow(dp: SettingsDpad, id: String, label: String, checked: Bo
         Spacer(Modifier.width(8.dp))
         Text(label, fontSize = 13.sp, modifier = Modifier.weight(1f))
         if (overridden) Text(
-            "● Reset", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary,
+            stringResource(R.string.shortcuts_reset_indicator),
+            fontSize = 11.sp, color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.clickable { onChange(global) }.padding(start = 8.dp)
         ) else Text(
-            "default", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            stringResource(R.string.shortcuts_default_indicator),
+            fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 8.dp)
         )
     }
@@ -5437,13 +6227,15 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
     var midiList by remember { mutableStateOf(listOf<String>()) }
 
     // Screen size
-    val screenSizeEntries = remember { res.getStringArray(R.array.screen_size_entries).toList() }
+    val customScreenLabel = stringResource(R.string.shortcuts_custom)
+    val screenSizeEntries = res.getStringArray(R.array.screen_size_entries)
+        .mapIndexed { index, value -> if (index == 0) customScreenLabel else value }
     val rawScreenSize = remember { shortcut.getExtra("screenSize", shortcut.container.getScreenSize()) }
-    var selectedScreenSize by remember {
+    var selectedScreenSize by remember(screenSizeEntries, customScreenLabel) {
         val display = screenSizeEntries.firstOrNull {
             StringUtils.parseIdentifier(it).equals(rawScreenSize, ignoreCase = true)
         }
-        mutableStateOf(display ?: "Custom")
+        mutableStateOf(display ?: customScreenLabel)
     }
     var customWidth by remember {
         mutableStateOf(if (rawScreenSize.contains("x")) rawScreenSize.substringBefore("x") else "800")
@@ -5791,7 +6583,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
 
     // Tab
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabTitles = listOf("Win Components", "Env Vars", "Advanced")
+    val tabTitles = listOf(
+        stringResource(R.string.shortcuts_tab_win_components),
+        stringResource(R.string.shortcuts_tab_env_vars),
+        stringResource(R.string.shortcuts_tab_advanced),
+    )
 
     // Icon picker
     fun applyIconFromUri(uri: Uri) {
@@ -5881,7 +6677,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
             renameShortcut(shortcut, newName)
         }
 
-        val screenSize = if (selectedScreenSize == "Custom") {
+        val screenSize = if (selectedScreenSize == customScreenLabel) {
             val w = customWidth.trim(); val h = customHeight.trim()
             if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {
                 val wi = w.toInt(); val hi = h.toInt()
@@ -5998,7 +6794,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
     // itself is here so Left/Right switches tabs and the whole top form + OK/Cancel are controller-driven.
     val dpadIds = buildList {
         add("titleX"); add("name"); add("execArgs"); add("screenSize")
-        if (selectedScreenSize == "Custom") { add("customW"); add("customH") }
+        if (selectedScreenSize == customScreenLabel) { add("customW"); add("customH") }
         add("selectIcon"); add("gfxDriver"); add("gfxWrapper"); add("gfxConfig")
         add("dxWrapper"); add("dxConfig"); add("renderer")
         if (selectedRenderer == "SurfaceFlinger") add("sfCompat")
@@ -6040,7 +6836,10 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                     Text(shortcut.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     DpButton(dp, "titleX", onActivate = onDismiss) {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.shortcuts_action_close),
+                            )
                         }
                     }
                 }
@@ -6078,13 +6877,13 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         selected = selectedScreenSize,
                         onSelect = { selectedScreenSize = it }
                     )
-                    if (selectedScreenSize == "Custom") {
+                    if (selectedScreenSize == customScreenLabel) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             DpField(
                                 dp, "customW",
                                 value = customWidth,
                                 onValueChange = { customWidth = it },
-                                label = "Width",
+                                label = stringResource(R.string.shortcuts_width),
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
                                 onRightId = "customH"
@@ -6093,7 +6892,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 dp, "customH",
                                 value = customHeight,
                                 onValueChange = { customHeight = it },
-                                label = "Height",
+                                label = stringResource(R.string.shortcuts_height),
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
                                 onLeftId = "customW"
@@ -6113,15 +6912,21 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         Box(modifier = Modifier.weight(1f)) {
                             DpButton(dp, "selectIcon", onActivate = { showIconPickMenu = true }, modifier = Modifier.fillMaxWidth()) {
                                 OutlinedButton(onClick = { showIconPickMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Select Icon")
+                                    Text(stringResource(R.string.shortcuts_select_icon))
                                 }
                             }
                             DropdownMenu(expanded = showIconPickMenu, onDismissRequest = { showIconPickMenu = false }) {
-                                DropdownMenuItem(text = { Text("Browse files") }, onClick = {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_browse_files)) }, onClick = {
                                     showIconPickMenu = false
-                                    iconPickerInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select icon image"))
+                                    iconPickerInAppLauncher.launch(
+                                        InAppFilePicker.buildIntent(
+                                            context,
+                                            InAppFilePicker.IMAGES,
+                                            context.getString(R.string.shortcuts_picker_select_icon_image),
+                                        )
+                                    )
                                 })
-                                DropdownMenuItem(text = { Text("Pick via system…") }, onClick = {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.shortcuts_pick_via_system)) }, onClick = {
                                     showIconPickMenu = false
                                     iconPickerLauncher.launch("image/*")
                                 })
@@ -6132,7 +6937,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                     // "What is all this?" — the same newcomer glossary the container editor shows,
                     // reused verbatim so the per-game editor's terms match the container's.
                     TextButton(onClick = { glossaryQuery = "" }) {
-                        Text("❔  What is all this?")
+                        Text(stringResource(R.string.shortcuts_what_is_all_this))
                     }
 
                     // Graphics Driver + wrapper manager (cloud)
@@ -6148,7 +6953,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             onRightId = "gfxWrapper"
                         )
                         IconButton(onClick = { helpRes = R.string.help_graphics_driver }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                         DpButton(dp, "gfxWrapper", onActivate = { showWrapperManager = true }, onLeftId = "gfxDriver") {
                             IconButton(onClick = { showWrapperManager = true }) {
@@ -6162,7 +6971,13 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                     })
                     DpButton(dp, "gfxConfig", onActivate = { showGfxConfig = true }, modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(onClick = { showGfxConfig = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text("${stringResource(R.string.graphics_driver)}: ${GraphicsDriverConfigDialog.getVersion(graphicsDriverConfig)}")
+                            Text(
+                                stringResource(
+                                    R.string.shortcuts_label_value,
+                                    stringResource(R.string.graphics_driver),
+                                    GraphicsDriverConfigDialog.getVersion(graphicsDriverConfig),
+                                )
+                            )
                         }
                     }
 
@@ -6177,7 +6992,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { helpRes = R.string.dxwrapper_help_content }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     DpButton(dp, "dxConfig", onActivate = {
@@ -6192,7 +7011,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 else showWineD3DConfig = true
                             },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("DX Wrapper Config") }
+                        ) { Text(stringResource(R.string.shortcuts_dx_wrapper_config)) }
                     }
 
                     // Renderer (host) — per-game override of the container's OpenGL/Vulkan choice.
@@ -6211,7 +7030,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { helpRes = R.string.help_renderer }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     if (showSfWarning) {
@@ -6234,7 +7057,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 )
                             }
                             IconButton(onClick = { helpRes = R.string.help_renderer_sf_compat }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                             DpSwitch(dp, "sfCompat", checked = sfCompatMode, onCheckedChange = { sfCompatMode = it })
                         }
@@ -6245,7 +7072,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(R.string.renderer_native), Modifier.weight(1f))
                             IconButton(onClick = { helpRes = R.string.help_renderer_native }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                             DpSwitch(dp, "vkNative", checked = vkNative, onCheckedChange = { vkNative = it })
                         }
@@ -6263,7 +7094,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = { helpRes = R.string.help_renderer_colors }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
                         // Present mode is ignored under Native Rendering (direct scanout), so grey it out.
@@ -6285,7 +7120,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 modifier = (if (vkNative) Modifier.alpha(0.5f) else Modifier).weight(1f)
                             )
                             IconButton(onClick = { helpRes = R.string.renderer_present_mode_help_content }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
                         // FG temporarily forces Mailbox; caption the field so FIFO-while-FG-selected isn't confusing.
@@ -6301,11 +7140,16 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                     // Render scale (supersampling) — per-game override of the container default.
                     run {
                         val renderScaleValues = listOf("1.0", "1.25", "1.5", "2.0")
-                        val renderScaleLabels = listOf("Off", "1.25x", "1.5x", "2x")
+                        val renderScaleLabels = listOf(
+                            stringResource(R.string.shortcuts_off),
+                            "1.25x",
+                            "1.5x",
+                            "2x",
+                        )
                         val rsIdx = renderScaleValues.indexOf(renderScale).coerceAtLeast(0)
                         DpDrop(
                             dp, "renderScale",
-                            label = "Render scale (supersampling)",
+                            label = stringResource(R.string.shortcuts_render_scale),
                             options = renderScaleLabels,
                             selected = renderScaleLabels[rsIdx],
                             onSelect = { renderScale = renderScaleValues[renderScaleLabels.indexOf(it)] }
@@ -6327,7 +7171,9 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 stringResource(R.string.use_container_default),
                                 stringResource(R.string.in_game_refresh_locked),
                                 stringResource(R.string.max_game_refresh_rate_unlimited)) +
-                                ratesAbove60.map { "$it Hz" }
+                                ratesAbove60.map {
+                                    stringResource(R.string.shortcuts_hz_value, it)
+                                }
                             val currentValue = when {
                                 unlockGameRefreshRate.isEmpty() && maxGameRefreshRate.isEmpty() -> ""
                                 unlockGameRefreshRate == "0" -> "locked"
@@ -6377,7 +7223,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 modifier = (if (!fgVulkan) Modifier.alpha(0.5f) else Modifier).weight(1f)
                             )
                             IconButton(onClick = { helpRes = R.string.help_frame_generation }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
                         if (!fgVulkan) {
@@ -6402,7 +7252,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.fps_limiter), modifier = Modifier.weight(1f))
                         IconButton(onClick = { helpRes = R.string.help_fps_limiter }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
 
@@ -6423,35 +7277,50 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { perfExpanded = !perfExpanded }.padding(vertical = 8.dp)
                     ) {
-                        Text("Performance", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        Text(stringResource(R.string.shortcuts_performance), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                             modifier = Modifier.weight(1f))
                         Text(
-                            if (perfOverrideCount > 0) "$perfOverrideCount overridden" else "Global defaults",
+                            if (perfOverrideCount > 0) {
+                                pluralStringResource(
+                                    R.plurals.shortcuts_overridden_settings,
+                                    perfOverrideCount,
+                                    perfOverrideCount,
+                                )
+                            } else {
+                                stringResource(R.string.shortcuts_global_defaults)
+                            },
                             fontSize = 11.sp,
                             color = if (perfOverrideCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(end = 6.dp)
                         )
                         Icon(
                             if (perfExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (perfExpanded) "Collapse" else "Expand"
+                            contentDescription = stringResource(
+                                if (perfExpanded) R.string.shortcuts_collapse
+                                else R.string.shortcuts_expand
+                            )
                         )
                     }
 
                     if (perfExpanded) {
-                        PerfEditRow(dp, "sustainedPerf", "Sustained Performance Mode", sustainedPerfMode,
+                        PerfEditRow(dp, "sustainedPerf", stringResource(R.string.shortcuts_sustained_performance_mode), sustainedPerfMode,
                             com.winlator.star.perf.PerformanceSettings.sustainedPerfMode.value) { sustainedPerfMode = it }
-                        PerfEditRow(dp, "perfPriority", "Thread Priority Boost", perfPriorityBoost,
+                        PerfEditRow(dp, "perfPriority", stringResource(R.string.shortcuts_thread_priority_boost), perfPriorityBoost,
                             com.winlator.star.perf.PerformanceSettings.perfPriorityBoost.value) { perfPriorityBoost = it }
-                        PerfEditRow(dp, "preferBigCores", "Prefer Big Cores", preferBigCores,
+                        PerfEditRow(dp, "preferBigCores", stringResource(R.string.shortcuts_prefer_big_cores), preferBigCores,
                             com.winlator.star.perf.PerformanceSettings.preferBigCores.value) { preferBigCores = it }
                         // Root six (per-game overrides; only take effect with root, honored at launch).
                         for (rk in com.winlator.star.perf.PerfRootApplier.ROOT_KEYS) {
-                            PerfEditRow(dp, rk, ROOT_PERF_LABELS[rk] ?: rk, rootOverrides[rk] ?: false,
+                            PerfEditRow(
+                                dp,
+                                rk,
+                                ROOT_PERF_LABELS[rk]?.let { stringResource(it) } ?: rk,
+                                rootOverrides[rk] ?: false,
                                 com.winlator.star.perf.PerformanceSettings.rootDefaultValue(rk)) { rootOverrides[rk] = it }
                         }
                         // Reset ALL 9 perf keys to the global defaults (visible when this game overrides any).
                         if (anyPerfOverride) {
-                            Text("↺ Reset all performance toggles to global",
+                            Text(stringResource(R.string.shortcuts_reset_performance_to_global),
                                 fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     sustainedPerfMode = com.winlator.star.perf.PerformanceSettings.sustainedPerfMode.value
@@ -6474,14 +7343,18 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { helpRes = R.string.help_audio_driver }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
 
                     // Emulator
                     DpDrop(
                         dp, "emulator",
-                        label = "Emulator",
+                        label = stringResource(R.string.shortcuts_emulator),
                         options = emulatorEntries,
                         selected = selectedEmulator,
                         onSelect = { selectedEmulator = it },
@@ -6493,7 +7366,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         val midiDisplay = midiList.firstOrNull { it == selectedMidi } ?: midiList.first()
                         DpDrop(
                             dp, "midi",
-                            label = "MIDI Sound Font",
+                            label = stringResource(R.string.shortcuts_midi_sound_font),
                             options = midiList,
                             selected = midiDisplay,
                             onSelect = { selectedMidi = it }
@@ -6505,7 +7378,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         dp, "lcAll",
                         value = lcAll,
                         onValueChange = { lcAll = it },
-                        label = "LC_ALL",
+                        label = stringResource(R.string.shortcuts_lc_all),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -6536,11 +7409,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                     // Close the session when this game exits (per-game override; container default is ON)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         DpCheck(dp, "autoClose", checked = autoCloseOnExit, onCheckedChange = { autoCloseOnExit = it })
-                        Text("Close when game exits")
+                        Text(stringResource(R.string.shortcuts_close_when_game_exits))
                     }
 
                     // Input section
-                    SectionBox(title = "Input") {
+                    SectionBox(title = stringResource(R.string.shortcuts_input)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             DpSwitch(
                                 dp, "enableXInput",
@@ -6551,7 +7424,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.enable_xinput_for_wine_game), modifier = Modifier.weight(1f))
                             IconButton(onClick = { helpRes = R.string.help_xinput }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -6564,7 +7441,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.enable_dinput_for_wine_game), modifier = Modifier.weight(1f))
                             IconButton(onClick = { helpRes = R.string.help_dinput }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -6578,22 +7459,26 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                 }
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Exclusive Input", modifier = Modifier.weight(1f))
+                            Text(stringResource(R.string.shortcuts_exclusive_input), modifier = Modifier.weight(1f))
                             IconButton(onClick = { helpRes = R.string.help_exclusive_xinput }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             DpCheck(dp, "disableXInput", checked = disabledXInput, onCheckedChange = { disabledXInput = it })
-                            Text("Disable XInput")
+                            Text(stringResource(R.string.shortcuts_disable_xinput))
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             DpCheck(dp, "simTouch", checked = simTouchScreen, onCheckedChange = { simTouchScreen = it })
-                            Text("Touchscreen Mode")
+                            Text(stringResource(R.string.shortcuts_touchscreen_mode))
                         }
                         DpDrop(
                             dp, "numControllers",
-                            label = "Num Controllers",
+                            label = stringResource(R.string.shortcuts_num_controllers),
                             options = numControllersEntries,
                             selected = selectedNumControllers,
                             onSelect = { selectedNumControllers = it }
@@ -6605,19 +7490,27 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         // empty override starts from an all-auto ("{}") view.
                         Spacer(Modifier.height(12.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Player Slots", modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                            Text(
+                                stringResource(R.string.shortcuts_player_slots),
+                                modifier = Modifier.weight(1f),
+                                fontWeight = FontWeight.Medium,
+                            )
                             IconButton(onClick = { helpRes = R.string.help_player_slots }) {
-                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Help,
+                                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                             if (controllerSlotOverridesJson.isNotEmpty()) {
                                 TextButton(onClick = { controllerSlotOverridesJson = "" }) {
-                                    Text("Use container default")
+                                    Text(stringResource(R.string.shortcuts_use_container_default))
                                 }
                             }
                         }
                         if (controllerSlotOverridesJson.isEmpty()) {
                             Text(
-                                "Inheriting the container's Player Slots. Pin a controller below to set a per-game override.",
+                                stringResource(R.string.shortcuts_player_slots_inherited),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -6658,7 +7551,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(onClick = { helpRes = R.string.help_gyro_mode }) {
-                                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.Help,
+                                        contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
@@ -6683,7 +7580,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(onClick = { helpRes = R.string.help_gyro_target }) {
-                                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.Help,
+                                        contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 }
                             }
                             val gyroActivatorLabels = listOf(
@@ -6705,7 +7606,11 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(onClick = { helpRes = R.string.help_gyro_activator }) {
-                                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.Help,
+                                        contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 }
                             }
                             // Hold vs Toggle for that button — hidden under "Always On", which has no
@@ -6727,18 +7632,30 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                                         modifier = Modifier.weight(1f)
                                     )
                                     IconButton(onClick = { helpRes = R.string.help_gyro_activation_mode }) {
-                                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                        Icon(
+                                            Icons.Default.Help,
+                                            contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                            modifier = Modifier.size(18.dp),
+                                        )
                                     }
                                 }
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    "${stringResource(R.string.gyro_sensitivity_label)}: ${"%.1f".format(gyroSensitivity)}",
+                                    stringResource(
+                                        R.string.shortcuts_label_value,
+                                        stringResource(R.string.gyro_sensitivity_label),
+                                        "%.1f".format(gyroSensitivity),
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(onClick = { helpRes = R.string.help_gyro_sensitivity }) {
-                                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.Help,
+                                        contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 }
                             }
                             DpSlider(
@@ -6942,11 +7859,14 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
 private fun ScWinComponentsTab(components: androidx.compose.runtime.snapshots.SnapshotStateList<WinComponentEntry>) {
     val directx = components.filter { it.key.startsWith("direct") }
     val general = components.filterNot { it.key.startsWith("direct") }
-    val options = listOf("Builtin (Wine)", "Native (Windows)")
+    val options = listOf(
+        stringResource(R.string.shortcuts_builtin_wine),
+        stringResource(R.string.shortcuts_native_windows),
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (directx.isNotEmpty()) {
-            SectionBox(title = "DirectX") {
+            SectionBox(title = stringResource(R.string.shortcuts_directx)) {
                 directx.forEach { comp ->
                     LabeledDropdown(
                         label = comp.label,
@@ -6963,7 +7883,7 @@ private fun ScWinComponentsTab(components: androidx.compose.runtime.snapshots.Sn
             Spacer(Modifier.height(8.dp))
         }
         if (general.isNotEmpty()) {
-            SectionBox(title = "General") {
+            SectionBox(title = stringResource(R.string.shortcuts_general)) {
                 general.forEach { comp ->
                     LabeledDropdown(
                         label = comp.label,
@@ -7058,7 +7978,7 @@ private fun ScAdvancedTab(
         SectionBox(title = emulatorLabel) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 LabeledDropdown(
-                    label = "$emulatorLabel Version",
+                    label = stringResource(R.string.shortcuts_named_version, emulatorLabel),
                     options = box64Versions,
                     selectedOption = box64Versions.firstOrNull { it == selectedBox64Version } ?: selectedBox64Version,
                     onSelect = onBox64VersionChange,
@@ -7071,13 +7991,17 @@ private fun ScAdvancedTab(
                     contentPadding = PaddingValues(0.dp),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = "Download Box64", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.shortcuts_download_named, emulatorLabel),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))
             val presetNames = box64Presets.map { it.name }
             LabeledDropdown(
-                label = "$emulatorLabel Preset",
+                label = stringResource(R.string.shortcuts_named_preset, emulatorLabel),
                 options = presetNames,
                 selectedOption = presetNames.getOrElse(selectedBox64PresetIndex) { "" },
                 onSelect = { opt -> onBox64PresetIndexChange(presetNames.indexOf(opt).coerceAtLeast(0)) }
@@ -7085,7 +8009,7 @@ private fun ScAdvancedTab(
         }
 
         if (isArm64EC) {
-            SectionBox(title = "FEXCore") {
+            SectionBox(title = stringResource(R.string.shortcuts_fexcore)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     LabeledDropdown(
                         label = stringResource(R.string.fexcore_version),
@@ -7095,7 +8019,11 @@ private fun ScAdvancedTab(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_fexcore_version }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     OutlinedButton(
                         onClick = onShowFexCoreDownloadSheet,
@@ -7104,7 +8032,11 @@ private fun ScAdvancedTab(
                         contentPadding = PaddingValues(0.dp),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Download FEXCore", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.shortcuts_download_named, "FEXCore"),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -7118,7 +8050,11 @@ private fun ScAdvancedTab(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_fexcore_preset }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
             }
@@ -7127,7 +8063,7 @@ private fun ScAdvancedTab(
         val profileNames = mutableListOf(stringResource(R.string.none))
         profileNames.addAll(controlsProfiles.map { it.getName() })
         LabeledDropdown(
-            label = "Controls Profile",
+            label = stringResource(R.string.shortcuts_controls_profile),
             options = profileNames,
             selectedOption = profileNames.getOrElse(selectedControlsProfileIndex) { profileNames.first() },
             onSelect = { opt -> onControlsProfileChange(profileNames.indexOf(opt).coerceAtLeast(0)) }
@@ -7142,7 +8078,11 @@ private fun ScAdvancedTab(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = { helpRes = R.string.help_startup_selection }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Help,
+                    contentDescription = stringResource(R.string.shortcuts_what_is_this),
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
 
@@ -7167,22 +8107,28 @@ private fun ScAdvancedTab(
             )
         }
 
-        SectionBox(title = "Sharpness (VKBasalt)") {
+        SectionBox(title = stringResource(R.string.shortcuts_sharpness_vkbasalt)) {
             LabeledDropdown(
-                label = "Effect",
+                label = stringResource(R.string.shortcuts_effect),
                 options = sharpnessEffectEntries,
                 selectedOption = selectedSharpnessEffect,
                 onSelect = onSharpnessEffectChange
             )
             Spacer(Modifier.height(8.dp))
-            Text("Level: $sharpnessLevel%", style = MaterialTheme.typography.bodySmall)
+            Text(
+                stringResource(R.string.shortcuts_level_percent, sharpnessLevel),
+                style = MaterialTheme.typography.bodySmall,
+            )
             Slider(
                 value = sharpnessLevel.toFloat(),
                 onValueChange = { onSharpnessLevelChange(it.toInt()) },
                 valueRange = 0f..100f,
                 steps = 99
             )
-            Text("Denoise: $sharpnessDenoise%", style = MaterialTheme.typography.bodySmall)
+            Text(
+                stringResource(R.string.shortcuts_denoise_percent, sharpnessDenoise),
+                style = MaterialTheme.typography.bodySmall,
+            )
             Slider(
                 value = sharpnessDenoise.toFloat(),
                 onValueChange = { onSharpnessDenoiseChange(it.toInt()) },
@@ -7193,7 +8139,7 @@ private fun ScAdvancedTab(
 
         // ReShade multi-effect loadout (vkBasalt drop-in). Multi-select picker + solo/stack mode + a
         // collapsible per-effect param block. Only applies to DXVK/VKD3D (Vulkan) games — a hint shows.
-        SectionBox(title = "ReShade loadout") {
+        SectionBox(title = stringResource(R.string.shortcuts_reshade_loadout)) {
             ReshadeLoadoutEditor(
                 state = reshadeLoadout,
                 effects = reshadeEffects,
@@ -7351,7 +8297,11 @@ private fun exportShortcut(context: Context, shortcut: Shortcut) {
         val folderUri = Uri.parse(uriString)
         val pickedDir = DocumentFile.fromTreeUri(context, folderUri)
         if (pickedDir == null || !pickedDir.canWrite()) {
-            Toast.makeText(context, "Cannot write to the selected folder", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.shortcuts_selected_folder_not_writable),
+                Toast.LENGTH_SHORT,
+            ).show()
             return
         }
         File(FileUtils.getFilePathFromUri(context, folderUri))
@@ -7360,7 +8310,11 @@ private fun exportShortcut(context: Context, shortcut: Shortcut) {
     }
 
     if (!shortcutsDir.exists() && !shortcutsDir.mkdirs()) {
-        Toast.makeText(context, "Failed to create default directory", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.shortcuts_create_default_directory_failed),
+            Toast.LENGTH_SHORT,
+        ).show()
         return
     }
 
@@ -7388,11 +8342,19 @@ private fun exportShortcut(context: Context, shortcut: Shortcut) {
 
         Toast.makeText(
             context,
-            if (fileExists) "Shortcut updated at ${exportFile.path}" else "Shortcut exported to ${exportFile.path}",
+            context.getString(
+                if (fileExists) R.string.shortcuts_shortcut_updated_at
+                else R.string.shortcuts_shortcut_exported_to,
+                exportFile.path,
+            ),
             Toast.LENGTH_LONG,
         ).show()
     } catch (_: IOException) {
-        Toast.makeText(context, "Failed to export shortcut", Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.shortcuts_export_shortcut_failed),
+            Toast.LENGTH_LONG,
+        ).show()
     }
 }
 
@@ -7414,13 +8376,13 @@ private fun SdCardBadge(modifier: Modifier = Modifier) {
     ) {
         Icon(
             Icons.Default.SdCard,
-            contentDescription = "On SD card",
+            contentDescription = stringResource(R.string.shortcuts_on_sd_card),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(11.dp),
         )
         Spacer(Modifier.width(3.dp))
         Text(
-            "SD",
+            stringResource(R.string.shortcuts_sd),
             color = Color.White,
             style = MaterialTheme.typography.labelSmall,
         )
@@ -7554,7 +8516,7 @@ private fun ScannedGameRow(
             )
             when {
                 candidate.alreadyAdded -> Text(
-                    "Already added",
+                    stringResource(R.string.shortcuts_already_added),
                     color = OnSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                 )
@@ -7562,7 +8524,7 @@ private fun ScannedGameRow(
                 // Capped at two lines: a long name like AIO-Graphics-Test-64bit.exe otherwise wraps
                 // to three and makes the cards uneven.
                 candidate.uncertain -> Text(
-                    "Check this one — ${candidate.exe.name}",
+                    stringResource(R.string.shortcuts_check_this_exe, candidate.exe.name),
                     color = MaterialTheme.colorScheme.tertiary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -7580,7 +8542,9 @@ private fun ScannedGameRow(
         // Available on EVERY row, not just flagged ones — a confident pick can still be the wrong
         // one, and the user is the only one who actually knows.
         if (!candidate.alreadyAdded) {
-            TextButton(onClick = onChangeExe, enabled = enabled) { Text("Change") }
+            TextButton(onClick = onChangeExe, enabled = enabled) {
+                Text(stringResource(R.string.shortcuts_action_change))
+            }
         }
     }
     }

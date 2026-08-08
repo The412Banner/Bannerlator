@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="color_preview">Preview</string>
+    <string name="color_hue">Hue</string>
+    <string name="color_saturation">Saturation</string>
+    <string name="color_brightness">Brightness</string>
+    <string name="color_hex_label">Hex color (#RRGGBB)</string>
+    <string name="color_hex_invalid">Enter a valid 6-digit hex color</string>
+    <string name="color_controls_accent">Controls accent color</string>
+    <string name="player_on_screen_controls">On-screen controls</string>
+    <string name="player_slots_description">Pin a controller (or the on-screen pad) to a player slot so the launch order is consistent. Applied on launch — the in-game side menu still lets you change it live.</string>
+    <string name="player_slots_none">No controllers detected. Connect a controller to assign it, or set a pin here to apply when it\'s plugged in.</string>
+    <string name="player_auto">Auto</string>
+    <string name="player_number">Player %1$d</string>
+    <string name="player_ignore">Ignore</string>
+    <string name="player_ignored">Ignored</string>
+    <string name="player_pinned">Pinned to Player %1$d</string>
+    <string name="player_auto_launch_order">Auto (assigned by launch order)</string>
+    <string name="player_suffix_on_screen"> · on-screen controls</string>
+    <string name="player_suffix_disconnected"> · not connected (saved pin)</string>
+    <string name="player_slot">Slot</string>
+</resources>

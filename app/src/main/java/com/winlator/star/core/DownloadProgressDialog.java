@@ -102,7 +102,7 @@ public class DownloadProgressDialog {
             .setProgress(progress);
 
         ((TextView) dialog.findViewById(R.id.TVProgress))
-            .setText("Installing... " + progress + "%");
+            .setText(activity.getString(R.string.installing_percent, progress));
     }
 
     public void close() {

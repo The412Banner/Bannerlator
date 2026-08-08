@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_effects_default_profile">— По умолчанию —</string>
+    <string name="screen_effects_title">Экранные эффекты</string>
+    <string name="screen_effects_profile">Профиль</string>
+    <string name="screen_effects_add">Добавить</string>
+    <string name="screen_effects_remove">Удалить</string>
+    <string name="screen_effects_color_adjustment">Настройка цвета</string>
+    <string name="screen_effects_brightness">Яркость: %1$d</string>
+    <string name="screen_effects_contrast">Контрастность: %1$d</string>
+    <string name="screen_effects_gamma">Гамма: %1$.2f</string>
+    <string name="screen_effects_shaders">Шейдеры</string>
+    <string name="screen_effects_enable_fxaa">Включить FXAA</string>
+    <string name="screen_effects_enable_crt">Включить CRT-шейдер</string>
+    <string name="screen_effects_enable_toon">Включить мультяшный шейдер</string>
+    <string name="screen_effects_enable_ntsc">Включить эффект NTSC</string>
+    <string name="screen_effects_reset">Сбросить</string>
+    <string name="screen_effects_cancel">Отмена</string>
+    <string name="screen_effects_apply">Применить</string>
+    <string name="screen_effects_add_profile">Новый профиль</string>
+    <string name="screen_effects_profile_name">Название профиля</string>
+    <string name="screen_effects_remove_profile">Удалить профиль</string>
+    <string name="screen_effects_remove_profile_message">Удалить профиль «%1$s»?</string>
+</resources>

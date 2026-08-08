@@ -6,6 +6,8 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -26,11 +28,12 @@ import java.util.Locale
  */
 fun exportHudDiagnostics(context: Context) {
     val app = context.applicationContext
-    Toast.makeText(app, "Saving HUD diagnostics…", Toast.LENGTH_SHORT).show()
+    val localizedContext = ContextCompat.getContextForLanguage(app)
+    Toast.makeText(app, localizedContext.getString(R.string.hud_diagnostics_saving), Toast.LENGTH_SHORT).show()
     val main = Handler(Looper.getMainLooper())
     Thread {
         val result = runCatching {
-            val report = HudMetrics(app).buildDiagnosticsReport(app)
+            val report = HudMetrics(localizedContext).buildDiagnosticsReport(localizedContext)
             val ts = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             if (downloads != null && !downloads.exists()) downloads.mkdirs()
@@ -42,9 +45,9 @@ fun exportHudDiagnostics(context: Context) {
         }
         main.post {
             result.onSuccess { out ->
-                Toast.makeText(app, "Saved to Downloads › ${out.name}", Toast.LENGTH_LONG).show()
+                Toast.makeText(app, localizedContext.getString(R.string.hud_diagnostics_saved, out.name), Toast.LENGTH_LONG).show()
             }.onFailure {
-                Toast.makeText(app, "Couldn't export diagnostics.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(app, localizedContext.getString(R.string.hud_diagnostics_export_failed), Toast.LENGTH_SHORT).show()
             }
         }
     }.start()

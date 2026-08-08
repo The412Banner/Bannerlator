@@ -15,6 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.winlator.star.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
@@ -47,7 +49,7 @@ fun DownloadsButton(modifier: Modifier = Modifier) {
         ) {
             Icon(
                 imageVector = Icons.Filled.Download,
-                contentDescription = "Downloads & Library",
+                contentDescription = stringResource(R.string.downloads_and_library),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }

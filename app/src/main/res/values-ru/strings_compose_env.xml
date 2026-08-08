@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="env_compatibility">Совместимость</string>
+    <string name="env_prefer_game_dlls">Предпочитать DLL из папки игры</string>
+    <string name="env_prefer_game_dlls_description">Загружает собственные копии %1$s из папки игры вместо библиотек Wine. Требуется многим обёрткам и загрузчикам модификаций. Графические DLL сюда не входят — ими управляют DXVK/VKD3D.</string>
+    <string name="env_dlls_found">В папке игры найдены %1$s. Возможно, для этой игры нужно включить параметр выше.</string>
+    <string name="env_enable">Включить</string>
+    <string name="env_environment_variables">Переменные среды</string>
+    <string name="env_raw_format_hint">NAME=VALUE, пары разделяются пробелами</string>
+    <string name="env_none_set">Переменные среды не заданы</string>
+    <string name="env_add_variable">Добавить переменную</string>
+    <string name="env_done">Готово</string>
+    <string name="env_edit_as_text">Редактировать как текст</string>
+    <string name="env_remove">Удалить %1$s</string>
+    <string name="env_spaces_not_allowed">Здесь нельзя использовать пробелы — они разделяют переменные.</string>
+    <string name="env_presets_for">Предустановки для %1$s</string>
+    <string name="env_collapse">Свернуть %1$s</string>
+    <string name="env_expand">Развернуть %1$s</string>
+    <string name="env_none_selected">Ничего не выбрано</string>
+    <string name="env_wont_save_name">Не будет сохранено — введите имя переменной</string>
+    <string name="env_already_exists">Переменная «%1$s» уже есть в списке</string>
+    <string name="env_saves_empty">Будет сохранено как %1$s= (пустое значение)</string>
+    <string name="env_saves_value">Будет сохранено как %1$s = %2$s</string>
+    <string name="env_split_note">Знак «=» не нужен — для значения есть отдельное поле. Введённая строка уже разделена.</string>
+    <string name="env_add_title">Добавление переменной среды</string>
+    <string name="env_name_label">Имя (поиск или ввод)</string>
+    <string name="env_name_example">например, DXVK_FRAME_RATE</string>
+    <string name="env_value_label">Значение (необязательно)</string>
+    <string name="env_value_example">например, 60</string>
+    <string name="env_add_named">Добавить %1$s</string>
+    <string name="env_add_named_value">Добавить %1$s = %2$s</string>
+    <string name="env_no_matches">Совпадений нет</string>
+</resources>

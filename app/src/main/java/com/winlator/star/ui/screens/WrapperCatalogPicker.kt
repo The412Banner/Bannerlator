@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.winlator.star.R
 import com.winlator.star.contents.WrapperCatalog
@@ -159,7 +160,7 @@ fun WrapperCatalogPicker(
         title = {
             Text(
                 if (targetSlot != null)
-                    "Replace ${targetSlotLabel ?: targetSlot} from catalog"
+                    stringResource(R.string.wrapper_catalog_replace_slot, targetSlotLabel ?: targetSlot)
                 else
                     context.getString(R.string.wrapper_catalog_dialog_title)
             )
@@ -170,8 +171,7 @@ fun WrapperCatalogPicker(
                 // override (rather than adding a new imported wrapper).
                 if (targetSlot != null) {
                     Text(
-                        "Downloading a wrapper installs it as this slot's override. A wrapper that " +
-                            "doesn't match the slot is rejected.",
+                        stringResource(R.string.wrapper_catalog_replace_slot_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = cs.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp),
@@ -371,13 +371,13 @@ private fun WrapperCatalogDetail(
         Text(entry.description, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
         Spacer(Modifier.height(6.dp))
     }
-    if (entry.license.isNotBlank()) DetailRow("License", entry.license)
-    formatSize(entry.fileSize)?.let { DetailRow("Size", it) }
+    if (entry.license.isNotBlank()) DetailRow(stringResource(R.string.wrapper_catalog_license), entry.license)
+    formatSize(entry.fileSize)?.let { DetailRow(stringResource(R.string.wrapper_catalog_size), it) }
 
     // gpuTargets chips.
     if (entry.gpuTargets.isNotEmpty()) {
         Spacer(Modifier.height(8.dp))
-        Text("GPU targets", style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
+        Text(stringResource(R.string.wrapper_catalog_gpu_targets), style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
         Spacer(Modifier.height(4.dp))
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -450,23 +450,25 @@ private fun isApplicable(targets: List<String>, isQualcomm: Boolean): Boolean {
 
 /** A tiny chip label ("Mali only" / "Adreno only") for an entry that doesn't apply to this GPU, or
  *  null when it applies. Uses the first non-Adreno target family so ["mali","exynos"] reads "Mali only". */
+@Composable
 private fun applicabilityChip(targets: List<String>, isQualcomm: Boolean): String? {
     if (isApplicable(targets, isQualcomm)) return null
     return if (isQualcomm) {
         val fam = targets.firstOrNull { it != "adreno" } ?: "Mali"
-        fam.replaceFirstChar { it.uppercase() } + " only"
+        stringResource(R.string.wrapper_catalog_gpu_only, fam.replaceFirstChar { it.uppercase() })
     } else {
-        "Adreno only"
+        stringResource(R.string.wrapper_catalog_gpu_only, "Adreno")
     }
 }
 
 /** A short "inert on this GPU" note, or null when the entry applies (or targets "all"). */
+@Composable
 private fun applicabilityNote(targets: List<String>, isQualcomm: Boolean, gpuModel: String): String? {
     if (isApplicable(targets, isQualcomm)) return null
     return if (isQualcomm)
-        "${targets.joinToString("/")}-only — inert on this Adreno ($gpuModel)"
+        stringResource(R.string.wrapper_catalog_inert_on_adreno, targets.joinToString("/"), gpuModel)
     else
-        "Adreno-only — inert on this $gpuModel"
+        stringResource(R.string.wrapper_catalog_adreno_inert_on_gpu, gpuModel)
 }
 
 /** Human-readable byte size, or null when unknown (0). */

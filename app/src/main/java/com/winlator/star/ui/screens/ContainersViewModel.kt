@@ -3,7 +3,9 @@ package com.winlator.star.ui.screens
 import android.app.Application
 import android.content.Context
 import android.os.Environment
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
@@ -12,6 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 
 class ContainersViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val localizedContext: Context
+        get() = ContextCompat.getContextForLanguage(getApplication())
 
     private val _containers = MutableStateFlow<List<Container>>(emptyList())
     val containers: StateFlow<List<Container>> = _containers
@@ -45,7 +50,10 @@ class ContainersViewModel(app: Application) : AndroidViewModel(app) {
         manager.duplicateContainerAsync(container) { result ->
             _isLoading.value = false
             refresh()
-            _message.value = if (result == null) "Couldn't duplicate container" else "Container duplicated"
+            _message.value = localizedContext.getString(
+                if (result == null) R.string.final_audit_container_duplicate_failed
+                else R.string.final_audit_container_duplicate_succeeded,
+            )
             onDone()
         }
     }

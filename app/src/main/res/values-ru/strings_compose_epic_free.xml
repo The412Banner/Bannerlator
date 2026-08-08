@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="epic_free_loading">Загрузка бесплатных игр…</string>
+    <string name="epic_free_http_error">Не удалось загрузить бесплатные игры (HTTP %1$d)</string>
+    <string name="epic_free_no_data">Epic не вернул данные</string>
+    <string name="epic_free_unknown_game">Неизвестная игра</string>
+    <string name="epic_free_none_available">Сейчас бесплатных игр нет</string>
+    <plurals name="epic_free_now_count">
+        <item quantity="one">Сейчас бесплатно: %1$d игра</item>
+        <item quantity="few">Сейчас бесплатно: %1$d игры</item>
+        <item quantity="many">Сейчас бесплатно: %1$d игр</item>
+        <item quantity="other">Сейчас бесплатно: %1$d игры</item>
+    </plurals>
+    <plurals name="epic_free_coming_count">
+        <item quantity="one">Скоро: %1$d игра</item>
+        <item quantity="few">Скоро: %1$d игры</item>
+        <item quantity="many">Скоро: %1$d игр</item>
+        <item quantity="other">Скоро: %1$d игры</item>
+    </plurals>
+    <string name="epic_free_status_joined">%1$s · %2$s</string>
+    <string name="epic_free_load_failed">Не удалось загрузить бесплатные игры</string>
+    <string name="epic_free_from_date">С %1$s</string>
+    <string name="epic_free_until_date">До %1$s</string>
+    <string name="epic_free_title">Бесплатные игры</string>
+    <string name="epic_free_this_week">БЕСПЛАТНО НА ЭТОЙ НЕДЕЛЕ</string>
+    <string name="epic_free_next_week">БЕСПЛАТНО НА СЛЕДУЮЩЕЙ НЕДЕЛЕ</string>
+    <string name="epic_free_badge_free">БЕСПЛАТНО</string>
+    <string name="epic_free_badge_soon">СКОРО</string>
+</resources>

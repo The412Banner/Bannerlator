@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="glossary_title">Что всё это значит?</string>
+    <string name="glossary_subtitle">Понятные объяснения параметров настройки. Нажмите термин, чтобы узнать, что он означает.</string>
+    <string name="glossary_search_terms">Поиск терминов</string>
+    <string name="glossary_no_terms_match">По запросу «%1$s» ничего не найдено.</string>
+
+    <string name="glossary_section_graphics_translation">Трансляция графики (DirectX → Vulkan)</string>
+    <string name="glossary_section_windows_layer">Слой Windows</string>
+    <string name="glossary_section_x86_on_arm">Запуск игр x86 на ARM</string>
+    <string name="glossary_section_gpu_rendering">GPU и отрисовка</string>
+    <string name="glossary_section_turnip_tuning">Настройка Turnip и драйвера</string>
+    <string name="glossary_section_picture_settings">Настройки изображения</string>
+    <string name="glossary_section_under_the_hood">Внутреннее устройство</string>
+    <string name="glossary_section_controls_audio">Управление и звук</string>
+
+    <string name="glossary_term_dxvk">DXVK</string>
+    <string name="glossary_definition_dxvk">Переводит графику DirectX 9/10/11 игры в Vulkan — язык, на котором фактически работает GPU телефона. Используется по умолчанию и обычно обеспечивает наибольшую скорость.</string>
+    <string name="glossary_term_vkd3d">VKD3D</string>
+    <string name="glossary_definition_vkd3d">Работает по тому же принципу, что и DXVK, но предназначен для игр с DirectX 12. Требует более новой реализации Vulkan, поэтому доступен не с каждой обёрткой или GPU.</string>
+    <string name="glossary_term_wined3d">WineD3D</string>
+    <string name="glossary_definition_wined3d">Более старый и медленный транслятор, который преобразует DirectX в OpenGL, а не в Vulkan. Используйте как запасной вариант для игр, работающих с ошибками через DXVK.</string>
+    <string name="glossary_term_vegas">VEGAS</string>
+    <string name="glossary_definition_vegas">Альтернативный транслятор в стиле DXVK, оптимизированный для некоторых устройств и ориентированный на Adreno. Стоит попробовать, если DXVK вызывает проблемы в конкретной игре.</string>
+    <string name="glossary_term_directx">DirectX (D3D9–12)</string>
+    <string name="glossary_definition_directx">Графический API Windows, на котором построены игры: D3D9/10/11 относятся к более старым версиям, а D3D12 — самая новая. Указанные выше обёртки транслируют его в Vulkan для телефона.</string>
+    <string name="glossary_term_opengl">OpenGL</string>
+    <string name="glossary_definition_opengl">Более старый кроссплатформенный графический стандарт. Это запасной вариант для параметра Renderer; его используют WineD3D и Zink, когда Vulkan не применяется напрямую.</string>
+    <string name="glossary_term_zink">Zink</string>
+    <string name="glossary_definition_zink">Транслирует OpenGL в Vulkan, чтобы игры и инструменты на OpenGL могли работать на мобильном GPU через Vulkan.</string>
+
+    <string name="glossary_term_wine">Wine</string>
+    <string name="glossary_definition_wine">Запускает программы Windows на Android без самой Windows, на лету преобразуя выполняемые игрой системные вызовы Windows в вызовы Android/Linux.</string>
+    <string name="glossary_term_proton">Proton</string>
+    <string name="glossary_definition_proton">Ориентированная на игры версия Wine от Valve с дополнительными исправлениями, благодаря которым многие игры работают лучше. Bannerlator поставляется со сборками Proton.</string>
+    <string name="glossary_term_container">Контейнер</string>
+    <string name="glossary_definition_container">Изолированная виртуальная среда Windows для игры со своим диском C:, настройками и установленными компонентами. Это отдельная песочница для каждой игры или конфигурации.</string>
+    <string name="glossary_term_wrapper_graphics_driver">Wrapper (графический драйвер)</string>
+    <string name="glossary_definition_wrapper_graphics_driver">Слой драйвера Vulkan, через который контейнер обращается к GPU. Разным GPU подходят разные обёртки — именно здесь важен выбор между Mali и Adreno.</string>
+
+    <string name="glossary_term_fexcore">FEXCore</string>
+    <string name="glossary_definition_fexcore">Транслирует инструкции x86/x64 (Intel/AMD) игры в ARM, чтобы они выполнялись процессором телефона. Основной транслятор Bannerlator, ориентированный на arm64ec.</string>
+    <string name="glossary_term_box64">box64</string>
+    <string name="glossary_definition_box64">Классический транслятор инструкций x86/x64 в ARM — альтернативный движок наряду с FEXCore, выбираемый отдельно для каждого контейнера.</string>
+    <string name="glossary_term_arm64ec">arm64ec</string>
+    <string name="glossary_definition_arm64ec">Формат сборки, позволяющий эффективно выполнять вместе нативный код ARM и транслируемый код x86. Здесь его используют современные сборки Proton.</string>
+    <string name="glossary_term_fexcore_preset">Профиль FEXCore</string>
+    <string name="glossary_definition_fexcore_preset">Позволяет выбирать между точностью эмуляции и скоростью, настраивая строгость воспроизведения порядка операций с памятью ПК (TSO). Профили Stability и Compatibility полностью сохраняют точность и наиболее безопасны; Performance ослабляет требования ради большего FPS, но может нарушить работу некоторых игр; промежуточные профили и варианты Denuvo дают средний баланс. Начните со значения по умолчанию.</string>
+
+    <string name="glossary_term_vulkan">Vulkan</string>
+    <string name="glossary_definition_vulkan">Современный низкоуровневый графический стандарт, с которым работает GPU телефона. Все перечисленные выше трансляторы в конечном итоге выводят команды Vulkan.</string>
+    <string name="glossary_term_mali_vs_adreno">Mali и Adreno</string>
+    <string name="glossary_definition_mali_vs_adreno">Два основных семейства мобильных GPU. Adreno в процессорах Snapdragon поддерживается лучше всего. Mali во многих устройствах MediaTek и Exynos тоже работает, но требует дополнительной обработки сжатых текстур — для этого предназначены настройки BCn и обёртки.</string>
+    <string name="glossary_term_turnip">Turnip</string>
+    <string name="glossary_definition_turnip">Драйвер Vulkan с открытым исходным кодом для GPU Adreno, который Bannerlator использует для максимальной производительности и совместимости.</string>
+    <string name="glossary_term_bcn_emulation">Эмуляция BCn</string>
+    <string name="glossary_definition_bcn_emulation">Игры для ПК хранят текстуры в сжатом формате BCn / DXT / S3TC, который Adreno читает напрямую, а Mali — нет. Эмуляция BCn преобразует текстуры на лету, чтобы они отображались правильно. Если на устройстве Mali она отключена или работает не полностью, некоторые области получают чёрные текстуры.</string>
+    <string name="glossary_term_astc_etc2">ASTC / ETC2</string>
+    <string name="glossary_definition_astc_etc2">Форматы сжатых текстур, которые GPU Mali умеют читать напрямую. Эмуляция BCn преобразует текстуры игры в один из этих форматов, чтобы телефон с Mali мог их отобразить.</string>
+    <string name="glossary_term_adrenotools">Adrenotools</string>
+    <string name="glossary_definition_adrenotools">Загрузчик, позволяющий Bannerlator использовать пользовательский драйвер GPU, например Turnip, вместо встроенного драйвера телефона. Обычно это повышает скорость и совместимость на Adreno.</string>
+    <string name="glossary_term_vulkan_version">Версия Vulkan</string>
+    <string name="glossary_definition_vulkan_version">Уровень Vulkan, который драйвер сообщает транслятору DirectX (DXVK/VKD3D). Более высокая версия может открыть функции, необходимые некоторым играм, но значение автоматически ограничивается реальными возможностями драйвера, поэтому выбор неподдерживаемой версии ничего не изменит.</string>
+    <string name="glossary_term_gpu_spoofing">Подмена GPU (имя GPU)</string>
+    <string name="glossary_definition_gpu_spoofing">Сообщает игре другую модель видеокарты вместо реальной. Узнав определённый GPU, некоторые игры открывают улучшенные настройки графики или просто начинают запускаться. Оставьте значение «Device», чтобы сообщать реальный GPU.</string>
+    <string name="glossary_term_vram_cap">Максимальная память устройства (лимит VRAM)</string>
+    <string name="glossary_definition_vram_cap">Ограничивает объём видеопамяти, который драйвер сообщает играм. Полезно, если игра пытается занять больше памяти, чем телефон может выделить: это помогает при сбоях из-за нехватки памяти и подтормаживаниях. Оставьте «Default», если игра работает нормально.</string>
+
+    <string name="glossary_term_gmem">GMEM (тайловый рендеринг)</string>
+    <string name="glossary_definition_gmem">Способ отрисовки каждого кадра. GMEM делит экран на небольшие тайлы и рисует их в сверхбыстрой встроенной памяти GPU — это эффективный подход, характерный для мобильных устройств. «Auto» включает его только на Adreno 710/720/722, где он нужен для предотвращения артефактов; «Force On» применяет его к любому GPU; «Force Off» всегда отключает. Противоположный режим называется sysmem.</string>
+    <string name="glossary_term_sysmem">sysmem</string>
+    <string name="glossary_definition_sysmem">Заставляет GPU рисовать непосредственно в основную память вместо быстрой встроенной памяти тайлов — противоположность GMEM. Это наиболее совместимый вариант и значение по умолчанию, но он расходует больше пропускной способности памяти. Используйте, если принудительный GMEM вызывает графические ошибки.</string>
+    <string name="glossary_term_sync_every_frame">Синхронизация каждого кадра</string>
+    <string name="glossary_definition_sync_every_frame">Заставляет GPU полностью завершить и показать каждый кадр перед началом следующего. Включите для устранения разрывов, мерцания или повреждённых кадров на экране; для максимальной производительности оставьте выключенным, поскольку ожидание мешает CPU и GPU работать с опережением и может снизить FPS.</string>
+    <string name="glossary_term_concurrent_binning">Параллельный биннинг (forcecb / nocb)</string>
+    <string name="glossary_definition_concurrent_binning">Биннинг — этап, на котором GPU распределяет объекты по тайлам экрана. «forcecb» заставляет выполнять его параллельно с рендерингом и иногда повышает производительность; «nocb» отключает такой режим и может исправить артефакты в некоторых играх. Это экспертные параметры Turnip — меняйте их только при необходимости в конкретной игре.</string>
+    <string name="glossary_term_deck_emu">deck_emu</string>
+    <string name="glossary_definition_deck_emu">Заставляет GPU представляться игре как Steam Deck, что в некоторых играх открывает улучшенные настройки графики или специальные пути выполнения. Работает только с собственными драйверами Bannerlator (Banners-Turnip) и игнорируется обычным Turnip.</string>
+    <string name="glossary_term_khr_present_wait">KHR_present_wait</string>
+    <string name="glossary_definition_khr_present_wait">Функция Vulkan, позволяющая игре дождаться фактического появления кадра на экране. Некоторые драйверы GPU реализуют её неправильно, что вызывает задержки или зависания. Совместимый вариант «Disable KHR_present_wait» запрещает драйверу её использовать.</string>
+    <string name="glossary_term_bcn_transcode_astc">Эмуляция BCn / транскодирование в ASTC</string>
+    <string name="glossary_definition_bcn_transcode_astc">На Mali и других GPU, отличных от Adreno, сжатые текстуры BCn/DXT игры требуют эмуляции. Параметр BCn «Type» выбирает декодер: вычислительный слой GPU или программный вариант. Кэш повторно использует декодированные текстуры и уменьшает подтормаживания, а «Transcode to ASTC» перепаковывает их в ASTC — формат, который мобильные GPU читают аппаратно, — чтобы сэкономить память. На Adreno эти настройки не действуют, поскольку он читает BCn напрямую.</string>
+
+    <string name="glossary_term_colors_rgba_bgra">Цвета: RGBA и BGRA</string>
+    <string name="glossary_definition_colors_rgba_bgra">Порядок красного и синего цветовых каналов. BGRA по умолчанию подходит почти всегда. Переключайтесь на RGBA, только если цвета в игре перепутаны, например вместо красного отображается синий.</string>
+    <string name="glossary_term_render_scale">Масштаб рендеринга / суперсэмплинг</string>
+    <string name="glossary_definition_render_scale">Рендеринг игры в повышенном разрешении с последующим уменьшением даёт более чёткое изображение, но снижает производительность. Пониженное разрешение, наоборот, увеличивает FPS.</string>
+    <string name="glossary_term_frame_generation">Генерация кадров</string>
+    <string name="glossary_definition_frame_generation">Вставляет промежуточные кадры, созданные ИИ, чтобы движение выглядело плавнее. Может немного увеличить задержку ввода и иногда создавать артефакты, поэтому использовать её необязательно. Доступны два движка: встроенный bionic-fg и lsfg-vk, для которого требуется импортированная Lossless.dll. Нужен рендерер Vulkan.</string>
+    <string name="glossary_term_fps_limiter">Ограничитель FPS</string>
+    <string name="glossary_definition_fps_limiter">Ограничивает количество кадров, которые игра рендерит за секунду. Лимит уменьшает нагрев и расход аккумулятора, а также может выровнять нестабильную частоту кадров. Включение только загружает ограничитель; точное значение задаётся во время игры в меню FPS.</string>
+    <string name="glossary_term_native_rendering">Нативный рендеринг</string>
+    <string name="glossary_definition_native_rendering">Передаёт изображение игры прямо на экран, минуя композитор Bannerlator. Это немного ускоряет вывод и уменьшает задержку, но отключает перестановку цветовых каналов (RGBA) и управление режимом представления. Отключите, если игра показывает неправильные цвета или изображение отсутствует.</string>
+    <string name="glossary_term_frame_gen_fps_numbers">Показания FPS при генерации кадров</string>
+    <string name="glossary_definition_frame_gen_fps_numbers">При включённой генерации кадров показания FPS в двух приложениях могут не совпадать, потому что кадры считаются в разных точках. Счётчик исходного вывода игры показывает ровные 2x/3x/4x: это выглядит эффектно, но учитывает кадры, которые экран никогда не покажет. HUD Bannerlator считает кадры при поступлении в конвейер отображения и показывает реальный прирост — не обязательно ровный множитель и всегда в пределах частоты обновления экрана. Ни один показатель не равен числу кадров, фактически показанных экраном: реальный предел задаёт частота обновления панели.</string>
+    <string name="glossary_term_dxvk_hud">DXVK HUD / оверлей</string>
+    <string name="glossary_definition_dxvk_hud">Экранная сводка с FPS, временем кадра, нагрузкой GPU и сведениями о драйвере для диагностики производительности. Носит только информационный характер и не изменяет работу игры.</string>
+    <string name="glossary_term_present_mode">Режим представления</string>
+    <string name="glossary_definition_present_mode">Способ передачи готовых кадров на экран — компромисс между плавностью, задержкой ввода и расходом аккумулятора. FIFO — безопасное значение по умолчанию; Mailbox лучше всего подходит для генерации кадров; Immediate обеспечивает минимальную задержку, но может вызывать разрывы изображения.</string>
+    <string name="glossary_term_fifo">FIFO (режим представления)</string>
+    <string name="glossary_definition_fifo">Стандартный режим с включённой вертикальной синхронизацией: каждый кадр ждёт своей очереди и показывается при следующем обновлении экрана. Обеспечивает плавность без разрывов и лучше всего экономит аккумулятор, но заставляет игру ждать дисплей, что может ограничивать генерацию кадров.</string>
+    <string name="glossary_term_mailbox">Mailbox (режим представления)</string>
+    <string name="glossary_definition_mailbox">Быстрая вертикальная синхронизация: экран всегда берёт самый новый готовый кадр и не заставляет игру ждать. Как и FIFO, устраняет разрывы, но даёт меньшую задержку. Это правильный выбор для генерации кадров, поскольку дополнительные созданные кадры действительно доходят до экрана. Немного увеличивает расход аккумулятора.</string>
+    <string name="glossary_term_immediate">Immediate (режим представления)</string>
+    <string name="glossary_definition_immediate">Режим с отключённой вертикальной синхронизацией: кадры отправляются на экран сразу после готовности. Даёт минимальную задержку ввода, но возможны разрывы изображения, когда одновременно видны части двух кадров. Обычно не оправдан на экране телефона с высокой частотой обновления.</string>
+    <string name="glossary_term_surfaceflinger">SurfaceFlinger (рендерер)</string>
+    <string name="glossary_definition_surfaceflinger">Экспериментальный рендерер, передающий кадры непосредственно системе отображения Android. Иногда работает быстрее, но на некоторых устройствах может вести себя неправильно или даже вызвать перезагрузку. Vulkan — безопасное значение по умолчанию.</string>
+    <string name="glossary_term_shader_cache">Подтормаживания при компиляции шейдеров и кэш</string>
+    <string name="glossary_definition_shader_cache">При первом запуске игра компилирует шейдеры, что может вызывать краткие подтормаживания. Кэш шейдеров (состояний) DXVK сохраняет их, чтобы последующие сеансы проходили плавно.</string>
+
+    <string name="glossary_term_glibc_bionic">glibc и bionic</string>
+    <string name="glossary_definition_glibc_bionic">Две разные библиотеки C. Android использует bionic, а настольный Linux — glibc. Wine и драйверы Bannerlator собраны для bionic; сборка для glibc просто не загрузится, какими бы преимуществами она ни обладала.</string>
+    <string name="glossary_term_environment_variables">Переменные среды</string>
+    <string name="glossary_definition_environment_variables">Расширенные параметры отдельного контейнера, например DXVK_FRAME_RATE=60 или BCN_TRANSCODE_TO_ASTC=1. Большинству пользователей они не нужны, но дают опытным пользователям возможность точно настраивать игру.</string>
+    <string name="glossary_term_esync_fsync">ESYNC / FSYNC</string>
+    <string name="glossary_definition_esync_fsync">Механизмы ускорения Wine, позволяющие потокам игры эффективнее координировать работу. Включены по умолчанию; не отключайте, если только это не требуется конкретной игре.</string>
+    <string name="glossary_term_dll_overrides">Переопределения DLL</string>
+    <string name="glossary_definition_dll_overrides">Указывают Wine, какую версию системного файла использовать: собственную копию игры (native) или встроенную версию Wine. Это распространённое решение проблем в играх, поставляемых со своими DLL.</string>
+    <string name="glossary_term_components">Компоненты</string>
+    <string name="glossary_definition_components">Дополнительные среды выполнения Windows, необходимые некоторым играм: распространяемые пакеты Visual C++, .NET, DirectX и другие. Если игра сообщает об отсутствии компонента, установите его из списка «Компоненты» контейнера.</string>
+
+    <string name="glossary_term_xinput_dinput">XInput и DInput</string>
+    <string name="glossary_definition_xinput_dinput">Два способа, которыми игры Windows получают данные с контроллеров. XInput — современный стандарт в стиле Xbox, а DInput — более старый. Выберите тот, который ожидает игра.</string>
+    <string name="glossary_term_exclusive_input">Эксклюзивный ввод</string>
+    <string name="glossary_definition_exclusive_input">Передаёт контроллер исключительно одной игре, чтобы Android и игра не конкурировали за него. Помогает, если нажатия дублируются или игнорируются.</string>
+    <string name="glossary_term_midi_soundfont">SoundFont для MIDI</string>
+    <string name="glossary_definition_midi_soundfont">Банк звуков для воспроизведения MIDI-музыки игры. Важен только для старых игр с MIDI: если музыка не слышна, выберите SoundFont.</string>
+    <string name="glossary_term_gyro">Гироскоп (прицеливание движением)</string>
+    <string name="glossary_definition_gyro">Использует датчик движения телефона для прицеливания наклоном. Режим определяет, управляет ли прицелом СКОРОСТЬ (SPEED) или УГОЛ (ANGLE) наклона; активатор — кнопка включения; цель — управляемый элемент (правый стик, левый стик или мышь); чувствительность задаёт величину поворота при наклоне.</string>
+    <string name="glossary_term_audio_driver">Аудиодрайвер (ALSA / PulseAudio)</string>
+    <string name="glossary_definition_audio_driver">Определяет, как звук игры поступает в Android. ALSA — простой вариант по умолчанию с малой нагрузкой; PulseAudio — более полноценный звуковой сервер, необходимый некоторым играм и голосовым функциям. Переключитесь на PulseAudio, если в игре нет звука или слышен треск.</string>
+</resources>

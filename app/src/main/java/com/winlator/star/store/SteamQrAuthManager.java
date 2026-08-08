@@ -109,16 +109,14 @@ public final class SteamQrAuthManager {
                 if (cancelled) return;
                 Throwable cause = e.getCause() != null ? e.getCause() : e;
                 Log.e(TAG, "QR auth ExecutionException: " + SteamLogRedactor.redact(Log.getStackTraceString(cause)));
-                String msg = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
-                mainHandler.post(() -> listener.onFailure(msg));
+                mainHandler.post(() -> listener.onFailure(""));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 Log.w(TAG, "QR auth interrupted");
             } catch (Exception e) {
                 if (cancelled) return;
                 Log.e(TAG, "QR auth error: " + SteamLogRedactor.redact(Log.getStackTraceString(e)));
-                String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-                mainHandler.post(() -> listener.onFailure(msg));
+                mainHandler.post(() -> listener.onFailure(""));
             }
         }, "SteamQrLogin").start();
     }

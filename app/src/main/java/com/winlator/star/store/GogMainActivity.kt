@@ -2,7 +2,7 @@ package com.winlator.star.store
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -23,12 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
 
-class GogMainActivity : ComponentActivity() {
+class GogMainActivity : AppCompatActivity() {
 
     private var isLoggedIn by mutableStateOf(false)
     private var username by mutableStateOf("")
@@ -62,7 +64,10 @@ class GogMainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("bh_gog_prefs", 0)
         val token = prefs.getString("access_token", null)
         isLoggedIn = token != null
-        username = if (isLoggedIn) prefs.getString("username", "Unknown") ?: "Unknown" else ""
+        username = if (isLoggedIn) {
+            prefs.getString("username", getString(R.string.store_unknown_user))
+                ?: getString(R.string.store_unknown_user)
+        } else ""
     }
 
     private fun signOut() {
@@ -103,7 +108,7 @@ private fun GogLoginCard(onLoginClick: () -> Unit) {
         Text("GOG.com", fontSize = 32.sp, color = Color(0xFF0055FF), fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text(
-            "Sign in to access your GOG game library",
+            stringResource(R.string.store_sign_in_gog),
             fontSize = 14.sp,
             color = Color(0xFFAAAAAA),
         )
@@ -112,7 +117,7 @@ private fun GogLoginCard(onLoginClick: () -> Unit) {
             onClick = onLoginClick,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0055FF)),
             shape = RoundedCornerShape(8.dp),
-        ) { Text("Login with GOG", color = Color.White) }
+        ) { Text(stringResource(R.string.store_login_gog), color = Color.White) }
     }
 }
 
@@ -131,18 +136,18 @@ private fun GogLoggedInCard(
     ) {
         Text("GOG.com", fontSize = 32.sp, color = Color(0xFF0055FF), fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        Text("Signed in as: $username", fontSize = 14.sp, color = Color(0xFFCCCCCC))
+        Text(stringResource(R.string.store_signed_in_as, username), fontSize = 14.sp, color = Color(0xFFCCCCCC))
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onViewLibrary,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0055FF)),
             shape = RoundedCornerShape(8.dp),
-        ) { Text("View Game Library", color = Color.White) }
+        ) { Text(stringResource(R.string.store_view_game_library), color = Color.White) }
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onSignOut,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0055FF)),
             shape = RoundedCornerShape(8.dp),
-        ) { Text("Sign Out", color = Color.White) }
+        ) { Text(stringResource(R.string.store_sign_out), color = Color.White) }
     }
 }

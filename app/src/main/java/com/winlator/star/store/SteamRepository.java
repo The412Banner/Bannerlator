@@ -6,6 +6,9 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 
+import com.winlator.star.R;
+import androidx.core.content.ContextCompat;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -561,14 +564,17 @@ public final class SteamRepository {
     }
 
     /** Notification text for each connection state — the FGS's honest one-liner. */
-    private static String fgsTextFor(SteamStatus s) {
+    private String fgsTextFor(SteamStatus s) {
+        Context context = appContext;
+        if (context == null) return "Steam";
+        context = ContextCompat.getContextForLanguage(context);
         switch (s) {
-            case ONLINE:              return "Steam: Online";
-            case CONNECTING:          return "Connecting to Steam…";
-            case SIGNED_IN_ELSEWHERE: return "Signed in elsewhere";
-            case SIGNED_OUT:          return "Signed out";
+            case ONLINE:              return context.getString(R.string.steam_status_online);
+            case CONNECTING:          return context.getString(R.string.steam_status_connecting);
+            case SIGNED_IN_ELSEWHERE: return context.getString(R.string.steam_status_signed_in_elsewhere);
+            case SIGNED_OUT:          return context.getString(R.string.steam_status_signed_out);
             case OFFLINE:
-            default:                  return "Offline";
+            default:                  return context.getString(R.string.steam_status_offline);
         }
     }
 

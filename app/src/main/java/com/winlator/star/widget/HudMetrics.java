@@ -8,6 +8,7 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.SystemClock;
 
+import com.winlator.star.R;
 import com.winlator.star.core.GPUInformation;
 
 import java.io.BufferedReader;
@@ -799,7 +800,7 @@ public class HudMetrics {
         String runtimeText;
         if (charging) {
             smoothedBatteryRuntimeHours = null;
-            runtimeText = "LEFT CHG";
+            runtimeText = context.getString(R.string.final_audit_hud_charging);
         } else if (currentMicroAmps <= 0L || chargeCounter <= 0L) {
             runtimeText = null;
         } else {
@@ -811,19 +812,25 @@ public class HudMetrics {
                     : (smoothedBatteryRuntimeHours * RUNTIME_SMOOTHING_OLD_WEIGHT)
                         + (rawHours * RUNTIME_SMOOTHING_NEW_WEIGHT);
                 smoothedBatteryRuntimeHours = smoothed;
-                runtimeText = "LEFT " + formatRuntimeHours(smoothed);
+                runtimeText = context.getString(
+                        R.string.final_audit_hud_time_left,
+                        formatRuntimeHours(smoothed));
             }
         }
         return new Battery(watts, charging, percent, tempC, runtimeText);
     }
 
-    private static String formatRuntimeHours(double hours) {
+    private String formatRuntimeHours(double hours) {
         int totalMinutes = Math.max(1, (int) Math.round(hours * 60.0));
         int wholeHours = totalMinutes / 60;
         int minutes = totalMinutes % 60;
-        if (wholeHours > 0 && minutes > 0) return wholeHours + "h " + minutes + "m";
-        if (wholeHours > 0) return wholeHours + "h";
-        return minutes + "m";
+        if (wholeHours > 0 && minutes > 0) {
+            return context.getString(R.string.final_audit_hud_hours_minutes, wholeHours, minutes);
+        }
+        if (wholeHours > 0) {
+            return context.getString(R.string.final_audit_hud_hours, wholeHours);
+        }
+        return context.getString(R.string.final_audit_hud_minutes, minutes);
     }
 
     private long readCurrentNowFallback() {

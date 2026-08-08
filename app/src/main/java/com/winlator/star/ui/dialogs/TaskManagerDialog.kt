@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -86,10 +87,10 @@ fun TaskManagerDialog(state: XServerDialogState) {
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-                Text("Task Manager", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.task_manager), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Processes: $count",
+                    text = stringResource(R.string.dialog_process_count, count),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -99,7 +100,7 @@ fun TaskManagerDialog(state: XServerDialogState) {
                 // Process list
                 if (processes.isEmpty()) {
                     Text(
-                        text = "No processes",
+                        text = stringResource(R.string.dialog_no_processes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -134,12 +135,12 @@ fun TaskManagerDialog(state: XServerDialogState) {
                         state.onTmDismissed?.run()
                         state.dismiss()
                         state.onTmNewTask?.run()
-                    }) { Text("New Task…") }
+                    }) { Text(stringResource(R.string.new_task)) }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = {
                         state.onTmDismissed?.run()
                         state.dismiss()
-                    }) { Text("Close") }
+                    }) { Text(stringResource(R.string.common_close)) }
                 }
             }
         }
@@ -181,7 +182,7 @@ private fun ProcessRow(proc: XServerDialogState.TmProcess, state: XServerDialogS
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "PID ${proc.pid}  •  ${proc.formattedMemory}",
+                text = stringResource(R.string.dialog_pid_memory, proc.pid, proc.formattedMemory),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -189,7 +190,7 @@ private fun ProcessRow(proc: XServerDialogState.TmProcess, state: XServerDialogS
 
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.dialog_options))
             }
             DropdownMenu(
                 expanded = menuExpanded,
@@ -197,7 +198,7 @@ private fun ProcessRow(proc: XServerDialogState.TmProcess, state: XServerDialogS
                 modifier = Modifier.outlinedMenuCard()
             ) {
                 DropdownMenuItem(
-                    text = { Text("Bring to Front") },
+                    text = { Text(stringResource(R.string.dialog_bring_to_front)) },
                     onClick = {
                         menuExpanded = false
                         state.onTmBringToFront?.invoke(proc.name, proc.pid)
@@ -206,7 +207,7 @@ private fun ProcessRow(proc: XServerDialogState.TmProcess, state: XServerDialogS
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
-                    text = { Text("End Process") },
+                    text = { Text(stringResource(R.string.dialog_end_process)) },
                     onClick = {
                         menuExpanded = false
                         state.onTmKillProcess?.invoke(proc.name)

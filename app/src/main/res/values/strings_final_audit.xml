@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- X server launch and renderer feedback. -->
+    <string name="final_audit_native_rendering_unavailable">Native Rendering is not available on the OpenGL renderer yet — use the Vulkan renderer.</string>
+    <string name="final_audit_native_rendering_single_fullscreen">Native Rendering works best with a single fullscreen window — additional windows may be hidden.</string>
+    <string name="final_audit_preparing_container">Preparing container…</string>
+    <string name="final_audit_game_window_detected">Game window detected…</string>
+    <string name="final_audit_preparing_wine_graphics_stage">Preparing Wine and graphics driver</string>
+    <string name="final_audit_preparing_wine_graphics">Preparing Wine and graphics driver…</string>
+    <string name="final_audit_building_environment_stage">Building environment</string>
+    <string name="final_audit_building_environment">Building environment…</string>
+    <string name="final_audit_setup_step_failed">Setup step failed</string>
+    <string name="final_audit_launching_windows_stage">Launching Windows</string>
+    <string name="final_audit_launching_windows">Launching Windows…</string>
+    <string name="final_audit_game_exited_before_rendering">The game exited before rendering</string>
+    <string name="final_audit_exit_code">Exit code: %1$d</string>
+    <string name="final_audit_waiting_for_game_render">Waiting for “%1$s” to render…</string>
+    <string name="final_audit_launch_taking_longer">Taking longer than usual — the first launch may compile shaders. The app is still responding; please wait.</string>
+    <string name="final_audit_launch_still_working">Still working. If the launch appears stuck, check the log.</string>
+    <string name="final_audit_native_rendering_disabled_for_post_processing">Native Rendering disabled — it is required for post-processing.</string>
+    <string name="final_audit_gamenative_dx12_unsupported_gpu">Wrapper + compat + bcn: the GameNative DX12 engine requires a Valhall Mali (r32p1+) GPU. It is disabled on this device (%1$s), and no DX12 overrides were applied.</string>
+    <string name="final_audit_dx12_compat_unsupported_gpu">Wrapper + compat + bcn: the DX12 compatibility layer requires a Valhall Mali (r32p1+) GPU. It is disabled on this device (%1$s); BCn texture transcoding remains active.</string>
+    <string name="final_audit_task_manager_cpu">CPU (%1$d%%)</string>
+    <string name="final_audit_task_manager_memory">Memory (%1$d%%)</string>
+
+    <!-- Container and shortcut results. -->
+    <string name="final_audit_container_duplicate_failed">Could not duplicate the container</string>
+    <string name="final_audit_container_duplicate_succeeded">Container duplicated</string>
+    <string name="final_audit_container_desktop_directory_not_found">The container desktop directory was not found.</string>
+    <string name="final_audit_container_desktop_directory_create_failed">Could not create the container desktop directory.</string>
+    <string name="final_audit_container_load_failed">Could not load containers.</string>
+    <string name="final_audit_shortcut_added">Shortcut “%1$s” was added.\nOpen the side menu → Shortcuts to launch and configure the game.</string>
+    <string name="final_audit_shortcut_add_failed">Failed to add the shortcut.</string>
+    <string name="final_audit_community_upload_failed">Upload failed — check your connection and try again.</string>
+    <string name="final_audit_shared_with_community">Shared “%1$s” with the community.</string>
+    <string name="final_audit_container_no_longer_exists">That container no longer exists.</string>
+    <string name="final_audit_container_missing_refresh">That container no longer exists. Refresh the list and select another container.</string>
+    <string name="final_audit_picked_file_name_unavailable">Could not determine the selected file name.</string>
+    <string name="final_audit_unsupported_shortcut_file_type">Unsupported file type: .%1$s (select a .exe, .desktop, or .lnk file).</string>
+    <string name="final_audit_exe_requires_local_storage">The EXE file must be stored locally. Cloud and SAF locations are not supported.</string>
+    <string name="final_audit_exe_inaccessible">Could not access the EXE file on disk: %1$s</string>
+    <string name="final_audit_no_free_drive_letters">This container has no free drive letters. Remove an unused drive on the Drives tab, or move the game to a location covered by an existing drive.</string>
+    <string name="final_audit_shortcut_write_failed">Failed to create the shortcut.</string>
+    <string name="final_audit_picked_file_open_failed">Could not open the selected file.</string>
+    <string name="final_audit_shortcut_import_failed">Failed to import the shortcut.</string>
+    <string name="final_audit_log_read_failed">Could not read this log file.</string>
+
+    <!-- Compact performance HUD battery runtime. -->
+    <string name="final_audit_hud_charging">CHARGING</string>
+    <string name="final_audit_hud_time_left">LEFT %1$s</string>
+    <string name="final_audit_hud_hours_minutes">%1$d h %2$d min</string>
+    <string name="final_audit_hud_hours">%1$d h</string>
+    <string name="final_audit_hud_minutes">%1$d min</string>
+</resources>

@@ -1,6 +1,5 @@
 package com.winlator.star.store;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Typeface;
@@ -17,6 +16,10 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.winlator.star.R;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,7 +40,7 @@ import java.util.List;
  * Result extras:
  *   "path" (String) — absolute path of the selected folder
  */
-public class FolderPickerActivity extends Activity {
+public class FolderPickerActivity extends AppCompatActivity {
 
     private File currentDir;
     private File rootAppFiles;
@@ -65,10 +68,10 @@ public class FolderPickerActivity extends Activity {
         // Build root label/dir arrays
         List<String> labels = new ArrayList<>();
         List<File>   dirs   = new ArrayList<>();
-        labels.add("App Files (Wine containers)");  dirs.add(rootAppFiles);
-        labels.add("Internal Storage");             dirs.add(rootInternal);
+        labels.add(getString(R.string.folder_picker_app_files));  dirs.add(rootAppFiles);
+        labels.add(getString(R.string.folder_picker_internal_storage)); dirs.add(rootInternal);
         if (rootSdCard != null) {
-            labels.add("SD Card");                  dirs.add(rootSdCard);
+            labels.add(getString(R.string.folder_picker_sd_card)); dirs.add(rootSdCard);
         }
         rootLabels = labels.toArray(new String[0]);
         rootDirs   = dirs.toArray(new File[0]);
@@ -89,7 +92,7 @@ public class FolderPickerActivity extends Activity {
         header.setPadding(dp(12), dp(10), dp(12), dp(10));
 
         TextView titleTV = new TextView(this);
-        titleTV.setText("Select Folder");
+        titleTV.setText(R.string.folder_picker_title);
         titleTV.setTextColor(0xFFFFFFFF);
         titleTV.setTextSize(16f);
         titleTV.setTypeface(null, Typeface.BOLD);
@@ -97,7 +100,7 @@ public class FolderPickerActivity extends Activity {
 
         // Root location spinner
         TextView locationLabel = new TextView(this);
-        locationLabel.setText("Location:");
+        locationLabel.setText(R.string.folder_picker_location);
         locationLabel.setTextColor(0xFF8888AA);
         locationLabel.setTextSize(11f);
         LinearLayout.LayoutParams llLp = new LinearLayout.LayoutParams(-2, -2);
@@ -138,7 +141,7 @@ public class FolderPickerActivity extends Activity {
         btnRowLp.setMargins(dp(12), dp(8), dp(12), dp(4));
         btnRow.setLayoutParams(btnRowLp);
 
-        Button selectBtn = makeBtn("✓  Select this folder", 0xFF2E7D32);
+        Button selectBtn = makeBtn(getString(R.string.folder_picker_select), 0xFF2E7D32);
         selectBtn.setOnClickListener(v -> {
             Intent result = new Intent();
             result.putExtra("path", currentDir.getAbsolutePath());
@@ -149,7 +152,7 @@ public class FolderPickerActivity extends Activity {
         selLp.rightMargin = dp(6);
         btnRow.addView(selectBtn, selLp);
 
-        Button newFolderBtn = makeBtn("+ New", 0xFF444466);
+        Button newFolderBtn = makeBtn(getString(R.string.folder_picker_new), 0xFF444466);
         newFolderBtn.setOnClickListener(v -> showNewFolderDialog());
         btnRow.addView(newFolderBtn, new LinearLayout.LayoutParams(dp(90), dp(44)));
 
@@ -174,13 +177,13 @@ public class FolderPickerActivity extends Activity {
         // ── "↑ Up" row ────────────────────────────────────────────────────────
         File parent = currentDir.getParentFile();
         if (parent != null && !isRoot(currentDir)) {
-            listContainer.addView(makeDirRow("↑  Up", parent, true));
+            listContainer.addView(makeDirRow(getString(R.string.folder_picker_up), parent, true));
         }
 
         // ── Subdirectories ────────────────────────────────────────────────────
         File[] files = currentDir.listFiles();
         if (files == null) {
-            addEmptyLabel("(empty or no read permission)");
+            addEmptyLabel(getString(R.string.folder_picker_empty_unreadable));
             return;
         }
 
@@ -191,7 +194,7 @@ public class FolderPickerActivity extends Activity {
         Collections.sort(dirs, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
 
         if (dirs.isEmpty()) {
-            addEmptyLabel("(no subdirectories — use \"+ New\" to create one)");
+            addEmptyLabel(getString(R.string.folder_picker_no_subdirectories));
         } else {
             for (File dir : dirs) {
                 listContainer.addView(makeDirRow("📁  " + dir.getName(), dir, false));
@@ -228,37 +231,37 @@ public class FolderPickerActivity extends Activity {
 
     private void showNewFolderDialog() {
         EditText input = new EditText(this);
-        input.setHint("Folder name");
+        input.setHint(R.string.folder_picker_folder_name_hint);
         input.setSingleLine(true);
         LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(-1, -2);
         inputLp.setMargins(dp(20), dp(8), dp(20), dp(8));
         input.setLayoutParams(inputLp);
 
         new AlertDialog.Builder(this)
-            .setTitle("New Folder")
+            .setTitle(R.string.folder_picker_new_folder_title)
             .setView(input)
-            .setPositiveButton("Create", (d, w) -> {
+            .setPositiveButton(R.string.folder_picker_create, (d, w) -> {
                 String name = input.getText().toString().trim();
                 if (name.isEmpty()) {
-                    showThemedMessage("Enter a folder name");
+                    showThemedMessage(getString(R.string.folder_picker_enter_name));
                     return;
                 }
                 // Reject names with path separators
                 if (name.contains("/") || name.contains("\\")) {
-                    showThemedMessage("Folder name cannot contain slashes");
+                    showThemedMessage(getString(R.string.folder_picker_invalid_name));
                     return;
                 }
                 File newDir = new File(currentDir, name);
                 if (newDir.exists()) {
-                    showThemedMessage("Folder already exists");
+                    showThemedMessage(getString(R.string.folder_picker_already_exists));
                 } else if (newDir.mkdir()) {
                     refreshList();
-                    showThemedMessage("Created: " + name);
+                    showThemedMessage(getString(R.string.folder_picker_created, name));
                 } else {
-                    showThemedMessage("Failed to create folder");
+                    showThemedMessage(getString(R.string.folder_picker_create_failed));
                 }
             })
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show();
     }
 
@@ -270,7 +273,7 @@ public class FolderPickerActivity extends Activity {
     private void showThemedMessage(String msg) {
         new AlertDialog.Builder(this, com.winlator.star.R.style.StoreAlertDialogDark)
             .setMessage(msg)
-            .setPositiveButton("OK", null)
+            .setPositiveButton(android.R.string.ok, null)
             .show();
     }
 

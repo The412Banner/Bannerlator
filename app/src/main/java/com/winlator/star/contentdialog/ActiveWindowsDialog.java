@@ -31,7 +31,7 @@ public class ActiveWindowsDialog extends ContentDialog {
         try {
             setTitle(activity.getString(R.string.active_windows));
         } catch (Exception e) {
-            setTitle("Active Windows");
+            setTitle(R.string.active_windows);
         }
 
         try {
@@ -146,10 +146,11 @@ public class ActiveWindowsDialog extends ContentDialog {
             String title = window.getName();
             
             if (title == null || title.isEmpty()) title = className;
-            if (title == null || title.isEmpty()) title = "Unnamed Window";
+            if (title == null || title.isEmpty()) title = activity.getString(R.string.active_windows_unnamed);
 
             tvName.setText(title);
-            tvProcess.setText(className != null && !className.isEmpty() ? className : "Application");
+            tvProcess.setText(className != null && !className.isEmpty()
+                    ? className : activity.getString(R.string.active_windows_application));
 
             if (icon != null) ivIcon.setImageBitmap(icon);
 

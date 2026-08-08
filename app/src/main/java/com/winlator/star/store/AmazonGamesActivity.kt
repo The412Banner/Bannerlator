@@ -4,7 +4,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -58,12 +58,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.winlator.star.R
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.Store
@@ -78,7 +80,7 @@ import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
-class AmazonGamesActivity : ComponentActivity() {
+class AmazonGamesActivity : AppCompatActivity() {
 
     private var prefs: SharedPreferences? = null
 
@@ -86,7 +88,8 @@ class AmazonGamesActivity : ComponentActivity() {
     private var allGames by mutableStateOf<List<AmazonGame>>(emptyList())
     private var searchQuery by mutableStateOf("")
     private var viewMode by mutableStateOf("list")
-    private var statusText by mutableStateOf("Loading Amazon library\u2026")
+    private var statusText by mutableStateOf("")
+    private var statusTone by mutableStateOf(AmazonStatusTone.NEUTRAL)
     private var gamesVisible by mutableStateOf(false)
     private var expandedProductId by mutableStateOf<String?>(null)
     // Themed auto-dismiss bar — system Toasts render as an unreadable black box on this ROM
@@ -117,6 +120,7 @@ class AmazonGamesActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS_NAME, 0)
         viewMode = prefs!!.getString(VIEW_MODE_KEY, "grid") ?: "grid"
+        setSync(getString(R.string.store_games_amazon_loading_library))
 
         // Cross-store Download Manager (Phase A): init the registry + seed the installed
         // Amazon library here too, so an INSTALLED library is present even if the user opens
@@ -131,6 +135,7 @@ class AmazonGamesActivity : ComponentActivity() {
                     searchQuery = searchQuery,
                     viewMode = viewMode,
                     statusText = statusText,
+                    statusTone = statusTone,
                     gamesVisible = gamesVisible,
                     refreshEnabled = refreshEnabled,
                     downloadStates = downloadStates,
@@ -198,7 +203,10 @@ class AmazonGamesActivity : ComponentActivity() {
         if (cached != null && cached.isNotEmpty()) {
             showGames(cached)
             val cn = cached.size
-            setSync("$cn ${if (cn == 1) "game" else "games"} — cached  •  tap ↺ to refresh", false)
+            setSync(
+                resources.getQuantityString(R.plurals.store_games_cached_count, cn, cn),
+                AmazonStatusTone.SUCCESS,
+            )
         }
         startSync(cached == null || cached.isEmpty())
     }
@@ -224,7 +232,7 @@ class AmazonGamesActivity : ComponentActivity() {
 
     private fun startSync(showProgress: Boolean) {
         refreshEnabled = false
-        if (showProgress) setSync("Loading Amazon library\u2026", false)
+        if (showProgress) setSync(getString(R.string.store_games_amazon_loading_library))
         lifecycleScope.launch(Dispatchers.IO) {
             syncLibrary(showProgress)
         }
@@ -232,31 +240,31 @@ class AmazonGamesActivity : ComponentActivity() {
 
     private suspend fun syncLibrary(showProgress: Boolean) {
         try {
-            if (showProgress) setSync("Checking credentials\u2026", false)
+            if (showProgress) setSync(getString(R.string.store_games_checking_credentials))
             val creds = AmazonCredentialStore.load(this@AmazonGamesActivity)
             if (creds == null || creds.accessToken == null) {
-                setSync("Not logged in", true)
+                setSync(getString(R.string.store_games_not_logged_in), AmazonStatusTone.ERROR)
                 enableRefresh()
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "Please log in to Amazon Games first"
+                    resultBarMsg = getString(R.string.store_games_amazon_login_first)
                     finish()
                 }
                 return
             }
 
-            if (showProgress) setSync("Refreshing token\u2026", false)
+            if (showProgress) setSync(getString(R.string.store_games_refreshing_token))
             val token = AmazonCredentialStore.getValidAccessToken(this@AmazonGamesActivity)
             if (token == null) {
-                setSync("Token refresh failed", true)
+                setSync(getString(R.string.store_games_token_refresh_failed), AmazonStatusTone.ERROR)
                 enableRefresh()
                 return
             }
 
-            if (showProgress) setSync("Fetching game list\u2026", false)
+            if (showProgress) setSync(getString(R.string.store_games_fetching_game_list))
             val allEntitlements = AmazonApiClient.getEntitlements(token, creds.deviceSerial)
 
             if (allEntitlements == null || allEntitlements.isEmpty()) {
-                setSync("No games found in Amazon library", true)
+                setSync(getString(R.string.store_games_amazon_no_games), AmazonStatusTone.ERROR)
                 enableRefresh()
                 return
             }
@@ -309,12 +317,18 @@ class AmazonGamesActivity : ComponentActivity() {
             withContext(Dispatchers.Main) {
                 showGames(finalGames)
                 val fn = finalGames.size
-                setSync("$fn ${if (fn == 1) "game" else "games"} — tap a card to install", false)
+                setSync(
+                    resources.getQuantityString(R.plurals.store_games_ready_count, fn, fn),
+                    AmazonStatusTone.SUCCESS,
+                )
                 enableRefresh()
             }
         } catch (e: Exception) {
             Log.e(TAG, "syncLibrary error", e)
-            setSync("Error: ${e.message}", true)
+            setSync(
+                getString(R.string.store_games_failed_fetch_library),
+                AmazonStatusTone.ERROR,
+            )
             enableRefresh()
         }
     }
@@ -402,9 +416,8 @@ class AmazonGamesActivity : ComponentActivity() {
         if (visibleGames.isEmpty()) {
             val q = searchQuery.trim()
             setSync(
-                if (q.isEmpty()) "Your Amazon library is empty"
-                else "No results for \"$q\"",
-                false,
+                if (q.isEmpty()) getString(R.string.store_games_amazon_library_empty)
+                else getString(R.string.store_games_no_results_for, q),
             )
         }
     }
@@ -432,7 +445,7 @@ class AmazonGamesActivity : ComponentActivity() {
             val token = AmazonCredentialStore.getValidAccessToken(this@AmazonGamesActivity)
             if (token == null) {
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "Login required"
+                    resultBarMsg = getString(R.string.store_games_login_required)
                 }
                 removeDownloadState(game.productId)
                 return@launch
@@ -465,7 +478,11 @@ class AmazonGamesActivity : ComponentActivity() {
                 { dl, total, file ->
                     if (cancelled.get()) return@install
                     val pct = if (total > 0) (dl * 100L / total).toInt() else 0
-                    val name = if (!file.isNullOrEmpty()) file else "Downloading\u2026"
+                    val name = when {
+                        file == "Starting…" -> getString(R.string.store_games_starting)
+                        !file.isNullOrEmpty() -> file
+                        else -> getString(R.string.store_games_downloading)
+                    }
                     StoreDownloadHooks.tick(
                         store = Store.AMAZON,
                         id = game.productId,
@@ -485,9 +502,16 @@ class AmazonGamesActivity : ComponentActivity() {
             }
             if (!ok) {
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "Error: Download failed"
+                    resultBarMsg = getString(
+                        R.string.store_games_error_detail,
+                        getString(R.string.store_games_download_failed),
+                    )
                 }
-                StoreDownloadHooks.markFailed(Store.AMAZON, game.productId, "Download failed")
+                StoreDownloadHooks.markFailed(
+                    Store.AMAZON,
+                    game.productId,
+                    getString(R.string.store_games_download_failed),
+                )
                 removeDownloadState(game.productId)
                 return@launch
             }
@@ -497,9 +521,16 @@ class AmazonGamesActivity : ComponentActivity() {
 
             if (exeFiles.isEmpty()) {
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "Error: No executable found after install"
+                    resultBarMsg = getString(
+                        R.string.store_games_error_detail,
+                        getString(R.string.store_games_no_exe_after_install),
+                    )
                 }
-                StoreDownloadHooks.markFailed(Store.AMAZON, game.productId, "No executable found")
+                StoreDownloadHooks.markFailed(
+                    Store.AMAZON,
+                    game.productId,
+                    getString(R.string.store_games_no_exe_after_install),
+                )
                 removeDownloadState(game.productId)
                 return@launch
             }
@@ -526,7 +557,7 @@ class AmazonGamesActivity : ComponentActivity() {
         val idx = downloadStates.indexOfFirst { it.first == productId }
         if (idx >= 0) {
             downloadStates[idx] = productId to DownloadState(
-                progress = 100, statusText = "Installed",
+                progress = 100, statusText = getString(R.string.store_games_installed),
                 isVisible = false, isComplete = true,
             )
         }
@@ -572,7 +603,7 @@ class AmazonGamesActivity : ComponentActivity() {
             StoreDownloadHooks.markUninstalled(Store.AMAZON, game.productId)
             withContext(Dispatchers.Main) {
                 refreshFromCache()
-                resultBarMsg = "${game.title} uninstalled"
+                resultBarMsg = getString(R.string.store_games_named_uninstalled, game.title)
             }
         }
     }
@@ -582,14 +613,14 @@ class AmazonGamesActivity : ComponentActivity() {
     private fun openExePicker(game: AmazonGame) {
         val installedDir = prefs!!.getString("amazon_dir_${game.productId}", null)
         if (installedDir == null) {
-            resultBarMsg = "Install directory not found"
+            resultBarMsg = getString(R.string.store_games_install_directory_not_found)
             return
         }
         lifecycleScope.launch(Dispatchers.IO) {
             val dir = File(installedDir)
             if (!dir.isDirectory) {
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "Install directory not found"
+                    resultBarMsg = getString(R.string.store_games_install_directory_not_found)
                 }
                 return@launch
             }
@@ -597,7 +628,7 @@ class AmazonGamesActivity : ComponentActivity() {
             AmazonLaunchHelper.collectExe(dir, exeFiles)
             if (exeFiles.isEmpty()) {
                 withContext(Dispatchers.Main) {
-                    resultBarMsg = "No .exe files found"
+                    resultBarMsg = getString(R.string.store_games_no_exe_files)
                 }
                 return@launch
             }
@@ -611,7 +642,7 @@ class AmazonGamesActivity : ComponentActivity() {
                                 .putString("amazon_exe_${game.productId}", selected)
                                 .apply()
                             refreshFromCache()
-                            resultBarMsg = "Exe set: ${File(selected).name}"
+                            resultBarMsg = getString(R.string.store_games_exe_set_to, File(selected).name)
                         }
                     },
                 )
@@ -695,8 +726,9 @@ class AmazonGamesActivity : ComponentActivity() {
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private fun setSync(msg: String, isError: Boolean) {
+    private fun setSync(msg: String, tone: AmazonStatusTone = AmazonStatusTone.NEUTRAL) {
         statusText = msg
+        statusTone = tone
     }
 
     private fun enableRefresh() {
@@ -716,7 +748,7 @@ class AmazonGamesActivity : ComponentActivity() {
         }
 
         fun formatBytes(bytes: Long): String = when {
-            bytes < 0 -> "Unknown"
+            bytes < 0 -> ""
             bytes < 1024L -> "$bytes B"
             bytes < 1024L * 1024L -> "${bytes / 1024L} KB"
             bytes < 1024L * 1024L * 1024L ->
@@ -733,6 +765,8 @@ class AmazonGamesActivity : ComponentActivity() {
         }
     }
 }
+
+private enum class AmazonStatusTone { NEUTRAL, SUCCESS, ERROR }
 
 private data class DownloadState(
     val progress: Int = 0,
@@ -755,6 +789,7 @@ private fun AmazonGamesScreen(
     searchQuery: String,
     viewMode: String,
     statusText: String,
+    statusTone: AmazonStatusTone,
     gamesVisible: Boolean,
     refreshEnabled: Boolean,
     downloadStates: List<Pair<String, DownloadState>>,
@@ -795,7 +830,7 @@ private fun AmazonGamesScreen(
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
 
             Text(
-                text = "Amazon Games",
+                text = stringResource(R.string.store_games_amazon_title),
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -838,7 +873,12 @@ private fun AmazonGamesScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text("Search games\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            placeholder = {
+                Text(
+                    stringResource(R.string.store_games_search_games),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(0.dp),
             textStyle = androidx.compose.ui.text.TextStyle(
@@ -855,13 +895,10 @@ private fun AmazonGamesScreen(
         )
 
         // Status bar
-        val statusColor = when {
-            statusText.startsWith("Error") || statusText.startsWith("Not logged in")
-                || statusText.startsWith("Token refresh") || statusText.startsWith("No games") ->
-                MaterialTheme.colorScheme.error
-            statusText.contains("game") && (statusText.contains("tap") || statusText.contains("cached")) ->
-                Color(0xFF81C784) // semantic "library ready" green
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        val statusColor = when (statusTone) {
+            AmazonStatusTone.ERROR -> MaterialTheme.colorScheme.error
+            AmazonStatusTone.SUCCESS -> Color(0xFF81C784)
+            AmazonStatusTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
         }
         Text(
             text = statusText,
@@ -917,8 +954,8 @@ private fun AmazonGamesScreen(
 
             if (!gamesVisible) {
                 Text(
-                    text = if (statusText.contains("Error") || statusText.contains("No games"))
-                        statusText else "Loading\u2026",
+                    text = if (statusTone == AmazonStatusTone.ERROR) statusText
+                    else stringResource(R.string.store_games_loading),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
@@ -1070,8 +1107,11 @@ private fun GameCard(
                 )
             }
 
-            val checkText = if (updateAvailable) "\u2713 Installed \u2014 Update Available"
-            else "\u2713 Installed"
+            val checkText = if (updateAvailable) {
+                stringResource(R.string.store_games_installed_update_available)
+            } else {
+                stringResource(R.string.store_games_installed_marked)
+            }
             // semantic: amber = update-available, installed-green = up to date
             val checkColor = if (updateAvailable) Color(0xFFFFAA00) else Color(0xFF4CAF50)
             if (isInstalled) {
@@ -1105,7 +1145,7 @@ private fun GameCard(
                 }
                 if (ds.isCancelling) {
                     Text(
-                        text = "Cancelling\u2026",
+                        text = stringResource(R.string.store_games_cancelling),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp),
@@ -1142,9 +1182,9 @@ private fun GameCard(
             ) {
                 Text(
                     text = when {
-                        ds != null && ds.isVisible -> "Cancel"
-                        isInstalled -> "Add to Launcher"
-                        else -> "Install"
+                        ds != null && ds.isVisible -> stringResource(R.string.store_games_action_cancel)
+                        isInstalled -> stringResource(R.string.store_games_action_add_to_launcher)
+                        else -> stringResource(R.string.store_games_action_install)
                     },
                     color = if (isCancelBtn) MaterialTheme.colorScheme.onError
                     else MaterialTheme.colorScheme.onPrimary,
@@ -1306,9 +1346,9 @@ private fun GameGridTile(
                 ) {
                     Text(
                         text = when {
-                            ds != null && ds.isVisible -> "Cancel"
-                            isInstalled -> "Add to Launcher"
-                            else -> "Install"
+                            ds != null && ds.isVisible -> stringResource(R.string.store_games_action_cancel)
+                            isInstalled -> stringResource(R.string.store_games_action_add_to_launcher)
+                            else -> stringResource(R.string.store_games_action_install)
                         },
                         color = if (isCancelBtn) MaterialTheme.colorScheme.onError
                         else MaterialTheme.colorScheme.onPrimary,
@@ -1329,12 +1369,16 @@ private fun InstallConfirmDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    var sizeLabel by remember { mutableStateOf("Game size:  Fetching\u2026") }
     val context = LocalContext.current
+    var resolvedSize by remember(game.productId) {
+        mutableStateOf<Long?>(game.installSize.takeIf { it > 0 })
+    }
+    var sizeResolved by remember(game.productId) { mutableStateOf(game.installSize > 0) }
 
     LaunchedEffect(game.productId) {
         if (game.installSize > 0) {
-            sizeLabel = "Game size:  ${AmazonGamesActivity.formatBytes(game.installSize)}"
+            resolvedSize = game.installSize
+            sizeResolved = true
         } else {
             withContext(Dispatchers.IO) {
                 var size = 0L
@@ -1355,7 +1399,8 @@ private fun InstallConfirmDialog(
                 } catch (_: Exception) {}
                 val finalSize = size
                 withContext(Dispatchers.Main) {
-                    sizeLabel = "Game size:  ${if (finalSize > 0) AmazonGamesActivity.formatBytes(finalSize) else "Unknown"}"
+                    resolvedSize = finalSize.takeIf { it > 0 }
+                    sizeResolved = true
                 }
             }
         }
@@ -1363,27 +1408,45 @@ private fun InstallConfirmDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Install ${game.title}?") },
+        title = { Text(stringResource(R.string.store_games_install_named_question, game.title)) },
         text = {
             Column {
                 Text(
-                    text = sizeLabel,
+                    text = when {
+                        !sizeResolved -> stringResource(R.string.store_games_game_size_fetching)
+                        resolvedSize != null -> stringResource(
+                            R.string.store_games_game_size,
+                            AmazonGamesActivity.formatBytes(resolvedSize!!),
+                        )
+                        else -> stringResource(
+                            R.string.store_games_game_size,
+                            stringResource(R.string.store_games_unknown),
+                        )
+                    },
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Available storage:  ${AmazonGamesActivity.formatBytes(freeBytes)}",
+                    text = stringResource(
+                        R.string.store_games_available_storage,
+                        if (freeBytes >= 0) AmazonGamesActivity.formatBytes(freeBytes)
+                        else stringResource(R.string.store_games_unknown),
+                    ),
                     fontSize = 14.sp,
                     color = Color(0xFF88CC88), // semantic storage-ok green
                 )
             }
         },
         confirmButton = {
-            Button(onClick = onConfirm) { Text("Install") }
+            Button(onClick = onConfirm) {
+                Text(stringResource(R.string.store_games_action_install))
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.store_games_action_cancel))
+            }
         },
     )
 }
@@ -1401,11 +1464,14 @@ private fun GameDetailDialog(
     val installedExe = prefs.getString("amazon_exe_${game.productId}", null)
     val installedDir = prefs.getString("amazon_dir_${game.productId}", null)
 
-    val msg = buildString {
-        if (game.developer.isNotEmpty()) appendLine("Developer: ${game.developer}")
-        if (game.publisher.isNotEmpty()) appendLine("Publisher: ${game.publisher}")
-        append("ID: ${game.shortId()}")
-    }
+    val developer = if (game.developer.isNotEmpty()) {
+        stringResource(R.string.store_games_developer_value, game.developer)
+    } else null
+    val publisher = if (game.publisher.isNotEmpty()) {
+        stringResource(R.string.store_games_publisher_value, game.publisher)
+    } else null
+    val id = stringResource(R.string.store_games_id_value, game.shortId())
+    val msg = listOfNotNull(developer, publisher, id).joinToString("\n")
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
@@ -1420,7 +1486,10 @@ private fun GameDetailDialog(
                 if (installedExe != null) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "\n.exe: ${File(installedExe).name}",
+                        text = stringResource(
+                            R.string.store_games_executable_value,
+                            File(installedExe).name,
+                        ),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1428,14 +1497,25 @@ private fun GameDetailDialog(
                     Button(
                         onClick = onSetExe,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    ) { Text("Set .exe\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    ) {
+                        Text(
+                            stringResource(R.string.store_games_set_executable),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.store_games_action_close))
+            }
+        },
         dismissButton = {
             if (installedDir != null) {
-                TextButton(onClick = onUninstall) { Text("Uninstall") }
+                TextButton(onClick = onUninstall) {
+                    Text(stringResource(R.string.store_games_action_uninstall))
+                }
             }
         },
     )
@@ -1451,7 +1531,7 @@ private fun ExePickerDialog(
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select game executable") },
+        title = { Text(stringResource(R.string.store_games_select_game_executable)) },
         text = {
             Column(
                 modifier = Modifier

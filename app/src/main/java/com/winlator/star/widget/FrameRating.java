@@ -15,6 +15,8 @@ import android.view.ViewConfiguration;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.winlator.star.container.Container;
 
 import com.winlator.star.R;
@@ -278,7 +280,14 @@ public class FrameRating extends FrameLayout implements Runnable {
             float latencyMs = 1000.0f / Math.max(displayFps, 1.0f);
             tvLatency.setText(String.format(Locale.ENGLISH, "%.1fms", latencyMs));
         }
-        if (tvRAM != null) tvRAM.setText(getAvailableRAM() + " Used / " + totalRAM);
+        if (tvRAM != null) {
+            Context localizedContext = ContextCompat.getContextForLanguage(context);
+            tvRAM.setText(localizedContext.getString(
+                    R.string.final_runtime_hud_memory_used,
+                    getAvailableRAM(),
+                    totalRAM
+            ));
+        }
         applyTemp(tvCPUTemp, cpuTemp, HudMetrics.TempSensor.CPU, defaultCpuTempColor);
         if (tvGPULoad != null) tvGPULoad.setText(gpuLoad + "%");
 

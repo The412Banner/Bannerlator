@@ -1,13 +1,15 @@
 package com.winlator.star.ui.theme
 
+import androidx.annotation.StringRes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import com.winlator.star.R
 
 data class ThemePreset(
-    val name: String,
+    @StringRes val nameRes: Int,
     val background: Color,
     val surface: Color,
     val surfaceVariant: Color,
@@ -109,14 +111,14 @@ data class ThemePreset(
 
 val themePresets: List<ThemePreset> = listOf(
     ThemePreset(
-        name          = "Classic Dark",
+        nameRes       = R.string.appearance_preset_classic_dark,
         background    = Color(0xFF1A1A1A),
         surface       = Color(0xFF2A2A2A),
         surfaceVariant= Color(0xFF333333),
         primary       = Color(0xFF0055FF),
     ),
     ThemePreset(
-        name          = "AMOLED",
+        nameRes       = R.string.appearance_preset_amoled,
         background    = Color(0xFF000000),
         surface       = Color(0xFF000000),
         surfaceVariant= Color(0xFF050505),
@@ -132,35 +134,35 @@ val themePresets: List<ThemePreset> = listOf(
         surfaceContainerHighest = Color(0xFF38383F),
     ),
     ThemePreset(
-        name          = "Ocean",
+        nameRes       = R.string.appearance_preset_ocean,
         background    = Color(0xFF0D1B2A),
         surface       = Color(0xFF162435),
         surfaceVariant= Color(0xFF1E3045),
         primary       = Color(0xFF0EA5E9),
     ),
     ThemePreset(
-        name          = "Forest",
+        nameRes       = R.string.appearance_preset_forest,
         background    = Color(0xFF0D1A12),
         surface       = Color(0xFF142010),
         surfaceVariant= Color(0xFF1C2E1A),
         primary       = Color(0xFF22C55E),
     ),
     ThemePreset(
-        name          = "Sunset",
+        nameRes       = R.string.appearance_preset_sunset,
         background    = Color(0xFF1A0D0D),
         surface       = Color(0xFF251515),
         surfaceVariant= Color(0xFF301C1C),
         primary       = Color(0xFFF97316),
     ),
     ThemePreset(
-        name          = "Rose",
+        nameRes       = R.string.appearance_preset_rose,
         background    = Color(0xFF1A0D14),
         surface       = Color(0xFF25151E),
         surfaceVariant= Color(0xFF301C28),
         primary       = Color(0xFFEC4899),
     ),
     ThemePreset(
-        name          = "Steel",
+        nameRes       = R.string.appearance_preset_steel,
         background    = Color(0xFF131419),
         surface       = Color(0xFF1C1D25),
         surfaceVariant= Color(0xFF252630),
@@ -171,14 +173,14 @@ val themePresets: List<ThemePreset> = listOf(
     // accentDim derive automatically. onPrimary is forced dark on light/bright accents
     // (phosphor green, gold, frost cyan, near-white mono) so on-accent text/icons stay legible.
     ThemePreset(
-        name          = "Midnight Cobalt",
+        nameRes       = R.string.appearance_preset_midnight_cobalt,
         background    = Color(0xFF0A0E1A),
         surface       = Color(0xFF111A2E),
         surfaceVariant= Color(0xFF18243F),
         primary       = Color(0xFF2D6BFF),
     ),
     ThemePreset(
-        name          = "Phosphor",
+        nameRes       = R.string.appearance_preset_phosphor,
         background    = Color(0xFF000000),
         surface       = Color(0xFF07120A),
         surfaceVariant= Color(0xFF0C1E14),
@@ -188,35 +190,35 @@ val themePresets: List<ThemePreset> = listOf(
         onPrimary     = Color(0xFF001505),
     ),
     ThemePreset(
-        name          = "Carbon & Ember",
+        nameRes       = R.string.appearance_preset_carbon_ember,
         background    = Color(0xFF121212),
         surface       = Color(0xFF1C1A18),
         surfaceVariant= Color(0xFF2A2522),
         primary       = Color(0xFFFF6A2C),
     ),
     ThemePreset(
-        name          = "Amethyst",
+        nameRes       = R.string.appearance_preset_amethyst,
         background    = Color(0xFF140D1F),
         surface       = Color(0xFF1E1430),
         surfaceVariant= Color(0xFF2A1C42),
         primary       = Color(0xFFA855F7),
     ),
     ThemePreset(
-        name          = "Crimson",
+        nameRes       = R.string.appearance_preset_crimson,
         background    = Color(0xFF160A0C),
         surface       = Color(0xFF221012),
         surfaceVariant= Color(0xFF301619),
         primary       = Color(0xFFEF4444),
     ),
     ThemePreset(
-        name          = "Synthwave",
+        nameRes       = R.string.appearance_preset_synthwave,
         background    = Color(0xFF14081E),
         surface       = Color(0xFF1E0F2E),
         surfaceVariant= Color(0xFF2A1640),
         primary       = Color(0xFFFF2D95),
     ),
     ThemePreset(
-        name          = "Royal Gold",
+        nameRes       = R.string.appearance_preset_royal_gold,
         background    = Color(0xFF14110A),
         surface       = Color(0xFF1E1810),
         surfaceVariant= Color(0xFF2A2216),
@@ -224,7 +226,7 @@ val themePresets: List<ThemePreset> = listOf(
         onPrimary     = Color(0xFF1A1305),
     ),
     ThemePreset(
-        name          = "Frost",
+        nameRes       = R.string.appearance_preset_frost,
         background    = Color(0xFF11141A),
         surface       = Color(0xFF1A2029),
         surfaceVariant= Color(0xFF252E3B),
@@ -232,7 +234,7 @@ val themePresets: List<ThemePreset> = listOf(
         onPrimary     = Color(0xFF08141A),
     ),
     ThemePreset(
-        name          = "Monochrome",
+        nameRes       = R.string.appearance_preset_monochrome,
         background    = Color(0xFF000000),
         surface       = Color(0xFF0D0D0D),
         surfaceVariant= Color(0xFF1A1A1A),
@@ -241,7 +243,7 @@ val themePresets: List<ThemePreset> = listOf(
         onPrimary     = Color(0xFF000000),
     ),
     ThemePreset(
-        name          = "Custom",
+        nameRes       = R.string.appearance_preset_custom,
         background    = Color(0xFF121212),
         surface       = Color(0xFF1E1E1E),
         surfaceVariant= Color(0xFF2A2A2A),

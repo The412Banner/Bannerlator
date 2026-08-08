@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 import com.winlator.star.ui.XServerDialogState.ControllerToastData
 import com.winlator.star.ui.XServerDialogState.ControllerToastRow
@@ -319,7 +321,7 @@ private fun DeviceRow(row: ControllerToastRow) {
                 if (row.isNew) {
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "NEW",
+                text = stringResource(R.string.controller_badge_new),
                         color = accent,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
@@ -347,9 +349,13 @@ private fun Badge(row: ControllerToastRow) {
     }
     when (row.badge) {
         ToastBadgeType.PLAYER -> SolidBadge("P${row.slot + 1}", playerColor, BadgeText)
-        ToastBadgeType.SHARE -> OutlineBadge("P${row.slot + 1} · share", playerColor, playerColor.copy(alpha = 0.55f))
-        ToastBadgeType.IGNORED -> OutlineBadge("Ignored", TxtDim, StrokeSoft)
-        ToastBadgeType.DETECTED -> OutlineBadge("Detected", TxtDim, StrokeSoft)
+            ToastBadgeType.SHARE -> OutlineBadge(
+                stringResource(R.string.controller_badge_share, row.slot + 1),
+                playerColor,
+                playerColor.copy(alpha = 0.55f),
+            )
+            ToastBadgeType.IGNORED -> OutlineBadge(stringResource(R.string.controller_badge_ignored), TxtDim, StrokeSoft)
+            ToastBadgeType.DETECTED -> OutlineBadge(stringResource(R.string.controller_badge_detected), TxtDim, StrokeSoft)
     }
 }
 

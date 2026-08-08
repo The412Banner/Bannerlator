@@ -19,10 +19,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.winhandler.WinHandler
 
@@ -52,13 +54,13 @@ data class PlayerSlotEditorRow(
  *  incl Player 1), then every currently-connected game controller (enumerated exactly like the app-drawer
  *  InputControlsScreen via ExternalController.getControllers()), then any saved-but-disconnected pins so a
  *  configured pad that's simply switched off is never dropped. Keys are the launch-time descriptor keys. */
-fun buildPlayerSlotEditorRows(savedJson: String): List<PlayerSlotEditorRow> {
+fun buildPlayerSlotEditorRows(savedJson: String, onScreenControlsLabel: String): List<PlayerSlotEditorRow> {
     val overrides = WinHandler.parseSlotOverridesJson(savedJson)
     val rows = ArrayList<PlayerSlotEditorRow>()
     val seen = HashSet<String>()
 
     val oscOverride = overrides[WinHandler.OSC_DESCRIPTOR] ?: SLOT_AUTO
-    rows.add(PlayerSlotEditorRow(WinHandler.OSC_DESCRIPTOR, "On-screen controls", true, true, oscOverride))
+    rows.add(PlayerSlotEditorRow(WinHandler.OSC_DESCRIPTOR, onScreenControlsLabel, true, true, oscOverride))
     seen.add(WinHandler.OSC_DESCRIPTOR)
 
     for (controller in ExternalController.getControllers()) {
@@ -84,12 +86,14 @@ fun PlayerSlotsEditor(
     modifier: Modifier = Modifier,
 ) {
     // Keyed on the saved JSON so an external change (or the caller re-seeding) re-enumerates devices.
-    val rows = remember(savedOverridesJson) { buildPlayerSlotEditorRows(savedOverridesJson) }
+    val onScreenControlsLabel = stringResource(R.string.player_on_screen_controls)
+    val rows = remember(savedOverridesJson, onScreenControlsLabel) {
+        buildPlayerSlotEditorRows(savedOverridesJson, onScreenControlsLabel)
+    }
 
     Column(modifier.fillMaxWidth()) {
         Text(
-            "Pin a controller (or the on-screen pad) to a player slot so the launch order is consistent. " +
-                "Applied on launch — the in-game side menu still lets you change it live.",
+            stringResource(R.string.player_slots_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -97,7 +101,7 @@ fun PlayerSlotsEditor(
 
         if (rows.isEmpty()) {
             Text(
-                "No controllers detected. Connect a controller to assign it, or set a pin here to apply when it's plugged in.",
+                stringResource(R.string.player_slots_none),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -119,23 +123,26 @@ fun PlayerSlotsEditor(
 // in-game PlayerSlotRowItem. @OptIn is inherited from the file-level opt-in (ExposedDropdownMenuBox).
 @Composable
 private fun PlayerSlotEditorRowItem(row: PlayerSlotEditorRow, onChange: (Int) -> Unit) {
-    val options = remember {
+    val autoLabel = stringResource(R.string.player_auto)
+    val ignoreLabel = stringResource(R.string.player_ignore)
+    val playerLabels = (1..4).map { stringResource(R.string.player_number, it) }
+    val options = remember(autoLabel, ignoreLabel, playerLabels) {
         buildList {
-            add("Auto" to SLOT_AUTO)
-            for (i in 0 until 4) add("Player ${i + 1}" to i)
-            add("Ignore" to SLOT_IGNORE)
+            add(autoLabel to SLOT_AUTO)
+            for (i in 0 until 4) add(playerLabels[i] to i)
+            add(ignoreLabel to SLOT_IGNORE)
         }
     }
-    val selectedLabel = options.firstOrNull { it.second == row.override }?.first ?: "Auto"
+    val selectedLabel = options.firstOrNull { it.second == row.override }?.first ?: autoLabel
 
     val status = when {
-        row.override == SLOT_IGNORE -> "Ignored"
-        row.override >= 0 -> "Pinned to Player ${row.override + 1}"
-        else -> "Auto (assigned by launch order)"
+        row.override == SLOT_IGNORE -> stringResource(R.string.player_ignored)
+        row.override >= 0 -> stringResource(R.string.player_pinned, row.override + 1)
+        else -> stringResource(R.string.player_auto_launch_order)
     }
     val suffix = when {
-        row.isOnScreen -> " · on-screen controls"
-        !row.connected -> " · not connected (saved pin)"
+        row.isOnScreen -> stringResource(R.string.player_suffix_on_screen)
+        !row.connected -> stringResource(R.string.player_suffix_disconnected)
         else -> ""
     }
 
@@ -160,7 +167,7 @@ private fun PlayerSlotEditorRowItem(row: PlayerSlotEditorRow, onChange: (Int) ->
             OutlinedTextField(
                 value = selectedLabel,
                 onValueChange = {}, readOnly = true,
-                label = { Text("Slot", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                label = { Text(stringResource(R.string.player_slot), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier.fillMaxWidth().menuAnchor(),
                 singleLine = true,

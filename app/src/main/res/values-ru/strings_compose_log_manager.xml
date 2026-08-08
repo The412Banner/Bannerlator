@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="log_manager_title">Управление журналами</string>
+    <string name="log_manager_action_close">Закрыть</string>
+    <string name="log_manager_where_logs_go">Куда сохранять журналы</string>
+    <string name="log_manager_download">Загрузки</string>
+    <string name="log_manager_custom_folder">Другая папка</string>
+    <string name="log_manager_choose_folder">Выбрать папку</string>
+    <string name="log_manager_documents">Документы</string>
+    <string name="log_manager_action_change">Изменить</string>
+    <string name="log_manager_select_log_folder">Выберите папку для журналов</string>
+    <string name="log_manager_folder_for_each_game">Отдельная папка для каждой игры</string>
+    <string name="log_manager_folder_for_each_game_hint">Журналы каждой игры хранятся вместе</string>
+    <string name="log_manager_what_to_record">Что записывать</string>
+    <string name="log_manager_wine_debug">Отладка Wine</string>
+    <string name="log_manager_wine_debug_hint">Подробные сообщения Wine (снижает производительность)</string>
+    <string name="log_manager_box64_fexcore">Box64 / FEXCore</string>
+    <string name="log_manager_box64_fexcore_hint">Диагностика трансляции x86</string>
+    <string name="log_manager_dxvk_vkd3d">DXVK и VKD3D</string>
+    <string name="log_manager_dxvk_vkd3d_hint">Диагностика трансляции графики</string>
+    <string name="log_manager_android_logcat">Android logcat</string>
+    <string name="log_manager_android_logcat_hint">Вывод Bannerlator на стороне Android</string>
+    <string name="log_manager_crash_reports">Отчёты о сбоях</string>
+    <string name="log_manager_crash_reports_hint">Сохраняются при сбое Bannerlator</string>
+    <string name="log_manager_capture_logcat_now">Снять logcat сейчас</string>
+    <string name="log_manager_housekeeping">Обслуживание</string>
+    <string name="log_manager_keep_last">Хранить последние</string>
+    <string name="log_manager_no_history_each_run">Без истории — каждый запуск заменяет предыдущий</string>
+    <string name="log_manager_no_history">Без истории</string>
+    <string name="log_manager_keep_last_launches">Хранение последних запусков</string>
+    <string name="log_manager_total_size">Общий размер</string>
+    <string name="log_manager_action_browse">Открыть</string>
+    <string name="log_manager_action_clear_all">Очистить всё</string>
+    <string name="log_manager_logs_by_game">Журналы по играм</string>
+    <string name="log_manager_no_logs_yet">Журналов пока нет.</string>
+    <string name="log_manager_explain_log_types">Для чего нужны эти журналы</string>
+    <string name="log_manager_privacy_note">Адреса электронной почты, токены авторизации и имя вашей учётной записи Steam удаляются при записи журналов. Пути к файлам сохраняются, чтобы журналы оставались полезными для диагностики. Перед отправкой просмотрите их, если название папки может раскрыть вашу личность. Logcat содержит только вывод Bannerlator.</string>
+    <string name="log_manager_delete_app_crash_question">Удалить журналы приложения и сбоев?</string>
+    <string name="log_manager_delete_bucket_question">Удалить «%1$s»?</string>
+    <string name="log_manager_delete_named_logs_question">Удалить журналы игры «%1$s»?</string>
+    <string name="log_manager_nothing_to_delete_message">Здесь нет файлов, записанных Bannerlator, поэтому удалять нечего. Ваши файлы в этой папке останутся без изменений.</string>
+    <string name="log_manager_action_delete">Удалить</string>
+    <string name="log_manager_action_ok">ОК</string>
+    <string name="log_manager_action_cancel">Отмена</string>
+    <string name="log_manager_clear_all_question">Удалить все журналы?</string>
+    <string name="log_manager_clear_all_message">Будет удалено: %1$s в %2$s, включая сохранённую историю.\n\nУдаляются только файлы, записанные Bannerlator. Остальные файлы в папке журналов, включая добавленные вами, останутся без изменений.</string>
+    <string name="log_manager_action_delete_all">Удалить всё</string>
+    <string name="log_manager_what_each_log_for">Для чего нужен каждый журнал</string>
+    <string name="log_manager_channels">Каналы</string>
+    <string name="log_manager_collapse_channels">Свернуть каналы</string>
+    <string name="log_manager_expand_channels">Развернуть каналы</string>
+    <string name="log_manager_none_selected">Ничего не выбрано</string>
+    <string name="log_manager_no_channel_matches">Канал по запросу «%1$s» не найден.</string>
+    <string name="log_manager_reset_defaults">Восстановить значения по умолчанию</string>
+    <string name="log_manager_all_wine_channels">Все каналы Wine</string>
+    <string name="log_manager_channel_counts_summary">%1$s · %2$s</string>
+    <string name="log_manager_whats_this">Что это?</string>
+    <string name="log_manager_on_only">Только включённые</string>
+    <string name="log_manager_search">Поиск</string>
+    <string name="log_manager_no_channels_on">Нет включённых каналов.</string>
+    <string name="log_manager_nothing_matches">По запросу «%1$s» ничего не найдено.</string>
+    <string name="log_manager_app_crash_logs">Журналы приложения и сбоев</string>
+    <string name="log_manager_older_logs">Старые журналы</string>
+    <string name="log_manager_all_logs">Все журналы</string>
+    <string name="log_manager_action_view">Просмотреть</string>
+    <string name="log_manager_action_share">Поделиться</string>
+    <string name="log_manager_just_now">только что</string>
+    <string name="log_manager_yesterday">вчера</string>
+
+    <plurals name="log_manager_launches_per_game">
+        <item quantity="one">%1$d запуск для каждой игры</item>
+        <item quantity="few">%1$d запуска для каждой игры</item>
+        <item quantity="many">%1$d запусков для каждой игры</item>
+        <item quantity="other">%1$d запуска для каждой игры</item>
+    </plurals>
+    <plurals name="log_manager_launches">
+        <item quantity="one">%1$d запуск</item>
+        <item quantity="few">%1$d запуска</item>
+        <item quantity="many">%1$d запусков</item>
+        <item quantity="other">%1$d запуска</item>
+    </plurals>
+    <plurals name="log_manager_total_size_across_folders">
+        <item quantity="one">%1$s в %2$d папке</item>
+        <item quantity="few">%1$s в %2$d папках</item>
+        <item quantity="many">%1$s в %2$d папках</item>
+        <item quantity="other">%1$s в %2$d папки</item>
+    </plurals>
+    <plurals name="log_manager_delete_group_message">
+        <item quantity="one">Будет удалён %1$d файл журнала, включая сохранённую историю.\n\nУдаляются только файлы, записанные Bannerlator. Остальные файлы в этой папке останутся без изменений.</item>
+        <item quantity="few">Будут удалены %1$d файла журнала, включая сохранённую историю.\n\nУдаляются только файлы, записанные Bannerlator. Остальные файлы в этой папке останутся без изменений.</item>
+        <item quantity="many">Будут удалены %1$d файлов журнала, включая сохранённую историю.\n\nУдаляются только файлы, записанные Bannerlator. Остальные файлы в этой папке останутся без изменений.</item>
+        <item quantity="other">Будет удалено %1$d файла журнала, включая сохранённую историю.\n\nУдаляются только файлы, записанные Bannerlator. Остальные файлы в этой папке останутся без изменений.</item>
+    </plurals>
+    <plurals name="log_manager_deleted_files">
+        <item quantity="one">Удалён %1$d файл</item>
+        <item quantity="few">Удалены %1$d файла</item>
+        <item quantity="many">Удалено %1$d файлов</item>
+        <item quantity="other">Удалено %1$d файла</item>
+    </plurals>
+    <plurals name="log_manager_log_file_count">
+        <item quantity="one">%1$d файл журнала</item>
+        <item quantity="few">%1$d файла журнала</item>
+        <item quantity="many">%1$d файлов журнала</item>
+        <item quantity="other">%1$d файла журнала</item>
+    </plurals>
+    <plurals name="log_manager_folder_count">
+        <item quantity="one">%1$d папке</item>
+        <item quantity="few">%1$d папках</item>
+        <item quantity="many">%1$d папках</item>
+        <item quantity="other">%1$d папки</item>
+    </plurals>
+    <plurals name="log_manager_kept_run_count">
+        <item quantity="one">сохранён %1$d запуск</item>
+        <item quantity="few">сохранено %1$d запуска</item>
+        <item quantity="many">сохранено %1$d запусков</item>
+        <item quantity="other">сохранено %1$d запуска</item>
+    </plurals>
+    <plurals name="log_manager_search_all_channels">
+        <item quantity="one">Поиск по %1$d каналу</item>
+        <item quantity="few">Поиск по всем %1$d каналам</item>
+        <item quantity="many">Поиск по всем %1$d каналам</item>
+        <item quantity="other">Поиск по всем %1$d канала</item>
+    </plurals>
+    <plurals name="log_manager_browse_all_channels">
+        <item quantity="one">Открыть %1$d канал…</item>
+        <item quantity="few">Открыть все %1$d канала…</item>
+        <item quantity="many">Открыть все %1$d каналов…</item>
+        <item quantity="other">Открыть все %1$d канала…</item>
+    </plurals>
+    <plurals name="log_manager_channels_available">
+        <item quantity="one">доступен %1$d канал</item>
+        <item quantity="few">доступно %1$d канала</item>
+        <item quantity="many">доступно %1$d каналов</item>
+        <item quantity="other">доступно %1$d канала</item>
+    </plurals>
+    <plurals name="log_manager_channels_on">
+        <item quantity="one">включён %1$d канал</item>
+        <item quantity="few">включено %1$d канала</item>
+        <item quantity="many">включено %1$d каналов</item>
+        <item quantity="other">включено %1$d канала</item>
+    </plurals>
+    <plurals name="log_manager_minutes_ago">
+        <item quantity="one">%1$d минуту назад</item>
+        <item quantity="few">%1$d минуты назад</item>
+        <item quantity="many">%1$d минут назад</item>
+        <item quantity="other">%1$d минуты назад</item>
+    </plurals>
+    <plurals name="log_manager_hours_ago">
+        <item quantity="one">%1$d час назад</item>
+        <item quantity="few">%1$d часа назад</item>
+        <item quantity="many">%1$d часов назад</item>
+        <item quantity="other">%1$d часа назад</item>
+    </plurals>
+    <plurals name="log_manager_days_ago">
+        <item quantity="one">%1$d день назад</item>
+        <item quantity="few">%1$d дня назад</item>
+        <item quantity="many">%1$d дней назад</item>
+        <item quantity="other">%1$d дня назад</item>
+    </plurals>
+
+    <string name="log_manager_copy_per_game">Не влияет на производительность.\n\nДля каждой игры создаётся отдельная папка в выбранном расположении журналов. Папка получает имя игры, поэтому журналы разных игр не смешиваются. Отключите эту настройку, чтобы хранить всё в одной папке, как в старых версиях.\n\nЖурналы, записанные до включения этой настройки, остаются на прежнем месте.</string>
+    <string name="log_manager_copy_wine">⚠️ СНИЖАЕТ ПРОИЗВОДИТЕЛЬНОСТЬ ИГР. Включайте только для диагностики и затем снова отключайте.\n\nЗаписывает действия самого Wine. Во время игры каждое сообщение сохраняется на диск, а Wine создаёт их очень много. Даже один канал «seh» добавляет запись при каждом исключении, которые обычные программы Windows создают постоянно. Более тяжёлые каналы, например «relay», могут замедлить игру в несколько раз.\n\nВключайте этот журнал, если игра не запускается, аварийно завершается или закрывается во время запуска.</string>
+    <string name="log_manager_copy_box64">⚠️ ПРИ ВЫСОКОЙ ПОДРОБНОСТИ СНИЖАЕТ ПРОИЗВОДИТЕЛЬНОСТЬ ИГР.\n\nЗаписывает работу транслятора x86 (Box64 или FEXCore), который преобразует инструкции игры для ПК, чтобы они выполнялись на телефоне. Полезно, если журнал Wine не объясняет сбой игры или проблема возникает только с одним эмулятором.\n\nДля обычной игры оставляйте отключённым.</string>
+    <string name="log_manager_copy_dxvk">Почти не влияет на производительность.\n\nЗаписывает сообщения слоёв трансляции графики: DXVK для DirectX 9/10/11 и VKD3D для DirectX 12. Почти все сообщения появляются при запуске игры: какой GPU и драйвер выбраны, каких возможностей не хватает и почему не удалось обработать шейдер.\n\nПроверяйте этот журнал при чёрном экране, пропавших текстурах или отказе игры использовать графическую функцию. Можно оставлять включённым.</string>
+    <string name="log_manager_copy_logcat">Не влияет на производительность.\n\nСистемный журнал Android, относящийся к Bannerlator. Он снимается по запросу — при нажатии «Снять logcat сейчас» или сбое приложения, — а не записывается непрерывно. Поэтому включение не снижает частоту кадров.\n\nСодержит ТОЛЬКО ВЫВОД BANNERLATOR. Без root Android не разрешает приложению читать журналы других приложений. Даже с root Bannerlator намеренно не предлагает снимать общесистемный журнал: в файл, который вы, вероятно, захотите отправить, могли бы попасть личные данные других приложений. Если у вас есть root и нужен полный системный журнал, используйте специальное приложение для чтения logcat.</string>
+    <string name="log_manager_copy_crash">Не влияет на производительность: ничего не выполняется, пока не произойдёт сбой.\n\nЕсли сбой произойдёт в самом Bannerlator, будет сохранён отчёт с моделью устройства, версией Android и приложения, причиной ошибки и несколькими сотнями последних строк журнала приложения. Этих данных достаточно, чтобы расследовать сбой постфактум.\n\nОтчёты хранятся вместе с остальными журналами в разделе «Журналы приложения и сбоев».</string>
+    <string name="log_manager_copy_capture_now">Снимает текущий фрагмент недавнего журнала Android для Bannerlator и сохраняет его вместе с остальными журналами.\n\nПолезно, если что-то пошло не так, но приложение не завершилось со сбоем: снимите журнал, пока проблема свежая, а затем поделитесь им.</string>
+    <string name="log_manager_copy_keep_last">Количество прошлых запусков, сохраняемых для каждой игры.\n\nПри запуске игры журналы предыдущего запуска не перезаписываются, а переносятся в папку «previous». Запуски старше указанного количества удаляются. Файлы текущего запуска сохраняют обычные имена, поэтому самый новый журнал всегда легко найти.\n\nУкажите 0, чтобы совсем не хранить историю.</string>
+    <string name="log_manager_copy_explain_all">Снижают производительность, пока включены\n\n• Отладка Wine\n⚠️ СНИЖАЕТ ПРОИЗВОДИТЕЛЬНОСТЬ ИГР. Включайте только для диагностики и затем снова отключайте.\n\nЗаписывает действия самого Wine. Во время игры каждое сообщение сохраняется на диск, а Wine создаёт их очень много. Даже один канал «seh» добавляет запись при каждом исключении, которые обычные программы Windows создают постоянно. Более тяжёлые каналы, например «relay», могут замедлить игру в несколько раз.\n\nВключайте этот журнал, если игра не запускается, аварийно завершается или закрывается во время запуска.\n\n• Box64 / FEXCore\n⚠️ ПРИ ВЫСОКОЙ ПОДРОБНОСТИ СНИЖАЕТ ПРОИЗВОДИТЕЛЬНОСТЬ ИГР.\n\nЗаписывает работу транслятора x86 (Box64 или FEXCore), который преобразует инструкции игры для ПК, чтобы они выполнялись на телефоне. Полезно, если журнал Wine не объясняет сбой игры или проблема возникает только с одним эмулятором.\n\nДля обычной игры оставляйте отключённым.\n\n\nМожно оставлять включёнными\n\n• DXVK и VKD3D\nПочти не влияет на производительность.\n\nЗаписывает сообщения слоёв трансляции графики: DXVK для DirectX 9/10/11 и VKD3D для DirectX 12. Почти все сообщения появляются при запуске игры: какой GPU и драйвер выбраны, каких возможностей не хватает и почему не удалось обработать шейдер.\n\nПроверяйте этот журнал при чёрном экране, пропавших текстурах или отказе игры использовать графическую функцию. Можно оставлять включённым.\n\n• Android logcat\nНе влияет на производительность.\n\nСистемный журнал Android, относящийся к Bannerlator. Он снимается по запросу — при нажатии «Снять logcat сейчас» или сбое приложения, — а не записывается непрерывно. Поэтому включение не снижает частоту кадров.\n\nСодержит ТОЛЬКО ВЫВОД BANNERLATOR. Без root Android не разрешает приложению читать журналы других приложений. Даже с root Bannerlator намеренно не предлагает снимать общесистемный журнал: в файл, который вы, вероятно, захотите отправить, могли бы попасть личные данные других приложений. Если у вас есть root и нужен полный системный журнал, используйте специальное приложение для чтения logcat.\n\n• Отчёты о сбоях\nНе влияет на производительность: ничего не выполняется, пока не произойдёт сбой.\n\nЕсли сбой произойдёт в самом Bannerlator, будет сохранён отчёт с моделью устройства, версией Android и приложения, причиной ошибки и несколькими сотнями последних строк журнала приложения. Этих данных достаточно, чтобы расследовать сбой постфактум.\n\nОтчёты хранятся вместе с остальными журналами в разделе «Журналы приложения и сбоев».\n\n\nОрганизация\n\n• Отдельная папка для каждой игры\nНе влияет на производительность.\n\nДля каждой игры создаётся отдельная папка в выбранном расположении журналов. Папка получает имя игры, поэтому журналы разных игр не смешиваются. Отключите эту настройку, чтобы хранить всё в одной папке, как в старых версиях.\n\nЖурналы, записанные до включения этой настройки, остаются на прежнем месте.\n\n• Хранение последних запусков\nКоличество прошлых запусков, сохраняемых для каждой игры.\n\nПри запуске игры журналы предыдущего запуска не перезаписываются, а переносятся в папку «previous». Запуски старше указанного количества удаляются. Файлы текущего запуска сохраняют обычные имена, поэтому самый новый журнал всегда легко найти.\n\nУкажите 0, чтобы совсем не хранить историю.</string>
+</resources>

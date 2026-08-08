@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.SectionBox
@@ -427,7 +428,7 @@ internal fun EnvVarsEditor(
         // Hidden while the raw text editor is open: there the user is authoring the
         // whole string by hand, and a helper that rewrites it under them would fight
         // the cursor.
-        if (!rawMode) SectionBox(title = "Compatibility") {
+        if (!rawMode) SectionBox(title = stringResource(R.string.env_compatibility)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(
                     checked = preferGameFolder,
@@ -440,11 +441,12 @@ internal fun EnvVarsEditor(
                 )
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Prefer game-folder DLLs")
+                    Text(stringResource(R.string.env_prefer_game_dlls))
                     Text(
-                        "Loads the game's own copies of " + DllOverrides.PREFER_GAME_FOLDER.joinToString(", ") +
-                            " instead of Wine's. Needed by many wrappers and mod loaders. Graphics DLLs are " +
-                            "never included — DXVK/VKD3D own those.",
+                        stringResource(
+                            R.string.env_prefer_game_dlls_description,
+                            DllOverrides.PREFER_GAME_FOLDER.joinToString(", "),
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -461,20 +463,22 @@ internal fun EnvVarsEditor(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        foundDlls.joinToString(", ") { "$it.dll" } +
-                            " found in the game folder. This game may need the option above.",
+                        stringResource(
+                            R.string.env_dlls_found,
+                            foundDlls.joinToString(", ") { "$it.dll" },
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(onClick = { putVar(DllOverrides.VAR, DllOverrides.enable(overrides)) }) {
-                        Text("Enable")
+                        Text(stringResource(R.string.env_enable))
                     }
                 }
             }
         }
 
         // ── Variables ────────────────────────────────────────────────────────
-        SectionBox(title = "Environment Variables") {
+        SectionBox(title = stringResource(R.string.env_environment_variables)) {
             if (rawMode) {
                 // Escape hatch: edit the whole string by hand. Same format that gets stored,
                 // so anything the typed controls can't express can still be entered here.
@@ -490,12 +494,12 @@ internal fun EnvVarsEditor(
                         lastEmitted = it
                         onValueChange(it)
                     },
-                    label = { Text("NAME=VALUE, separated by spaces") },
+                    label = { Text(stringResource(R.string.env_raw_format_hint)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp)
                 )
             } else if (rows.isEmpty()) {
                 Text(
-                    "No environment variables set",
+                    stringResource(R.string.env_none_set),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 12.dp)
@@ -518,10 +522,10 @@ internal fun EnvVarsEditor(
             Button(onClick = { showAddPicker = true }, modifier = Modifier.weight(1f)) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
-                Text("Add Variable")
+                Text(stringResource(R.string.env_add_variable))
             }
             TextButton(onClick = { rawMode = !rawMode }) {
-                Text(if (rawMode) "Done" else "Edit as text")
+                Text(stringResource(if (rawMode) R.string.env_done else R.string.env_edit_as_text))
             }
         }
     }
@@ -616,7 +620,7 @@ private fun EnvVarRow(
             }
         }
         IconButton(onClick = onRemove) {
-            Icon(Icons.Default.Delete, contentDescription = "Remove ${row.name}")
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.env_remove, row.name))
         }
     }
 }
@@ -646,7 +650,7 @@ private fun EnvValueField(
     val supporting: (@Composable () -> Unit)? = if (!spaceDropped) null else {
         @Composable {
             Text(
-                "Spaces aren't allowed here — variables are separated by spaces.",
+                stringResource(R.string.env_spaces_not_allowed),
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -654,7 +658,7 @@ private fun EnvValueField(
     val arrow: (@Composable () -> Unit)? = if (presets.isEmpty()) null else {
         @Composable {
             IconButton(onClick = { expanded = true }) {
-                Icon(Icons.Default.ArrowDropDown, contentDescription = "Presets for $name")
+                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.env_presets_for, name))
             }
         }
     }
@@ -741,7 +745,7 @@ private fun MultiSelectGroup(
                 )
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse $name" else "Expand $name",
+                    contentDescription = stringResource(if (expanded) R.string.env_collapse else R.string.env_expand, name),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -772,7 +776,7 @@ private fun MultiSelectGroup(
             }
         } else if (selected.isEmpty()) {
             Text(
-                "None selected",
+                stringResource(R.string.env_none_selected),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 4.dp)
@@ -835,28 +839,28 @@ private fun AddEnvVarPicker(
     // Live "will it save?" feedback under the boxes. null = nothing to say. Pair = (message, isError).
     val previewMsg: Pair<String, Boolean>? = when {
         rawName.isEmpty() && valueQuery.isBlank() -> null
-        name.isEmpty() -> "Won't be saved — enter a variable name" to true
-        alreadyExists -> "\"$name\" is already in the list" to true
-        value.isEmpty() -> "Saves as  $name=  (empty value)" to false
-        else -> "Saves as  $name = $value" to false
+        name.isEmpty() -> stringResource(R.string.env_wont_save_name) to true
+        alreadyExists -> stringResource(R.string.env_already_exists, name) to true
+        value.isEmpty() -> stringResource(R.string.env_saves_empty, name) to false
+        else -> stringResource(R.string.env_saves_value, name, value) to false
     }
     // If the user typed "=" in the Name box we still split it correctly (name before, value after) —
     // reassure them rather than error: we roll with it AND teach the two-box way.
     val splitNote = if (eqIdx >= 0 && name.isNotEmpty())
-        "No \"=\" needed — the Value box handles that. Split it for you." else null
+        stringResource(R.string.env_split_note) else null
     // What the Add actions hand back — onAdd re-splits on the first '=' (so an empty value is fine).
     fun combined(varName: String) = if (value.isEmpty()) varName else "$varName=$value"
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add environment variable") },
+        title = { Text(stringResource(R.string.env_add_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = nameQuery,
                     onValueChange = { nameQuery = it },
-                    label = { Text("Name (search or type)") },
-                    placeholder = { Text("e.g. DXVK_FRAME_RATE") },
+                    label = { Text(stringResource(R.string.env_name_label)) },
+                    placeholder = { Text(stringResource(R.string.env_name_example)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -864,8 +868,8 @@ private fun AddEnvVarPicker(
                 OutlinedTextField(
                     value = valueQuery,
                     onValueChange = { valueQuery = it },
-                    label = { Text("Value (optional)") },
-                    placeholder = { Text("e.g. 60") },
+                    label = { Text(stringResource(R.string.env_value_label)) },
+                    placeholder = { Text(stringResource(R.string.env_value_example)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -894,7 +898,12 @@ private fun AddEnvVarPicker(
                 ) {
                     if (showAddTyped) {
                         TextButton(onClick = { onAdd(combined(name)) }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Add  $name${if (value.isNotEmpty()) " = $value" else ""}",
+                            Text(
+                                if (value.isNotEmpty()) {
+                                    stringResource(R.string.env_add_named_value, name, value)
+                                } else {
+                                    stringResource(R.string.env_add_named, name)
+                                },
                                 modifier = Modifier.weight(1f))
                         }
                         if (candidates.isNotEmpty()) MenuItemDivider()
@@ -907,7 +916,7 @@ private fun AddEnvVarPicker(
                     }
                     if (candidates.isEmpty() && !showAddTyped) {
                         Text(
-                            "No matches",
+                            stringResource(R.string.env_no_matches),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(12.dp)

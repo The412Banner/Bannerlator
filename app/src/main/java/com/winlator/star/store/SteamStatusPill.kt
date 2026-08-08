@@ -16,9 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 
 /**
  * Always-visible connection/login indicator that lives in the top header of every Steam screen.
@@ -34,17 +36,29 @@ fun SteamStatusPill(
     status: SteamRepository.SteamStatus,
     onReconnect: () -> Unit,
 ) {
-    val (dot, label, tappable) = when (status) {
+    val (dot, tappable) = when (status) {
         SteamRepository.SteamStatus.ONLINE ->
-            Triple(Color(0xFF3BA55D), "Online", false)
+            Color(0xFF3BA55D) to false
         SteamRepository.SteamStatus.CONNECTING ->
-            Triple(Color(0xFFE0A82E), "Connecting…", false)
+            Color(0xFFE0A82E) to false
         SteamRepository.SteamStatus.SIGNED_IN_ELSEWHERE ->
-            Triple(Color(0xFFE07B2E), "Signed in elsewhere", true)
+            Color(0xFFE07B2E) to true
         SteamRepository.SteamStatus.OFFLINE ->
-            Triple(Color(0xFFCB4B4B), "Offline", true)
+            Color(0xFFCB4B4B) to true
         SteamRepository.SteamStatus.SIGNED_OUT ->
-            Triple(Color(0xFF9AA0A6), "Signed out", true)
+            Color(0xFF9AA0A6) to true
+    }
+    val label = when (status) {
+        SteamRepository.SteamStatus.ONLINE ->
+            stringResource(R.string.compose_steam_saves_connection_online)
+        SteamRepository.SteamStatus.CONNECTING ->
+            stringResource(R.string.compose_steam_saves_connection_connecting)
+        SteamRepository.SteamStatus.SIGNED_IN_ELSEWHERE ->
+            stringResource(R.string.compose_steam_saves_connection_signed_in_elsewhere)
+        SteamRepository.SteamStatus.OFFLINE ->
+            stringResource(R.string.compose_steam_saves_connection_offline)
+        SteamRepository.SteamStatus.SIGNED_OUT ->
+            stringResource(R.string.compose_steam_saves_connection_signed_out)
     }
 
     val base = Modifier
@@ -72,7 +86,12 @@ fun SteamStatusPill(
         )
         if (tappable) {
             Spacer(Modifier.width(4.dp))
-            Text(text = "↻", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = stringResource(R.string.compose_steam_saves_reconnect_symbol),
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

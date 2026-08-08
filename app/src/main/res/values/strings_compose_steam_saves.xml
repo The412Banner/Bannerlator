@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Steam Save Manager navigation and overview. -->
+    <string name="compose_steam_saves_back">Back</string>
+    <string name="compose_steam_saves_title">Save Manager</string>
+    <string name="compose_steam_saves_tab_steam">Steam</string>
+    <string name="compose_steam_saves_tab_custom">Custom</string>
+    <string name="compose_steam_saves_tab_settings">Settings</string>
+    <plurals name="compose_steam_saves_games_need_syncing">
+        <item quantity="one">⚠️ %1$d game needs syncing</item>
+        <item quantity="few">⚠️ %1$d games need syncing</item>
+        <item quantity="many">⚠️ %1$d games need syncing</item>
+        <item quantity="other">⚠️ %1$d games need syncing</item>
+    </plurals>
+    <string name="compose_steam_saves_nothing_to_sync">Nothing to sync yet.\nDownload a game’s cloud save from its detail page to start.</string>
+    <string name="compose_steam_saves_preparing_sync_from_cloud">Preparing sync from Cloud…</string>
+    <string name="compose_steam_saves_preparing_sync_to_cloud">Preparing sync to Cloud…</string>
+    <string name="compose_steam_saves_error_with_message">Error: %1$s</string>
+    <string name="compose_steam_saves_connection_online">Online</string>
+    <string name="compose_steam_saves_connection_connecting">Connecting…</string>
+    <string name="compose_steam_saves_connection_signed_in_elsewhere">Signed in elsewhere</string>
+    <string name="compose_steam_saves_connection_offline">Offline</string>
+    <string name="compose_steam_saves_connection_signed_out">Signed out</string>
+    <string name="compose_steam_saves_reconnect_symbol">↻</string>
+
+    <!-- Settings. -->
+    <string name="compose_steam_saves_settings_steam_auto_collect_title">Steam games: auto-collect on exit</string>
+    <string name="compose_steam_saves_settings_steam_auto_collect_subtitle">Snapshot Steam-library saves to your local Library when a game exits.</string>
+    <string name="compose_steam_saves_settings_custom_auto_backup_title">Custom games: auto-back up on exit</string>
+    <string name="compose_steam_saves_settings_custom_auto_backup_subtitle">Snapshot custom-import saves to the local vault when a game exits.</string>
+    <string name="compose_steam_saves_turn_off_auto_backup_title">Turn off auto-backup?</string>
+    <string name="compose_steam_saves_disable_steam_auto_backup_warning">Automatic save backup on exit will be OFF for your Steam library games. Their saves won’t be captured when a game closes — you’ll need to back them up yourself via a container’s backup option or the Save Manager. Continue?</string>
+    <string name="compose_steam_saves_disable_custom_auto_backup_warning">Automatic save backup on exit will be OFF for your custom-imported games. Their saves won’t be captured when a game closes — you’ll need to back them up yourself via a container’s backup option or the game’s ⋮ menu → “Back up saves”. Continue?</string>
+    <string name="compose_steam_saves_continue">Continue</string>
+    <string name="compose_steam_saves_cancel">Cancel</string>
+    <string name="compose_steam_saves_auto_backup_on_title">Auto-backup on</string>
+    <string name="compose_steam_saves_steam_auto_backup_on_message">Automatic save backup on exit is ON for your Steam library games.</string>
+    <string name="compose_steam_saves_custom_auto_backup_on_message">Automatic save backup on exit is ON for your custom-imported games.</string>
+    <string name="compose_steam_saves_ok">OK</string>
+
+    <!-- Custom-game backup and restore. -->
+    <string name="compose_steam_saves_backing_up_game">Backing up saves for “%1$s”…</string>
+    <string name="compose_steam_saves_whole_container_backed_up">No per-game saves detected — backed up the whole container.</string>
+    <plurals name="compose_steam_saves_backup_success">
+        <item quantity="one">Backed up %1$d file → %2$s</item>
+        <item quantity="few">Backed up %1$d files → %2$s</item>
+        <item quantity="many">Backed up %1$d files → %2$s</item>
+        <item quantity="other">Backed up %1$d files → %2$s</item>
+    </plurals>
+    <string name="compose_steam_saves_backup_failed">Backup failed: %1$s</string>
+    <string name="compose_steam_saves_unknown_error">unknown error</string>
+    <string name="compose_steam_saves_restoring_into">Restoring saves into “%1$s”…</string>
+    <plurals name="compose_steam_saves_restore_success">
+        <item quantity="one">Restored %1$d file to “%2$s”</item>
+        <item quantity="few">Restored %1$d files to “%2$s”</item>
+        <item quantity="many">Restored %1$d files to “%2$s”</item>
+        <item quantity="other">Restored %1$d files to “%2$s”</item>
+    </plurals>
+    <string name="compose_steam_saves_restore_failed">Restore failed: %1$s</string>
+    <string name="compose_steam_saves_could_not_open_backup_file">Could not open backup file</string>
+    <string name="compose_steam_saves_no_vault_backup_for_game">No vault backup exists for this game</string>
+    <string name="compose_steam_saves_no_save_profile_in_container">No save profile was found in this container</string>
+    <string name="compose_steam_saves_no_save_files_to_back_up">No save files were found to back up</string>
+    <string name="compose_steam_saves_no_saves_found">No saves found</string>
+    <string name="compose_steam_saves_no_custom_games">No custom games found.\nImport a game (exe/folder), then back its saves up here.</string>
+    <string name="compose_steam_saves_backup_format_title">Backup format</string>
+    <string name="compose_steam_saves_backup_format_prompt">Which tool is this backup for?</string>
+    <string name="compose_steam_saves_winlator_native_zip">Winlator-native .zip</string>
+    <string name="compose_steam_saves_winlator_native_zip_description">Sibling Winlator / WinNative builds</string>
+    <string name="compose_steam_saves_gamehub_compatible_zip">GameHub-compatible .zip</string>
+    <string name="compose_steam_saves_gamehub_compatible_zip_description">GameHub, Proton-based tools (default)</string>
+    <string name="compose_steam_saves_restore_saves_title">Restore saves</string>
+    <string name="compose_steam_saves_restore_latest_backup">Restore latest backup</string>
+    <string name="compose_steam_saves_backed_up_time">Backed up %1$s</string>
+    <string name="compose_steam_saves_select_save_zip">Select a save .zip</string>
+    <string name="compose_steam_saves_restore_from_file">Restore from a file…</string>
+    <string name="compose_steam_saves_browse_save_zip">Browse for a GameHub or Bannerlator save .zip</string>
+    <string name="compose_steam_saves_container_label">Container: %1$s</string>
+    <string name="compose_steam_saves_no_container">No container</string>
+    <string name="compose_steam_saves_no_backup_yet">No backup yet</string>
+    <string name="compose_steam_saves_back_up">Back up</string>
+    <string name="compose_steam_saves_restore">Restore</string>
+
+    <!-- Steam-game row state. -->
+    <string name="compose_steam_saves_not_set_up_in_container">Not set up in a container</string>
+    <string name="compose_steam_saves_add_game_to_container_to_sync">Add this game to a container first to sync.</string>
+    <string name="compose_steam_saves_sync_from_cloud">Sync from Cloud</string>
+    <string name="compose_steam_saves_sync_to_cloud">Sync to Cloud</string>
+    <string name="compose_steam_saves_status_in_sync">In sync</string>
+    <string name="compose_steam_saves_status_not_backed_up">Not backed up</string>
+    <string name="compose_steam_saves_status_local_ahead">Local ahead</string>
+    <string name="compose_steam_saves_status_cloud_ahead">Cloud ahead</string>
+    <string name="compose_steam_saves_status_never_synced">Never synced</string>
+    <string name="compose_steam_saves_status_no_cloud_saves">No cloud saves</string>
+    <string name="compose_steam_saves_status_not_set_up">Not set up</string>
+    <string name="compose_steam_saves_status_unknown">Unknown</string>
+    <string name="compose_steam_saves_downloaded_time">Downloaded %1$s</string>
+    <string name="compose_steam_saves_uploaded_time">Uploaded %1$s</string>
+    <string name="compose_steam_saves_downloaded_and_uploaded_times">%1$s · %2$s</string>
+
+    <!-- Progress and result text emitted by SteamCloudSaveManager. -->
+    <string name="compose_steam_saves_cloud_not_signed_in">Not signed in to Steam</string>
+    <string name="compose_steam_saves_cloud_fetching_file_list">Fetching cloud file list…</string>
+    <string name="compose_steam_saves_cloud_no_saves_for_game">No cloud saves found for this game</string>
+    <string name="compose_steam_saves_cloud_downloading_file">Downloading: %1$s</string>
+    <string name="compose_steam_saves_cloud_download_failed">Download failed for: %1$s</string>
+    <plurals name="compose_steam_saves_cloud_download_failed_more">
+        <item quantity="one">Download failed for: %1$s (+%2$d more file)</item>
+        <item quantity="few">Download failed for: %1$s (+%2$d more files)</item>
+        <item quantity="many">Download failed for: %1$s (+%2$d more files)</item>
+        <item quantity="other">Download failed for: %1$s (+%2$d more files)</item>
+    </plurals>
+    <plurals name="compose_steam_saves_cloud_downloaded_files">
+        <item quantity="one">Downloaded %1$d file</item>
+        <item quantity="few">Downloaded %1$d files</item>
+        <item quantity="many">Downloaded %1$d files</item>
+        <item quantity="other">Downloaded %1$d files</item>
+    </plurals>
+    <plurals name="compose_steam_saves_cloud_skipped_files">
+        <item quantity="one">(%1$d skipped)</item>
+        <item quantity="few">(%1$d skipped)</item>
+        <item quantity="many">(%1$d skipped)</item>
+        <item quantity="other">(%1$d skipped)</item>
+    </plurals>
+    <string name="compose_steam_saves_cloud_summary_with_detail">%1$s %2$s</string>
+    <string name="compose_steam_saves_cloud_download_error">Could not download cloud saves</string>
+    <string name="compose_steam_saves_cloud_scanning_local_saves">Scanning local saves…</string>
+    <string name="compose_steam_saves_cloud_no_local_saves">No local save files found — nothing was sent to the cloud</string>
+    <string name="compose_steam_saves_cloud_no_retention">This game doesn’t keep Steam Cloud saves — your saves are backed up locally in the Library.</string>
+    <string name="compose_steam_saves_cloud_not_supported">This game doesn’t support Steam Cloud — your saves are backed up locally in the Library.</string>
+    <string name="compose_steam_saves_cloud_comparing">Comparing with cloud…</string>
+    <string name="compose_steam_saves_cloud_upload_summary">Uploaded changed: %1$d; already up to date: %2$d</string>
+    <string name="compose_steam_saves_cloud_opening_upload_batch">Opening cloud upload batch…</string>
+    <string name="compose_steam_saves_cloud_uploading_file">Uploading: %1$s</string>
+    <string name="compose_steam_saves_cloud_upload_partial_failure">Uploaded %1$d of %2$d changed files; some files failed</string>
+    <string name="compose_steam_saves_cloud_upload_error">Could not upload cloud saves</string>
+    <string name="compose_steam_saves_cloud_add_to_container_first">This game needs to be added to a container first.</string>
+    <string name="compose_steam_saves_cloud_synced_from_cloud">Synced from cloud (%1$s; %2$s)</string>
+    <string name="compose_steam_saves_cloud_synced_to_cloud">Synced to cloud (%1$s; %2$s)</string>
+    <string name="compose_steam_saves_cloud_not_set_up_in_container_yet">This game isn’t set up in a container yet</string>
+    <string name="compose_steam_saves_cloud_scanning_library">Scanning Library…</string>
+    <string name="compose_steam_saves_cloud_library_empty">Library is empty — download from the cloud first</string>
+    <string name="compose_steam_saves_cloud_applying_file">Applying: %1$s</string>
+    <plurals name="compose_steam_saves_cloud_applied_files">
+        <item quantity="one">Applied %1$d file to %2$s</item>
+        <item quantity="few">Applied %1$d files to %2$s</item>
+        <item quantity="many">Applied %1$d files to %2$s</item>
+        <item quantity="other">Applied %1$d files to %2$s</item>
+    </plurals>
+    <string name="compose_steam_saves_cloud_apply_error">Could not apply saves to the container</string>
+    <string name="compose_steam_saves_cloud_scanning_container_saves">Scanning container saves…</string>
+    <string name="compose_steam_saves_cloud_no_saves_to_collect">No saves found in %1$s to collect</string>
+    <string name="compose_steam_saves_cloud_collecting_file">Collecting: %1$s</string>
+    <plurals name="compose_steam_saves_cloud_collected_files">
+        <item quantity="one">Collected %1$d file into your Library</item>
+        <item quantity="few">Collected %1$d files into your Library</item>
+        <item quantity="many">Collected %1$d files into your Library</item>
+        <item quantity="other">Collected %1$d files into your Library</item>
+    </plurals>
+    <string name="compose_steam_saves_cloud_collect_error">Could not collect saves from the container</string>
+</resources>

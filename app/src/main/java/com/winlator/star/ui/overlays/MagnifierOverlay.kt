@@ -25,11 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 import kotlin.math.roundToInt
 
@@ -85,7 +87,7 @@ fun MagnifierOverlay(state: XServerDialogState) {
                 }
         ) {
             Text(
-                text = "Magnifier",
+                text = stringResource(R.string.overlay_magnifier),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

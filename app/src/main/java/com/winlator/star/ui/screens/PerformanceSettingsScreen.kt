@@ -36,9 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.R
 import com.winlator.star.perf.PerfGpuTurbo
 import com.winlator.star.perf.PerfRootApplier
 import com.winlator.star.perf.PerformanceSettings
@@ -73,6 +75,20 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
     var showExplainAll by remember { mutableStateOf(false) }
 
     val granted = rootState == RootManager.RootState.GRANTED
+    val sustainedLabel = stringResource(R.string.perf_sustained_mode)
+    val priorityLabel = stringResource(R.string.perf_thread_priority_boost)
+    val bigCoresLabel = stringResource(R.string.perf_prefer_big_cores)
+    val gpuClockLabel = stringResource(R.string.perf_lock_gpu_max)
+    val cpuGovernorLabel = stringResource(R.string.perf_cpu_governor)
+    val cpuFrequencyLabel = stringResource(R.string.perf_lock_cpu_max)
+    val coresOnlineLabel = stringResource(R.string.perf_keep_cores_online)
+    val thermalLabel = stringResource(R.string.perf_disable_thermal)
+    val fanLabel = stringResource(R.string.perf_fan_max)
+    val freeMemoryLabel = stringResource(R.string.perf_free_memory)
+    val autoDeepCleanLabel = stringResource(R.string.perf_auto_deep_clean)
+    val sustainedInfo = stringResource(R.string.perf_info_sustained)
+    val priorityInfo = stringResource(R.string.perf_info_priority)
+    val bigCoresInfo = stringResource(R.string.perf_info_big_cores)
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -84,54 +100,54 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Performance",
+                    stringResource(R.string.perf_title),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Default.Close, stringResource(R.string.perf_close), tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
 
             Text(
-                "Global defaults apply to every game unless a game sets its own override " +
-                    "(in the game's settings or from the in-game menu).",
+                stringResource(R.string.perf_global_defaults_description),
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
             )
 
             // ── Non-root global defaults (always editable) ──
-            PerfCard(title = "Global defaults") {
-                PerfToggle("Sustained Performance Mode", sustained,
-                    onInfo = { info = "Sustained Performance Mode" to PerfCopy.SUSTAINED }) { PerformanceSettings.setSustainedPerfMode(it) }
-                PerfToggle("Thread Priority Boost", priority,
-                    onInfo = { info = "Thread Priority Boost" to PerfCopy.PRIORITY }) { PerformanceSettings.setPerfPriorityBoost(it) }
-                PerfToggle("Prefer Big Cores", bigCores,
-                    onInfo = { info = "Prefer Big Cores" to PerfCopy.BIG_CORES }) { PerformanceSettings.setPreferBigCores(it) }
+            PerfCard(title = stringResource(R.string.perf_global_defaults)) {
+                PerfToggle(sustainedLabel, sustained,
+                    onInfo = { info = sustainedLabel to sustainedInfo }) { PerformanceSettings.setSustainedPerfMode(it) }
+                PerfToggle(priorityLabel, priority,
+                    onInfo = { info = priorityLabel to priorityInfo }) { PerformanceSettings.setPerfPriorityBoost(it) }
+                PerfToggle(bigCoresLabel, bigCores,
+                    onInfo = { info = bigCoresLabel to bigCoresInfo }) { PerformanceSettings.setPreferBigCores(it) }
                 // GPU pin lives here (not in the root card) because it now has a non-root path on
                 // Adreno. It still upgrades itself to the stronger sysfs pin when root is granted.
-                RootToggle(PerfRootApplier.KEY_GPU_CLOCK_LOCK, "Lock GPU to max clock", granted, harnessProven,
-                    onInfo = { info = "Lock GPU to max clock" to PerfCopy.GPU_CLOCK })
+                val gpuClockInfo = stringResource(R.string.perf_info_gpu_clock)
+                RootToggle(PerfRootApplier.KEY_GPU_CLOCK_LOCK, gpuClockLabel, granted, harnessProven,
+                    onInfo = { info = gpuClockLabel to gpuClockInfo })
                 if (!granted && !PerfGpuTurbo.isSupported) {
-                    Text("Lock GPU to max clock needs an Adreno (Qualcomm) GPU, or root on other GPUs.",
+                    Text(stringResource(R.string.perf_gpu_requires_adreno_or_root),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
             }
 
             // ── Root tier ──
-            PerfCard(title = "Root performance controls") {
-                Text("Root status: " + rootStateLabel(rootState),
+            PerfCard(title = stringResource(R.string.perf_root_controls)) {
+                Text(stringResource(R.string.perf_root_status, rootStateLabel(rootState)),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
 
                 when (rootState) {
                     RootManager.RootState.UNAVAILABLE -> {
-                        Text("No root manager detected (Magisk / KernelSU / APatch). Root controls stay disabled.",
+                        Text(stringResource(R.string.perf_no_root_manager),
                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }
                     RootManager.RootState.GRANTED -> { /* toggles below are enabled */ }
                     else -> {
                         // AVAILABLE_NOT_GRANTED or DENIED -> offer (or re-offer) the grant.
-                        val label = if (rootState == RootManager.RootState.DENIED) "Grant Root (retry)" else "Grant Root"
+                        val label = stringResource(if (rootState == RootManager.RootState.DENIED) R.string.perf_grant_root_retry else R.string.perf_grant_root)
                         Button(onClick = { showRootDisclaimer = true }, modifier = Modifier.fillMaxWidth()) {
                             Text(label, color = MaterialTheme.colorScheme.onPrimary)
                         }
@@ -139,28 +155,34 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
                 }
 
                 Spacer(Modifier.height(2.dp))
-                RootToggle(PerfRootApplier.KEY_CPU_GOVERNOR, "CPU governor → performance", granted, harnessProven,
-                    onInfo = { info = "CPU governor → performance" to PerfCopy.CPU_GOV })
-                RootToggle(PerfRootApplier.KEY_CPU_FREQ_LOCK, "Lock CPU frequency to max", granted, harnessProven,
-                    onInfo = { info = "Lock CPU frequency to max" to PerfCopy.CPU_FREQ })
-                RootToggle(PerfRootApplier.KEY_CORES_ONLINE, "Keep all cores online", granted, harnessProven,
-                    onInfo = { info = "Keep all cores online" to PerfCopy.CORES_ONLINE })
-                RootToggle(PerfRootApplier.KEY_THERMAL_DISABLE, "Disable thermal throttling", granted, harnessProven,
-                    onInfo = { info = "Disable thermal throttling" to PerfCopy.THERMAL })
-                RootToggle(PerfRootApplier.KEY_FAN_MAX, "Fan to maximum", granted, harnessProven,
-                    onInfo = { info = "Fan to maximum" to PerfCopy.FAN })
+                val cpuGovernorInfo = stringResource(R.string.perf_info_cpu_governor)
+                val cpuFrequencyInfo = stringResource(R.string.perf_info_cpu_frequency)
+                val coresOnlineInfo = stringResource(R.string.perf_info_cores_online)
+                val thermalInfo = stringResource(R.string.perf_info_thermal)
+                val fanInfo = stringResource(R.string.perf_info_fan)
+                RootToggle(PerfRootApplier.KEY_CPU_GOVERNOR, cpuGovernorLabel, granted, harnessProven,
+                    onInfo = { info = cpuGovernorLabel to cpuGovernorInfo })
+                RootToggle(PerfRootApplier.KEY_CPU_FREQ_LOCK, cpuFrequencyLabel, granted, harnessProven,
+                    onInfo = { info = cpuFrequencyLabel to cpuFrequencyInfo })
+                RootToggle(PerfRootApplier.KEY_CORES_ONLINE, coresOnlineLabel, granted, harnessProven,
+                    onInfo = { info = coresOnlineLabel to coresOnlineInfo })
+                RootToggle(PerfRootApplier.KEY_THERMAL_DISABLE, thermalLabel, granted, harnessProven,
+                    onInfo = { info = thermalLabel to thermalInfo })
+                RootToggle(PerfRootApplier.KEY_FAN_MAX, fanLabel, granted, harnessProven,
+                    onInfo = { info = fanLabel to fanInfo })
 
                 if (granted && !harnessProven) {
-                    Text("Thermal / fan controls are locked until safety-revert is verified on this device.",
+                    Text(stringResource(R.string.perf_safety_controls_locked),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
 
                 // ── Free memory (dual tier). Section "?" explains both tiers + the auto toggle. ──
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("Free memory", color = MaterialTheme.colorScheme.onSurface,
+                    Text(freeMemoryLabel, color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    InfoButton { info = "Free memory" to PerfCopy.FREE_MEM_SECTION }
+                    val freeMemoryInfo = stringResource(R.string.perf_info_free_memory)
+                    InfoButton { info = freeMemoryLabel to freeMemoryInfo }
                 }
 
                 // TIER 1 — drop file caches (light; near-invisible RAM by design). Root-gated as before.
@@ -168,8 +190,8 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
                     onClick = { PerfRootApplier.freeMemoryNow() },
                     enabled = granted,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Drop file caches", color = MaterialTheme.colorScheme.onPrimary) }
-                Text("Frees cached files. Little visible RAM; the system reclaims cache automatically.",
+                ) { Text(stringResource(R.string.perf_drop_file_caches), color = MaterialTheme.colorScheme.onPrimary) }
+                Text(stringResource(R.string.perf_drop_file_caches_description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
 
                 // TIER 2 — deep clean (root-only; the real RAM free via `am kill-all`).
@@ -177,35 +199,35 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
                     onClick = { PerfRootApplier.deepCleanMemory() },
                     enabled = granted,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Deep clean (free app memory)", color = MaterialTheme.colorScheme.onPrimary) }
-                Text("Force-closes background apps to free real memory. Won't touch your game or system.",
+                ) { Text(stringResource(R.string.perf_deep_clean), color = MaterialTheme.colorScheme.onPrimary) }
+                Text(stringResource(R.string.perf_deep_clean_description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
 
                 // AUTO toggle — persists like the other root defaults; fires at game launch.
-                PerfToggle("Auto deep-clean on launch", autoDeepClean, enabled = granted,
-                    onInfo = { info = "Auto deep-clean on launch" to PerfCopy.AUTO_DEEP_CLEAN }) {
+                val autoDeepCleanInfo = stringResource(R.string.perf_info_auto_deep_clean)
+                PerfToggle(autoDeepCleanLabel, autoDeepClean, enabled = granted,
+                    onInfo = { info = autoDeepCleanLabel to autoDeepCleanInfo }) {
                     PerformanceSettings.setRootDefault(PerfRootApplier.KEY_AUTO_DEEP_CLEAN, it)
                 }
             }
 
             // ── Temperature watchdog (device-wide; not root-gated). Shared control block, identical
             // and synced with the in-game surface (both bind the one TempWatchdog singleton). ──
-            PerfCard(title = "Temperature watchdog") {
+            PerfCard(title = stringResource(R.string.perf_temperature_watchdog)) {
                 Text(
-                    "Auto-reverts all performance settings before the device gets too hot, anchored to " +
-                        "your device's own thermal trip points. Keep this on unless you know what you're doing.",
+                    stringResource(R.string.perf_watchdog_description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
                 )
                 WatchdogSection()
             }
 
             Text(
-                "Auto-revert on game exit, app background and crash is always on and cannot be disabled.",
+                stringResource(R.string.perf_auto_revert_always_on),
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp
             )
 
             Button(onClick = { showExplainAll = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("Explain toggles", color = MaterialTheme.colorScheme.onPrimary)
+                Text(stringResource(R.string.perf_explain_toggles), color = MaterialTheme.colorScheme.onPrimary)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -217,14 +239,14 @@ fun PerformanceSettingsScreen(onClose: () -> Unit) {
     }
 
     if (showExplainAll) {
-        PerfInfoDialog(title = "What the toggles do", body = explainAllBody(), onDismiss = { showExplainAll = false })
+        PerfInfoDialog(title = stringResource(R.string.perf_what_toggles_do), body = stringResource(R.string.perf_explain_all_body), onDismiss = { showExplainAll = false })
     }
 
     if (showRootDisclaimer) {
         PerfDisclaimerDialog(
-            title = "Power-user performance — read first",
-            body = PerfDisclaimerCopy.ROOT_RISK,
-            confirmLabel = "Grant Root",
+            title = stringResource(R.string.perf_root_disclaimer_title),
+            body = stringResource(R.string.perf_root_risk),
+            confirmLabel = stringResource(R.string.perf_grant_root),
             onDismiss = { showRootDisclaimer = false },
             onConfirm = {
                 showRootDisclaimer = false
@@ -248,13 +270,14 @@ private fun RootToggle(key: String, label: String, granted: Boolean, harnessProv
     }
 }
 
-private fun rootStateLabel(state: RootManager.RootState): String = when (state) {
-    RootManager.RootState.UNKNOWN -> "checking…"
-    RootManager.RootState.UNAVAILABLE -> "not available on this device"
-    RootManager.RootState.AVAILABLE_NOT_GRANTED -> "available (not granted)"
-    RootManager.RootState.GRANTED -> "granted"
-    RootManager.RootState.DENIED -> "denied"
-}
+@Composable
+private fun rootStateLabel(state: RootManager.RootState): String = stringResource(when (state) {
+    RootManager.RootState.UNKNOWN -> R.string.perf_root_checking
+    RootManager.RootState.UNAVAILABLE -> R.string.perf_root_unavailable
+    RootManager.RootState.AVAILABLE_NOT_GRANTED -> R.string.perf_root_available_not_granted
+    RootManager.RootState.GRANTED -> R.string.perf_root_granted
+    RootManager.RootState.DENIED -> R.string.perf_root_denied
+})
 
 @Composable
 private fun PerfCard(title: String, content: @Composable () -> Unit) {
@@ -302,62 +325,7 @@ private fun PerfToggle(
 @Composable
 private fun InfoButton(onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.size(28.dp)) {
-        Icon(Icons.Outlined.HelpOutline, "What's this?",
+        Icon(Icons.Outlined.HelpOutline, stringResource(R.string.perf_whats_this),
             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
     }
-}
-
-private object PerfCopy {
-    const val SUSTAINED = "Keeps clock speeds steady instead of spiking and dropping, so long sessions stay smoother. Safe, no root."
-    const val PRIORITY = "Gives the game's rendering higher priority than other apps for more CPU time. Safe, no root."
-    const val BIG_CORES = "Pins the game to your fastest CPU cores instead of the efficiency cores. Safe, no root."
-    const val CPU_GOV = "Forces the CPU to run fast instead of ramping on demand. Faster, more heat and battery. (Root)"
-    const val CPU_FREQ = "Pins the CPU at max clock so it never slows down. Top performance, highest heat/battery. (Root)"
-    const val CORES_ONLINE = "Stops cores being put to sleep, keeping every core available. (Root)"
-    const val GPU_CLOCK =
-        "Pins the GPU at top speed so it stops dropping clocks to save power. Smoother and more " +
-        "consistent, but hotter and heavier on battery.\n\n" +
-        "No root needed on Adreno (Qualcomm) GPUs — this is the same \"Adreno turbo\" trick Switch " +
-        "emulators use: it asks the GPU driver directly to stop scaling clocks down, through a device " +
-        "file the app is already allowed to open.\n\n" +
-        "With root granted, it switches to a stronger system-level clock pin instead. Either way your " +
-        "device's own heat protection still applies, and the setting is undone when you exit the game, " +
-        "background the app, or it crashes.\n\n" +
-        "On non-Adreno GPUs (Mali, Xclipse, PowerVR) this toggle needs root."
-    const val THERMAL = "Removes your device's built-in heat protection. ⚠️ Can overheat — the Temperature Watchdog is your only safety net with this on. (Root)"
-    const val FAN = "Runs the fan at full speed for max cooling (devices with a fan). (Root)"
-    const val FREE_MEM_SECTION =
-        "Two ways to free memory, from lightest to strongest.\n\n" +
-        "Drop file caches (Tier 1)\n" +
-        "Writes to the kernel's drop-caches control to release cached files. This is light and " +
-        "near-invisible by design — the system refills the cache almost immediately, so you'll rarely " +
-        "see the free-RAM number move. It does NOT close any apps.\n\n" +
-        "Deep clean (Tier 2)\n" +
-        "The real RAM free. Force-closes background apps to reclaim memory. It uses Android's own " +
-        "\"kill background\" command (am kill-all), which only touches apps the system considers safe " +
-        "to kill — it will NOT close your running game, this app, or system/persistent apps. This is " +
-        "the same kind of thing a phone's built-in \"RAM cleaner\" / Game Turbo does.\n\n" +
-        "Auto deep-clean on launch\n" +
-        "When on, a deep clean runs automatically each time you start a game or container, so it opens " +
-        "with the most free RAM available.\n\n" +
-        "Root is required for deep clean (and for dropping caches)."
-    const val AUTO_DEEP_CLEAN =
-        "Runs a deep clean automatically every time a game/container launches — force-closes safe " +
-        "background apps (via am kill-all, never your game or system) to free real RAM before you start. (Root)"
-}
-
-/** Consolidated explainer body, grouped by root requirement. */
-private fun explainAllBody(): String = buildString {
-    append("No root needed\n\n")
-    append("• Sustained Performance Mode\n${PerfCopy.SUSTAINED}\n\n")
-    append("• Thread Priority Boost\n${PerfCopy.PRIORITY}\n\n")
-    append("• Prefer Big Cores\n${PerfCopy.BIG_CORES}\n\n")
-    append("• Lock GPU to max clock\n${PerfCopy.GPU_CLOCK}\n\n")
-    append("\nRequires root\n\n")
-    append("• CPU governor → performance\n${PerfCopy.CPU_GOV}\n\n")
-    append("• Lock CPU frequency to max\n${PerfCopy.CPU_FREQ}\n\n")
-    append("• Keep all cores online\n${PerfCopy.CORES_ONLINE}\n\n")
-    append("• Disable thermal throttling\n${PerfCopy.THERMAL}\n\n")
-    append("• Fan to maximum\n${PerfCopy.FAN}\n\n")
-    append("• Free memory\n${PerfCopy.FREE_MEM_SECTION}\n")
 }

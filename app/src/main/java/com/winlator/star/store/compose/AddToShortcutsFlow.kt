@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.winlator.star.MainActivity
 import com.winlator.star.R
@@ -64,11 +65,11 @@ fun ContainerPickerDialog(
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add \"$gameName\" to container") },
+        title = { Text(stringResource(R.string.store_shortcut_add_to_container, gameName)) },
         text = {
             if (containers.isEmpty()) {
                 Text(
-                    text = "No containers yet — create one in the Containers screen first.",
+                    text = stringResource(R.string.store_shortcut_no_containers),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -77,7 +78,7 @@ fun ContainerPickerDialog(
                     containers.forEach { container ->
                         // Same name + wineVersion · resolution subtitle as ContainerItem.
                         val name = container.name?.takeIf { it.isNotEmpty() }
-                            ?: "Container ${container.id}"
+                            ?: stringResource(R.string.store_shortcut_container_fallback, container.id)
                         val subtitle = listOf(container.wineVersion.orEmpty(), container.screenSize.orEmpty())
                             .filter { it.isNotEmpty() }.joinToString(" · ")
                         Row(
@@ -116,7 +117,7 @@ fun ContainerPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.store_shortcut_cancel)) }
         },
     )
 }
@@ -131,22 +132,22 @@ fun AddResultDialog(
     if (result.success) {
         OutlinedAlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Added to Shortcuts") },
-            text = { Text("\"${result.gameName}\" is ready in Shortcuts.") },
+            title = { Text(stringResource(R.string.store_shortcut_added_title)) },
+            text = { Text(stringResource(R.string.store_shortcut_added_message, result.gameName)) },
             confirmButton = {
-                TextButton(onClick = onOpenShortcuts) { Text("Open Shortcuts") }
+                TextButton(onClick = onOpenShortcuts) { Text(stringResource(R.string.store_shortcut_open_shortcuts)) }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) { Text("Close") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.store_shortcut_close)) }
             },
         )
     } else {
         OutlinedAlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Couldn't add shortcut") },
+            title = { Text(stringResource(R.string.store_shortcut_add_failed)) },
             text = { Text(result.message) },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("OK") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.store_shortcut_ok)) }
             },
         )
     }

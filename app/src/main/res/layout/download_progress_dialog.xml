@@ -5,12 +5,12 @@
         <ImageView android:src="@mipmap/ic_launcher" android:scaleType="fitCenter" android:layout_width="80.0dip" android:layout_height="80.0dip" android:layout_marginBottom="16.0dip" />
         <TextView android:text="@string/app_name" android:textSize="28.0dip" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginBottom="4.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/TVVersion" android:text="" android:textSize="13.0dip" android:textColor="#888888" android:layout_marginBottom="16.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-        <TextView android:text="First launch setup. Please wait patiently. Don't close or minimize the app!" android:textSize="16.0dip" android:textColor="#AAAAAA" android:layout_marginBottom="32.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        <TextView android:text="@string/first_launch_setup_message" android:textSize="16.0dip" android:textColor="#AAAAAA" android:layout_marginBottom="32.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <ProgressBar android:id="@+id/CircularProgressIndicator" style="?android:attr/progressBarStyleHorizontal" android:max="100" android:progress="0" android:progressTint="#CCCCCC" android:progressBackgroundTint="#444444" android:layout_marginLeft="48.0dip" android:layout_marginRight="48.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content" />
-        <TextView android:id="@+id/TVProgress" android:text="Installing... 0%" android:textColor="#FFFFFF" android:textSize="14.0dip" android:layout_marginTop="12.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        <TextView android:id="@+id/TVProgress" android:text="@string/installing_progress_default" android:textColor="#FFFFFF" android:textSize="14.0dip" android:layout_marginTop="12.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/TextView" android:visibility="gone" android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <LinearLayout android:id="@+id/LLBottomBar" android:visibility="gone" android:gravity="center" android:layout_marginTop="24.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content">
-            <Button android:id="@+id/BTCancel" android:text="Restart the app now" android:textColor="#FFFFFF" android:backgroundTint="#333333" android:layout_marginLeft="48.0dip" android:layout_marginRight="48.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content" />
+            <Button android:id="@+id/BTCancel" android:text="@string/restart_app_now" android:textColor="#FFFFFF" android:backgroundTint="#333333" android:layout_marginLeft="48.0dip" android:layout_marginRight="48.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

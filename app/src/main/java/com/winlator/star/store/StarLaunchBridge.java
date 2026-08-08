@@ -115,30 +115,30 @@ public final class StarLaunchBridge {
                 ArrayList<Container> containers = manager.getContainers();
 
                 if (containers == null || containers.isEmpty()) {
-                    h.post(() -> showToast(activity,
-                            "No Wine container found — create one first in the Containers screen."));
+                    h.post(() -> showToast(activity, activity.getString(R.string.store_no_container)));
                     return;
                 }
 
                 String[] names = new String[containers.size()];
                 for (int i = 0; i < containers.size(); i++) {
                     String n = containers.get(i).getName();
-                    names[i] = (n != null && !n.isEmpty()) ? n : "Container " + (i + 1);
+                    names[i] = (n != null && !n.isEmpty())
+                            ? n : activity.getString(R.string.store_default_container, i + 1);
                 }
 
                 ArrayList<Container> finalContainers = containers;
                 h.post(() -> new AlertDialog.Builder(activity, R.style.StoreAlertDialogDark)
-                        .setTitle("Add \"" + gameName + "\" to…")
+                        .setTitle(activity.getString(R.string.store_add_game_to, gameName))
                         .setItems(names, (dialog, which) ->
                                 writeShortcut(activity, finalContainers.get(which),
                                         gameName, exePath, coverArtUrl))
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton(R.string.common_cancel, null)
                         .show());
 
             } catch (Exception e) {
                 Log.e(TAG, "addToLauncher failed", e);
                 h.post(() -> showToast(activity,
-                        "Error loading containers: " + e.getMessage()));
+                        activity.getString(R.string.final_audit_container_load_failed)));
             }
         }, "store-launcher-picker").start();
     }
@@ -186,12 +186,12 @@ public final class StarLaunchBridge {
                 File desktopDir = container.getDesktopDir();
                 if (desktopDir == null) {
                     h.post(() -> cb.onResult(false,
-                            "Container desktop directory not found."));
+                            activity.getString(R.string.final_audit_container_desktop_directory_not_found)));
                     return;
                 }
                 if (!desktopDir.exists() && !desktopDir.mkdirs()) {
                     h.post(() -> cb.onResult(false,
-                            "Could not create container desktop directory."));
+                            activity.getString(R.string.final_audit_container_desktop_directory_create_failed)));
                     return;
                 }
 
@@ -252,13 +252,12 @@ public final class StarLaunchBridge {
                 }
 
                 h.post(() -> cb.onResult(true,
-                        "\"" + gameName + "\" added to Shortcuts.\n"
-                                + "Open the side menu → Shortcuts to launch and configure it."));
+                        activity.getString(R.string.final_audit_shortcut_added, gameName)));
 
             } catch (Exception e) {
                 Log.e(TAG, "writeShortcut failed for " + gameName, e);
                 h.post(() -> cb.onResult(false,
-                        "Failed to add shortcut: " + e.getMessage()));
+                        activity.getString(R.string.final_audit_shortcut_add_failed)));
             }
         }, "store-write-shortcut").start();
     }

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="log_viewer_app_crash_logs">Журналы приложения и сбоев</string>
+    <string name="log_viewer_close">Закрыть</string>
+    <string name="log_viewer_folder_empty">Сейчас в этой папке нет файлов журналов.</string>
+    <string name="log_viewer_current">Текущий</string>
+    <string name="log_viewer_following">слежение</string>
+    <string name="log_viewer_follow">следить</string>
+    <string name="log_viewer_find_placeholder">Найти в журнале…</string>
+    <plurals name="log_viewer_line_count">
+        <item quantity="one">%1$d строка</item>
+        <item quantity="few">%1$d строки</item>
+        <item quantity="many">%1$d строк</item>
+        <item quantity="other">%1$d строки</item>
+    </plurals>
+    <string name="log_viewer_close_search">Закрыть поиск</string>
+    <string name="log_viewer_log_empty">Журнал пуст.</string>
+    <string name="log_viewer_no_lines_match">Строки по запросу «%1$s» не найдены.</string>
+    <string name="log_viewer_showing_tail">… показаны последние %1$s из %2$s</string>
+    <string name="log_viewer_wrap">Перенос</string>
+    <string name="log_viewer_find">Найти</string>
+    <string name="log_viewer_copy">Копировать</string>
+    <plurals name="log_viewer_copied_lines">
+        <item quantity="one">Скопирована %1$d строка</item>
+        <item quantity="few">Скопированы %1$d строки</item>
+        <item quantity="many">Скопировано %1$d строк</item>
+        <item quantity="other">Скопировано %1$d строки</item>
+    </plurals>
+    <string name="log_viewer_share">Поделиться</string>
+    <string name="log_viewer_report_problem">Сообщить о проблеме</string>
+    <string name="log_viewer_what_went_wrong">Что произошло?</string>
+    <string name="log_viewer_optional_details">Дополнительные сведения (необязательно)</string>
+    <string name="log_viewer_will_be_attached">Будут приложены</string>
+    <string name="log_viewer_include_app_logs">Также добавить logcat приложения и отчёты о сбоях</string>
+    <string name="log_viewer_report_privacy_note">ZIP-архив будет сохранён в папке «Загрузки». Адреса электронной почты, токены авторизации и имя учётной записи Steam удаляются. Пути к файлам сохраняются для диагностики — проверьте их, если название папки может вас идентифицировать. GitHub не может получить файл по ссылке: после открытия формы прикрепите ZIP кнопкой 📎.</string>
+    <string name="log_viewer_report_build_failed">Не удалось создать отчёт.</string>
+    <string name="log_viewer_saved_to_downloads">Файл %1$s сохранён в папку «Загрузки»</string>
+    <string name="log_viewer_no_browser">Нет браузера для открытия GitHub.</string>
+    <string name="log_viewer_working">Обработка…</string>
+    <string name="log_viewer_continue_github">Продолжить на GitHub</string>
+    <string name="log_viewer_cancel">Отмена</string>
+    <string name="log_viewer_earlier">ранее</string>
+    <string name="log_viewer_just_now">только что</string>
+    <plurals name="log_viewer_minutes_ago">
+        <item quantity="one">%1$d минуту назад</item>
+        <item quantity="few">%1$d минуты назад</item>
+        <item quantity="many">%1$d минут назад</item>
+        <item quantity="other">%1$d минуты назад</item>
+    </plurals>
+    <plurals name="log_viewer_hours_ago">
+        <item quantity="one">%1$d час назад</item>
+        <item quantity="few">%1$d часа назад</item>
+        <item quantity="many">%1$d часов назад</item>
+        <item quantity="other">%1$d часа назад</item>
+    </plurals>
+    <string name="log_viewer_yesterday">вчера</string>
+    <string name="log_viewer_read_failed">Не удалось прочитать файл: %1$s</string>
+    <string name="log_viewer_share_log">Поделиться журналом</string>
+    <string name="log_viewer_share_one_failed">Не удалось поделиться журналом.</string>
+    <string name="log_viewer_nothing_to_share">Пока нечем поделиться.</string>
+    <string name="log_viewer_share_logs">Поделиться журналами</string>
+    <string name="log_viewer_share_many_failed">Не удалось поделиться журналами.</string>
+</resources>

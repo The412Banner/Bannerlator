@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_content_install_from_file">Install content from file</string>
+    <string name="compose_content_no_content_available">No content available.</string>
+    <string name="compose_content_select_content_file">Select content file</string>
+    <string name="compose_content_browse_files">Browse files</string>
+    <string name="compose_content_pick_via_system">Pick via system…</string>
+    <string name="compose_content_ok">OK</string>
+    <string name="compose_content_cancel">Cancel</string>
+    <string name="compose_content_close">Close</string>
+    <string name="compose_content_continue">Continue</string>
+    <string name="compose_content_download">Download</string>
+    <string name="compose_content_install">Install</string>
+    <string name="compose_content_installed">Installed</string>
+    <string name="compose_content_info">Info</string>
+    <string name="compose_content_remove">Remove</string>
+    <string name="compose_content_options">Options</string>
+    <string name="compose_content_error">Error</string>
+    <string name="compose_content_type">Type</string>
+    <string name="compose_content_version">Version</string>
+    <string name="compose_content_code">Code</string>
+    <string name="compose_content_description">Description</string>
+    <string name="compose_content_files">Files</string>
+    <string name="compose_content_content_info">Content info</string>
+    <string name="compose_content_warning">Warning</string>
+    <string name="compose_content_unverified_files">Unverified files</string>
+    <string name="compose_content_unverified_files_warning">These files could not be verified. Continue only if you trust the source.</string>
+    <string name="compose_content_version_value">Version: %1$s</string>
+    <string name="compose_content_code_value">Code: %1$s</string>
+    <string name="compose_content_progress">%1$s  %2$d%%</string>
+    <string name="compose_content_progress_with_eta">%1$s  %2$d%% · %3$s</string>
+    <string name="compose_content_percent">%1$d%%</string>
+    <string name="compose_content_label_with_colon">%1$s: </string>
+    <string name="compose_content_install_failed_reason">Install failed: %1$s</string>
+
+    <string name="compose_content_file">Content file</string>
+    <string name="compose_content_remove_content_title">Remove content?</string>
+    <string name="compose_content_remove_named">Remove “%1$s”?</string>
+    <string name="compose_content_compatibility_layer">Compatibility layer</string>
+    <string name="compose_content_type_downloads">%1$s downloads</string>
+    <string name="compose_content_in_use">In use</string>
+    <string name="compose_content_downloading">Downloading</string>
+    <string name="compose_content_installing">Installing</string>
+    <string name="compose_content_done">Done</string>
+    <string name="compose_content_install_failed">Install failed.</string>
+    <string name="compose_content_download_failed">Download failed.</string>
+    <string name="compose_content_notification_downloading_progress">%1$s — Downloading %2$d%%</string>
+    <string name="compose_content_notification_installing_progress">%1$s — Installing %2$d%%</string>
+    <string name="compose_content_eta_less_than_minute">&lt;1 min left</string>
+    <string name="compose_content_eta_remaining">~%1$s left</string>
+    <string name="compose_content_eta_hours_minutes">%1$s %2$s</string>
+    <plurals name="compose_content_eta_hours_short">
+        <item quantity="one">%1$d h</item>
+        <item quantity="other">%1$d h</item>
+    </plurals>
+    <plurals name="compose_content_eta_minutes_short">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+
+    <string name="compose_content_components">Components</string>
+    <string name="compose_content_components_subtitle">Install Wine dependencies into this container</string>
+    <string name="compose_content_search_components">Search components</string>
+    <string name="compose_content_component_catalog_load_failed">Couldn’t load the component catalog.</string>
+    <string name="compose_content_component_install_failed_detail">Couldn’t install %1$s: %2$s</string>
+    <string name="compose_content_run_installer_title">Run %1$s installer</string>
+    <string name="compose_content_run_installer_description">This opens the container on a Windows desktop and runs the %1$s installer. Complete the installer, then close the container. You’ll return here to finish setup.</string>
+    <string name="compose_content_not_available">N/A</string>
+    <string name="compose_content_component_large_package_not_mirrored">Requires a large package that has not been mirrored yet</string>
+    <string name="compose_content_component_source_unavailable">Source unavailable — waiting for the file to be re-hosted</string>
+    <string name="compose_content_component_installer_step_unsupported">Requires an installer step that is not supported yet</string>
+    <string name="compose_content_component_exec_step_unsupported">Uses an installer step that is not supported yet</string>
+    <string name="compose_content_component_no_wine_prefix">The container has no Wine prefix yet — launch it once first.</string>
+    <string name="compose_content_component_corrupt_plan_cleared">The install plan was corrupted and has been cleared.</string>
+    <string name="compose_content_component_container_missing">The container for %1$s no longer exists.</string>
+    <string name="compose_content_component_file_download_failed">Couldn’t download %1$s</string>
+    <string name="compose_content_component_unsupported_action">Unsupported install action: %1$s</string>
+    <string name="compose_content_component_installer_missing_url">%1$s: installer download URL is missing</string>
+    <string name="compose_content_component_installer_download_failed">%1$s: couldn’t download %2$s</string>
+    <string name="compose_content_component_installer_name">%1$s installer</string>
+
+    <string name="compose_content_launch_game_first">Launch the game once first, then install its components from the game’s settings.</string>
+    <string name="compose_content_install_component_title">Install %1$s</string>
+    <string name="compose_content_install_component_description">This installs %1$s into this game’s container, shared by every shortcut that uses it. The container opens on a Windows desktop and runs the installer. Complete it, then close the container; you’ll return here afterward.</string>
+    <string name="compose_content_looking_for_recommended_components">Looking for recommended components…</string>
+    <string name="compose_content_recommended">Recommended</string>
+    <string name="compose_content_optional">Optional</string>
+    <string name="compose_content_optional_components">Optional components</string>
+    <string name="compose_content_recommended_components">Recommended components</string>
+    <string name="compose_content_recommended_subtitle">Redistributables bundled with this game.</string>
+    <string name="compose_content_optional_subtitle">Ships with the game — install only if it misbehaves.</string>
+    <string name="compose_content_recommended_tap_subtitle">Redistributables bundled with this game — tap to install them into its container.</string>
+
+    <string name="compose_content_failed_to_parse_releases">Failed to parse releases: %1$s</string>
+    <string name="compose_content_failed_to_fetch_releases">Failed to fetch releases from GitHub</string>
+    <string name="compose_content_installing_vegas">Installing VEGAS…</string>
+    <string name="compose_content_vegas_downloads">VEGAS downloads</string>
+    <string name="compose_content_could_not_load_releases">Could not load releases.</string>
+    <string name="compose_content_no_releases_available">No releases available.</string>
+</resources>

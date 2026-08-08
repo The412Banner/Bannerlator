@@ -3,6 +3,7 @@ package com.winlator.star.components
 import android.content.Context
 import android.content.Intent
 import androidx.preference.PreferenceManager
+import com.winlator.star.R
 import com.winlator.star.XServerDisplayActivity
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
@@ -79,10 +80,13 @@ object ComponentExecInstaller {
             c.steps.all { it.action in SUPPORTED_ACTIONS }
 
     /** Reason a component routed here can't be driven yet, or null if it can. */
-    fun execBlockedReason(c: Component): String? = when {
-        c.status == "needs-upstream" -> "Needs a large package that isn't mirrored yet"
-        c.status == "pending-manual" -> "Source unavailable — awaiting a re-hosted file"
-        !isExecInstallable(c) -> "Uses an installer step not yet supported"
+    fun execBlockedReason(context: Context, c: Component): String? = when {
+        c.status == "needs-upstream" ->
+            context.getString(R.string.compose_content_component_large_package_not_mirrored)
+        c.status == "pending-manual" ->
+            context.getString(R.string.compose_content_component_source_unavailable)
+        !isExecInstallable(c) ->
+            context.getString(R.string.compose_content_component_exec_step_unsupported)
         else -> null
     }
 
@@ -125,7 +129,7 @@ object ComponentExecInstaller {
     /** Begin installing an exec component from the first step. */
     fun startInstall(context: Context, container: Container, c: Component, onProgress: (Float) -> Unit): Result {
         if (!File(container.rootDir, ".wine").isDirectory)
-            return Result.Error("Container has no Wine prefix yet — launch it once first.")
+            return Result.Error(context.getString(R.string.compose_content_component_no_wine_prefix))
         return runFrom(context, container, c.name, c.steps, 0, onProgress)
     }
 
@@ -136,7 +140,12 @@ object ComponentExecInstaller {
     fun resume(context: Context, onProgress: (Float) -> Unit = {}): Result? {
         val raw = prefs(context).getString(PREF_PLAN, null) ?: return null
         val plan = runCatching { JSONObject(raw) }.getOrNull()
-            ?: run { clearPlan(context); return Result.Error("Corrupt install plan — cleared.") }
+            ?: run {
+                clearPlan(context)
+                return Result.Error(
+                    context.getString(R.string.compose_content_component_corrupt_plan_cleared)
+                )
+            }
         val containerId = plan.optInt("containerId", 0)
         val name = plan.optString("componentName")
         val cursor = plan.optInt("cursor", 0)
@@ -145,7 +154,12 @@ object ComponentExecInstaller {
             val o = stepsArr.getJSONObject(it); ComponentStep(o.optString("action", ""), o)
         }
         val container = ContainerManager(context).getContainerById(containerId)
-            ?: run { clearPlan(context); return Result.Error("Container for $name no longer exists.") }
+            ?: run {
+                clearPlan(context)
+                return Result.Error(
+                    context.getString(R.string.compose_content_component_container_missing, name)
+                )
+            }
         return runFrom(context, container, name, steps, cursor, onProgress)
     }
 
@@ -177,8 +191,14 @@ object ComponentExecInstaller {
                     }
                     step.action == "set_windows" -> setWindowsVersion(systemReg, step.str("version"))
                     step.action == "uninstall" -> { /* needs Wine; skipped in v1 (mscoree override handles .NET) */ }
-                    step.action in FILE_DROP_ACTIONS -> ComponentInstaller.runStep(step, tmp, system32, syswow64, userReg)
-                    else -> throw IllegalStateException("unsupported action: ${step.action}")
+                    step.action in FILE_DROP_ACTIONS ->
+                        ComponentInstaller.runStep(context, step, tmp, system32, syswow64, userReg)
+                    else -> throw IllegalStateException(
+                        context.getString(
+                            R.string.compose_content_component_unsupported_action,
+                            step.action,
+                        )
+                    )
                 }
                 i++
             }
@@ -192,9 +212,9 @@ object ComponentExecInstaller {
             onProgress(1f)
             return Result.Done
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("ComponentExecInstaller", "Component install failed: $name", e)
             clearPlan(context)
-            return Result.Error(e.message ?: e.javaClass.simpleName)
+            return Result.Error(context.getString(R.string.final_errors_unknown_error))
         } finally {
             tmp.deleteRecursively()
         }
@@ -226,7 +246,11 @@ object ComponentExecInstaller {
     ) {
         val (fields, env) = installFields(step)
         val url = fields.optString("mirror").ifEmpty { fields.optString("url") }
-        if (!url.startsWith("http")) throw IllegalStateException("$name: installer has no download URL")
+        if (!url.startsWith("http")) {
+            throw IllegalStateException(
+                context.getString(R.string.compose_content_component_installer_missing_url, name)
+            )
+        }
         val rawName = fields.optString("rename").ifEmpty {
             fields.optString("file_name").ifEmpty { url.substringBefore('?').substringAfterLast('/') }
         }
@@ -235,8 +259,15 @@ object ComponentExecInstaller {
         // Stage the installer inside the container's drive_c so it's reachable from Wine.
         val destDir = File(container.rootDir, ".wine/drive_c/windows/temp/bannerlator_components").apply { mkdirs() }
         val installer = File(destDir, safe)
-        if (!Downloader.downloadFile(url, installer) { f -> onProgress(f) })
-            throw IllegalStateException("$name: download failed ($safe)")
+        if (!Downloader.downloadFile(url, installer) { f -> onProgress(f) }) {
+            throw IllegalStateException(
+                context.getString(
+                    R.string.compose_content_component_installer_download_failed,
+                    name,
+                    safe,
+                )
+            )
+        }
 
         // Wine runs an .exe directly and associates .msi with msiexec, so handing either to
         // `wine <path>` works. The container session already opens a Wine desktop
@@ -263,7 +294,9 @@ object ComponentExecInstaller {
         val shortcut = File(desktopDir, "$shortcutName.desktop").apply {
             writeText(buildString {
                 append("[Desktop Entry]\n")
-                append("Name=").append(name).append(" installer\n")
+                append("Name=")
+                    .append(context.getString(R.string.compose_content_component_installer_name, name))
+                    .append("\n")
                 append("Exec=wine ").append(execTarget).append("\n")
                 append("Icon=").append(shortcutName).append("\n")
                 append("Type=Application\n")

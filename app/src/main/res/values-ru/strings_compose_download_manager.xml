@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_manager_install_dir_missing">Папка установки не задана.</string>
+    <string name="download_manager_no_executable">В папке установки не найден файл .exe.</string>
+    <string name="download_manager_uninstalled">%1$s удалена</string>
+    <string name="download_manager_remove_incomplete">Не удалось полностью удалить %1$s</string>
+    <string name="download_manager_title">Загрузки и библиотека</string>
+    <string name="download_manager_back">Назад</string>
+    <string name="download_manager_clear_finished">Очистить ✓</string>
+    <string name="download_manager_empty">Загрузок и установленных игр пока нет.</string>
+    <string name="download_manager_downloading">Загружаются</string>
+    <string name="download_manager_library">Библиотека</string>
+    <string name="download_manager_installed_update">● Установлено — доступно обновление</string>
+    <string name="download_manager_installed">● Установлено</string>
+    <string name="download_manager_launch">Запустить</string>
+    <string name="download_manager_uninstall">Удалить</string>
+    <string name="download_manager_failed_detail">Ошибка: %1$s</string>
+    <string name="download_manager_download_failed">Не удалось загрузить</string>
+    <string name="download_manager_dismiss">Убрать</string>
+    <string name="download_manager_cancelled">Отменено</string>
+    <string name="download_manager_paused_status">Приостановлено — %1$d%%%2$s</string>
+    <string name="download_manager_queued">В очереди…</string>
+    <string name="download_manager_downloading_status">Загрузка… %1$d%%%2$s%3$s</string>
+    <string name="download_manager_cancel">✕ Отменить</string>
+    <string name="download_manager_resume">Продолжить</string>
+    <string name="download_manager_pause">Пауза</string>
+    <string name="download_manager_select_executable">Выберите исполняемый файл для «%1$s»</string>
+    <string name="download_manager_uninstalling">Удаление %1$s…</string>
+
+    <string name="store_shortcut_add_to_container">Добавить «%1$s» в контейнер</string>
+    <string name="store_shortcut_no_containers">Контейнеров пока нет — сначала создайте контейнер на соответствующем экране.</string>
+    <string name="store_shortcut_container_fallback">Контейнер %1$d</string>
+    <string name="store_shortcut_cancel">Отмена</string>
+    <string name="store_shortcut_added_title">Добавлено в ярлыки</string>
+    <string name="store_shortcut_added_message">Игра «%1$s» готова к запуску из раздела «Ярлыки».</string>
+    <string name="store_shortcut_open_shortcuts">Открыть ярлыки</string>
+    <string name="store_shortcut_close">Закрыть</string>
+    <string name="store_shortcut_add_failed">Не удалось добавить ярлык</string>
+    <string name="store_shortcut_ok">ОК</string>
+</resources>

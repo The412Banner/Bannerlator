@@ -1,6 +1,11 @@
 package com.winlator.star.ui
 
 import android.graphics.Bitmap
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -337,23 +342,44 @@ object XServerDialogState {
     enum class ToastIconType { CONTROLLER, TOUCH, MOUSE, KEYBOARD }
     enum class ToastBadgeType { PLAYER, SHARE, IGNORED, DETECTED }
 
+    /** Keeps state locale-neutral; display text is resolved from the current app locale by Compose. */
+    data class LocalizedToastText(
+        @StringRes val resourceId: Int,
+        val formatArgs: List<Any> = emptyList(),
+    ) {
+        @Composable
+        fun resolve(): String {
+            val localizedContext = ContextCompat.getContextForLanguage(LocalContext.current)
+            return localizedContext.getString(resourceId, *formatArgs.toTypedArray())
+        }
+    }
+
     data class ControllerToastRow(
         val name: String,
-        val kind: String,
+        private val kindText: LocalizedToastText,
         val icon: ToastIconType,
         val badge: ToastBadgeType,
         val slot: Int,        // 0-based player slot for PLAYER/SHARE badges; -1 otherwise
         val isNew: Boolean,   // true for the device that just hot-plugged (drives the "NEW" tag)
-    )
+    ) {
+        val kind: String
+            @Composable get() = kindText.resolve()
+    }
 
     data class ControllerToastData(
-        val title: String,
-        val subLabel: String,
+        private val titleText: LocalizedToastText,
+        private val subLabelText: LocalizedToastText,
         val rows: List<ControllerToastRow>,
         // Incremented on every event; the overlay keys its fade-in/hold/fade-out animation on this so a
         // new event fired while the toast is showing restarts the cycle with fresh content.
         val token: Long,
-    )
+    ) {
+        val title: String
+            @Composable get() = titleText.resolve()
+
+        val subLabel: String
+            @Composable get() = subLabelText.resolve()
+    }
 
     private val _controllerToast = MutableStateFlow<ControllerToastData?>(null)
     val controllerToast: StateFlow<ControllerToastData?> = _controllerToast
@@ -395,15 +421,19 @@ object XServerDialogState {
                 r.currentSlot >= 0 -> ToastBadgeType.PLAYER
                 else -> ToastBadgeType.DETECTED
             }
-            val kind = when {
-                r.isOnScreen -> "Virtual gamepad"
-                badge == ToastBadgeType.IGNORED -> "Controller · filtered"
-                icon == ToastIconType.MOUSE -> "Pointer"
-                icon == ToastIconType.KEYBOARD -> "Keys"
-                else -> "Controller"
+            val kindRes = when {
+                r.isOnScreen -> R.string.final_runtime_virtual_gamepad
+                badge == ToastBadgeType.IGNORED -> R.string.final_runtime_controller_filtered
+                icon == ToastIconType.MOUSE -> R.string.final_runtime_pointer
+                icon == ToastIconType.KEYBOARD -> R.string.final_runtime_keys
+                else -> R.string.final_runtime_controller
             }
             ControllerToastRow(
-                name = r.displayName, kind = kind, icon = icon, badge = badge, slot = r.currentSlot,
+                name = r.displayName,
+                kindText = LocalizedToastText(kindRes),
+                icon = icon,
+                badge = badge,
+                slot = r.currentSlot,
                 isNew = changedDescriptor != null && r.descriptor == changedDescriptor,
             )
         }
@@ -414,17 +444,27 @@ object XServerDialogState {
         val sharedSlot = rows.firstOrNull { it.badge == ToastBadgeType.SHARE }?.slot ?: 0
 
         val (title, sub) = when (reason) {
-            "connected"    -> "CONTROLLER CONNECTED" to "just now"
-            "disconnected" -> "CONTROLLER DISCONNECTED" to "just now"
-            "reset"        -> "INPUT RESET" to "just now"
+            "connected" -> LocalizedToastText(R.string.final_runtime_controller_connected) to
+                LocalizedToastText(R.string.final_runtime_just_now)
+            "disconnected" -> LocalizedToastText(R.string.final_runtime_controller_disconnected) to
+                LocalizedToastText(R.string.final_runtime_just_now)
+            "reset" -> LocalizedToastText(R.string.final_runtime_input_reset) to
+                LocalizedToastText(R.string.final_runtime_just_now)
             "reassign"     ->
-                if (hasShare) "PLAYER ${sharedSlot + 1} · SHARED" to "updated"
-                else "INPUT UPDATED" to "updated"
+                if (hasShare) {
+                    LocalizedToastText(
+                        R.string.final_runtime_player_shared,
+                        listOf(sharedSlot + 1),
+                    ) to LocalizedToastText(R.string.final_runtime_updated)
+                } else {
+                    LocalizedToastText(R.string.final_runtime_input_updated) to
+                        LocalizedToastText(R.string.final_runtime_updated)
+                }
             else /* launch */ -> when {
-                hasMouseKb     -> "INPUT DETECTED"
-                rows.size == 1 -> "CONTROLLER DETECTED"
-                else           -> "CONTROLLERS DETECTED"
-            } to "on launch"
+                hasMouseKb -> R.string.final_runtime_input_detected
+                rows.size == 1 -> R.string.final_runtime_controller_detected
+                else -> R.string.final_runtime_controllers_detected
+            }.let { LocalizedToastText(it) } to LocalizedToastText(R.string.final_runtime_on_launch)
         }
 
         _toastToken += 1

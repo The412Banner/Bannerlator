@@ -34,12 +34,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,7 +71,8 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
     var showRemoveConfirm       by remember { mutableStateOf(false) }
     var newProfileName          by remember { mutableStateOf("") }
 
-    val profileItems = listOf("-- Default --") + profiles
+    val defaultProfile = stringResource(R.string.screen_effects_default_profile)
+    val profileItems = listOf(defaultProfile) + profiles
 
     fun resetToDefault() {
         brightness = 0f; contrast = 0f; gamma = 1.0f
@@ -91,7 +94,7 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text("Screen Effects", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.screen_effects_title), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
 
                 // Profile selector
@@ -100,10 +103,10 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
                     onExpandedChange = { profileDropdownExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = profileItems.getOrElse(profileIndex) { "-- Default --" },
+                        value = profileItems.getOrElse(profileIndex) { defaultProfile },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Profile") },
+                        label = { Text(stringResource(R.string.screen_effects_profile)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -128,47 +131,47 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
                     OutlinedButton(
                         onClick = { showAddProfileDialog = true },
                         modifier = Modifier.weight(1f)
-                    ) { Text("Add") }
+                    ) { Text(stringResource(R.string.screen_effects_add)) }
                     Spacer(Modifier.width(8.dp))
                     OutlinedButton(
                         onClick = { if (profileIndex > 0) showRemoveConfirm = true },
                         modifier = Modifier.weight(1f),
                         enabled = profileIndex > 0
-                    ) { Text("Remove") }
+                    ) { Text(stringResource(R.string.screen_effects_remove)) }
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Color adjustment sliders
-                Text("Color Adjustment", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.screen_effects_color_adjustment), style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(4.dp))
 
-                LabeledSlider("Brightness: ${brightness.toInt()}", brightness, -100f..100f) { brightness = it }
-                LabeledSlider("Contrast: ${contrast.toInt()}",     contrast,   -100f..100f) { contrast   = it }
-                LabeledSlider("Gamma: ${"%.2f".format(gamma)}",    gamma,      0.5f..3.0f)  { gamma      = it }
+                LabeledSlider(stringResource(R.string.screen_effects_brightness, brightness.toInt()), brightness, -100f..100f) { brightness = it }
+                LabeledSlider(stringResource(R.string.screen_effects_contrast, contrast.toInt()), contrast, -100f..100f) { contrast = it }
+                LabeledSlider(stringResource(R.string.screen_effects_gamma, gamma), gamma, 0.5f..3.0f) { gamma = it }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Shader toggles
-                Text("Shaders", style = MaterialTheme.typography.labelMedium)
-                SeCheckRow("Enable FXAA",        fxaa) { fxaa = it }
-                SeCheckRow("Enable CRT Shader",  crt)  { crt  = it }
-                SeCheckRow("Enable Toon Shader", toon) { toon = it }
-                SeCheckRow("Enable NTSC Effect", ntsc) { ntsc = it }
+                Text(stringResource(R.string.screen_effects_shaders), style = MaterialTheme.typography.labelMedium)
+                SeCheckRow(stringResource(R.string.screen_effects_enable_fxaa), fxaa) { fxaa = it }
+                SeCheckRow(stringResource(R.string.screen_effects_enable_crt), crt) { crt = it }
+                SeCheckRow(stringResource(R.string.screen_effects_enable_toon), toon) { toon = it }
+                SeCheckRow(stringResource(R.string.screen_effects_enable_ntsc), ntsc) { ntsc = it }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Action buttons
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = { resetToDefault() }) { Text("Reset") }
+                    TextButton(onClick = { resetToDefault() }) { Text(stringResource(R.string.screen_effects_reset)) }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { state.dismiss() }) { Text("Cancel") }
+                    TextButton(onClick = { state.dismiss() }) { Text(stringResource(R.string.screen_effects_cancel)) }
                     TextButton(onClick = {
                         state.onScreenEffectsApply?.invoke(
                             brightness, contrast, gamma, fxaa, crt, toon, ntsc, profileIndex
                         )
                         state.dismiss()
-                    }) { Text("Apply") }
+                    }) { Text(stringResource(R.string.screen_effects_apply)) }
                 }
             }
         }
@@ -178,12 +181,12 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
     if (showAddProfileDialog) {
         OutlinedAlertDialog(
             onDismissRequest = { showAddProfileDialog = false },
-            title = { Text("Add Profile") },
+            title = { Text(stringResource(R.string.screen_effects_add_profile)) },
             text = {
                 OutlinedTextField(
                     value = newProfileName,
                     onValueChange = { newProfileName = it },
-                    label = { Text("Profile name") },
+                    label = { Text(stringResource(R.string.screen_effects_profile_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -195,11 +198,11 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
                         newProfileName = ""
                     }
                     showAddProfileDialog = false
-                }) { Text("Add") }
+                }) { Text(stringResource(R.string.screen_effects_add)) }
             },
             dismissButton = {
                 TextButton(onClick = { showAddProfileDialog = false; newProfileName = "" }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.screen_effects_cancel))
                 }
             }
         )
@@ -209,18 +212,18 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
     if (showRemoveConfirm) {
         OutlinedAlertDialog(
             onDismissRequest = { showRemoveConfirm = false },
-            title = { Text("Remove Profile") },
-            text = { Text("Remove '${profileItems.getOrElse(profileIndex) { "" }}'?") },
+            title = { Text(stringResource(R.string.screen_effects_remove_profile)) },
+            text = { Text(stringResource(R.string.screen_effects_remove_profile_message, profileItems.getOrElse(profileIndex) { "" })) },
             confirmButton = {
                 TextButton(onClick = {
                     val name = profiles.getOrNull(profileIndex - 1) ?: ""
                     state.onSeRemoveProfile?.invoke(name)
                     profileIndex = 0
                     showRemoveConfirm = false
-                }) { Text("Remove") }
+                }) { Text(stringResource(R.string.screen_effects_remove)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRemoveConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showRemoveConfirm = false }) { Text(stringResource(R.string.screen_effects_cancel)) }
             }
         )
     }

@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,16 +59,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
 import com.winlator.star.store.compose.ContainerPickerDialog
 import com.winlator.star.store.compose.openShortcutsScreen
 import com.winlator.star.store.download.DownloadsButton
-import com.winlator.star.store.download.formatDownloadSpeed
-import com.winlator.star.store.download.formatEta
 import com.winlator.star.ui.theme.WinlatorTheme
 import java.io.File
 import java.net.URL
@@ -105,7 +105,7 @@ private data class SizeBreakdown(
     val fits: Boolean = true,         // false → render freeLabel in the error color
 )
 
-class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventListener {
+class SteamGameDetailActivity : AppCompatActivity(), SteamRepository.SteamEventListener {
 
     companion object {
         const val EXTRA_APP_ID = "steam_app_id"
@@ -119,10 +119,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
     // UI state
     private var headerBitmap by mutableStateOf<Bitmap?>(null)
-    private var nameText by mutableStateOf("Loading…")
-    private var typeText by mutableStateOf("GAME")
+    private var nameText by mutableStateOf("")
+    private var typeText by mutableStateOf("")
     // Headline chip = on-disk footprint (estimate with "~", or the real measured size once installed).
-    private var sizeText by mutableStateOf("Size unknown")
+    private var sizeText by mutableStateOf("")
     // Breakdown lines under the chips: download (compressed), PICS estimate (labeled), free space.
     private var sizeBreakdown by mutableStateOf(SizeBreakdown())
     // "Includes DLC: <names>" — owned DLC that WILL download (excluded ones dropped); "" hides the line.
@@ -134,12 +134,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var showDlcSheet by mutableStateOf(false)
     // One-shot guard so the manifest-true size resolve fires at most once per detail view.
     private var sizeResolveStarted = false
-    private var statusText by mutableStateOf("Not installed")
+    private var statusText by mutableStateOf("")
     private var gameStatus by mutableStateOf(GameStatus.NOT_INSTALLED)
-    private var installBtnText by mutableStateOf("Install")
+    private var installBtnText by mutableStateOf("")
     private var installAction by mutableStateOf(InstallAction.INSTALL)
     private var installBtnEnabled by mutableStateOf(true)
-    private var pauseBtnText by mutableStateOf("Pause")
+    private var pauseBtnText by mutableStateOf("")
     private var pauseAction by mutableStateOf(PauseAction.PAUSE)
     private var pauseBtnEnabled by mutableStateOf(false)
     private var launchBtnEnabled by mutableStateOf(false)
@@ -195,6 +195,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         super.onCreate(savedInstanceState)
         appId = intent.getIntExtra(EXTRA_APP_ID, 0)
         if (appId == 0) { finish(); return }
+
+        nameText = getString(R.string.compose_steam_game_detail_loading)
+        typeText = getString(R.string.compose_steam_game_detail_type_game)
+        sizeText = getString(R.string.compose_steam_game_detail_size_unknown)
+        statusText = getString(R.string.compose_steam_game_detail_not_installed)
+        installBtnText = getString(R.string.compose_steam_game_detail_install)
+        pauseBtnText = getString(R.string.compose_steam_game_detail_pause)
 
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
@@ -269,13 +276,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 if (showCloudDisclaimer) {
                     OutlinedAlertDialog(
                         onDismissRequest = { showCloudDisclaimer = false; pendingCloudMove = null },
-                        title = { Text("Third-party cloud sync") },
+                        title = { Text(stringResource(R.string.compose_steam_game_detail_third_party_cloud_title)) },
                         text = {
-                            Text(
-                                "Steam Cloud save syncing here is handled by a third-party tool, not " +
-                                    "official Steam. Managing game saves this way can corrupt or lose " +
-                                    "your saves. Use at your own risk."
-                            )
+                            Text(stringResource(R.string.compose_steam_game_detail_third_party_cloud_body))
                         },
                         confirmButton = {
                             TextButton(onClick = {
@@ -283,13 +286,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                                 setCloudDisclaimerAccepted()
                                 pendingCloudMove?.let { prepareCloudConfirm(it) }
                                 pendingCloudMove = null
-                            }) { Text("I understand") }
+                            }) { Text(stringResource(R.string.compose_steam_game_detail_i_understand)) }
                         },
                         dismissButton = {
                             TextButton(onClick = {
                                 showCloudDisclaimer = false
                                 pendingCloudMove = null
-                            }) { Text("Cancel") }
+                            }) { Text(stringResource(R.string.compose_steam_game_detail_cancel)) }
                         },
                     )
                 }
@@ -321,7 +324,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                             showSpeedPicker = false
                             lastSpeedTier = tier
                             installBtnEnabled = false
-                            installBtnText = "Starting…"
+                            installBtnText = getString(R.string.compose_steam_game_detail_starting)
                             downloadHandle = SteamDepotDownloader.installApp(appId, applicationContext, lastSpeedTier, debugLog)
                         },
                     )
@@ -373,10 +376,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 goldbergMessage?.let { msg ->
                     OutlinedAlertDialog(
                         onDismissRequest = { goldbergMessage = null },
-                        title = { Text("Steam Emulator (Goldberg)") },
+                        title = { Text(stringResource(R.string.compose_steam_game_detail_goldberg_title)) },
                         text = { Text(msg) },
                         confirmButton = {
-                            TextButton(onClick = { goldbergMessage = null }) { Text("OK") }
+                            TextButton(onClick = { goldbergMessage = null }) {
+                                Text(stringResource(R.string.compose_steam_game_detail_ok))
+                            }
                         },
                     )
                 }
@@ -421,15 +426,23 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 progressTextVisible = true
                 // %/size text is the INSTALL fraction — what's actually on disk; append speed + ETA.
                 val speedEta = buildString {
-                    val s = formatDownloadSpeed(speed); if (s.isNotEmpty()) append("  ·  $s")
-                    val e = formatEta(etaSec);          if (e.isNotEmpty()) append("  ·  $e")
+                    val s = fmtDownloadSpeed(speed)
+                    if (s.isNotEmpty()) append(getString(R.string.compose_steam_game_detail_progress_segment, s))
+                    val e = fmtEta(etaSec)
+                    if (e.isNotEmpty()) append(getString(R.string.compose_steam_game_detail_progress_segment, e))
                 }
-                progressText = "Downloading… $iPct%  (${fmtSize(iDone)} / ${fmtSize(iTotal)})$speedEta"
+                progressText = getString(
+                    R.string.compose_steam_game_detail_downloading_progress,
+                    iPct,
+                    fmtSize(iDone),
+                    fmtSize(iTotal),
+                    speedEta,
+                )
                 installBtnEnabled = true
-                installBtnText = "Cancel"
+                installBtnText = getString(R.string.compose_steam_game_detail_cancel_download)
                 installAction = InstallAction.CANCEL
                 pauseBtnEnabled = true
-                pauseBtnText = "Pause"
+                pauseBtnText = getString(R.string.compose_steam_game_detail_pause)
                 pauseAction = PauseAction.PAUSE
             }
             event.startsWith("DownloadPaused:") -> {
@@ -444,12 +457,17 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 progressValue = pct
                 downloadProgressValue = pct   // compressed not persisted — mirror install
                 progressTextVisible = true
-                progressText = "Paused — $pct%  (${fmtSize(done)} / ${fmtSize(total)})"
+                progressText = getString(
+                    R.string.compose_steam_game_detail_paused_progress,
+                    pct,
+                    fmtSize(done),
+                    fmtSize(total),
+                )
                 installBtnEnabled = true
-                installBtnText = "Cancel"
+                installBtnText = getString(R.string.compose_steam_game_detail_cancel_download)
                 installAction = InstallAction.CANCEL
                 pauseBtnEnabled = true
-                pauseBtnText = "Resume"
+                pauseBtnText = getString(R.string.compose_steam_game_detail_resume)
                 pauseAction = PauseAction.RESUME
             }
             event.startsWith("DownloadComplete:") -> {
@@ -467,10 +485,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 downloadHandle = null
                 progressVisible = false
                 progressTextVisible = false
-                statusText = "Download cancelled"
+                statusText = getString(R.string.compose_steam_game_detail_download_cancelled)
                 gameStatus = GameStatus.CANCELLED
                 installBtnEnabled = true
-                installBtnText = "Install"
+                installBtnText = getString(R.string.compose_steam_game_detail_install)
                 installAction = InstallAction.INSTALL
                 resetPauseBtn()
             }
@@ -483,10 +501,14 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 downloadHandle = null
                 progressVisible = false
                 progressTextVisible = false
-                statusText = "Download failed: $reason\nDebug log: $logPath"
+                statusText = getString(
+                    R.string.compose_steam_game_detail_download_failed,
+                    reason,
+                    logPath,
+                )
                 gameStatus = GameStatus.FAILED
                 installBtnEnabled = true
-                installBtnText = "Retry"
+                installBtnText = getString(R.string.compose_steam_game_detail_retry)
                 installAction = InstallAction.RETRY
                 resetPauseBtn()
             }
@@ -551,9 +573,15 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         val footprint = if (resolved && disk > 0L) disk else pics
 
         sizeText = when {
-            footprint > 0L && resolved -> "${fmtSize(footprint)} on disk"
-            footprint > 0L             -> "~${fmtSize(footprint)} on disk"
-            else                       -> "Size unknown"
+            footprint > 0L && resolved -> getString(
+                R.string.compose_steam_game_detail_size_on_disk,
+                fmtSize(footprint),
+            )
+            footprint > 0L             -> getString(
+                R.string.compose_steam_game_detail_size_on_disk_estimate,
+                fmtSize(footprint),
+            )
+            else                       -> getString(R.string.compose_steam_game_detail_size_unknown)
         }
 
         // Download (compressed): the resolved per-depot sum is exclusion-aware; before resolve fall
@@ -564,9 +592,19 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         val free = try { freeInstallBytes() } catch (_: Throwable) { -1L }
         val fits = g.isInstalled || free < 0L || footprint <= 0L || free >= footprint
         sizeBreakdown = SizeBreakdown(
-            downloadLabel = if (downloadBytes > 0L) "Download: ${fmtSize(downloadBytes)}" else "",
-            picsLabel     = if (pics > 0L) "PICS estimate (Steam): ${fmtSize(pics)}" else "",
-            freeLabel     = if (free >= 0L) "Free space: ${fmtSize(free)}" + (if (!fits) " — won't fit" else "") else "",
+            downloadLabel = if (downloadBytes > 0L) getString(
+                R.string.compose_steam_game_detail_download_size,
+                fmtSize(downloadBytes),
+            ) else "",
+            picsLabel     = if (pics > 0L) getString(
+                R.string.compose_steam_game_detail_pics_estimate,
+                fmtSize(pics),
+            ) else "",
+            freeLabel     = if (free >= 0L) getString(
+                if (fits) R.string.compose_steam_game_detail_free_space
+                else R.string.compose_steam_game_detail_free_space_wont_fit,
+                fmtSize(free),
+            ) else "",
             fits          = fits,
         )
     }
@@ -576,8 +614,11 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private fun buildIncludedDlcText(): String {
         if (dlcEntries.isEmpty()) return ""
         val included = dlcEntries.filterKeys { it !in excludedDlc }.values
-        return if (included.isEmpty()) "DLC: none selected"
-               else "Includes DLC: " + included.joinToString(", ")
+        return if (included.isEmpty()) getString(R.string.compose_steam_game_detail_dlc_none_selected)
+               else getString(
+                   R.string.compose_steam_game_detail_includes_dlc,
+                   included.joinToString(", "),
+               )
     }
 
     /** Toggle a DLC's opt-out state, persist it, and refresh the line. */
@@ -614,13 +655,15 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     }
                 }
             } catch (_: Throwable) { return@Thread }
-            if (sum > 0L) runOnUiThread { sizeText = "${fmtSize(sum)} on disk" }
+            if (sum > 0L) runOnUiThread {
+                sizeText = getString(R.string.compose_steam_game_detail_size_on_disk, fmtSize(sum))
+            }
         }.apply { isDaemon = true; name = "SteamDetailDiskMeasure" }.start()
     }
 
     private fun resetPauseBtn() {
         pauseBtnEnabled = false
-        pauseBtnText = "Pause"
+        pauseBtnText = getString(R.string.compose_steam_game_detail_pause)
         pauseAction = PauseAction.PAUSE
     }
 
@@ -640,12 +683,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         progressVisible = true
                         progressValue = pct
                         progressTextVisible = true
-                        progressText = "Downloading… $pct%"
+                        progressText = getString(R.string.compose_steam_game_detail_downloading_percent, pct)
                         installBtnEnabled = true
-                        installBtnText = "Cancel"
+                        installBtnText = getString(R.string.compose_steam_game_detail_cancel_download)
                         installAction = InstallAction.CANCEL
                         pauseBtnEnabled = true
-                        pauseBtnText = "Pause"
+                        pauseBtnText = getString(R.string.compose_steam_game_detail_pause)
                         pauseAction = PauseAction.PAUSE
                     } else {
                         SteamRepository.getInstance().database.deleteDownload(appId)
@@ -656,12 +699,17 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     progressValue = pct
                     downloadProgressValue = pct
                     progressTextVisible = true
-                    progressText = "Paused — $pct%  (${fmtSize(dlRow.bytesDownloaded)} / ${fmtSize(dlRow.bytesTotal)})"
+                    progressText = getString(
+                        R.string.compose_steam_game_detail_paused_progress,
+                        pct,
+                        fmtSize(dlRow.bytesDownloaded),
+                        fmtSize(dlRow.bytesTotal),
+                    )
                     installBtnEnabled = true
-                    installBtnText = "Cancel"
+                    installBtnText = getString(R.string.compose_steam_game_detail_cancel_download)
                     installAction = InstallAction.CANCEL
                     pauseBtnEnabled = true
-                    pauseBtnText = "Resume"
+                    pauseBtnText = getString(R.string.compose_steam_game_detail_resume)
                     pauseAction = PauseAction.RESUME
                 }
             }
@@ -670,7 +718,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
     private fun refreshUI() {
         val g = game ?: return
-        nameText = g.name.ifEmpty { "App ${g.appId}" }
+        nameText = g.name.ifEmpty {
+            getString(R.string.compose_steam_game_detail_app_id_fallback, g.appId)
+        }
         typeText = g.type.uppercase()
         // Paint the manifest-TRUE size instantly if it's already resolved (no "~"), otherwise the PICS
         // "~estimate". A background resolve then drops the "~" once the real size lands. cached() is a
@@ -682,9 +732,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         maybeResolveRealSize()
 
         if (g.isInstalled) {
-            statusText = "Installed"
+            statusText = getString(R.string.compose_steam_game_detail_installed)
             gameStatus = GameStatus.INSTALLED
-            installBtnText = "Uninstall"
+            installBtnText = getString(R.string.compose_steam_game_detail_uninstall)
             installAction = InstallAction.UNINSTALL
             installBtnEnabled = true
             launchBtnEnabled = true
@@ -703,9 +753,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 }
             }
         } else {
-            statusText = "Not installed"
+            statusText = getString(R.string.compose_steam_game_detail_not_installed)
             gameStatus = GameStatus.NOT_INSTALLED
-            installBtnText = "Install"
+            installBtnText = getString(R.string.compose_steam_game_detail_install)
             installAction = InstallAction.INSTALL
             installBtnEnabled = true
             launchBtnEnabled = false
@@ -739,9 +789,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             if (dir.isNotEmpty()) Thread { File(dir).deleteRecursively() }.start()
             progressVisible = false
             progressTextVisible = false
-            statusText = "Download cancelled"
+            statusText = getString(R.string.compose_steam_game_detail_download_cancelled)
             gameStatus = GameStatus.CANCELLED
-            installBtnText = "Install"
+            installBtnText = getString(R.string.compose_steam_game_detail_install)
             installAction = InstallAction.INSTALL
             installBtnEnabled = true
             resetPauseBtn()
@@ -756,9 +806,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             if (dir.isNotEmpty()) Thread { File(dir).deleteRecursively() }.start()
             progressVisible = false
             progressTextVisible = false
-            statusText = "Download cancelled"
+            statusText = getString(R.string.compose_steam_game_detail_download_cancelled)
             gameStatus = GameStatus.CANCELLED
-            installBtnText = "Install"
+            installBtnText = getString(R.string.compose_steam_game_detail_install)
             installAction = InstallAction.INSTALL
             installBtnEnabled = true
             resetPauseBtn()
@@ -777,7 +827,11 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     mark = { SteamRepository.getInstance().database.markUninstalled(appId) },
                 ) { ok ->
                     uninstallingName = null
-                    uninstallResult = if (ok) "${g.name} uninstalled" else "Couldn't fully remove ${g.name}"
+                    uninstallResult = getString(
+                        if (ok) R.string.compose_steam_game_detail_uninstalled
+                        else R.string.compose_steam_game_detail_uninstall_incomplete,
+                        g.name,
+                    )
                     loadGame()
                 }
             }
@@ -809,20 +863,19 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         if (handle != null) {
             handle.pause.run()
             downloadHandle = null
-            pauseBtnText = "Resume"
+            pauseBtnText = getString(R.string.compose_steam_game_detail_resume)
             pauseAction = PauseAction.RESUME
             pauseBtnEnabled = true
-            installBtnText = "Cancel"
+            installBtnText = getString(R.string.compose_steam_game_detail_cancel_download)
             installBtnEnabled = true
-            val cur = progressText
-            if (cur.startsWith("Downloading")) progressText = cur.replace("Downloading", "Pausing")
+            progressText = getString(R.string.compose_steam_game_detail_pausing_percent, progressValue)
         } else {
             val dlRow = SteamRepository.getInstance().database.getDownload(appId) ?: return
             if (dlRow.status != SteamDatabase.DL_PAUSED) return
             pauseBtnEnabled = false
-            pauseBtnText = "Resuming…"
+            pauseBtnText = getString(R.string.compose_steam_game_detail_resuming)
             installBtnEnabled = false
-            installBtnText = "Starting…"
+            installBtnText = getString(R.string.compose_steam_game_detail_starting)
             downloadHandle = SteamDepotDownloader.resumeApp(appId, applicationContext, lastSpeedTier)
         }
     }
@@ -830,7 +883,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private fun onLaunchClicked() {
         val g = game ?: return
         if (!g.isInstalled || g.installDir.isEmpty()) {
-            uninstallResult = "Game not installed"
+            uninstallResult = getString(R.string.compose_steam_game_detail_game_not_installed)
             return
         }
         val installDir = File(g.installDir)
@@ -839,7 +892,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             AmazonLaunchHelper.collectExe(installDir, exeFiles)
             if (exeFiles.isEmpty()) {
                 runOnUiThread {
-                    uninstallResult = "No .exe found in install directory"
+                    uninstallResult = getString(R.string.compose_steam_game_detail_no_executable)
                 }
                 return@Thread
             }
@@ -932,7 +985,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
      */
     private fun cloudStalenessWarning(s: SteamCloudSaveManager.Staleness): String? =
         if (s.containerFileCount > 0 && s.containerNewestMtime > s.libraryNewestMtime)
-            "⚠️ This container has newer saves than your Library — Collect first?"
+            getString(R.string.compose_steam_game_detail_staleness_warning)
         else null
 
     /** Dispatch the confirmed move to the frozen manager API. Each runs on its own worker thread. */
@@ -941,17 +994,22 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         val g = game ?: return
         cloudBusy = true
         cloudStatus = when (move) {
-            CloudMove.DOWNLOAD  -> "Preparing download…"
-            CloudMove.UPLOAD    -> "Preparing upload…"
-            CloudMove.APPLY     -> "Applying to container…"
-            CloudMove.COLLECT   -> "Collecting from container…"
-            CloudMove.SYNC_FROM -> "Syncing from Cloud…"
-            CloudMove.SYNC_TO   -> "Syncing to Cloud…"
+            CloudMove.DOWNLOAD  -> getString(R.string.compose_steam_game_detail_preparing_download)
+            CloudMove.UPLOAD    -> getString(R.string.compose_steam_game_detail_preparing_upload)
+            CloudMove.APPLY     -> getString(R.string.compose_steam_game_detail_applying_to_container)
+            CloudMove.COLLECT   -> getString(R.string.compose_steam_game_detail_collecting_from_container)
+            CloudMove.SYNC_FROM -> getString(R.string.compose_steam_game_detail_syncing_from_cloud)
+            CloudMove.SYNC_TO   -> getString(R.string.compose_steam_game_detail_syncing_to_cloud)
         }
         val cb = object : SteamCloudSaveManager.Callback {
             override fun onStatus(message: String) { runOnUiThread { cloudStatus = message } }
             override fun onDone(summary: String) { runOnUiThread { cloudStatus = summary; cloudBusy = false } }
-            override fun onError(message: String) { runOnUiThread { cloudStatus = "Error: $message"; cloudBusy = false } }
+            override fun onError(message: String) {
+                runOnUiThread {
+                    cloudStatus = getString(R.string.compose_steam_game_detail_error, message)
+                    cloudBusy = false
+                }
+            }
         }
         when (move) {
             CloudMove.DOWNLOAD  -> SteamCloudSaveManager.downloadToLibrary(this, appId, cb)
@@ -988,10 +1046,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         GoldbergComponent.downloadAsync(
             this,
             progress = { fraction -> goldbergDownloadProgress = fraction },
-            done = { success, message ->
+            done = { success, _ ->
                 goldbergDownloading = false
                 goldbergInstalled = GoldbergComponent.isInstalled(this)
-                goldbergMessage = message
+                goldbergMessage = getString(
+                    if (success) R.string.compose_steam_game_detail_goldberg_download_succeeded
+                    else R.string.compose_steam_game_detail_goldberg_download_failed,
+                )
             },
         )
     }
@@ -1006,17 +1067,79 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         if (goldbergBusy || mode == goldbergMode) return
         if (!g.isInstalled || g.installDir.isEmpty()) return
         goldbergBusy = true
-        GoldbergPatcher.applyModeAsync(this, appId, g.installDir, g.name, mode) { success, message ->
+        GoldbergPatcher.applyModeAsync(this, appId, g.installDir, g.name, mode) { success, _ ->
             goldbergBusy = false
             if (success) goldbergMode = mode
-            goldbergMessage = message
+            goldbergMessage = if (success) {
+                when (mode) {
+                    GoldbergMode.OFF -> getString(
+                        R.string.compose_steam_game_detail_goldberg_disabled_result,
+                        g.name,
+                    )
+                    GoldbergMode.REGULAR -> getString(
+                        R.string.compose_steam_game_detail_goldberg_regular_result,
+                        g.name,
+                    )
+                    GoldbergMode.EXPERIMENTAL -> getString(
+                        R.string.compose_steam_game_detail_goldberg_experimental_result,
+                        g.name,
+                    )
+                    GoldbergMode.COLDCLIENT -> getString(
+                        R.string.compose_steam_game_detail_goldberg_cold_client_result,
+                        g.name,
+                    )
+                }
+            } else {
+                getString(R.string.compose_steam_game_detail_goldberg_apply_failed)
+            }
         }
     }
 
     private fun fmtSize(bytes: Long): String = when {
-        bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
-        bytes >= 1_048_576L     -> "%.1f MB".format(bytes / 1_048_576.0)
-        else                    -> "%.0f KB".format(bytes / 1024.0)
+        bytes >= 1_073_741_824L -> getString(
+            R.string.compose_steam_game_detail_size_gigabytes,
+            bytes / 1_073_741_824.0,
+        )
+        bytes >= 1_048_576L     -> getString(
+            R.string.compose_steam_game_detail_size_megabytes,
+            bytes / 1_048_576.0,
+        )
+        else                    -> getString(
+            R.string.compose_steam_game_detail_size_kilobytes,
+            bytes / 1024.0,
+        )
+    }
+
+    private fun fmtDownloadSpeed(bytesPerSecond: Long): String =
+        if (bytesPerSecond <= 0L) "" else getString(
+            R.string.compose_steam_game_detail_download_speed,
+            fmtSize(bytesPerSecond),
+        )
+
+    private fun fmtEta(seconds: Long): String = when {
+        seconds < 0L -> ""
+        seconds < 60L -> getString(R.string.compose_steam_game_detail_eta_less_than_minute)
+        seconds < 3600L -> {
+            val minutes = (seconds / 60L).toInt()
+            resources.getQuantityString(
+                R.plurals.compose_steam_game_detail_eta_minutes,
+                minutes,
+                minutes,
+            )
+        }
+        else -> {
+            val hours = (seconds / 3600L).toInt()
+            val minutes = ((seconds % 3600L) / 60L).toInt()
+            if (minutes == 0) {
+                resources.getQuantityString(
+                    R.plurals.compose_steam_game_detail_eta_hours,
+                    hours,
+                    hours,
+                )
+            } else {
+                getString(R.string.compose_steam_game_detail_eta_hours_minutes, hours, minutes)
+            }
+        }
     }
 }
 
@@ -1103,7 +1226,7 @@ private fun SteamGameDetailScreen(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.compose_steam_game_detail_back),
                     tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
@@ -1200,7 +1323,7 @@ private fun SteamGameDetailScreen(
                     onClick = onDlcLineClick,
                     modifier = Modifier.padding(top = 6.dp),
                 ) {
-                    Text("Choose DLC")
+                    Text(stringResource(R.string.compose_steam_game_detail_choose_dlc))
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -1296,7 +1419,7 @@ private fun SteamGameDetailScreen(
                 enabled = launchBtnEnabled,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(10.dp),
-            ) { Text("Launch", maxLines = 1) }
+            ) { Text(stringResource(R.string.compose_steam_game_detail_launch), maxLines = 1) }
         }
 
         if (goldbergVisible) {
@@ -1343,12 +1466,12 @@ private fun SteamGameDetailScreen(
                     .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
             ) {
                 Text(
-                    text = "DLC to download",
+                    text = stringResource(R.string.compose_steam_game_detail_dlc_to_download),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Unchecked DLC won't download with the game.",
+                    text = stringResource(R.string.compose_steam_game_detail_dlc_unchecked_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
@@ -1376,7 +1499,7 @@ private fun SteamGameDetailScreen(
                     onClick = onDismissDlcSheet,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                ) { Text("Done") }
+                ) { Text(stringResource(R.string.compose_steam_game_detail_done)) }
             }
         }
     }
@@ -1402,10 +1525,10 @@ private fun GoldbergSection(
     onModeSelected: (GoldbergMode) -> Unit,
 ) {
     val options = listOf(
-        GoldbergMode.OFF to "Off",
-        GoldbergMode.REGULAR to "Regular",
-        GoldbergMode.EXPERIMENTAL to "Experimental",
-        GoldbergMode.COLDCLIENT to "Cold Client Loader",
+        GoldbergMode.OFF to stringResource(R.string.compose_steam_game_detail_goldberg_off),
+        GoldbergMode.REGULAR to stringResource(R.string.compose_steam_game_detail_goldberg_regular),
+        GoldbergMode.EXPERIMENTAL to stringResource(R.string.compose_steam_game_detail_goldberg_experimental),
+        GoldbergMode.COLDCLIENT to stringResource(R.string.compose_steam_game_detail_goldberg_cold_client_loader),
     )
     Column(
         modifier = Modifier
@@ -1417,21 +1540,19 @@ private fun GoldbergSection(
             .padding(16.dp),
     ) {
         Text(
-            text = "Steam Emulator (Goldberg)",
+            text = stringResource(R.string.compose_steam_game_detail_goldberg_title),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Lets games that require Steam start without it. " +
-                "Won't fix online-only games that can't reach their own servers.",
+            text = stringResource(R.string.compose_steam_game_detail_goldberg_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Please note: this is not a fix for all Steam games that require a " +
-                "Steam client to run. It is not a guaranteed fix-all — use at your own risk!",
+            text = stringResource(R.string.compose_steam_game_detail_goldberg_warning),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
@@ -1448,25 +1569,34 @@ private fun GoldbergSection(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Downloading… ${(downloadProgress.coerceIn(0f, 1f) * 100).toInt()}%",
+                    text = stringResource(
+                        R.string.compose_steam_game_detail_downloading_percent,
+                        (downloadProgress.coerceIn(0f, 1f) * 100).toInt(),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                val sizeSuffix = if (sizeLabel.isNotEmpty()) " (~$sizeLabel)" else ""
                 Button(
                     onClick = onDownloadClick,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                ) { Text("Download Steam Emulator$sizeSuffix", maxLines = 1) }
+                ) {
+                    Text(
+                        if (sizeLabel.isNotEmpty()) stringResource(
+                            R.string.compose_steam_game_detail_download_steam_emulator_with_size,
+                            sizeLabel,
+                        ) else stringResource(R.string.compose_steam_game_detail_download_steam_emulator),
+                        maxLines = 1,
+                    )
+                }
             }
             return@Column
         }
 
         Spacer(Modifier.height(2.dp))
         Text(
-            text = "Regular works for most games; try Experimental, then " +
-                "Cold Client Loader if a game still won't start.",
+            text = stringResource(R.string.compose_steam_game_detail_goldberg_tier_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -1504,7 +1634,7 @@ private fun GoldbergSection(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Applying…",
+                    text = stringResource(R.string.compose_steam_game_detail_applying),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1552,21 +1682,20 @@ private fun CloudSavesSection(
             .padding(16.dp),
     ) {
         Text(
-            text = "Steam Cloud Saves",
+            text = stringResource(R.string.compose_steam_game_detail_cloud_saves_title),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Sync this game's saves with your Steam Cloud in one step, either direction. A local " +
-                "Library you own is kept as an internal middle copy along the way.",
+            text = stringResource(R.string.compose_steam_game_detail_cloud_saves_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         // Always-visible third-party disclaimer note.
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "⚠️ Third-party cloud sync — use at your own risk.",
+            text = stringResource(R.string.compose_steam_game_detail_third_party_cloud_short_warning),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
@@ -1583,7 +1712,7 @@ private fun CloudSavesSection(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Checking this game's container…",
+                        text = stringResource(R.string.compose_steam_game_detail_checking_container),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1594,8 +1723,7 @@ private fun CloudSavesSection(
             !containerReady -> {
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Set this game up in a container first. Its saves follow whichever " +
-                        "container you add it to — then you can sync them with the cloud here.",
+                    text = stringResource(R.string.compose_steam_game_detail_set_up_container_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1604,18 +1732,23 @@ private fun CloudSavesSection(
                     onClick = onSetUp,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                ) { Text("Set up in a container", maxLines = 1) }
+                ) {
+                    Text(stringResource(R.string.compose_steam_game_detail_set_up_container), maxLines = 1)
+                }
             }
 
             else -> {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Container: ${containerLabel ?: "—"}",
+                    text = stringResource(
+                        R.string.compose_steam_game_detail_container_label,
+                        containerLabel ?: "—",
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Library: $libraryPath",
+                    text = stringResource(R.string.compose_steam_game_detail_library_label, libraryPath),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1627,10 +1760,16 @@ private fun CloudSavesSection(
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                ) { Text("⬇ Sync from Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                ) {
+                    Text(
+                        stringResource(R.string.compose_steam_game_detail_sync_from_cloud),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "Bring your Steam Cloud saves down and into this game.",
+                    text = stringResource(R.string.compose_steam_game_detail_sync_from_cloud_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1641,10 +1780,16 @@ private fun CloudSavesSection(
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                ) { Text("⬆ Sync to Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                ) {
+                    Text(
+                        stringResource(R.string.compose_steam_game_detail_sync_to_cloud),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "Send this game's current saves up to Steam Cloud.",
+                    text = stringResource(R.string.compose_steam_game_detail_sync_to_cloud_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1660,13 +1805,16 @@ private fun CloudSavesSection(
                         .padding(vertical = 6.dp),
                 ) {
                     Text(
-                        text = if (advancedExpanded) "▾ Advanced" else "▸ Advanced",
+                        text = stringResource(
+                            if (advancedExpanded) R.string.compose_steam_game_detail_advanced_expanded
+                            else R.string.compose_steam_game_detail_advanced_collapsed,
+                        ),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "individual Download / Apply / Collect / Upload",
+                        text = stringResource(R.string.compose_steam_game_detail_advanced_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1676,7 +1824,7 @@ private fun CloudSavesSection(
                     // Cloud row — Download (Cloud → Library) / Upload (Library → Cloud, additive).
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Cloud",
+                        text = stringResource(R.string.compose_steam_game_detail_cloud),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1687,20 +1835,32 @@ private fun CloudSavesSection(
                             enabled = !busy,
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
-                        ) { Text("⬇ Download", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        ) {
+                            Text(
+                                stringResource(R.string.compose_steam_game_detail_download_arrow),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
 
                         OutlinedButton(
                             onClick = onUpload,
                             enabled = !busy,
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
-                        ) { Text("⬆ Upload", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        ) {
+                            Text(
+                                stringResource(R.string.compose_steam_game_detail_upload_arrow),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
 
                     // Container row — Apply (Library → Container) / Collect (Container → Library).
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "Container",
+                        text = stringResource(R.string.compose_steam_game_detail_container),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1711,14 +1871,26 @@ private fun CloudSavesSection(
                             enabled = !busy,
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
-                        ) { Text("→ Apply", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        ) {
+                            Text(
+                                stringResource(R.string.compose_steam_game_detail_apply_arrow),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
 
                         OutlinedButton(
                             onClick = onCollect,
                             enabled = !busy,
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
-                        ) { Text("← Collect", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        ) {
+                            Text(
+                                stringResource(R.string.compose_steam_game_detail_collect_arrow),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
 
@@ -1732,7 +1904,7 @@ private fun CloudSavesSection(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = status ?: "Working…",
+                            text = status ?: stringResource(R.string.compose_steam_game_detail_working),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1764,44 +1936,34 @@ private fun CloudConfirmDialog(
     val container = confirm.containerLabel
     val (title, body, action) = when (confirm.move) {
         CloudMove.DOWNLOAD -> Triple(
-            "Download from Cloud?",
-            "Download this game's Steam Cloud saves into your local save Library. This replaces the " +
-                "Library's copy of those files with the cloud versions. It doesn't touch the game's " +
-                "container — use Apply afterwards to put them where the game reads them.",
-            "Download",
+            stringResource(R.string.compose_steam_game_detail_confirm_download_title),
+            stringResource(R.string.compose_steam_game_detail_confirm_download_body),
+            stringResource(R.string.compose_steam_game_detail_download),
         )
         CloudMove.APPLY -> Triple(
-            "Apply to container?",
-            "Copy the saves from your Library into $container (this game's container). This overwrites " +
-                "that container's copy of those files with your Library copy. Your Library isn't changed.",
-            "Apply",
+            stringResource(R.string.compose_steam_game_detail_confirm_apply_title),
+            stringResource(R.string.compose_steam_game_detail_confirm_apply_body, container),
+            stringResource(R.string.compose_steam_game_detail_apply),
         )
         CloudMove.COLLECT -> Triple(
-            "Collect from container?",
-            "Copy the saves from $container (this game's container) into your Library, capturing any " +
-                "progress you've made. This overwrites the Library's copy of those files. The container " +
-                "isn't changed.",
-            "Collect",
+            stringResource(R.string.compose_steam_game_detail_confirm_collect_title),
+            stringResource(R.string.compose_steam_game_detail_confirm_collect_body, container),
+            stringResource(R.string.compose_steam_game_detail_collect),
         )
         CloudMove.UPLOAD -> Triple(
-            "Upload to Cloud?",
-            "Upload the saves in your local Library to your Steam Cloud. This only ADDS or REPLACES " +
-                "cloud files — it never deletes anything from the cloud. If the Library is empty, " +
-                "nothing is sent. Make sure your Library has your latest saves (Collect after playing).",
-            "Upload",
+            stringResource(R.string.compose_steam_game_detail_confirm_upload_title),
+            stringResource(R.string.compose_steam_game_detail_confirm_upload_body),
+            stringResource(R.string.compose_steam_game_detail_upload),
         )
         CloudMove.SYNC_FROM -> Triple(
-            "Sync from Cloud?",
-            "Bring your Steam Cloud saves down and into $container (this game's container). This " +
-                "overwrites this container's saves with the cloud copy.",
-            "Sync from Cloud",
+            stringResource(R.string.compose_steam_game_detail_confirm_sync_from_title),
+            stringResource(R.string.compose_steam_game_detail_confirm_sync_from_body, container),
+            stringResource(R.string.compose_steam_game_detail_sync_from_cloud_action),
         )
         CloudMove.SYNC_TO -> Triple(
-            "Sync to Cloud?",
-            "Send this game's current saves from $container up to your Steam Cloud. Make sure this is " +
-                "the container with your latest saves — this only ADDS or REPLACES cloud files, it " +
-                "never deletes anything from the cloud.",
-            "Sync to Cloud",
+            stringResource(R.string.compose_steam_game_detail_confirm_sync_to_title),
+            stringResource(R.string.compose_steam_game_detail_confirm_sync_to_body, container),
+            stringResource(R.string.compose_steam_game_detail_sync_to_cloud_action),
         )
     }
     OutlinedAlertDialog(
@@ -1820,7 +1982,7 @@ private fun CloudConfirmDialog(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Third-party cloud sync — use at your own risk.",
+                    text = stringResource(R.string.compose_steam_game_detail_third_party_cloud_reminder),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1830,7 +1992,9 @@ private fun CloudConfirmDialog(
             TextButton(onClick = onConfirm) { Text(action) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.compose_steam_game_detail_cancel))
+            }
         },
     )
 }
@@ -1860,10 +2024,10 @@ private fun DownloadSpeedPickerDialog(
     // Tiers mirror GameNative: cores × ratio scales download + decompress concurrency.
     // Higher tiers download faster but use more RAM/CPU during decompression.
     val options = listOf(
-        "Slow — lowest RAM/CPU" to DownloadSpeedConfig.TIER_SLOW,
-        "Medium — balanced" to DownloadSpeedConfig.TIER_MEDIUM,
-        "Fast — recommended" to DownloadSpeedConfig.TIER_FAST,
-        "Blazing — fastest, highest RAM/CPU" to DownloadSpeedConfig.TIER_BLAZING,
+        stringResource(R.string.compose_steam_game_detail_speed_slow) to DownloadSpeedConfig.TIER_SLOW,
+        stringResource(R.string.compose_steam_game_detail_speed_medium) to DownloadSpeedConfig.TIER_MEDIUM,
+        stringResource(R.string.compose_steam_game_detail_speed_fast) to DownloadSpeedConfig.TIER_FAST,
+        stringResource(R.string.compose_steam_game_detail_speed_blazing) to DownloadSpeedConfig.TIER_BLAZING,
     )
     var selected by remember { mutableIntStateOf(selectedIndex) }
     // Per-download, not persisted — defaults off each time (scoped to this one download).
@@ -1871,7 +2035,7 @@ private fun DownloadSpeedPickerDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Download speed") },
+        title = { Text(stringResource(R.string.compose_steam_game_detail_download_speed_title)) },
         text = {
             Column {
                 options.forEachIndexed { index, (label, _) ->
@@ -1912,11 +2076,11 @@ private fun DownloadSpeedPickerDialog(
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Log debug session",
+                            text = stringResource(R.string.compose_steam_game_detail_debug_log_session),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = "Writes a detailed log to help diagnose download problems.",
+                            text = stringResource(R.string.compose_steam_game_detail_debug_log_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1928,8 +2092,7 @@ private fun DownloadSpeedPickerDialog(
                 if (debugLog) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "⚠️ Don't post this log publicly. Share it only directly with the " +
-                            "developer or someone you trust — unless you're debugging it yourself.",
+                        text = stringResource(R.string.compose_steam_game_detail_debug_log_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(start = 4.dp, end = 4.dp),
@@ -1939,11 +2102,13 @@ private fun DownloadSpeedPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = { onDownload(options[selected].second, debugLog) }) {
-                Text("Download")
+                Text(stringResource(R.string.compose_steam_game_detail_download))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.compose_steam_game_detail_cancel))
+            }
         },
     )
 }
@@ -1957,7 +2122,9 @@ private fun ExePickerDialogGame(
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select executable for \"$gameName\"") },
+        title = {
+            Text(stringResource(R.string.compose_steam_game_detail_select_executable, gameName))
+        },
         text = {
             // HL2 (and many Source games) ship dozens of bin/*.exe SDK tools, so this list can be
             // long — bound its height and make it scrollable, or the real game exe is unreachable.

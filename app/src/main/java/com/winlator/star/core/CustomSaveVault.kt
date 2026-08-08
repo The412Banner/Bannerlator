@@ -6,6 +6,8 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
@@ -129,6 +131,7 @@ object CustomSaveVault {
      * emulator restarts on exit) can never leave a half-written snapshot in place of the last good one.
      */
     fun snapshot(context: Context, container: Container, shortcut: Shortcut): VaultResult {
+        val uiContext = ContextCompat.getContextForLanguage(context)
         return try {
             val gameKey = SaveLocator.gameKey(shortcut.wmClass, shortcut.file.name)
             val roots: List<String> = run {
@@ -137,7 +140,14 @@ object CustomSaveVault {
                 else SaveLocator.discover(container, shortcut.name, shortcut.path ?: "", shortcut.wmClass ?: "")
                     .map { it.relPath }
             }
-            if (roots.isEmpty()) return VaultResult(false, 0, null, "no saves")
+            if (roots.isEmpty()) {
+                return VaultResult(
+                    false,
+                    0,
+                    null,
+                    uiContext.getString(R.string.compose_steam_saves_no_saves_found),
+                )
+            }
 
             val out = vaultFile(shortcut)
             out.parentFile?.mkdirs()
@@ -146,7 +156,12 @@ object CustomSaveVault {
             val res = GameSaveBackup.backupToFile(container, roots, GameSaveBackup.BackupLayout.WINLATOR, tmp)
             if (!res.ok) {
                 tmp.delete()
-                return VaultResult(false, res.fileCount, null, res.error)
+                return VaultResult(
+                    false,
+                    res.fileCount,
+                    null,
+                    res.error ?: GameSaveBackup.backupErrorMessage(uiContext, res.errorKind),
+                )
             }
 
             // Overwrite the current snapshot atomically (rename; copy-fallback if rename is refused).
@@ -159,7 +174,7 @@ object CustomSaveVault {
             VaultResult(true, res.fileCount, out.absolutePath, null)
         } catch (t: Throwable) {
             Log.w(TAG, "vault snapshot failed for \"${shortcut.name}\"", t)
-            VaultResult(false, 0, null, t.message ?: t.javaClass.simpleName)
+            VaultResult(false, 0, null, uiContext.getString(R.string.compose_steam_saves_unknown_error))
         }
     }
 
@@ -177,7 +192,13 @@ object CustomSaveVault {
         val f = vaultFile(shortcut)
         if (!f.isFile) {
             Handler(Looper.getMainLooper()).post {
-                onResult(GameSaveBackup.RestoreResult(false, 0, "No vault backup for this game"))
+                onResult(
+                    GameSaveBackup.RestoreResult(
+                        false,
+                        0,
+                        context.getString(R.string.compose_steam_saves_no_vault_backup_for_game),
+                    ),
+                )
             }
             return
         }
@@ -198,6 +219,7 @@ object CustomSaveVault {
         layout: GameSaveBackup.BackupLayout,
         onResult: (VaultResult) -> Unit,
     ) {
+        val uiContext = ContextCompat.getContextForLanguage(context)
         Thread {
             val res = try {
                 val gameKey = SaveLocator.gameKey(shortcut.wmClass, shortcut.file.name)
@@ -209,10 +231,16 @@ object CustomSaveVault {
                 val effectiveRoots: List<String>? = if (roots.isEmpty()) null else roots
                 val outFile = perGameBackupFile(shortcut.name, System.currentTimeMillis())
                 val r = GameSaveBackup.backupToFile(container, effectiveRoots, layout, outFile)
-                VaultResult(r.ok, r.fileCount, r.path, r.error, wholeContainer = effectiveRoots == null)
+                VaultResult(
+                    r.ok,
+                    r.fileCount,
+                    r.path,
+                    r.error ?: GameSaveBackup.backupErrorMessage(uiContext, r.errorKind),
+                    wholeContainer = effectiveRoots == null,
+                )
             } catch (t: Throwable) {
                 Log.w(TAG, "manual backup failed for \"${shortcut.name}\"", t)
-                VaultResult(false, 0, null, t.message ?: t.javaClass.simpleName)
+                VaultResult(false, 0, null, uiContext.getString(R.string.compose_steam_saves_unknown_error))
             }
             Handler(Looper.getMainLooper()).post { onResult(res) }
         }.start()

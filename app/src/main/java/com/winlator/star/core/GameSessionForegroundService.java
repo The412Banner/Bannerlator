@@ -13,6 +13,7 @@ import android.os.IBinder;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import com.winlator.star.R;
 import com.winlator.star.XServerDisplayActivity;
@@ -60,26 +61,27 @@ public class GameSessionForegroundService extends Service {
     private void createChannel() {
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm == null) return;
-        if (nm.getNotificationChannel(XServerDisplayActivity.NOTIFICATION_CHANNEL_ID) == null) {
-            NotificationChannel channel = new NotificationChannel(
-                    XServerDisplayActivity.NOTIFICATION_CHANNEL_ID, "Winlator",
-                    NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Winlator XServer Messages");
-            nm.createNotificationChannel(channel);
-        }
+        Context localized = ContextCompat.getContextForLanguage(this);
+        NotificationChannel channel = new NotificationChannel(
+                XServerDisplayActivity.NOTIFICATION_CHANNEL_ID,
+                localized.getString(R.string.xserver_notification_channel_name),
+                NotificationManager.IMPORTANCE_HIGH);
+        channel.setDescription(localized.getString(R.string.xserver_notification_channel_description));
+        nm.createNotificationChannel(channel);
     }
 
     private Notification buildNotification(@Nullable String label) {
+        Context localized = ContextCompat.getContextForLanguage(this);
         Intent contentIntent = new Intent(this, XServerDisplayActivity.class);
         contentIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, contentIntent,
                 PendingIntent.FLAG_IMMUTABLE);
         String text = (label != null && !label.isEmpty())
-                ? label + " is running — do not swipe this notification"
-                : "Winlator is running, do not kill or swipe this notification";
+                ? localized.getString(R.string.game_session_running_named, label)
+                : localized.getString(R.string.game_session_running);
         return new NotificationCompat.Builder(this, XServerDisplayActivity.NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_ab_gear_0011)
-                .setContentTitle("Winlator")
+                .setContentTitle(localized.getString(R.string.xserver_notification_channel_name))
                 .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)

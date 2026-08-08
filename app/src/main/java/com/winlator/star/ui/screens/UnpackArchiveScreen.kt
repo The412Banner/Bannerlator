@@ -1,6 +1,7 @@
 package com.winlator.star.ui.screens
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -56,6 +57,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.text.font.FontFamily
@@ -64,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.LaunchedEffect
+import com.winlator.star.R
 import com.winlator.star.core.StringUtils
 import com.winlator.star.core.unpack.Innoextract
 import com.winlator.star.core.unpack.PowerMode
@@ -218,10 +222,14 @@ fun UnpackArchiveScreen(
                 .padding(horizontal = 8.dp, vertical = 6.dp),
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    stringResource(R.string.compose_files_back),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
             Text(
-                "Unpack Archive",
+                stringResource(R.string.compose_files_unpack_archive_title),
                 color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -236,30 +244,41 @@ fun UnpackArchiveScreen(
         ) {
             // ── Source ──
             SectionCard {
-                Text("Source", style = sectionTitle())
+                Text(stringResource(R.string.compose_files_source), style = sectionTitle())
                 Spacer(Modifier.height(6.dp))
                 Text(selected.name, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(2.dp))
+                val innoInstaller = stringResource(R.string.compose_files_inno_installer)
+                val typeSeparator = stringResource(R.string.compose_files_type_separator)
+                val commaSeparator = stringResource(R.string.compose_files_comma_separator)
                 val typeText = when {
-                    isInno && innoClassifying -> "InnoSetup installer • checking…"
+                    isInno && innoClassifying ->
+                        stringResource(R.string.compose_files_inno_installer_checking)
                     isInno -> buildString {
-                        append("InnoSetup installer")
-                        innoClass?.compression?.let { append(" • ").append(it) }
-                        innoClass?.declaredSize?.let { append(", ").append(it) }
+                        append(innoInstaller)
+                        innoClass?.compression?.let { append(typeSeparator).append(it) }
+                        innoClass?.declaredSize?.let { append(commaSeparator).append(it) }
                     }
-                    typeLoading -> "reading…"
-                    detectedType != null -> detectedType
-                    else -> "not an archive"
+                    typeLoading -> stringResource(R.string.compose_files_reading)
+                    detectedType != null -> detectedType.orEmpty()
+                    else -> stringResource(R.string.compose_files_not_an_archive)
                 }
                 Text(
-                    "${StringUtils.formatBytes(sourceSize)}  •  $typeText",
+                    stringResource(
+                        R.string.compose_files_size_and_type,
+                        StringUtils.formatBytes(sourceSize),
+                        typeText,
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
                 if (innoExtract) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "innoextract will unpack the game files from ${archive.name}.",
+                        stringResource(
+                            R.string.compose_files_innoextract_source,
+                            archive.name,
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                     )
@@ -267,7 +286,10 @@ fun UnpackArchiveScreen(
                 if (innoFreeArc) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "unarc will decode the FreeArc data (${jobArchive.name} + its Setup-*.bin volumes) directly.",
+                        stringResource(
+                            R.string.compose_files_unarc_source,
+                            jobArchive.name,
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                     )
@@ -281,7 +303,7 @@ fun UnpackArchiveScreen(
             if (sevenZipAllowed || innoExtract || innoFreeArc) {
             // ── Destination ──
             SectionCard {
-                Text("Extract to", style = sectionTitle())
+                Text(stringResource(R.string.compose_files_extract_to), style = sectionTitle())
                 Spacer(Modifier.height(6.dp))
                 Text(
                     destPath,
@@ -298,7 +320,9 @@ fun UnpackArchiveScreen(
                         destPicker.launch(
                             com.winlator.star.util.InAppFilePicker.buildDirIntent(
                                 context,
-                                title = "Choose where to extract",
+                                title = context.getString(
+                                    R.string.compose_files_choose_extract_destination
+                                ),
                                 initialDir = archive.parent,
                             )
                         )
@@ -307,7 +331,10 @@ fun UnpackArchiveScreen(
                 ) {
                     Icon(Icons.Filled.Folder, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(6.dp))
-                    Text("Change folder", color = MaterialTheme.colorScheme.onBackground)
+                    Text(
+                        stringResource(R.string.compose_files_change_folder),
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
                 }
             }
 
@@ -316,10 +343,14 @@ fun UnpackArchiveScreen(
             // ── Power (7-Zip only; innoextract has no thread/buffer knobs) ──
             if (sevenZipAllowed) {
             SectionCard {
-                Text("Power", style = sectionTitle())
+                Text(stringResource(R.string.compose_files_power), style = sectionTitle())
                 Spacer(Modifier.height(8.dp))
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    val modes = listOf(PowerMode.AUTO to "Auto", PowerMode.MAX to "Max", PowerMode.MANUAL to "Manual")
+                    val modes = listOf(
+                        PowerMode.AUTO to stringResource(R.string.compose_files_power_auto),
+                        PowerMode.MAX to stringResource(R.string.compose_files_power_max),
+                        PowerMode.MANUAL to stringResource(R.string.compose_files_power_manual),
+                    )
                     modes.forEachIndexed { index, (mode, label) ->
                         SegmentedButton(
                             selected = powerMode == mode,
@@ -331,7 +362,12 @@ fun UnpackArchiveScreen(
                 if (powerMode == PowerMode.MANUAL) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "$manualCores of $cores cores",
+                        pluralStringResource(
+                            R.plurals.compose_files_cores,
+                            cores,
+                            manualCores,
+                            cores,
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 12.sp,
                     )
@@ -344,8 +380,7 @@ fun UnpackArchiveScreen(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Extraction is limited by storage speed; extra cores only help archives with " +
-                        "many files (7z/solid). A single huge file won't parallelize.",
+                    stringResource(R.string.compose_files_power_description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                 )
@@ -354,7 +389,12 @@ fun UnpackArchiveScreen(
 
                 // Read-buffer knob.
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Read buffer", color = MaterialTheme.colorScheme.onBackground, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Text(
+                        stringResource(R.string.compose_files_read_buffer),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 13.sp,
+                        modifier = Modifier.weight(1f),
+                    )
                     Box {
                         OutlinedButton(
                             enabled = !running,
@@ -369,7 +409,7 @@ fun UnpackArchiveScreen(
                     }
                 }
                 Text(
-                    "Larger buffers can improve throughput reading from FUSE-backed storage.",
+                    stringResource(R.string.compose_files_buffer_description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                 )
@@ -382,8 +422,7 @@ fun UnpackArchiveScreen(
             if (gatedByPermission && sevenZipAllowed) {
                 WarnCard {
                     Text(
-                        "All Files Access is off. Extraction writes directly to storage and can't use the " +
-                            "slow SAF fallback for an 80 GB image, so grant access to continue.",
+                        stringResource(R.string.compose_files_all_files_permission),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -394,7 +433,7 @@ fun UnpackArchiveScreen(
                                     .setData(Uri.parse("package:${context.packageName}"))
                             )
                         }
-                    }) { Text("Grant access") }
+                    }) { Text(stringResource(R.string.compose_files_grant_access)) }
                 }
                 Spacer(Modifier.height(12.dp))
             }
@@ -402,7 +441,7 @@ fun UnpackArchiveScreen(
             if (engineMissing && !isInno) {
                 WarnCard {
                     Text(
-                        "The 7-Zip engine (lib7zz.so) isn't executable on this build. Extraction is unavailable.",
+                        stringResource(R.string.compose_files_7zip_unavailable),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
                 }
@@ -413,8 +452,7 @@ fun UnpackArchiveScreen(
             if (!running && !ignoringBattery) {
                 WarnCard {
                     Text(
-                        "For a job this long, exempt the app from battery optimisation so the system " +
-                            "doesn't pause or kill it in the background. Recommended for 80 GB extracts.",
+                        stringResource(R.string.compose_files_battery_optimization),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -425,7 +463,7 @@ fun UnpackArchiveScreen(
                                     .setData(Uri.parse("package:${context.packageName}"))
                             )
                         }
-                    }) { Text("Allow background running") }
+                    }) { Text(stringResource(R.string.compose_files_allow_background)) }
                 }
                 Spacer(Modifier.height(12.dp))
             }
@@ -434,8 +472,7 @@ fun UnpackArchiveScreen(
             if (!oemHintDismissed) {
                 SectionCard {
                     Text(
-                        "On HONOR/Huawei/Xiaomi/OPPO devices, also lock this app in Recents and set its " +
-                            "battery to \"No restrictions\", or the system may still pause background extraction.",
+                        stringResource(R.string.compose_files_oem_battery_hint),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -450,7 +487,12 @@ fun UnpackArchiveScreen(
                                 }
                             },
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        ) { Text("App settings", color = MaterialTheme.colorScheme.onBackground) }
+                        ) {
+                            Text(
+                                stringResource(R.string.compose_files_app_settings),
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
                         Spacer(Modifier.width(8.dp))
                         OutlinedButton(
                             onClick = {
@@ -458,7 +500,12 @@ fun UnpackArchiveScreen(
                                 prefs.edit().putBoolean("unpackOemHintDismissed", true).apply()
                             },
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        ) { Text("Got it", color = MaterialTheme.colorScheme.onBackground) }
+                        ) {
+                            Text(
+                                stringResource(R.string.compose_files_got_it),
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -468,8 +515,7 @@ fun UnpackArchiveScreen(
             if (!running && otherJobRunning) {
                 WarnCard {
                     Text(
-                        "Another unpack is already in progress. Only one runs at a time — wait for it to " +
-                            "finish (tap its progress pill to watch), then start this one.",
+                        stringResource(R.string.compose_files_other_unpack_running),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
                 }
@@ -480,7 +526,13 @@ fun UnpackArchiveScreen(
             if (!running && checking) {
                 SectionCard {
                     Text(
-                        if (isInno) "Checking how this repack is compressed…" else "Checking this file…",
+                        stringResource(
+                            if (isInno) {
+                                R.string.compose_files_checking_repack
+                            } else {
+                                R.string.compose_files_checking_file
+                            }
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -492,11 +544,15 @@ fun UnpackArchiveScreen(
             // ── Not a recognized archive (judged by content, not extension) ──
             if (!running && notAnArchive) {
                 WarnCard {
-                    Text("Nothing to unpack", color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.compose_files_nothing_to_unpack),
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "This file isn't a recognized archive or disc image — it looks like raw data, " +
-                            "nothing to unpack.",
+                        stringResource(R.string.compose_files_raw_data),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
                 }
@@ -507,9 +563,7 @@ fun UnpackArchiveScreen(
             if (!running && innoFreeArc) {
                 SectionCard {
                     Text(
-                        "FreeArc decompression is I/O-bound: unarc already auto-parallelizes (4x4), so the " +
-                            "real limit is writing the game to your storage — a faster card / internal " +
-                            "storage helps far more than anything else. There's no thread knob to tune.",
+                        stringResource(R.string.compose_files_freearc_description),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
                     )
                 }
@@ -524,7 +578,11 @@ fun UnpackArchiveScreen(
                 ) {
                     Icon(Icons.Filled.Unarchive, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Unpack game natively (unarc)", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.compose_files_unpack_native),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
                 // No dead-ends: also offer the container route (e.g. srep, or if unarc fails at runtime).
                 Spacer(Modifier.height(8.dp))
@@ -536,11 +594,19 @@ fun UnpackArchiveScreen(
             if (!running && innoContainerOnly) {
                 val comp = innoClass?.compression ?: "FreeArc"
                 WarnCard {
-                    Text("Can't unpack this repack in-app", color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.compose_files_cannot_unpack_repack),
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "This is a $comp repack whose data can't be decoded in-app (it may use SREP). Install it " +
-                            "by running ${archive.name} inside a Winlator container, or unpack it on a PC.",
+                        stringResource(
+                            R.string.compose_files_container_fallback,
+                            comp,
+                            archive.name,
+                        ),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -554,9 +620,10 @@ fun UnpackArchiveScreen(
                 if (engineMissingInno) {
                     WarnCard {
                         Text(
-                            "The innoextract engine isn't available on this build, so this GOG/InnoSetup " +
-                                "installer can't be unpacked in-app. You can still install it by running " +
-                                "${archive.name} in a container.",
+                            stringResource(
+                                R.string.compose_files_innoextract_unavailable,
+                                archive.name,
+                            ),
                             color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                         )
                         Spacer(Modifier.height(10.dp))
@@ -574,7 +641,11 @@ fun UnpackArchiveScreen(
                     ) {
                         Icon(Icons.Filled.Unarchive, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Unpack game files (innoextract)", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            stringResource(R.string.compose_files_unpack_innoextract),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                     // No dead-ends: also offer the container route (e.g. if innoextract fails at runtime).
                     Spacer(Modifier.height(8.dp))
@@ -595,7 +666,11 @@ fun UnpackArchiveScreen(
                 ) {
                     Icon(Icons.Filled.Unarchive, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Extract", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.compose_files_extract),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
 
@@ -605,7 +680,14 @@ fun UnpackArchiveScreen(
                 SectionCard {
                     val listing = state.phase == UnpackPhase.LISTING
                     Text(
-                        if (listing) "Reading archive…" else "Extracting — ${state.percent}%",
+                        if (listing) {
+                            stringResource(R.string.compose_files_reading_archive)
+                        } else {
+                            stringResource(
+                                R.string.compose_files_extracting_percent,
+                                state.percent,
+                            )
+                        },
                         color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp, fontWeight = FontWeight.Medium,
                     )
                     Spacer(Modifier.height(8.dp))
@@ -618,18 +700,35 @@ fun UnpackArchiveScreen(
                         )
                     }
                     Spacer(Modifier.height(8.dp))
+                    val speedText = if (state.speedBps > 0) {
+                        stringResource(
+                            R.string.compose_files_speed,
+                            StringUtils.formatBytes(state.speedBps),
+                        )
+                    } else {
+                        null
+                    }
+                    val etaText = if (state.etaSeconds >= 0) {
+                        stringResource(
+                            R.string.compose_files_eta,
+                            humanDuration(context, state.etaSeconds * 1000),
+                        )
+                    } else {
+                        null
+                    }
+                    val extractedFilesText = if (state.filesExtracted > 0) {
+                        pluralStringResource(
+                            R.plurals.compose_files_extracted_files,
+                            state.filesExtracted,
+                            state.filesExtracted,
+                        )
+                    } else {
+                        null
+                    }
                     Text(
-                        buildString {
-                            if (state.speedBps > 0) append("${StringUtils.formatBytes(state.speedBps)}/s")
-                            if (state.etaSeconds >= 0) {
-                                if (isNotEmpty()) append("  •  ")
-                                append("ETA ${humanDuration(state.etaSeconds * 1000)}")
-                            }
-                            if (state.filesExtracted > 0) {
-                                if (isNotEmpty()) append("  •  ")
-                                append("${state.filesExtracted} files")
-                            }
-                        },
+                        listOfNotNull(speedText, etaText, extractedFilesText).joinToString(
+                            stringResource(R.string.compose_files_detail_separator)
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                     )
                     state.currentFile?.let {
@@ -638,8 +737,7 @@ fun UnpackArchiveScreen(
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Safe to leave — this keeps running in the background. Reopen it from the progress " +
-                            "pill or the notification.",
+                        stringResource(R.string.compose_files_safe_to_leave),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -647,9 +745,16 @@ fun UnpackArchiveScreen(
                         OutlinedButton(
                             onClick = { UnpackService.cancel(context) },
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                        ) { Text("Cancel", color = MaterialTheme.colorScheme.error) }
+                        ) {
+                            Text(
+                                stringResource(R.string.compose_files_cancel),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                         Spacer(Modifier.width(8.dp))
-                        Button(onClick = onClose) { Text("Minimize") }
+                        Button(onClick = onClose) {
+                            Text(stringResource(R.string.compose_files_minimize))
+                        }
                     }
                 }
             }
@@ -660,10 +765,21 @@ fun UnpackArchiveScreen(
                     UnpackPhase.DONE -> {
                         Spacer(Modifier.height(4.dp))
                         SectionCard {
-                            Text("Done", color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                stringResource(R.string.compose_files_done),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "${state.filesExtracted} files • ${StringUtils.formatBytes(state.archiveSize)} in ${humanDuration(state.elapsedMs)}",
+                                pluralStringResource(
+                                    R.plurals.compose_files_unpack_done_summary,
+                                    state.filesExtracted,
+                                    state.filesExtracted,
+                                    StringUtils.formatBytes(state.archiveSize),
+                                    humanDuration(context, state.elapsedMs),
+                                ),
                                 color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
                             )
                             Spacer(Modifier.height(2.dp))
@@ -678,22 +794,35 @@ fun UnpackArchiveScreen(
                                 // real installer inside a container. FreeArc failures may be SREP.
                                 val freeArc = state.engine == "unarc"
                                 Text(
-                                    if (freeArc) "Couldn't decode this FreeArc repack" else "Couldn't unpack this InnoSetup repack",
+                                    stringResource(
+                                        if (freeArc) {
+                                            R.string.compose_files_freearc_decode_failed
+                                        } else {
+                                            R.string.compose_files_inno_unpack_failed
+                                        }
+                                    ),
                                     color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    if (freeArc)
-                                        "It may use SREP or a codec this build can't decode. Install it by running " +
-                                            "Setup.exe inside a Winlator container, or unpack it on a PC."
-                                    else
-                                        "This InnoSetup repack must be installed by running Setup.exe inside a Winlator container.",
+                                    stringResource(
+                                        if (freeArc) {
+                                            R.string.compose_files_freearc_failure_fallback
+                                        } else {
+                                            R.string.compose_files_inno_failure_fallback
+                                        }
+                                    ),
                                     color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 RunSetupInContainer(exe = archive)
                             } else {
-                                Text("Extraction failed", color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    stringResource(R.string.compose_files_extraction_failed),
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
                             }
                             state.errorTail?.let {
                                 Spacer(Modifier.height(6.dp))
@@ -704,7 +833,11 @@ fun UnpackArchiveScreen(
                     UnpackPhase.CANCELLED -> {
                         Spacer(Modifier.height(4.dp))
                         SectionCard {
-                            Text("Cancelled", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                            Text(
+                                stringResource(R.string.compose_files_cancelled),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp,
+                            )
                         }
                     }
                     else -> Unit
@@ -731,12 +864,12 @@ private fun RunSetupInContainer(exe: File) {
 
     when {
         containers.isEmpty() -> Text(
-            "Create a container first, then run ${exe.name} from the File Manager.",
+            stringResource(R.string.compose_files_create_container_first, exe.name),
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
         )
         else -> Box {
             Button(onClick = { if (containers.size == 1) launch(containers.first()) else menu = true }) {
-                Text("Run ${exe.name} in a container")
+                Text(stringResource(R.string.compose_files_run_in_container, exe.name))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 containers.forEach { c ->
@@ -781,14 +914,22 @@ private fun WarnCard(content: @Composable androidx.compose.foundation.layout.Col
     }
 }
 
-private fun humanDuration(ms: Long): String {
+private fun humanDuration(context: Context, ms: Long): String {
     val totalSec = ms / 1000
     val h = totalSec / 3600
     val m = (totalSec % 3600) / 60
     val s = totalSec % 60
     return when {
-        h > 0 -> "${h}h ${m}m"
-        m > 0 -> "${m}m ${s}s"
-        else -> "${s}s"
+        h > 0 -> context.getString(
+            R.string.compose_files_duration_hours_minutes,
+            h,
+            m,
+        )
+        m > 0 -> context.getString(
+            R.string.compose_files_duration_minutes_seconds,
+            m,
+            s,
+        )
+        else -> context.getString(R.string.compose_files_duration_seconds, s)
     }
 }

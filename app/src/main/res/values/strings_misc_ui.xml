@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="external_binding_type">Type</string>
+    <string name="external_binding_binding">Binding</string>
+    <string name="external_binding_remove">Remove binding</string>
+    <string name="overlay_magnifier">Magnifier</string>
+    <string name="overlay_paused_tap_resume">Paused — tap to resume</string>
+    <string name="help_got_it">Got it</string>
+    <string name="downloads_and_library">Downloads &amp; Library</string>
+    <string name="action_back">Back</string>
+    <string name="storage_sd_card">SD card</string>
+    <string name="storage_internal">Internal</string>
+    <string name="storage_generic">Storage</string>
+    <string name="xserver_notification_channel_name">Bannerlator</string>
+    <string name="xserver_notification_channel_description">XServer messages</string>
+    <string name="xserver_unnamed_window">Unnamed window</string>
+    <string name="splash_installing_system_files">Installing system files</string>
+    <string name="splash_extracting_wine_prefix">Extracting Wine prefix</string>
+    <string name="splash_setting_up_proton">Setting up Proton</string>
+    <string name="splash_configuring_runtime">Configuring runtime</string>
+    <string name="splash_finalizing_setup">Finalizing setup</string>
+    <string name="splash_installation_complete">Installation complete</string>
+    <string name="splash_version">V %1$s</string>
+    <string name="splash_proceed">Proceed</string>
+    <string name="game_session_running_named">%1$s is running — do not swipe this notification</string>
+    <string name="game_session_running">Bannerlator is running; do not kill it or swipe this notification</string>
+    <string name="unpack_notification_channel">Unpacking</string>
+    <string name="unpack_notification_channel_description">Shows archive extraction progress and keeps it running in the background</string>
+    <string name="unpack_notification_reading">Reading %1$s…</string>
+    <string name="unpack_notification_eta"> · ETA %1$s</string>
+    <string name="unpack_notification_unpacking">Unpacking %1$s</string>
+    <string name="unpack_notification_done">Unpacked %1$s</string>
+    <plurals name="unpack_notification_done_summary">
+        <item quantity="one">%1$d file · %2$s in %3$s</item>
+        <item quantity="other">%1$d files · %2$s in %3$s</item>
+    </plurals>
+    <string name="unpack_notification_cancelled">Unpacking cancelled</string>
+    <string name="unpack_notification_failed">Unpacking failed</string>
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes_seconds">%1$dm %2$ds</string>
+    <string name="duration_seconds">%1$ds</string>
+    <string name="download_notification_channel">Downloads</string>
+    <string name="download_notification_channel_description">Shows game download progress and keeps downloads running in the background</string>
+    <string name="download_notification_preparing">Preparing…</string>
+    <plurals name="download_notification_count">
+        <item quantity="one">%1$d download</item>
+        <item quantity="other">%1$d downloads</item>
+    </plurals>
+    <string name="download_notification_downloading">Downloading</string>
+    <string name="steam_notification_channel">Steam connection</string>
+    <string name="steam_notification_channel_description">Keeps the Steam connection alive while browsing or downloading games</string>
+    <string name="steam_status_online">Steam: Online</string>
+    <string name="steam_status_connecting">Connecting to Steam…</string>
+    <string name="steam_status_signed_in_elsewhere">Signed in elsewhere</string>
+    <string name="steam_status_signed_out">Signed out</string>
+    <string name="steam_status_offline">Offline</string>
+    <string name="steam_notification_downloading">Downloading %1$s — %2$d%%%3$s</string>
+    <string name="steam_error_not_connected">Not connected to Steam</string>
+    <string name="steam_error_session_not_ready">The Steam session is not ready — sign in again or retry in a moment</string>
+    <string name="steam_error_game_not_found">The game was not found in the database</string>
+    <string name="steam_error_downloader_init_failed">Could not initialize the Steam downloader</string>
+    <string name="steam_error_download_incomplete">Download incomplete (%1$s/%2$s) — please retry</string>
+    <string name="steam_error_unknown">The Steam download failed</string>
+    <string name="download_speed_per_second">%1$s/s</string>
+    <string name="download_eta_less_than_minute">&lt;1 min left</string>
+    <plurals name="download_eta_minutes">
+        <item quantity="one">~%1$d minute left</item>
+        <item quantity="other">~%1$d minutes left</item>
+    </plurals>
+    <plurals name="download_eta_hours">
+        <item quantity="one">~%1$d hour left</item>
+        <item quantity="other">~%1$d hours left</item>
+    </plurals>
+    <string name="download_eta_hours_minutes">~%1$d h %2$d m left</string>
+    <string name="update_no_download_available">No download is available for this build</string>
+    <string name="update_allow_unknown_apps">Allow installing apps from Bannerlator, then tap Update again</string>
+    <string name="update_download_failed">Update download failed</string>
+    <string name="update_installer_failed">Could not open the installer</string>
+</resources>

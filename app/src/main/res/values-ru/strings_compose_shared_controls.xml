@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="color_preview">Предпросмотр</string>
+    <string name="color_hue">Оттенок</string>
+    <string name="color_saturation">Насыщенность</string>
+    <string name="color_brightness">Яркость</string>
+    <string name="color_hex_label">Цвет HEX (#RRGGBB)</string>
+    <string name="color_hex_invalid">Введите допустимый шестизначный цвет HEX</string>
+    <string name="color_controls_accent">Акцентный цвет управления</string>
+    <string name="player_on_screen_controls">Экранное управление</string>
+    <string name="player_slots_description">Закрепите контроллер или экранную панель за местом игрока, чтобы порядок при запуске не менялся. Настройка применяется при запуске; в боковом меню игры её по-прежнему можно изменить.</string>
+    <string name="player_slots_none">Контроллеры не обнаружены. Подключите контроллер или заранее задайте место, которое будет применено после подключения.</string>
+    <string name="player_auto">Автоматически</string>
+    <string name="player_number">Игрок %1$d</string>
+    <string name="player_ignore">Игнорировать</string>
+    <string name="player_ignored">Игнорируется</string>
+    <string name="player_pinned">Закреплён за игроком %1$d</string>
+    <string name="player_auto_launch_order">Автоматически (по порядку при запуске)</string>
+    <string name="player_suffix_on_screen"> · экранное управление</string>
+    <string name="player_suffix_disconnected"> · не подключён (назначение сохранено)</string>
+    <string name="player_slot">Место</string>
+</resources>

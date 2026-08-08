@@ -3,7 +3,7 @@ package com.winlator.star.store
 import android.content.Intent
 import android.os.Bundle
 import android.os.StatFs
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -45,7 +45,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,12 +56,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.winlator.star.R
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.Store
@@ -82,7 +83,7 @@ import java.net.URLEncoder
 import java.util.concurrent.Executors
 import java.util.function.Consumer
 
-class GogGamesActivity : ComponentActivity() {
+class GogGamesActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "BH_GOG"
@@ -133,8 +134,8 @@ class GogGamesActivity : ComponentActivity() {
 
     private var allGames by mutableStateOf<List<GogGame>>(emptyList())
     private var viewMode by mutableStateOf("list")
-    private var syncText by mutableStateOf("Loading GOG library\u2026")
-    private var syncTextColor by mutableIntStateOf(0xFFCCCCCC.toInt())
+    private var syncText by mutableStateOf("")
+    private var syncTone by mutableStateOf(GogStatusTone.NEUTRAL)
     private var searchQuery by mutableStateOf("")
     private var scrollVisible by mutableStateOf(false)
     private var isSyncing by mutableStateOf(false)
@@ -160,6 +161,7 @@ class GogGamesActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("bh_gog_prefs", 0)
         viewMode = prefs.getString(VIEW_MODE_KEY, "grid") ?: "grid"
+        setSync(getString(R.string.store_games_gog_loading_library))
 
         // Cross-store Download Manager (Phase B): init the registry + seed/self-heal the installed
         // GOG library here (idempotent), mirroring AmazonGamesActivity.
@@ -170,7 +172,7 @@ class GogGamesActivity : ComponentActivity() {
             WinlatorTheme {
                 GogGamesScreen(
                     syncText = syncText,
-                    syncTextColor = syncTextColor,
+                    syncTone = syncTone,
                     searchQuery = searchQuery,
                     scrollVisible = scrollVisible,
                     isSyncing = isSyncing,
@@ -244,7 +246,10 @@ class GogGamesActivity : ComponentActivity() {
             applyFilter("")
             scrollVisible = true
             val cn = cached.size
-            setSync("$cn game${if (cn == 1) "" else "s"} \u2014 cached  \u2022  tap \u21ba to refresh", syncOk = true)
+            setSync(
+                resources.getQuantityString(R.plurals.store_games_cached_count, cn, cn),
+                GogStatusTone.SUCCESS,
+            )
         }
         startSync(cached == null || cached.isEmpty())
     }
@@ -259,7 +264,7 @@ class GogGamesActivity : ComponentActivity() {
     private fun startSync(showProgress: Boolean) {
         if (isSyncing) return
         isSyncing = true
-        if (showProgress) setSync("Loading GOG library\u2026")
+        if (showProgress) setSync(getString(R.string.store_games_gog_loading_library))
         lifecycleScope.launch(Dispatchers.IO) {
             syncLibrary(showProgress)
             withContext(Dispatchers.Main) { isSyncing = false }
@@ -268,28 +273,46 @@ class GogGamesActivity : ComponentActivity() {
 
     private suspend fun syncLibrary(showProgress: Boolean) {
         try {
-            if (showProgress) withContext(Dispatchers.Main) { setSync("Checking token\u2026") }
+            if (showProgress) withContext(Dispatchers.Main) {
+                setSync(getString(R.string.store_games_checking_token))
+            }
 
             var token = prefs.getString("access_token", null)
-            if (token == null) { withContext(Dispatchers.Main) { setSync("Not logged in") }; return }
+            if (token == null) {
+                withContext(Dispatchers.Main) {
+                    setSync(getString(R.string.store_games_not_logged_in), GogStatusTone.ERROR)
+                }
+                return
+            }
 
             val loginTime = prefs.getInt("bh_gog_login_time", 0)
             val expiresIn = prefs.getInt("bh_gog_expires_in", 3600)
             val nowSec = System.currentTimeMillis() / 1000L
             if (loginTime == 0 || nowSec >= loginTime + expiresIn) {
-                if (showProgress) withContext(Dispatchers.Main) { setSync("Refreshing token\u2026") }
+                if (showProgress) withContext(Dispatchers.Main) {
+                    setSync(getString(R.string.store_games_refreshing_token))
+                }
                 val newToken = GogTokenRefresh.refresh(this@GogGamesActivity)
                 if (newToken == null) {
-                    withContext(Dispatchers.Main) { setSync("Session expired \u2014 please sign in again") }
+                    withContext(Dispatchers.Main) {
+                        setSync(getString(R.string.store_games_session_expired), GogStatusTone.ERROR)
+                    }
                     return
                 }
                 token = newToken
             }
 
-            if (showProgress) withContext(Dispatchers.Main) { setSync("Fetching game list\u2026") }
+            if (showProgress) withContext(Dispatchers.Main) {
+                setSync(getString(R.string.store_games_fetching_game_list))
+            }
 
             val gamesJson = httpGet("https://embed.gog.com/user/data/games", token)
-            if (gamesJson == null) { withContext(Dispatchers.Main) { setSync("Failed to fetch library") }; return }
+            if (gamesJson == null) {
+                withContext(Dispatchers.Main) {
+                    setSync(getString(R.string.store_games_failed_fetch_library), GogStatusTone.ERROR)
+                }
+                return
+            }
 
             val ids = mutableListOf<String>()
             try {
@@ -302,12 +325,22 @@ class GogGamesActivity : ComponentActivity() {
                     }
                 }
             } catch (_: Exception) {
-                withContext(Dispatchers.Main) { setSync("Error parsing library") }; return
+                withContext(Dispatchers.Main) {
+                    setSync(getString(R.string.store_games_error_parsing_library), GogStatusTone.ERROR)
+                }
+                return
             }
 
-            if (ids.isEmpty()) { withContext(Dispatchers.Main) { setSync("No games found in library") }; return }
+            if (ids.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    setSync(getString(R.string.store_games_no_games_in_library), GogStatusTone.ERROR)
+                }
+                return
+            }
 
-            if (showProgress) withContext(Dispatchers.Main) { setSync("Syncing ${ids.size} games\u2026") }
+            if (showProgress) withContext(Dispatchers.Main) {
+                setSync(resources.getQuantityString(R.plurals.store_games_syncing_games, ids.size, ids.size))
+            }
 
             val finalToken = token
             val pool = Executors.newFixedThreadPool(5)
@@ -325,17 +358,26 @@ class GogGamesActivity : ComponentActivity() {
 
             withContext(Dispatchers.Main) {
                 if (games.isEmpty()) {
-                    setSync("No compatible games found")
+                    setSync(getString(R.string.store_games_no_compatible_games), GogStatusTone.ERROR)
                 } else {
                     allGames = games.sortedBy { it.title.lowercase() }
                     applyFilter(searchQuery)
                     scrollVisible = true
                     val fn = games.size
-                    setSync("$fn game${if (fn == 1) "" else "s"} \u2014 tap a card to install", syncOk = true)
+                    setSync(
+                        resources.getQuantityString(R.plurals.store_games_ready_count, fn, fn),
+                        GogStatusTone.SUCCESS,
+                    )
                 }
             }
         } catch (e: Exception) {
-            withContext(Dispatchers.Main) { setSync("Error: ${e.message}") }
+            android.util.Log.e(TAG, "syncLibrary error", e)
+            withContext(Dispatchers.Main) {
+                setSync(
+                    getString(R.string.store_games_failed_fetch_library),
+                    GogStatusTone.ERROR,
+                )
+            }
         }
     }
 
@@ -418,7 +460,7 @@ class GogGamesActivity : ComponentActivity() {
             val titleObj = prod.optJSONObject("title")
             if (titleObj != null) dlcTitle = titleObj.optString("*", "")
             if (dlcTitle.isEmpty()) dlcTitle = prod.optString("title", "")
-            if (dlcTitle.isEmpty()) dlcTitle = "Unknown DLC"
+            if (dlcTitle.isEmpty()) dlcTitle = getString(R.string.store_games_unknown_dlc)
 
             var baseId = ""
             val reqGame = prod.optJSONObject("required_game")
@@ -498,15 +540,9 @@ class GogGamesActivity : ComponentActivity() {
         scrollVisible = filtered.isNotEmpty() || allGames.isNotEmpty()
     }
 
-    private fun setSync(msg: String, syncOk: Boolean = false) {
+    private fun setSync(msg: String, tone: GogStatusTone = GogStatusTone.NEUTRAL) {
         syncText = msg
-        syncTextColor = when {
-            msg.startsWith("Error") || msg.startsWith("Session expired") || msg.startsWith("Failed") || msg.startsWith("Not logged in") ->
-                0xFFFF6B6B.toInt()
-            syncOk || (msg.contains("game") && (msg.contains("tap") || msg.contains("cached"))) ->
-                0xFF81C784.toInt()
-            else -> 0xFFCCCCCC.toInt()
-        }
+        syncTone = tone
     }
 
     // ── Game click handlers ──────────────────────────────────────────────────
@@ -543,8 +579,7 @@ class GogGamesActivity : ComponentActivity() {
 
     private fun startDownload(game: GogGame) {
         val dlState = GameDownloadState(
-            buttonText = "Cancel",
-            buttonColor = 0xFFCC3333.toInt(),
+            action = GogGameAction.CANCEL,
             progressVisible = true,
             progress = 0,
             status = "0%",
@@ -573,7 +608,7 @@ class GogGamesActivity : ComponentActivity() {
                     val existing = downloadStates[game.gameId] ?: return@runOnUiThread
                     downloadStates[game.gameId] = existing.copy(
                         progress = pct,
-                        status = msg,
+                        status = localizeGogProgress(msg),
                     )
                 }
             }
@@ -590,26 +625,29 @@ class GogGamesActivity : ComponentActivity() {
                         bytes = prefs.getLong("gog_size_${game.gameId}", 0L),
                     )
                 } else {
-                    StoreDownloadHooks.markFailed(Store.GOG, game.gameId, "No executable found")
+                    StoreDownloadHooks.markFailed(
+                        Store.GOG,
+                        game.gameId,
+                        getString(R.string.store_games_no_exe_after_install),
+                    )
                 }
                 runOnUiThread {
                     downloadStates[game.gameId] = GameDownloadState(
                         progress = 100,
-                        status = "Installed",
+                        status = getString(R.string.store_games_installed),
                         isInstalled = true,
-                        buttonText = "Add Game",
-                        buttonColor = 0xFF0055FF.toInt(),
+                        action = GogGameAction.ADD_TO_LAUNCHER,
                         progressVisible = true,
                     )
                     applyFilter(searchQuery)
                 }
             }
             override fun onError(msg: String) {
-                StoreDownloadHooks.markFailed(Store.GOG, game.gameId, msg)
+                StoreDownloadHooks.markFailed(Store.GOG, game.gameId, localizeGogError(msg))
                 runOnUiThread {
                     downloadStates.remove(game.gameId)
                     applyFilter(searchQuery)
-                    resultBarMsg = "Error: $msg"
+                    resultBarMsg = getString(R.string.store_games_error_detail, localizeGogError(msg))
                 }
             }
             override fun onCancelled() {
@@ -688,7 +726,7 @@ class GogGamesActivity : ComponentActivity() {
                         val candidates = GogDownloadManager.collectExeCandidates(installPath)
                         if (candidates.isEmpty()) {
                             withContext(Dispatchers.Main) {
-                                resultBarMsg = "No .exe files found in install directory"
+                                resultBarMsg = getString(R.string.store_games_no_exe_in_install_directory)
                             }
                             return@launch
                         }
@@ -696,7 +734,10 @@ class GogGamesActivity : ComponentActivity() {
                             showExePicker = ExePickerDataGog(candidates) { selected ->
                                 if (selected.isNotEmpty()) {
                                     prefs.edit().putString("gog_exe_${game.gameId}", selected).apply()
-                                    resultBarMsg = "Exe set to: ${java.io.File(selected).name}"
+                                    resultBarMsg = getString(
+                                        R.string.store_games_exe_set_to,
+                                        java.io.File(selected).name,
+                                    )
                                 }
                             }
                         }
@@ -714,18 +755,21 @@ class GogGamesActivity : ComponentActivity() {
                         StoreDownloadHooks.markUninstalled(Store.GOG, game.gameId)
                         withContext(Dispatchers.Main) {
                             applyFilter(searchQuery)
-                            resultBarMsg = "${game.title} uninstalled"
+                            resultBarMsg = getString(R.string.store_games_named_uninstalled, game.title)
                         }
                     }
                 }
             },
             onCopyToDownloads = {
-                resultBarMsg = "Copying to Downloads\u2026"
+                resultBarMsg = getString(R.string.store_games_copying_to_downloads)
                 lifecycleScope.launch(Dispatchers.IO) {
                     val dest = GogDownloadManager.copyToDownloads(this@GogGamesActivity, game.gameId)
                     withContext(Dispatchers.Main) {
-                        resultBarMsg = if (dest != null) "Copied to: $dest"
-                        else "Copy failed \u2014 check storage permission"
+                        resultBarMsg = if (dest != null) {
+                            getString(R.string.store_games_copied_to, dest)
+                        } else {
+                            getString(R.string.store_games_copy_failed_permission)
+                        }
                     }
                 }
             },
@@ -733,6 +777,49 @@ class GogGamesActivity : ComponentActivity() {
     }
 
     // ── Utilities ─────────────────────────────────────────────────────────────
+
+    private fun localizeGogProgress(message: String): String = when {
+        message == "Checking token…" -> getString(R.string.store_games_checking_token)
+        message == "Refreshing token…" -> getString(R.string.store_games_refreshing_token)
+        message == "Fetching builds…" -> getString(R.string.store_games_fetching_builds)
+        message == "Gen 2 unavailable, trying Gen 1…" ->
+            getString(R.string.store_games_gog_trying_generation_one)
+        message == "No Galaxy builds — trying installer download…" ->
+            getString(R.string.store_games_gog_trying_installer)
+        message == "Fetching manifest…" -> getString(R.string.store_games_fetching_manifest)
+        message == "Reading depot manifests…" -> getString(R.string.store_games_reading_depot_manifests)
+        message == "Fetching CDN link…" -> getString(R.string.store_games_fetching_cdn_link)
+        message == "Resuming…" -> getString(R.string.store_games_resuming)
+        message == "Install complete!" -> getString(R.string.store_games_install_complete)
+        message == "Fetching Gen 1 manifest…" ->
+            getString(R.string.store_games_gog_fetching_generation_one_manifest)
+        message == "Installer downloaded!" -> getString(R.string.store_games_installer_downloaded)
+        message.startsWith("Downloading installer: ") -> getString(
+            R.string.store_games_downloading_installer_named,
+            message.removePrefix("Downloading installer: "),
+        )
+        message.startsWith("Downloading: ") -> getString(
+            R.string.store_games_downloading_named,
+            message.removePrefix("Downloading: "),
+        )
+        else -> message
+    }
+
+    private fun localizeGogError(message: String): String = when {
+        message == "Not logged in to GOG" -> getString(R.string.store_games_gog_not_logged_in)
+        message == "Token expired — please sign in again" -> getString(R.string.store_games_session_expired)
+        message == "No builds available for this game" -> getString(R.string.store_games_no_builds_available)
+        message == "No downloadable builds for this game" ->
+            getString(R.string.store_games_no_downloadable_builds)
+        message.startsWith("Download failed: ") -> getString(
+            R.string.store_games_download_failed_detail,
+            message.removePrefix("Download failed: "),
+        )
+        message.startsWith("Download error: ") || message.startsWith(
+            getString(R.string.compose_gog_game_detail_download_error, ""),
+        ) -> getString(R.string.store_games_download_failed)
+        else -> message
+    }
 
     private fun deleteDir(dir: java.io.File) {
         if (dir == null || !dir.exists()) return
@@ -745,12 +832,15 @@ class GogGamesActivity : ComponentActivity() {
 
 // ── Data classes ────────────────────────────────────────────────────────────
 
+private enum class GogStatusTone { NEUTRAL, SUCCESS, ERROR }
+
+private enum class GogGameAction { INSTALL, CANCEL, ADD_TO_LAUNCHER }
+
 private data class GameDownloadState(
     val progress: Int = 0,
     val status: String = "",
     val progressVisible: Boolean = false,
-    val buttonText: String = "Install",
-    val buttonColor: Int = 0xFF0055FF.toInt(),
+    val action: GogGameAction = GogGameAction.INSTALL,
     val isInstalled: Boolean = false,
     val cancelRunnable: Runnable? = null,
 )
@@ -779,7 +869,7 @@ private data class DetailDialogData(
 @Composable
 private fun GogGamesScreen(
     syncText: String,
-    syncTextColor: Int,
+    syncTone: GogStatusTone,
     searchQuery: String,
     scrollVisible: Boolean,
     isSyncing: Boolean,
@@ -816,7 +906,7 @@ private fun GogGamesScreen(
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Spacer(Modifier.width(8.dp))
             Text(
-                "GOG Library",
+                stringResource(R.string.store_games_gog_library),
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -855,7 +945,12 @@ private fun GogGamesScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text("Search games\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            placeholder = {
+                Text(
+                    stringResource(R.string.store_games_search_games),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearchChange(searchQuery) }),
@@ -877,7 +972,11 @@ private fun GogGamesScreen(
         Text(
             text = syncText,
             fontSize = 13.sp,
-            color = Color(syncTextColor), // semantic status colour (error red / ready green / neutral) set in setSync()
+            color = when (syncTone) {
+                GogStatusTone.ERROR -> Color(0xFFFF6B6B)
+                GogStatusTone.SUCCESS -> Color(0xFF81C784)
+                GogStatusTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
@@ -897,12 +996,15 @@ private fun GogGamesScreen(
                             // No live download this session → fall back to disk-truth so an
                             // already-installed game shows Installed + "Add to Launcher" instead of
                             // "Install" (mirrors EpicGamesActivity's `?: GameDownloadState(...)`).
-                            // buttonText MUST be set here: line ~1099 reads downloadState.buttonText
-                            // directly, so a bare default would render "Install" despite isInstalled.
+                            // The stable action must be set here: a bare default would still select
+                            // INSTALL despite isInstalled.
                             val context = LocalContext.current
                             val dlState = downloadStates[game.gameId]
                                 ?: if (GogInstallState.isInstalled(context, game.gameId))
-                                    GameDownloadState(isInstalled = true, buttonText = "Add to Launcher")
+                                    GameDownloadState(
+                                        isInstalled = true,
+                                        action = GogGameAction.ADD_TO_LAUNCHER,
+                                    )
                                 else null
                             val isExpanded = expandedGameId == game.gameId
                             GameListCard(
@@ -932,7 +1034,10 @@ private fun GogGamesScreen(
                             val context = LocalContext.current
                             val dlState = downloadStates[game.gameId]
                                 ?: if (GogInstallState.isInstalled(context, game.gameId))
-                                    GameDownloadState(isInstalled = true, buttonText = "Add to Launcher")
+                                    GameDownloadState(
+                                        isInstalled = true,
+                                        action = GogGameAction.ADD_TO_LAUNCHER,
+                                    )
                                 else null
                             val isExpanded = expandedGameId == game.gameId
                             GameGridTile(
@@ -951,7 +1056,7 @@ private fun GogGamesScreen(
                 }
             } else if (!scrollVisible && !isSyncing) {
                 Text(
-                    text = "Your GOG library is empty",
+                    text = stringResource(R.string.store_games_gog_library_empty),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
@@ -1083,7 +1188,7 @@ private fun ExpandedSection(
 
         if (isInstalled) {
             Text(
-                "\u2713 Installed",
+                stringResource(R.string.store_games_installed_marked),
                 fontSize = 10.sp,
                 color = Color(0xFF4CAF50), // semantic installed-green
                 modifier = Modifier.padding(top = 4.dp),
@@ -1113,18 +1218,21 @@ private fun ExpandedSection(
 
         Spacer(Modifier.height(8.dp))
 
-        val btnText = downloadState?.buttonText
-            ?: if (isInstalled) "Add to Launcher" else "Install"
-        // Container/content derived from theme at call site (btnText carries the intent);
-        // "Cancel" is the only destructive action \u2192 error, everything else \u2192 primary.
-        val isCancelBtn = btnText == "Cancel"
+        val action = downloadState?.action
+            ?: if (isInstalled) GogGameAction.ADD_TO_LAUNCHER else GogGameAction.INSTALL
+        val isCancelBtn = action == GogGameAction.CANCEL
+        val buttonText = when (action) {
+            GogGameAction.INSTALL -> stringResource(R.string.store_games_action_install)
+            GogGameAction.CANCEL -> stringResource(R.string.store_games_action_cancel)
+            GogGameAction.ADD_TO_LAUNCHER -> stringResource(R.string.store_games_action_add_to_launcher)
+        }
 
         Button(
             onClick = {
-                when (btnText) {
-                    "Cancel" -> onCancelClick()
-                    "Add Game", "Add to Launcher" -> onAddToLauncher()
-                    else -> onInstallClick()
+                when (action) {
+                    GogGameAction.CANCEL -> onCancelClick()
+                    GogGameAction.ADD_TO_LAUNCHER -> onAddToLauncher()
+                    GogGameAction.INSTALL -> onInstallClick()
                 }
             },
             colors = ButtonDefaults.buttonColors(
@@ -1135,7 +1243,7 @@ private fun ExpandedSection(
             shape = RoundedCornerShape(8.dp),
         ) {
             Text(
-                btnText,
+                buttonText,
                 color = if (isCancelBtn) MaterialTheme.colorScheme.onError
                 else MaterialTheme.colorScheme.onPrimary,
                 fontSize = 13.sp,
@@ -1195,7 +1303,11 @@ private fun GameGridTile(
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                 ) {
-                    Text("Gen ${game.generation}", fontSize = 8.sp, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(
+                        stringResource(R.string.store_games_generation_short, game.generation),
+                        fontSize = 8.sp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
                 }
             }
 
@@ -1230,10 +1342,14 @@ private fun GameGridTile(
         // Action row (shown only when expanded)
         if (isExpanded) {
             val isInstalled = downloadState?.isInstalled == true
-            val btnText = downloadState?.buttonText
-                ?: if (isInstalled) "Add to Launcher" else "Install"
-            // "Cancel" is the only destructive action \u2192 error; everything else \u2192 primary.
-            val isCancelBtn = btnText == "Cancel"
+            val action = downloadState?.action
+                ?: if (isInstalled) GogGameAction.ADD_TO_LAUNCHER else GogGameAction.INSTALL
+            val isCancelBtn = action == GogGameAction.CANCEL
+            val buttonText = when (action) {
+                GogGameAction.INSTALL -> stringResource(R.string.store_games_action_install)
+                GogGameAction.CANCEL -> stringResource(R.string.store_games_action_cancel)
+                GogGameAction.ADD_TO_LAUNCHER -> stringResource(R.string.store_games_action_add_to_launcher)
+            }
 
             Column(
                 modifier = Modifier
@@ -1251,10 +1367,10 @@ private fun GameGridTile(
                 }
                 Button(
                     onClick = {
-                        when (btnText) {
-                            "Cancel" -> onCancelClick()
-                            "Add Game", "Add to Launcher" -> onAddToLauncher()
-                            else -> onInstallClick()
+                        when (action) {
+                            GogGameAction.CANCEL -> onCancelClick()
+                            GogGameAction.ADD_TO_LAUNCHER -> onAddToLauncher()
+                            GogGameAction.INSTALL -> onInstallClick()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -1266,7 +1382,7 @@ private fun GameGridTile(
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(
-                        btnText,
+                        buttonText,
                         color = if (isCancelBtn) MaterialTheme.colorScheme.onError
                         else MaterialTheme.colorScheme.onPrimary,
                         fontSize = 11.sp,
@@ -1280,7 +1396,7 @@ private fun GameGridTile(
 @Composable
 private fun GenBadge(generation: Int) {
     Text(
-        text = "Gen $generation",
+        text = stringResource(R.string.store_games_generation_short, generation),
         fontSize = 10.sp,
         color = MaterialTheme.colorScheme.onPrimary,
         modifier = Modifier
@@ -1301,7 +1417,7 @@ private fun ExePickerDialogGog(
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select game executable") },
+        title = { Text(stringResource(R.string.store_games_select_game_executable)) },
         text = {
             Column(
                 modifier = Modifier
@@ -1333,11 +1449,17 @@ private fun InstallConfirmDialog(
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Install ${game.title}?") },
+        title = { Text(stringResource(R.string.store_games_install_named_question, game.title)) },
         text = {
             Column {
-                val sizeText = if (gameSize > 0) "Game size:  ${GogDownloadManager.formatBytes(gameSize)}"
-                else "Game size:  Fetching\u2026"
+                val sizeText = if (gameSize > 0) {
+                    stringResource(
+                        R.string.store_games_game_size,
+                        GogDownloadManager.formatBytes(gameSize),
+                    )
+                } else {
+                    stringResource(R.string.store_games_game_size_fetching)
+                }
                 val notEnoughSpace = gameSize > 0 && freeBytes > 0 && gameSize > freeBytes
                 val sizeColor = if (notEnoughSpace) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1348,7 +1470,11 @@ private fun InstallConfirmDialog(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Available storage:  ${GogDownloadManager.formatBytes(freeBytes)}",
+                    text = stringResource(
+                        R.string.store_games_available_storage,
+                        if (freeBytes > 0) GogDownloadManager.formatBytes(freeBytes)
+                        else stringResource(R.string.store_games_unknown),
+                    ),
                     fontSize = 14.sp,
                     color = if (notEnoughSpace) MaterialTheme.colorScheme.error
                     else Color(0xFF88CC88), // semantic storage-ok green
@@ -1356,7 +1482,7 @@ private fun InstallConfirmDialog(
                 if (notEnoughSpace) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "\u26A0 Not enough space",
+                        text = stringResource(R.string.store_games_not_enough_space),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -1368,10 +1494,21 @@ private fun InstallConfirmDialog(
             TextButton(
                 onClick = onConfirm,
                 enabled = canInstall,
-            ) { Text("Install", color = if (canInstall) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+            ) {
+                Text(
+                    stringResource(R.string.store_games_action_install),
+                    color = if (canInstall) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    stringResource(R.string.store_games_action_cancel),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
     )
 }
@@ -1384,11 +1521,14 @@ private fun DetailDialog(
     onUninstall: () -> Unit,
     onCopyToDownloads: () -> Unit,
 ) {
-    val msg = buildString {
-        if (game.developer.isNotEmpty()) append("Developer: ${game.developer}\n")
-        if (game.category.isNotEmpty()) append("Genre: ${game.category}\n")
-        if (game.description.isNotEmpty()) append("\n${game.description}")
-    }
+    val developer = if (game.developer.isNotEmpty()) {
+        stringResource(R.string.store_games_developer_value, game.developer)
+    } else null
+    val genre = if (game.category.isNotEmpty()) {
+        stringResource(R.string.store_games_genre_value, game.category)
+    } else null
+    val msg = listOfNotNull(developer, genre, game.description.takeIf { it.isNotEmpty() })
+        .joinToString("\n")
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
@@ -1403,7 +1543,12 @@ private fun DetailDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    stringResource(R.string.store_games_action_close),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
     )
 }

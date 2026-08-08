@@ -3,6 +3,8 @@ package com.winlator.star.store.download
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
@@ -94,6 +96,7 @@ private const val TAG = "ContentDownload"
  */
 fun startContentDownload(appContext: Context, profile: ContentProfile) {
     val ctx = appContext.applicationContext
+    val localizedContext = ContextCompat.getContextForLanguage(ctx)
     val key = ContentsManager.getEntryName(profile)
 
     // Don't double-launch a component that's already downloading/installing.
@@ -115,7 +118,10 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
     // Bring up the shared FGS (keeps the process alive past the sheet/Activity) and post the
     // first shade line. start() is idempotent and uses the application context.
     DownloadForegroundService.start(ctx)
-    DownloadForegroundService.setProgress(key, "$title — Downloading 0%")
+    DownloadForegroundService.setProgress(
+        key,
+        localizedContext.getString(R.string.compose_content_notification_downloading_progress, title, 0),
+    )
 
     DownloadScope.io.launch {
         try {
@@ -125,11 +131,21 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
                 ContentDownloadRegistry.update(key) {
                     it.copy(phase = ContentDownloadPhase.DOWNLOADING, fraction = f)
                 }
-                DownloadForegroundService.setProgress(key, "$title — Downloading ${(f * 100).toInt()}%")
+                DownloadForegroundService.setProgress(
+                    key,
+                    localizedContext.getString(
+                        R.string.compose_content_notification_downloading_progress,
+                        title,
+                        (f * 100).toInt(),
+                    ),
+                )
             }
             if (uri == null) {
                 ContentDownloadRegistry.update(key) {
-                    it.copy(phase = ContentDownloadPhase.ERROR, error = "Download failed.")
+                    it.copy(
+                        phase = ContentDownloadPhase.ERROR,
+                        error = localizedContext.getString(R.string.compose_content_download_failed),
+                    )
                 }
                 return@launch
             }
@@ -138,7 +154,10 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
             ContentDownloadRegistry.update(key) {
                 it.copy(phase = ContentDownloadPhase.INSTALLING, fraction = 0f)
             }
-            DownloadForegroundService.setProgress(key, "$title — Installing 0%")
+            DownloadForegroundService.setProgress(
+                key,
+                localizedContext.getString(R.string.compose_content_notification_installing_progress, title, 0),
+            )
 
             val installed = installContentBlocking(ctx, uri) { frac ->
                 // Monotonic: ignore the brief XZ-probe reset before the ZSTD pass.
@@ -146,7 +165,14 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
                     val next = maxOf(it.fraction, frac.coerceIn(0f, 1f))
                     it.copy(phase = ContentDownloadPhase.INSTALLING, fraction = next)
                 }
-                DownloadForegroundService.setProgress(key, "$title — Installing ${(frac * 100).toInt()}%")
+                DownloadForegroundService.setProgress(
+                    key,
+                    localizedContext.getString(
+                        R.string.compose_content_notification_installing_progress,
+                        title,
+                        (frac * 100).toInt(),
+                    ),
+                )
             }
 
             // Tidy the resumable temp file now that install has consumed it.
@@ -154,12 +180,20 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
 
             ContentDownloadRegistry.update(key) {
                 if (installed) it.copy(phase = ContentDownloadPhase.DONE, fraction = 1f)
-                else it.copy(phase = ContentDownloadPhase.ERROR, error = "Install failed.")
+                else {
+                    it.copy(
+                        phase = ContentDownloadPhase.ERROR,
+                        error = localizedContext.getString(R.string.compose_content_install_failed),
+                    )
+                }
             }
         } catch (e: Exception) {
             Log.w(TAG, "Component download/install failed for $key", e)
             ContentDownloadRegistry.update(key) {
-                it.copy(phase = ContentDownloadPhase.ERROR, error = "Install failed.")
+                it.copy(
+                    phase = ContentDownloadPhase.ERROR,
+                    error = localizedContext.getString(R.string.compose_content_install_failed),
+                )
             }
         } finally {
             // Drop the shade line (FGS self-stops when no downloads remain) for success,

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="final_errors_unknown_error">unknown error</string>
+    <string name="final_errors_game_import_failed">%1$s: import failed</string>
+</resources>

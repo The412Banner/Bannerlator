@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.inputmethod.InputMethodManager
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -36,14 +36,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
 
-class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
+class SteamLoginActivity : AppCompatActivity(), SteamAuthManager.AuthListener {
 
     private var username by mutableStateOf("")
     private var password by mutableStateOf("")
@@ -62,10 +64,10 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         connectWaitListener = null
         pendingUsername = null; pendingPassword = null
         val msg = when (reachState) {
-            1    -> "Steam CM connection timed out. Port 27017 may be blocked — try a VPN or mobile data."
-            2    -> "Steam is blocked on your network. A VPN is required."
-            3    -> "No internet connection detected."
-            else -> "Could not reach Steam servers. Check your network."
+            1    -> getString(R.string.steam_cm_timeout)
+            2    -> getString(R.string.steam_network_blocked)
+            3    -> getString(R.string.steam_no_internet)
+            else -> getString(R.string.steam_servers_unreachable)
         }
         onFailure(msg)
     }
@@ -91,10 +93,11 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
                     SteamGuardDialog(
                         title = data.title,
                         message = data.message,
+                        isNumeric = data.isNumeric,
                         onDismiss = { guardDialog = null },
                         onSubmit = { code ->
                             guardDialog = null
-                            statusText = "Verifying…"
+                            statusText = getString(R.string.steam_verifying)
                             isStatusError = false
                             isLoading = true
                             SteamAuthManager.getInstance().submitGuardCode(code)
@@ -102,7 +105,7 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
                         onCancel = {
                             guardDialog = null
                             SteamAuthManager.getInstance().cancelAuth()
-                            statusText = "Sign-in cancelled."
+                            statusText = getString(R.string.steam_sign_in_cancelled)
                             isStatusError = false
                             isLoading = false
                         },
@@ -123,11 +126,11 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
     private fun onLoginClicked() {
         val u = username.trim()
         val p = password
-        if (u.isEmpty()) { statusText = "Enter your username."; isStatusError = true; return }
-        if (p.isEmpty())  { statusText = "Enter your password."; isStatusError = true; return }
+        if (u.isEmpty()) { statusText = getString(R.string.steam_enter_username); isStatusError = true; return }
+        if (p.isEmpty())  { statusText = getString(R.string.steam_enter_password); isStatusError = true; return }
         hideKeyboard()
         isStatusError = false
-        statusText = "Connecting to Steam\u2026"
+        statusText = getString(R.string.steam_connecting)
         isLoading = true
 
         val repo = SteamRepository.getInstance()
@@ -155,7 +158,7 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
                             repo.removeListener(this)
                             connectWaitListener = null
                             pendingUsername = null; pendingPassword = null
-                            runOnUiThread { onFailure("Could not connect to Steam") }
+                            runOnUiThread { onFailure(getString(R.string.steam_could_not_connect)) }
                         }
                     }
                 }
@@ -171,8 +174,8 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         isLoading = false
         statusText = ""
         guardDialog = GuardDialogData(
-            title     = if (codeWrong) "Incorrect code — try again" else "Steam Guard",
-            message   = "Enter the code Steam sent to your email ending in \u2026$emailDomain",
+            title     = if (codeWrong) getString(R.string.steam_incorrect_code) else getString(R.string.steam_guard),
+            message   = getString(R.string.steam_guard_email_prompt, emailDomain),
             isNumeric = false,
         )
     }
@@ -181,21 +184,21 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         isLoading = false
         statusText = ""
         guardDialog = GuardDialogData(
-            title     = if (codeWrong) "Incorrect code — try again" else "Steam Guard",
-            message   = "Enter the code from your Steam Guard Mobile Authenticator app",
+            title     = if (codeWrong) getString(R.string.steam_incorrect_code) else getString(R.string.steam_guard),
+            message   = getString(R.string.steam_guard_authenticator_prompt),
             isNumeric = true,
         )
     }
 
     override fun onDeviceConfirmationRequired() {
-        statusText = "Approve the login in your Steam mobile app\u2026"
+        statusText = getString(R.string.steam_approve_mobile)
         isStatusError = false
         isLoading = true
     }
 
     override fun onSuccess(username: String, refreshToken: String) {
         SteamRepository.getInstance().loginWithToken(username, refreshToken)
-        statusText = "Signed in!"
+        statusText = getString(R.string.steam_signed_in)
         isStatusError = false
         isLoading = false
         startActivity(Intent(this, SteamGamesActivity::class.java))
@@ -204,7 +207,11 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
 
     override fun onFailure(reason: String) {
         isLoading = false
-        statusText = "Sign-in failed: $reason"
+        statusText = if (reason.isBlank()) {
+            getString(R.string.steam_auth_failed_generic)
+        } else {
+            getString(R.string.steam_sign_in_failed, reason)
+        }
         isStatusError = true
     }
 
@@ -226,6 +233,7 @@ private data class GuardDialogData(
 private fun SteamGuardDialog(
     title: String,
     message: String,
+    isNumeric: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (String) -> Unit,
     onCancel: () -> Unit,
@@ -258,11 +266,13 @@ private fun SteamGuardDialog(
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it.take(5) },
-                    label = { Text("Code") },
+                    label = { Text(stringResource(R.string.steam_code)) },
                     singleLine = true,
-                    placeholder = { Text(if (title.contains("Authenticator")) "5-digit code" else "5-character code") },
+                    placeholder = {
+                        Text(stringResource(if (isNumeric) R.string.steam_five_digit_code else R.string.steam_five_character_code))
+                    },
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = if (title.contains("Authenticator")) KeyboardType.Number else KeyboardType.Text,
+                        keyboardType = if (isNumeric) KeyboardType.Number else KeyboardType.Text,
                         imeAction = ImeAction.Done,
                     ),
                     keyboardActions = KeyboardActions(onDone = { onSubmit(code.trim()) }),
@@ -273,12 +283,12 @@ private fun SteamGuardDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = onCancel) { Text("Cancel") }
+                    TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = { onSubmit(code.trim()) },
                         enabled = code.trim().isNotEmpty(),
-                    ) { Text("Submit") }
+                    ) { Text(stringResource(R.string.steam_submit)) }
                 }
             }
         }
@@ -312,7 +322,7 @@ private fun SteamLoginScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Sign in to your account",
+            text = stringResource(R.string.steam_sign_in_account),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -321,7 +331,7 @@ private fun SteamLoginScreen(
         OutlinedTextField(
             value = username,
             onValueChange = onUsernameChange,
-            label = { Text("Username") },
+            label = { Text(stringResource(R.string.steam_username)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
@@ -331,7 +341,7 @@ private fun SteamLoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = onPasswordChange,
-            label = { Text("Password") },
+            label = { Text(stringResource(R.string.steam_password)) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
@@ -348,7 +358,7 @@ private fun SteamLoginScreen(
             enabled = !isLoading,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(8.dp),
-        ) { Text("Sign In") }
+        ) { Text(stringResource(R.string.steam_sign_in)) }
         Spacer(Modifier.height(12.dp))
 
         // QR sign-in re-enabled: a QR-originated session stores the same
@@ -358,7 +368,7 @@ private fun SteamLoginScreen(
         // advisory to fall back to username + password if downloads or the
         // session keep dropping after signing in this way.
         TextButton(onClick = onQrClick) {
-            Text("Sign in with QR Code")
+            Text(stringResource(R.string.steam_sign_in_qr))
         }
         Spacer(Modifier.height(16.dp))
 

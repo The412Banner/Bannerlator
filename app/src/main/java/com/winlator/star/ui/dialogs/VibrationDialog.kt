@@ -21,7 +21,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 
 @Composable
@@ -37,7 +39,7 @@ fun VibrationDialog(state: XServerDialogState) {
 
     OutlinedAlertDialog(
         onDismissRequest = { state.dismiss() },
-        title = { Text("Vibration") },
+        title = { Text(stringResource(R.string.vibration)) },
         text = {
             Column {
                 // Master kill-switch — off suppresses ALL controller vibration regardless of slot, and
@@ -48,7 +50,7 @@ fun VibrationDialog(state: XServerDialogState) {
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                 ) {
-                    Text("Controller vibration", modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.dialog_controller_vibration), modifier = Modifier.weight(1f))
                     Switch(
                         checked = masterOn,
                         onCheckedChange = { on ->
@@ -82,7 +84,7 @@ fun VibrationDialog(state: XServerDialogState) {
             }
         },
         confirmButton = {
-            TextButton(onClick = { state.dismiss() }) { Text("OK") }
+            TextButton(onClick = { state.dismiss() }) { Text(stringResource(R.string.common_ok)) }
         }
     )
 }

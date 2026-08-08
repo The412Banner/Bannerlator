@@ -50,11 +50,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
+import com.winlator.star.R
 import com.winlator.star.ui.components.ColorPicker
 import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.theme.CUSTOM_PRESET_INDEX
@@ -78,7 +80,7 @@ fun AppearanceScreen() {
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // ── Preset themes ────────────────────────────────────────────────
-        SectionLabel("Theme Presets")
+        SectionLabel(stringResource(R.string.appearance_theme_presets))
 
         val rows = themePresets.chunked(4)
         rows.forEach { row ->
@@ -104,9 +106,9 @@ fun AppearanceScreen() {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Divider))
 
         // ── Custom accent picker ─────────────────────────────────────────
-        SectionLabel("Custom Accent Color")
+        SectionLabel(stringResource(R.string.appearance_custom_accent))
         Text(
-            text = "Selecting a color below switches to Custom preset",
+            text = stringResource(R.string.appearance_custom_accent_hint),
             color = OnSurfaceVariant,
             fontSize = 12.sp
         )
@@ -120,26 +122,26 @@ fun AppearanceScreen() {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Divider))
 
         // ── Side menu ────────────────────────────────────────────────────
-        SectionLabel("Side Menu")
+        SectionLabel(stringResource(R.string.appearance_side_menu))
         val showStores by AppThemeState.showStores.collectAsState()
         val showInternal by AppThemeState.showInternalStorage.collectAsState()
         val showSd by AppThemeState.showSdStorage.collectAsState()
 
         DrawerToggleRow(
-            title = "Show game stores",
-            subtitle = "The GOG, Epic, Amazon and Steam shortcuts in the drawer",
+            title = stringResource(R.string.appearance_show_stores),
+            subtitle = stringResource(R.string.appearance_show_stores_hint),
             checked = showStores,
             onCheckedChange = { AppThemeState.setShowStores(it) },
         )
         DrawerToggleRow(
-            title = "Show internal storage",
-            subtitle = "The storage bar at the bottom of the drawer",
+            title = stringResource(R.string.appearance_show_internal_storage),
+            subtitle = stringResource(R.string.appearance_show_internal_storage_hint),
             checked = showInternal,
             onCheckedChange = { AppThemeState.setShowInternalStorage(it) },
         )
         DrawerToggleRow(
-            title = "Show SD card storage",
-            subtitle = "Only appears when a card is in the device",
+            title = stringResource(R.string.appearance_show_sd_storage),
+            subtitle = stringResource(R.string.appearance_show_sd_storage_hint),
             checked = showSd,
             onCheckedChange = { AppThemeState.setShowSdStorage(it) },
         )
@@ -148,18 +150,18 @@ fun AppearanceScreen() {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Divider))
 
         // ── App orientation ──────────────────────────────────────────────
-        SectionLabel("App Orientation")
+        SectionLabel(stringResource(R.string.appearance_orientation))
         Text(
-            text = "Applies to the app's own screens only — games keep their own orientation.",
+            text = stringResource(R.string.appearance_orientation_hint),
             color = OnSurfaceVariant,
             fontSize = 12.sp,
         )
         Spacer(Modifier.height(6.dp))
         var orientationMode by remember { mutableStateOf(AppOrientation.mode(context)) }
         val orientationOptions = listOf(
-            AppOrientation.AUTO to "Auto",
-            AppOrientation.PORTRAIT to "Portrait",
-            AppOrientation.LANDSCAPE to "Landscape",
+            AppOrientation.AUTO to stringResource(R.string.appearance_orientation_auto),
+            AppOrientation.PORTRAIT to stringResource(R.string.appearance_orientation_portrait),
+            AppOrientation.LANDSCAPE to stringResource(R.string.appearance_orientation_landscape),
         )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             orientationOptions.forEachIndexed { index, (mode, label) ->
@@ -175,7 +177,7 @@ fun AppearanceScreen() {
             }
         }
         Text(
-            text = "Auto follows device rotation (default).",
+            text = stringResource(R.string.appearance_orientation_auto_hint),
             color = OnSurfaceVariant,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 4.dp),
@@ -267,7 +269,7 @@ private fun PresetSwatch(
             }
         }
         Text(
-            text = preset.name,
+            text = stringResource(preset.nameRes),
             color = if (isSelected) MaterialTheme.colorScheme.primary else OnSurfaceVariant,
             fontSize = 10.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,

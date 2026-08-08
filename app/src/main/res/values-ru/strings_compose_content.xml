@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_content_install_from_file">Установить содержимое из файла</string>
+    <string name="compose_content_no_content_available">Нет доступного содержимого.</string>
+    <string name="compose_content_select_content_file">Выберите файл содержимого</string>
+    <string name="compose_content_browse_files">Обзор файлов</string>
+    <string name="compose_content_pick_via_system">Выбрать через системный проводник…</string>
+    <string name="compose_content_ok">ОК</string>
+    <string name="compose_content_cancel">Отмена</string>
+    <string name="compose_content_close">Закрыть</string>
+    <string name="compose_content_continue">Продолжить</string>
+    <string name="compose_content_download">Скачать</string>
+    <string name="compose_content_install">Установить</string>
+    <string name="compose_content_installed">Установлено</string>
+    <string name="compose_content_info">Сведения</string>
+    <string name="compose_content_remove">Удалить</string>
+    <string name="compose_content_options">Действия</string>
+    <string name="compose_content_error">Ошибка</string>
+    <string name="compose_content_type">Тип</string>
+    <string name="compose_content_version">Версия</string>
+    <string name="compose_content_code">Код</string>
+    <string name="compose_content_description">Описание</string>
+    <string name="compose_content_files">Файлы</string>
+    <string name="compose_content_content_info">Сведения о содержимом</string>
+    <string name="compose_content_warning">Предупреждение</string>
+    <string name="compose_content_unverified_files">Непроверенные файлы</string>
+    <string name="compose_content_unverified_files_warning">Не удалось проверить эти файлы. Продолжайте, только если доверяете источнику.</string>
+    <string name="compose_content_version_value">Версия: %1$s</string>
+    <string name="compose_content_code_value">Код: %1$s</string>
+    <string name="compose_content_progress">%1$s  %2$d%%</string>
+    <string name="compose_content_progress_with_eta">%1$s  %2$d%% · %3$s</string>
+    <string name="compose_content_percent">%1$d%%</string>
+    <string name="compose_content_label_with_colon">%1$s: </string>
+    <string name="compose_content_install_failed_reason">Не удалось установить: %1$s</string>
+
+    <string name="compose_content_file">Файл содержимого</string>
+    <string name="compose_content_remove_content_title">Удалить содержимое?</string>
+    <string name="compose_content_remove_named">Удалить «%1$s»?</string>
+    <string name="compose_content_compatibility_layer">Слой совместимости</string>
+    <string name="compose_content_type_downloads">Загрузки %1$s</string>
+    <string name="compose_content_in_use">Используется</string>
+    <string name="compose_content_downloading">Скачивание</string>
+    <string name="compose_content_installing">Установка</string>
+    <string name="compose_content_done">Готово</string>
+    <string name="compose_content_install_failed">Не удалось установить.</string>
+    <string name="compose_content_download_failed">Не удалось скачать.</string>
+    <string name="compose_content_notification_downloading_progress">%1$s — скачивание: %2$d%%</string>
+    <string name="compose_content_notification_installing_progress">%1$s — установка: %2$d%%</string>
+    <string name="compose_content_eta_less_than_minute">Осталось менее 1 мин.</string>
+    <string name="compose_content_eta_remaining">Осталось ~%1$s</string>
+    <string name="compose_content_eta_hours_minutes">%1$s %2$s</string>
+    <plurals name="compose_content_eta_hours_short">
+        <item quantity="one">%1$d ч</item>
+        <item quantity="few">%1$d ч</item>
+        <item quantity="many">%1$d ч</item>
+        <item quantity="other">%1$d ч</item>
+    </plurals>
+    <plurals name="compose_content_eta_minutes_short">
+        <item quantity="one">%1$d мин</item>
+        <item quantity="few">%1$d мин</item>
+        <item quantity="many">%1$d мин</item>
+        <item quantity="other">%1$d мин</item>
+    </plurals>
+
+    <string name="compose_content_components">Компоненты</string>
+    <string name="compose_content_components_subtitle">Установка зависимостей Wine в этот контейнер</string>
+    <string name="compose_content_search_components">Поиск компонентов</string>
+    <string name="compose_content_component_catalog_load_failed">Не удалось загрузить каталог компонентов.</string>
+    <string name="compose_content_component_install_failed_detail">Не удалось установить %1$s: %2$s</string>
+    <string name="compose_content_run_installer_title">Запустить установщик %1$s</string>
+    <string name="compose_content_run_installer_description">Контейнер откроется на рабочем столе Windows и запустит установщик %1$s. Завершите установку, затем закройте контейнер. После этого вы вернётесь сюда для завершения настройки.</string>
+    <string name="compose_content_not_available">н/д</string>
+    <string name="compose_content_component_large_package_not_mirrored">Требуется большой пакет, для которого пока нет зеркала</string>
+    <string name="compose_content_component_source_unavailable">Источник недоступен — ожидается повторная публикация файла</string>
+    <string name="compose_content_component_installer_step_unsupported">Требуется шаг установщика, который пока не поддерживается</string>
+    <string name="compose_content_component_exec_step_unsupported">Используется шаг установщика, который пока не поддерживается</string>
+    <string name="compose_content_component_no_wine_prefix">В контейнере ещё нет префикса Wine — сначала запустите его один раз.</string>
+    <string name="compose_content_component_corrupt_plan_cleared">План установки был повреждён и удалён.</string>
+    <string name="compose_content_component_container_missing">Контейнер для %1$s больше не существует.</string>
+    <string name="compose_content_component_file_download_failed">Не удалось скачать %1$s</string>
+    <string name="compose_content_component_unsupported_action">Неподдерживаемое действие установки: %1$s</string>
+    <string name="compose_content_component_installer_missing_url">%1$s: отсутствует URL для скачивания установщика</string>
+    <string name="compose_content_component_installer_download_failed">%1$s: не удалось скачать %2$s</string>
+    <string name="compose_content_component_installer_name">Установщик %1$s</string>
+
+    <string name="compose_content_launch_game_first">Сначала один раз запустите игру, затем установите компоненты в её настройках.</string>
+    <string name="compose_content_install_component_title">Установить %1$s</string>
+    <string name="compose_content_install_component_description">%1$s будет установлен в контейнер этой игры, общий для всех использующих его ярлыков. Контейнер откроется на рабочем столе Windows и запустит установщик. Завершите установку, затем закройте контейнер — после этого вы вернётесь сюда.</string>
+    <string name="compose_content_looking_for_recommended_components">Поиск рекомендуемых компонентов…</string>
+    <string name="compose_content_recommended">Рекомендуемые</string>
+    <string name="compose_content_optional">Необязательные</string>
+    <string name="compose_content_optional_components">Необязательные компоненты</string>
+    <string name="compose_content_recommended_components">Рекомендуемые компоненты</string>
+    <string name="compose_content_recommended_subtitle">Распространяемые компоненты из комплекта игры.</string>
+    <string name="compose_content_optional_subtitle">Поставляется с игрой — устанавливайте только при проблемах.</string>
+    <string name="compose_content_recommended_tap_subtitle">Распространяемые компоненты из комплекта игры — нажмите, чтобы установить их в контейнер.</string>
+
+    <string name="compose_content_failed_to_parse_releases">Не удалось разобрать список выпусков: %1$s</string>
+    <string name="compose_content_failed_to_fetch_releases">Не удалось получить список выпусков с GitHub</string>
+    <string name="compose_content_installing_vegas">Установка VEGAS…</string>
+    <string name="compose_content_vegas_downloads">Загрузки VEGAS</string>
+    <string name="compose_content_could_not_load_releases">Не удалось загрузить выпуски.</string>
+    <string name="compose_content_no_releases_available">Нет доступных выпусков.</string>
+</resources>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="external_binding_type">Тип</string>
+    <string name="external_binding_binding">Назначение</string>
+    <string name="external_binding_remove">Удалить назначение</string>
+    <string name="overlay_magnifier">Лупа</string>
+    <string name="overlay_paused_tap_resume">Пауза — нажмите, чтобы продолжить</string>
+    <string name="help_got_it">Понятно</string>
+    <string name="downloads_and_library">Загрузки и библиотека</string>
+    <string name="action_back">Назад</string>
+    <string name="storage_sd_card">SD-карта</string>
+    <string name="storage_internal">Внутренняя память</string>
+    <string name="storage_generic">Накопитель</string>
+    <string name="xserver_notification_channel_name">Bannerlator</string>
+    <string name="xserver_notification_channel_description">Сообщения XServer</string>
+    <string name="xserver_unnamed_window">Окно без имени</string>
+    <string name="splash_installing_system_files">Установка системных файлов</string>
+    <string name="splash_extracting_wine_prefix">Распаковка префикса Wine</string>
+    <string name="splash_setting_up_proton">Настройка Proton</string>
+    <string name="splash_configuring_runtime">Настройка среды выполнения</string>
+    <string name="splash_finalizing_setup">Завершение настройки</string>
+    <string name="splash_installation_complete">Установка завершена</string>
+    <string name="splash_version">V %1$s</string>
+    <string name="splash_proceed">Продолжить</string>
+    <string name="game_session_running_named">%1$s запущена — не смахивайте это уведомление</string>
+    <string name="game_session_running">Bannerlator работает — не завершайте его и не смахивайте это уведомление</string>
+    <string name="unpack_notification_channel">Распаковка</string>
+    <string name="unpack_notification_channel_description">Показывает ход распаковки архива и продолжает её в фоне</string>
+    <string name="unpack_notification_reading">Чтение %1$s…</string>
+    <string name="unpack_notification_eta"> · осталось %1$s</string>
+    <string name="unpack_notification_unpacking">Распаковка %1$s</string>
+    <string name="unpack_notification_done">Распаковано: %1$s</string>
+    <plurals name="unpack_notification_done_summary">
+        <item quantity="one">%1$d файл · %2$s за %3$s</item>
+        <item quantity="few">%1$d файла · %2$s за %3$s</item>
+        <item quantity="many">%1$d файлов · %2$s за %3$s</item>
+        <item quantity="other">%1$d файла · %2$s за %3$s</item>
+    </plurals>
+    <string name="unpack_notification_cancelled">Распаковка отменена</string>
+    <string name="unpack_notification_failed">Ошибка распаковки</string>
+    <string name="duration_hours_minutes">%1$d ч %2$d мин</string>
+    <string name="duration_minutes_seconds">%1$d мин %2$d с</string>
+    <string name="duration_seconds">%1$d с</string>
+    <string name="download_notification_channel">Загрузки</string>
+    <string name="download_notification_channel_description">Показывает ход загрузки игр и продолжает её в фоне</string>
+    <string name="download_notification_preparing">Подготовка…</string>
+    <plurals name="download_notification_count">
+        <item quantity="one">%1$d загрузка</item>
+        <item quantity="few">%1$d загрузки</item>
+        <item quantity="many">%1$d загрузок</item>
+        <item quantity="other">%1$d загрузки</item>
+    </plurals>
+    <string name="download_notification_downloading">Загрузка</string>
+    <string name="steam_notification_channel">Подключение к Steam</string>
+    <string name="steam_notification_channel_description">Поддерживает соединение со Steam при просмотре и загрузке игр</string>
+    <string name="steam_status_online">Steam: в сети</string>
+    <string name="steam_status_connecting">Подключение к Steam…</string>
+    <string name="steam_status_signed_in_elsewhere">Вход выполнен на другом устройстве</string>
+    <string name="steam_status_signed_out">Выход из учётной записи</string>
+    <string name="steam_status_offline">Не в сети</string>
+    <string name="steam_notification_downloading">Загрузка %1$s — %2$d%%%3$s</string>
+    <string name="steam_error_not_connected">Нет подключения к Steam</string>
+    <string name="steam_error_session_not_ready">Сеанс Steam не готов — войдите заново или повторите позже</string>
+    <string name="steam_error_game_not_found">Игра не найдена в базе данных</string>
+    <string name="steam_error_downloader_init_failed">Не удалось запустить модуль загрузки Steam</string>
+    <string name="steam_error_download_incomplete">Загрузка неполная (%1$s/%2$s) — повторите попытку</string>
+    <string name="steam_error_unknown">Не удалось загрузить игру из Steam</string>
+    <string name="download_speed_per_second">%1$s/с</string>
+    <string name="download_eta_less_than_minute">осталось &lt;1 мин</string>
+    <plurals name="download_eta_minutes">
+        <item quantity="one">осталась ~%1$d минута</item>
+        <item quantity="few">осталось ~%1$d минуты</item>
+        <item quantity="many">осталось ~%1$d минут</item>
+        <item quantity="other">осталось ~%1$d минуты</item>
+    </plurals>
+    <plurals name="download_eta_hours">
+        <item quantity="one">остался ~%1$d час</item>
+        <item quantity="few">осталось ~%1$d часа</item>
+        <item quantity="many">осталось ~%1$d часов</item>
+        <item quantity="other">осталось ~%1$d часа</item>
+    </plurals>
+    <string name="download_eta_hours_minutes">осталось ~%1$d ч %2$d мин</string>
+    <string name="update_no_download_available">Для этой сборки нет файла обновления</string>
+    <string name="update_allow_unknown_apps">Разрешите Bannerlator устанавливать приложения, затем снова нажмите «Обновить»</string>
+    <string name="update_download_failed">Не удалось загрузить обновление</string>
+    <string name="update_installer_failed">Не удалось открыть установщик</string>
+</resources>

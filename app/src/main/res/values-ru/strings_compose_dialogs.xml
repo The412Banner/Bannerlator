@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="preloader_cancel_launch">Отменить запуск</string>
+    <string name="preloader_failed_stage">Сбой · %1$s</string>
+    <string name="preloader_log_saved">Журнал сохранён в %1$s</string>
+    <string name="preloader_open_log_folder">Открыть папку журналов</string>
+    <string name="preloader_enable_logging_hint">Включите журналирование в разделе «Настройки → Журналы» и запустите игру снова, чтобы записать причину.</string>
+    <string name="controller_badge_new">НОВЫЙ</string>
+    <string name="controller_badge_share">P%1$d · общий</string>
+    <string name="controller_badge_ignored">Игнорируется</string>
+    <string name="controller_badge_detected">Обнаружен</string>
+    <string name="hud_diagnostics_saving">Сохранение диагностики HUD…</string>
+    <string name="hud_diagnostics_saved">Сохранено в «Загрузки» › %1$s</string>
+    <string name="hud_diagnostics_export_failed">Не удалось экспортировать диагностику.</string>
+    <string name="dialog_no_windows_open">Нет открытых окон</string>
+    <string name="dialog_controller_vibration">Вибрация контроллера</string>
+    <string name="dialog_no_log_output">В журнале пока нет записей.</string>
+    <string name="dialog_log_copied">Журнал скопирован</string>
+    <string name="dialog_pause">Приостановить</string>
+    <string name="dialog_resume">Продолжить</string>
+    <string name="dialog_process_count">Процессы: %1$d</string>
+    <string name="dialog_no_processes">Нет процессов</string>
+    <string name="dialog_pid_memory">PID %1$d · %2$s</string>
+    <string name="dialog_options">Параметры</string>
+    <string name="dialog_bring_to_front">На передний план</string>
+    <string name="dialog_end_process">Завершить процесс</string>
+</resources>

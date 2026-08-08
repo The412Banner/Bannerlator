@@ -7,9 +7,11 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.core.FileUtils
@@ -28,6 +30,9 @@ import java.util.Date
 import java.util.Locale
 
 class SavesViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val localizedContext: Context
+        get() = ContextCompat.getContextForLanguage(getApplication())
 
     private val _saves = MutableStateFlow<List<Save>>(emptyList())
     val saves: StateFlow<List<Save>> = _saves
@@ -52,7 +57,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 saveManager.addSave(title, path, container)
                 withContext(Dispatchers.Main) { refresh(); onDone(true, "") }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { onDone(false, e.message ?: "Failed to add save") }
+                withContext(Dispatchers.Main) { onDone(false, localizedContext.getString(R.string.saves_add_failed)) }
             }
         }
     }
@@ -63,7 +68,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 saveManager.updateSave(save, newTitle, save.path, save.container)
                 withContext(Dispatchers.Main) { refresh(); onDone(true, "") }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { onDone(false, e.message ?: "Failed to update save") }
+                withContext(Dispatchers.Main) { onDone(false, localizedContext.getString(R.string.saves_update_failed)) }
             }
         }
     }
@@ -74,7 +79,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 saveManager.transferSave(save, newContainer)
                 withContext(Dispatchers.Main) { refresh(); onDone(true, "") }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { onDone(false, e.message ?: "Transfer failed: ${e.message}") }
+                withContext(Dispatchers.Main) { onDone(false, localizedContext.getString(R.string.saves_transfer_failed)) }
             }
         }
     }
@@ -92,7 +97,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 if (!saveDirectory.exists() || !saveDirectory.isDirectory) {
                     withContext(Dispatchers.Main) {
                         _isLoading.value = false
-                        Toast.makeText(context, "Save directory is invalid.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, localizedContext.getString(R.string.saves_invalid_directory), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -100,7 +105,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 if (!saveJsonFile.exists()) {
                     withContext(Dispatchers.Main) {
                         _isLoading.value = false
-                        Toast.makeText(context, "Save .json file is missing.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, localizedContext.getString(R.string.saves_json_missing), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -125,7 +130,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
 
                 withContext(Dispatchers.Main) {
                     _isLoading.value = false
-                    Toast.makeText(context, "Save exported to ${exportFile.absolutePath}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, localizedContext.getString(R.string.saves_exported_to, exportFile.absolutePath), Toast.LENGTH_LONG).show()
                     if (shareAfterExport) {
                         val authority = context.packageName + ".tileprovider"
                         val fileUri = FileProvider.getUriForFile(context, authority, exportFile)
@@ -134,13 +139,13 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                             putExtra(Intent.EXTRA_STREAM, fileUri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share Save Archive"))
+                        context.startActivity(Intent.createChooser(shareIntent, localizedContext.getString(R.string.saves_share_archive)))
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     _isLoading.value = false
-                    Toast.makeText(context, "Failed to export save.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, localizedContext.getString(R.string.saves_export_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -157,7 +162,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 if (!TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, tempDir)) {
                     withContext(Dispatchers.Main) {
                         _isLoading.value = false
-                        onDone(false, "Failed to decompress archive.")
+                        onDone(false, localizedContext.getString(R.string.saves_decompress_failed))
                     }
                     return@launch
                 }
@@ -166,7 +171,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 if (extractedFiles == null || extractedFiles.size != 1 || !extractedFiles[0].isDirectory) {
                     withContext(Dispatchers.Main) {
                         _isLoading.value = false
-                        onDone(false, "Unexpected archive structure.")
+                        onDone(false, localizedContext.getString(R.string.saves_unexpected_archive))
                     }
                     return@launch
                 }
@@ -176,7 +181,7 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 if (jsonFiles == null || jsonFiles.size != 1) {
                     withContext(Dispatchers.Main) {
                         _isLoading.value = false
-                        onDone(false, "JSON file not found in the archive.")
+                        onDone(false, localizedContext.getString(R.string.saves_archive_json_missing))
                     }
                     return@launch
                 }
@@ -198,12 +203,12 @@ class SavesViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.Main) {
                     _isLoading.value = false
                     refresh()
-                    onDone(true, "Save imported successfully.")
+                    onDone(true, localizedContext.getString(R.string.saves_import_success))
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     _isLoading.value = false
-                    onDone(false, "Import failed: ${e.message}")
+                    onDone(false, localizedContext.getString(R.string.saves_import_failed))
                 }
             }
         }

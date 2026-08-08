@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Установка, ход загрузки и выбор исполняемого файла. -->
+    <string name="compose_amazon_game_detail_fetching">Получение данных…</string>
+    <string name="compose_amazon_game_detail_unknown_size">Неизвестно</string>
+    <string name="compose_amazon_game_detail_size_gb">%1$.1f ГБ</string>
+    <string name="compose_amazon_game_detail_size_mb">%1$.0f МБ</string>
+    <string name="compose_amazon_game_detail_install">Установить</string>
+    <string name="compose_amazon_game_detail_cancel">Отмена</string>
+    <string name="compose_amazon_game_detail_launch">Запустить</string>
+    <string name="compose_amazon_game_detail_set_executable">Выбрать .exe…</string>
+    <string name="compose_amazon_game_detail_uninstall">Удалить</string>
+    <string name="compose_amazon_game_detail_downloading">Загрузка…</string>
+    <string name="compose_amazon_game_detail_downloading_percent">Загрузка… %1$d%%</string>
+    <string name="compose_amazon_game_detail_progress_with_bytes">%1$d%%  (%2$s / %3$s)</string>
+    <string name="compose_amazon_game_detail_executable_label">.exe: %1$s</string>
+    <string name="compose_amazon_game_detail_login_required">Требуется вход в аккаунт</string>
+    <string name="compose_amazon_game_detail_download_failed">Не удалось загрузить игру</string>
+    <string name="compose_amazon_game_detail_no_executable_found">Исполняемый файл не найден</string>
+    <string name="compose_amazon_game_detail_error_with_message">Ошибка: %1$s</string>
+    <string name="compose_amazon_game_detail_no_exe_files_found">Файлы .exe не найдены</string>
+    <string name="compose_amazon_game_detail_executable_set">Выбран исполняемый файл: %1$s</string>
+    <string name="compose_amazon_game_detail_uninstalled">Игра «%1$s» удалена</string>
+    <string name="compose_amazon_game_detail_game_fallback">Игра</string>
+    <string name="compose_amazon_game_detail_no_exe_in_install_directory">В папке установки не найден файл .exe</string>
+    <string name="compose_amazon_game_detail_select_executable">Выберите исполняемый файл игры</string>
+    <string name="compose_amazon_game_detail_id_label">ID: %1$s</string>
+
+    <!-- Обновления. -->
+    <string name="compose_amazon_game_detail_updates">Обновления</string>
+    <string name="compose_amazon_game_detail_installed_version">Установлено: v%1$s…</string>
+    <string name="compose_amazon_game_detail_version_not_recorded">Версия не записана — нажмите «Проверить», чтобы уточнить</string>
+    <string name="compose_amazon_game_detail_install_first_for_updates">Чтобы проверить обновления, сначала установите игру.</string>
+    <string name="compose_amazon_game_detail_checking">Проверка…</string>
+    <string name="compose_amazon_game_detail_update_server_unreachable">Не удалось связаться с сервером обновлений.</string>
+    <string name="compose_amazon_game_detail_up_to_date">Установлена последняя версия ✓</string>
+    <string name="compose_amazon_game_detail_update_available">Доступно обновление!\nУстановлено: v%1$s… → Последняя версия: v%2$s…</string>
+    <string name="compose_amazon_game_detail_check_failed">Не удалось проверить обновления: %1$s</string>
+    <string name="compose_amazon_game_detail_update_now">Обновить сейчас</string>
+    <string name="compose_amazon_game_detail_check_for_updates">Проверить обновления</string>
+
+    <!-- DLC. Протокольные ключи и идентификаторы entitlement/product в коде не переводятся. -->
+    <string name="compose_amazon_game_detail_dlc">DLC</string>
+    <string name="compose_amazon_game_detail_dlc_read_error">Не удалось прочитать данные DLC</string>
+    <string name="compose_amazon_game_detail_no_dlc_owned">Для этой игры в вашей библиотеке нет DLC</string>
+    <plurals name="compose_amazon_game_detail_dlc_owned">
+        <item quantity="one">Доступно DLC: %1$d</item>
+        <item quantity="few">Доступно DLC: %1$d</item>
+        <item quantity="many">Доступно DLC: %1$d</item>
+        <item quantity="other">Доступно DLC: %1$d</item>
+    </plurals>
+    <string name="compose_amazon_game_detail_unknown_dlc">Неизвестное DLC</string>
+    <string name="compose_amazon_game_detail_installed_symbol">✓</string>
+    <string name="compose_amazon_game_detail_reinstall">Переустановить</string>
+    <string name="compose_amazon_game_detail_starting">Запуск установки…</string>
+</resources>

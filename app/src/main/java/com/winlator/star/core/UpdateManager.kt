@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.preference.PreferenceManager
 import com.winlator.star.BuildConfig
+import com.winlator.star.R
 import org.json.JSONObject
 import java.io.File
 
@@ -241,14 +242,14 @@ object UpdateManager {
     fun downloadAndInstall(activity: Activity, info: UpdateInfo, onDone: (Boolean) -> Unit) {
         val url = info.apkUrl
         if (url == null) {
-            AppUtils.showToast(activity, "No download available for this build")
+            AppUtils.showToast(activity, R.string.update_no_download_available)
             // Fall back to the release page so the user can grab it manually.
             openReleasesPage(activity)
             onDone(false)
             return
         }
         if (!canInstallPackages(activity)) {
-            AppUtils.showToast(activity, "Allow installing apps from Bannerlator, then tap Update again")
+            AppUtils.showToast(activity, R.string.update_allow_unknown_apps)
             requestInstallPermission(activity)
             onDone(false)
             return
@@ -256,7 +257,7 @@ object UpdateManager {
         val dir = File(activity.externalCacheDir, "update").apply { mkdirs() }
         val apk = File(dir, info.apkName ?: "Bannerlator-update.apk")
         HttpUtils.download(activity, url, apk) { ok ->
-            if (ok) install(activity, apk) else AppUtils.showToast(activity, "Update download failed")
+            if (ok) install(activity, apk) else AppUtils.showToast(activity, R.string.update_download_failed)
             onDone(ok)
         }
     }
@@ -271,7 +272,7 @@ object UpdateManager {
             }
             activity.startActivity(intent)
         } catch (e: Exception) {
-            AppUtils.showToast(activity, "Could not open installer")
+            AppUtils.showToast(activity, R.string.update_installer_failed)
             openReleasesPage(activity)
         }
     }

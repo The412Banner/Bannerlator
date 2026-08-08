@@ -21,12 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
 
 // Compact centered "Paused — tap to resume" indicator, shown whenever the guest is frozen (the
@@ -82,7 +84,7 @@ fun PauseBoxOverlay(state: XServerDialogState) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                "Paused — tap to resume",
+                stringResource(R.string.overlay_paused_tap_resume),
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold

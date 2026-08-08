@@ -36,7 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.components.Component
 import com.winlator.star.components.ComponentCatalog
 import com.winlator.star.components.ComponentExecInstaller
@@ -147,7 +149,11 @@ fun RecommendedComponentsSection(
                 is ComponentExecInstaller.Result.Launched -> { /* session launched; return target consumed after restart */ }
                 is ComponentExecInstaller.Result.Done -> { markInstalled(c.name); ComponentInstallReturn.clear(context) }
                 is ComponentExecInstaller.Result.Error -> {
-                    message = "Couldn't install ${c.name}: ${res.message}"
+                    message = context.getString(
+                        R.string.compose_content_component_install_failed_detail,
+                        c.name,
+                        res.message,
+                    )
                     ComponentInstallReturn.clear(context)
                 }
             }
@@ -160,7 +166,7 @@ fun RecommendedComponentsSection(
         // The prefix must exist first — at import time it usually doesn't. Gate here rather than let
         // the installer return a failure, so the message is actionable.
         if (!File(container.rootDir, ".wine").isDirectory) {
-            message = "Launch the game once first, then install its components from the game's settings."
+            message = context.getString(R.string.compose_content_launch_game_first)
             return
         }
         // Prefer the file-drop `_dll` variant when the catalog carries one (e.g. vcredist2010_dll): it
@@ -170,8 +176,11 @@ fun RecommendedComponentsSection(
         // (below), so the chip + `component_installs` prefs + PrefixInstalledDetector stay consistent.
         val target = catalog["${c.name}_dll"] ?: c
         // Same reason logic ComponentsSheet's row uses (exec-driver vs file-drop installer).
-        val reason = if (ComponentExecInstaller.handlesComponent(target)) ComponentExecInstaller.execBlockedReason(target)
-                     else ComponentInstaller.blockedReason(target)
+        val reason = if (ComponentExecInstaller.handlesComponent(target)) {
+            ComponentExecInstaller.execBlockedReason(context, target)
+        } else {
+            ComponentInstaller.blockedReason(context, target)
+        }
         if (reason != null) { message = reason; return }
         when {
             // Has an installer step → confirm (the container will open), then run a session. Only the
@@ -187,7 +196,13 @@ fun RecommendedComponentsSection(
                     }
                     installing = null
                     if (err == null) markInstalled(c.name)
-                    else message = "Couldn't install ${c.name}: $err"
+                    else {
+                        message = context.getString(
+                            R.string.compose_content_component_install_failed_detail,
+                            c.name,
+                            err,
+                        )
+                    }
                 }
             }
         }
@@ -198,7 +213,11 @@ fun RecommendedComponentsSection(
             onDismissRequest = { message = null },
             containerColor = cs.surfaceContainerHigh,
             text = { Text(m, color = cs.onSurface) },
-            confirmButton = { TextButton(onClick = { message = null }) { Text("OK") } },
+            confirmButton = {
+                TextButton(onClick = { message = null }) {
+                    Text(stringResource(R.string.compose_content_ok))
+                }
+            },
         )
     }
 
@@ -206,19 +225,28 @@ fun RecommendedComponentsSection(
         OutlinedAlertDialog(
             onDismissRequest = { confirmExec = null },
             containerColor = cs.surfaceContainerHigh,
-            title = { Text("Install ${c.name}", color = cs.onSurface) },
+            title = {
+                Text(
+                    stringResource(R.string.compose_content_install_component_title, c.name),
+                    color = cs.onSurface,
+                )
+            },
             text = {
                 Text(
-                    "This installs ${c.name} into this game's container (shared by every shortcut on it). " +
-                        "The container opens to a Windows desktop and runs the installer — click through the " +
-                        "installer window, then close the container to finish. You'll return here afterward.",
+                    stringResource(R.string.compose_content_install_component_description, c.name),
                     color = cs.onSurface,
                 )
             },
             confirmButton = {
-                TextButton(onClick = { val comp = c; confirmExec = null; runExecInstall(comp) }) { Text("Continue") }
+                TextButton(onClick = { val comp = c; confirmExec = null; runExecInstall(comp) }) {
+                    Text(stringResource(R.string.compose_content_continue))
+                }
             },
-            dismissButton = { TextButton(onClick = { confirmExec = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { confirmExec = null }) {
+                    Text(stringResource(R.string.compose_content_cancel))
+                }
+            },
         )
     }
 
@@ -232,7 +260,7 @@ fun RecommendedComponentsSection(
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
             Text(
-                "Looking for recommended components…",
+                stringResource(R.string.compose_content_looking_for_recommended_components),
                 style = MaterialTheme.typography.bodySmall,
                 color = cs.onSurfaceVariant,
             )
@@ -253,29 +281,29 @@ fun RecommendedComponentsSection(
     Column(modifier = modifier.fillMaxWidth()) {
         if (bundled.isNotEmpty() && shipped.isNotEmpty()) {
             RecommendedChipGroup(
-                title = "Recommended",
-                subtitle = "Redistributables this game bundles.",
+                title = stringResource(R.string.compose_content_recommended),
+                subtitle = stringResource(R.string.compose_content_recommended_subtitle),
                 recs = bundled, catalog = catalog, installed = installed, installing = installing,
                 cs = cs, onChipTap = ::onChipTap,
             )
             Spacer(Modifier.height(12.dp))
             RecommendedChipGroup(
-                title = "Optional",
-                subtitle = "Ships with the game — install only if it misbehaves.",
+                title = stringResource(R.string.compose_content_optional),
+                subtitle = stringResource(R.string.compose_content_optional_subtitle),
                 recs = shipped, catalog = catalog, installed = installed, installing = installing,
                 cs = cs, onChipTap = ::onChipTap,
             )
         } else if (shipped.isNotEmpty()) {
             RecommendedChipGroup(
-                title = "Optional components",
-                subtitle = "Ships with the game — install only if it misbehaves.",
+                title = stringResource(R.string.compose_content_optional_components),
+                subtitle = stringResource(R.string.compose_content_optional_subtitle),
                 recs = shipped, catalog = catalog, installed = installed, installing = installing,
                 cs = cs, onChipTap = ::onChipTap,
             )
         } else {
             RecommendedChipGroup(
-                title = "Recommended components",
-                subtitle = "Redistributables this game bundles — tap to install into its container.",
+                title = stringResource(R.string.compose_content_recommended_components),
+                subtitle = stringResource(R.string.compose_content_recommended_tap_subtitle),
                 recs = bundled, catalog = catalog, installed = installed, installing = installing,
                 cs = cs, onChipTap = ::onChipTap,
             )
@@ -316,11 +344,13 @@ private fun RecommendedChipGroup(
                                 modifier = Modifier.size(16.dp), strokeWidth = 2.dp,
                             )
                             isInstalled -> Icon(
-                                Icons.Filled.CheckCircle, contentDescription = "Installed",
+                                Icons.Filled.CheckCircle,
+                                contentDescription = stringResource(R.string.compose_content_installed),
                                 modifier = Modifier.size(18.dp),
                             )
                             else -> Icon(
-                                Icons.Filled.Download, contentDescription = "Install",
+                                Icons.Filled.Download,
+                                contentDescription = stringResource(R.string.compose_content_install),
                                 modifier = Modifier.size(18.dp),
                             )
                         }

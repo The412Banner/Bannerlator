@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <group android:id="@+id/group_emulation" android:checkableBehavior="single">
-        <item android:title="Emulation">
+        <item android:title="@string/menu_emulation">
             <menu>
                 <item
                     android:id="@+id/main_menu_shortcuts"
@@ -23,7 +23,7 @@
     </group>
 
     <group android:id="@+id/group_tools">
-        <item android:title="Tools">
+        <item android:title="@string/menu_tools">
             <menu>
                 <item
                     android:id="@+id/main_menu_input_controls"
@@ -46,7 +46,7 @@
     </group>
 
     <group android:id="@+id/group_stores">
-        <item android:title="Game Stores">
+        <item android:title="@string/menu_game_stores">
             <menu>
                 <item
                     android:id="@+id/main_menu_gog"
@@ -69,7 +69,7 @@
     </group>
 
     <group android:id="@+id/group_about">
-        <item android:title="About And Support">
+        <item android:title="@string/menu_about_support">
             <menu>
                 <item
                     android:id="@+id/main_menu_about"

@@ -29,6 +29,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.google.android.material.tabs.TabLayout;
 import com.winlator.star.R;
@@ -131,7 +132,7 @@ public abstract class AppUtils {
     }
 
     public static Toast showToast(Context context, int textResId) {
-        return showToast(context, context.getString(textResId));
+        return showToast(context, ContextCompat.getString(context, textResId));
     }
 
     public static Toast showToast(final Context context, final String text) {

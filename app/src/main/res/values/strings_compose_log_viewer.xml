@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="log_viewer_app_crash_logs">App &amp; crash logs</string>
+    <string name="log_viewer_close">Close</string>
+    <string name="log_viewer_folder_empty">This folder has no log files right now.</string>
+    <string name="log_viewer_current">Current</string>
+    <string name="log_viewer_following">following</string>
+    <string name="log_viewer_follow">follow</string>
+    <string name="log_viewer_find_placeholder">Find in this log…</string>
+    <plurals name="log_viewer_line_count">
+        <item quantity="one">%1$d line</item>
+        <item quantity="other">%1$d lines</item>
+    </plurals>
+    <string name="log_viewer_close_search">Close search</string>
+    <string name="log_viewer_log_empty">This log is empty.</string>
+    <string name="log_viewer_no_lines_match">No lines match \"%1$s\".</string>
+    <string name="log_viewer_showing_tail">… showing the last %1$s of %2$s</string>
+    <string name="log_viewer_wrap">Wrap</string>
+    <string name="log_viewer_find">Find</string>
+    <string name="log_viewer_copy">Copy</string>
+    <plurals name="log_viewer_copied_lines">
+        <item quantity="one">Copied %1$d line</item>
+        <item quantity="other">Copied %1$d lines</item>
+    </plurals>
+    <string name="log_viewer_share">Share</string>
+    <string name="log_viewer_report_problem">Report a problem</string>
+    <string name="log_viewer_what_went_wrong">What went wrong?</string>
+    <string name="log_viewer_optional_details">Any detail that helps (optional)</string>
+    <string name="log_viewer_will_be_attached">Will be attached</string>
+    <string name="log_viewer_include_app_logs">Also include app logcat and crash reports</string>
+    <string name="log_viewer_report_privacy_note">Saved as a ZIP in Downloads. E-mail addresses, auth tokens, and your Steam account name are removed. File paths are kept for debugging, so check them if a folder name identifies you. GitHub cannot receive a file from a link; attach the ZIP with 📎 after the form opens.</string>
+    <string name="log_viewer_report_build_failed">Couldn\'t build the report.</string>
+    <string name="log_viewer_saved_to_downloads">Saved %1$s to Downloads</string>
+    <string name="log_viewer_no_browser">No browser is available to open GitHub.</string>
+    <string name="log_viewer_working">Working…</string>
+    <string name="log_viewer_continue_github">Continue on GitHub</string>
+    <string name="log_viewer_cancel">Cancel</string>
+    <string name="log_viewer_earlier">earlier</string>
+    <string name="log_viewer_just_now">just now</string>
+    <plurals name="log_viewer_minutes_ago">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="log_viewer_hours_ago">
+        <item quantity="one">%1$d hr ago</item>
+        <item quantity="other">%1$d hr ago</item>
+    </plurals>
+    <string name="log_viewer_yesterday">yesterday</string>
+    <string name="log_viewer_read_failed">Could not read this file: %1$s</string>
+    <string name="log_viewer_share_log">Share log</string>
+    <string name="log_viewer_share_one_failed">Couldn\'t share that log.</string>
+    <string name="log_viewer_nothing_to_share">Nothing to share yet.</string>
+    <string name="log_viewer_share_logs">Share logs</string>
+    <string name="log_viewer_share_many_failed">Couldn\'t share those logs.</string>
+</resources>

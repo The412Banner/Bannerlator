@@ -4,65 +4,65 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/sort_shortcuts"
-        android:title="Name"
+        android:title="@string/name"
         android:icon="@drawable/icon_sort"
         app:showAsAction="always|withText">
         <menu>
             <item
                 android:id="@+id/search_shortcut"
                 android:icon="@drawable/icon_magnifier"
-                android:title="Search" />
+                android:title="@string/search" />
             <item
                 android:id="@+id/sort_by_name"
-                android:title="By Name" />
+                android:title="@string/sort_by_name" />
             <item
                 android:id="@+id/sort_by_con_id"
-                android:title="By Container ID" />
+                android:title="@string/sort_by_container_id" />
             <item
                 android:id="@+id/sort_by_path"
-                android:title="By Path" />
+                android:title="@string/sort_by_path" />
             <item
                 android:id="@+id/sort_by_playtime"
-                android:title="By Playtime" />
+                android:title="@string/sort_by_playtime" />
             <item
                 android:id="@+id/sort_by_play_count"
-                android:title="By Play Count" />
+                android:title="@string/sort_by_play_count" />
             <item
                 android:id="@+id/sort_by_play_date"
-                android:title="By Last Play Date" />
+                android:title="@string/sort_by_last_play_date" />
             <item
                 android:id="@+id/sort_by_newest"
-                android:title="By Newest" />
+                android:title="@string/sort_by_newest" />
             <item
                 android:id="@+id/sort_by_oldest"
-                android:title="By Oldest" />
+                android:title="@string/sort_by_oldest" />
         </menu>
     </item>
     <item
         android:id="@+id/add_shortcuts"
-        android:title="Add Shortcuts"
+        android:title="@string/add_shortcuts"
         android:icon="@drawable/icon_action_bar_add"
         android:color="#FFFFFF"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/change_layout"
-        android:title="Change Layout"
+        android:title="@string/change_layout"
         android:icon="@drawable/icon_reset"
         android:color="#000000"
         app:showAsAction="ifRoom">
         <menu>
             <item
                 android:id="@+id/layout_grid_small"
-                android:title="Grid Layout (Small)" />
+                android:title="@string/grid_layout_small" />
             <item
                 android:id="@+id/layout_grid_big"
-                android:title="Grid Layout (Big)" />
+                android:title="@string/grid_layout_big" />
             <item
                 android:id="@+id/layout_list_small"
-                android:title="List Layout (Small)" />
+                android:title="@string/list_layout_small" />
             <item
                 android:id="@+id/layout_list_big"
-                android:title="List Layout (Big)" />
+                android:title="@string/list_layout_big" />
         </menu>
     </item>
 </menu>

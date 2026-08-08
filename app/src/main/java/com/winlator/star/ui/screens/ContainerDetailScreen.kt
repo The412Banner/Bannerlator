@@ -146,8 +146,10 @@ fun ContainerDetailScreen(
                         viewModel.selectedTab = tabTitles.indexOf("DRIVES")
                         Toast.makeText(
                             context,
-                            "Two drives share " + duplicates.sorted().joinToString(", ") { "$it:" } +
-                                " — give each drive its own letter",
+                            context.getString(
+                                R.string.compose_containers_duplicate_drive_letters,
+                                duplicates.sorted().joinToString(", ") { "$it:" },
+                            ),
                             Toast.LENGTH_LONG,
                         ).show()
                     } else if (!viewModel.isSaving) viewModel.confirm(
@@ -166,7 +168,10 @@ fun ContainerDetailScreen(
                 else
                     MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Check, contentDescription = "Confirm")
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = stringResource(R.string.compose_containers_confirm_description),
+                )
             }
         }
     ) { padding ->
@@ -179,12 +184,12 @@ fun ContainerDetailScreen(
 
         val activeTab = tabTitles.getOrNull(viewModel.selectedTab) ?: "GENERAL"
         val screenTitle = when {
-            viewModel.defaultsMode -> "New Container Defaults"
-            containerId <= 0 -> "New Container"
-            else -> "Edit Container"
+            viewModel.defaultsMode -> stringResource(R.string.compose_containers_new_defaults_title)
+            containerId <= 0 -> stringResource(R.string.compose_containers_new_title)
+            else -> stringResource(R.string.compose_containers_edit_title)
         }
         val railLinks = buildList {
-            add(RailLink("What is all this?", Icons.Filled.Help) { glossaryQuery = "" })
+            add(RailLink(stringResource(R.string.compose_containers_what_is_all_this), Icons.Filled.Help) { glossaryQuery = "" })
             if (viewModel.defaultsMode) {
                 add(RailLink(stringResource(R.string.reset_to_app_defaults), Icons.Filled.Restore) { viewModel.resetDefaults() })
             }
@@ -268,7 +273,7 @@ fun ContainerDetailScreen(
                         RailSection(
                             header = null,
                             items = tabTitles.mapIndexed { index, tab ->
-                                RailItem(tab, tabIcon(tab), index == viewModel.selectedTab) { viewModel.selectedTab = index }
+                                RailItem(containerTabLabel(tab), tabIcon(tab), index == viewModel.selectedTab) { viewModel.selectedTab = index }
                             },
                         )
                     ),
@@ -280,7 +285,7 @@ fun ContainerDetailScreen(
                     // content (mockup: "ctxhdr") — the user never loses their place.
                     if (railCollapsed) {
                         Text(
-                            activeTab,
+                            containerTabLabel(activeTab),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -446,9 +451,19 @@ private fun tabIcon(title: String): ImageVector = when (title) {
 
 /** Abbreviates the two long tab titles so the portrait top bar stays tidy (mirrors the rail's
  *  collapsed labels). */
-private fun topTabLabel(title: String): String = when (title) {
-    "ENVIROMENT" -> "ENVIRON"
-    "WIN COMPONENTS" -> "WIN COMP"
+@Composable
+private fun containerTabLabel(title: String, short: Boolean = false): String = when (title) {
+    "GENERAL" -> stringResource(R.string.compose_containers_tab_general)
+    "ENVIROMENT" -> stringResource(
+        if (short) R.string.compose_containers_tab_environment_short
+        else R.string.compose_containers_tab_environment
+    )
+    "DRIVES" -> stringResource(R.string.compose_containers_tab_drives)
+    "WIN COMPONENTS" -> stringResource(
+        if (short) R.string.compose_containers_tab_windows_components_short
+        else R.string.compose_containers_tab_windows_components
+    )
+    "ADVANCED" -> stringResource(R.string.compose_containers_tab_advanced)
     else -> title
 }
 
@@ -476,7 +491,7 @@ private fun ContainerTopTabs(
                 val active = index == selected
                 TopCell(
                     icon = tabIcon(tab),
-                    label = topTabLabel(tab),
+                    label = containerTabLabel(tab, short = true),
                     tint = if (active) MaterialTheme.colorScheme.primary
                            else MaterialTheme.colorScheme.onSurfaceVariant,
                     highlight = active,
@@ -553,8 +568,11 @@ private fun TopCell(
 }
 
 /** Short label for the top-bar action buttons — only Help + Restore ever appear there. */
-private fun topActionLabel(icon: ImageVector): String =
-    if (icon == Icons.Filled.Restore) "RESET" else "HELP"
+@Composable
+private fun topActionLabel(icon: ImageVector): String = stringResource(
+    if (icon == Icons.Filled.Restore) R.string.compose_containers_action_reset_short
+    else R.string.compose_containers_action_help_short
+)
 
 @Composable
 internal fun VulkanSettingsDialog(
@@ -602,7 +620,11 @@ internal fun VulkanSettingsDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.renderer_native), Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_renderer_native }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     Switch(checked = nativeRender, onCheckedChange = { nativeRender = it })
                 }
@@ -626,7 +648,11 @@ internal fun VulkanSettingsDialog(
                         modifier = (if (nativeRender) Modifier.alpha(0.5f) else Modifier).weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.renderer_present_mode_help_content }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 // FG temporarily forces Mailbox; caption the field so FIFO-while-FG-selected isn't confusing.
@@ -665,7 +691,11 @@ internal fun VulkanSettingsDialog(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_renderer_colors }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 // NOTE: "Correct SurfaceFlinger colours" (sfCompatMode) is NOT shown here — this
@@ -728,7 +758,7 @@ private fun TopLevelFields(
             selectedOption = viewModel.selectedScreenSize,
             onSelect = { viewModel.selectedScreenSize = it }
         )
-        if (viewModel.selectedScreenSize.equals("custom", ignoreCase = true)) {
+        if (viewModel.selectedScreenSize == viewModel.customScreenLabel) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = viewModel.customWidth,
@@ -758,7 +788,7 @@ private fun TopLevelFields(
             val archLabels = listOf("x86-64", "arm64ec")
             val archIdx = archValues.indexOf(viewModel.defaultsArch).coerceAtLeast(0)
             LabeledDropdown(
-                label = "Architecture",
+                label = stringResource(R.string.compose_containers_architecture),
                 options = archLabels,
                 selectedOption = archLabels[archIdx],
                 onSelect = { viewModel.selectDefaultsArch(archValues[archLabels.indexOf(it)]) }
@@ -775,7 +805,11 @@ private fun TopLevelFields(
                 )
                 ContentInstallGear(onDownloadFile = onShowWineDownloadSheet)
                 IconButton(onClick = { helpRes = R.string.help_wine_version }) {
-                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.Help,
+                        contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }
@@ -792,7 +826,11 @@ private fun TopLevelFields(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = { helpRes = R.string.help_graphics_driver }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Help,
+                    contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                    modifier = Modifier.size(18.dp),
+                )
             }
             IconButton(onClick = { showWrapperManager = true }) {
                 Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.wrapper_manager_open))
@@ -845,7 +883,11 @@ private fun TopLevelFields(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = { helpRes = R.string.help_renderer }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Help,
+                    contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                    modifier = Modifier.size(18.dp),
+                )
             }
             if (viewModel.selectedRenderer == "Vulkan") {
                 IconButton(onClick = onShowVulkanConfig) {
@@ -875,7 +917,11 @@ private fun TopLevelFields(
                     )
                 }
                 IconButton(onClick = { helpRes = R.string.help_renderer_sf_compat }) {
-                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.Help,
+                        contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
                 Switch(
                     checked = viewModel.rendererSfCompatMode,
@@ -890,10 +936,15 @@ private fun TopLevelFields(
         // quality downscale. "1.0" = Off.
         run {
             val renderScaleValues = listOf("1.0", "1.25", "1.5", "2.0")
-            val renderScaleLabels = listOf("Off", "1.25x", "1.5x", "2x")
+            val renderScaleLabels = listOf(
+                stringResource(R.string.compose_containers_off),
+                "1.25x",
+                "1.5x",
+                "2x",
+            )
             val rsIdx = renderScaleValues.indexOf(viewModel.renderScale).coerceAtLeast(0)
             LabeledDropdown(
-                label = "Render scale (supersampling)",
+                label = stringResource(R.string.compose_containers_render_scale),
                 options = renderScaleLabels,
                 selectedOption = renderScaleLabels[rsIdx],
                 onSelect = { viewModel.renderScale = renderScaleValues[renderScaleLabels.indexOf(it)] }
@@ -909,7 +960,7 @@ private fun TopLevelFields(
                 onCheckedChange = { viewModel.autoCloseOnExit = it }
             )
             Spacer(Modifier.width(8.dp))
-            Text("Close when game exits")
+            Text(stringResource(R.string.compose_containers_close_when_game_exits))
         }
         Spacer(Modifier.height(8.dp))
 
@@ -923,7 +974,11 @@ private fun TopLevelFields(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = { helpRes = R.string.help_audio_driver }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Help,
+                    contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -931,7 +986,7 @@ private fun TopLevelFields(
         // Emulator (arm64ec only)
         if (viewModel.isArm64EC) {
             LabeledDropdown(
-                label = "Emulator",
+                label = stringResource(R.string.compose_containers_emulator),
                 options = viewModel.emulatorEntries,
                 selectedOption = viewModel.selectedEmulator,
                 enabled = viewModel.emulatorEnabled,
@@ -1012,7 +1067,11 @@ private fun TopLevelFields(
                 modifier = (if (!fgVulkan) Modifier.alpha(0.5f) else Modifier).weight(1f)
             )
             IconButton(onClick = { helpRes = R.string.help_frame_generation }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Help,
+                    contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
         if (!fgVulkan) {
@@ -1112,7 +1171,11 @@ private fun TopLevelFields(
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.fps_limiter), modifier = Modifier.weight(1f))
             IconButton(onClick = { helpRes = R.string.help_fps_limiter }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Help,
+                    contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
         if (viewModel.fpsLimiterEnabled) {
@@ -1164,7 +1227,7 @@ private fun TopLevelFields(
                     selected = viewModel.manualRefreshRate == 0,
                     enabled = manualEnabled,
                     onClick = { viewModel.manualRefreshRate = 0 },
-                    label = { Text("Off") },
+                    label = { Text(stringResource(R.string.compose_containers_off)) },
                     modifier = Modifier.padding(end = 6.dp)
                 )
                 supportedRates.forEach { rate ->
@@ -1198,7 +1261,9 @@ private fun TopLevelFields(
             val ratesAbove60 = supportedRates.filter { it > 60 }
             // value model: -1 = Locked, 0 = Unlimited, N = cap N
             val rrOptionValues = listOf(-1, 0) + ratesAbove60
-            val rrOptionLabels = listOf(lockedLabel, unlimitedLabel) + ratesAbove60.map { "$it Hz" }
+            val rrOptionLabels = listOf(lockedLabel, unlimitedLabel) + ratesAbove60.map {
+                stringResource(R.string.compose_containers_refresh_rate_hz, it)
+            }
             val rrCurrentValue = if (!viewModel.unlockGameRefreshRate) -1 else viewModel.maxGameRefreshRate
             val rrIdx = rrOptionValues.indexOf(rrCurrentValue).let { if (it >= 0) it else 1 } // fall back to Unlimited
             LabeledDropdown(
@@ -1278,25 +1343,33 @@ private fun WineConfigTab(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
         // Desktop section
-        SectionBox(title = "Desktop") {
+        SectionBox(title = stringResource(R.string.compose_containers_desktop)) {
+            val desktopThemeOptions = listOf(
+                stringResource(R.string.compose_containers_theme_light),
+                stringResource(R.string.compose_containers_theme_dark),
+            )
             LabeledDropdown(
                 label = stringResource(R.string.theme),
-                options = listOf("Light", "Dark"),
-                selectedOption = listOf("Light", "Dark").getOrElse(viewModel.desktopThemeIndex) { "Light" },
-                onSelect = { opt -> viewModel.desktopThemeIndex = listOf("Light", "Dark").indexOf(opt).coerceAtLeast(0) }
+                options = desktopThemeOptions,
+                selectedOption = desktopThemeOptions.getOrElse(viewModel.desktopThemeIndex) { desktopThemeOptions[0] },
+                onSelect = { opt -> viewModel.desktopThemeIndex = desktopThemeOptions.indexOf(opt).coerceAtLeast(0) }
             )
             Spacer(Modifier.height(8.dp))
+            val backgroundOptions = listOf(
+                stringResource(R.string.compose_containers_background_image),
+                stringResource(R.string.compose_containers_background_solid_color),
+            )
             LabeledDropdown(
                 label = stringResource(R.string.background),
-                options = listOf("Image", "Solid Color"),
-                selectedOption = listOf("Image", "Solid Color").getOrElse(viewModel.desktopBgTypeIndex) { "Image" },
-                onSelect = { opt -> viewModel.desktopBgTypeIndex = listOf("Image", "Solid Color").indexOf(opt).coerceAtLeast(0) }
+                options = backgroundOptions,
+                selectedOption = backgroundOptions.getOrElse(viewModel.desktopBgTypeIndex) { backgroundOptions[0] },
+                onSelect = { opt -> viewModel.desktopBgTypeIndex = backgroundOptions.indexOf(opt).coerceAtLeast(0) }
             )
             // Color picker (visible when Solid Color selected)
             if (viewModel.desktopBgTypeIndex == WineThemeManager.BackgroundType.COLOR.ordinal) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Background Color", modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.compose_containers_background_color), modifier = Modifier.weight(1f))
                     AndroidView(
                         factory = { ctx ->
                             ColorPickerView(ctx).also { cpv ->
@@ -1317,7 +1390,10 @@ private fun WineConfigTab(
             if (viewModel.desktopBgTypeIndex == WineThemeManager.BackgroundType.IMAGE.ordinal) {
                 val context = LocalContext.current
                 val ioScope = rememberCoroutineScope()
-                val scopeOptions = listOf("All containers", "This container")
+                val scopeOptions = listOf(
+                    stringResource(R.string.compose_containers_wallpaper_scope_all),
+                    stringResource(R.string.compose_containers_wallpaper_scope_this),
+                )
                 val currentScope = WineThemeManager.BackgroundScope.values()
                     .getOrElse(viewModel.desktopWallpaperScopeIndex) { WineThemeManager.BackgroundScope.GLOBAL }
                 // File depends on the selected scope; getNextContainerId() is O(1) so recomputing
@@ -1366,14 +1442,14 @@ private fun WineConfigTab(
 
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown(
-                    label = "Apply wallpaper to",
+                    label = stringResource(R.string.compose_containers_apply_wallpaper_to),
                     options = scopeOptions,
                     selectedOption = scopeOptions.getOrElse(viewModel.desktopWallpaperScopeIndex) { scopeOptions[0] },
                     onSelect = { opt -> viewModel.desktopWallpaperScopeIndex = scopeOptions.indexOf(opt).coerceAtLeast(0) }
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Wallpaper Image", modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.compose_containers_wallpaper_image), modifier = Modifier.weight(1f))
                     preview?.let { img ->
                         Image(
                             bitmap = img,
@@ -1387,16 +1463,25 @@ private fun WineConfigTab(
                     }
                     Box {
                         OutlinedButton(onClick = { showWallpaperMenu = true }) {
-                            Text(if (preview != null) "Change" else "Browse")
+                            Text(
+                                stringResource(
+                                    if (preview != null) R.string.compose_containers_change
+                                    else R.string.compose_containers_browse
+                                )
+                            )
                         }
                         DropdownMenu(expanded = showWallpaperMenu, onDismissRequest = { showWallpaperMenu = false }) {
-                            DropdownMenuItem(text = { Text("Browse files") }, onClick = {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.compose_containers_browse_files)) }, onClick = {
                                 showWallpaperMenu = false
                                 pickWallpaperInAppLauncher.launch(
-                                    InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select wallpaper")
+                                    InAppFilePicker.buildIntent(
+                                        context,
+                                        InAppFilePicker.IMAGES,
+                                        context.getString(R.string.compose_containers_select_wallpaper),
+                                    )
                                 )
                             })
-                            DropdownMenuItem(text = { Text("Pick via system…") }, onClick = {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.compose_containers_pick_via_system)) }, onClick = {
                                 showWallpaperMenu = false
                                 pickWallpaperLauncher.launch("image/*")
                             })
@@ -1407,7 +1492,7 @@ private fun WineConfigTab(
         }
 
         // DirectInput section
-        SectionBox(title = "DirectInput") {
+        SectionBox(title = stringResource(R.string.compose_containers_directinput)) {
             LabeledDropdown(
                 label = stringResource(R.string.mouse_warp_override),
                 options = viewModel.mouseWarpEntries,
@@ -1419,12 +1504,12 @@ private fun WineConfigTab(
         // System section — "Run as administrator" (default ON) toggles UAC in the prefix. Backed by
         // EnableLUA in .wine/system.reg (source of truth): the VM reads it on load and writes it on
         // save/create (mirrors the DirectInput mouse-warp registry idiom above).
-        SectionBox(title = "System") {
+        SectionBox(title = stringResource(R.string.compose_containers_system)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Run as administrator")
+                    Text(stringResource(R.string.compose_containers_run_as_administrator))
                     Text(
-                        "Disables UAC so everything runs elevated (helps installers/tools that require admin)",
+                        stringResource(R.string.compose_containers_run_as_administrator_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1452,9 +1537,9 @@ private fun WinComponentsTab(viewModel: ContainerDetailViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // Components installer (only for an existing container with a Wine prefix).
         if (viewModel.container != null) {
-            SectionBox(title = "Components") {
+            SectionBox(title = stringResource(R.string.compose_containers_components)) {
                 Text(
-                    "Install Wine dependencies — mono, gecko, .NET, VC++ runtimes, DirectX libraries, fonts and more.",
+                    stringResource(R.string.compose_containers_components_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1462,12 +1547,12 @@ private fun WinComponentsTab(viewModel: ContainerDetailViewModel) {
                 OutlinedButton(onClick = { showComponentsSheet = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.CloudDownload, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Browse & install components")
+                    Text(stringResource(R.string.compose_containers_browse_install_components))
                 }
             }
         }
         if (directxItems.isNotEmpty()) {
-            SectionBox(title = "DirectX") {
+            SectionBox(title = stringResource(R.string.compose_containers_directx)) {
                 directxItems.forEach { comp ->
                     WinComponentRow(comp) { idx ->
                         val i = viewModel.winComponents.indexOfFirst { it.key == comp.key }
@@ -1477,7 +1562,7 @@ private fun WinComponentsTab(viewModel: ContainerDetailViewModel) {
             }
         }
         if (generalItems.isNotEmpty()) {
-            SectionBox(title = "General") {
+            SectionBox(title = stringResource(R.string.compose_containers_general)) {
                 generalItems.forEach { comp ->
                     WinComponentRow(comp) { idx ->
                         val i = viewModel.winComponents.indexOfFirst { it.key == comp.key }
@@ -1497,7 +1582,10 @@ private fun WinComponentsTab(viewModel: ContainerDetailViewModel) {
 
 @Composable
 private fun WinComponentRow(comp: WinComponentEntry, onSelect: (Int) -> Unit) {
-    val options = listOf("Builtin (Wine)", "Native (Windows)")
+    val options = listOf(
+        stringResource(R.string.compose_containers_component_builtin_wine),
+        stringResource(R.string.compose_containers_component_native_windows),
+    )
     LabeledDropdown(
         label = comp.label,
         options = options,
@@ -1560,7 +1648,10 @@ private fun DrivesTab(viewModel: ContainerDetailViewModel) {
                     dirPickerLauncher.launch(
                         InAppFilePicker.buildDirIntent(
                             context,
-                            title = "Select folder for drive ${drive.letter}:",
+                            title = context.getString(
+                                R.string.compose_containers_select_drive_folder,
+                                drive.letter,
+                            ),
                             initialDir = drive.path.takeIf { it.isNotBlank() && File(it).isDirectory },
                         )
                     )
@@ -1570,8 +1661,10 @@ private fun DrivesTab(viewModel: ContainerDetailViewModel) {
         }
         if (duplicateLetters.isNotEmpty()) {
             Text(
-                "Each drive needs its own letter. Duplicated: " +
+                stringResource(
+                    R.string.compose_containers_duplicate_drives_warning,
                     duplicateLetters.sorted().joinToString(", ") { "$it:" },
+                ),
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -1584,7 +1677,7 @@ private fun DrivesTab(viewModel: ContainerDetailViewModel) {
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(4.dp))
-            Text(stringResource(R.string.add) + " " + stringResource(R.string.drives))
+            Text(stringResource(R.string.compose_containers_add_drive))
         }
     }
 }
@@ -1618,7 +1711,7 @@ private fun DriveRow(
             onValueChange = onPathChange,
             modifier = Modifier.weight(1f),
             singleLine = true,
-            label = { Text("Path") }
+            label = { Text(stringResource(R.string.compose_containers_path)) }
         )
         IconButton(onClick = onBrowse) {
             Icon(Icons.Default.FolderOpen, contentDescription = null)
@@ -1659,7 +1752,7 @@ private fun AdvancedTab(
         SectionBox(title = emulatorLabel) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 LabeledDropdown(
-                    label = "$emulatorLabel Version",
+                    label = stringResource(R.string.compose_containers_technology_version, emulatorLabel),
                     options = viewModel.box64VersionEntries,
                     selectedOption = viewModel.selectedBox64Version,
                     onSelect = { viewModel.selectedBox64Version = it },
@@ -1669,7 +1762,7 @@ private fun AdvancedTab(
             }
             Spacer(Modifier.height(8.dp))
             LabeledDropdown(
-                label = "$emulatorLabel Preset",
+                label = stringResource(R.string.compose_containers_technology_preset, emulatorLabel),
                 options = viewModel.box64PresetEntries,
                 selectedOption = viewModel.box64PresetEntries.getOrElse(viewModel.selectedBox64PresetIndex) { "" },
                 onSelect = { opt -> viewModel.selectedBox64PresetIndex = viewModel.box64PresetEntries.indexOf(opt).coerceAtLeast(0) }
@@ -1678,7 +1771,7 @@ private fun AdvancedTab(
 
         // FEXCore section (arm64ec only)
         if (viewModel.isArm64EC) {
-            SectionBox(title = "FEXCore") {
+            SectionBox(title = stringResource(R.string.compose_containers_fexcore)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     LabeledDropdown(
                         label = stringResource(R.string.fexcore_version),
@@ -1688,7 +1781,11 @@ private fun AdvancedTab(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_fexcore_version }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     ContentInstallGear(onDownloadFile = onShowFexCoreDownloadSheet)
                 }
@@ -1702,7 +1799,11 @@ private fun AdvancedTab(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_fexcore_preset }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
             }
@@ -1740,7 +1841,7 @@ private fun AdvancedTab(
                     onCheckedChange = { viewModel.onExclusiveXInputChanged(it) }
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Exclusive Input", modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.compose_containers_exclusive_input), modifier = Modifier.weight(1f))
                 IconButton(onClick = { helpRes = R.string.help_exclusive_xinput }) {
                     Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
@@ -1767,7 +1868,10 @@ private fun AdvancedTab(
             if (viewModel.vibrationMode != Container.VIBRATION_MODE_OFF) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "${stringResource(R.string.vibration_intensity_label)}: ${viewModel.vibrationIntensity}%",
+                    stringResource(
+                        R.string.compose_containers_vibration_intensity_value,
+                        viewModel.vibrationIntensity,
+                    ),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Slider(
@@ -1781,22 +1885,30 @@ private fun AdvancedTab(
         // Player Slots section — manual controller->player-slot pins that the launch pre-assignment
         // applies. Same JSON schema and editor the in-game "Players" drawer tab uses, but here it's a
         // saved default (applied on next launch), not a live reassignment.
-        SectionBox(title = "Player Slots") {
+        SectionBox(title = stringResource(R.string.compose_containers_player_slots)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Pin controllers to players; assign two to one player to share control.",
+                    stringResource(R.string.compose_containers_player_slots_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { helpRes = R.string.help_player_slots }) {
-                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.Help,
+                        contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
             // On-screen priority: what happens to the on-screen pad when a physical pad connects mid-game.
-            val onScreenModeLabels = listOf("Keep on-screen player", "Yield Player 1 to pad", "Share the player")
+            val onScreenModeLabels = listOf(
+                stringResource(R.string.compose_containers_on_screen_keep_player),
+                stringResource(R.string.compose_containers_on_screen_yield_player_one),
+                stringResource(R.string.compose_containers_on_screen_share_player),
+            )
             LabeledDropdown(
-                label = "On-screen priority",
+                label = stringResource(R.string.compose_containers_on_screen_priority),
                 options = onScreenModeLabels,
                 selectedOption = onScreenModeLabels.getOrElse(viewModel.onScreenControllerMode) { onScreenModeLabels[0] },
                 onSelect = { viewModel.onScreenControllerMode = onScreenModeLabels.indexOf(it).coerceAtLeast(0) },
@@ -1848,7 +1960,11 @@ private fun AdvancedTab(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_gyro_mode }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -1873,7 +1989,11 @@ private fun AdvancedTab(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_gyro_target }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 val gyroActivatorLabels = listOf(
@@ -1895,7 +2015,11 @@ private fun AdvancedTab(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_gyro_activator }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 // Hold vs Toggle for that button. Pointless with "Always On" (no button to latch), so
@@ -1918,19 +2042,30 @@ private fun AdvancedTab(
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { helpRes = R.string.help_gyro_activation_mode }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "${stringResource(R.string.gyro_sensitivity_label)}: ${"%.1f".format(viewModel.gyroSensitivity)}",
+                        stringResource(
+                            R.string.compose_containers_gyro_sensitivity_value,
+                            viewModel.gyroSensitivity,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { helpRes = R.string.help_gyro_sensitivity }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Slider(
@@ -1939,7 +2074,10 @@ private fun AdvancedTab(
                     valueRange = 0.1f..10f
                 )
                 Text(
-                    "${stringResource(R.string.gyro_deadzone_label)}: ${"%.2f".format(viewModel.gyroDeadzone)}",
+                    stringResource(
+                        R.string.compose_containers_gyro_deadzone_value,
+                        viewModel.gyroDeadzone,
+                    ),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Slider(
@@ -1948,7 +2086,10 @@ private fun AdvancedTab(
                     valueRange = 0f..0.5f
                 )
                 Text(
-                    "${stringResource(R.string.gyro_smoothing_label)}: ${"%.2f".format(viewModel.gyroSmoothing)}",
+                    stringResource(
+                        R.string.compose_containers_gyro_smoothing_value,
+                        viewModel.gyroSmoothing,
+                    ),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Slider(
@@ -1985,7 +2126,11 @@ private fun AdvancedTab(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = { helpRes = R.string.help_startup_selection }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Help,
+                    contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
 
@@ -2054,8 +2199,20 @@ private fun XRTab(viewModel: ContainerDetailViewModel) {
         )
 
         // Controller button mappings
-        SectionBox(title = "Controller Mapping") {
-            viewModel.xrMappingLabels.forEachIndexed { i, label ->
+        SectionBox(title = stringResource(R.string.compose_containers_controller_mapping)) {
+            val mappingLabels = listOf(
+                stringResource(R.string.compose_containers_xr_button_a),
+                stringResource(R.string.compose_containers_xr_button_b),
+                stringResource(R.string.compose_containers_xr_button_x),
+                stringResource(R.string.compose_containers_xr_button_y),
+                stringResource(R.string.compose_containers_xr_button_grip),
+                stringResource(R.string.compose_containers_xr_button_trigger),
+                stringResource(R.string.compose_containers_xr_thumbstick_up),
+                stringResource(R.string.compose_containers_xr_thumbstick_down),
+                stringResource(R.string.compose_containers_xr_thumbstick_left),
+                stringResource(R.string.compose_containers_xr_thumbstick_right),
+            )
+            mappingLabels.forEachIndexed { i, label ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text(label, modifier = Modifier.weight(1f))
                     CompactDropdown(
@@ -2068,7 +2225,7 @@ private fun XRTab(viewModel: ContainerDetailViewModel) {
                         modifier = Modifier.width(160.dp)
                     )
                 }
-                if (i < viewModel.xrMappingLabels.lastIndex) Spacer(Modifier.height(4.dp))
+                if (i < mappingLabels.lastIndex) Spacer(Modifier.height(4.dp))
             }
         }
     }
@@ -2082,23 +2239,56 @@ private fun XRTab(viewModel: ContainerDetailViewModel) {
 // shortcut Advanced tab (both are in this package), so the service list, labels and ordering come
 // from the single WineUtils source of truth and can't drift between the two screens.
 @Composable
+private fun localizedStartupServiceLabel(index: Int, fallback: String): String {
+    val labels = listOf(
+        stringResource(R.string.compose_containers_service_bits),
+        stringResource(R.string.compose_containers_service_event_log),
+        stringResource(R.string.compose_containers_service_font_cache),
+        stringResource(R.string.compose_containers_service_dotnet_font_cache),
+        stringResource(R.string.compose_containers_service_http),
+        stringResource(R.string.compose_containers_service_server),
+        stringResource(R.string.compose_containers_service_installer),
+        stringResource(R.string.compose_containers_service_ndis),
+        stringResource(R.string.compose_containers_service_network_store),
+        stringResource(R.string.compose_containers_service_plug_and_play),
+        stringResource(R.string.compose_containers_service_rpc),
+        stringResource(R.string.compose_containers_service_smart_card),
+        stringResource(R.string.compose_containers_service_task_scheduler),
+        stringResource(R.string.compose_containers_service_shared_gpu),
+        stringResource(R.string.compose_containers_service_print_spooler),
+        stringResource(R.string.compose_containers_service_image_acquisition),
+        stringResource(R.string.compose_containers_service_remote_desktop),
+        stringResource(R.string.compose_containers_service_link_tracking),
+        stringResource(R.string.compose_containers_service_windows_time),
+        stringResource(R.string.compose_containers_service_wine_bus),
+        stringResource(R.string.compose_containers_service_wine_hid),
+        stringResource(R.string.compose_containers_service_wmi),
+        stringResource(R.string.compose_containers_service_windows_update),
+    )
+    return labels.getOrElse(index) { fallback }
+}
+
+@Composable
 internal fun StartupServicesToggleList(
     enabled: Set<String>,
     onToggle: (rawName: String, on: Boolean) -> Unit
 ) {
-    SectionBox(title = "Custom Services") {
+    SectionBox(title = stringResource(R.string.compose_containers_custom_services)) {
         Text(
-            "Custom starts with every service off — turn on only what you need. " +
-                "Disabling Wine Bus/HID can break controllers.",
+            stringResource(R.string.compose_containers_custom_services_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(8.dp))
         WineUtils.STARTUP_SERVICES.forEachIndexed { i, entry ->
             val raw = WineUtils.startupServiceRawName(entry)
-            val label = WineUtils.STARTUP_SERVICE_LABELS.getOrElse(i) { raw }
+            val label = localizedStartupServiceLabel(i, raw)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("$label ($raw)", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.compose_containers_service_label_with_id, label, raw),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 Switch(checked = enabled.contains(raw), onCheckedChange = { onToggle(raw, it) })
             }
             if (i < WineUtils.STARTUP_SERVICES.lastIndex) Spacer(Modifier.height(4.dp))
@@ -2477,14 +2667,22 @@ internal fun GraphicsDriverConfigDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_vulkan_version), vulkanVersions, vulkanVersion, { vulkanVersion = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_vulkan_version }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_graphics_driver_version }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -2492,7 +2690,11 @@ internal fun GraphicsDriverConfigDialog(
                     Checkbox(checked = showAllDrivers, onCheckedChange = { showAllDrivers = it })
                     Text(stringResource(R.string.graphics_driver_show_incompatible), modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_show_incompatible_drivers }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -2502,38 +2704,65 @@ internal fun GraphicsDriverConfigDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         val enabled = allExtensions.size - blacklisted.size
-                        Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
+                        Text(
+                            stringResource(
+                                R.string.compose_containers_available_extensions_count,
+                                stringResource(R.string.graphics_driver_available_extensions),
+                                enabled,
+                                allExtensions.size,
+                            )
+                        )
                     }
                     IconButton(onClick = { helpRes = R.string.help_available_extensions }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_gpu_name }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_max_device_memory), deviceMemoryEntries, selectedMemoryEntry, { selectedMemoryEntry = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_max_device_memory }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_present_modes), presentModeEntries, presentMode, { presentMode = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_wrapper_present_modes }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_resource_type), resourceTypeEntries, resourceType, { resourceType = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_resource_type }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -2541,8 +2770,11 @@ internal fun GraphicsDriverConfigDialog(
                 // anything on Mali/non-Qualcomm GPUs — Adreno has native BCn. Surface the real chip so
                 // Adreno users understand why these options are inert for them (a real point of confusion).
                 Text(
-                    (if (gpuModel.isNotEmpty()) "GPU: $gpuModel — " else "") +
-                        "BCn/compat layers apply to Mali and other non-Qualcomm GPUs",
+                    if (gpuModel.isNotEmpty()) {
+                        stringResource(R.string.compose_containers_bcn_gpu_context, gpuModel)
+                    } else {
+                        stringResource(R.string.compose_containers_bcn_gpu_context_unknown)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2550,21 +2782,33 @@ internal fun GraphicsDriverConfigDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation), bcnEmulationEntries, bcnEmulation, { bcnEmulation = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_bcn_emulation }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_type), bcnTypeEntries, bcnEmulationType, { bcnEmulationType = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_bcn_emulation_type }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_cache), bcnCacheEntries, bcnEmulationCache, { bcnEmulationCache = it }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_bcn_emulation_cache }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -2577,12 +2821,16 @@ internal fun GraphicsDriverConfigDialog(
                         Checkbox(checked = bcnEmulationAstc, onCheckedChange = { bcnEmulationAstc = it })
                         Text(stringResource(R.string.graphics_driver_bcn_emulation_astc), modifier = Modifier.weight(1f))
                         IconButton(onClick = { helpRes = R.string.help_bcn_transcode_astc }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     if (isQualcomm) {
                         Text(
-                            "No effect on Adreno (native BCn)",
+                            stringResource(R.string.compose_containers_no_effect_adreno),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -2599,12 +2847,16 @@ internal fun GraphicsDriverConfigDialog(
                         Checkbox(checked = bcnTranscodeAstc, onCheckedChange = { bcnTranscodeAstc = it })
                         Text(stringResource(R.string.bcn_layer_transcode_astc), modifier = Modifier.weight(1f))
                         IconButton(onClick = { helpRes = R.string.help_bcn_transcode_astc }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     if (isQualcomm) {
                         Text(
-                            "No effect on Adreno (native BCn)",
+                            stringResource(R.string.compose_containers_no_effect_adreno),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -2614,21 +2866,33 @@ internal fun GraphicsDriverConfigDialog(
                     Checkbox(checked = syncFrame, onCheckedChange = { syncFrame = it })
                     Text(stringResource(R.string.graphics_driver_sync_frame), modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_sync_every_frame }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = disablePresentWait, onCheckedChange = { disablePresentWait = it })
                     Text(stringResource(R.string.graphics_driver_disable_present_wait), modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_disable_present_wait }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = fdDevFeatures, onCheckedChange = { fdDevFeatures = it })
-                    Text("OneUI / HyperOS Fix", modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.compose_containers_oneui_hyperos_fix), modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_oneui_hyperos_fix }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
 
@@ -2636,25 +2900,31 @@ internal fun GraphicsDriverConfigDialog(
                 // users on a STOCK driver. Tri-state maps to whether `gmem` joins TU_DEBUG at launch. ---
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Turnip GMEM",
+                    stringResource(R.string.compose_containers_turnip_gmem),
                     style = MaterialTheme.typography.titleSmall
                 )
                 Spacer(Modifier.height(4.dp))
-                val gmemLabels = listOf("Auto (Adreno 710/720/722)", "Force On", "Force Off")
+                val gmemLabels = listOf(
+                    stringResource(R.string.compose_containers_gmem_auto),
+                    stringResource(R.string.compose_containers_force_on),
+                    stringResource(R.string.compose_containers_force_off),
+                )
                 val gmemValues = listOf("auto", "on", "off")
                 val gmemSel = gmemLabels[gmemValues.indexOf(turnipGmem).coerceAtLeast(0)]
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown("GMEM (tiled rendering)", gmemLabels, gmemSel, { picked ->
+                    LabeledDropdown(stringResource(R.string.compose_containers_gmem_tiled_rendering), gmemLabels, gmemSel, { picked ->
                         turnipGmem = gmemValues[gmemLabels.indexOf(picked).coerceAtLeast(0)]
                     }, modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_turnip_gmem }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Help,
+                            contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
                 Text(
-                    "Auto forces GMEM tiled rendering (TU_DEBUG=gmem) only on Adreno 710/720/722; " +
-                        "Force On applies it on any GPU; Force Off never applies it. Leave on Auto unless a " +
-                        "game misbehaves.",
+                    stringResource(R.string.compose_containers_gmem_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2668,7 +2938,11 @@ internal fun GraphicsDriverConfigDialog(
                         .clickable { turnipSectionExpanded = !turnipSectionExpanded }
                 ) {
                     Text(
-                        (if (turnipSectionExpanded) "▾  " else "▸  ") + "Advanced Turnip (TU_DEBUG)",
+                        stringResource(
+                            R.string.compose_containers_expandable_heading,
+                            if (turnipSectionExpanded) "▾" else "▸",
+                            stringResource(R.string.compose_containers_advanced_turnip),
+                        ),
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.weight(1f)
                     )
@@ -2676,24 +2950,31 @@ internal fun GraphicsDriverConfigDialog(
                 if (turnipSectionExpanded) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Expert-only Turnip debug tokens. Off by default — enable only if you know what " +
-                            "they do. These are unioned with the GMEM setting above into TU_DEBUG.",
+                        stringResource(R.string.compose_containers_advanced_turnip_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = turnipForceCb, onCheckedChange = { turnipForceCb = it })
-                        Text("forcecb — force concurrent binning", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_containers_turnip_forcecb), modifier = Modifier.weight(1f))
                         IconButton(onClick = { helpRes = R.string.help_turnip_concurrent_binning }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = turnipNoCb, onCheckedChange = { turnipNoCb = it })
-                        Text("nocb — disable concurrent binning", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_containers_turnip_nocb), modifier = Modifier.weight(1f))
                         IconButton(onClick = { helpRes = R.string.help_turnip_concurrent_binning }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     // sysmem is the direct opposite of gmem and Turnip lets it defeat gmem, so when
@@ -2707,31 +2988,39 @@ internal fun GraphicsDriverConfigDialog(
                             enabled = !sysmemBlockedByGmem
                         )
                         Text(
-                            "sysmem — force sysmem (bypass GMEM)",
+                            stringResource(R.string.compose_containers_turnip_sysmem),
                             modifier = Modifier.weight(1f),
                             color = if (sysmemBlockedByGmem) MaterialTheme.colorScheme.onSurfaceVariant
                                     else Color.Unspecified
                         )
                         IconButton(onClick = { helpRes = R.string.help_turnip_sysmem }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     if (sysmemBlockedByGmem) {
                         Text(
-                            "Disabled — Turnip GMEM = Force On overrides sysmem.",
+                            stringResource(R.string.compose_containers_turnip_sysmem_disabled),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = turnipDeckEmu, onCheckedChange = { turnipDeckEmu = it })
-                        Text("deck_emu — advertise as SteamDeck", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.compose_containers_turnip_deck_emu), modifier = Modifier.weight(1f))
                         IconButton(onClick = { helpRes = R.string.help_turnip_deck_emu }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = stringResource(R.string.compose_containers_what_is_this_description),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                     Text(
-                        "deck_emu requires a Banners-Turnip driver (ignored on stock Turnip).",
+                        stringResource(R.string.compose_containers_turnip_deck_emu_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -2749,7 +3038,11 @@ internal fun GraphicsDriverConfigDialog(
                             .clickable { bcnSectionExpanded = !bcnSectionExpanded }
                     ) {
                         Text(
-                            (if (bcnSectionExpanded) "▾  " else "▸  ") + stringResource(R.string.bcn_layer_section),
+                            stringResource(
+                                R.string.compose_containers_expandable_heading,
+                                if (bcnSectionExpanded) "▾" else "▸",
+                                stringResource(R.string.bcn_layer_section),
+                            ),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.weight(1f)
                         )
@@ -2764,7 +3057,7 @@ internal fun GraphicsDriverConfigDialog(
                         if (isQualcomm) {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "No effect on Adreno (native BCn) — these apply to Mali/non-Qualcomm GPUs",
+                                stringResource(R.string.compose_containers_no_effect_adreno_details),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -2848,25 +3141,27 @@ internal fun GraphicsDriverConfigDialog(
                 if (isImported) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Detected settings (advanced) — from scanning this wrapper",
+                        stringResource(R.string.compose_containers_detected_settings_title),
                         style = MaterialTheme.typography.titleSmall
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "Values are passed to the wrapper as-is; unknown ones are safe to leave blank.",
+                        stringResource(R.string.compose_containers_detected_settings_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
                     if (detectedKeys.isEmpty()) {
                         Text(
-                            "No extra settings detected.",
+                            stringResource(R.string.compose_containers_no_extra_settings),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
                         detectedKeys.forEach { key ->
                             val def = WrapperSettingsDictionary.defFor(key)
+                            val defLabel = WrapperSettingsDictionary.label(context, def)
+                            val defHint = WrapperSettingsDictionary.hint(context, def)
                             val current = detectedValues[key] ?: ""
                             when (def.type) {
                                 WrapperSettingsDictionary.Type.TOGGLE -> {
@@ -2875,16 +3170,23 @@ internal fun GraphicsDriverConfigDialog(
                                             checked = current == "1",
                                             onCheckedChange = { detectedValues[key] = if (it) "1" else "0" }
                                         )
-                                        Text(def.label)
+                                        Text(defLabel)
                                     }
                                 }
                                 WrapperSettingsDictionary.Type.DROPDOWN -> {
                                     val selected = current.ifEmpty { def.default }.ifEmpty { def.choices.firstOrNull() ?: "" }
-                                    LabeledDropdown(def.label, def.choices, selected, { detectedValues[key] = it })
+                                    LabeledDropdown(defLabel, def.choices, selected, { detectedValues[key] = it })
                                 }
                                 WrapperSettingsDictionary.Type.SLIDER -> {
                                     val fv = current.toFloatOrNull() ?: def.default.toFloatOrNull() ?: def.min
-                                    Text("${def.label}: ${fv.toInt()}", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        stringResource(
+                                            R.string.compose_containers_label_value,
+                                            defLabel,
+                                            fv.toInt(),
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
                                     Slider(
                                         value = fv,
                                         onValueChange = { detectedValues[key] = it.toInt().toString() },
@@ -2898,14 +3200,14 @@ internal fun GraphicsDriverConfigDialog(
                                         value = current,
                                         onValueChange = { detectedValues[key] = it },
                                         singleLine = true,
-                                        label = { Text(def.label) },
+                                        label = { Text(defLabel) },
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             }
-                            if (def.hint.isNotBlank()) {
+                            if (defHint.isNotBlank()) {
                                 Text(
-                                    def.hint,
+                                    defHint,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -2979,7 +3281,7 @@ internal fun ExtensionPickerDialog(
         title = { Text(stringResource(R.string.graphics_driver_available_extensions)) },
         text = {
             if (extensions.isEmpty()) {
-                Text("No extensions available for this driver.")
+                Text(stringResource(R.string.compose_containers_no_extensions_available))
             } else {
                 androidx.compose.foundation.lazy.LazyColumn {
                     items(extensions) { ext ->
@@ -3113,7 +3415,11 @@ internal fun DxvkConfigDialog(
                 isProcessing = true
                 installContentFromUri(activity, uri) { success ->
                     if (success) {
-                        Toast.makeText(activity, "VEGAS version installed", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            activity,
+                            activity.getString(R.string.compose_containers_vegas_installed),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                         scope.launch {
                             withContext(Dispatchers.IO) {
                                 val cm = ContentsManager(context)
@@ -3136,7 +3442,14 @@ internal fun DxvkConfigDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isVegas) "VEGAS ${stringResource(R.string.configuration)}" else "DXVK ${stringResource(R.string.configuration)}") },
+        title = {
+            Text(
+                stringResource(
+                    R.string.compose_containers_technology_configuration,
+                    if (isVegas) "VEGAS" else "DXVK",
+                )
+            )
+        },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -3149,7 +3462,8 @@ internal fun DxvkConfigDialog(
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     LabeledDropdown(
-                        if (isVegas) "Vegas Selector" else stringResource(R.string.dxvk_version),
+                        if (isVegas) stringResource(R.string.compose_containers_vegas_selector)
+                        else stringResource(R.string.dxvk_version),
                         filteredDxvk, selectedDxvk, { selectedDxvk = it },
                         modifier = Modifier.weight(1f)
                     )
@@ -3177,17 +3491,37 @@ internal fun DxvkConfigDialog(
                                                     if (selectedDxvk !in newVersions) {
                                                         selectedDxvk = newVersions.firstOrNull() ?: selectedDxvk
                                                     }
-                                                    Toast.makeText(activity, "VEGAS version deleted", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(
+                                                        activity,
+                                                        activity.getString(R.string.compose_containers_vegas_deleted),
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
                                                 }
                                             } else {
                                                 withContext(Dispatchers.Main) {
-                                                    Toast.makeText(activity, "No installed VEGAS version to delete", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(
+                                                        activity,
+                                                        activity.getString(R.string.compose_containers_no_vegas_to_delete),
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
                                                 }
                                             }
                                         }
                                     } catch (e: Exception) {
+                                        android.util.Log.e(
+                                            "ContainerDetailScreen",
+                                            "Failed to delete VEGAS files",
+                                            e,
+                                        )
                                         withContext(Dispatchers.Main) {
-                                            Toast.makeText(activity, "ERROR: Failed to delete — ${e.message}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(
+                                                activity,
+                                                activity.getString(
+                                                    R.string.compose_containers_delete_failed,
+                                                    activity.getString(R.string.compose_containers_unknown_error),
+                                                ),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
                                         }
                                     } finally {
                                         withContext(Dispatchers.Main) { isProcessing = false }
@@ -3197,14 +3531,30 @@ internal fun DxvkConfigDialog(
                             enabled = !isProcessing,
                             modifier = Modifier.size(40.dp)
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.compose_containers_delete_description),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
                         }
                         IconButton(
-                            onClick = { pickVegasLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP, "Select VEGAS package")) },
+                            onClick = {
+                                pickVegasLauncher.launch(
+                                    InAppFilePicker.buildIntent(
+                                        context,
+                                        InAppFilePicker.WCP,
+                                        context.getString(R.string.compose_containers_select_vegas_package),
+                                    )
+                                )
+                            },
                             enabled = !isProcessing,
                             modifier = Modifier.size(40.dp)
                         ) {
-                            Icon(Icons.Default.FolderOpen, contentDescription = "Install from file", tint = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                Icons.Default.FolderOpen,
+                                contentDescription = stringResource(R.string.compose_containers_install_from_file_description),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
                         }
                     }
                 }
@@ -3216,22 +3566,22 @@ internal fun DxvkConfigDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = asyncEnabled, onCheckedChange = { asyncEnabled = it })
                         Spacer(Modifier.width(8.dp))
-                        Text("Async")
+                        Text(stringResource(R.string.compose_containers_async))
                     }
                 }
                 if (dxvkType == DXVKConfigDialog.DXVK_TYPE_GPLASYNC) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = asyncCacheEnabled, onCheckedChange = { asyncCacheEnabled = it })
                         Spacer(Modifier.width(8.dp))
-                        Text("Async Cache")
+                        Text(stringResource(R.string.compose_containers_async_cache))
                     }
                     Spacer(Modifier.height(8.dp))
                 }
                 LabeledDropdown(stringResource(R.string.frame_rate), framerateEntries, selectedFramerate, { selectedFramerate = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("VKD3D Feature Level", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
+                LabeledDropdown(stringResource(R.string.compose_containers_vkd3d_feature_level), featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("DDraw Wrapper", ddraEntries, selectedDdra, { selectedDdra = it })
+                LabeledDropdown(stringResource(R.string.compose_containers_ddraw_wrapper), ddraEntries, selectedDdra, { selectedDdra = it })
                 // D7VK is a catalog-backed component: when it's the chosen DDraw wrapper, offer a
                 // version dropdown ("Bundled (default)" + any downloaded profiles) and a cloud button
                 // to fetch more — mirroring the DXVK/VKD3D version UI above.
@@ -3239,7 +3589,7 @@ internal fun DxvkConfigDialog(
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         LabeledDropdown(
-                            "D7VK Version", d7vkVersions.value, selectedD7vk, { selectedD7vk = it },
+                            stringResource(R.string.compose_containers_d7vk_version), d7vkVersions.value, selectedD7vk, { selectedD7vk = it },
                             modifier = Modifier.weight(1f)
                         )
                         ContentInstallGear(onDownloadFile = onDownloadD7vk)
@@ -3247,7 +3597,7 @@ internal fun DxvkConfigDialog(
                 }
                 if (isVegas) {
                     Spacer(Modifier.height(8.dp))
-                    LabeledDropdown("Config Source", configSourceEntries.value, selectedConfigSource, { selectedConfigSource = it })
+                    LabeledDropdown(stringResource(R.string.compose_containers_config_source), configSourceEntries.value, selectedConfigSource, { selectedConfigSource = it })
                 }
             }
         },
@@ -3279,8 +3629,10 @@ internal fun WineD3DConfigDialog(
     val context = LocalContext.current
     val config = remember(initialConfig) { WineD3DConfigDialog.parseConfig(initialConfig) }
 
-    val csmtOptions   = remember { listOf("Enabled", "Disabled") }
-    val ssmOptions    = remember { listOf("Enabled", "Disabled") }
+    val toggleOptions = listOf(
+        stringResource(R.string.compose_containers_enabled),
+        stringResource(R.string.compose_containers_disabled),
+    )
     val ormOptions    = remember { listOf("fbo", "backbuffer") }
     val rendOptions   = remember { listOf("gl", "vulkan", "gdi") }
     val ddraEntries   = remember { context.resources.getStringArray(R.array.ddrawrapper_entries).toList() }
@@ -3294,42 +3646,54 @@ internal fun WineD3DConfigDialog(
         }
     }
 
-    var csmt      by remember { mutableStateOf(if (config.get("csmt") == "3") "Enabled" else "Disabled") }
+    var csmtEnabled by remember { mutableStateOf(config.get("csmt") == "3") }
     var gpuName   by remember { mutableStateOf(config.get("gpuName")) }
     var ddra      by remember { mutableStateOf(ddraEntries.firstOrNull { StringUtils.parseIdentifier(it) == config.get("ddrawrapper") } ?: ddraEntries.first()) }
     var videoMem  by remember {
         val stored = config.get("videoMemorySize")
         mutableStateOf(videoMemEntries.firstOrNull { StringUtils.parseNumber(it) == stored } ?: videoMemEntries.first())
     }
-    var ssm       by remember { mutableStateOf(if (config.get("strict_shader_math") == "1") "Enabled" else "Disabled") }
+    var strictShaderMathEnabled by remember { mutableStateOf(config.get("strict_shader_math") == "1") }
     var orm       by remember { mutableStateOf(config.get("OffscreenRenderingMode").ifEmpty { "fbo" }) }
     var renderer  by remember { mutableStateOf(config.get("renderer").ifEmpty { "gl" }) }
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("WineD3D ${stringResource(R.string.configuration)}") },
+        title = {
+            Text(stringResource(R.string.compose_containers_technology_configuration, "WineD3D"))
+        },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
-                LabeledDropdown("CSMT", csmtOptions, csmt, { csmt = it })
+                LabeledDropdown(
+                    stringResource(R.string.compose_containers_csmt),
+                    toggleOptions,
+                    toggleOptions[if (csmtEnabled) 0 else 1],
+                    { csmtEnabled = it == toggleOptions[0] },
+                )
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("DDraw Wrapper", ddraEntries, ddra, { ddra = it })
+                LabeledDropdown(stringResource(R.string.compose_containers_ddraw_wrapper), ddraEntries, ddra, { ddra = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown(stringResource(R.string.graphics_driver_max_device_memory), videoMemEntries, videoMem, { videoMem = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("Strict Shader Math", ssmOptions, ssm, { ssm = it })
+                LabeledDropdown(
+                    stringResource(R.string.compose_containers_strict_shader_math),
+                    toggleOptions,
+                    toggleOptions[if (strictShaderMathEnabled) 0 else 1],
+                    { strictShaderMathEnabled = it == toggleOptions[0] },
+                )
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("Offscreen Rendering Mode", ormOptions, orm, { orm = it })
+                LabeledDropdown(stringResource(R.string.compose_containers_offscreen_rendering_mode), ormOptions, orm, { orm = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("Renderer", rendOptions, renderer, { renderer = it })
+                LabeledDropdown(stringResource(R.string.renderer), rendOptions, renderer, { renderer = it })
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 val cfg = WineD3DConfigDialog.parseConfig(initialConfig)
-                cfg.put("csmt", if (csmt == "Enabled") "3" else "0")
-                cfg.put("strict_shader_math", if (ssm == "Enabled") "1" else "0")
+                cfg.put("csmt", if (csmtEnabled) "3" else "0")
+                cfg.put("strict_shader_math", if (strictShaderMathEnabled) "1" else "0")
                 cfg.put("OffscreenRenderingMode", orm)
                 cfg.put("gpuName", gpuName)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(ddra))
@@ -3493,7 +3857,7 @@ internal fun FpsCounterConfigDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("FPS Counter Settings") },
+        title = { Text(stringResource(R.string.compose_containers_fps_counter_settings)) },
         text = {
             Column(
                 modifier = Modifier
@@ -3507,41 +3871,54 @@ internal fun FpsCounterConfigDialog(
                         onCheckedChange = { hudEnabled = it }
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Show HUD")
+                    Text(stringResource(R.string.compose_containers_show_hud))
                 }
                 Spacer(Modifier.height(12.dp))
+                val hudStyleLabels = listOf(
+                    stringResource(R.string.compose_containers_hud_style_classic),
+                    stringResource(R.string.compose_containers_hud_style_gamehub),
+                    stringResource(R.string.compose_containers_hud_style_gamenative),
+                    stringResource(R.string.compose_containers_hud_style_fusion),
+                )
                 HudThreeStop(
-                    "HUD style",
-                    listOf("Classic", "GameHub", "GameNative", "Fusion"),
+                    stringResource(R.string.compose_containers_hud_style),
+                    hudStyleLabels,
                     styles.indexOf(hudStyle).coerceAtLeast(0)
                 ) { hudStyle = styles[it] }
                 Text(
                     when (hudStyle) {
-                        "gamehub" -> "Rich overlay: skins, colored fields, live FPS graph."
-                        "gamenative" -> "GameNative-style overlay: compact pill or stacked list with live graphs."
-                        "fusion" -> "Fusion overlay: one color-coded look in 5 sizes (Full/Tiles/Pill/Minimal/Mega) with percentile lows, VRAM + a Mega everything-view."
-                        else -> "Classic Bannerlator overlay."
+                        "gamehub" -> stringResource(R.string.compose_containers_hud_style_gamehub_hint)
+                        "gamenative" -> stringResource(R.string.compose_containers_hud_style_gamenative_hint)
+                        "fusion" -> stringResource(R.string.compose_containers_hud_style_fusion_hint)
+                        else -> stringResource(R.string.compose_containers_hud_style_classic_hint)
                     },
                     style = MaterialTheme.typography.bodySmall
                 )
                 if (fusion) {
                     Spacer(Modifier.height(8.dp))
+                    val fusionSizeLabels = listOf(
+                        stringResource(R.string.compose_containers_hud_size_full),
+                        stringResource(R.string.compose_containers_hud_size_tiles),
+                        stringResource(R.string.compose_containers_hud_size_pill),
+                        stringResource(R.string.compose_containers_hud_size_minimal),
+                        stringResource(R.string.compose_containers_hud_size_mega),
+                    )
                     HudThreeStop(
-                        "Size",
-                        listOf("Full", "Tiles", "Pill", "Minimal", "Mega"),
+                        stringResource(R.string.compose_containers_size),
+                        fusionSizeLabels,
                         fusionSizes.indexOf(fusionSize).coerceAtLeast(0)
                     ) { fusionSize = fusionSizes[it] }
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Tip: tap the HUD in-game to switch vertical/horizontal layout.",
+                    stringResource(R.string.compose_containers_hud_layout_tip),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(12.dp))
 
                 // Compact multi-select metric chips (filled = on) in a wrap layout,
                 // so ~13 metrics fit in a few rows instead of stacked Switch rows.
-                Text("Metrics", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.compose_containers_metrics), style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(4.dp))
                 // Build the currently-VISIBLE chips first (respecting per-style gating), then chunk
                 // into an aligned 3-wide grid — so hidden chips never leave holes. Each stays an
@@ -3550,81 +3927,136 @@ internal fun FpsCounterConfigDialog(
                 // FusionSize.supportedChips()). For the other styles, keep the existing style gating.
                 // Hiding a chip is UI-only — buildConfig() still emits every key (strip-invariant).
                 fun show(label: String, styleOk: Boolean): Boolean = if (fusion) label in fusionChips else styleOk
+                val metricLabels = mapOf(
+                    "FPS" to stringResource(R.string.compose_containers_metric_fps),
+                    "FPS graph" to stringResource(R.string.compose_containers_metric_fps_graph),
+                    "CPU" to stringResource(R.string.compose_containers_metric_cpu),
+                    "CPU graph" to stringResource(R.string.compose_containers_metric_cpu_graph),
+                    "GPU" to stringResource(R.string.compose_containers_metric_gpu),
+                    "GPU graph" to stringResource(R.string.compose_containers_metric_gpu_graph),
+                    "VRAM" to stringResource(R.string.compose_containers_metric_vram),
+                    "RAM" to stringResource(R.string.compose_containers_metric_ram),
+                    "Power" to stringResource(R.string.compose_containers_metric_power),
+                    "Temp" to stringResource(R.string.compose_containers_metric_temperature),
+                    "GPU temp" to stringResource(R.string.compose_containers_metric_gpu_temperature),
+                    "Battery" to stringResource(R.string.compose_containers_metric_battery),
+                    "Runtime" to stringResource(R.string.compose_containers_metric_runtime),
+                    "0.01% low" to stringResource(R.string.compose_containers_metric_low_001),
+                    "FPS .1" to stringResource(R.string.compose_containers_metric_fps_decimal),
+                    "Per-core" to stringResource(R.string.compose_containers_metric_per_core),
+                    "Swap" to stringResource(R.string.compose_containers_metric_swap),
+                    "Network" to stringResource(R.string.compose_containers_metric_network),
+                    "Resolution" to stringResource(R.string.compose_containers_metric_resolution),
+                    "Proton" to stringResource(R.string.compose_containers_metric_proton),
+                    "Wrapper" to stringResource(R.string.compose_containers_metric_wrapper),
+                    "DX ver" to stringResource(R.string.compose_containers_metric_dx_version),
+                    "Session" to stringResource(R.string.compose_containers_metric_session),
+                    "Clock" to stringResource(R.string.compose_containers_metric_clock),
+                    "Engine" to stringResource(R.string.compose_containers_metric_engine),
+                    "GPU model" to stringResource(R.string.compose_containers_metric_gpu_model),
+                    "Dual battery" to stringResource(R.string.compose_containers_metric_dual_battery),
+                    "Lock in place" to stringResource(R.string.compose_containers_metric_lock_in_place),
+                )
+                fun metricLabel(key: String) = metricLabels.getValue(key)
                 val metricChips = buildList<Triple<String, Boolean, () -> Unit>> {
-                    if (show("FPS", true)) add(Triple("FPS", showFPS) { showFPS = !showFPS })
-                    if (show("FPS graph", rich)) add(Triple("FPS graph", showGraph) { showGraph = !showGraph })
-                    if (show("CPU", true)) add(Triple("CPU", showCPU) { showCPU = !showCPU })
-                    if (!fusion && gameNative) add(Triple("CPU graph", showCpuGraph) { showCpuGraph = !showCpuGraph })
-                    if (show("GPU", true)) add(Triple("GPU", showGPU) { showGPU = !showGPU })
-                    if (!fusion && gameNative) add(Triple("GPU graph", showGpuGraph) { showGpuGraph = !showGpuGraph })
-                    if (show("VRAM", false)) add(Triple("VRAM", showVram) { showVram = !showVram })
-                    if (show("RAM", true)) add(Triple("RAM", showRAM) { showRAM = !showRAM })
-                    if (show("Power", true)) add(Triple("Power", showPower) { showPower = !showPower })
-                    if (show("Temp", true)) add(Triple("Temp", showTemp) { showTemp = !showTemp })
-                    if (show("GPU temp", gameNative)) add(Triple("GPU temp", showGpuTemp) { showGpuTemp = !showGpuTemp })
-                    if (show("Battery", gameNative)) add(Triple("Battery", showBattery) { showBattery = !showBattery })
-                    if (!fusion && gameNative) add(Triple("Runtime", showRuntime) { showRuntime = !showRuntime })
-                    if (show("0.01% low", false)) add(Triple("0.01% low", showLow001) { showLow001 = !showLow001 })
-                    if (show("FPS .1", false)) add(Triple("FPS .1", fpsDecimal) { fpsDecimal = !fpsDecimal })
+                    if (show("FPS", true)) add(Triple(metricLabel("FPS"), showFPS) { showFPS = !showFPS })
+                    if (show("FPS graph", rich)) add(Triple(metricLabel("FPS graph"), showGraph) { showGraph = !showGraph })
+                    if (show("CPU", true)) add(Triple(metricLabel("CPU"), showCPU) { showCPU = !showCPU })
+                    if (!fusion && gameNative) add(Triple(metricLabel("CPU graph"), showCpuGraph) { showCpuGraph = !showCpuGraph })
+                    if (show("GPU", true)) add(Triple(metricLabel("GPU"), showGPU) { showGPU = !showGPU })
+                    if (!fusion && gameNative) add(Triple(metricLabel("GPU graph"), showGpuGraph) { showGpuGraph = !showGpuGraph })
+                    if (show("VRAM", false)) add(Triple(metricLabel("VRAM"), showVram) { showVram = !showVram })
+                    if (show("RAM", true)) add(Triple(metricLabel("RAM"), showRAM) { showRAM = !showRAM })
+                    if (show("Power", true)) add(Triple(metricLabel("Power"), showPower) { showPower = !showPower })
+                    if (show("Temp", true)) add(Triple(metricLabel("Temp"), showTemp) { showTemp = !showTemp })
+                    if (show("GPU temp", gameNative)) add(Triple(metricLabel("GPU temp"), showGpuTemp) { showGpuTemp = !showGpuTemp })
+                    if (show("Battery", gameNative)) add(Triple(metricLabel("Battery"), showBattery) { showBattery = !showBattery })
+                    if (!fusion && gameNative) add(Triple(metricLabel("Runtime"), showRuntime) { showRuntime = !showRuntime })
+                    if (show("0.01% low", false)) add(Triple(metricLabel("0.01% low"), showLow001) { showLow001 = !showLow001 })
+                    if (show("FPS .1", false)) add(Triple(metricLabel("FPS .1"), fpsDecimal) { fpsDecimal = !fpsDecimal })
                     // Fusion Mega-only metrics
-                    if (show("Per-core", false)) add(Triple("Per-core", showPerCore) { showPerCore = !showPerCore })
-                    if (show("Swap", false)) add(Triple("Swap", showSwap) { showSwap = !showSwap })
-                    if (show("Network", false)) add(Triple("Network", showNet) { showNet = !showNet })
-                    if (show("Resolution", false)) add(Triple("Resolution", showResolution) { showResolution = !showResolution })
-                    if (show("Proton", false)) add(Triple("Proton", showProton) { showProton = !showProton })
-                    if (show("Wrapper", false)) add(Triple("Wrapper", showWrapper) { showWrapper = !showWrapper })
-                    if (show("DX ver", false)) add(Triple("DX ver", showDxVer) { showDxVer = !showDxVer })
-                    if (show("Session", false)) add(Triple("Session", showSession) { showSession = !showSession })
+                    if (show("Per-core", false)) add(Triple(metricLabel("Per-core"), showPerCore) { showPerCore = !showPerCore })
+                    if (show("Swap", false)) add(Triple(metricLabel("Swap"), showSwap) { showSwap = !showSwap })
+                    if (show("Network", false)) add(Triple(metricLabel("Network"), showNet) { showNet = !showNet })
+                    if (show("Resolution", false)) add(Triple(metricLabel("Resolution"), showResolution) { showResolution = !showResolution })
+                    if (show("Proton", false)) add(Triple(metricLabel("Proton"), showProton) { showProton = !showProton })
+                    if (show("Wrapper", false)) add(Triple(metricLabel("Wrapper"), showWrapper) { showWrapper = !showWrapper })
+                    if (show("DX ver", false)) add(Triple(metricLabel("DX ver"), showDxVer) { showDxVer = !showDxVer })
+                    if (show("Session", false)) add(Triple(metricLabel("Session"), showSession) { showSession = !showSession })
                     // Clock: gamenative's own chip, and every Fusion size (subtle corner readout)
-                    if (show("Clock", gameNative)) add(Triple("Clock", showClock) { showClock = !showClock })
-                    if (show("Engine", true)) add(Triple("Engine", showEngine) { showEngine = !showEngine })
-                    if (show("GPU model", rich)) add(Triple("GPU model", showGpuModel) { showGpuModel = !showGpuModel })
-                    if (!fusion && gameHub) add(Triple("Dual battery", dualBattery) { dualBattery = !dualBattery })
+                    if (show("Clock", gameNative)) add(Triple(metricLabel("Clock"), showClock) { showClock = !showClock })
+                    if (show("Engine", true)) add(Triple(metricLabel("Engine"), showEngine) { showEngine = !showEngine })
+                    if (show("GPU model", rich)) add(Triple(metricLabel("GPU model"), showGpuModel) { showGpuModel = !showGpuModel })
+                    if (!fusion && gameHub) add(Triple(metricLabel("Dual battery"), dualBattery) { dualBattery = !dualBattery })
                     // Global appearance control, shown for every style/size.
-                    add(Triple("Lock in place", hudLocked) { hudLocked = !hudLocked })
+                    add(Triple(metricLabel("Lock in place"), hudLocked) { hudLocked = !hudLocked })
                 }
                 ModeChipGrid(metricChips, perRow = 3)
 
                 // ── Temperature display ── only meaningful when a temperature is on screen.
                 if (showTemp || ((gameNative || fusion) && (showGpuTemp || showBattery))) {
                     Spacer(Modifier.height(12.dp))
-                    HudThreeStop("Temp unit", listOf("\u00B0C", "\u00B0F"), if (tempUnitF) 1 else 0) {
+                    HudThreeStop(
+                        stringResource(R.string.compose_containers_temperature_unit),
+                        listOf(
+                            stringResource(R.string.compose_containers_celsius_symbol),
+                            stringResource(R.string.compose_containers_fahrenheit_symbol),
+                        ),
+                        if (tempUnitF) 1 else 0,
+                    ) {
                         tempUnitF = it == 1
                     }
                     Spacer(Modifier.height(4.dp))
                     // Danger bands as one 3-way rather than two toggles: "bands off but auto on"
                     // isn't a distinct state worth exposing.
                     val bandMode = if (!tempBands) 0 else if (tempAuto) 1 else 2
-                    HudThreeStop("Danger colors", listOf("Off", "Auto", "Manual"), bandMode) {
+                    HudThreeStop(
+                        stringResource(R.string.compose_containers_danger_colors),
+                        listOf(
+                            stringResource(R.string.compose_containers_off),
+                            stringResource(R.string.compose_containers_auto),
+                            stringResource(R.string.compose_containers_manual),
+                        ),
+                        bandMode,
+                    ) {
                         tempBands = it != 0
                         tempAuto = it != 2
                     }
                     Text(
                         when (bandMode) {
-                            0 -> "Temperatures use their normal color."
-                            1 -> "Thresholds read from your device's own thermal trip points, falling back to safe defaults."
-                            else -> "Set the red point per sensor; amber sits just below it."
+                            0 -> stringResource(R.string.compose_containers_danger_colors_off_hint)
+                            1 -> stringResource(R.string.compose_containers_danger_colors_auto_hint)
+                            else -> stringResource(R.string.compose_containers_danger_colors_manual_hint)
                         },
                         style = MaterialTheme.typography.bodySmall
                     )
                     if (bandMode == 2) {
                         // Red point only; amber is derived. Always \u00B0C — thresholds never convert.
                         Spacer(Modifier.height(4.dp))
-                        Text("CPU red at: $tempRedCpu\u00B0C", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            stringResource(R.string.compose_containers_cpu_red_temperature, tempRedCpu),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                         Slider(
                             value = tempRedCpu.toFloat(),
                             onValueChange = { tempRedCpu = it.toInt() },
                             valueRange = 50f..110f, steps = 59
                         )
                         if ((gameNative || fusion) && showGpuTemp) {
-                            Text("GPU red at: $tempRedGpu\u00B0C", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                stringResource(R.string.compose_containers_gpu_red_temperature, tempRedGpu),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                             Slider(
                                 value = tempRedGpu.toFloat(),
                                 onValueChange = { tempRedGpu = it.toInt() },
                                 valueRange = 50f..110f, steps = 59
                             )
                         }
-                        Text("Battery red at: $tempRedBat\u00B0C", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            stringResource(R.string.compose_containers_battery_red_temperature, tempRedBat),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                         Slider(
                             value = tempRedBat.toFloat(),
                             onValueChange = { tempRedBat = it.toInt() },
@@ -3634,7 +4066,10 @@ internal fun FpsCounterConfigDialog(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Text("HUD Scale: $hudScale%", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    stringResource(R.string.compose_containers_hud_scale_value, hudScale),
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Slider(
                     value = hudScale.toFloat(),
                     onValueChange = { hudScale = it.toInt().coerceAtLeast(50) },
@@ -3643,7 +4078,10 @@ internal fun FpsCounterConfigDialog(
 
                 if (rich) {
                     Spacer(Modifier.height(4.dp))
-                    Text("HUD Opacity: $hudOpacity%", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        stringResource(R.string.compose_containers_hud_opacity_value, hudOpacity),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                     Slider(
                         value = hudOpacity.toFloat(),
                         onValueChange = { hudOpacity = it.toInt() },
@@ -3651,20 +4089,49 @@ internal fun FpsCounterConfigDialog(
                     )
                     Spacer(Modifier.height(8.dp))
                     if (gameHub) {
-                        HudThreeStop("HUD skin", listOf("Classic", "Neon", "Mono"), skins.indexOf(skin)) { skin = skins[it] }
+                        HudThreeStop(
+                            stringResource(R.string.compose_containers_hud_skin),
+                            listOf(
+                                stringResource(R.string.compose_containers_hud_style_classic),
+                                stringResource(R.string.compose_containers_hud_skin_neon),
+                                stringResource(R.string.compose_containers_hud_skin_mono),
+                            ),
+                            skins.indexOf(skin),
+                        ) { skin = skins[it] }
                     }
-                    HudThreeStop("HUD color", listOf("Soft", "Mid", "Vivid"), colors.indexOf(color)) { color = colors[it] }
+                    HudThreeStop(
+                        stringResource(R.string.compose_containers_hud_color),
+                        listOf(
+                            stringResource(R.string.compose_containers_hud_color_soft),
+                            stringResource(R.string.compose_containers_hud_color_mid),
+                            stringResource(R.string.compose_containers_hud_color_vivid),
+                        ),
+                        colors.indexOf(color),
+                    ) { color = colors[it] }
                     Spacer(Modifier.height(8.dp))
-                    Text("HUD outline: $outlineValue", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        stringResource(R.string.compose_containers_hud_outline_value, outlineValue),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                     Slider(
                         value = outlineValue.toFloat(),
                         onValueChange = { outlineValue = it.toInt() },
                         valueRange = 0f..100f, steps = 99
                     )
-                    HudThreeStop("Outline color", listOf("Gray", "Accent"), if (outlineAccent) 1 else 0) { outlineAccent = it == 1 }
+                    HudThreeStop(
+                        stringResource(R.string.compose_containers_outline_color),
+                        listOf(
+                            stringResource(R.string.compose_containers_color_gray),
+                            stringResource(R.string.compose_containers_color_accent),
+                        ),
+                        if (outlineAccent) 1 else 0,
+                    ) { outlineAccent = it == 1 }
                 } else {
                     Spacer(Modifier.height(4.dp))
-                    Text("HUD Transparency: $hudTransparency", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        stringResource(R.string.compose_containers_hud_transparency_value, hudTransparency),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                     Slider(
                         value = hudTransparency.toFloat(),
                         onValueChange = { hudTransparency = it.toInt() },
@@ -3681,10 +4148,10 @@ internal fun FpsCounterConfigDialog(
                 ) {
                     Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Export HUD diagnostics")
+                    Text(stringResource(R.string.compose_containers_export_hud_diagnostics))
                 }
                 Text(
-                    "Saves a sensor report (CPU/GPU/temp/VRAM…) straight to your Downloads folder.",
+                    stringResource(R.string.compose_containers_export_hud_diagnostics_hint),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -3771,17 +4238,29 @@ private fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boole
                 var phase = 0
                 override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
                     val message = when (reason) {
-                        ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough storage space"
-                        ContentsManager.InstallFailedReason.ERROR_BADTAR -> "Corrupted archive file"
-                        ContentsManager.InstallFailedReason.ERROR_NOPROFILE -> "No valid profile found in package"
-                        ContentsManager.InstallFailedReason.ERROR_BADPROFILE -> "Invalid profile in package"
-                        ContentsManager.InstallFailedReason.ERROR_MISSINGFILES -> "Missing required files in package"
-                        ContentsManager.InstallFailedReason.ERROR_EXIST -> "This version is already installed"
-                        ContentsManager.InstallFailedReason.ERROR_UNTRUSTPROFILE -> "Untrusted profile, installation blocked"
-                        ContentsManager.InstallFailedReason.ERROR_UNKNOWN -> "Unknown installation error"
+                        ContentsManager.InstallFailedReason.ERROR_NOSPACE ->
+                            activity.getString(R.string.compose_containers_install_error_no_space)
+                        ContentsManager.InstallFailedReason.ERROR_BADTAR ->
+                            activity.getString(R.string.compose_containers_install_error_corrupt_archive)
+                        ContentsManager.InstallFailedReason.ERROR_NOPROFILE ->
+                            activity.getString(R.string.compose_containers_install_error_no_profile)
+                        ContentsManager.InstallFailedReason.ERROR_BADPROFILE ->
+                            activity.getString(R.string.compose_containers_install_error_invalid_profile)
+                        ContentsManager.InstallFailedReason.ERROR_MISSINGFILES ->
+                            activity.getString(R.string.compose_containers_install_error_missing_files)
+                        ContentsManager.InstallFailedReason.ERROR_EXIST ->
+                            activity.getString(R.string.compose_containers_install_error_already_installed)
+                        ContentsManager.InstallFailedReason.ERROR_UNTRUSTPROFILE ->
+                            activity.getString(R.string.compose_containers_install_error_untrusted_profile)
+                        ContentsManager.InstallFailedReason.ERROR_UNKNOWN ->
+                            activity.getString(R.string.compose_containers_install_error_unknown)
                     }
                     activity.runOnUiThread {
-                        Toast.makeText(activity, "ERROR: $message", Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            activity,
+                            activity.getString(R.string.compose_containers_error_message, message),
+                            Toast.LENGTH_LONG,
+                        ).show()
                         onResult(false)
                     }
                 }
@@ -3795,16 +4274,40 @@ private fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boole
                             activity.runOnUiThread { onResult(true) }
                         }
                     } catch (e: Exception) {
+                        android.util.Log.e(
+                            "ContainerDetailScreen",
+                            "Content installation finalization failed",
+                            e,
+                        )
                         activity.runOnUiThread {
-                            Toast.makeText(activity, "ERROR: Installation error — ${e.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                activity,
+                                activity.getString(
+                                    R.string.compose_containers_installation_error,
+                                    activity.getString(R.string.compose_containers_unknown_error),
+                                ),
+                                Toast.LENGTH_LONG,
+                            ).show()
                             onResult(false)
                         }
                     }
                 }
             })
         } catch (e: Exception) {
+            android.util.Log.e(
+                "ContainerDetailScreen",
+                "Content installation failed to start",
+                e,
+            )
             activity.runOnUiThread {
-                Toast.makeText(activity, "ERROR: Installation error — ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(
+                        R.string.compose_containers_installation_error,
+                        activity.getString(R.string.compose_containers_unknown_error),
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
                 onResult(false)
             }
         }
@@ -3819,7 +4322,7 @@ private fun ContentInstallGear(
     IconButton(onClick = onDownloadFile, modifier = Modifier.size(40.dp)) {
         Icon(
             Icons.Default.CloudDownload,
-            contentDescription = "Download / install",
+            contentDescription = stringResource(R.string.compose_containers_download_install_description),
             tint = MaterialTheme.colorScheme.primary,
         )
     }

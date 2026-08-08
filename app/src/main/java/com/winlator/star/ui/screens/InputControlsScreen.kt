@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -163,13 +164,13 @@ fun InputControlsScreen() {
         var name by remember { mutableStateOf("") }
         OutlinedAlertDialog(
             onDismissRequest = { promptCreateName = false },
-            title = { Text("Profile Name") },
+            title = { Text(stringResource(R.string.compose_input_profile_name)) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     singleLine = true,
-                    placeholder = { Text("Enter profile name") },
+                    placeholder = { Text(stringResource(R.string.compose_input_enter_profile_name)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -181,9 +182,13 @@ fun InputControlsScreen() {
                         refreshControllers()
                         promptCreateName = false
                     }
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.compose_input_ok)) }
             },
-            dismissButton = { TextButton(onClick = { promptCreateName = false }) { Text("Cancel") } }
+            dismissButton = {
+                TextButton(onClick = { promptCreateName = false }) {
+                    Text(stringResource(R.string.compose_input_cancel))
+                }
+            }
         )
     }
 
@@ -191,7 +196,7 @@ fun InputControlsScreen() {
         var name by remember { mutableStateOf(promptRenameOldName ?: "") }
         OutlinedAlertDialog(
             onDismissRequest = { promptRenameOldName = null },
-            title = { Text("Profile Name") },
+            title = { Text(stringResource(R.string.compose_input_profile_name)) },
             text = {
                 OutlinedTextField(
                     value = name,
@@ -208,9 +213,13 @@ fun InputControlsScreen() {
                         refreshProfiles()
                         promptRenameOldName = null
                     }
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.compose_input_ok)) }
             },
-            dismissButton = { TextButton(onClick = { promptRenameOldName = null }) { Text("Cancel") } }
+            dismissButton = {
+                TextButton(onClick = { promptRenameOldName = null }) {
+                    Text(stringResource(R.string.compose_input_cancel))
+                }
+            }
         )
     }
 
@@ -252,15 +261,19 @@ fun InputControlsScreen() {
         if (isLoadingList) {
             OutlinedAlertDialog(
                 onDismissRequest = { showDownloadDialog = false },
-                title = { Text("Profiles") },
+                title = { Text(stringResource(R.string.compose_input_profiles)) },
                 text = { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() } },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = { showDownloadDialog = false }) { Text("Cancel") } }
+                dismissButton = {
+                    TextButton(onClick = { showDownloadDialog = false }) {
+                        Text(stringResource(R.string.compose_input_cancel))
+                    }
+                }
             )
         } else {
             OutlinedAlertDialog(
                 onDismissRequest = { showDownloadDialog = false },
-                title = { Text("Download Profiles") },
+                title = { Text(stringResource(R.string.compose_input_download_profiles)) },
                 text = {
                     // Scroll the profile list inside the dialog: the list can be long
                     // (dozens of .icp files), so without this the bottom rows overflow
@@ -321,9 +334,13 @@ fun InputControlsScreen() {
                                 }
                             }
                         }
-                    }) { Text("Download") }
+                    }) { Text(stringResource(R.string.compose_input_download)) }
                 },
-                dismissButton = { TextButton(onClick = { showDownloadDialog = false }) { Text("Cancel") } }
+                dismissButton = {
+                    TextButton(onClick = { showDownloadDialog = false }) {
+                        Text(stringResource(R.string.compose_input_cancel))
+                    }
+                }
             )
         }
     }
@@ -336,11 +353,17 @@ fun InputControlsScreen() {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ── Profile Section ─────────────────────────────────────────
-        Text("Profile", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            stringResource(R.string.compose_input_profile),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
         FieldSet {
             Box {
+                val noProfileLabel = stringResource(R.string.compose_input_select_profile)
                 val displayText = if (selectedProfileIdx > 0 && selectedProfileIdx - 1 < profiles.size)
-                    profiles[selectedProfileIdx - 1].getName() else "-- Select Profile --"
+                    profiles[selectedProfileIdx - 1].getName() else noProfileLabel
                 Button(onClick = { showProfileDropdown = true },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier.fillMaxWidth()) {
@@ -351,7 +374,7 @@ fun InputControlsScreen() {
                     onDismissRequest = { showProfileDropdown = false },
                     modifier = Modifier.outlinedMenuCard(),
                 ) {
-                    DropdownMenuItem(text = { Text("-- Select Profile --") }, onClick = {
+                    DropdownMenuItem(text = { Text(noProfileLabel) }, onClick = {
                         selectedProfileIdx = 0; loadProfile(0); showProfileDropdown = false
                     })
                     profiles.forEachIndexed { i, p ->
@@ -364,11 +387,23 @@ fun InputControlsScreen() {
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = { promptCreateName = true }) { Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface) }
+                IconButton(onClick = { promptCreateName = true }) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.compose_input_add_profile),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
                 IconButton(onClick = {
                     if (currentProfile != null) promptRenameOldName = currentProfile?.getName()
                     else AppUtils.showToast(context, R.string.no_profile_selected)
-                }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface) }
+                }) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.compose_input_edit_profile),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
                 IconButton(onClick = {
                     val profile = currentProfile
                     if (profile != null) {
@@ -378,7 +413,13 @@ fun InputControlsScreen() {
                             refreshControllers()
                         }
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
-                }) { Icon(Icons.Default.ContentCopy, "Duplicate", tint = MaterialTheme.colorScheme.onSurface) }
+                }) {
+                    Icon(
+                        Icons.Default.ContentCopy,
+                        contentDescription = stringResource(R.string.compose_input_duplicate_profile),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
                 IconButton(onClick = {
                     val profile = currentProfile
                     if (profile != null) {
@@ -389,7 +430,13 @@ fun InputControlsScreen() {
                             refreshControllers()
                         }
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
-                }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurface) }
+                }) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.compose_input_remove_profile),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
 
@@ -404,7 +451,7 @@ fun InputControlsScreen() {
                         val builder = android.app.AlertDialog.Builder(act)
                         val options = arrayOf(
                             act.getString(R.string.open_file),
-                            "Pick via system…",
+                            act.getString(R.string.compose_input_pick_via_system),
                             act.getString(R.string.download_file)
                         )
                         builder.setItems(options) { _, which ->
@@ -444,7 +491,7 @@ fun InputControlsScreen() {
                     if (currentProfile != null) {
                         val exported = manager.exportProfile(currentProfile!!)
                         if (exported != null) AppUtils.showToast(context,
-                            "${context.getString(R.string.profile_exported_to)} ${exported.path}")
+                            context.getString(R.string.compose_input_profile_exported_to, exported.path))
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
@@ -465,7 +512,7 @@ fun InputControlsScreen() {
                     if (currentProfile != null) {
                         val exported = manager.exportLegacyProfile(currentProfile!!)
                         if (exported != null) AppUtils.showToast(context,
-                            "${context.getString(R.string.profile_exported_to)} ${exported.path}")
+                            context.getString(R.string.compose_input_profile_exported_to, exported.path))
                     } else AppUtils.showToast(context, R.string.no_profile_selected)
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -490,12 +537,20 @@ fun InputControlsScreen() {
             // intentional: success green signals the primary "go/edit" action; kept off-theme by design
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
             modifier = Modifier.fillMaxWidth()
-        ) { Text("Controls Editor", color = Color.White) } // intentional: white kept for contrast on the green fill
+        ) {
+            Text(stringResource(R.string.compose_input_controls_editor), color = Color.White)
+        } // intentional: white kept for contrast on the green fill
 
         // ── External Controllers ────────────────────────────────────
-        Text("External Controllers", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            stringResource(R.string.compose_input_external_controllers),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
         if (controllers.isEmpty()) {
-            Text("No items to display", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp,
+            Text(stringResource(R.string.compose_input_no_items_to_display),
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
         } else {
             for (controller in controllers) {
@@ -523,7 +578,15 @@ fun InputControlsScreen() {
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(controller.getName(), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                            Text("$bindingsCount Bindings", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            Text(
+                                pluralStringResource(
+                                    R.plurals.compose_input_bindings_count,
+                                    bindingsCount,
+                                    bindingsCount,
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                            )
                         }
                         if (bindingsCount > 0) {
                             IconButton(onClick = {
@@ -532,7 +595,13 @@ fun InputControlsScreen() {
                                     currentProfile?.save()
                                     refreshControllers()
                                 }
-                            }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = stringResource(R.string.compose_input_remove_controller),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
@@ -559,10 +628,19 @@ private fun GyroscopeSection() {
     val context = LocalContext.current
     val sensor = remember { GyroCalibrator.getSensor(context) }
 
-    Text("Gyroscope", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    Text(
+        stringResource(R.string.compose_input_gyroscope),
+        color = MaterialTheme.colorScheme.onSurface,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+    )
 
     if (sensor == null) {
-        Text("No gyroscope on this device", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+        Text(
+            stringResource(R.string.compose_input_no_gyroscope),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp,
+        )
         return
     }
 
@@ -593,16 +671,16 @@ private fun GyroscopeSection() {
 
     FieldSet {
         Text(
-            "Rest the device on a flat surface and calibrate to remove the gyroscope's resting drift.",
+            stringResource(R.string.compose_input_gyro_calibration_description),
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
         )
         Spacer(Modifier.height(8.dp))
 
         val summary = when {
-            !calibrated -> "Not calibrated"
+            !calibrated -> stringResource(R.string.compose_input_gyro_not_calibrated)
             abs(biasX) < GyroCalibrator.NEGLIGIBLE_BIAS && abs(biasY) < GyroCalibrator.NEGLIGIBLE_BIAS ->
-                "Very little drift detected — your device already compensates"
-            else -> "Bias removed: x %.4f, y %.4f rad/s".format(biasX, biasY)
+                stringResource(R.string.compose_input_gyro_negligible_drift)
+            else -> stringResource(R.string.compose_input_gyro_bias_removed, biasX, biasY)
         }
         Text(summary, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
 
@@ -615,15 +693,22 @@ private fun GyroscopeSection() {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(
                 onClick = {
-                    status = "Hold still…"
+                    status = context.getString(R.string.compose_input_gyro_hold_still)
                     activeRun = GyroCalibrator.calibrate(context) { result ->
                         activeRun = null
                         status = when (result) {
                             is GyroCalibrator.Result.Success ->
-                                if (result.negligible) "Calibrated — nothing to remove" else "Calibrated"
-                            GyroCalibrator.Result.Moved -> "Hold the device still and try again"
-                            GyroCalibrator.Result.NotEnoughSamples -> "Couldn't sample — try again"
-                            GyroCalibrator.Result.Unavailable -> "Gyroscope unavailable"
+                                if (result.negligible) {
+                                    context.getString(R.string.compose_input_gyro_calibrated_nothing_to_remove)
+                                } else {
+                                    context.getString(R.string.compose_input_gyro_calibrated)
+                                }
+                            GyroCalibrator.Result.Moved ->
+                                context.getString(R.string.compose_input_gyro_keep_still)
+                            GyroCalibrator.Result.NotEnoughSamples ->
+                                context.getString(R.string.compose_input_gyro_not_enough_samples)
+                            GyroCalibrator.Result.Unavailable ->
+                                context.getString(R.string.compose_input_gyro_unavailable)
                         }
                         refreshBias()
                     }
@@ -631,17 +716,29 @@ private fun GyroscopeSection() {
                 enabled = activeRun == null,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
-            ) { Text("Calibrate", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
+            ) {
+                Text(
+                    stringResource(R.string.compose_input_calibrate),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 12.sp,
+                )
+            }
             Button(
                 onClick = {
                     GyroCalibrator.clearBias(context)
-                    status = "Calibration reset"
+                    status = context.getString(R.string.compose_input_gyro_calibration_reset)
                     refreshBias()
                 },
                 enabled = calibrated && activeRun == null,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
-            ) { Text("Reset", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
+            ) {
+                Text(
+                    stringResource(R.string.compose_input_reset),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 12.sp,
+                )
+            }
         }
     }
 }
@@ -668,23 +765,28 @@ private fun GlobalPlayerSlotsSection() {
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("Player Slots", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp,
+        Text(stringResource(R.string.compose_input_player_slots),
+            color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         IconButton(onClick = { helpRes = R.string.help_player_slots }) {
-            Icon(Icons.Default.Help, contentDescription = "What is this?",
+            Icon(Icons.Default.Help,
+                contentDescription = stringResource(R.string.compose_input_what_is_this),
                 tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
         }
     }
     FieldSet {
         Text(
-            "The default for newly-created containers. Assign two devices to one player to share control. " +
-                "Applies to new containers only — existing containers keep their own settings.",
+            stringResource(R.string.compose_input_player_slots_description),
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
         )
         Spacer(Modifier.height(8.dp))
-        val onScreenModeLabels = listOf("Keep on-screen player", "Yield Player 1 to pad", "Share the player")
+        val onScreenModeLabels = listOf(
+            stringResource(R.string.compose_input_on_screen_keep),
+            stringResource(R.string.compose_input_on_screen_yield),
+            stringResource(R.string.compose_input_on_screen_share),
+        )
         LabeledDropdown(
-            label = "On-screen priority",
+            label = stringResource(R.string.compose_input_on_screen_priority),
             options = onScreenModeLabels,
             selectedOption = onScreenModeLabels.getOrElse(onScreenMode) { onScreenModeLabels[0] },
             onSelect = {

@@ -25,27 +25,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-
-/** Verbatim risk copy for the hard-gate disclaimers (kept in one place so both surfaces match). */
-object PerfDisclaimerCopy {
-    const val ROOT_RISK =
-        "⚠️ USE AT YOUR OWN RISK — Power-user controls write directly to your device's system files " +
-        "(CPU/GPU clocks, thermal, fan). Misuse can cause overheating, instability, rapid battery " +
-        "drain, data loss, or permanent hardware damage, and may void your warranty. Bannerlator " +
-        "provides these tools with no warranty of any kind — you accept full responsibility for any " +
-        "outcome."
-
-    const val WATCHDOG_OFF =
-        "⚠️ DISABLING THERMAL SAFETY — The temperature watchdog is the only automatic protection that " +
-        "rolls your settings back before the device gets dangerously hot. With it OFF, your device can " +
-        "reach damaging temperatures with no software intervention while a game runs — only the chip's " +
-        "own emergency trip remains. Do not leave this off unattended. This setting stays OFF across " +
-        "restarts until you turn it back on yourself — Bannerlator will not re-enable it for you."
-}
+import com.winlator.star.R
 
 /**
  * Informational dialog — a single "Got it" acknowledgement, NOT a hard gate. Used to explain what a
@@ -68,7 +53,7 @@ fun PerfInfoDialog(title: String, body: String, onDismiss: () -> Unit) {
                     modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())
                 )
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    Button(onClick = onDismiss) { Text("Got it") }
+                    Button(onClick = onDismiss) { Text(stringResource(R.string.perf_got_it)) }
                 }
             }
         }
@@ -117,7 +102,7 @@ fun PerfDisclaimerDialog(
                 )
 
                 if (!reachedBottom) {
-                    Text("Scroll to the end to continue.",
+                    Text(stringResource(R.string.perf_disclaimer_scroll_to_end),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
 
@@ -127,12 +112,12 @@ fun PerfDisclaimerDialog(
                 ) {
                     Checkbox(checked = accepted, onCheckedChange = { accepted = it }, enabled = reachedBottom)
                     Spacer(Modifier.width(6.dp))
-                    Text("I understand and accept all risk",
+                    Text(stringResource(R.string.perf_disclaimer_accept_risk),
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                 }
 
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = { if (canConfirm) { onConfirm(); } }, enabled = canConfirm) {
                         Text(confirmLabel)

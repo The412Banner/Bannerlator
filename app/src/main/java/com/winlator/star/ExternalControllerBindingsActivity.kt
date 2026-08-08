@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -67,7 +67,7 @@ import com.winlator.star.ui.theme.WinlatorTheme
  * screens. The list is backed by a Compose snapshot state so an auto-added row from
  * physical input recomposes the LazyColumn immediately.
  */
-class ExternalControllerBindingsActivity : ComponentActivity() {
+class ExternalControllerBindingsActivity : AppCompatActivity() {
     private lateinit var profile: ControlsProfile
     private lateinit var controller: ExternalController
 
@@ -355,7 +355,7 @@ class ExternalControllerBindingsActivity : ComponentActivity() {
                     ) {
                         // Binding TYPE dropdown.
                         LabeledDropdown(
-                            label = "Type",
+                            label = stringResource(R.string.external_binding_type),
                             options = typeEntries,
                             selectedOption = typeEntries.getOrElse(typeIndex) { typeEntries.first() },
                             onSelect = { label ->
@@ -376,7 +376,7 @@ class ExternalControllerBindingsActivity : ComponentActivity() {
                         )
                         // Binding VALUE dropdown (entries depend on the selected type).
                         LabeledDropdown(
-                            label = "Binding",
+                            label = stringResource(R.string.external_binding_binding),
                             options = valueLabels,
                             selectedOption = if (valueLabel in valueLabels) valueLabel
                                              else valueLabels.firstOrNull() ?: "",
@@ -403,7 +403,7 @@ class ExternalControllerBindingsActivity : ComponentActivity() {
                 }) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
-                        contentDescription = "Remove binding",
+                        contentDescription = stringResource(R.string.external_binding_remove),
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }

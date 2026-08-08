@@ -1,6 +1,7 @@
 package com.winlator.star.ui.screens
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -60,11 +61,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
+import com.winlator.star.R
 import com.winlator.star.core.FileUtils
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.core.LogInventory
@@ -73,6 +77,11 @@ import com.winlator.star.core.LogcatCapture
 import com.winlator.star.ui.theme.DangerRed
 import kotlinx.coroutines.launch
 import java.io.File
+
+private data class LogInfoContent(
+    @StringRes val titleRes: Int,
+    @StringRes val bodyRes: Int,
+)
 
 /**
  * App Settings → Log Manager. One place for everything logging: where logs go, which ones are
@@ -145,7 +154,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
         }
     }
 
-    var info by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var info by remember { mutableStateOf<LogInfoContent?>(null) }
     var showExplainAll by remember { mutableStateOf(false) }
     var showKeepMenu by remember { mutableStateOf(false) }
     // Folder the embedded File Manager is showing, or null when it is closed.
@@ -155,6 +164,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
     var confirmDelete by remember { mutableStateOf<LogInventory.Entry?>(null) }
     var confirmClearAll by remember { mutableStateOf(false) }
     val entries = remember(refreshTick, perGame) { LogInventory.scan(context) }
+    val selectLogFolderTitle = stringResource(R.string.log_manager_select_log_folder)
 
     fun putBool(key: String, v: Boolean) = prefs.edit().putBoolean(key, v).apply()
 
@@ -168,28 +178,36 @@ fun LogManagerScreen(onClose: () -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Log Manager",
+                    stringResource(R.string.log_manager_title),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(
+                        Icons.Default.Close,
+                        stringResource(R.string.log_manager_action_close),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
 
             // ── Where logs go ────────────────────────────────────────────
-            SectionLabel("Where logs go")
+            SectionLabel(stringResource(R.string.log_manager_where_logs_go))
             LogCard {
                 PickRow(
                     label = when (locationMode) {
-                        LogLocation.MODE_DOWNLOAD -> "Download"
-                        LogLocation.MODE_CUSTOM -> if (customPath.isNotEmpty()) "Custom folder" else "Choose folder…"
+                        LogLocation.MODE_DOWNLOAD -> stringResource(R.string.log_manager_download)
+                        LogLocation.MODE_CUSTOM -> if (customPath.isNotEmpty()) {
+                            stringResource(R.string.log_manager_custom_folder)
+                        } else {
+                            stringResource(R.string.log_manager_choose_folder)
+                        }
                         // MODE_DOCUMENTS (default) and the retired MODE_APP_DATA both resolve to Documents.
-                        else -> "Documents"
+                        else -> stringResource(R.string.log_manager_documents)
                     },
                     sub = LogLocation.resolveLogDir(context)?.absolutePath ?: "—",
-                    action = "Change",
+                    action = stringResource(R.string.log_manager_action_change),
                     onClick = { showLocationMenu = true }
                 )
                 Box {
@@ -200,33 +218,35 @@ fun LogManagerScreen(onClose: () -> Unit) {
                         onDismissRequest = { showLocationMenu = false },
                         modifier = Modifier.outlinedMenuCard(),
                     ) {
-                        MenuRow("Download", Icons.Default.Download) {
+                        MenuRow(stringResource(R.string.log_manager_download), Icons.Default.Download) {
                             saveMode(LogLocation.MODE_DOWNLOAD); showLocationMenu = false
                         }
                         MenuItemDivider()
-                        MenuRow("Documents", Icons.Default.Description) {
+                        MenuRow(stringResource(R.string.log_manager_documents), Icons.Default.Description) {
                             saveMode(LogLocation.MODE_DOCUMENTS); showLocationMenu = false
                         }
                         MenuItemDivider()
-                        MenuRow("Choose folder…", Icons.Default.FolderOpen) {
+                        MenuRow(stringResource(R.string.log_manager_choose_folder), Icons.Default.FolderOpen) {
                             showLocationMenu = false
-                            dirLauncher.launch(InAppFilePicker.buildDirIntent(context, "Select log folder"))
+                            dirLauncher.launch(InAppFilePicker.buildDirIntent(context, selectLogFolderTitle))
                         }
                     }
                 }
-                LogToggle("Folder for each game", perGame,
-                    hint = "Each game keeps its own folder",
-                    onInfo = { info = "Folder for each game" to LogCopy.PER_GAME }) {
+                LogToggle(stringResource(R.string.log_manager_folder_for_each_game), perGame,
+                    hint = stringResource(R.string.log_manager_folder_for_each_game_hint),
+                    onInfo = {
+                        info = LogInfoContent(R.string.log_manager_folder_for_each_game, LogCopy.PER_GAME)
+                    }) {
                     perGame = it; putBool(LogLocation.PREF_PER_GAME, it); refreshTick++
                 }
             }
 
             // ── What to record ───────────────────────────────────────────
-            SectionLabel("What to record")
+            SectionLabel(stringResource(R.string.log_manager_what_to_record))
             LogCard {
-                LogToggle("Wine debug", wineDebug,
-                    hint = "Slows games down — for diagnosing a problem",
-                    onInfo = { info = "Wine debug" to LogCopy.WINE }) {
+                LogToggle(stringResource(R.string.log_manager_wine_debug), wineDebug,
+                    hint = stringResource(R.string.log_manager_wine_debug_hint),
+                    onInfo = { info = LogInfoContent(R.string.log_manager_wine_debug, LogCopy.WINE) }) {
                     wineDebug = it; putBool("enable_wine_debug", it)
                 }
                 if (wineDebug) {
@@ -236,24 +256,24 @@ fun LogManagerScreen(onClose: () -> Unit) {
                         modifier = Modifier.padding(start = 2.dp, bottom = 6.dp)
                     )
                 }
-                LogToggle("Box64 / FEXCore", box64Logs,
-                    hint = "Slows games down at higher verbosity",
-                    onInfo = { info = "Box64 / FEXCore" to LogCopy.BOX64 }) {
+                LogToggle(stringResource(R.string.log_manager_box64_fexcore), box64Logs,
+                    hint = stringResource(R.string.log_manager_box64_fexcore_hint),
+                    onInfo = { info = LogInfoContent(R.string.log_manager_box64_fexcore, LogCopy.BOX64) }) {
                     box64Logs = it; putBool("enable_box64_logs", it)
                 }
-                LogToggle("DXVK & VKD3D", dxvkLogs,
-                    hint = "Safe to leave on — mostly written at startup",
-                    onInfo = { info = "DXVK & VKD3D" to LogCopy.DXVK }) {
+                LogToggle(stringResource(R.string.log_manager_dxvk_vkd3d), dxvkLogs,
+                    hint = stringResource(R.string.log_manager_dxvk_vkd3d_hint),
+                    onInfo = { info = LogInfoContent(R.string.log_manager_dxvk_vkd3d, LogCopy.DXVK) }) {
                     dxvkLogs = it; putBool("enable_dxvk_logs", it)
                 }
-                LogToggle("Android logcat", logcat,
-                    hint = "Bannerlator's own output only",
-                    onInfo = { info = "Android logcat" to LogCopy.LOGCAT }) {
+                LogToggle(stringResource(R.string.log_manager_android_logcat), logcat,
+                    hint = stringResource(R.string.log_manager_android_logcat_hint),
+                    onInfo = { info = LogInfoContent(R.string.log_manager_android_logcat, LogCopy.LOGCAT) }) {
                     logcat = it; putBool("enable_logcat", it)
                 }
-                LogToggle("Crash reports", crashReports,
-                    hint = "Nothing runs until something crashes",
-                    onInfo = { info = "Crash reports" to LogCopy.CRASH }) {
+                LogToggle(stringResource(R.string.log_manager_crash_reports), crashReports,
+                    hint = stringResource(R.string.log_manager_crash_reports_hint),
+                    onInfo = { info = LogInfoContent(R.string.log_manager_crash_reports, LogCopy.CRASH) }) {
                     crashReports = it; putBool("enable_crash_reports", it)
                 }
 
@@ -262,7 +282,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     CardAction(
-                        "Capture logcat now",
+                        stringResource(R.string.log_manager_capture_logcat_now),
                         modifier = Modifier.weight(1f).alpha(if (logcat) 1f else 0.4f)
                     ) {
                         if (!logcat) return@CardAction
@@ -275,20 +295,34 @@ fun LogManagerScreen(onClose: () -> Unit) {
                             refreshTick++
                         }
                     }
-                    InfoDot { info = "Capture logcat now" to LogCopy.CAPTURE_NOW }
+                    InfoDot {
+                        info = LogInfoContent(R.string.log_manager_capture_logcat_now, LogCopy.CAPTURE_NOW)
+                    }
                 }
             }
 
             // ── Housekeeping ─────────────────────────────────────────────
-            SectionLabel("Housekeeping")
+            SectionLabel(stringResource(R.string.log_manager_housekeeping))
             LogCard {
                 Box {
                     PickRow(
-                        label = "Keep last",
-                        sub = if (keepLast == 0) "No history — each run replaces the last"
-                              else "$keepLast launch${if (keepLast == 1) "" else "es"} per game",
+                        label = stringResource(R.string.log_manager_keep_last),
+                        sub = if (keepLast == 0) {
+                            stringResource(R.string.log_manager_no_history_each_run)
+                        } else {
+                            pluralStringResource(
+                                R.plurals.log_manager_launches_per_game,
+                                keepLast,
+                                keepLast,
+                            )
+                        },
                         action = "▾",
-                        onInfo = { info = "Keep last launches" to LogCopy.KEEP_LAST },
+                        onInfo = {
+                            info = LogInfoContent(
+                                R.string.log_manager_keep_last_launches,
+                                LogCopy.KEEP_LAST,
+                            )
+                        },
                         onClick = { showKeepMenu = true }
                     )
                     DropdownMenu(
@@ -299,7 +333,11 @@ fun LogManagerScreen(onClose: () -> Unit) {
                         listOf(0, 1, 3, 5, 10, 20, 50).forEachIndexed { i, n ->
                             if (i > 0) MenuItemDivider()
                             MenuRow(
-                                if (n == 0) "No history" else "$n launch${if (n == 1) "" else "es"}",
+                                if (n == 0) {
+                                    stringResource(R.string.log_manager_no_history)
+                                } else {
+                                    pluralStringResource(R.plurals.log_manager_launches, n, n)
+                                },
                                 if (n == 0) Icons.Default.HistoryToggleOff else Icons.Default.History
                             ) {
                                 keepLast = n
@@ -312,18 +350,26 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Total size", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                         Text(
-                            LogInventory.humanBytes(LogInventory.totalBytes(entries)) +
-                                " across ${entries.size} " + if (entries.size == 1) "folder" else "folders",
+                            stringResource(R.string.log_manager_total_size),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.sp,
+                        )
+                        Text(
+                            pluralStringResource(
+                                R.plurals.log_manager_total_size_across_folders,
+                                entries.size,
+                                LogInventory.humanBytes(LogInventory.totalBytes(entries)),
+                                entries.size,
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp
                         )
                     }
-                    Text("Browse", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
+                    Text(stringResource(R.string.log_manager_action_browse), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
                         modifier = Modifier
                             .clickable { browseDir = LogLocation.resolveLogDir(context) }
                             .padding(horizontal = 8.dp, vertical = 6.dp))
-                    Text("Clear all", color = DangerRed, fontSize = 12.sp,
+                    Text(stringResource(R.string.log_manager_action_clear_all), color = DangerRed, fontSize = 12.sp,
                         modifier = Modifier
                             .clickable { if (entries.isNotEmpty()) confirmClearAll = true }
                             .padding(horizontal = 6.dp, vertical = 6.dp)
@@ -332,10 +378,14 @@ fun LogManagerScreen(onClose: () -> Unit) {
             }
 
             // ── Logs by game ─────────────────────────────────────────────
-            SectionLabel("Logs by game")
+            SectionLabel(stringResource(R.string.log_manager_logs_by_game))
             if (entries.isEmpty()) {
                 LogCard {
-                    Text("No logs yet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text(
+                        stringResource(R.string.log_manager_no_logs_yet),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
                 }
             } else {
                 entries.forEach { e ->
@@ -350,7 +400,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
 
             Spacer(Modifier.height(10.dp))
             Text(
-                "Explain the log types",
+                stringResource(R.string.log_manager_explain_log_types),
                 color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
                 modifier = Modifier
                     .clickable { showExplainAll = true }
@@ -361,10 +411,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 // full stop. Same correction as LogReport and LogViewerScreen: name what is actually
                 // stripped, and say plainly that paths are kept, because a path is often the thing
                 // that makes a log worth having.
-                "E-mail addresses, auth tokens and your Steam account name are scrubbed as logs are " +
-                    "written. File paths are kept so they stay useful for debugging — glance over " +
-                    "them before sharing if a folder name identifies you. Logcat only ever contains " +
-                    "Bannerlator's own output.",
+                stringResource(R.string.log_manager_privacy_note),
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -402,6 +449,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
 
     confirmDelete?.let { entry ->
         val count = remember(entry.dir) { LogInventory.deletableCount(entry) }
+        val entryDisplayName = logEntryDisplayName(entry)
         OutlinedAlertDialog(
             onDismissRequest = { confirmDelete = null },
             // The loose bucket is already named "Older logs"/"All logs", so "Delete ${name} logs?"
@@ -409,24 +457,32 @@ fun LogManagerScreen(onClose: () -> Unit) {
             title = {
                 Text(
                     when {
-                        entry.isAppBucket -> "Delete app & crash logs?"
-                        entry.isLooseBucket -> "Delete ${entry.name.replaceFirstChar { it.lowercase() }}?"
-                        else -> "Delete ${entry.name} logs?"
+                        entry.isAppBucket -> stringResource(R.string.log_manager_delete_app_crash_question)
+                        entry.isLooseBucket -> stringResource(
+                            R.string.log_manager_delete_bucket_question,
+                            entryDisplayName,
+                        )
+                        else -> stringResource(
+                            R.string.log_manager_delete_named_logs_question,
+                            entry.name,
+                        )
                     }
                 )
             },
             text = {
                 Text(
-                    if (count == 0)
+                    if (count == 0) {
                     // Reachable: the loose bucket counts every log-shaped file it finds, but only
                     // the ones we wrote are deletable. A folder holding nothing but a user's own
                     // files lands here, and must not imply we are about to touch them.
-                        "Nothing here was written by Bannerlator, so there is nothing to delete. " +
-                            "The files in this folder are yours and are left alone."
-                    else
-                        "Deletes $count log file${if (count == 1) "" else "s"}, including any kept " +
-                            "history.\n\nOnly files Bannerlator wrote are removed — anything else in " +
-                            "that folder is left alone."
+                        stringResource(R.string.log_manager_nothing_to_delete_message)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.log_manager_delete_group_message,
+                            count,
+                            count,
+                        )
+                    }
                 )
             },
             confirmButton = {
@@ -436,15 +492,23 @@ fun LogManagerScreen(onClose: () -> Unit) {
                         confirmDelete = null
                         refreshTick++
                         android.widget.Toast.makeText(
-                            context, "Deleted $n file${if (n == 1) "" else "s"}",
+                            context,
+                            context.resources.getQuantityString(
+                                R.plurals.log_manager_deleted_files,
+                                n,
+                                n,
+                            ),
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
-                    }) { Text("Delete", color = DangerRed) }
+                    }) { Text(stringResource(R.string.log_manager_action_delete), color = DangerRed) }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = null }) {
-                    Text(if (count == 0) "OK" else "Cancel")
+                    Text(
+                        if (count == 0) stringResource(R.string.log_manager_action_ok)
+                        else stringResource(R.string.log_manager_action_cancel)
+                    )
                 }
             }
         )
@@ -452,15 +516,22 @@ fun LogManagerScreen(onClose: () -> Unit) {
 
     if (confirmClearAll) {
         val count = remember(refreshTick) { entries.sumOf { LogInventory.deletableCount(it) } }
+        val fileCount = pluralStringResource(R.plurals.log_manager_log_file_count, count, count)
+        val folderCount = pluralStringResource(
+            R.plurals.log_manager_folder_count,
+            entries.size,
+            entries.size,
+        )
         OutlinedAlertDialog(
             onDismissRequest = { confirmClearAll = false },
-            title = { Text("Clear all logs?") },
+            title = { Text(stringResource(R.string.log_manager_clear_all_question)) },
             text = {
                 Text(
-                    "Deletes $count log file${if (count == 1) "" else "s"} across ${entries.size} " +
-                        "folder${if (entries.size == 1) "" else "s"}, including kept history.\n\n" +
-                        "Only files Bannerlator wrote are removed. Other files in your log folder — " +
-                        "including anything you put there yourself — are left alone."
+                    stringResource(
+                        R.string.log_manager_clear_all_message,
+                        fileCount,
+                        folderCount,
+                    )
                 )
             },
             confirmButton = {
@@ -470,19 +541,37 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     confirmClearAll = false
                     refreshTick++
                     android.widget.Toast.makeText(
-                        context, "Deleted $n file${if (n == 1) "" else "s"}",
+                        context,
+                        context.resources.getQuantityString(
+                            R.plurals.log_manager_deleted_files,
+                            n,
+                            n,
+                        ),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
-                }) { Text("Delete all", color = DangerRed) }
+                }) { Text(stringResource(R.string.log_manager_action_delete_all), color = DangerRed) }
             },
-            dismissButton = { TextButton(onClick = { confirmClearAll = false }) { Text("Cancel") } }
+            dismissButton = {
+                TextButton(onClick = { confirmClearAll = false }) {
+                    Text(stringResource(R.string.log_manager_action_cancel))
+                }
+            }
         )
     }
 
-    info?.let { (title, body) -> PerfInfoDialog(title = title, body = body, onDismiss = { info = null }) }
+    info?.let { content ->
+        PerfInfoDialog(
+            title = stringResource(content.titleRes),
+            body = stringResource(content.bodyRes),
+            onDismiss = { info = null },
+        )
+    }
     if (showExplainAll) {
-        PerfInfoDialog(title = "What each log is for", body = LogCopy.explainAll(),
-            onDismiss = { showExplainAll = false })
+        PerfInfoDialog(
+            title = stringResource(R.string.log_manager_what_each_log_for),
+            body = stringResource(LogCopy.EXPLAIN_ALL),
+            onDismiss = { showExplainAll = false },
+        )
     }
 }
 
@@ -604,14 +693,15 @@ private fun WineChannelGroup(
             modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
         ) {
             Text(
-                "Channels",
+                stringResource(R.string.log_manager_channels),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                if (expanded) "Collapse channels" else "Expand channels",
+                if (expanded) stringResource(R.string.log_manager_collapse_channels)
+                else stringResource(R.string.log_manager_expand_channels),
                 tint = MaterialTheme.colorScheme.primary
             )
         }
@@ -620,7 +710,7 @@ private fun WineChannelGroup(
             // Static labels, not chips: a tap that silently deselected a channel from a summary
             // view would be a destructive action hidden behind a collapsed control.
             if (selected.isEmpty()) {
-                Text("None selected", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
+                Text(stringResource(R.string.log_manager_none_selected), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
                     modifier = Modifier.padding(vertical = 4.dp))
             } else {
                 FlowRow(
@@ -645,7 +735,15 @@ private fun WineChannelGroup(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            label = { Text("Search all ${all.size} channels") },
+            label = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.log_manager_search_all_channels,
+                        all.size,
+                        all.size,
+                    )
+                )
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
         )
@@ -668,7 +766,16 @@ private fun WineChannelGroup(
             if (all.isNotEmpty()) {
                 AssistChip(
                     onClick = { browseAll = true },
-                    label = { Text("Browse all ${all.size}…", fontSize = 11.sp) },
+                    label = {
+                        Text(
+                            pluralStringResource(
+                                R.plurals.log_manager_browse_all_channels,
+                                all.size,
+                                all.size,
+                            ),
+                            fontSize = 11.sp,
+                        )
+                    },
                     leadingIcon = {
                         Icon(Icons.Default.ListAlt, null, modifier = Modifier.size(14.dp))
                     },
@@ -676,12 +783,12 @@ private fun WineChannelGroup(
             }
         }
         if (query.isNotBlank() && shown.isEmpty()) {
-            Text("No channel matches \"$query\".",
+            Text(stringResource(R.string.log_manager_no_channel_matches, query),
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
 
         Text(
-            "Reset to defaults",
+            stringResource(R.string.log_manager_reset_defaults),
             color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
             modifier = Modifier
                 .clickable {
@@ -721,6 +828,8 @@ private fun AllChannelsDialog(
     onChange: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val localeTag = context.resources.configuration.locales[0].toLanguageTag()
     var query by remember { mutableStateOf("") }
     var showHelp by remember { mutableStateOf(false) }
     var selectedOnly by remember { mutableStateOf(false) }
@@ -752,12 +861,13 @@ private fun AllChannelsDialog(
             }
     }
 
-    val visible = remember(grouped, query, selectedOnly, selected) {
+    val visible = remember(grouped, query, selectedOnly, selected, localeTag) {
         val q = query.trim()
         grouped.mapNotNull { (cat, names) ->
+            val categoryName = WineChannelInfo.categoryName(context, cat)
             val kept = names.filter { ch ->
                 (q.isBlank() || ch.contains(q, ignoreCase = true) ||
-                    cat.contains(q, ignoreCase = true)) &&
+                    categoryName.contains(q, ignoreCase = true)) &&
                     (!selectedOnly || ch in selected)
             }
             if (kept.isEmpty()) null else cat to kept
@@ -780,9 +890,24 @@ private fun AllChannelsDialog(
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("All Wine channels", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "${all.size} available · ${selected.size} on",
+                            stringResource(R.string.log_manager_all_wine_channels),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            stringResource(
+                                R.string.log_manager_channel_counts_summary,
+                                pluralStringResource(
+                                    R.plurals.log_manager_channels_available,
+                                    all.size,
+                                    all.size,
+                                ),
+                                pluralStringResource(
+                                    R.plurals.log_manager_channels_on,
+                                    selected.size,
+                                    selected.size,
+                                ),
+                            ),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -790,7 +915,7 @@ private fun AllChannelsDialog(
                     FilterChip(
                         selected = showHelp,
                         onClick = { showHelp = !showHelp },
-                        label = { Text("What's this?", fontSize = 11.sp) },
+                        label = { Text(stringResource(R.string.log_manager_whats_this), fontSize = 11.sp) },
                         leadingIcon = {
                             Icon(Icons.Outlined.HelpOutline, null, modifier = Modifier.size(14.dp))
                         },
@@ -799,17 +924,21 @@ private fun AllChannelsDialog(
                     FilterChip(
                         selected = selectedOnly,
                         onClick = { selectedOnly = !selectedOnly },
-                        label = { Text("On only", fontSize = 11.sp) },
+                        label = { Text(stringResource(R.string.log_manager_on_only), fontSize = 11.sp) },
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(
+                            Icons.Default.Close,
+                            stringResource(R.string.log_manager_action_close),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
 
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search", fontSize = 12.sp) },
+                    placeholder = { Text(stringResource(R.string.log_manager_search), fontSize = 12.sp) },
                     singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -817,8 +946,11 @@ private fun AllChannelsDialog(
 
                 if (visible.isEmpty()) {
                     Text(
-                        if (selectedOnly && query.isBlank()) "No channels are on."
-                        else "Nothing matches \"$query\".",
+                        if (selectedOnly && query.isBlank()) {
+                            stringResource(R.string.log_manager_no_channels_on)
+                        } else {
+                            stringResource(R.string.log_manager_nothing_matches, query)
+                        },
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
@@ -826,16 +958,16 @@ private fun AllChannelsDialog(
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         visible.forEach { (category, names) ->
-                            item(key = "hdr-$category") {
+                            item(key = "hdr-${category.name}") {
                                 Column(modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)) {
                                     Text(
-                                        category.uppercase(),
+                                        WineChannelInfo.categoryName(context, category).uppercase(),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
                                     if (showHelp) {
                                         Text(
-                                            WineChannelInfo.categoryBlurb(category),
+                                            WineChannelInfo.categoryBlurb(context, category),
                                             fontSize = 10.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -868,7 +1000,7 @@ private fun AllChannelsDialog(
                                         )
                                         if (showHelp) {
                                             Text(
-                                                WineChannelInfo.describe(ch),
+                                                WineChannelInfo.describe(context, ch),
                                                 fontSize = 10.sp,
                                                 lineHeight = 13.sp,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -898,6 +1030,22 @@ private fun GameLogCard(
     onDelete: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val displayName = logEntryDisplayName(entry)
+    val fileCount = pluralStringResource(
+        R.plurals.log_manager_log_file_count,
+        entry.fileCount,
+        entry.fileCount,
+    )
+    val keptRuns = if (entry.archivedRuns > 0) {
+        pluralStringResource(
+            R.plurals.log_manager_kept_run_count,
+            entry.archivedRuns,
+            entry.archivedRuns,
+        )
+    } else {
+        null
+    }
+    val lastUpdated = relativeTime(entry.lastModified)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -926,14 +1074,14 @@ private fun GameLogCard(
             }
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
-                Text(if (entry.isAppBucket) "App & crash logs" else entry.name,
+                Text(displayName,
                     color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                 Text(
                     buildString {
-                        append("${entry.fileCount} file${if (entry.fileCount == 1) "" else "s"}")
+                        append(fileCount)
                         append(" · ").append(LogInventory.humanBytes(entry.totalBytes))
-                        if (entry.archivedRuns > 0) append(" · ${entry.archivedRuns} kept")
-                        append(" · ").append(relativeTime(entry.lastModified))
+                        if (keptRuns != null) append(" · ").append(keptRuns)
+                        append(" · ").append(lastUpdated)
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp
                 )
@@ -959,11 +1107,21 @@ private fun GameLogCard(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth().padding(top = 9.dp)
         ) {
-            CardAction("View", modifier = Modifier.weight(1f), primary = true, onClick = onView)
-            CardAction("Share", modifier = Modifier.weight(1f), onClick = onShare)
-            CardAction("Delete", modifier = Modifier.weight(1f), danger = true, onClick = onDelete)
+            CardAction(stringResource(R.string.log_manager_action_view), modifier = Modifier.weight(1f), primary = true, onClick = onView)
+            CardAction(stringResource(R.string.log_manager_action_share), modifier = Modifier.weight(1f), onClick = onShare)
+            CardAction(stringResource(R.string.log_manager_action_delete), modifier = Modifier.weight(1f), danger = true, onClick = onDelete)
         }
     }
+}
+
+@Composable
+private fun logEntryDisplayName(entry: LogInventory.Entry): String = when {
+    entry.isAppBucket -> stringResource(R.string.log_manager_app_crash_logs)
+    entry.isLooseBucket && entry.name == "Older logs" -> {
+        stringResource(R.string.log_manager_older_logs)
+    }
+    entry.isLooseBucket -> stringResource(R.string.log_manager_all_logs)
+    else -> entry.name
 }
 
 /** One of the three per-card actions. */
@@ -999,15 +1157,26 @@ private fun CardAction(
 /** The design's one non-theme colour: destructive actions read as red in both light and dark. */
 
 /** "12 min ago" / "yesterday" — a timestamp is not what anyone is looking for in this list. */
+@Composable
 private fun relativeTime(millis: Long): String {
     if (millis <= 0) return "—"
     val mins = (System.currentTimeMillis() - millis) / 60000
     return when {
-        mins < 1 -> "just now"
-        mins < 60 -> "$mins min ago"
-        mins < 60 * 24 -> "${mins / 60} hr ago"
-        mins < 60 * 48 -> "yesterday"
-        else -> "${mins / (60 * 24)} days ago"
+        mins < 1 -> stringResource(R.string.log_manager_just_now)
+        mins < 60 -> pluralStringResource(
+            R.plurals.log_manager_minutes_ago,
+            mins.toInt(),
+            mins,
+        )
+        mins < 60 * 24 -> {
+            val hours = mins / 60
+            pluralStringResource(R.plurals.log_manager_hours_ago, hours.toInt(), hours)
+        }
+        mins < 60 * 48 -> stringResource(R.string.log_manager_yesterday)
+        else -> {
+            val days = mins / (60 * 24)
+            pluralStringResource(R.plurals.log_manager_days_ago, days.toInt(), days)
+        }
     }
 }
 
@@ -1044,7 +1213,7 @@ private fun LogToggle(
 @Composable
 private fun InfoDot(onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.size(28.dp)) {
-        Icon(Icons.Outlined.HelpOutline, "What's this?",
+        Icon(Icons.Outlined.HelpOutline, stringResource(R.string.log_manager_whats_this),
             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
     }
 }
@@ -1054,76 +1223,13 @@ private fun InfoDot(onClick: () -> Unit) {
  * decide with — two of these are genuinely expensive to leave on.
  */
 private object LogCopy {
-    const val PER_GAME =
-        "No performance cost.\n\n" +
-        "Gives each game its own folder inside your log location, named after the game, so one " +
-        "game's logs don't get mixed up with another's. Turn it off to keep everything in a single " +
-        "folder like older versions did.\n\n" +
-        "Logs written before you turned this on are left exactly where they are."
-
-    const val WINE =
-        "⚠️ SLOWS GAMES DOWN. Only turn this on to diagnose a problem, then turn it back off.\n\n" +
-        "Records what Wine itself is doing. Every message is written to disk as the game runs, and " +
-        "Wine produces a lot of them — the \"seh\" channel alone logs an entry every time the game " +
-        "raises an exception, which normal Windows programs do constantly. Adding heavier channels " +
-        "such as \"relay\" can make a game many times slower.\n\n" +
-        "This is the log to enable when a game won't start, crashes, or dies at launch."
-
-    const val BOX64 =
-        "⚠️ SLOWS GAMES DOWN at higher verbosity.\n\n" +
-        "Records what the x86 translator (Box64 or FEXCore) is doing while it converts the game's " +
-        "PC instructions to run on your phone. Useful for a game that crashes in a way Wine's own " +
-        "log doesn't explain, or one that misbehaves only under one emulator.\n\n" +
-        "Leave off for normal play."
-
-    const val DXVK =
-        "Little to no performance cost.\n\n" +
-        "Records what the graphics translation layers report — DXVK for DirectX 9/10/11, VKD3D for " +
-        "DirectX 12. Almost everything they write happens while the game is starting: which GPU and " +
-        "driver were picked, which features are missing, why a shader failed.\n\n" +
-        "This is the log to check for black screens, missing textures or a game that refuses a " +
-        "graphics feature. Safe to leave on."
-
-    const val LOGCAT =
-        "No performance cost.\n\n" +
-        "Android's own system log, as it relates to Bannerlator. It is captured on demand — when you " +
-        "tap \"Capture logcat now\", or when the app crashes — not continuously, so switching it on " +
-        "does not cost you any frames.\n\n" +
-        "It contains BANNERLATOR'S OUTPUT ONLY. Android does not let an app read other apps' logs " +
-        "without root, and we deliberately don't offer a system-wide capture even with root: it " +
-        "would sweep up other apps' private data into a file you're likely to share. If you have " +
-        "root and need the full system log, use a dedicated logcat reader."
-
-    const val CRASH =
-        "No performance cost — nothing runs until something actually crashes.\n\n" +
-        "If Bannerlator itself crashes, a report is saved with your device model, Android version, " +
-        "app version, what went wrong, and the last few hundred lines of the app's log. That is " +
-        "exactly what's needed to work out a crash after the fact.\n\n" +
-        "Reports are kept with your other logs under \"App & crash logs\"."
-
-    const val CAPTURE_NOW =
-        "Takes a snapshot of Bannerlator's recent Android log right now and saves it with your other " +
-        "logs.\n\n" +
-        "Useful when something went wrong but the app didn't crash — capture it while the problem is " +
-        "fresh, then share it."
-
-    const val KEEP_LAST =
-        "How many past runs to keep for each game.\n\n" +
-        "When a game launches, the previous run's logs are moved into a \"previous\" folder rather " +
-        "than being overwritten, and anything older than this many runs is deleted. The current " +
-        "run's files keep their normal names, so the newest log is always the obvious one.\n\n" +
-        "Set it to 0 to keep no history at all."
-
-    fun explainAll(): String = buildString {
-        append("Costs performance while on\n\n")
-        append("• Wine debug\n$WINE\n\n")
-        append("• Box64 / FEXCore\n$BOX64\n\n")
-        append("\nSafe to leave on\n\n")
-        append("• DXVK & VKD3D\n$DXVK\n\n")
-        append("• Android logcat\n$LOGCAT\n\n")
-        append("• Crash reports\n$CRASH\n\n")
-        append("\nOrganisation\n\n")
-        append("• Folder for each game\n$PER_GAME\n\n")
-        append("• Keep last runs\n$KEEP_LAST\n")
-    }
+    @StringRes val PER_GAME = R.string.log_manager_copy_per_game
+    @StringRes val WINE = R.string.log_manager_copy_wine
+    @StringRes val BOX64 = R.string.log_manager_copy_box64
+    @StringRes val DXVK = R.string.log_manager_copy_dxvk
+    @StringRes val LOGCAT = R.string.log_manager_copy_logcat
+    @StringRes val CRASH = R.string.log_manager_copy_crash
+    @StringRes val CAPTURE_NOW = R.string.log_manager_copy_capture_now
+    @StringRes val KEEP_LAST = R.string.log_manager_copy_keep_last
+    @StringRes val EXPLAIN_ALL = R.string.log_manager_copy_explain_all
 }

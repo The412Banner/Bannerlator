@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reshade_loadout">Набор ReShade</string>
+    <string name="reshade_none">Нет</string>
+    <plurals name="reshade_effect_count_summary">
+        <item quantity="one">%1$d эффект: %2$s</item>
+        <item quantity="few">%1$d эффекта: %2$s</item>
+        <item quantity="many">%1$d эффектов: %2$s</item>
+        <item quantity="other">%1$d эффекта: %2$s</item>
+    </plurals>
+    <string name="reshade_browse">Выбрать</string>
+    <string name="reshade_vulkan_only_warning">ReShade работает только в играх с DXVK/VKD3D (Vulkan) и не влияет на этот DX-слой.</string>
+    <string name="reshade_download_failed">Не удалось загрузить %1$s.</string>
+    <string name="reshade_effects_title">Эффекты ReShade</string>
+    <string name="reshade_clear_all">Очистить всё</string>
+    <string name="reshade_offline_cached">Нет сети — показан сохранённый список. Подключитесь, чтобы загрузить новые эффекты.</string>
+    <string name="reshade_offline_installed_only">Нет сети — показаны только установленные эффекты. Подключитесь, чтобы открыть каталог.</string>
+    <string name="reshade_search_effects">Поиск эффектов…</string>
+    <string name="reshade_clear">Очистить</string>
+    <string name="reshade_installed_count">Установлено (%1$d)</string>
+    <string name="reshade_available_count">Доступно (%1$d)</string>
+    <string name="reshade_no_effects_match">Эффекты по запросу «%1$s» не найдены.</string>
+    <string name="reshade_no_effects_available">Нет доступных эффектов. Подключитесь к интернету, чтобы открыть каталог.</string>
+    <string name="reshade_done">Готово</string>
+    <string name="reshade_delete_title">Удалить %1$s?</string>
+    <string name="reshade_delete_message">Загруженный эффект будет удалён из хранилища и текущего набора. Его можно снова загрузить в любое время.</string>
+    <string name="reshade_delete_failed">Не удалось удалить %1$s.</string>
+    <string name="reshade_delete">Удалить</string>
+    <string name="reshade_cancel">Отмена</string>
+    <string name="reshade_connect_to_download">Подключитесь к интернету, чтобы загружать эффекты.</string>
+    <string name="reshade_needs_connection">Для загрузки нужно подключение</string>
+    <string name="reshade_delete_download">Удалить загруженный эффект</string>
+    <string name="reshade_offline">Нет сети</string>
+    <string name="reshade_download">Загрузить</string>
+    <string name="reshade_installing">Установка</string>
+    <string name="reshade_downloading">Загрузка</string>
+    <plurals name="reshade_longer_compile">
+        <item quantity="one">%1$d эффект — компиляция при запуске займёт больше времени.</item>
+        <item quantity="few">%1$d эффекта — компиляция при запуске займёт больше времени.</item>
+        <item quantity="many">%1$d эффектов — компиляция при запуске займёт больше времени.</item>
+        <item quantity="other">%1$d эффекта — компиляция при запуске займёт больше времени.</item>
+    </plurals>
+    <string name="reshade_mode_solo">Соло</string>
+    <string name="reshade_mode_stack">Слои</string>
+    <string name="reshade_mode_solo_description">Одновременно активен один эффект (сравнение A/B).</string>
+    <string name="reshade_mode_stack_description">Можно накладывать любое сочетание эффектов.</string>
+    <string name="reshade_active">активен</string>
+    <string name="reshade_no_tunable_parameters">Настраиваемых параметров нет.</string>
+    <string name="reshade_reset">Сбросить</string>
+</resources>

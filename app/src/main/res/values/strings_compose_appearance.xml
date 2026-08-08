@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appearance_theme_presets">Theme presets</string>
+    <string name="appearance_custom_accent">Custom accent color</string>
+    <string name="appearance_custom_accent_hint">Selecting a color below switches to the Custom preset</string>
+    <string name="appearance_side_menu">Side menu</string>
+    <string name="appearance_show_stores">Show game stores</string>
+    <string name="appearance_show_stores_hint">GOG, Epic, Amazon, and Steam shortcuts in the drawer</string>
+    <string name="appearance_show_internal_storage">Show internal storage</string>
+    <string name="appearance_show_internal_storage_hint">The storage bar at the bottom of the drawer</string>
+    <string name="appearance_show_sd_storage">Show SD card storage</string>
+    <string name="appearance_show_sd_storage_hint">Shown only when a card is present</string>
+    <string name="appearance_orientation">App orientation</string>
+    <string name="appearance_orientation_hint">Applies only to the app’s screens; games retain their own orientation.</string>
+    <string name="appearance_orientation_auto">Auto</string>
+    <string name="appearance_orientation_portrait">Portrait</string>
+    <string name="appearance_orientation_landscape">Landscape</string>
+    <string name="appearance_orientation_auto_hint">Auto follows device rotation (default).</string>
+
+    <string name="appearance_preset_classic_dark">Classic Dark</string>
+    <string name="appearance_preset_amoled">AMOLED</string>
+    <string name="appearance_preset_ocean">Ocean</string>
+    <string name="appearance_preset_forest">Forest</string>
+    <string name="appearance_preset_sunset">Sunset</string>
+    <string name="appearance_preset_rose">Rose</string>
+    <string name="appearance_preset_steel">Steel</string>
+    <string name="appearance_preset_midnight_cobalt">Midnight Cobalt</string>
+    <string name="appearance_preset_phosphor">Phosphor</string>
+    <string name="appearance_preset_carbon_ember">Carbon &amp; Ember</string>
+    <string name="appearance_preset_amethyst">Amethyst</string>
+    <string name="appearance_preset_crimson">Crimson</string>
+    <string name="appearance_preset_synthwave">Synthwave</string>
+    <string name="appearance_preset_royal_gold">Royal Gold</string>
+    <string name="appearance_preset_frost">Frost</string>
+    <string name="appearance_preset_monochrome">Monochrome</string>
+    <string name="appearance_preset_custom">Custom</string>
+</resources>

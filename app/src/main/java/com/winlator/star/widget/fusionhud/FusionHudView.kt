@@ -10,6 +10,9 @@ import android.graphics.Typeface
 import android.text.format.DateFormat
 import android.view.MotionEvent
 import android.view.View
+import androidx.annotation.StringRes
+import androidx.core.content.ContextCompat
+import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.core.KeyValueSet
 import com.winlator.star.ui.theme.AppThemeState
@@ -354,6 +357,9 @@ class FusionHudView(
     }
 
     // ---- Shared small-info helpers ----------------------------------------
+    private fun localizedString(@StringRes resourceId: Int): String =
+        ContextCompat.getContextForLanguage(context).getString(resourceId)
+
     private fun clockTimeString(): String = DateFormat.getTimeFormat(context).format(Date())
 
     private fun elapsedString(): String {
@@ -457,7 +463,8 @@ class FusionHudView(
             v += gap(unitPx); v += numUnit(fmt1(1000f / max(fpsNow, 1f)), "ms", rowPx, unitPx)
             // Short API/engine label ("DXVK"/"VKD3D"/"Zink", else "FPS") — a normal aligned row.
             rows.add(HudRow(Span(apiLabel(), colFps, rowPx), v))
-            rows.add(HudRow(Span("AVG", colLo, rowPx), numUnit(fmt1(fpsAvg), "FPS", rowPx, unitPx)))
+            rows.add(HudRow(Span(localizedString(R.string.final_runtime_hud_average), colLo, rowPx),
+                numUnit(fmt1(fpsAvg), "FPS", rowPx, unitPx)))
             rows.add(HudRow(Span("1%", colLo, rowPx), numUnit(lowText(lows.low1Fps), "FPS", rowPx, unitPx)))
             rows.add(HudRow(Span("0.1%", colLo, rowPx), numUnit(lowText(lows.low01Fps), "FPS", rowPx, unitPx)))
             if (showLow001)
@@ -484,9 +491,10 @@ class FusionHudView(
             // overlap and render as "Frametimemin:.. max:..".
             val ftPx = unitPx * 1.15f
             val baseline = y - asc
-            placeRun(pad, baseline, listOf(Span("Frametime", colFps, ftPx)))
+            val frametimeLabel = localizedString(R.string.final_runtime_hud_frametime)
+            placeRun(pad, baseline, listOf(Span(frametimeLabel, colFps, ftPx)))
             val stat = "min:${fmt1(lows.minMs)} max:${fmt1(lows.maxMs)}"
-            val statX = pad + max(labelCol, measure("Frametime", ftPx)) + lvGap
+            val statX = pad + max(labelCol, measure(frametimeLabel, ftPx)) + lvGap
             val end = placeRun(statX, baseline, listOf(Span(stat, colDim, unitPx)))
             maxRight = max(maxRight, end)
             y += h + lineGap
@@ -510,8 +518,10 @@ class FusionHudView(
         val tiles = ArrayList<Tile>()
 
         if (showFPS) tiles.add(Tile("FPS", colFps, listOf(Span(fpsText(fpsNow), colValue, valPx)),
-            "${fmt1(fpsAvg)} avg · ${lowText(lows.low1Fps) ?: "—"} 1%", false))
-        if (showFPS) tiles.add(Tile("FRAME", colDim, numUnit(fmt1(1000f / max(fpsNow, 1f)), "ms", valPx, unitPx),
+            "${fmt1(fpsAvg)} ${localizedString(R.string.final_runtime_hud_average_inline)} · " +
+                "${lowText(lows.low1Fps) ?: "—"} 1%", false))
+        if (showFPS) tiles.add(Tile(localizedString(R.string.final_runtime_hud_frame), colDim,
+            numUnit(fmt1(1000f / max(fpsNow, 1f)), "ms", valPx, unitPx),
             "${fmt1(lows.minMs)} – ${fmt1(lows.maxMs)}", false))
         if (showGPU) tiles.add(Tile("GPU", colGpu, numUnit(s.gpuPercent?.toString(), "%", valPx, unitPx),
             if (showGpuTemp && s.gpuTempC != null) "${s.gpuTempC}°C"
@@ -808,7 +818,8 @@ class FusionHudView(
             // FPS/engine row: just the short API label. The DX version moved to the stack lines
             // below the frametime graph (see below), so this row stays compact.
             right.add(HudRow(Span(apiLabel(), colFps, rowPx), v))
-            right.add(HudRow(Span("AVG", colLo, rowPx), numUnit(fmt1(fpsAvg), "FPS", rowPx, unitPx)))
+            right.add(HudRow(Span(localizedString(R.string.final_runtime_hud_average), colLo, rowPx),
+                numUnit(fmt1(fpsAvg), "FPS", rowPx, unitPx)))
             right.add(HudRow(Span("1%", colLo, rowPx), numUnit(lowText(lows.low1Fps), "FPS", rowPx, unitPx)))
             right.add(HudRow(Span("0.1%", colLo, rowPx), numUnit(lowText(lows.low01Fps), "FPS", rowPx, unitPx)))
             if (showLow001)
@@ -825,9 +836,15 @@ class FusionHudView(
         // ---- Bottom band spanning both columns: res · Proton · elapsed ----
         // (The graphics wrapper moved to the FPS-row label above, so it's no longer in this band.)
         val band = ArrayList<List<Span>>()
-        if (showResolution) band.add(listOf(Span("RES ", colDim, bandPx), Span(resolutionString(), colValue, bandPx)))
+        if (showResolution) band.add(listOf(
+            Span("${localizedString(R.string.final_runtime_hud_resolution)} ", colDim, bandPx),
+            Span(resolutionString(), colValue, bandPx),
+        ))
         if (showProton && wineVersion.isNotBlank()) band.add(listOf(Span(wineVersion, colVram, bandPx)))
-        if (showSession) band.add(listOf(Span("elapsed ", colDim, bandPx), Span(elapsedString(), colValue, bandPx)))
+        if (showSession) band.add(listOf(
+            Span("${localizedString(R.string.final_runtime_hud_elapsed)} ", colDim, bandPx),
+            Span(elapsedString(), colValue, bandPx),
+        ))
         if (band.isNotEmpty()) {
             y += sp(4f)
             val (bBottom, bRight) = layoutWrap(band, pad, y, max(maxRight - pad, sp(180f)), bandPx, lineGap)

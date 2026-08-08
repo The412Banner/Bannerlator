@@ -63,7 +63,7 @@ object StorageRoots {
 
         // Internal storage is never removable and never absent; seed it first so it heads the menu.
         volumeOf(PRIMARY_KEY).apply {
-            label = "Internal"
+            label = context.getString(com.winlator.star.R.string.storage_internal)
             removable = false
             candidates += File(INTERNAL_PATH)
         }
@@ -109,13 +109,13 @@ object StorageRoots {
             entry.seeds += dir
         }
 
-        val roots = volumes.values.map { it.toRoot() }
+        val roots = volumes.values.map { it.toRoot(context) }
         val internal = roots.filter { !it.removable }
         val removable = roots.filter { it.removable }.sortedBy { it.label }
         return disambiguate(internal + removable)
     }
 
-    private fun Volume.toRoot(): StorageRoot {
+    private fun Volume.toRoot(context: Context): StorageRoot {
         // Prefer a path we can actually list; a readable child beats an unreadable root.
         val dir = candidates.firstOrNull(::canBrowse)
             ?: candidates.firstNotNullOfOrNull { root -> seeds.firstNotNullOfOrNull { deepestReadable(root, it) } }
@@ -125,14 +125,15 @@ object StorageRoots {
             ?: File("/storage/$key")
 
         return StorageRoot(
-            label = label ?: defaultLabel(),
+            label = label ?: defaultLabel(context),
             dir = dir,
             removable = removable,
             readable = canBrowse(dir),
         )
     }
 
-    private fun Volume.defaultLabel(): String = if (removable) "SD card" else key
+    private fun Volume.defaultLabel(context: Context): String =
+        if (removable) context.getString(com.winlator.star.R.string.storage_sd_card) else key
 
     /** Appends the volume id to any label used by more than one volume, so entries stay tellable apart. */
     private fun disambiguate(roots: List<StorageRoot>): List<StorageRoot> {
@@ -183,12 +184,12 @@ object StorageRoots {
      * name like "android", which tells the user nothing about which card they are looking at.
      */
     private fun labelFor(context: Context, volume: StorageVolume, uuid: String?): String {
-        if (volume.isPrimary) return "Internal"
-        if (volume.isRemovable) return "SD card"
+        if (volume.isPrimary) return context.getString(com.winlator.star.R.string.storage_internal)
+        if (volume.isRemovable) return context.getString(com.winlator.star.R.string.storage_sd_card)
         val description = volume.getDescription(context)?.trim()
         return description?.takeIf { it.isNotBlank() && !it.equals("android", ignoreCase = true) }
             ?: uuid
-            ?: "Storage"
+            ?: context.getString(com.winlator.star.R.string.storage_generic)
     }
 
     private fun isEmulated(dir: File): Boolean = dir.absolutePath.startsWith(EMULATED_PREFIX)

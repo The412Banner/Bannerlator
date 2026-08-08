@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Навигация и обзор менеджера сохранений Steam. -->
+    <string name="compose_steam_saves_back">Назад</string>
+    <string name="compose_steam_saves_title">Менеджер сохранений</string>
+    <string name="compose_steam_saves_tab_steam">Steam</string>
+    <string name="compose_steam_saves_tab_custom">Пользовательские</string>
+    <string name="compose_steam_saves_tab_settings">Настройки</string>
+    <plurals name="compose_steam_saves_games_need_syncing">
+        <item quantity="one">⚠️ %1$d игре нужна синхронизация</item>
+        <item quantity="few">⚠️ %1$d играм нужна синхронизация</item>
+        <item quantity="many">⚠️ %1$d играм нужна синхронизация</item>
+        <item quantity="other">⚠️ %1$d игры требуют синхронизации</item>
+    </plurals>
+    <string name="compose_steam_saves_nothing_to_sync">Пока нечего синхронизировать.\nЧтобы начать, скачайте облачное сохранение игры на странице сведений о ней.</string>
+    <string name="compose_steam_saves_preparing_sync_from_cloud">Подготовка синхронизации из облака…</string>
+    <string name="compose_steam_saves_preparing_sync_to_cloud">Подготовка отправки в облако…</string>
+    <string name="compose_steam_saves_error_with_message">Ошибка: %1$s</string>
+    <string name="compose_steam_saves_connection_online">В сети</string>
+    <string name="compose_steam_saves_connection_connecting">Подключение…</string>
+    <string name="compose_steam_saves_connection_signed_in_elsewhere">Выполнен вход на другом устройстве</string>
+    <string name="compose_steam_saves_connection_offline">Не в сети</string>
+    <string name="compose_steam_saves_connection_signed_out">Вход не выполнен</string>
+    <string name="compose_steam_saves_reconnect_symbol">↻</string>
+
+    <!-- Настройки. -->
+    <string name="compose_steam_saves_settings_steam_auto_collect_title">Игры Steam: автоматически сохранять при выходе</string>
+    <string name="compose_steam_saves_settings_steam_auto_collect_subtitle">При выходе из игры копировать её сохранения в локальную Библиотеку.</string>
+    <string name="compose_steam_saves_settings_custom_auto_backup_title">Пользовательские игры: резервная копия при выходе</string>
+    <string name="compose_steam_saves_settings_custom_auto_backup_subtitle">При выходе из импортированной игры сохранять снимок её данных в локальном хранилище.</string>
+    <string name="compose_steam_saves_turn_off_auto_backup_title">Отключить резервное копирование?</string>
+    <string name="compose_steam_saves_disable_steam_auto_backup_warning">Автоматическое резервное копирование при выходе будет отключено для игр из вашей библиотеки Steam. После закрытия игры её сохранения не будут копироваться — резервные копии придётся создавать вручную в настройках контейнера или в Менеджере сохранений. Продолжить?</string>
+    <string name="compose_steam_saves_disable_custom_auto_backup_warning">Автоматическое резервное копирование при выходе будет отключено для импортированных игр. После закрытия игры её сохранения не будут копироваться — резервные копии придётся создавать вручную в настройках контейнера или через меню ⋮ игры → «Создать резервную копию сохранений». Продолжить?</string>
+    <string name="compose_steam_saves_continue">Продолжить</string>
+    <string name="compose_steam_saves_cancel">Отмена</string>
+    <string name="compose_steam_saves_auto_backup_on_title">Резервное копирование включено</string>
+    <string name="compose_steam_saves_steam_auto_backup_on_message">Автоматическое резервное копирование при выходе включено для игр из вашей библиотеки Steam.</string>
+    <string name="compose_steam_saves_custom_auto_backup_on_message">Автоматическое резервное копирование при выходе включено для импортированных игр.</string>
+    <string name="compose_steam_saves_ok">ОК</string>
+
+    <!-- Резервное копирование и восстановление пользовательских игр. -->
+    <string name="compose_steam_saves_backing_up_game">Создание резервной копии сохранений «%1$s»…</string>
+    <string name="compose_steam_saves_whole_container_backed_up">Сохранения отдельной игры не найдены — создана резервная копия всего контейнера.</string>
+    <plurals name="compose_steam_saves_backup_success">
+        <item quantity="one">Скопирован %1$d файл → %2$s</item>
+        <item quantity="few">Скопировано %1$d файла → %2$s</item>
+        <item quantity="many">Скопировано %1$d файлов → %2$s</item>
+        <item quantity="other">Скопировано %1$d файла → %2$s</item>
+    </plurals>
+    <string name="compose_steam_saves_backup_failed">Не удалось создать резервную копию: %1$s</string>
+    <string name="compose_steam_saves_unknown_error">неизвестная ошибка</string>
+    <string name="compose_steam_saves_restoring_into">Восстановление сохранений в «%1$s»…</string>
+    <plurals name="compose_steam_saves_restore_success">
+        <item quantity="one">Восстановлен %1$d файл в «%2$s»</item>
+        <item quantity="few">Восстановлено %1$d файла в «%2$s»</item>
+        <item quantity="many">Восстановлено %1$d файлов в «%2$s»</item>
+        <item quantity="other">Восстановлено %1$d файла в «%2$s»</item>
+    </plurals>
+    <string name="compose_steam_saves_restore_failed">Не удалось восстановить сохранения: %1$s</string>
+    <string name="compose_steam_saves_could_not_open_backup_file">Не удалось открыть файл резервной копии</string>
+    <string name="compose_steam_saves_no_vault_backup_for_game">Для этой игры нет резервной копии в хранилище</string>
+    <string name="compose_steam_saves_no_save_profile_in_container">В этом контейнере не найден профиль с сохранениями</string>
+    <string name="compose_steam_saves_no_save_files_to_back_up">Файлы сохранений для резервного копирования не найдены</string>
+    <string name="compose_steam_saves_no_saves_found">Сохранения не найдены</string>
+    <string name="compose_steam_saves_no_custom_games">Пользовательские игры не найдены.\nИмпортируйте игру (exe-файл или папку), чтобы создавать здесь резервные копии её сохранений.</string>
+    <string name="compose_steam_saves_backup_format_title">Формат резервной копии</string>
+    <string name="compose_steam_saves_backup_format_prompt">Для какой программы предназначена эта копия?</string>
+    <string name="compose_steam_saves_winlator_native_zip">Архив .zip для Winlator</string>
+    <string name="compose_steam_saves_winlator_native_zip_description">Другие сборки Winlator / WinNative</string>
+    <string name="compose_steam_saves_gamehub_compatible_zip">Архив .zip, совместимый с GameHub</string>
+    <string name="compose_steam_saves_gamehub_compatible_zip_description">GameHub и программы на базе Proton (по умолчанию)</string>
+    <string name="compose_steam_saves_restore_saves_title">Восстановление сохранений</string>
+    <string name="compose_steam_saves_restore_latest_backup">Восстановить последнюю копию</string>
+    <string name="compose_steam_saves_backed_up_time">Резервная копия создана %1$s</string>
+    <string name="compose_steam_saves_select_save_zip">Выберите .zip с сохранениями</string>
+    <string name="compose_steam_saves_restore_from_file">Восстановить из файла…</string>
+    <string name="compose_steam_saves_browse_save_zip">Выбрать .zip с сохранениями GameHub или Bannerlator</string>
+    <string name="compose_steam_saves_container_label">Контейнер: %1$s</string>
+    <string name="compose_steam_saves_no_container">Контейнер не назначен</string>
+    <string name="compose_steam_saves_no_backup_yet">Резервной копии ещё нет</string>
+    <string name="compose_steam_saves_back_up">Создать копию</string>
+    <string name="compose_steam_saves_restore">Восстановить</string>
+
+    <!-- Состояние строки игры Steam. -->
+    <string name="compose_steam_saves_not_set_up_in_container">Не настроено в контейнере</string>
+    <string name="compose_steam_saves_add_game_to_container_to_sync">Чтобы синхронизировать игру, сначала добавьте её в контейнер.</string>
+    <string name="compose_steam_saves_sync_from_cloud">Синхронизировать из облака</string>
+    <string name="compose_steam_saves_sync_to_cloud">Синхронизировать с облаком</string>
+    <string name="compose_steam_saves_status_in_sync">Синхронизировано</string>
+    <string name="compose_steam_saves_status_not_backed_up">Нет резервной копии</string>
+    <string name="compose_steam_saves_status_local_ahead">Локальная версия новее</string>
+    <string name="compose_steam_saves_status_cloud_ahead">Облачная версия новее</string>
+    <string name="compose_steam_saves_status_never_synced">Не синхронизировалось</string>
+    <string name="compose_steam_saves_status_no_cloud_saves">Нет облачных сохранений</string>
+    <string name="compose_steam_saves_status_not_set_up">Не настроено</string>
+    <string name="compose_steam_saves_status_unknown">Неизвестно</string>
+    <string name="compose_steam_saves_downloaded_time">Скачано %1$s</string>
+    <string name="compose_steam_saves_uploaded_time">Отправлено %1$s</string>
+    <string name="compose_steam_saves_downloaded_and_uploaded_times">%1$s · %2$s</string>
+
+    <!-- Текст прогресса и результатов из SteamCloudSaveManager. -->
+    <string name="compose_steam_saves_cloud_not_signed_in">Вход в Steam не выполнен</string>
+    <string name="compose_steam_saves_cloud_fetching_file_list">Получение списка файлов из облака…</string>
+    <string name="compose_steam_saves_cloud_no_saves_for_game">Облачные сохранения этой игры не найдены</string>
+    <string name="compose_steam_saves_cloud_downloading_file">Скачивание: %1$s</string>
+    <string name="compose_steam_saves_cloud_download_failed">Не удалось скачать: %1$s</string>
+    <plurals name="compose_steam_saves_cloud_download_failed_more">
+        <item quantity="one">Не удалось скачать: %1$s (и ещё %2$d файл)</item>
+        <item quantity="few">Не удалось скачать: %1$s (и ещё %2$d файла)</item>
+        <item quantity="many">Не удалось скачать: %1$s (и ещё %2$d файлов)</item>
+        <item quantity="other">Не удалось скачать: %1$s (и ещё %2$d файла)</item>
+    </plurals>
+    <plurals name="compose_steam_saves_cloud_downloaded_files">
+        <item quantity="one">Скачан %1$d файл</item>
+        <item quantity="few">Скачано %1$d файла</item>
+        <item quantity="many">Скачано %1$d файлов</item>
+        <item quantity="other">Скачано %1$d файла</item>
+    </plurals>
+    <plurals name="compose_steam_saves_cloud_skipped_files">
+        <item quantity="one">(%1$d файл пропущен)</item>
+        <item quantity="few">(%1$d файла пропущено)</item>
+        <item quantity="many">(%1$d файлов пропущено)</item>
+        <item quantity="other">(%1$d файла пропущено)</item>
+    </plurals>
+    <string name="compose_steam_saves_cloud_summary_with_detail">%1$s %2$s</string>
+    <string name="compose_steam_saves_cloud_download_error">Не удалось скачать облачные сохранения</string>
+    <string name="compose_steam_saves_cloud_scanning_local_saves">Поиск локальных сохранений…</string>
+    <string name="compose_steam_saves_cloud_no_local_saves">Локальные сохранения не найдены — в облако ничего не отправлено</string>
+    <string name="compose_steam_saves_cloud_no_retention">Эта игра не хранит сохранения в Steam Cloud — их резервная копия сохранена локально в Библиотеке.</string>
+    <string name="compose_steam_saves_cloud_not_supported">Эта игра не поддерживает Steam Cloud — её сохранения скопированы локально в Библиотеку.</string>
+    <string name="compose_steam_saves_cloud_comparing">Сравнение с облаком…</string>
+    <string name="compose_steam_saves_cloud_upload_summary">Отправлено изменённых файлов: %1$d; уже актуальны: %2$d</string>
+    <string name="compose_steam_saves_cloud_opening_upload_batch">Подготовка пакета для отправки в облако…</string>
+    <string name="compose_steam_saves_cloud_uploading_file">Отправка: %1$s</string>
+    <string name="compose_steam_saves_cloud_upload_partial_failure">Отправлено %1$d из %2$d изменённых файлов; часть файлов отправить не удалось</string>
+    <string name="compose_steam_saves_cloud_upload_error">Не удалось отправить облачные сохранения</string>
+    <string name="compose_steam_saves_cloud_add_to_container_first">Сначала добавьте эту игру в контейнер.</string>
+    <string name="compose_steam_saves_cloud_synced_from_cloud">Синхронизация из облака завершена (%1$s; %2$s)</string>
+    <string name="compose_steam_saves_cloud_synced_to_cloud">Синхронизация с облаком завершена (%1$s; %2$s)</string>
+    <string name="compose_steam_saves_cloud_not_set_up_in_container_yet">Эта игра ещё не настроена в контейнере</string>
+    <string name="compose_steam_saves_cloud_scanning_library">Поиск файлов в Библиотеке…</string>
+    <string name="compose_steam_saves_cloud_library_empty">Библиотека пуста — сначала скачайте сохранения из облака</string>
+    <string name="compose_steam_saves_cloud_applying_file">Применение: %1$s</string>
+    <plurals name="compose_steam_saves_cloud_applied_files">
+        <item quantity="one">Применён %1$d файл в %2$s</item>
+        <item quantity="few">Применено %1$d файла в %2$s</item>
+        <item quantity="many">Применено %1$d файлов в %2$s</item>
+        <item quantity="other">Применено %1$d файла в %2$s</item>
+    </plurals>
+    <string name="compose_steam_saves_cloud_apply_error">Не удалось применить сохранения в контейнере</string>
+    <string name="compose_steam_saves_cloud_scanning_container_saves">Поиск сохранений в контейнере…</string>
+    <string name="compose_steam_saves_cloud_no_saves_to_collect">В %1$s нет сохранений для копирования</string>
+    <string name="compose_steam_saves_cloud_collecting_file">Копирование: %1$s</string>
+    <plurals name="compose_steam_saves_cloud_collected_files">
+        <item quantity="one">В Библиотеку скопирован %1$d файл</item>
+        <item quantity="few">В Библиотеку скопировано %1$d файла</item>
+        <item quantity="many">В Библиотеку скопировано %1$d файлов</item>
+        <item quantity="other">В Библиотеку скопировано %1$d файла</item>
+    </plurals>
+    <string name="compose_steam_saves_cloud_collect_error">Не удалось собрать сохранения из контейнера</string>
+</resources>

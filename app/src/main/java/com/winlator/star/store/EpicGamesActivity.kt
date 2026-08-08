@@ -7,7 +7,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -53,11 +53,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.winlator.star.R
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadScope
 import com.winlator.star.store.download.DownloadsButton
@@ -73,7 +75,7 @@ import androidx.lifecycle.lifecycleScope
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
-class EpicGamesActivity : ComponentActivity() {
+class EpicGamesActivity : AppCompatActivity() {
     data class GameDownloadState(
         val progress: Int = 0,
         val status: String = "",
@@ -93,7 +95,8 @@ class EpicGamesActivity : ComponentActivity() {
     private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var prefs: SharedPreferences? = null
 
-    private var syncText by mutableStateOf("Loading Epic library\u2026")
+    private var syncText by mutableStateOf("")
+    private var syncTone by mutableStateOf(EpicStatusTone.NEUTRAL)
     private var games by mutableStateOf<List<EpicGame>>(emptyList())
     private var allGames by mutableStateOf<List<EpicGame>>(emptyList())
     private var searchQuery by mutableStateOf("")
@@ -111,6 +114,7 @@ class EpicGamesActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS_NAME, 0)
         viewMode = prefs!!.getString(VIEW_MODE_KEY, "grid") ?: "grid"
+        setSync(getString(R.string.store_games_epic_loading_library))
 
         // Cross-store Download Manager (Phase C): init the registry + seed/self-heal the installed
         // Epic library here (idempotent), mirroring Amazon/GOG.
@@ -121,6 +125,7 @@ class EpicGamesActivity : ComponentActivity() {
             WinlatorTheme {
                 EpicGamesScreen(
                     syncText = syncText,
+                    syncTone = syncTone,
                     searchQuery = searchQuery,
                     viewMode = viewMode,
                     games = games,
@@ -165,7 +170,10 @@ class EpicGamesActivity : ComponentActivity() {
         if (cached != null && cached.isNotEmpty()) {
             games = cached
             val cn = cached.size
-            syncText = "$cn ${if (cn == 1) "game" else "games"} \u2014 cached  \u2022  tap \u21ba to refresh"
+            setSync(
+                resources.getQuantityString(R.plurals.store_games_cached_count, cn, cn),
+                EpicStatusTone.SUCCESS,
+            )
             scrollVisible = true
         }
         startSync(cached == null || cached.isEmpty())
@@ -179,35 +187,35 @@ class EpicGamesActivity : ComponentActivity() {
     }
 
     private fun startSync(showProgress: Boolean) {
-        if (showProgress) syncText = "Loading Epic library\u2026"
+        if (showProgress) setSync(getString(R.string.store_games_epic_loading_library))
         refreshEnabled = false
         lifecycleScope.launch(Dispatchers.IO) { syncLibrary(showProgress) }
     }
 
     private suspend fun syncLibrary(showProgress: Boolean) {
         try {
-            if (showProgress) setSync("Checking credentials\u2026")
+            if (showProgress) setSync(getString(R.string.store_games_checking_credentials))
             val token = EpicCredentialStore.getValidAccessToken(this)
             if (token == null) {
-                setSync("Not logged in")
+                setSync(getString(R.string.store_games_not_logged_in), EpicStatusTone.ERROR)
                 withContext(Dispatchers.Main) {
                     enableRefresh()
-                    resultBarMsg = "Please log in to Epic Games first"
+                    resultBarMsg = getString(R.string.store_games_epic_login_first)
                     finish()
                 }
                 return
             }
 
-            if (showProgress) setSync("Fetching game list\u2026")
+            if (showProgress) setSync(getString(R.string.store_games_fetching_game_list))
             val rawGames = EpicApiClient.getLibraryItems(token)
 
             if (rawGames.isNullOrEmpty()) {
-                setSync("No games found in Epic library")
+                setSync(getString(R.string.store_games_epic_no_games), EpicStatusTone.ERROR)
                 withContext(Dispatchers.Main) { enableRefresh() }
                 return
             }
 
-            if (showProgress) setSync("Loading game details\u2026")
+            if (showProgress) setSync(getString(R.string.store_games_loading_game_details))
             val total = rawGames.size
             var done = 0
             for (game in rawGames) {
@@ -218,7 +226,7 @@ class EpicGamesActivity : ComponentActivity() {
                 done++
                 if (done % 5 == 0) {
                     val d = done
-                    setSync("Loading game details\u2026 ($d/$total)")
+                    setSync(getString(R.string.store_games_loading_game_details_progress, d, total))
                 }
             }
 
@@ -270,13 +278,19 @@ class EpicGamesActivity : ComponentActivity() {
                 allGames = displayGames
                 applyFilter(searchQuery)
                 val fn = displayGames.size
-                syncText = "$fn ${if (fn == 1) "game" else "games"} \u2014 tap a card to install"
+                setSync(
+                    resources.getQuantityString(R.plurals.store_games_ready_count, fn, fn),
+                    EpicStatusTone.SUCCESS,
+                )
                 enableRefresh()
                 scrollVisible = true
             }
         } catch (e: Exception) {
             Log.e(TAG, "syncLibrary error", e)
-            setSync("Error: ${e.message}")
+            setSync(
+                getString(R.string.store_games_failed_fetch_library),
+                EpicStatusTone.ERROR,
+            )
             withContext(Dispatchers.Main) { enableRefresh() }
         }
     }
@@ -290,8 +304,11 @@ class EpicGamesActivity : ComponentActivity() {
         uiHandler.post { refreshEnabled = true }
     }
 
-    private fun setSync(msg: String) {
-        uiHandler.post { syncText = msg }
+    private fun setSync(msg: String, tone: EpicStatusTone = EpicStatusTone.NEUTRAL) {
+        uiHandler.post {
+            syncText = msg
+            syncTone = tone
+        }
     }
 
     private fun openDetailScreen(game: EpicGame) {
@@ -323,23 +340,23 @@ class EpicGamesActivity : ComponentActivity() {
 
             addView(TextView(this@EpicGamesActivity).apply {
                 id = android.R.id.text1
-                text = "Download size:  Fetching\u2026"
+                text = getString(R.string.store_games_download_size_fetching)
                 setTextColor(0xFFCCCCCC.toInt())
                 textSize = 14f
             })
 
             addView(TextView(this@EpicGamesActivity).apply {
-                text = "Available storage:  ${formatBytes(freeBytes)}"
+                text = getString(R.string.store_games_available_storage, formatBytes(freeBytes))
                 setTextColor(0xFF88CC88.toInt())
                 textSize = 14f
             })
         }
 
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Install ${game.title}?")
+            .setTitle(getString(R.string.store_games_install_named_question, game.title))
             .setView(content)
-            .setPositiveButton("Install", null)
-            .setNegativeButton("Cancel", null)
+            .setPositiveButton(getString(R.string.store_games_action_install), null)
+            .setNegativeButton(getString(R.string.store_games_action_cancel), null)
             .create()
         dialog.show()
 
@@ -349,7 +366,10 @@ class EpicGamesActivity : ComponentActivity() {
         }
 
         if (game.installSize > 0) {
-            (content.getChildAt(0) as TextView).text = "Download size:  ${formatBytes(game.installSize)}"
+            (content.getChildAt(0) as TextView).text = getString(
+                R.string.store_games_download_size,
+                formatBytes(game.installSize),
+            )
         } else {
             lifecycleScope.launch(Dispatchers.IO) {
                 var size = 0L
@@ -363,8 +383,11 @@ class EpicGamesActivity : ComponentActivity() {
                 val finalSize = size
                 withContext(Dispatchers.Main) {
                     if (dialog.isShowing) {
-                        (content.getChildAt(0) as TextView).text =
-                            "Download size:  ${if (finalSize > 0) formatBytes(finalSize) else "Unknown"}"
+                        (content.getChildAt(0) as TextView).text = getString(
+                            R.string.store_games_download_size,
+                            if (finalSize > 0) formatBytes(finalSize)
+                            else getString(R.string.store_games_unknown),
+                        )
                     }
                 }
             }
@@ -398,25 +421,34 @@ class EpicGamesActivity : ComponentActivity() {
             try {
                 val token = EpicCredentialStore.getValidAccessToken(appCtx)
                 if (token == null) {
-                    StoreDownloadHooks.markFailed(Store.EPIC, appName, "Login required")
+                    StoreDownloadHooks.markFailed(
+                        Store.EPIC,
+                        appName,
+                        getString(R.string.store_games_login_required),
+                    )
                     withContext(Dispatchers.Main) {
                         downloadStates[appName] = GameDownloadState()
-                        resultBarMsg = "Login required"
+                        resultBarMsg = getString(R.string.store_games_login_required)
                     }
                     return@launch
                 }
 
-                downloadStates[appName] = downloadStates[appName]?.copy(status = "Fetching manifest\u2026")
-                    ?: GameDownloadState(isActive = true, status = "Fetching manifest\u2026", showProgress = true)
+                val fetchingManifest = getString(R.string.store_games_fetching_manifest)
+                downloadStates[appName] = downloadStates[appName]?.copy(status = fetchingManifest)
+                    ?: GameDownloadState(isActive = true, status = fetchingManifest, showProgress = true)
 
                 val manifestJson = EpicApiClient.getManifestApiJson(
                     token, game.namespace, game.catalogItemId, game.appName,
                 )
                 if (manifestJson == null) {
-                    StoreDownloadHooks.markFailed(Store.EPIC, appName, "Failed to fetch manifest")
+                    StoreDownloadHooks.markFailed(
+                        Store.EPIC,
+                        appName,
+                        getString(R.string.store_games_epic_manifest_failed_unsupported),
+                    )
                     withContext(Dispatchers.Main) {
                         downloadStates[appName] = GameDownloadState()
-                        resultBarMsg = "Failed to fetch manifest. If this is Fortnite, it is not supported."
+                        resultBarMsg = getString(R.string.store_games_epic_manifest_failed_unsupported)
                     }
                     return@launch
                 }
@@ -434,8 +466,9 @@ class EpicGamesActivity : ComponentActivity() {
                 ) { msg, pct ->
                     if (!cancelled.get()) {
                         StoreDownloadHooks.tick(Store.EPIC, appName, pct)
-                        downloadStates[appName] = downloadStates[appName]?.copy(progress = pct, status = msg)
-                            ?: GameDownloadState(isActive = true, progress = pct, status = msg, showProgress = true)
+                        val localized = localizeEpicProgress(msg)
+                        downloadStates[appName] = downloadStates[appName]?.copy(progress = pct, status = localized)
+                            ?: GameDownloadState(isActive = true, progress = pct, status = localized, showProgress = true)
                     }
                 }
 
@@ -448,11 +481,15 @@ class EpicGamesActivity : ComponentActivity() {
                     return@launch
                 }
                 if (!ok) {
-                    StoreDownloadHooks.markFailed(Store.EPIC, appName, "Download failed")
+                    StoreDownloadHooks.markFailed(
+                        Store.EPIC,
+                        appName,
+                        getString(R.string.store_games_download_failed),
+                    )
                     withContext(Dispatchers.Main) {
                         cancelRunnables.remove(appName)
                         downloadStates[appName] = GameDownloadState()
-                        resultBarMsg = "Download failed"
+                        resultBarMsg = getString(R.string.store_games_download_failed)
                     }
                     return@launch
                 }
@@ -461,11 +498,15 @@ class EpicGamesActivity : ComponentActivity() {
                 AmazonLaunchHelper.collectExe(installDir, exeFiles)
 
                 if (exeFiles.isEmpty()) {
-                    StoreDownloadHooks.markFailed(Store.EPIC, appName, "No executable found")
+                    StoreDownloadHooks.markFailed(
+                        Store.EPIC,
+                        appName,
+                        getString(R.string.store_games_no_exe_after_install),
+                    )
                     withContext(Dispatchers.Main) {
                         cancelRunnables.remove(appName)
                         downloadStates[appName] = GameDownloadState()
-                        resultBarMsg = "No executable found after install"
+                        resultBarMsg = getString(R.string.store_games_no_exe_after_install)
                     }
                     return@launch
                 }
@@ -492,11 +533,15 @@ class EpicGamesActivity : ComponentActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "startEpicDownload failed", e)
                 if (!cancelled.get()) {
-                    StoreDownloadHooks.markFailed(Store.EPIC, appName, e.message ?: "Unknown error")
+                    StoreDownloadHooks.markFailed(
+                        Store.EPIC,
+                        appName,
+                        getString(R.string.store_games_download_failed),
+                    )
                     withContext(Dispatchers.Main) {
                         cancelRunnables.remove(appName)
                         downloadStates[appName] = GameDownloadState()
-                        resultBarMsg = e.message ?: "Unknown error"
+                        resultBarMsg = getString(R.string.store_games_download_failed)
                     }
                 }
             }
@@ -555,8 +600,23 @@ class EpicGamesActivity : ComponentActivity() {
         } catch (e: Exception) { Log.e(TAG, "loadCachedGames failed", e); null }
     }
 
+    private fun localizeEpicProgress(message: String): String = when {
+        message == "Parsing CDN URLs..." -> getString(R.string.store_games_parsing_cdn_urls)
+        message == "Downloading manifest..." -> getString(R.string.store_games_downloading_manifest)
+        message == "Parsing manifest..." -> getString(R.string.store_games_parsing_manifest)
+        message.startsWith("Downloading chunks ") -> getString(
+            R.string.store_games_downloading_chunks,
+            message.removePrefix("Downloading chunks "),
+        )
+        message.startsWith("Writing: ") -> getString(
+            R.string.store_games_writing_named,
+            message.removePrefix("Writing: "),
+        )
+        else -> message
+    }
+
     private fun formatBytes(bytes: Long): String = when {
-        bytes < 0 -> "Unknown"
+        bytes < 0 -> getString(R.string.store_games_unknown)
         bytes < 1024L -> "$bytes B"
         bytes < 1024L * 1024L -> "${bytes / 1024L} KB"
         bytes < 1024L * 1024L * 1024L -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
@@ -564,9 +624,12 @@ class EpicGamesActivity : ComponentActivity() {
     }
 }
 
+private enum class EpicStatusTone { NEUTRAL, SUCCESS, ERROR }
+
 @Composable
 private fun EpicGamesScreen(
     syncText: String,
+    syncTone: EpicStatusTone,
     searchQuery: String,
     viewMode: String,
     games: List<EpicGame>,
@@ -602,7 +665,7 @@ private fun EpicGamesScreen(
                 modifier = Modifier.height(40.dp),
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Text(
-                text = "Epic Games",
+                text = stringResource(R.string.store_games_epic_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -628,7 +691,14 @@ private fun EpicGamesScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(40.dp),
-            ) { Text("FREE", color = MaterialTheme.colorScheme.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            ) {
+                Text(
+                    stringResource(R.string.store_games_free),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
             // ⬇ cross-store Download Manager (global active-count badge).
             DownloadsButton()
         }
@@ -636,7 +706,12 @@ private fun EpicGamesScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text("Search games\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            placeholder = {
+                Text(
+                    stringResource(R.string.store_games_search_games),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
@@ -654,10 +729,10 @@ private fun EpicGamesScreen(
         Text(
             text = syncText,
             fontSize = 13.sp,
-            color = when {
-                syncText.startsWith("Error") || syncText.startsWith("Not logged in") || syncText.startsWith("No games") -> MaterialTheme.colorScheme.error
-                syncText.contains("game") && (syncText.contains("tap") || syncText.contains("cached")) -> Color(0xFF81C784) // semantic "library ready" green
-                else -> MaterialTheme.colorScheme.primary
+            color = when (syncTone) {
+                EpicStatusTone.ERROR -> MaterialTheme.colorScheme.error
+                EpicStatusTone.SUCCESS -> Color(0xFF81C784)
+                EpicStatusTone.NEUTRAL -> MaterialTheme.colorScheme.primary
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -767,8 +842,8 @@ private fun EpicGamesScreen(
 @Composable
 private fun EmptyState(query: String) {
     Text(
-        text = if (query.isBlank()) "Your Epic library is empty"
-        else "No results for \"$query\"",
+        text = if (query.isBlank()) stringResource(R.string.store_games_epic_library_empty)
+        else stringResource(R.string.store_games_no_results_for, query),
         fontSize = 14.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 32.dp).fillMaxWidth(),
@@ -862,7 +937,7 @@ private fun GameListCard(
                 }
                 if (downloadState.installed) {
                     Text(
-                        text = "\u2713 Installed",
+                        text = stringResource(R.string.store_games_installed_marked),
                         fontSize = 10.sp,
                         color = Color(0xFF4CAF50), // semantic installed-green
                         modifier = Modifier.padding(top = 4.dp),
@@ -899,9 +974,9 @@ private fun GameListCard(
                 ) {
                     Text(
                         when {
-                            downloadState.isActive -> "Cancel"
-                            downloadState.installed -> "Add to Launcher"
-                            else -> "Install"
+                            downloadState.isActive -> stringResource(R.string.store_games_action_cancel)
+                            downloadState.installed -> stringResource(R.string.store_games_action_add_to_launcher)
+                            else -> stringResource(R.string.store_games_action_install)
                         },
                         color = if (downloadState.isActive) MaterialTheme.colorScheme.onError
                         else MaterialTheme.colorScheme.onPrimary,
@@ -1008,9 +1083,9 @@ private fun GameGridTile(
                 ) {
                     Text(
                         when {
-                            downloadState.isActive -> "Cancel"
-                            downloadState.installed -> "Add to Launcher"
-                            else -> "Install"
+                            downloadState.isActive -> stringResource(R.string.store_games_action_cancel)
+                            downloadState.installed -> stringResource(R.string.store_games_action_add_to_launcher)
+                            else -> stringResource(R.string.store_games_action_install)
                         },
                         color = if (downloadState.isActive) MaterialTheme.colorScheme.onError
                         else MaterialTheme.colorScheme.onPrimary,

@@ -39,6 +39,10 @@ export ac_cv_header_glob_h=no
 export ac_cv_func_malloc_0_nonnull=yes
 export ac_cv_func_realloc_0_nonnull=yes
 export ac_cv_lib_ltdl_lt_dladvise_init=yes
+# NDK r27's sysroot ships <execinfo.h> but backtrace()/backtrace_symbols() are only __INTRODUCED_IN(33);
+# at API 26 they don't exist in libc, so PA's pa_backtrace links fail. Tell configure execinfo is
+# absent (true for our target) → pa_backtrace becomes a no-op and the references vanish.
+export ac_cv_header_execinfo_h=no
 
 TOOLCHAIN="$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/bin"
 export CC="$TOOLCHAIN/${BUILDCHAIN}${API}-clang"

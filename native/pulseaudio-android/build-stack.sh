@@ -61,16 +61,22 @@ fetch() {
   echo "ERROR: all mirrors failed for $dest"; return 1
 }
 
-# --- libltdl (runtime module-loader lib the PA daemon needs) — build only the libltdl subdir ---
-if [ ! -e "$ROOT_DIR/lib/libltdl.so" ]; then
+# --- libltdl (runtime module-loader lib + ltdl.h header the PA daemon needs) ---
+# Build the FULL libtool from the tarball (out-of-tree, doc tools stubbed), as Bruno does — this
+# installs libltdl.so AND ltdl.h into the prefix. Building only the libltdl subdir skipped the header,
+# so PA's configure failed with "Unable to find libltdl version 2 / ltdl.h file not found".
+if [ ! -e "$ROOT_DIR/include/ltdl.h" ]; then
   cd "$SRC_DIR"
   [ -f "libtool-$LIBTOOL_VER.tar.gz" ] || fetch "libtool-$LIBTOOL_VER.tar.gz" \
     "https://ftp.gnu.org/gnu/libtool/libtool-$LIBTOOL_VER.tar.gz" \
     "https://mirrors.kernel.org/gnu/libtool/libtool-$LIBTOOL_VER.tar.gz"
   rm -rf "libtool-$LIBTOOL_VER"; tar xf "libtool-$LIBTOOL_VER.tar.gz"
-  cd "libtool-$LIBTOOL_VER/libltdl"
-  ./configure --host=$BUILDCHAIN --prefix="$ROOT_DIR" --enable-shared --disable-static
+  cd "libtool-$LIBTOOL_VER"
+  rm -rf "build-$ARCH"; mkdir -p "build-$ARCH"; cd "build-$ARCH"
+  ../configure --host=$BUILDCHAIN --prefix="$ROOT_DIR" --enable-ltdl-install --enable-shared \
+    HELP2MAN=/bin/true MAKEINFO=/bin/true
   make -j"$(nproc)"; make install
+  test -e "$ROOT_DIR/include/ltdl.h" || { echo "ltdl.h still missing after libtool install"; exit 1; }
 fi
 
 # --- libsndfile (PA optional dep; keep for parity with our shipped bundle) ---

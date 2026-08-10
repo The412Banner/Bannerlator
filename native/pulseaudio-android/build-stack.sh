@@ -50,7 +50,7 @@ fetch() { # url dest
 # --- libltdl (runtime module-loader lib the PA daemon needs) — build only the libltdl subdir ---
 if [ ! -e "$ROOT_DIR/lib/libltdl.so" ]; then
   cd "$SRC_DIR"
-  [ -f "libtool-$LIBTOOL_VER.tar.gz" ] || fetch "https://ftpmirror.gnu.org/gnu/libtool/libtool-$LIBTOOL_VER.tar.gz" "libtool-$LIBTOOL_VER.tar.gz"
+  [ -f "libtool-$LIBTOOL_VER.tar.gz" ] || fetch "https://ftp.gnu.org/gnu/libtool/libtool-$LIBTOOL_VER.tar.gz" "libtool-$LIBTOOL_VER.tar.gz"
   rm -rf "libtool-$LIBTOOL_VER"; tar xf "libtool-$LIBTOOL_VER.tar.gz"
   cd "libtool-$LIBTOOL_VER/libltdl"
   ./configure --host=$BUILDCHAIN --prefix="$ROOT_DIR" --enable-shared --disable-static

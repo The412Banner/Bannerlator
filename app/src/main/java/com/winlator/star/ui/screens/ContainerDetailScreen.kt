@@ -951,7 +951,7 @@ private fun TopLevelFields(
             // Cog → adaptive audio presets & fine-tuning. Both engines honor the same presets/knobs
             // (PulseAudio sink + ALSA player), so it's shown for either driver.
             val audioId = StringUtils.parseIdentifier(viewModel.selectedAudioDriver)
-            if (audioId == "pulseaudio" || audioId == "alsa") {
+            if (audioId == "pulseaudio" || audioId == "alsa" || audioId == "directaudio") {
                 IconButton(onClick = { showAudioSettings = true }) {
                     Icon(Icons.Default.Settings, contentDescription = "Audio settings", modifier = Modifier.size(18.dp))
                 }
@@ -966,7 +966,7 @@ private fun TopLevelFields(
                 scopeLabel = "this container",
                 latencyLive = true,
                 driverLabel = when (StringUtils.parseIdentifier(viewModel.selectedAudioDriver)) {
-                    "alsa" -> "ALSA"; "pulseaudio" -> "PulseAudio"
+                    "alsa" -> "ALSA"; "pulseaudio" -> "PulseAudio"; "directaudio" -> "DirectAudio"
                     else -> StringUtils.parseIdentifier(viewModel.selectedAudioDriver)
                 },
                 onDismiss = { showAudioSettings = false },

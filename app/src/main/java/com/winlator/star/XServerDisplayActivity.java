@@ -2650,7 +2650,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private static String audioDriverLabel(String d) {
         if ("alsa".equals(d)) return "ALSA";
         if ("pulseaudio".equals(d)) return "PulseAudio";
+        if ("directaudio".equals(d)) return "DirectAudio";
         return d == null ? "" : d;
+    }
+
+    // Engine tag for the per-scope env keys BANNER_AUDIO_<ENG>_* — must match AudioSettingsDialog.engTag.
+    private static String audioEngTag(String d) {
+        if ("alsa".equals(d)) return "ALSA";
+        if ("directaudio".equals(d)) return "DIRECT";
+        return "PULSE";
+    }
+
+    // ALSA and DirectAudio both drive AAudio directly and default to PERFORMANCE_MODE_NONE (proven
+    // crackle-free); PulseAudio defaults to LOW_LATENCY/Auto.
+    private static boolean audioNoneDefault(String d) {
+        return "alsa".equals(d) || "directaudio".equals(d);
     }
 
     private static Integer envInt(EnvVars ev, String key) {
@@ -2658,24 +2672,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         try { return Integer.parseInt(ev.get(key).trim()); } catch (Exception ex) { return null; }
     }
 
-    private String audioPrefsName(boolean alsa) { return alsa ? "banner_audio_alsa" : "banner_audio_pulseaudio"; }
+    private String audioPrefsName(String driverId) {
+        if ("alsa".equals(driverId)) return "banner_audio_alsa";
+        if ("directaudio".equals(driverId)) return "banner_audio_directaudio";
+        return "banner_audio_pulseaudio";
+    }
 
     // Reseed the launching engine's EPHEMERAL runtime prefs (banner_audio_<engine>) from the resolved
     // per-scope config: engine-scoped env keys BANNER_AUDIO_<ENG>_* (already merged shortcut-over-
     // container), else the engine default. A FULL write EVERY launch — the runtime file carries no
     // cross-launch/cross-game memory; persistence lives only in the per-scope env. Reads only THIS
     // engine's keys, so Pulse and ALSA never touch each other's config.
-    private void seedAudioPrefsForLaunch(EnvVars ev, boolean alsa) {
-        String kp = "BANNER_AUDIO_" + (alsa ? "ALSA" : "PULSE") + "_";
-        int defPerf = alsa ? 0 : 1;                                // ALSA NONE (proven) vs Pulse Auto
-        String defPreset = alsa ? "stable" : "auto";
+    private void seedAudioPrefsForLaunch(EnvVars ev, String driverId) {
+        String kp = "BANNER_AUDIO_" + audioEngTag(driverId) + "_";
+        int defPerf = audioNoneDefault(driverId) ? 0 : 1;         // ALSA/DirectAudio NONE (proven) vs Pulse Auto
+        String defPreset = audioNoneDefault(driverId) ? "stable" : "auto";
         boolean hasPreset   = ev != null && ev.has(kp + "PRESET");
         boolean hasAdaptive = ev != null && ev.has(kp + "ADAPTIVE");
         Integer perf = envInt(ev, kp + "PERF");
         Integer bf   = envInt(ev, kp + "BF");
         Integer mbf  = envInt(ev, kp + "MBF");
         Integer lat  = envInt(ev, kp + "LAT");
-        getSharedPreferences(audioPrefsName(alsa), MODE_PRIVATE).edit()
+        getSharedPreferences(audioPrefsName(driverId), MODE_PRIVATE).edit()
                 .putString("preset", hasPreset ? ev.get(kp + "PRESET") : defPreset)
                 .putInt("perf_mode", perf != null ? perf : defPerf)
                 .putBoolean("adaptive", hasAdaptive ? !"0".equals(ev.get(kp + "ADAPTIVE")) : true)
@@ -2689,16 +2707,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // game). Reads the just-updated runtime prefs for the active engine and writes them into the
     // shortcut's env under that engine's key prefix, replacing only this engine's keys (the other
     // engine's config + all non-audio env survive). Mirrors resetPerfKey's putExtra+saveData pattern.
-    private void persistAudioToShortcut(boolean alsa) {
+    private void persistAudioToShortcut(String driverId) {
         if (shortcut == null) return;   // no per-game store (e.g. direct/installer launch)
         try {
-            android.content.SharedPreferences p = getSharedPreferences(audioPrefsName(alsa), MODE_PRIVATE);
-            String kp = "BANNER_AUDIO_" + (alsa ? "ALSA" : "PULSE") + "_";
-            int perf = p.getInt("perf_mode", alsa ? 0 : 1);
+            android.content.SharedPreferences p = getSharedPreferences(audioPrefsName(driverId), MODE_PRIVATE);
+            String kp = "BANNER_AUDIO_" + audioEngTag(driverId) + "_";
+            int perf = p.getInt("perf_mode", audioNoneDefault(driverId) ? 0 : 1);
             boolean adaptive = p.getBoolean("adaptive", true);
             int bf = p.getInt("buffer_frames", 0), mbf = p.getInt("max_buffer_frames", 0);
             int lat = p.getInt("latency_msec", 100);
-            String preset = p.getString("preset", alsa ? "stable" : "auto");
+            String preset = p.getString("preset", audioNoneDefault(driverId) ? "stable" : "auto");
             StringBuilder sb = new StringBuilder();
             String existing = shortcut.getExtra("envVars");
             if (existing != null) for (String tok : existing.split(" ")) {
@@ -3836,7 +3854,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // default). Full write every launch = no cross-launch/cross-game memory in the runtime file;
         // persistence lives only in each scope's env. Reads only this engine's keys → no cross-engine
         // bleed. In-game saves persist back to THIS shortcut's env (persistAudioToShortcut).
-        seedAudioPrefsForLaunch(envVars, audioDriver.equals("alsa"));
+        seedAudioPrefsForLaunch(envVars, audioDriver);
         if (audioDriver.equals("alsa")) {
             envVars.put("ANDROID_ALSA_SERVER", rootPath + UnixSocketConfig.ALSA_SERVER_PATH);
             envVars.put("ANDROID_ASERVER_USE_SHM", "true");
@@ -3861,6 +3879,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)
                     )
             );
+        } else if (audioDriver.equals("directaudio")) {
+            // Native AAudio via winedirectaudio.drv: no host audio server and no ALSA/Pulse socket — the
+            // guest reaches AAudio directly. Config (BANNER_AUDIO_DIRECT_*) is already merged into envVars
+            // and read by the unixlib at stream open; the Wine "Audio" registry driver is set by
+            // changeWineAudioDriver(). Route changes are handled inside the driver. Nothing to start here.
         }
 
         // Turnip TU_DEBUG composition (per-container + per-game). Runs AFTER every env source is
@@ -4300,12 +4323,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Reset audio = live route recovery only (no persist). Reapply = user saved in-game → apply live
         // AND persist to THIS shortcut's env (per-game; never the container/other games).
         XServerDrawerState.INSTANCE.onResetAudio = () -> {
-            if ("alsa".equals(audioDriver)) applyAlsaAudioConfig(); else resetGuestAudioForRouteChange();
+            if ("alsa".equals(audioDriver)) applyAlsaAudioConfig();
+            else if ("pulseaudio".equals(audioDriver)) resetGuestAudioForRouteChange();
+            // directaudio: route recovery is handled inside winedirectaudio.drv (AAudio disconnect ->
+            // reopen); no host-side action.
         };
         XServerDrawerState.INSTANCE.onReapplyAudio = () -> {
-            boolean alsa = "alsa".equals(audioDriver);
-            if (alsa) applyAlsaAudioConfig(); else resetGuestAudioForRouteChange();
-            persistAudioToShortcut(alsa);
+            if ("alsa".equals(audioDriver)) applyAlsaAudioConfig();
+            else if ("pulseaudio".equals(audioDriver)) resetGuestAudioForRouteChange();
+            // directaudio has no live in-game apply (config is read at stream open); it persists to the
+            // shortcut env and takes effect on the next launch.
+            persistAudioToShortcut(audioDriver);
         };
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
@@ -7155,6 +7183,9 @@ return true;
                 }
                 else if (audioDriver.equals("pulseaudio")) {
                     registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse");
+                }
+                else if (audioDriver.equals("directaudio")) {
+                    registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "directaudio");
                 }
             }
             container.putExtra("audioDriver", audioDriver);

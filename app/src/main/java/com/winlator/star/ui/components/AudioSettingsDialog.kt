@@ -104,16 +104,23 @@ val AUDIO_PRESETS = listOf(
 
 /* ---- persistence: PER-ENGINE prefs (each engine remembers its own; no cross-engine bleed) ---- */
 /** Prefs file for an engine. ALSA and PulseAudio get separate files so their settings never mix. */
-fun audioPrefsName(driverId: String): String =
-    if (driverId == "alsa") "${AUDIO_PREFS}_alsa" else "${AUDIO_PREFS}_pulseaudio"
+fun audioPrefsName(driverId: String): String = when (driverId) {
+    "alsa" -> "${AUDIO_PREFS}_alsa"
+    "directaudio" -> "${AUDIO_PREFS}_directaudio"
+    else -> "${AUDIO_PREFS}_pulseaudio"
+}
+
+/** Engines that default to AAudio PERFORMANCE_MODE_NONE (proven crackle-free): ALSA and DirectAudio,
+ *  both of which drive AAudio directly. PulseAudio defaults to LOW_LATENCY/Auto. */
+private fun engineNoneDefault(driverId: String) = driverId == "alsa" || driverId == "directaudio"
 
 fun loadAudioConfig(ctx: Context, driverId: String): AudioConfig {
     val p = ctx.getSharedPreferences(audioPrefsName(driverId), Context.MODE_PRIVATE)
-    val alsa = driverId == "alsa"
-    val defPreset = if (alsa) PRESET_STABLE else PRESET_AUTO   // engine-aware default for a fresh file
+    val none = engineNoneDefault(driverId)
+    val defPreset = if (none) PRESET_STABLE else PRESET_AUTO   // engine-aware default for a fresh file
     return AudioConfig(
         preset = p.getString("preset", defPreset) ?: defPreset,
-        perfMode = p.getInt("perf_mode", if (alsa) 0 else 1),  // ALSA -> NONE (proven), Pulse -> LOW_LATENCY
+        perfMode = p.getInt("perf_mode", if (none) 0 else 1),  // ALSA/DirectAudio -> NONE, Pulse -> LOW_LATENCY
         adaptive = p.getBoolean("adaptive", true),
         bufferFrames = p.getInt("buffer_frames", 0),
         maxBufferFrames = p.getInt("max_buffer_frames", 0),
@@ -135,7 +142,11 @@ fun saveAudioConfig(ctx: Context, driverId: String, c: AudioConfig) {
  * per-engine prefs file (loadAudioConfig above) is only the EPHEMERAL runtime the engine reads while a
  * game runs — reseeded from this env every launch (see XServerDisplayActivity.seedAudioPrefsForLaunch),
  * so nothing persists globally and no config bleeds across games/containers/engines. */
-private fun engTag(driverId: String) = if (driverId == "alsa") "ALSA" else "PULSE"
+private fun engTag(driverId: String) = when (driverId) {
+    "alsa" -> "ALSA"
+    "directaudio" -> "DIRECT"
+    else -> "PULSE"
+}
 
 /** Write cfg into the scope's env under THIS engine's key prefix only, preserving the OTHER engine's
  *  audio keys and all non-audio env — so setting ALSA never disturbs the scope's Pulse config. */
@@ -162,9 +173,9 @@ fun audioConfigFromEnv(env: String, driverId: String = ""): AudioConfig {
     }
     val pfx = "BANNER_AUDIO_${engTag(driverId)}_"
     val def = AudioConfig()
-    val alsa = driverId == "alsa"
-    val defPerf = if (alsa) 0 else def.perfMode          // ALSA -> NONE, Pulse -> LOW_LATENCY (Auto)
-    val defPreset = if (alsa) PRESET_STABLE else def.preset
+    val none = engineNoneDefault(driverId)
+    val defPerf = if (none) 0 else def.perfMode          // ALSA/DirectAudio -> NONE, Pulse -> LOW_LATENCY (Auto)
+    val defPreset = if (none) PRESET_STABLE else def.preset
     return AudioConfig(
         preset = m["${pfx}PRESET"] ?: defPreset,
         perfMode = m["${pfx}PERF"]?.toIntOrNull() ?: defPerf,

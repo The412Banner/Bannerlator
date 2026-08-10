@@ -6484,7 +6484,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             modifier = Modifier.weight(1f)
                         )
                         val scAudioId = StringUtils.parseIdentifier(selectedAudioDriver)
-                        if (scAudioId == "pulseaudio" || scAudioId == "alsa") {
+                        if (scAudioId == "pulseaudio" || scAudioId == "alsa" || scAudioId == "directaudio") {
                             IconButton(onClick = { showScAudioSettings = true }) {
                                 Icon(Icons.Default.Settings, contentDescription = "Audio settings", modifier = Modifier.size(18.dp))
                             }
@@ -6499,7 +6499,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             scopeLabel = "this game",
                             latencyLive = true,
                             driverLabel = when (StringUtils.parseIdentifier(selectedAudioDriver)) {
-                                "alsa" -> "ALSA"; "pulseaudio" -> "PulseAudio"
+                                "alsa" -> "ALSA"; "pulseaudio" -> "PulseAudio"; "directaudio" -> "DirectAudio"
                                 else -> StringUtils.parseIdentifier(selectedAudioDriver)
                             },
                             onDismiss = { showScAudioSettings = false },

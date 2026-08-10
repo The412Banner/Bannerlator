@@ -22,7 +22,11 @@ OUT="$BASE_DIR/output/$ARCH"
 
 export PATH="$ROOT_DIR/bin:$PATH"
 export PKG_CONFIG_PATH="$ROOT_DIR/lib/pkgconfig"
-export CFLAGS="-O2 -I$ROOT_DIR/include"
+# PA 13.0 / libsndfile 1.0.31 are legacy C. clang 16+ promotes these to hard ERRORS by default;
+# the older clang Bruno built with treated them as warnings. Downgrade so the build matches the
+# compiler behavior this code was written for (does not touch our own module, built separately).
+LEGACY_C="-Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types -Wno-error=incompatible-pointer-types -Wno-error=deprecated-non-prototype"
+export CFLAGS="-O2 -I$ROOT_DIR/include $LEGACY_C"
 export CPPFLAGS="-I$ROOT_DIR/include"
 export LDFLAGS="-L$ROOT_DIR/lib"
 
@@ -43,14 +47,26 @@ export AR="$TOOLCHAIN/llvm-ar" RANLIB="$TOOLCHAIN/llvm-ranlib" STRIP="$TOOLCHAIN
 test -x "$CC" || { echo "CC not found: $CC"; ls "$TOOLCHAIN" | grep -i clang | head; exit 1; }
 
 mkdir -p "$SRC_DIR" "$ROOT_DIR"
-fetch() { # url dest
-  echo "fetch $1"; curl -fsSL --retry 3 -o "$2" "$1"
+# fetch DEST URL [URL...] — tries each mirror with a browser UA (some hosts 418 the default curl UA).
+fetch() {
+  local dest="$1"; shift
+  local url
+  for url in "$@"; do
+    echo "fetch $url"
+    if curl -fsSL --retry 3 --retry-delay 2 -A "Mozilla/5.0 (X11; Linux x86_64)" -o "$dest" "$url"; then
+      return 0
+    fi
+    echo "  ...mirror failed, trying next"
+  done
+  echo "ERROR: all mirrors failed for $dest"; return 1
 }
 
 # --- libltdl (runtime module-loader lib the PA daemon needs) — build only the libltdl subdir ---
 if [ ! -e "$ROOT_DIR/lib/libltdl.so" ]; then
   cd "$SRC_DIR"
-  [ -f "libtool-$LIBTOOL_VER.tar.gz" ] || fetch "https://ftp.gnu.org/gnu/libtool/libtool-$LIBTOOL_VER.tar.gz" "libtool-$LIBTOOL_VER.tar.gz"
+  [ -f "libtool-$LIBTOOL_VER.tar.gz" ] || fetch "libtool-$LIBTOOL_VER.tar.gz" \
+    "https://ftp.gnu.org/gnu/libtool/libtool-$LIBTOOL_VER.tar.gz" \
+    "https://mirrors.kernel.org/gnu/libtool/libtool-$LIBTOOL_VER.tar.gz"
   rm -rf "libtool-$LIBTOOL_VER"; tar xf "libtool-$LIBTOOL_VER.tar.gz"
   cd "libtool-$LIBTOOL_VER/libltdl"
   ./configure --host=$BUILDCHAIN --prefix="$ROOT_DIR" --enable-shared --disable-static
@@ -60,19 +76,29 @@ fi
 # --- libsndfile (PA optional dep; keep for parity with our shipped bundle) ---
 if [ ! -e "$ROOT_DIR/lib/libsndfile.so" ]; then
   cd "$SRC_DIR"
-  [ -f "libsndfile-$LIBSNDFILE_VER.tar.bz2" ] || fetch "https://github.com/libsndfile/libsndfile/releases/download/$LIBSNDFILE_VER/libsndfile-$LIBSNDFILE_VER.tar.bz2" "libsndfile-$LIBSNDFILE_VER.tar.bz2"
+  [ -f "libsndfile-$LIBSNDFILE_VER.tar.bz2" ] || fetch "libsndfile-$LIBSNDFILE_VER.tar.bz2" \
+    "https://github.com/libsndfile/libsndfile/releases/download/$LIBSNDFILE_VER/libsndfile-$LIBSNDFILE_VER.tar.bz2"
   rm -rf "libsndfile-$LIBSNDFILE_VER"; tar xf "libsndfile-$LIBSNDFILE_VER.tar.bz2"
   cd "libsndfile-$LIBSNDFILE_VER"
   ./configure --host=$BUILDCHAIN --prefix="$ROOT_DIR" --disable-external-libs --disable-alsa --disable-sqlite --disable-static --enable-shared
   make -j"$(nproc)"; make install
 fi
 
-# --- PulseAudio 13.0 (stock upstream release tarball; has pre-generated configure) ---
+# --- PulseAudio 13.0 (stock upstream; freedesktop 418s CI runners, so use distro orig tarballs — the
+#     Debian/Ubuntu *.orig.tar.xz IS the pristine upstream tarball, extracts to pulseaudio-13.0/) ---
 cd "$SRC_DIR"
-[ -f "pulseaudio-$PA_VER.tar.xz" ] || fetch "https://freedesktop.org/software/pulseaudio/releases/pulseaudio-$PA_VER.tar.xz" "pulseaudio-$PA_VER.tar.xz"
+[ -f "pulseaudio-$PA_VER.tar.xz" ] || fetch "pulseaudio-$PA_VER.tar.xz" \
+  "http://old-releases.ubuntu.com/ubuntu/pool/main/p/pulseaudio/pulseaudio_${PA_VER}.orig.tar.xz" \
+  "https://sources.debian.org/data/main/p/pulseaudio/${PA_VER}-5/pulseaudio_${PA_VER}.orig.tar.xz"
 rm -rf "pulseaudio-$PA_VER"; tar xf "pulseaudio-$PA_VER.tar.xz"
+test -d "pulseaudio-$PA_VER" || { echo "unexpected tarball layout:"; tar tf "pulseaudio-$PA_VER.tar.xz" | head; exit 1; }
 cd "pulseaudio-$PA_VER"
 rm -rf "build-$ARCH"; mkdir -p "build-$ARCH"; cd "build-$ARCH"
+# PA 13.0 probes -std=gnu11 with `-pedantic -Werror` (configure.ac:172), which clang 18 false-negatives
+# on a benign pedantic diagnostic even though it fully supports gnu11. Pre-seed AX_CHECK_COMPILE_FLAG's
+# cache var to the truth so the fatal check passes; PA's non-fatal AX_APPEND_COMPILE_FLAGS probes then
+# degrade gracefully. Cache-var name = AS_TR_SH("ax_cv_check_cflags_" + "$4" + "_" + "$1").
+export ax_cv_check_cflags__pedantic__Werror__std_gnu11=yes
 ../configure --host=$BUILDCHAIN --prefix="$ROOT_DIR" \
   --disable-static --enable-shared --disable-rpath --disable-nls --disable-x11 --disable-oss-wrapper \
   --disable-alsa --disable-esound --disable-waveout --disable-glib2 --disable-gtk3 --disable-gconf \

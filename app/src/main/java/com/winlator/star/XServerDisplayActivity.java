@@ -3747,6 +3747,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             );
         } else if (audioDriver.equals("pulseaudio")) {
             envVars.put("PULSE_SERVER", rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
+            // Guest-side audio buffer (winepulse). Paired with the sink-side adaptive buffer, this is
+            // the other half of the crackle/latency tradeoff. Default comes from the audio preset
+            // ("banner_audio" prefs, default 100ms); a container/shortcut PULSE_LATENCY_MSEC still wins
+            // (env is already merged above, so only set it when the user hasn't).
+            if (!envVars.has("PULSE_LATENCY_MSEC")) {
+                int lat = getSharedPreferences("banner_audio", MODE_PRIVATE).getInt("latency_msec", 100);
+                if (lat > 0) envVars.put("PULSE_LATENCY_MSEC", String.valueOf(lat));
+            }
             environment.addComponent(
                     new PulseAudioComponent(
                             UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)

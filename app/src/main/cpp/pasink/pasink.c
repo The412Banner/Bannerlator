@@ -239,11 +239,12 @@ done:
 // time; negative on error. Call off the main thread.
 JNIEXPORT jint JNICALL
 Java_com_winlator_star_xenvironment_components_PulseAudioComponent_nativeRecreateSink(
-        JNIEnv *env, jclass clazz, jstring jdir, jstring jserver, jstring jnewsink, jint junload) {
+        JNIEnv *env, jclass clazz, jstring jdir, jstring jserver, jstring jnewsink, jstring jextra, jint junload) {
     (void) clazz;
     const char *dir     = (*env)->GetStringUTFChars(env, jdir, NULL);
     const char *server  = (*env)->GetStringUTFChars(env, jserver, NULL);
     const char *newsink = (*env)->GetStringUTFChars(env, jnewsink, NULL);
+    const char *extra   = jextra ? (*env)->GetStringUTFChars(env, jextra, NULL) : NULL;
     const int   unload  = (int) junload;
     jint rc = -1;
     rec_ctx x;
@@ -301,9 +302,13 @@ Java_com_winlator_star_xenvironment_components_PulseAudioComponent_nativeRecreat
 
     pa_operation *op;
 
-    // 1) Load a fresh AAudio sink — its output stream opens now, on the CURRENT route.
+    // 1) Load a fresh AAudio sink — its output stream opens now, on the CURRENT route. Carry the
+    //    preset args (performance_mode/adaptive/...) so recovery matches the configured audio mode.
     char arg[256];
-    snprintf(arg, sizeof(arg), "sink_name=%s", newsink);
+    if (extra && extra[0])
+        snprintf(arg, sizeof(arg), "sink_name=%s %s", newsink, extra);
+    else
+        snprintf(arg, sizeof(arg), "sink_name=%s", newsink);
     op = api.context_load_module(ctx, "module-aaudio-sink", arg, rec_index_cb, &x);
     if (!op) { rc = -11; goto teardown; }
     while (api.operation_get_state(op) == PA_OPERATION_RUNNING) api.mainloop_wait(m);
@@ -356,5 +361,6 @@ done:
     (*env)->ReleaseStringUTFChars(env, jdir, dir);
     (*env)->ReleaseStringUTFChars(env, jserver, server);
     (*env)->ReleaseStringUTFChars(env, jnewsink, newsink);
+    if (extra) (*env)->ReleaseStringUTFChars(env, jextra, extra);
     return rc;
 }

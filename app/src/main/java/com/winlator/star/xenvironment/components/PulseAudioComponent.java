@@ -38,7 +38,31 @@ public class PulseAudioComponent extends EnvironmentComponent {
     // Recreate the guest sink onto the CURRENT output route and move the guest's streams onto it, then
     // unload the previous recovery sink (unloadModuleIdx, or < 0 to skip). Returns the NEW module index
     // (>= 0) to feed back as unloadModuleIdx next time; negative on error. Implemented in pasink.c.
-    private static native int nativeRecreateSink(String pulseDir, String server, String newSinkName, int unloadModuleIdx);
+    private static native int nativeRecreateSink(String pulseDir, String server, String newSinkName, String extraArgs, int unloadModuleIdx);
+
+    /**
+     * Resolve the module-aaudio-sink argument string from the saved audio settings (written by the
+     * in-app audio presets/fine-tune UI). Defaults to the "Auto / Smart" preset: AAudio LOW_LATENCY
+     * start + adaptive buffer growth on underruns. Keys live in the "banner_audio" prefs so the UI and
+     * the daemon agree; the same string is used for the initial default.pa load AND route-change recovery.
+     */
+    private String resolveSinkArgs() {
+        try {
+            android.content.SharedPreferences p = environment.getContext()
+                    .getSharedPreferences("banner_audio", android.content.Context.MODE_PRIVATE);
+            int perf = p.getInt("perf_mode", 1);            // 0=NONE, 1=LOW_LATENCY, 2=POWER_SAVING
+            boolean adaptive = p.getBoolean("adaptive", true);
+            int bf = p.getInt("buffer_frames", 0);          // 0 = auto (framesPerBurst*2)
+            int mbf = p.getInt("max_buffer_frames", 0);     // 0 = device capacity
+            StringBuilder sb = new StringBuilder();
+            sb.append("performance_mode=").append(perf).append(" adaptive=").append(adaptive ? 1 : 0);
+            if (bf > 0) sb.append(" buffer_frames=").append(bf);
+            if (mbf > 0) sb.append(" max_buffer_frames=").append(mbf);
+            return sb.toString();
+        } catch (Throwable t) {
+            return "performance_mode=1 adaptive=1";         // Auto/Smart fallback
+        }
+    }
 
     // Bookkeeping for the recreate path: the module index of the sink we created last (to unload on the
     // next route change) and a monotonic counter for unique sink names. Guarded by recoverLock.
@@ -116,7 +140,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         synchronized (recoverLock) {
             String name = "recover" + (++recoverCounter);
             try {
-                int idx = nativeRecreateSink(dir, server, name, lastRecoverModuleIdx);
+                int idx = nativeRecreateSink(dir, server, name, resolveSinkArgs(), lastRecoverModuleIdx);
                 if (idx >= 0) lastRecoverModuleIdx = idx;
                 else android.util.Log.w("PulseAudio", "recreateSink rc=" + idx);
             } catch (Throwable t) {
@@ -163,7 +187,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         File configFile = new File(workingDir, "default.pa");
         FileUtils.writeString(configFile, String.join("\n",
             "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""+socketConfig.path+"\"",
-            "load-module module-aaudio-sink",
+            "load-module module-aaudio-sink " + resolveSinkArgs(),
             "set-default-sink AAudioSink"
         ));
 

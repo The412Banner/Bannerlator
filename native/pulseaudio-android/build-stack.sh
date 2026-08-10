@@ -80,7 +80,8 @@ rm -rf "build-$ARCH"; mkdir -p "build-$ARCH"; cd "build-$ARCH"
   --disable-bluez5 --disable-udev --disable-openssl --disable-manpages --disable-samplerate \
   --without-speex --with-database=simple --disable-orc --without-caps --without-fftw \
   --disable-systemd-daemon --disable-systemd-login --disable-systemd-journal --disable-webrtc-aec \
-  --disable-tests --disable-neon-opt --disable-gsettings
+  --disable-tests --disable-neon-opt --disable-gsettings \
+  || { echo "=== PA configure FAILED; config.log tail ==="; grep -nE "std=gnu11|gnu11|error:|clang" config.log | tail -60; exit 1; }
 make -j"$(nproc)"
 make install
 

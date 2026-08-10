@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +21,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.winlator.star.core.LogcatCapture
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -40,6 +46,7 @@ fun DebugDialogContent(state: XServerDialogState) {
     val listState = rememberLazyListState()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(logLines.size) {
         if (logLines.isNotEmpty() && !logPaused) {
@@ -61,11 +68,40 @@ fun DebugDialogContent(state: XServerDialogState) {
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Logs",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // Title + a "Capture logcat" action at the TOP: pressing it here grabs the live
+                // Android logcat buffer (our own pid) WITHOUT leaving the game. That matters because
+                // the diagnostics we chase — AffinityDrift host-repin / NOT-HONORED — are logged from
+                // THIS process; capturing in-game means the buffer still holds them, where exiting to
+                // the app and risking a process restart can lose them entirely.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Text(
+                        text = "Logs",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(Modifier.weight(1f))
+                    FilledTonalButton(onClick = {
+                        // Runtime.exec + a few thousand lines + a redaction pass + a file write is far
+                        // too much for the UI thread; do it on IO and toast where it landed.
+                        scope.launch {
+                            val file = withContext(Dispatchers.IO) {
+                                LogcatCapture.captureToFile(context, LogcatCapture.MANUAL_LINES)
+                            }
+                            Toast.makeText(
+                                context,
+                                if (file != null) "Logcat saved: ${file.parentFile?.name}/${file.name}"
+                                else "Logcat capture failed",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }) {
+                        Text("Capture logcat")
+                    }
+                }
 
                 HorizontalDivider()
                 Spacer(Modifier.height(4.dp))

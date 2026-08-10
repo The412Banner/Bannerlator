@@ -266,13 +266,20 @@ fun LogManagerScreen(onClose: () -> Unit) {
                         modifier = Modifier.weight(1f).alpha(if (logcat) 1f else 0.4f)
                     ) {
                         if (!logcat) return@CardAction
-                        // Runtime.exec + 1000 lines + a redaction pass + a file write: far too
-                        // much for the UI thread (its own docs say so). Off to IO, refresh after.
+                        // Runtime.exec + several thousand lines + a redaction pass + a file write:
+                        // far too much for the UI thread (its own docs say so). Off to IO, then
+                        // refresh the inventory and confirm where it landed.
                         scope.launch {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                LogcatCapture.captureToFile(context, LogcatCapture.DEFAULT_LINES)
+                            val file = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                LogcatCapture.captureToFile(context, LogcatCapture.MANUAL_LINES)
                             }
                             refreshTick++
+                            android.widget.Toast.makeText(
+                                context,
+                                if (file != null) "Logcat saved: ${file.parentFile?.name}/${file.name}"
+                                else "Logcat capture failed",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
                         }
                     }
                     InfoDot { info = "Capture logcat now" to LogCopy.CAPTURE_NOW }

@@ -31,6 +31,14 @@ public final class LogcatCapture {
     private static final String TAG = "LogcatCapture";
     /** Lines to take. Matches GameNative's crash-report depth; plenty for a diagnosis, small on disk. */
     public static final int DEFAULT_LINES = 1000;
+    /**
+     * Depth for an explicit, user-pressed "capture now" (Log Manager button or the in-game debug
+     * screen). Deeper than {@link #DEFAULT_LINES} because these captures are taken during a live
+     * gameplay session — the periodic AffinityDrift / driver / X-server chatter fills the buffer
+     * faster than the near-idle startup a crash report sees, so 1000 lines can cover only seconds.
+     * ~5000 lines is still well under a megabyte after redaction.
+     */
+    public static final int MANUAL_LINES = 5000;
 
     private LogcatCapture() {}
 

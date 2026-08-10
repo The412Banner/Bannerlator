@@ -2687,6 +2687,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }, "audio-route-recreate").start();
     }
 
+    // Read an int from a BANNER_AUDIO_* env var; default on missing/garbage.
+    private static int audioInt(EnvVars ev, String key, int def) {
+        try { return ev.has(key) ? Integer.parseInt(ev.get(key).trim()) : def; }
+        catch (Exception e) { return def; }
+    }
+
     // True for the physical output routes that, when (un)plugged mid-game, require the AAudio sink to
     // reopen onto the new default (3.5mm, USB-C, Bluetooth, HDMI). Internal speaker/earpiece are the
     // fallback route resetGuestAudio() re-grabs, so a change involving one of these still needs a reset.
@@ -3747,14 +3753,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
             );
         } else if (audioDriver.equals("pulseaudio")) {
             envVars.put("PULSE_SERVER", rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
-            // Guest-side audio buffer (winepulse). Paired with the sink-side adaptive buffer, this is
-            // the other half of the crackle/latency tradeoff. Default comes from the audio preset
-            // ("banner_audio" prefs, default 100ms); a container/shortcut PULSE_LATENCY_MSEC still wins
-            // (env is already merged above, so only set it when the user hasn't).
-            if (!envVars.has("PULSE_LATENCY_MSEC")) {
-                int lat = getSharedPreferences("banner_audio", MODE_PRIVATE).getInt("latency_msec", 100);
-                if (lat > 0) envVars.put("PULSE_LATENCY_MSEC", String.valueOf(lat));
-            }
+            // Resolve the audio preset (written per-container / per-game as BANNER_AUDIO_* env by the
+            // Audio-settings cog; env is already merged shortcut→container above) into the session
+            // "banner_audio" prefs. PulseAudioComponent.resolveSinkArgs reads these for the sink, and
+            // the in-game Audio dialog loads them as the current config. Then set the guest-side
+            // PULSE_LATENCY_MSEC from the resolved latency, unless the user set it explicitly.
+            android.content.SharedPreferences.Editor ae = getSharedPreferences("banner_audio", MODE_PRIVATE).edit();
+            if (envVars.has("BANNER_AUDIO_PRESET")) ae.putString("preset", envVars.get("BANNER_AUDIO_PRESET"));
+            ae.putInt("perf_mode", audioInt(envVars, "BANNER_AUDIO_PERF", 1));
+            if (envVars.has("BANNER_AUDIO_ADAPTIVE")) ae.putBoolean("adaptive", !"0".equals(envVars.get("BANNER_AUDIO_ADAPTIVE")));
+            ae.putInt("buffer_frames", audioInt(envVars, "BANNER_AUDIO_BF", 0));
+            ae.putInt("max_buffer_frames", audioInt(envVars, "BANNER_AUDIO_MBF", 0));
+            int lat = envVars.has("BANNER_AUDIO_LAT")
+                    ? audioInt(envVars, "BANNER_AUDIO_LAT", 100)
+                    : getSharedPreferences("banner_audio", MODE_PRIVATE).getInt("latency_msec", 100);
+            ae.putInt("latency_msec", lat);
+            ae.apply();
+            if (!envVars.has("PULSE_LATENCY_MSEC") && lat > 0) envVars.put("PULSE_LATENCY_MSEC", String.valueOf(lat));
             environment.addComponent(
                     new PulseAudioComponent(
                             UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)
@@ -4076,6 +4091,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         XServerDrawerState.INSTANCE.onBringBackFromTv = () -> externalDisplayController.bringBackToHandheld();
         XServerDrawerState.INSTANCE.onTvModeChange = (id) -> externalDisplayController.setPreferredModeId(id);
         XServerDrawerState.INSTANCE.onResetAudio = () -> resetGuestAudio();
+        // In-game audio dialog saved a new preset → re-apply live by recreating the sink (reads the
+        // just-written banner_audio prefs). Guest latency change is picked up on next launch.
+        XServerDrawerState.INSTANCE.onReapplyAudio = () -> resetGuestAudioForRouteChange();
 
         // TV Options v2: seed from the container (TV settings are display-scoped, stored as tv.* extras).
         try {

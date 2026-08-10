@@ -71,6 +71,9 @@ import com.winlator.star.core.ImageUtils
 import com.winlator.star.util.InAppFilePicker
 import java.io.File
 import com.winlator.star.core.StringUtils
+import com.winlator.star.ui.components.AudioSettingsDialog
+import com.winlator.star.ui.components.audioConfigFromEnv
+import com.winlator.star.ui.components.audioConfigToEnv
 import com.winlator.star.core.WineThemeManager
 import com.winlator.star.core.WineUtils
 import android.graphics.Bitmap
@@ -728,6 +731,7 @@ private fun TopLevelFields(
     // Per-field "?" help — a centered, scrollable Compose dialog (HelpDialog), replacing the old
     // top-left PopupWindow. null = no dialog; otherwise the string res of the field's help text.
     var helpRes by remember { mutableStateOf<Int?>(null) }
+    var showAudioSettings by remember { mutableStateOf(false) }
     helpRes?.let { HelpDialog(it) { helpRes = null } }
 
     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -944,9 +948,28 @@ private fun TopLevelFields(
                 onSelect = { viewModel.selectedAudioDriver = it },
                 modifier = Modifier.weight(1f)
             )
+            // Cog → adaptive audio presets & fine-tuning. Only meaningful for PulseAudio (ALSA path
+            // has no sink presets), so it's shown only when PulseAudio is selected.
+            if (StringUtils.parseIdentifier(viewModel.selectedAudioDriver) == "pulseaudio") {
+                IconButton(onClick = { showAudioSettings = true }) {
+                    Icon(Icons.Default.Settings, contentDescription = "Audio settings", modifier = Modifier.size(18.dp))
+                }
+            }
             IconButton(onClick = { helpRes = R.string.help_audio_driver }) {
                 Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
             }
+        }
+        if (showAudioSettings) {
+            AudioSettingsDialog(
+                initial = audioConfigFromEnv(viewModel.envVarsStr),
+                scopeLabel = "this container",
+                latencyLive = true,
+                onDismiss = { showAudioSettings = false },
+                onSave = { cfg ->
+                    viewModel.envVarsStr = audioConfigToEnv(viewModel.envVarsStr, cfg)
+                    showAudioSettings = false
+                }
+            )
         }
         Spacer(Modifier.height(8.dp))
 

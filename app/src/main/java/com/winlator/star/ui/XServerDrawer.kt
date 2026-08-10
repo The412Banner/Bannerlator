@@ -394,6 +394,32 @@ private fun TvContent(state: XServerDrawerState) {
         modifier = Modifier.padding(top = 4.dp)
     )
 
+    // Adaptive audio presets & fine-tuning, live in-game. Sink-side changes apply instantly (sink
+    // recreate); guest buffer is fixed at connect → applies next launch (dialog notes it).
+    Spacer(Modifier.height(8.dp))
+    val audioCtx = LocalContext.current
+    var showAudioDialog by remember { mutableStateOf(false) }
+    AccentButton("Audio settings", Modifier.fillMaxWidth()) { showAudioDialog = true }
+    Text(
+        text = "Presets & fine-tuning — balance crackle vs delay.",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 11.sp,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    if (showAudioDialog) {
+        com.winlator.star.ui.components.AudioSettingsDialog(
+            initial = com.winlator.star.ui.components.loadAudioConfig(audioCtx),
+            scopeLabel = "live · this session",
+            latencyLive = false,
+            onDismiss = { showAudioDialog = false },
+            onSave = { cfg ->
+                com.winlator.star.ui.components.saveAudioConfig(audioCtx, cfg)
+                state.onReapplyAudio?.run()
+                showAudioDialog = false
+            }
+        )
+    }
+
     val rendererIsVulkan by state.rendererIsVulkan.collectAsState()
 
     // ───────────── Picture ─────────────

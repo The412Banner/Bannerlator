@@ -17,8 +17,11 @@ test -d "$PA_SRC" || { echo "PA source not found ($PA_SRC) — run build-stack.s
 TOOLCHAIN="$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/bin"
 CC="$TOOLCHAIN/${BUILDCHAIN}${API}-clang"
 
+# PA 13.0 headers (e.g. pulsecore/atomic.h) trip clang-16+ default-errors; downgrade them to match
+# the compiler behavior PA was written for (same as the stack build).
+LEGACY_C="-Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=incompatible-pointer-types -Wno-error=incompatible-function-pointer-types"
 mkdir -p "$OUT/modules"
-$CC -O2 -shared \
+$CC -O2 -shared $LEGACY_C \
   -I"$PA_SRC/build-$ARCH" -I"$PA_SRC/src" -I"$ROOT_DIR/include" \
   -L"$ROOT_DIR/lib/pulseaudio" -L"$ROOT_DIR/lib" \
   -lpulsecore-13.0 -lpulsecommon-13.0 -lpulse -laaudio \

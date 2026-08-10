@@ -23,17 +23,16 @@ jobs:
             autoconf automake libtool libtool-bin m4 pkg-config gettext autopoint \
             intltool gperf perl git zstd file build-essential
 
-      - name: Resolve NDK
+      - name: Resolve NDK (pin r27c — runner default is an r29 preview with changed toolchain paths)
         run: |
-          NDK="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_HOME}"
-          if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
-            echo "No preinstalled NDK; downloading r27c"
+          NDK="$HOME/android-ndk-r27c"
+          if [ ! -d "$NDK" ]; then
             curl -sSL -o /tmp/ndk.zip https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
             unzip -q /tmp/ndk.zip -d "$HOME"
-            NDK="$HOME/android-ndk-r27c"
           fi
           echo "NDK_PATH=$NDK" >> "$GITHUB_ENV"
           echo "using NDK at $NDK"
+          ls "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/" | grep -i 'android26-clang$' | head
 
       - name: Build PulseAudio 13.0 stack
         working-directory: native/pulseaudio-android

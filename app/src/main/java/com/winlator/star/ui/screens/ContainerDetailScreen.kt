@@ -1848,26 +1848,30 @@ private fun AdvancedTab(
                     Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
                 }
             }
-            // On-screen priority: what happens to the on-screen pad when a physical pad connects mid-game.
-            val onScreenModeLabels = listOf("Keep on-screen player", "Yield Player 1 to pad", "Share the player")
-            LabeledDropdown(
-                label = "On-screen priority",
-                options = onScreenModeLabels,
-                selectedOption = onScreenModeLabels.getOrElse(viewModel.onScreenControllerMode) { onScreenModeLabels[0] },
-                onSelect = { viewModel.onScreenControllerMode = onScreenModeLabels.indexOf(it).coerceAtLeast(0) },
+            // #345 F2: one "on controller connect" selector replaces the old priority dropdown + separate
+            // auto-hide toggle (they contradicted each other). Hand over & hide = YIELD (the pad takes the
+            // on-screen pad's player and the overlay hides); Keep = overlay stays, pad goes to the next
+            // player; Share = both drive the one player, overlay stays. "Use global default" (#345 F6)
+            // leaves this container unset so it inherits the app-drawer global live.
+            val onScreenModeLabels = listOf(
+                "Use global default",
+                "Keep on-screen player",
+                "Hand over to controller & hide",
+                "Share the player"
             )
-            Spacer(Modifier.height(8.dp))
-            // #333: auto-hide the on-screen touch controls when a physical controller takes over the
-            // on-screen pad's player slot; they reappear when it leaves. Slot-aware — a controller pinned
-            // to a DIFFERENT player (2-player setup) leaves the overlay up. Overrides Share while active.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = viewModel.autoHideControlsOnPad,
-                    onCheckedChange = { viewModel.autoHideControlsOnPad = it }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Hide on-screen controls when a controller connects")
-            }
+            // UI index 0 = inherit; 1..3 map to KEEP/YIELD/SHARE (mode = uiIndex - 1).
+            val onScreenUiIndex =
+                if (viewModel.onScreenControllerMode < 0) 0 else viewModel.onScreenControllerMode + 1
+            LabeledDropdown(
+                label = "On controller connect",
+                options = onScreenModeLabels,
+                selectedOption = onScreenModeLabels.getOrElse(onScreenUiIndex) { onScreenModeLabels[0] },
+                onSelect = {
+                    val ui = onScreenModeLabels.indexOf(it).coerceAtLeast(0)
+                    viewModel.onScreenControllerMode =
+                        if (ui == 0) Container.ON_SCREEN_MODE_INHERIT else ui - 1
+                },
+            )
             Spacer(Modifier.height(8.dp))
             PlayerSlotsEditor(
                 savedOverridesJson = viewModel.controllerSlotOverridesJson,

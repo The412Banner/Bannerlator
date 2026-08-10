@@ -759,12 +759,11 @@ private fun GlobalPlayerSlotsSection() {
     var slotOverridesJson by remember {
         mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getSlotOverridesJson(context))
     }
+    // #345 F2: the single merged "on controller connect" mode (KEEP/YIELD/SHARE); auto-hide is derived
+    // (= YIELD). #345 F6: this global is now a LIVE fallback for every container/shortcut that hasn't set
+    // its own value, not just a seed for new containers.
     var onScreenMode by remember {
-        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getOnScreenMode(context))
-    }
-    // #333 global default (seeds new containers): auto-hide on-screen controls when a controller connects.
-    var autoHideOnPad by remember {
-        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getAutoHideControlsOnPad(context))
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getOnScreenModeMerged(context))
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -777,31 +776,26 @@ private fun GlobalPlayerSlotsSection() {
     }
     FieldSet {
         Text(
-            "The default for newly-created containers. Assign two devices to one player to share control. " +
-                "Applies to new containers only — existing containers keep their own settings.",
+            "The default for controllers connecting mid-game. Applies to every container that hasn't set " +
+                "its own value (each container/game can still override this). Assign two devices to one " +
+                "player to share control.",
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
         )
         Spacer(Modifier.height(8.dp))
-        val onScreenModeLabels = listOf("Keep on-screen player", "Yield Player 1 to pad", "Share the player")
+        // #345 F2: one selector — Hand over & hide = YIELD (pad takes the on-screen pad's player, overlay
+        // hides); Keep = overlay stays, pad goes to the next player; Share = both drive one player.
+        val onScreenModeLabels = listOf(
+            "Keep on-screen player",
+            "Hand over to controller & hide",
+            "Share the player"
+        )
         LabeledDropdown(
-            label = "On-screen priority",
+            label = "On controller connect",
             options = onScreenModeLabels,
             selectedOption = onScreenModeLabels.getOrElse(onScreenMode) { onScreenModeLabels[0] },
             onSelect = {
                 onScreenMode = onScreenModeLabels.indexOf(it).coerceAtLeast(0)
-                com.winlator.star.ui.components.GlobalControllerPrefs.setOnScreenMode(context, onScreenMode)
-            },
-        )
-        Spacer(Modifier.height(8.dp))
-        // #333 auto-hide default for new containers. On/Off dropdown (no Switch in this screen).
-        val autoHideLabels = listOf("On", "Off")
-        LabeledDropdown(
-            label = "Hide on-screen controls when a controller connects",
-            options = autoHideLabels,
-            selectedOption = if (autoHideOnPad) autoHideLabels[0] else autoHideLabels[1],
-            onSelect = {
-                autoHideOnPad = autoHideLabels.indexOf(it) == 0
-                com.winlator.star.ui.components.GlobalControllerPrefs.setAutoHideControlsOnPad(context, autoHideOnPad)
+                com.winlator.star.ui.components.GlobalControllerPrefs.setOnScreenModeMerged(context, onScreenMode)
             },
         )
         Spacer(Modifier.height(8.dp))

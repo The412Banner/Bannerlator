@@ -223,14 +223,11 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // editor UI mutates it only through WinHandler.parse/buildSlotOverridesJson. "{}" = all auto.
     var controllerSlotOverridesJson by mutableStateOf("{}")
 
-    // On-screen-controls vs physical-pad priority for this container (KEEP/YIELD/SHARE). Default KEEP so
-    // existing containers are unchanged; a new container is seeded from the app-drawer global at creation.
-    var onScreenControllerMode by mutableStateOf(Container.ON_SCREEN_MODE_DEFAULT)
-
-    // Auto-hide on-screen controls when a controller takes the on-screen slot (#333). Container-level
-    // default FALSE (existing containers untouched); a new container is seeded from the app-drawer global
-    // (default ON) at creation, same discipline as onScreenControllerMode.
-    var autoHideControlsOnPad by mutableStateOf(Container.AUTO_HIDE_CONTROLS_ON_PAD_DEFAULT)
+    // #345 F2/F6: the single merged "on controller connect" mode for this container. ON_SCREEN_MODE_INHERIT
+    // (-1) = "Use global default" — the container stores nothing and the launch resolver falls back to the
+    // app-drawer global live. 0/1/2 = KEEP / YIELD (hand over & hide) / SHARE. Auto-hide is no longer a
+    // separate setting — it's derived as (mode == YIELD). Default INHERIT so a brand-new container inherits.
+    var onScreenControllerMode by mutableStateOf(Container.ON_SCREEN_MODE_INHERIT)
 
     // Gyro (motion aim), per-container. Target: 0=Right stick 1=Left stick 2=Mouse; activator is the
     // button that gates the tilt (4 = always on), with the activation mode deciding whether that
@@ -539,8 +536,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         vibrationMode      = seed?.getVibrationMode() ?: Container.VIBRATION_MODE_DEFAULT
         vibrationIntensity = seed?.getVibrationIntensity() ?: Container.VIBRATION_INTENSITY_DEFAULT
         controllerSlotOverridesJson = seed?.getControllerSlotOverrides() ?: "{}"
-        onScreenControllerMode = seed?.getOnScreenControllerMode() ?: Container.ON_SCREEN_MODE_DEFAULT
-        autoHideControlsOnPad = seed?.isAutoHideControlsOnPad() ?: Container.AUTO_HIDE_CONTROLS_ON_PAD_DEFAULT
+        // #345 F6: show INHERIT for a container that hasn't explicitly set the mode (so it visibly tracks
+        // the global default), else its own merged value. (seed != null && … so seed smart-casts non-null.)
+        onScreenControllerMode = if (seed != null && seed.hasOnScreenControllerModeSet())
+            seed.getOnScreenControllerModeMerged() else Container.ON_SCREEN_MODE_INHERIT
 
         gyroEnabled     = seed?.isGyroEnabled() ?: Container.GYRO_ENABLED_DEFAULT
         gyroTarget      = seed?.getGyroTarget() ?: Container.GYRO_TARGET_DEFAULT
@@ -918,8 +917,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setVibrationMode(vibrationMode)
             c.setVibrationIntensity(vibrationIntensity)
             c.setControllerSlotOverrides(controllerSlotOverridesJson)
-            c.setOnScreenControllerMode(onScreenControllerMode)
-            c.setAutoHideControlsOnPad(autoHideControlsOnPad)
+            // #345 F2/F6: INHERIT clears the per-container mode so it tracks the global default; else write
+            // the merged value (which also updates the derived auto-hide flag).
+            if (onScreenControllerMode < 0) c.clearOnScreenControllerMode()
+            else c.setOnScreenControllerModeMerged(onScreenControllerMode)
             c.setGyroEnabled(gyroEnabled)
             c.setGyroTarget(gyroTarget)
             c.setGyroActivator(gyroActivator)
@@ -974,29 +975,14 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                     created.setLsfgAutoEnable(lsfgAutoEnable)
                     created.setVibrationMode(vibrationMode)
                     created.setVibrationIntensity(vibrationIntensity)
-                    // Player Slots + On-screen mode: a NEW container is SEEDED from the app-drawer global
-                    // default ONLY at creation (never a live launch-time fallback, and existing containers
-                    // are never retroactively changed). An explicit edit in this create screen wins over
-                    // the global — so only fall back to the global when the field is still the all-auto
-                    // default the user didn't touch.
-                    val seededSlotOverrides =
-                        if (controllerSlotOverridesJson.isBlank() || controllerSlotOverridesJson == "{}")
-                            com.winlator.star.ui.components.GlobalControllerPrefs.getSlotOverridesJson(context)
-                        else controllerSlotOverridesJson
-                    created.setControllerSlotOverrides(seededSlotOverrides)
-                    created.setOnScreenControllerMode(
-                        if (onScreenControllerMode == Container.ON_SCREEN_MODE_DEFAULT)
-                            com.winlator.star.ui.components.GlobalControllerPrefs.getOnScreenMode(context)
-                        else onScreenControllerMode
-                    )
-                    // Seed auto-hide from the global default (ON) when the user didn't turn it on in the
-                    // create screen; an explicit ON in the create screen is kept. Existing containers never
-                    // hit this path, so they stay on the FALSE container-level fallback.
-                    created.setAutoHideControlsOnPad(
-                        if (!autoHideControlsOnPad)
-                            com.winlator.star.ui.components.GlobalControllerPrefs.getAutoHideControlsOnPad(context)
-                        else true
-                    )
+                    // #345 F6: Player Slots + on-screen mode are now a LIVE global fallback, not a
+                    // creation-time seed. Only persist per-container values the user actually set in this
+                    // create screen; anything left at the inherit / all-auto default stays UNSET so the
+                    // container inherits the app-drawer global default live (and later global edits apply).
+                    if (controllerSlotOverridesJson.isNotBlank() && controllerSlotOverridesJson != "{}")
+                        created.setControllerSlotOverrides(controllerSlotOverridesJson)
+                    if (onScreenControllerMode >= 0)
+                        created.setOnScreenControllerModeMerged(onScreenControllerMode)
                     // Same set as the edit path above — a new container must not silently drop these.
                     created.setGyroEnabled(gyroEnabled)
                     created.setGyroTarget(gyroTarget)
@@ -1133,8 +1119,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             template.setVibrationMode(vibrationMode)
             template.setVibrationIntensity(vibrationIntensity)
             template.setControllerSlotOverrides(controllerSlotOverridesJson)
-            template.setOnScreenControllerMode(onScreenControllerMode)
-            template.setAutoHideControlsOnPad(autoHideControlsOnPad)
+            // #345 F2/F6: INHERIT clears the mode (template tracks the global default); else write merged.
+            if (onScreenControllerMode < 0) template.clearOnScreenControllerMode()
+            else template.setOnScreenControllerModeMerged(onScreenControllerMode)
             template.setGyroEnabled(gyroEnabled)
             template.setGyroTarget(gyroTarget)
             template.setGyroActivator(gyroActivator)

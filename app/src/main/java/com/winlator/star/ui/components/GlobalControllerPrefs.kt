@@ -58,4 +58,18 @@ object GlobalControllerPrefs {
             .putBoolean(KEY_AUTO_HIDE_ON_PAD, enabled)
             .apply()
     }
+
+    // #345 F2: the single merged "on controller connect" mode (Container.ON_SCREEN_MODE_*). Auto-hide is
+    // no longer a separate setting — it is DERIVED as (mode == YIELD). These fold the two stored keys
+    // (mode + legacy auto-hide flag) into one value so the app-drawer global editor and the launch
+    // resolver both speak in one merged mode. Kept back-compat with the two underlying keys.
+    @JvmStatic
+    fun getOnScreenModeMerged(context: Context): Int =
+        if (getAutoHideControlsOnPad(context)) Container.ON_SCREEN_MODE_YIELD else getOnScreenMode(context)
+
+    @JvmStatic
+    fun setOnScreenModeMerged(context: Context, mode: Int) {
+        setOnScreenMode(context, mode)
+        setAutoHideControlsOnPad(context, mode == Container.ON_SCREEN_MODE_YIELD)
+    }
 }

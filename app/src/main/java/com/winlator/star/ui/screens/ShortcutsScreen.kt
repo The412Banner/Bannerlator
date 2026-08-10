@@ -5677,9 +5677,17 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
     // launch resolver reads this extra first, else the container's (resolvedControllerSlotOverridesJson).
     var controllerSlotOverridesJson by remember { mutableStateOf(shortcut.getExtra("controllerSlotOverrides", "")) }
 
-    // #333 per-game auto-hide override. "" = inherit the container; "1"/"0" = explicit on/off for this
-    // game. The launch resolver (resolvedAutoHideControlsOnPad) reads this extra first, else the container.
-    var autoHideControlsOnPad by remember { mutableStateOf(shortcut.getExtra("autoHideControlsOnPad", "")) }
+    // #345 F2 per-game override of the merged "on controller connect" mode. "" = inherit the container;
+    // "0"/"1"/"2" = KEEP/YIELD(hand over & hide)/SHARE for this game. The launch resolver reads this extra
+    // first, else the container, else the global. Back-compat: initialize from the retired
+    // autoHideControlsOnPad extra when only that is present (on => YIELD, off => KEEP).
+    var onScreenControllerMode by remember {
+        mutableStateOf(
+            shortcut.getExtra("onScreenControllerMode", "").ifEmpty {
+                when (shortcut.getExtra("autoHideControlsOnPad", "")) { "1" -> "1"; "0" -> "0"; else -> "" }
+            }
+        )
+    }
 
     // Num controllers
     val numControllersEntries = remember { res.getStringArray(R.array.num_controllers_entries).toList() }
@@ -5967,8 +5975,10 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
             putExtra("simTouchScreen", if (simTouchScreen) "1" else "0")
             // Empty = clear the extra so the game re-inherits the container's Player Slots.
             putExtra("controllerSlotOverrides", controllerSlotOverridesJson.ifEmpty { null })
-            // #333: empty = re-inherit the container's auto-hide setting.
-            putExtra("autoHideControlsOnPad", autoHideControlsOnPad.ifEmpty { null })
+            // #345 F2: per-game merged mode ("" = re-inherit the container). Clear the retired auto-hide
+            // extra so a migrated shortcut doesn't carry stale, conflicting data.
+            putExtra("onScreenControllerMode", onScreenControllerMode.ifEmpty { null })
+            putExtra("autoHideControlsOnPad", null)
             putExtra("numControllers", numCtrl.toString())
             putExtra("box64Version", selectedBox64Version)
             putExtra("box64Preset", b64PresetId)
@@ -6636,17 +6646,23 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                             onSelect = { selectedNumControllers = it }
                         )
 
-                        // #333 per-game auto-hide override (tri-state): inherit container / On / Off.
+                        // #345 F2 per-game override of the merged mode: inherit container / Keep / Hand
+                        // over & hide (Yield) / Share.
                         Spacer(Modifier.height(12.dp))
                         run {
-                            val autoHideLabels = listOf("Use container default", "On", "Off")
-                            val autoHideIdx = when (autoHideControlsOnPad) { "1" -> 1; "0" -> 2; else -> 0 }
+                            val modeLabels = listOf(
+                                "Use container default",
+                                "Keep on-screen player",
+                                "Hand over to controller & hide",
+                                "Share the player"
+                            )
+                            val modeIdx = when (onScreenControllerMode) { "0" -> 1; "1" -> 2; "2" -> 3; else -> 0 }
                             LabeledDropdown(
-                                label = "Hide on-screen controls when a controller connects",
-                                options = autoHideLabels,
-                                selectedOption = autoHideLabels[autoHideIdx],
+                                label = "On controller connect",
+                                options = modeLabels,
+                                selectedOption = modeLabels[modeIdx],
                                 onSelect = {
-                                    autoHideControlsOnPad = when (autoHideLabels.indexOf(it)) { 1 -> "1"; 2 -> "0"; else -> "" }
+                                    onScreenControllerMode = when (modeLabels.indexOf(it)) { 1 -> "0"; 2 -> "1"; 3 -> "2"; else -> "" }
                                 },
                             )
                         }

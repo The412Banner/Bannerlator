@@ -1274,6 +1274,35 @@ public class WinHandler {
     }
 
     /**
+     * #345 F5 — undo a YIELD promotion when the pad that triggered it disconnects. A YIELD moved the
+     * on-screen pad off its home slot (Player 1 / slot 0, since only an UNPINNED OSC ever yields) up to
+     * {@code oscYieldSlot} and handed slot 0 to the incoming pad. When that pad later leaves, slot 0
+     * frees but nothing moved OSC back — so the restored overlay would keep driving the yield slot. Here
+     * we re-seat OSC on its home slot and clear the session yield preference. No-op unless a yield is
+     * actually in effect and the home slot is now free (a different pad still on slot 0 ⇒ leave it).
+     * Main-thread only (called from the debounced disconnect runnable).
+     */
+    private void restoreYieldedOscIfHomeFree() {
+        if (oscYieldSlot < 0) return;                          // no yield in effect
+        Integer oscOverride = manualSlotOverrides.get(OSC_DESCRIPTOR);
+        if (oscOverride != null && oscOverride >= 0) {         // a pinned OSC never yields (F4) — nothing to undo
+            oscYieldSlot = -1;
+            return;
+        }
+        final int home = 0;                                    // unpinned OSC's home = Player 1
+        if (usedSlots.contains(home)) return;                  // home still occupied — keep OSC where it is
+        Integer cur = deviceToSlot.get(OSC_DEVICE_ID);
+        if (cur == null || cur == home) {                      // OSC gone or already home — just clear the pref
+            oscYieldSlot = -1;
+            return;
+        }
+        releaseSlot(OSC_DEVICE_ID);                            // softRelease: frees the yield slot, ring stays alive
+        oscYieldSlot = -1;                                     // clear BEFORE reassign so FCFS can pick home
+        int newSlot = assignSlot(OSC_DEVICE_ID);               // FCFS → home (slot 0, now free)
+        Log.d("WinHandler", "#345 F5: on-screen pad restored to home slot " + newSlot + " after pad disconnect.");
+    }
+
+    /**
      * Feeds one gyroscope sample (rad/s about the device X and Y axes) into the configured target
      * (right stick, left stick or the mouse pointer). Called on the main thread from the activity's
      * SensorEventListener, so it shares a thread with the controller/OSC input path and needs no
@@ -1915,10 +1944,21 @@ public class WinHandler {
                 return joinSharedSlot(deviceId, descriptor, override);
             }
 
-            // Pinned to a specific slot: claim it when free (else fall through to FCFS).
-            if (override != null && override >= 0 && override < MAX_CONTROLLERS
-                    && !usedSlots.contains(override)) {
-                return assignSpecificSlot(deviceId, descriptor, override);
+            // Pinned to a specific slot. Claim it: take it directly when free, and when it's held by an
+            // UNPINNED device (the on-screen pad sitting on slot 0 by FCFS/yield, or an auto pad) evict
+            // that occupant so the explicit pin wins. This mirrors what the in-game Players tab
+            // (setDeviceSlotAssignment) already does, and fixes #345 F3 where a Player-1-pinned pad
+            // connecting MID-GAME landed on Player 2 because OSC held slot 0. A pinned co-owner of the
+            // slot is NOT evicted — evictSlotOccupants skips a device pinned to the same slot — so an
+            // explicit OSC pin stays locked (#345 F4) and two devices pinned to one slot co-occupy via
+            // the SHARING branch above rather than reaching here. If eviction can't free the slot (a
+            // pinned co-owner remains), fall through to FCFS so the pad still gets *a* slot.
+            if (override != null && override >= 0 && override < MAX_CONTROLLERS) {
+                if (usedSlots.contains(override))
+                    evictSlotOccupants(override, descriptor);
+                int slot = assignSpecificSlot(deviceId, descriptor, override);
+                if (slot >= 0)
+                    return slot;
             }
         }
 
@@ -2543,6 +2583,10 @@ public class WinHandler {
             InputControlsView inputControlsView = activity.getInputControlsView();
             if (inputControlsView != null) inputControlsView.onControllerDisconnected(deviceId);
             releaseSlot(deviceId);
+            // #345 F5: a real pad just left. If the on-screen pad had been pushed off its home slot by a
+            // YIELD promotion, move it back now that the displacing pad is gone — otherwise the restored
+            // overlay keeps driving the yield slot (e.g. Player 2) and a Player-1-only game ignores it.
+            restoreYieldedOscIfHomeFree();
             // Only toast a real tracked controller's departure (a device we'd actually slotted).
             if (releasedDescriptor != null)
                 notifyAssignmentsChanged("disconnected", releasedDescriptor);

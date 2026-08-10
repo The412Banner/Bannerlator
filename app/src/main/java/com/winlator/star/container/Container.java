@@ -593,6 +593,9 @@ public class Container {
     public static final int ON_SCREEN_MODE_YIELD = 1;
     public static final int ON_SCREEN_MODE_SHARE = 2;
     public static final int ON_SCREEN_MODE_DEFAULT = ON_SCREEN_MODE_KEEP;
+    // #345 F6: editor-only sentinel — "Use global default" (the container/shortcut stores nothing and
+    // inherits the app-drawer global mode live). Never persisted; the editors map it to clear-the-extra.
+    public static final int ON_SCREEN_MODE_INHERIT = -1;
 
     public int getOnScreenControllerMode() {
         try {
@@ -622,6 +625,32 @@ public class Container {
 
     public void setAutoHideControlsOnPad(boolean enabled) {
         putExtra("autoHideControlsOnPad", enabled ? "1" : "0");
+    }
+
+    // #345 F2: the single merged "on controller connect" mode. Auto-hide is no longer a separate user
+    // setting — it is DERIVED as (mode == YIELD). These fold the two stored keys (mode + legacy
+    // auto-hide flag) into one value for the editors. Reading prefers an explicit auto-hide==ON as YIELD
+    // (matches the old coercion) so a container saved under the old two-control UI still reads correctly.
+    public int getOnScreenControllerModeMerged() {
+        return isAutoHideControlsOnPad() ? ON_SCREEN_MODE_YIELD : getOnScreenControllerMode();
+    }
+
+    public void setOnScreenControllerModeMerged(int mode) {
+        setOnScreenControllerMode(mode);
+        setAutoHideControlsOnPad(mode == ON_SCREEN_MODE_YIELD);
+    }
+
+    // True when this container has explicitly set either half of the merged on-screen mode — used by the
+    // live-fallback resolver so an un-set container inherits the global default (#345 F6).
+    public boolean hasOnScreenControllerModeSet() {
+        return hasExtra("onScreenControllerMode") || hasExtra("autoHideControlsOnPad");
+    }
+
+    // Clear both underlying keys so this container inherits the app-drawer global default again (#345 F6
+    // "Use global default"). putExtra(name, null) removes the key from extraData.
+    public void clearOnScreenControllerMode() {
+        putExtra("onScreenControllerMode", null);
+        putExtra("autoHideControlsOnPad", null);
     }
 
     // Gyro (motion aim), per-container. Mirrors the WinHandler.GYRO_* constants so the editor VM and

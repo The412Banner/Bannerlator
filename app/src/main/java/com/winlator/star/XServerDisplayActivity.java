@@ -1887,6 +1887,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         Runnable runnable = () -> {
             setupUI();
+            // #345 F1: load the per-device slot overrides (pins/ignores) BEFORE the smart-default OSD
+            // decision below. simulateConfirmInputControlsDialog() → hasConnectedGameController() must be
+            // able to see an "Ignore" on an always-present built-in pad; otherwise it counts the ignored
+            // pad as a connected controller and suppresses the on-screen overlay on handhelds (issue
+            // #345). preAssignConnectedControllers() in setupXEnvironment (background thread) re-reads the
+            // SAME map, reached through the Executor.execute happens-before edge issued below, so this
+            // earlier main-thread load is memory-safe and the later load is no longer needed.
+            winHandler.setManualSlotOverrides(parseSlotOverrides(resolvedControllerSlotOverridesJson()));
             if (controlsProfile.isEmpty()) {
                 // No profile defined, run the simulated dialog confirmation for input controls
                 simulateConfirmInputControlsDialog();
@@ -4116,11 +4124,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
              // Cleanup moved to onCreate
         }
 
-        // Manual per-device slot overrides (in-game Players sub-tab), per-container — pushed BEFORE
-        // pre-assignment so launch-time slotting honors the user's pins/ignores first (a pinned pad
-        // claims its exact player slot; an ignored device never takes one). Resolve shortcut-override
-        // -else-container, the same owner discipline as the vibration/gyro tuning.
-        winHandler.setManualSlotOverrides(parseSlotOverrides(resolvedControllerSlotOverridesJson()));
+        // Manual per-device slot overrides (in-game Players sub-tab), per-container, are loaded EARLIER
+        // now — in the setupUI runnable, before the smart-default OSD decision (#345 F1). They persist in
+        // winHandler, so the pre-assignment below still honors the user's pins/ignores first (a pinned
+        // pad claims its exact player slot; an ignored device never takes one).
 
         // Pre-assign any controllers that are already connected, BEFORE Wine boots. This opens
         // their slot rings up front so the guest sees them from its first device enumeration
@@ -4937,8 +4944,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (timeout) startTouchscreenTimeout();
             else touchpadView.setOnTouchListener(null);
             ArrayList<ControlsProfile> currentProfiles = inputControlsManager.getProfiles(true);
-            if (profileIndex > 0 && profileIndex - 1 < currentProfiles.size()) showInputControls(currentProfiles.get(profileIndex - 1));
-            else hideInputControls();
+            if (profileIndex > 0 && profileIndex - 1 < currentProfiles.size()) {
+                ControlsProfile chosen = currentProfiles.get(profileIndex - 1);
+                // #345 F8: persist the chosen profile by its STABLE id so the selection (including RTS,
+                // not just Virtual Gamepad) survives relaunch. The legacy index key was never written and
+                // indexed a different list (launch reads getProfiles() incl. templates; the dialog uses
+                // getProfiles(true)), so an id is the only reliable handle.
+                preferences.edit().putInt("selected_profile_id", chosen.id).apply();
+                showInputControls(chosen);
+            } else {
+                // "-- Disabled --" / none: clear the persisted selection so launch falls to the
+                // smart-default (gated by smart_default_touch_optout above), not a stale profile.
+                preferences.edit().putInt("selected_profile_id", -1).apply();
+                hideInputControls();
+            }
             // The active profile may have changed — re-seed the accent toggle/picker so the Controls
             // tab reflects the newly-selected profile's saved accent.
             seedControlsColorState();
@@ -4972,14 +4991,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int vibIntensity = resolvedVibrationIntensity();
             winHandler.setVibrationTuning(vibMode, vibIntensity);
 
-            // On-screen-controls priority (KEEP/YIELD/SHARE), same seed-after-container discipline as the
-            // vibration tuning above: resolve per-game override else the container value and push it in.
-            // #333: when auto-hide is on, unpinned pads take over the on-screen pad's slot (YIELD
-            // semantics) so a connecting controller becomes the touch player and the overlay can hide.
-            // This is also how "auto-hide wins over SHARE/KEEP" is realized. Pinned pads are still
-            // honored (handleOnScreenModeForNewPad skips explicit pins).
-            winHandler.setOnScreenControllerMode(resolvedAutoHideControlsOnPad()
-                    ? Container.ON_SCREEN_MODE_YIELD : resolvedOnScreenControllerMode());
+            // On-screen-controls priority — the single merged mode (KEEP / YIELD=hand-over-&-hide /
+            // SHARE), resolved shortcut › container › global (live fallback). #345 F2: no more coercion —
+            // the merged mode IS the mode, and "auto-hide" is derived as (mode == YIELD). Pinned pads and
+            // an explicitly pinned on-screen pad are still honored (handleOnScreenModeForNewPad skips
+            // explicit pins — #345 F4).
+            winHandler.setOnScreenControllerMode(resolvedOnScreenControllerMode());
             ds.setVibrationMode(vibMode);
             ds.setVibrationIntensity(vibIntensity);
             ds.onVibrationModeChanged = (mode) -> {
@@ -5319,8 +5336,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (timeout) startTouchscreenTimeout();
             else touchpadView.setOnTouchListener(null);
             ArrayList<ControlsProfile> currentProfiles = inputControlsManager.getProfiles(true);
-            if (profileIndex > 0 && profileIndex - 1 < currentProfiles.size()) showInputControls(currentProfiles.get(profileIndex - 1));
-            else hideInputControls();
+            if (profileIndex > 0 && profileIndex - 1 < currentProfiles.size()) {
+                ControlsProfile chosen = currentProfiles.get(profileIndex - 1);
+                // #345 F8: persist the chosen profile by its STABLE id so the selection (including RTS,
+                // not just Virtual Gamepad) survives relaunch. The legacy index key was never written and
+                // indexed a different list (launch reads getProfiles() incl. templates; the dialog uses
+                // getProfiles(true)), so an id is the only reliable handle.
+                preferences.edit().putInt("selected_profile_id", chosen.id).apply();
+                showInputControls(chosen);
+            } else {
+                // "-- Disabled --" / none: clear the persisted selection so launch falls to the
+                // smart-default (gated by smart_default_touch_optout above), not a stale profile.
+                preferences.edit().putInt("selected_profile_id", -1).apply();
+                hideInputControls();
+            }
             // The active profile may have changed — re-seed the accent toggle/picker so the Controls
             // tab reflects the newly-selected profile's saved accent.
             seedControlsColorState();
@@ -5411,13 +5440,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
         editor.putBoolean("touchscreen_haptics_enabled", isHapticsEnabled);
         editor.apply();
 
-        // If no profile is selected, hide the controls
-        int selectedProfileIndex = preferences.getInt("selected_profile_index", -1); // Default to -1 for no profile
+        // #345 F8: resolve the persisted profile selection by its STABLE id (was a dead index key that
+        // was never written, so this branch never fired and every launch fell through to the smart
+        // default — silently reverting an explicit RTS choice back to Virtual Gamepad). -1 = none.
+        int selectedProfileId = preferences.getInt("selected_profile_id", -1);
+        ControlsProfile selectedProfile = selectedProfileId >= 0
+                ? inputControlsManager.getProfile(selectedProfileId) : null;
 
-        if (selectedProfileIndex >= 0 && selectedProfileIndex < inputControlsManager.getProfiles().size()) {
-            // A profile is selected, show the controls
-            ControlsProfile profile = inputControlsManager.getProfiles().get(selectedProfileIndex);
-            showInputControls(profile);
+        if (selectedProfile != null) {
+            // A profile is explicitly selected — show it (bypasses the smart-default gate entirely).
+            // #345 F8: enable touch controls first. show_touchscreen_controls_enabled is never persisted
+            // (always false → the setShowTouchscreenControls(false) at the top of this method), and
+            // showInputControls() does NOT re-enable it — so without this the shown profile would render
+            // but not function (useVirtualGamepad and touch input/rendering all gate on
+            // isShowTouchscreenControls()). Mirrors the smart-default branch below. This branch was dead
+            // before F8 (the index key was never written), which is why the gap was never hit.
+            inputControlsView.setShowTouchscreenControls(true);
+            userWantsControlsShown = true;
+            showInputControls(selectedProfile);
         } else {
             // #333 smart default layout: a fresh user who hasn't picked a profile gets the bundled
             // "Virtual Gamepad" touch layout so there's a working touch controller out of the box —
@@ -5432,8 +5472,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // defeats auto-hide's own same-slot rule (real pad on P1, phantom pad bumped to P2 reads as
             // a second player, so the overlay is kept). Not seeding it removes the whole chain.
             boolean smartDefaultOptOut = preferences.getBoolean("smart_default_touch_optout", false);
-            ControlsProfile defaultVg = (resolvedAutoHideControlsOnPad()
-                    && !smartDefaultOptOut
+            // #345 F2: seeding the out-of-box overlay is now INDEPENDENT of the connect-handoff mode. A
+            // fresh user who hasn't picked a profile gets the bundled Virtual Gamepad in EVERY mode (Keep
+            // and Share too, not only Yield) — the mode only governs what happens WHEN a pad connects, so
+            // gating the overlay on Yield made Keep/Share show nothing and feel broken. Still suppressed
+            // when the user opted out ("-- Disabled --") or a real (non-Ignored) pad is already present.
+            ControlsProfile defaultVg = (!smartDefaultOptOut
                     && !hasConnectedGameController())
                     ? findVirtualGamepadProfile() : null;
             if (defaultVg != null) {
@@ -6902,14 +6946,42 @@ return true;
         }
     }
 
+    // #345 F2/F6: the single "on controller connect" mode (KEEP / YIELD=hand-over-&-hide / SHARE),
+    // resolved as a LIVE fallback chain — shortcut › container › global default › hard default (KEEP).
+    // "Auto-hide" is no longer a separate user setting; it is DERIVED as (mode == YIELD), see
+    // resolvedAutoHideControlsOnPad(). Backward-compat: a level that only carries the retired
+    // autoHideControlsOnPad flag is read as YIELD (on) / KEEP (off) via explicitOnScreenMode().
     private int resolvedOnScreenControllerMode() {
-        int fallback = container != null ? container.getOnScreenControllerMode() : Container.ON_SCREEN_MODE_DEFAULT;
-        if (shortcut == null) return fallback;
-        try {
-            return Integer.parseInt(shortcut.getExtra("onScreenControllerMode", String.valueOf(fallback)));
-        } catch (NumberFormatException e) {
-            return fallback;
+        Integer s = explicitOnScreenMode(
+                shortcut != null && shortcut.hasExtra("onScreenControllerMode") ? shortcut.getExtra("onScreenControllerMode") : null,
+                shortcut != null && shortcut.hasExtra("autoHideControlsOnPad") ? shortcut.getExtra("autoHideControlsOnPad") : null);
+        if (s != null) return s;
+        Integer c = explicitOnScreenMode(
+                container != null && container.hasExtra("onScreenControllerMode") ? container.getExtra("onScreenControllerMode") : null,
+                container != null && container.hasExtra("autoHideControlsOnPad") ? container.getExtra("autoHideControlsOnPad") : null);
+        if (c != null) return c;
+        // Live global fallback — applies to any container/shortcut that hasn't set its own value.
+        return com.winlator.star.ui.components.GlobalControllerPrefs.INSTANCE.getOnScreenModeMerged(this);
+    }
+
+    // The merged mode explicitly set at ONE owner level, or null when neither the new mode extra nor the
+    // legacy auto-hide flag is present there. Back-compat precedence MATTERS: the old model coerced
+    // auto-hide ON to YIELD regardless of the mode dropdown, so a level carrying the retired
+    // autoHideControlsOnPad == "1" maps to YIELD even when a mode extra is also present (this matches
+    // Container.getOnScreenControllerModeMerged()). Otherwise use the new mode extra; a lone
+    // autoHide == "0" maps to KEEP (the old "auto-hide off => use mode, default KEEP").
+    private Integer explicitOnScreenMode(String modeExtra, String legacyAutoHideExtra) {
+        if (legacyAutoHideExtra != null && legacyAutoHideExtra.equals("1"))
+            return Container.ON_SCREEN_MODE_YIELD;
+        if (modeExtra != null && !modeExtra.isEmpty()) {
+            try {
+                int m = Integer.parseInt(modeExtra);
+                if (m >= Container.ON_SCREEN_MODE_KEEP && m <= Container.ON_SCREEN_MODE_SHARE) return m;
+            } catch (NumberFormatException ignored) {}
         }
+        if (legacyAutoHideExtra != null && legacyAutoHideExtra.equals("0"))
+            return Container.ON_SCREEN_MODE_KEEP;
+        return null;
     }
 
     // #333 smart default: the bundled "Virtual Gamepad" touch layout (controls-3.icp), used as the
@@ -6925,23 +6997,23 @@ return true;
     // touch overlay at launch — if a real pad is already present there's no out-of-box need for a
     // phantom one, and seeding it would grab a player slot that defeats auto-hide. Reads the same live
     // slot data as updateAutoHideForControllers(); on-screen ("virtual") pads are excluded.
+    // #345 F1: a pad the user explicitly set to Ignore does NOT count — on a handheld the built-in pad
+    // is always physically present, so counting an Ignored pad wrongly suppressed the smart-default
+    // overlay and left the user with no touch controls at all.
     private boolean hasConnectedGameController() {
         if (winHandler == null) return false;
         for (WinHandler.PlayerSlotInfo s : winHandler.getPlayerSlotAssignments()) {
-            if (s.isGameController && !s.isOnScreen) return true;
+            if (s.isGameController && !s.isOnScreen
+                    && s.override != com.winlator.star.winhandler.WinHandler.SLOT_IGNORE) return true;
         }
         return false;
     }
 
-    // #333: auto-hide on-screen controls when a controller takes the on-screen slot. Resolved
-    // shortcut-override-else-container, same discipline as resolvedOnScreenControllerMode above.
+    // #333/#345 F2: auto-hide is now DERIVED from the merged on-screen mode — it happens exactly in
+    // YIELD ("hand over & hide"). KEEP and SHARE keep the overlay up. (The actual hide is additionally
+    // gated on the active profile being a virtual gamepad — see updateAutoHideForControllers, #345 F7.)
     private boolean resolvedAutoHideControlsOnPad() {
-        boolean fallback = container != null ? container.isAutoHideControlsOnPad()
-                : Container.AUTO_HIDE_CONTROLS_ON_PAD_DEFAULT;
-        if (shortcut == null) return fallback;
-        String extra = shortcut.getExtra("autoHideControlsOnPad");
-        if (extra == null || extra.isEmpty()) return fallback;
-        return extra.equals("1");
+        return resolvedOnScreenControllerMode() == Container.ON_SCREEN_MODE_YIELD;
     }
 
     /**
@@ -6963,6 +7035,12 @@ return true;
         if (controlsEditorOpen) return;
         if (winHandler == null || inputControlsView == null) return;
         if (!resolvedAutoHideControlsOnPad()) return;
+        // #345 F7: only a VIRTUAL-GAMEPAD overlay participates in the player-slot handoff. An RTS (or any
+        // touch→keyboard/mouse) profile never claims an XInput slot and isn't redundant with a physical
+        // pad, so it must NOT be auto-hidden when a controller connects. No active profile = nothing to
+        // hide either. This leaves an RTS overlay exactly as the user set it.
+        ControlsProfile activeProfile = inputControlsView.getProfile();
+        if (activeProfile == null || !activeProfile.isVirtualGamepad()) return;
 
         java.util.List<WinHandler.PlayerSlotInfo> slots = winHandler.getPlayerSlotAssignments();
         // The on-screen pad's "home" slot: its explicit pin if any, else Player 1 (slot 0).
@@ -7010,10 +7088,26 @@ return true;
     // discipline as the vibration resolvers above. The value is an opaque JSON object string
     // (descriptor -> desired slot); WinHandler parses/serializes it via parseSlotOverrides/
     // buildSlotOverridesJson.
+    // #345 F6: live fallback shortcut › container › global. The pins/ignores follow the same chain as the
+    // on-screen mode — a container/shortcut that hasn't set its own overrides inherits the app-drawer
+    // global default live (not a one-time creation seed).
+    // #345 F6: live fallback that MERGES per-descriptor rather than replacing wholesale — global base,
+    // overlaid by the container, overlaid by the shortcut (more-specific wins PER DEVICE). So a global
+    // "ignore built-in pad" keeps applying even after a container adds an unrelated pin, an empty level
+    // contributes nothing (no accidental shadowing), and any level can re-pin a single device without
+    // dropping the others. (To un-ignore a globally-ignored device on one container, pin it to a player
+    // there — "auto" is the absence of a key, so it can't override an inherited value.)
     private String resolvedControllerSlotOverridesJson() {
-        String fallback = container != null ? container.getControllerSlotOverrides() : "{}";
-        if (shortcut == null) return fallback;
-        return shortcut.getExtra("controllerSlotOverrides", fallback);
+        java.util.Map<String, Integer> merged = new java.util.HashMap<>(
+                com.winlator.star.winhandler.WinHandler.parseSlotOverridesJson(
+                        com.winlator.star.ui.components.GlobalControllerPrefs.INSTANCE.getSlotOverridesJson(this)));
+        if (container != null)
+            merged.putAll(com.winlator.star.winhandler.WinHandler.parseSlotOverridesJson(
+                    container.getControllerSlotOverrides()));
+        if (shortcut != null)
+            merged.putAll(com.winlator.star.winhandler.WinHandler.parseSlotOverridesJson(
+                    shortcut.getExtra("controllerSlotOverrides", "{}")));
+        return com.winlator.star.winhandler.WinHandler.buildSlotOverridesJson(merged);
     }
 
     private void persistControllerSlotOverridesJson(String json) {

@@ -2388,8 +2388,14 @@ public class WinHandler {
         for (int id : toRelease)
             releaseSlot(id);
 
-        if (normalized == SLOT_IGNORE)
+        if (normalized == SLOT_IGNORE) {
+            // #345 F5b: a manual Ignore is a "device left" event for the slot system, so mirror the
+            // hardware-remove path — if a YIELD promotion had pushed the on-screen pad off its home
+            // slot, move it back now. Without this the restored OSC is left visible-but-unassigned
+            // (driving no player) until a manual Reset Input. No-op unless a yield is actually in effect.
+            restoreYieldedOscIfHomeFree();
             return -1;
+        }
 
         // Re-seat: the first live sub-device claims the slot (honoring the pin, or FCFS when auto);
         // siblings reuse it via the descriptor. If the device is currently disconnected the override
@@ -2397,6 +2403,16 @@ public class WinHandler {
         for (int id : liveIds) {
             if (getController(id) == null)
                 continue;
+            // #345 F7b: an un-Ignore (→ auto) is a "device connected" event, so mirror the hardware-add
+            // path and let the per-container on-screen mode (YIELD/SHARE) steer it before a bare FCFS
+            // seat — otherwise a mid-game un-Ignore lands on the next free slot (e.g. Player 2) instead
+            // of handing Player 1 over to the pad. AUTO only: an explicit pin (normalized >= 0) stays
+            // literal. SHARE fully seats the pad and returns true (done); YIELD moves OSC and returns
+            // false, so the assignSlot below now lands the pad on the freed Player 1 — same as hotplug.
+            if (normalized < 0 && handleOnScreenModeForNewPad(id)) {
+                Integer seated = deviceToSlot.get(id);
+                return seated != null ? seated : -1;
+            }
             int slot = assignSlot(id);
             if (slot >= 0)
                 return slot;

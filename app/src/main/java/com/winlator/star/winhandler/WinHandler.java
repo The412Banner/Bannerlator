@@ -362,7 +362,17 @@ public class WinHandler {
                 // assignConnectedDeviceIfPossible early-returns when the device is already
                 // slotted or isn't a game controller, so repeated change events are cheap.
                 cancelPendingDeviceRelease(deviceId);
-                boolean assigned = assignConnectedDeviceIfPossible(deviceId, "changed");
+                // #345 F7c: a pad that only becomes a full game controller on this change event is a real
+                // mid-game connect — apply the per-container on-screen mode (YIELD/SHARE) first, exactly
+                // like onInputDeviceAdded, before a plain FCFS seat. Composite BT pads (e.g. a "Wireless
+                // Controller Touchpad") enumerate this way — partial on add, full gamepad on change — so
+                // without this the hand-over never fires for them: they land on the next free player
+                // instead of taking Player 1 and hiding the on-screen pad.
+                boolean assigned;
+                if (handleOnScreenModeForNewPad(deviceId))
+                    assigned = true;                                                  // SHARE co-seated the pad
+                else
+                    assigned = assignConnectedDeviceIfPossible(deviceId, "changed");  // KEEP: FCFS; YIELD: freed slot 0
                 // A pad that only became a full game controller on this change event just took a slot —
                 // treat it like a fresh connect for the status toast.
                 if (assigned) {

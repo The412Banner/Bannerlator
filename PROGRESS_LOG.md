@@ -5787,3 +5787,46 @@ STRICT PER-SCOPE + PER-ENGINE CONFIG (no bleed on any axis) — DEVICE-PROVEN:
 - **Root cause:** `ProcessHelper.listRunningWineProcesses()` matched the filter `{"wine","exe"}` against `/proc/<pid>/stat`, whose `comm` field is truncated to 15 chars (TASK_COMM_LEN). `NINJA GAIDEN SI` → `.exe` chopped off → no match → never SIGSTOP'd by `pauseAllWineProcesses()`. Short-named exes (e.g. `witcher3.exe`) keep `.exe` within 15 chars, which is why it paused correctly for most users.
 - **Fix (additive, no regression surface):** also match the FULL untruncated argv from `/proc/<pid>/cmdline` (new `readCmdline()` helper — same source `findLinuxPidByExe` already uses). A pid the stat check matched is still matched; we only ADD the previously-missed game process. Also added a `break` so a pid matching both filters is added once (was double-added). Java-only, single file.
 - Base: clean `ad03f23f` (branched off before the stray `mali-report … wine_debug.log` commits that landed on origin/main a36ecc25→8b314ef2 — those look accidental, clean up separately).
+
+## 2026-08-11 — 🚨 bionic-fg TAKEDOWN + 🏗️ win-fg clean rebuild of models 3/4 (new PRIVATE repo)
+**Trigger (device screenshot, Discord DM from upstream author xXJSONDeruloXx):** lsfg-vk dev + Lossless
+Scaling owner found gamescopevk/bionic-fg has *essentially identical model weights to the proprietary
+fp16 Lossless Scaling FG model* → cannot distribute; he took his repo down and asked us to do the same
+for our fork + Bannerlator implementations. On "can I keep model 3/4": "the ML model weights are
+proprietary, and derivations of that are incompatible with any open source license" — did NOT bless 3/4.
+
+**Actions taken:**
+- Set fork `The412Banner/bionic-fg` PUBLIC→PRIVATE (releases v0.1.1 / v0.1.1-fsr3.1 now offline). Nothing
+  deleted; Bannerlator app builds unaffected (.so is a committed asset, submodule pointer is provenance-only).
+- User call: keep everything for now (no app takedown yet); build a CLEAN rebuild of models 3/4 in a new repo.
+
+**⚠ CORRECTION vs prior memory — verified against tag 2.9.9 (2c8b42a3):** bionic-fg is NOT grayed out in
+2.9.9. Re-enabled 2.9.4 (comment ContainerDetailScreen.kt); not in disabledOptions; ALL 5 models selectable
+(fgModelLabels, coerceIn(0,4)). Shipped layer = traced pre-0.1.1 build libbionic_fg.so 6,573,808 B sha256
+430ec4b41cfa26ce…, manifest "authorized embedded shaders" impl v2. Binary strings confirm all 5 paths
+present (model0-full-of-chain, model1-table, kV2ShaderMap/model=2 V2, model3-fsr3-of+warp/blend/synth,
+model4-fsr3-of-v2+…). ⇒ the store build ships+exposes the tainted 0/1/2 AND 3/4's LSFG-derived synth.
+
+**🔑 Key finding — the taint is ONE contained stage.** For models 3/4 the traced feature/graph stages 1–5
+are ALREADY skipped (framegen_context.cpp:761 `if(!useModel3){…}`); 3/4 only borrow "stage 6" = warp
+shader_14 + synth shader_04 (opaque embedded SPIR-V, no GLSL source ⇒ clean-by-construction: can't be
+reimplemented-from). So the clean rebuild = swap that ONE stage.
+
+**win-fg repo (local /home/claude-user/win-fg, commit 25df368 on master; pushed PRIVATE
+The412Banner/win-fg):**
+- KEEP (ours, MIT): FSR3 optical-flow front end of3_{luma,downsample,flow,expand,flow_m4,expand_m4}.comp +
+  NOTICE_FIDELITYFX_OPTICALFLOW.md. Output: flowExpA (fwd curr→prev, .xy px + .w conf) & flowExpB (bwd
+  prev→curr, +conf), rgba16f. m3 = symmetric conf=1; m4 = indep fwd/bwd + occlusion-gated conf.
+- WROTE FROM SCRATCH: shaders/wfg_synth.comp — replaces stage-6 warp+synth. Textbook motion-compensated
+  interp: prevWarp=tex(prev,uv-alpha*F01), currWarp=tex(curr,uv+(1-alpha)*F01), F01=flowExpB.xy*flowScale
+  (prev→curr uv), temporal blend by alpha, mix(crossfade,warped,conf) so low-conf/occlusion → clean
+  cross-fade (= the ghosting fix). Endpoints reproduce real frames exactly. Same shader both models.
+- ✅ all 7 shaders compile Turnip-safe (glslangValidator --target-env vulkan1.1). tools/build_shaders.sh.
+- docs/PROVENANCE.md = authoritative clean-room boundary (IN table w/ origins + EXCLUDE list; rule "weights
+  not vibes"). Governs what may enter.
+
+**⏭ REMAINING (next session):** (1) minimal weight-free Vulkan implicit-layer host wiring ONLY flow+synth
+(strip model0/1/2 from layer.cpp/framegen_context, drop shaders_embedded.hpp); (2) SPIR-V embed generator,
+no traced table; (3) device build NDK r27d + on-device validate, resume fg011-m34 flow sign/scale tuning;
+(4) bundle into Bannerlator, retire traced layer 430ec4b4, cut model list to clean 3/4 → then can go public.
+Report artifact: https://claude.ai/code/artifact/44bea1de-9486-45eb-9801-c3965813c751

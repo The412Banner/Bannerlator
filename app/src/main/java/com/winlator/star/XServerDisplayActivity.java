@@ -211,6 +211,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // wouldn't appear/disappear in the list until one of those fired. Via a method (not an inline
         // field ref) so the field initializer doesn't forward-reference winHandler.
         refreshInGamePlayerSlotList();
+        // #345 FIX-4: a pad that just connected gets its assigned controls profile's bindings re-seeded
+        // (settled on this debounced tick, so its runtime controller instance now exists).
+        applyControllerProfiles();
     };
     private TouchpadView touchpadView;
     private XEnvironment environment;
@@ -4840,6 +4843,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         XServerDialogState.INSTANCE.setEffectsSupported(renderer instanceof GLRenderer);
         XServerDialogState ds = XServerDialogState.INSTANCE;
 
+        // #345 FIX-4: load per-controller profile assignments + publish the profile options BEFORE the
+        // player-slot rows are built below, so each row shows its assigned profile.
+        loadControllerProfileMap();
+        pushControllerProfileOptions();
+
         // Scaling mode (spatial upscaler) is a Vulkan-only control — the inverse of the GL-only
         // effects above. Flag it for the drawer gate and wire the apply callback here, BEFORE the
         // GL-only early return below, so it works on the Vulkan renderer. setUpscaler covers
@@ -5046,6 +5054,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 showControllerStatusToast("reset", null);
                 // #333: pipeline reset re-seats slots → re-evaluate auto-hide against the fresh state.
                 updateAutoHideForControllers();
+            };
+            // #345 FIX-4: assign a controls profile to one device from the Players tab. Update the map,
+            // persist (per shortcut/container), re-seed that device's live bindings, refresh the rows.
+            ds.onControllerProfileChanged = (descriptor, profileId) -> {
+                if (profileId < 0) controllerProfileMap.remove(descriptor);
+                else controllerProfileMap.put(descriptor, profileId);
+                persistControllerProfileMap();
+                applyControllerProfiles();
+                refreshPlayerSlots.run();
             };
 
             // Hot-plug (add/remove/progressive-change) → status toast. WinHandler fires a plain callback
@@ -5504,6 +5521,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } else {
             touchpadView.setOnTouchListener(null); // Disable the timeout listener if not needed
         }
+
+        // #345 FIX-4: apply any per-controller profile assignments now that the active profile owns the
+        // runtime controllers (re-seeds each assigned device's bindings from its chosen profile).
+        applyControllerProfiles();
 
         Log.d("XServerDisplayActivity", "Input controls simulated confirmation executed.");
 
@@ -6194,9 +6215,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 winHandler.getPlayerSlotAssignments();
         java.util.List<XServerDialogState.PlayerSlotRow> uiRows = new java.util.ArrayList<>();
         for (com.winlator.star.winhandler.WinHandler.PlayerSlotInfo info : infos) {
+            Integer pid = controllerProfileMap.get(info.descriptor); // #345 FIX-4
             uiRows.add(new XServerDialogState.PlayerSlotRow(
                     info.displayName, info.descriptor, info.currentSlot,
-                    info.override, info.isOnScreen, info.isGameController));
+                    info.override, info.isOnScreen, info.isGameController,
+                    pid != null ? pid : -1));
         }
         return uiRows;
     }
@@ -7145,6 +7168,67 @@ return true;
             container.setControllerSlotOverrides(json);
             container.saveData();
         }
+    }
+
+    // ── #345 FIX-4: per-controller controls-profile assignment ──────────────────────────────────────
+    // Independent-profile-per-controller (user's choice): each device (descriptor) may be bound to its
+    // own controls profile. Resolved container -> shortcut (shortcut wins per device). Applied by
+    // re-seeding the assigned device's runtime bindings from its chosen profile (copyBindingsFrom does a
+    // clean replace); devices with no assignment / "Default" (-1) keep the active profile's own bindings.
+    private final java.util.HashMap<String, Integer> controllerProfileMap = new java.util.HashMap<>();
+
+    private void loadControllerProfileMap() {
+        controllerProfileMap.clear();
+        if (container != null) mergeControllerProfilesJson(container.getControllerProfiles());
+        if (shortcut != null) mergeControllerProfilesJson(shortcut.getExtra("controllerProfiles", "{}"));
+    }
+
+    private void mergeControllerProfilesJson(String json) {
+        if (json == null || json.isEmpty()) return;
+        try {
+            org.json.JSONObject o = new org.json.JSONObject(json);
+            java.util.Iterator<String> it = o.keys();
+            while (it.hasNext()) { String k = it.next(); controllerProfileMap.put(k, o.optInt(k, -1)); }
+        } catch (Exception ignored) {}
+    }
+
+    private void persistControllerProfileMap() {
+        org.json.JSONObject o = new org.json.JSONObject();
+        try {
+            for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet())
+                if (e.getValue() != null && e.getValue() >= 0) o.put(e.getKey(), (int) e.getValue());
+        } catch (Exception ignored) {}
+        String json = o.toString();
+        if (shortcut != null) { shortcut.putExtra("controllerProfiles", json); shortcut.saveData(); }
+        else if (container != null) { container.setControllerProfiles(json); container.saveData(); }
+    }
+
+    /** Re-seed each ASSIGNED device's runtime bindings from its chosen profile. Safe to call repeatedly
+     *  (idempotent) — after showInputControls (active profile owns the runtime controllers), when a pad
+     *  connects, and on an in-game assignment change. Devices set to Default (-1) keep the active
+     *  profile's bindings (a live switch back to Default fully restores only on relaunch). */
+    private void applyControllerProfiles() {
+        if (inputControlsView == null || controllerProfileMap.isEmpty()) return;
+        com.winlator.star.inputcontrols.ControlsProfile active = inputControlsView.getProfile();
+        if (active == null) return;
+        for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet()) {
+            Integer pid = e.getValue();
+            if (pid == null || pid < 0) continue;
+            com.winlator.star.inputcontrols.ControlsProfile src = inputControlsManager.getProfile(pid);
+            if (src == null) continue;
+            com.winlator.star.inputcontrols.ExternalController srcC = src.getController(e.getKey());
+            com.winlator.star.inputcontrols.ExternalController dstC = active.getController(e.getKey());
+            if (srcC != null && dstC != null) dstC.copyBindingsFrom(srcC);
+        }
+        if (winHandler != null) winHandler.sendGamepadState();
+    }
+
+    /** (profileId, name) options for the in-game Players-tab per-controller profile picker. */
+    private void pushControllerProfileOptions() {
+        java.util.ArrayList<kotlin.Pair<Integer, String>> opts = new java.util.ArrayList<>();
+        for (com.winlator.star.inputcontrols.ControlsProfile p : inputControlsManager.getProfiles(true))
+            if (p != null) opts.add(new kotlin.Pair<>(p.id, p.getName()));
+        XServerDialogState.INSTANCE.setControllerProfileOptions(opts);
     }
 
     // Delegate to the shared schema helpers on WinHandler so the in-game Players tab, launch

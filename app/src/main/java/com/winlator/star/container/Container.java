@@ -581,6 +581,18 @@ public class Container {
         putExtra("controllerSlotOverrides", json == null || json.isEmpty() ? "{}" : json);
     }
 
+    // #345 FIX-4: per-controller CONTROLS-PROFILE assignment. Opaque JSON map {deviceDescriptor:
+    // profileId} — each connected controller (and the on-screen pad) can be bound to its own controls
+    // profile so its bindings apply independently. Parsed in XServerDisplayActivity; edits written back
+    // here (or onto the per-game Shortcut extra of the same name when launched from a shortcut).
+    public String getControllerProfiles() {
+        return getExtra("controllerProfiles", "{}");
+    }
+
+    public void setControllerProfiles(String json) {
+        putExtra("controllerProfiles", json == null || json.isEmpty() ? "{}" : json);
+    }
+
     // On-screen-controls vs physical-pad priority, per-container. Mirrors the WinHandler.ON_SCREEN_MODE_*
     // constants (duplicated here for the same reason VIBRATION_MODE_* is — the editor VM shouldn't import
     // winhandler). KEEP (default) = the historical behavior: the on-screen pad keeps whatever slot it

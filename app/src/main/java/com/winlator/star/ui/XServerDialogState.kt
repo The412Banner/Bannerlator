@@ -352,10 +352,20 @@ object XServerDialogState {
         val override: Int,
         val isOnScreen: Boolean,
         val isGameController: Boolean,
+        // #345 FIX-4: the controls profile assigned to THIS device (-1 = use the active/default profile).
+        val assignedProfileId: Int = -1,
     )
 
     private val _playerSlots = MutableStateFlow<List<PlayerSlotRow>>(emptyList())
     val playerSlots: StateFlow<List<PlayerSlotRow>> = _playerSlots
+
+    // #345 FIX-4: (profileId, name) options for the per-controller profile picker in the Players tab.
+    private val _controllerProfileOptions = MutableStateFlow<List<Pair<Int, String>>>(emptyList())
+    val controllerProfileOptions: StateFlow<List<Pair<Int, String>>> = _controllerProfileOptions
+    fun setControllerProfileOptions(v: List<Pair<Int, String>>) { _controllerProfileOptions.value = v }
+
+    // Fired when the user assigns a profile to a device in the Players tab (descriptor, profileId; -1 = default).
+    @JvmField var onControllerProfileChanged: ((String, Int) -> Unit)? = null
     fun setPlayerSlots(rows: List<PlayerSlotRow>) { _playerSlots.value = rows }
 
     fun interface PlayerSlotCallback { fun invoke(descriptor: String, desiredSlot: Int) }
@@ -831,6 +841,7 @@ object XServerDialogState {
         _vibrationMode.value   = 1
         _vibrationIntensity.value = 100
         _playerSlots.value     = emptyList()
+        _controllerProfileOptions.value = emptyList()
         _gyroSupported.value   = false
         _gyroOrientationSupported.value = false
         _gyroEnabled.value     = true
@@ -877,7 +888,7 @@ object XServerDialogState {
         onRequestResume = null
         onVibrationSlotChanged = null
         onVibrationModeChanged = null; onVibrationIntensityChanged = null
-        onPlayerSlotChanged = null; onPlayerSlotsRefresh = null; onResetInput = null
+        onPlayerSlotChanged = null; onPlayerSlotsRefresh = null; onResetInput = null; onControllerProfileChanged = null
         onGyroEnabledChanged = null; onGyroTargetChanged = null
         onGyroSensitivityChanged = null; onGyroDeadzoneChanged = null; onGyroSmoothingChanged = null
         onGyroInvertXChanged = null; onGyroInvertYChanged = null; onGyroActivatorChanged = null

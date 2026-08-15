@@ -3141,6 +3141,44 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
                 }
             }
         }
+
+        // #345 FIX-4: per-controller CONTROLS-PROFILE picker, right beside the slot selector. Assigns a
+        // controls profile to THIS device so its bindings apply independently of the active profile;
+        // "Default" (-1) = fall through to the active/default profile. Persisted per container/shortcut.
+        val profileOptions by XServerDialogState.controllerProfileOptions.collectAsState()
+        if (profileOptions.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            val allProfileOptions = remember(profileOptions) { listOf(-1 to "Default") + profileOptions }
+            val selectedProfileLabel =
+                allProfileOptions.firstOrNull { it.first == row.assignedProfileId }?.second ?: "Default"
+            var profileExpanded by remember(row.descriptor, row.assignedProfileId) { mutableStateOf(false) }
+            ExposedDropdownMenuBox(expanded = profileExpanded, onExpandedChange = { profileExpanded = it }) {
+                OutlinedTextField(
+                    value = selectedProfileLabel,
+                    onValueChange = {}, readOnly = true,
+                    label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    singleLine = true,
+                )
+                ExposedDropdownMenu(
+                    expanded = profileExpanded,
+                    onDismissRequest = { profileExpanded = false },
+                    modifier = Modifier.outlinedMenuCard()
+                ) {
+                    allProfileOptions.forEachIndexed { index, option ->
+                        if (index > 0) MenuItemDivider()
+                        val (pid, pname) = option
+                        DropdownMenuItem(text = { Text(pname) }, onClick = {
+                            profileExpanded = false
+                            if (pid != row.assignedProfileId) {
+                                XServerDialogState.onControllerProfileChanged?.invoke(row.descriptor, pid)
+                            }
+                        })
+                    }
+                }
+            }
+        }
     }
 }
 

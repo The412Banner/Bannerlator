@@ -7188,6 +7188,9 @@ return true;
 
     private void loadControllerProfileMap() {
         controllerProfileMap.clear();
+        // Resolution: App-level global default -> container -> shortcut (more-specific wins per device).
+        mergeControllerProfilesJson(
+                com.winlator.star.ui.components.GlobalControllerPrefs.getControllerProfilesJson(this));
         if (container != null) mergeControllerProfilesJson(container.getControllerProfiles());
         if (shortcut != null) mergeControllerProfilesJson(shortcut.getExtra("controllerProfiles", "{}"));
     }

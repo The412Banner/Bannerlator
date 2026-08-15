@@ -33,6 +33,24 @@ object GlobalControllerPrefs {
             .apply()
     }
 
+    // #345 FIX-4: App-level default per-controller profile assignments ({descriptor:profileId}). New
+    // containers/shortcuts inherit these; launch resolution merges global -> container -> shortcut.
+    private const val KEY_CONTROLLER_PROFILES = "global_controller_profiles"
+
+    @JvmStatic
+    fun getControllerProfilesJson(context: Context): String {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        return prefs.getString(KEY_CONTROLLER_PROFILES, "{}") ?: "{}"
+    }
+
+    @JvmStatic
+    fun setControllerProfilesJson(context: Context, json: String) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString(KEY_CONTROLLER_PROFILES, if (json.isEmpty()) "{}" else json)
+            .apply()
+    }
+
     fun getOnScreenMode(context: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val m = prefs.getInt(KEY_ON_SCREEN_MODE, Container.ON_SCREEN_MODE_DEFAULT)

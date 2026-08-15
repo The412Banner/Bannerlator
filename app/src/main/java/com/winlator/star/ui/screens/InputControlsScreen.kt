@@ -759,6 +759,13 @@ private fun GlobalPlayerSlotsSection() {
     var slotOverridesJson by remember {
         mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getSlotOverridesJson(context))
     }
+    // #345 FIX-4: App-level default per-controller profile assignments + the profile options.
+    var controllerProfilesJson by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getControllerProfilesJson(context))
+    }
+    val controllerProfileOptions = remember {
+        com.winlator.star.ui.components.loadControllerProfileOptions(context)
+    }
     // #345 F2: the single merged "on controller connect" mode (KEEP/YIELD/SHARE); auto-hide is derived
     // (= YIELD). #345 F6: this global is now a LIVE fallback for every container/shortcut that hasn't set
     // its own value, not just a seed for new containers.
@@ -804,6 +811,12 @@ private fun GlobalPlayerSlotsSection() {
             onOverridesChange = {
                 slotOverridesJson = it
                 com.winlator.star.ui.components.GlobalControllerPrefs.setSlotOverridesJson(context, it)
+            },
+            profileOptions = controllerProfileOptions,
+            savedProfilesJson = controllerProfilesJson,
+            onProfilesChange = {
+                controllerProfilesJson = it
+                com.winlator.star.ui.components.GlobalControllerPrefs.setControllerProfilesJson(context, it)
             },
         )
     }

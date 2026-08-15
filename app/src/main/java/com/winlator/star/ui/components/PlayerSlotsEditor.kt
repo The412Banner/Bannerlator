@@ -48,30 +48,60 @@ data class PlayerSlotEditorRow(
     val isOnScreen: Boolean,
     val connected: Boolean, // false = a saved pin whose device is not currently plugged in
     val override: Int,      // SLOT_AUTO / 0..3 / SLOT_IGNORE
+    val assignedProfileId: Int = -1, // #345 FIX-4: assigned controls profile (-1 = default)
 )
+
+// #345 FIX-4: the controllerProfiles map is {deviceDescriptor: profileId}, the same schema the
+// container/shortcut extra and launch resolution use. Kept here so all three editors (App / container /
+// shortcut) share one parse/build.
+internal fun parseControllerProfilesJson(json: String): Map<String, Int> = try {
+    val o = org.json.JSONObject(if (json.isEmpty()) "{}" else json)
+    o.keys().asSequence().associateWith { o.optInt(it, -1) }
+} catch (e: Exception) { emptyMap() }
+
+internal fun buildControllerProfilesJson(map: Map<String, Int>): String {
+    val o = org.json.JSONObject()
+    for ((k, v) in map) if (v >= 0) o.put(k, v)
+    return o.toString()
+}
+
+/** (profileId, name) options for the per-controller Profile picker — the App / container / shortcut
+ *  editors all feed this into PlayerSlotsEditor. Excludes templates (getProfiles(true)). */
+fun loadControllerProfileOptions(context: android.content.Context): List<Pair<Int, String>> = try {
+    com.winlator.star.inputcontrols.InputControlsManager(context).getProfiles(true)
+        .mapNotNull { p -> p?.let { it.id to it.name } }
+} catch (e: Exception) { emptyList() }
 
 /** Build the row list from a saved-overrides JSON: the on-screen pad first (always, pinnable to any slot
  *  incl Player 1), then every currently-connected game controller (enumerated exactly like the app-drawer
  *  InputControlsScreen via ExternalController.getControllers()), then any saved-but-disconnected pins so a
  *  configured pad that's simply switched off is never dropped. Keys are the launch-time descriptor keys. */
-fun buildPlayerSlotEditorRows(savedJson: String): List<PlayerSlotEditorRow> {
+fun buildPlayerSlotEditorRows(savedJson: String, savedProfilesJson: String = "{}"): List<PlayerSlotEditorRow> {
     val overrides = WinHandler.parseSlotOverridesJson(savedJson)
+    val profiles = parseControllerProfilesJson(savedProfilesJson)
     val rows = ArrayList<PlayerSlotEditorRow>()
     val seen = HashSet<String>()
 
     val oscOverride = overrides[WinHandler.OSC_DESCRIPTOR] ?: SLOT_AUTO
-    rows.add(PlayerSlotEditorRow(WinHandler.OSC_DESCRIPTOR, "On-screen controls", true, true, oscOverride))
+    rows.add(PlayerSlotEditorRow(WinHandler.OSC_DESCRIPTOR, "On-screen controls", true, true, oscOverride,
+        profiles[WinHandler.OSC_DESCRIPTOR] ?: -1))
     seen.add(WinHandler.OSC_DESCRIPTOR)
 
     for (controller in ExternalController.getControllers()) {
         val key = controller.id ?: continue
         if (!seen.add(key)) continue
-        rows.add(PlayerSlotEditorRow(key, controller.name ?: key, false, true, overrides[key] ?: SLOT_AUTO))
+        rows.add(PlayerSlotEditorRow(key, controller.name ?: key, false, true, overrides[key] ?: SLOT_AUTO,
+            profiles[key] ?: -1))
     }
 
     for ((key, ov) in overrides) {
         if (!seen.add(key)) continue
-        rows.add(PlayerSlotEditorRow(key, key, false, false, ov))
+        rows.add(PlayerSlotEditorRow(key, key, false, false, ov, profiles[key] ?: -1))
+    }
+    // Any device that has a profile assigned but no slot pin still deserves a row.
+    for ((key, _) in profiles) {
+        if (!seen.add(key)) continue
+        rows.add(PlayerSlotEditorRow(key, key, false, false, SLOT_AUTO, profiles[key] ?: -1))
     }
     return rows
 }
@@ -84,9 +114,17 @@ fun PlayerSlotsEditor(
     savedOverridesJson: String,
     onOverridesChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    // #345 FIX-4: when profileOptions + onProfilesChange are supplied, each row also gets a per-controller
+    // controls-profile picker. Written to the SAME controllerProfiles schema launch resolution reads, so a
+    // pre-launch assignment here is honored at launch (App=global default, container, and shortcut).
+    profileOptions: List<Pair<Int, String>> = emptyList(),
+    savedProfilesJson: String = "{}",
+    onProfilesChange: ((String) -> Unit)? = null,
 ) {
     // Keyed on the saved JSON so an external change (or the caller re-seeding) re-enumerates devices.
-    val rows = remember(savedOverridesJson) { buildPlayerSlotEditorRows(savedOverridesJson) }
+    val rows = remember(savedOverridesJson, savedProfilesJson) {
+        buildPlayerSlotEditorRows(savedOverridesJson, savedProfilesJson)
+    }
 
     Column(modifier.fillMaxWidth()) {
         Text(
@@ -105,12 +143,21 @@ fun PlayerSlotsEditor(
             )
         } else {
             rows.forEach { row ->
-                PlayerSlotEditorRowItem(row) { newOverride ->
-                    val map = WinHandler.parseSlotOverridesJson(savedOverridesJson).toMutableMap()
-                    if (newOverride == SLOT_AUTO) map.remove(row.descriptor)
-                    else map[row.descriptor] = newOverride
-                    onOverridesChange(WinHandler.buildSlotOverridesJson(map))
-                }
+                PlayerSlotEditorRowItem(
+                    row = row,
+                    profileOptions = profileOptions,
+                    onSlotChange = { newOverride ->
+                        val map = WinHandler.parseSlotOverridesJson(savedOverridesJson).toMutableMap()
+                        if (newOverride == SLOT_AUTO) map.remove(row.descriptor)
+                        else map[row.descriptor] = newOverride
+                        onOverridesChange(WinHandler.buildSlotOverridesJson(map))
+                    },
+                    onProfileChange = if (onProfilesChange == null) null else { newPid ->
+                        val map = parseControllerProfilesJson(savedProfilesJson).toMutableMap()
+                        if (newPid < 0) map.remove(row.descriptor) else map[row.descriptor] = newPid
+                        onProfilesChange(buildControllerProfilesJson(map))
+                    },
+                )
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -120,7 +167,13 @@ fun PlayerSlotsEditor(
 // One device row: name + status subtitle + an Auto / Player 1-4 / Ignore dropdown. Visually mirrors the
 // in-game PlayerSlotRowItem. @OptIn is inherited from the file-level opt-in (ExposedDropdownMenuBox).
 @Composable
-private fun PlayerSlotEditorRowItem(row: PlayerSlotEditorRow, onChange: (Int) -> Unit) {
+private fun PlayerSlotEditorRowItem(
+    row: PlayerSlotEditorRow,
+    profileOptions: List<Pair<Int, String>>,
+    onSlotChange: (Int) -> Unit,
+    onProfileChange: ((Int) -> Unit)?,
+) {
+    val onChange = onSlotChange
     val options = remember {
         buildList {
             add("Auto" to SLOT_AUTO)
@@ -181,6 +234,40 @@ private fun PlayerSlotEditorRowItem(row: PlayerSlotEditorRow, onChange: (Int) ->
                         expanded = false
                         if (value != row.override) onChange(value)
                     })
+                }
+            }
+        }
+
+        // #345 FIX-4: per-controller CONTROLS-PROFILE picker (only when the caller supplies options +
+        // a persist callback). "Default" (-1) falls through to the active/default profile at launch.
+        if (profileOptions.isNotEmpty() && onProfileChange != null) {
+            Spacer(Modifier.height(6.dp))
+            val allProfileOptions = remember(profileOptions) { listOf(-1 to "Default") + profileOptions }
+            val selectedProfileLabel =
+                allProfileOptions.firstOrNull { it.first == row.assignedProfileId }?.second ?: "Default"
+            var profileExpanded by remember(row.descriptor, row.assignedProfileId) { mutableStateOf(false) }
+            ExposedDropdownMenuBox(expanded = profileExpanded, onExpandedChange = { profileExpanded = it }) {
+                OutlinedTextField(
+                    value = selectedProfileLabel,
+                    onValueChange = {}, readOnly = true,
+                    label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    singleLine = true,
+                )
+                ExposedDropdownMenu(
+                    expanded = profileExpanded,
+                    onDismissRequest = { profileExpanded = false },
+                    modifier = Modifier.outlinedMenuCard()
+                ) {
+                    allProfileOptions.forEachIndexed { index, option ->
+                        if (index > 0) MenuItemDivider()
+                        val (pid, pname) = option
+                        DropdownMenuItem(text = { Text(pname) }, onClick = {
+                            profileExpanded = false
+                            if (pid != row.assignedProfileId) onProfileChange(pid)
+                        })
+                    }
                 }
             }
         }

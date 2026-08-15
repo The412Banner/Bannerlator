@@ -223,6 +223,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // editor UI mutates it only through WinHandler.parse/buildSlotOverridesJson. "{}" = all auto.
     var controllerSlotOverridesJson by mutableStateOf("{}")
 
+    // #345 FIX-4: per-controller controls-profile assignments for this container ({descriptor:profileId}).
+    var controllerProfilesJson by mutableStateOf("{}")
+
     // #345 F2/F6: the single merged "on controller connect" mode for this container. ON_SCREEN_MODE_INHERIT
     // (-1) = "Use global default" — the container stores nothing and the launch resolver falls back to the
     // app-drawer global live. 0/1/2 = KEEP / YIELD (hand over & hide) / SHARE. Auto-hide is no longer a
@@ -536,6 +539,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         vibrationMode      = seed?.getVibrationMode() ?: Container.VIBRATION_MODE_DEFAULT
         vibrationIntensity = seed?.getVibrationIntensity() ?: Container.VIBRATION_INTENSITY_DEFAULT
         controllerSlotOverridesJson = seed?.getControllerSlotOverrides() ?: "{}"
+        controllerProfilesJson = seed?.getControllerProfiles() ?: "{}"
         // #345 F6: show INHERIT for a container that hasn't explicitly set the mode (so it visibly tracks
         // the global default), else its own merged value. (seed != null && … so seed smart-casts non-null.)
         onScreenControllerMode = if (seed != null && seed.hasOnScreenControllerModeSet())
@@ -917,6 +921,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setVibrationMode(vibrationMode)
             c.setVibrationIntensity(vibrationIntensity)
             c.setControllerSlotOverrides(controllerSlotOverridesJson)
+            c.setControllerProfiles(controllerProfilesJson)
             // #345 F2/F6: INHERIT clears the per-container mode so it tracks the global default; else write
             // the merged value (which also updates the derived auto-hide flag).
             if (onScreenControllerMode < 0) c.clearOnScreenControllerMode()

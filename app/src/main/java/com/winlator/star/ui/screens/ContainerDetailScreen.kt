@@ -1876,6 +1876,9 @@ private fun AdvancedTab(
             PlayerSlotsEditor(
                 savedOverridesJson = viewModel.controllerSlotOverridesJson,
                 onOverridesChange = { viewModel.controllerSlotOverridesJson = it },
+                profileOptions = remember { com.winlator.star.ui.components.loadControllerProfileOptions(context) },
+                savedProfilesJson = viewModel.controllerProfilesJson,
+                onProfilesChange = { viewModel.controllerProfilesJson = it },
             )
         }
 

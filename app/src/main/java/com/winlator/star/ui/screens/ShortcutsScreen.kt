@@ -5676,6 +5676,8 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
     // as the container editor and the in-game Players tab — mutated only via WinHandler.parse/build. The
     // launch resolver reads this extra first, else the container's (resolvedControllerSlotOverridesJson).
     var controllerSlotOverridesJson by remember { mutableStateOf(shortcut.getExtra("controllerSlotOverrides", "")) }
+    // #345 FIX-4: per-controller controls-profile assignments for this shortcut.
+    var controllerProfilesJson by remember { mutableStateOf(shortcut.getExtra("controllerProfiles", "")) }
 
     // #345 F2 per-game override of the merged "on controller connect" mode. "" = inherit the container;
     // "0"/"1"/"2" = KEEP/YIELD(hand over & hide)/SHARE for this game. The launch resolver reads this extra
@@ -5975,6 +5977,7 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
             putExtra("simTouchScreen", if (simTouchScreen) "1" else "0")
             // Empty = clear the extra so the game re-inherits the container's Player Slots.
             putExtra("controllerSlotOverrides", controllerSlotOverridesJson.ifEmpty { null })
+            putExtra("controllerProfiles", controllerProfilesJson.ifEmpty { null })
             // #345 F2: per-game merged mode ("" = re-inherit the container). Clear the retired auto-hide
             // extra so a migrated shortcut doesn't carry stale, conflicting data.
             putExtra("onScreenControllerMode", onScreenControllerMode.ifEmpty { null })
@@ -6693,6 +6696,9 @@ internal fun ShortcutSettingsDialogScreen(shortcut: Shortcut, onDismiss: () -> U
                         PlayerSlotsEditor(
                             savedOverridesJson = controllerSlotOverridesJson.ifEmpty { "{}" },
                             onOverridesChange = { controllerSlotOverridesJson = it },
+                            profileOptions = remember { com.winlator.star.ui.components.loadControllerProfileOptions(context) },
+                            savedProfilesJson = controllerProfilesJson.ifEmpty { "{}" },
+                            onProfilesChange = { controllerProfilesJson = it },
                         )
 
                         // Gyro (motion aim) per-game override. Deadzone/smoothing are deliberately

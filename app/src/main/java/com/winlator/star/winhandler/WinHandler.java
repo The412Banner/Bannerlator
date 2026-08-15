@@ -142,10 +142,16 @@ public class WinHandler {
     public static final int ON_SCREEN_MODE_YIELD = 1;
     public static final int ON_SCREEN_MODE_SHARE = 2;
     private volatile int onScreenControllerMode = ON_SCREEN_MODE_KEEP;
-    // Session-only OSC slot preference set by a YIELD promotion (NOT persisted). assignSlot honors it for
-    // OSC when OSC has no explicit pin, so a bumped OSC re-seats onto the slot it was moved to instead of
-    // falling straight back to the lowest free slot (which is the one we just handed the physical pad).
-    private int oscYieldSlot = -1;
+    // Session-only OSC yield state set by a YIELD hand-over (NOT persisted). #345 FIX-5/F7b: a YIELD now
+    // RELEASES the on-screen pad's slot (atomic hand-over: the incoming pad becomes the SOLE controller on
+    // Player 1) instead of parking OSC on a real higher slot, which used to leave a phantom second player.
+    // Values: OSC_YIELD_NONE = no yield; OSC_YIELD_RELEASED = a yield is in effect and OSC holds no slot
+    // (assignSlot returns -1 for OSC so a still-visible/touched overlay can't FCFS-regrab a slot), armed so
+    // restoreYieldedOscIfHomeFree re-seats OSC on its home slot when the displacing pad leaves. A legacy
+    // >= 0 value (OSC parked on that slot) is still tolerated by assignSlot for safety but no longer set.
+    static final int OSC_YIELD_NONE = -1;
+    static final int OSC_YIELD_RELEASED = -2;
+    private int oscYieldSlot = OSC_YIELD_NONE;
 
     // Physical hot-plug debounce. Android churns remove/add events during Bluetooth flaps
     // and sub-device re-enumeration; a real unplug stays gone and is torn down after the
@@ -1268,48 +1274,44 @@ public class WinHandler {
             return slot >= 0;
         }
 
-        // YIELD: move OSC to the lowest free HIGHER slot so the pad can take Player 1 via FCFS.
-        int free = -1;
-        for (int s = 1; s < MAX_CONTROLLERS; s++) {
-            if (!usedSlots.contains(s)) { free = s; break; }
-        }
-        if (free < 0)
-            return false; // no room to move OSC — leave things as they are (safe)
+        // YIELD (atomic hand-over): RELEASE the on-screen pad's slot outright so the incoming pad becomes
+        // the SOLE controller on Player 1. #345 FIX-5/F7b: the OSC is no longer relocated onto a real
+        // higher slot — that parked it on Player 2 and the guest saw two controllers unless a separate,
+        // independently-gated auto-hide step happened to release it. Marking the yield RELEASED makes
+        // assignSlot(OSC) return -1, so a still-visible or freshly-touched overlay can't FCFS-regrab a
+        // slot while the pad holds Player 1; the overlay itself is hidden by updateAutoHideForControllers
+        // on the caller side (the #333/F7 auto-hide gate). When the pad later leaves,
+        // restoreYieldedOscIfHomeFree re-seats OSC on its home slot.
         releaseSlot(OSC_DEVICE_ID);         // softRelease: frees slot 0, OSC ring stays alive
-        oscYieldSlot = free;                // session-only OSC preference honored by assignSlot(OSC)
-        int newOscSlot = assignSlot(OSC_DEVICE_ID);
-        Log.d("WinHandler", "On-screen YIELD: OSC moved to slot " + newOscSlot
-                + "; incoming pad " + deviceId + " will take Player 1");
-        return false; // let assignConnectedDeviceIfPossible seat the pad on the now-free slot 0
+        oscYieldSlot = OSC_YIELD_RELEASED;  // OSC holds no slot until the displacing pad leaves
+        Log.d("WinHandler", "On-screen YIELD: OSC released Player 1; incoming pad "
+                + deviceId + " will take it as the sole controller");
+        return false; // let the caller seat the pad on the now-free slot 0
     }
 
     /**
-     * #345 F5 — undo a YIELD promotion when the pad that triggered it disconnects. A YIELD moved the
-     * on-screen pad off its home slot (Player 1 / slot 0, since only an UNPINNED OSC ever yields) up to
-     * {@code oscYieldSlot} and handed slot 0 to the incoming pad. When that pad later leaves, slot 0
-     * frees but nothing moved OSC back — so the restored overlay would keep driving the yield slot. Here
-     * we re-seat OSC on its home slot and clear the session yield preference. No-op unless a yield is
-     * actually in effect and the home slot is now free (a different pad still on slot 0 ⇒ leave it).
-     * Main-thread only (called from the debounced disconnect runnable).
+     * #345 F5 — undo a YIELD hand-over when the pad that triggered it disconnects (or is set to Ignore).
+     * The YIELD released the on-screen pad's home slot (Player 1 / slot 0, since only an UNPINNED OSC ever
+     * yields) and handed it to the incoming pad. When that pad later leaves, slot 0 frees but OSC still
+     * holds no slot (RELEASED) — so re-seat OSC on its home slot here and clear the yield state, restoring
+     * the overlay to Player 1. No-op unless a yield is actually in effect and the home slot is now free (a
+     * different pad still on slot 0 ⇒ leave it). Also tolerates a legacy parked (>= 0) yield: same
+     * outcome — OSC ends up on home. Main-thread only (debounced disconnect runnable / manual Ignore).
      */
     private void restoreYieldedOscIfHomeFree() {
-        if (oscYieldSlot < 0) return;                          // no yield in effect
+        if (oscYieldSlot == OSC_YIELD_NONE) return;            // no yield in effect
         Integer oscOverride = manualSlotOverrides.get(OSC_DESCRIPTOR);
         if (oscOverride != null && oscOverride >= 0) {         // a pinned OSC never yields (F4) — nothing to undo
-            oscYieldSlot = -1;
+            oscYieldSlot = OSC_YIELD_NONE;
             return;
         }
         final int home = 0;                                    // unpinned OSC's home = Player 1
         if (usedSlots.contains(home)) return;                  // home still occupied — keep OSC where it is
-        Integer cur = deviceToSlot.get(OSC_DEVICE_ID);
-        if (cur == null || cur == home) {                      // OSC gone or already home — just clear the pref
-            oscYieldSlot = -1;
-            return;
-        }
-        releaseSlot(OSC_DEVICE_ID);                            // softRelease: frees the yield slot, ring stays alive
-        oscYieldSlot = -1;                                     // clear BEFORE reassign so FCFS can pick home
+        oscYieldSlot = OSC_YIELD_NONE;                         // clear BEFORE reassign so the RELEASED guard
+                                                               // in assignSlot(OSC) lifts and FCFS picks home
+        releaseSlot(OSC_DEVICE_ID);                            // softRelease: no-op when OSC held no slot (RELEASED)
         int newSlot = assignSlot(OSC_DEVICE_ID);               // FCFS → home (slot 0, now free)
-        Log.d("WinHandler", "#345 F5: on-screen pad restored to home slot " + newSlot + " after pad disconnect.");
+        Log.d("WinHandler", "#345 F5: on-screen pad restored to home slot " + newSlot + " after pad left.");
     }
 
     /**
@@ -1913,8 +1915,15 @@ public class WinHandler {
                         return joinSharedSlot(deviceId, null, oscOverride);
                 }
             }
-            // Session-only YIELD preference: a pad promotion moved OSC up to this slot. Honor it before
-            // FCFS so OSC doesn't fall straight back onto the slot 0 we just handed the physical pad.
+            // #345 FIX-5/F7b: a YIELD hand-over released OSC and handed Player 1 to the physical pad. While
+            // that yield is in effect OSC must hold NO slot — otherwise a still-visible or freshly-touched
+            // overlay would FCFS-regrab the next free slot (Player 2) and the guest would see two
+            // controllers. restoreYieldedOscIfHomeFree lifts this when the displacing pad leaves.
+            if (oscYieldSlot == OSC_YIELD_RELEASED)
+                return -1;
+            // Legacy session-only YIELD park (no longer set by the atomic hand-over above, but tolerated):
+            // OSC was moved up to this slot — honor it before FCFS so it doesn't fall back onto the slot we
+            // handed the physical pad.
             if (oscYieldSlot >= 0 && oscYieldSlot < MAX_CONTROLLERS && !usedSlots.contains(oscYieldSlot))
                 return assignSpecificSlot(deviceId, null, oscYieldSlot);
             return assignFreeSlot(deviceId, null);
@@ -2364,8 +2373,8 @@ public class WinHandler {
 
         // ---- OSC virtual pad ----
         if (OSC_DESCRIPTOR.equals(descriptor)) {
-            // An explicit OSC assignment overrides any session-only YIELD promotion preference.
-            oscYieldSlot = -1;
+            // An explicit OSC assignment overrides any session-only YIELD state.
+            oscYieldSlot = OSC_YIELD_NONE;
             Integer cur = deviceToSlot.get(OSC_DEVICE_ID);
             if (normalized >= 0 && cur != null && cur == normalized)
                 return normalized; // already there — no flap
@@ -2503,7 +2512,7 @@ public class WinHandler {
         usedSlots.clear();
         controllers.clear();
         fallbackSlot = -1;
-        oscYieldSlot = -1;
+        oscYieldSlot = OSC_YIELD_NONE;
         clearSharedSlotState();
 
         // 2) Make sure the hot-plug listener is still live.
@@ -2679,7 +2688,7 @@ public class WinHandler {
         controllers.clear();
         manualSlotOverrides.clear();
         fallbackSlot = -1;
-        oscYieldSlot = -1;
+        oscYieldSlot = OSC_YIELD_NONE;
         clearSharedSlotState();
 
         vibrationRunning = false;

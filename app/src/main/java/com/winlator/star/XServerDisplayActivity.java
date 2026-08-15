@@ -5072,6 +5072,25 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 applyControllerProfiles();
                 refreshPlayerSlots.run();
             };
+            // #345 FIX-4 Option A: the On-screen-controls row sets the ACTIVE/overlay profile (the one the
+            // OSD draws and "Same as on-screen" controllers inherit). -1 = Disabled (hide the overlay).
+            ds.onActiveProfileChanged = (profileId) -> {
+                if (profileId < 0) {
+                    preferences.edit().putInt("selected_profile_id", -1)
+                            .putBoolean("smart_default_touch_optout", true).apply();
+                    hideInputControls();
+                } else {
+                    com.winlator.star.inputcontrols.ControlsProfile p = inputControlsManager.getProfile(profileId);
+                    if (p != null) {
+                        preferences.edit().putInt("selected_profile_id", profileId)
+                                .putBoolean("smart_default_touch_optout", false).apply();
+                        inputControlsView.setShowTouchscreenControls(true);
+                        showInputControls(p);
+                    }
+                }
+                applyControllerProfiles(); // re-apply per-controller overrides on top of the new active profile
+                refreshPlayerSlots.run();
+            };
 
             // Hot-plug (add/remove/progressive-change) → status toast. WinHandler fires a plain callback
             // on the main looper; we DEBOUNCE a burst (a fast unplug/replug, or a pad that fans out into
@@ -6223,11 +6242,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 winHandler.getPlayerSlotAssignments();
         java.util.List<XServerDialogState.PlayerSlotRow> uiRows = new java.util.ArrayList<>();
         for (com.winlator.star.winhandler.WinHandler.PlayerSlotInfo info : infos) {
-            Integer pid = controllerProfileMap.get(info.descriptor); // #345 FIX-4
+            // #345 FIX-4 Option A: the On-screen row shows the ACTIVE/overlay profile; every physical
+            // controller shows its per-controller override (-1 = "Same as on-screen").
+            int pid;
+            if (info.isOnScreen) {
+                com.winlator.star.inputcontrols.ControlsProfile ap =
+                        inputControlsView != null ? inputControlsView.getProfile() : null;
+                pid = ap != null ? ap.id : -1;
+            } else {
+                Integer m = controllerProfileMap.get(info.descriptor);
+                pid = m != null ? m : -1;
+            }
             uiRows.add(new XServerDialogState.PlayerSlotRow(
                     info.displayName, info.descriptor, info.currentSlot,
-                    info.override, info.isOnScreen, info.isGameController,
-                    pid != null ? pid : -1));
+                    info.override, info.isOnScreen, info.isGameController, pid));
         }
         return uiRows;
     }

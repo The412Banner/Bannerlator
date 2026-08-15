@@ -2804,7 +2804,6 @@ private fun ControlsContent(state: XServerDrawerState) {
     var timeoutEnabled by remember(initTimeout) { mutableStateOf(initTimeout) }
     var hapticsEnabled by remember(initHaptics) { mutableStateOf(initHaptics) }
     val allItems = listOf("-- Disabled --") + profiles
-    var dropdownExpanded by remember { mutableStateOf(false) }
 
     when (subTab) {
         // ── Touch ──
@@ -2812,25 +2811,18 @@ private fun ControlsContent(state: XServerDrawerState) {
             Text("Input Controls", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Spacer(Modifier.height(6.dp))
 
-            ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
-                OutlinedTextField(
-                    value = allItems.getOrElse(selectedIdx) { "-- Disabled --" },
-                    onValueChange = {}, readOnly = true,
-                    label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                )
-                ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
-                    allItems.forEachIndexed { i, label ->
-                        DropdownMenuItem(text = { Text(label) }, onClick = {
-                            selectedIdx = i
-                            dropdownExpanded = false
-                            XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
-                        })
-                    }
-                }
-            }
+            // #345 FIX-4 Option A: profile selection now lives in ONE place — the Players tab, where the
+            // "On-screen controls" row picks the overlay profile and each controller picks its own. This
+            // sub-tab keeps the OSD display flags below; here we just show what's active and point there.
+            Text(
+                "Profile: " + allItems.getOrElse(selectedIdx) { "-- Disabled --" },
+                color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp
+            )
+            Text(
+                "Set the on-screen profile — and a profile per controller — in the Players tab.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Spacer(Modifier.height(6.dp))
 
@@ -3142,15 +3134,16 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
             }
         }
 
-        // #345 FIX-4: per-controller CONTROLS-PROFILE picker, right beside the slot selector. Assigns a
-        // controls profile to THIS device so its bindings apply independently of the active profile;
-        // "Default" (-1) = fall through to the active/default profile. Persisted per container/shortcut.
+        // #345 FIX-4 Option A: ONE profile picker per row — the Players tab is the single source of truth.
+        //   • On-screen controls row → the ACTIVE/overlay profile (what the OSD draws; -1 = Disabled).
+        //   • Each controller row     → that device's profile (-1 = "Same as on-screen" = inherit the OSC).
         val profileOptions by XServerDialogState.controllerProfileOptions.collectAsState()
         if (profileOptions.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
-            val allProfileOptions = remember(profileOptions) { listOf(-1 to "Default") + profileOptions }
+            val zeroLabel = if (row.isOnScreen) "-- Disabled --" else "Same as on-screen"
+            val allProfileOptions = remember(profileOptions, row.isOnScreen) { listOf(-1 to zeroLabel) + profileOptions }
             val selectedProfileLabel =
-                allProfileOptions.firstOrNull { it.first == row.assignedProfileId }?.second ?: "Default"
+                allProfileOptions.firstOrNull { it.first == row.assignedProfileId }?.second ?: zeroLabel
             var profileExpanded by remember(row.descriptor, row.assignedProfileId) { mutableStateOf(false) }
             ExposedDropdownMenuBox(expanded = profileExpanded, onExpandedChange = { profileExpanded = it }) {
                 OutlinedTextField(
@@ -3172,7 +3165,8 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
                         DropdownMenuItem(text = { Text(pname) }, onClick = {
                             profileExpanded = false
                             if (pid != row.assignedProfileId) {
-                                XServerDialogState.onControllerProfileChanged?.invoke(row.descriptor, pid)
+                                if (row.isOnScreen) XServerDialogState.onActiveProfileChanged?.invoke(pid)
+                                else XServerDialogState.onControllerProfileChanged?.invoke(row.descriptor, pid)
                             }
                         })
                     }

@@ -367,6 +367,12 @@ object XServerDialogState {
     // Fired when the user assigns a profile to a device in the Players tab (descriptor, profileId; -1 = default).
     fun interface ControllerProfileCallback { fun invoke(descriptor: String, profileId: Int) }
     @JvmField var onControllerProfileChanged: ControllerProfileCallback? = null
+
+    // #345 FIX-4 Option A: the On-screen-controls row's profile picker sets the ACTIVE/overlay profile
+    // (by stable id; -1 = Disabled). Distinct from the per-controller override above — this IS the
+    // profile the OSD draws and every "Same as on-screen" controller inherits.
+    fun interface ActiveProfileCallback { fun invoke(profileId: Int) }
+    @JvmField var onActiveProfileChanged: ActiveProfileCallback? = null
     fun setPlayerSlots(rows: List<PlayerSlotRow>) { _playerSlots.value = rows }
 
     fun interface PlayerSlotCallback { fun invoke(descriptor: String, desiredSlot: Int) }
@@ -889,7 +895,7 @@ object XServerDialogState {
         onRequestResume = null
         onVibrationSlotChanged = null
         onVibrationModeChanged = null; onVibrationIntensityChanged = null
-        onPlayerSlotChanged = null; onPlayerSlotsRefresh = null; onResetInput = null; onControllerProfileChanged = null
+        onPlayerSlotChanged = null; onPlayerSlotsRefresh = null; onResetInput = null; onControllerProfileChanged = null; onActiveProfileChanged = null
         onGyroEnabledChanged = null; onGyroTargetChanged = null
         onGyroSensitivityChanged = null; onGyroDeadzoneChanged = null; onGyroSmoothingChanged = null
         onGyroInvertXChanged = null; onGyroInvertYChanged = null; onGyroActivatorChanged = null

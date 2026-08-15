@@ -5054,15 +5054,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 showControllerStatusToast("reset", null);
                 // #333: pipeline reset re-seats slots → re-evaluate auto-hide against the fresh state.
                 updateAutoHideForControllers();
-                // #345 FIX-4: Reset Input is the user's recovery button. resetInputPipeline rebuilds the
-                // input transport and drops InputControlsView's controller tracking/focus, so a physical
-                // pad's remapped routing is lost even though its profile bindings survive — re-copying
-                // bindings alone is a no-op. Re-SHOW the active profile to re-establish the routing (and
-                // regrab focus), THEN re-apply the per-controller assignments.
-                com.winlator.star.inputcontrols.ControlsProfile activeAfterReset =
-                        inputControlsView != null ? inputControlsView.getProfile() : null;
-                if (activeAfterReset != null) showInputControls(activeAfterReset);
-                applyControllerProfiles();
+                // #345 FIX-4: Reset Input is the user's recovery button. resetInputPipeline clears the
+                // controller maps and re-enumerates the present devices ASYNCHRONOUSLY (the re-registered
+                // input listener re-fires onInputDeviceAdded on the looper), which re-seeds each device's
+                // controller AFTER this handler returns — clobbering a synchronous re-apply. So re-apply
+                // the per-controller profiles on a DELAYED tick, once the re-enumeration has settled, so
+                // an assigned pad keeps its bindings through a reset. (Do NOT re-show the active profile
+                // here — that re-summons the OSC overlay onto a second slot when a pad is present.)
+                controllerToastHandler.postDelayed(() -> applyControllerProfiles(), 500);
             };
             // #345 FIX-4: assign a controls profile to one device from the Players tab. Update the map,
             // persist (per shortcut/container), re-seed that device's live bindings, refresh the rows.

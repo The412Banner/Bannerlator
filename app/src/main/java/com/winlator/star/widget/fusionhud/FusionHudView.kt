@@ -595,7 +595,18 @@ class FusionHudView(
         // RAM % (system-wide) takes the slot the latency row used to occupy, matching the GPU/CPU idiom
         // on the row above it. colRam keeps RAM's identity colour consistent with the Full/Tiles sizes.
         if (showRAM) {
-            stack.add(listOf(Span("RAM ${s.ramPercent.roundToInt()}%", colRam, stkPx)))
+            val l = ArrayList<Span>()
+            l += Span("RAM ${s.ramPercent.roundToInt()}%", colRam, stkPx)
+            // Battery temperature as a "BAT" chip right after RAM (pill-only placement, per user
+            // request). Colour-banded warm→red via tempSpans/TempSensor.BATTERY — the exact same
+            // danger bands the GPU/CPU temps use. Only shown when the battery-temp toggle is on
+            // and a reading is available; the other sizes keep battery temp in the battery row.
+            if (showBatteryTemp && s.battery.tempC != null) {
+                l += Span(" · ", colDim, stkPx)
+                l += Span("BAT ", colBat, stkPx)
+                l += tempSpans(s.battery.tempC, HudMetrics.TempSensor.BATTERY, stkPx, stkPx * 0.62f)
+            }
+            stack.add(l)
         }
         if (showBattery || showPower) {
             val l = ArrayList<Span>(); var any = false

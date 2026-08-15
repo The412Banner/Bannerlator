@@ -5054,6 +5054,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 showControllerStatusToast("reset", null);
                 // #333: pipeline reset re-seats slots → re-evaluate auto-hide against the fresh state.
                 updateAutoHideForControllers();
+                // #345 FIX-4: Reset Input is the user's recovery button — re-apply per-controller profile
+                // assignments too (establishing an active profile if a pad-at-launch suppressed the OSC).
+                applyControllerProfiles();
             };
             // #345 FIX-4: assign a controls profile to one device from the Players tab. Update the map,
             // persist (per shortcut/container), re-seed that device's live bindings, refresh the rows.
@@ -7210,7 +7213,27 @@ return true;
     private void applyControllerProfiles() {
         if (inputControlsView == null || controllerProfileMap.isEmpty()) return;
         com.winlator.star.inputcontrols.ControlsProfile active = inputControlsView.getProfile();
-        if (active == null) return;
+        if (active == null) {
+            // No active profile — a controller present at launch suppresses the smart-default OSC, so
+            // InputControlsView has nothing to remap physical input through (its onGenericMotionEvent
+            // early-returns when profile == null). Establish one from a CONNECTED assigned device so its
+            // bindings can drive the pad. A controller-bindings-only profile has no on-screen elements,
+            // so this adds no visible overlay — it just enables the remapper. THIS was the on-device
+            // failure: the assignment persisted but there was no active profile to host it.
+            for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet()) {
+                Integer pid = e.getValue();
+                if (pid == null || pid < 0) continue;
+                if (winHandler.getDeviceIdForDescriptor(e.getKey()) == 0) continue; // not connected
+                com.winlator.star.inputcontrols.ControlsProfile p = inputControlsManager.getProfile(pid);
+                if (p != null) {
+                    inputControlsView.setShowTouchscreenControls(true);
+                    showInputControls(p);
+                    active = inputControlsView.getProfile();
+                    break;
+                }
+            }
+            if (active == null) return;
+        }
         for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet()) {
             Integer pid = e.getValue();
             if (pid == null || pid < 0) continue;

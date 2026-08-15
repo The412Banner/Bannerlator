@@ -5575,6 +5575,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         inputControlsView.invalidate();
         winHandler.sendGamepadState();
+
+        // #345 FIX-1/2: keep the in-game profile selector in sync with the ACTIVE profile. The drawer
+        // computes its selected index ONCE at setup (initInlineTabStates), which runs BEFORE the
+        // smart-default seeds a profile — so getProfile() was null there and the index stuck at 0. That
+        // left the selector reading "-- Disabled --" while a real overlay (Virtual Gamepad) was live and
+        // driving user 0. Recompute the index against the same list the dialog shows (getProfiles(true))
+        // whenever a profile becomes active, so the dropdown reflects reality.
+        try {
+            java.util.ArrayList<ControlsProfile> list = inputControlsManager.getProfiles(true);
+            int pos = 0;
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i) != null && list.get(i).id == profile.id) { pos = i + 1; break; }
+            }
+            XServerDialogState.INSTANCE.setSelectedProfileIdx(pos);
+        } catch (Throwable ignored) {}
     }
 
     private void hideInputControls() {
@@ -5588,6 +5603,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         inputControlsView.invalidate();
         winHandler.sendGamepadState();
+
+        // #345 FIX-1/2: no active profile → the selector should read "-- Disabled --" (index 0), the
+        // mirror of the sync in showInputControls().
+        try { XServerDialogState.INSTANCE.setSelectedProfileIdx(0); } catch (Throwable ignored) {}
     }
 
     // Reads the persisted extra_libs.tzst payload version. Missing or unparseable => -1, which

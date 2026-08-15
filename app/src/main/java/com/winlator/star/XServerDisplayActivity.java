@@ -5054,8 +5054,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 showControllerStatusToast("reset", null);
                 // #333: pipeline reset re-seats slots → re-evaluate auto-hide against the fresh state.
                 updateAutoHideForControllers();
-                // #345 FIX-4: Reset Input is the user's recovery button — re-apply per-controller profile
-                // assignments too (establishing an active profile if a pad-at-launch suppressed the OSC).
+                // #345 FIX-4: Reset Input is the user's recovery button. resetInputPipeline rebuilds the
+                // input transport and drops InputControlsView's controller tracking/focus, so a physical
+                // pad's remapped routing is lost even though its profile bindings survive — re-copying
+                // bindings alone is a no-op. Re-SHOW the active profile to re-establish the routing (and
+                // regrab focus), THEN re-apply the per-controller assignments.
+                com.winlator.star.inputcontrols.ControlsProfile activeAfterReset =
+                        inputControlsView != null ? inputControlsView.getProfile() : null;
+                if (activeAfterReset != null) showInputControls(activeAfterReset);
                 applyControllerProfiles();
             };
             // #345 FIX-4: assign a controls profile to one device from the Players tab. Update the map,

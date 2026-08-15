@@ -365,7 +365,8 @@ object XServerDialogState {
     fun setControllerProfileOptions(v: List<Pair<Int, String>>) { _controllerProfileOptions.value = v }
 
     // Fired when the user assigns a profile to a device in the Players tab (descriptor, profileId; -1 = default).
-    @JvmField var onControllerProfileChanged: ((String, Int) -> Unit)? = null
+    fun interface ControllerProfileCallback { fun invoke(descriptor: String, profileId: Int) }
+    @JvmField var onControllerProfileChanged: ControllerProfileCallback? = null
     fun setPlayerSlots(rows: List<PlayerSlotRow>) { _playerSlots.value = rows }
 
     fun interface PlayerSlotCallback { fun invoke(descriptor: String, desiredSlot: Int) }

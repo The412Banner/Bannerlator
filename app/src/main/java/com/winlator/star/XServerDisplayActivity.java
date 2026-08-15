@@ -4140,6 +4140,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // before the guest starts reading the rings.
         winHandler.preAssignConnectedControllers();
 
+        // #345 FIX-4: a pad present at LAUNCH is only seated here, on this background thread — AFTER
+        // simulateConfirmInputControlsDialog() already ran applyControllerProfiles() on the main thread
+        // (when getDeviceIdForDescriptor still returned 0, so its per-controller assignment no-op'd). Now
+        // that the pad holds a slot (deviceToDescriptor is populated), re-run applyControllerProfiles on
+        // the MAIN thread so its assigned controls profile is established + its bindings hosted. Must be
+        // runOnUiThread: applyControllerProfiles mutates the UI-thread InputControlsView. The post also
+        // gives the happens-before edge that publishes preAssign's slot-map writes to the main thread.
+        runOnUiThread(this::applyControllerProfiles);
+
         // Start all environment components (XServer, Audio, Wine, etc.)
         preloaderDialog.step(4, "Launching Windows…");
         environment.startEnvironmentComponents();
@@ -5632,12 +5641,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
         inputControlsView.invalidate();
         winHandler.sendGamepadState();
 
-        // #345 FIX-1/2: keep the in-game profile selector in sync with the ACTIVE profile. The drawer
-        // computes its selected index ONCE at setup (initInlineTabStates), which runs BEFORE the
-        // smart-default seeds a profile — so getProfile() was null there and the index stuck at 0. That
-        // left the selector reading "-- Disabled --" while a real overlay (Virtual Gamepad) was live and
-        // driving user 0. Recompute the index against the same list the dialog shows (getProfiles(true))
-        // whenever a profile becomes active, so the dropdown reflects reality.
+        // #345 FIX-1/2: keep the in-game profile selector in sync with the ACTIVE profile.
+        syncInGameProfileSelector(profile);
+    }
+
+    /**
+     * #345 FIX-1/2: point the in-game "Controls profile" selector at the ACTIVE profile. The drawer
+     * computes its selected index ONCE at setup (initInlineTabStates), which runs BEFORE the smart-default
+     * seeds a profile — so getProfile() was null there and the index stuck at 0, leaving the selector
+     * reading "-- Disabled --" while a real profile was live. Recompute the index against the same list
+     * the dialog shows (getProfiles(true); position 0 = "-- Disabled --") whenever a profile becomes
+     * active, so the dropdown reflects reality. Shared by showInputControls and the #345 FIX-4
+     * bindings-only establish path, which activates a profile WITHOUT drawing an overlay.
+     */
+    private void syncInGameProfileSelector(ControlsProfile profile) {
         try {
             java.util.ArrayList<ControlsProfile> list = inputControlsManager.getProfiles(true);
             int pos = 0;
@@ -7259,28 +7276,47 @@ return true;
      *  connects, and on an in-game assignment change. Devices set to Default (-1) keep the active
      *  profile's bindings (a live switch back to Default fully restores only on relaunch). */
     private void applyControllerProfiles() {
-        if (inputControlsView == null || controllerProfileMap.isEmpty()) return;
+        if (inputControlsView == null) return; // view not built yet (pre-setup) — nothing to apply
+        if (controllerProfileMap.isEmpty()) {
+            Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: no per-controller profile assignments; nothing to apply.");
+            return;
+        }
         com.winlator.star.inputcontrols.ControlsProfile active = inputControlsView.getProfile();
+        Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: map=" + controllerProfileMap
+                + ", activeProfile=" + (active != null ? String.valueOf(active.id) : "none"));
         if (active == null) {
             // No active profile — a controller present at launch suppresses the smart-default OSC, so
-            // InputControlsView has nothing to remap physical input through (its onGenericMotionEvent
-            // early-returns when profile == null). Establish one from a CONNECTED assigned device so its
-            // bindings can drive the pad. A controller-bindings-only profile has no on-screen elements,
-            // so this adds no visible overlay — it just enables the remapper. THIS was the on-device
-            // failure: the assignment persisted but there was no active profile to host it.
+            // InputControlsView has nothing to remap physical input through (its onGenericMotionEvent /
+            // onKeyEvent early-return when profile == null). Establish one from a CONNECTED assigned
+            // device so its bindings can drive the pad. THIS was the on-device failure: the assignment
+            // persisted but there was no active profile to host it.
             for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet()) {
                 Integer pid = e.getValue();
                 if (pid == null || pid < 0) continue;
                 if (winHandler.getDeviceIdForDescriptor(e.getKey()) == 0) continue; // not connected
                 com.winlator.star.inputcontrols.ControlsProfile p = inputControlsManager.getProfile(pid);
                 if (p != null) {
-                    inputControlsView.setShowTouchscreenControls(true);
-                    showInputControls(p);
+                    // #345 FIX-4: a controller-bindings-only profile has no on-screen elements — activate it
+                    // for the remapper and point the in-game selector at it, but DON'T enable the touch
+                    // overlay (setProfile alone; no setShowTouchscreenControls / no visible overlay). Only a
+                    // real virtual-gamepad profile draws + claims the on-screen slot via showInputControls.
+                    if (p.isVirtualGamepad()) {
+                        inputControlsView.setShowTouchscreenControls(true);
+                        showInputControls(p);
+                    } else {
+                        inputControlsView.setProfile(p);
+                        syncInGameProfileSelector(p);
+                    }
                     active = inputControlsView.getProfile();
+                    Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: established active profile "
+                            + p.id + " (virtualGamepad=" + p.isVirtualGamepad() + ") from device " + e.getKey());
                     break;
                 }
             }
-            if (active == null) return;
+            if (active == null) {
+                Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: no connected assigned device to establish an active profile; pad stays raw XInput.");
+                return;
+            }
         }
         for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet()) {
             Integer pid = e.getValue();
@@ -7299,7 +7335,21 @@ return true;
             // not — that was the bug: the assignment persisted but the pad had no runtime controller, so
             // it ran raw XInput and the keyboard bindings never fired.
             com.winlator.star.inputcontrols.ExternalController dstC = active.getOrCreateController(deviceId);
-            if (dstC != null) dstC.copyBindingsFrom(srcC);
+            if (dstC == srcC) {
+                // #345 FIX-4: the ACTIVE profile IS the assigned profile (the bindings-only establish path
+                // above uses getProfile(pid), which returns the SAME cached instance) — so dstC and srcC
+                // are one controller object. copyBindingsFrom(self) does controllerBindings.clear() and
+                // then copies from the now-empty list, WIPING the bindings. They are already the active
+                // profile's own and already drive the pad, so skip the self-copy.
+                Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: device " + e.getKey()
+                        + " (deviceId " + deviceId + ") already runs its assigned profile " + pid + " ("
+                        + srcC.getControllerBindingCount() + " binding(s)); no copy needed.");
+            } else if (dstC != null) {
+                dstC.copyBindingsFrom(srcC);
+                Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: hosted "
+                        + srcC.getControllerBindingCount() + " binding(s) for device " + e.getKey()
+                        + " (deviceId " + deviceId + ") from profile " + pid);
+            }
         }
         if (winHandler != null) winHandler.sendGamepadState();
     }

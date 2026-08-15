@@ -5484,6 +5484,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 inputControlsView.setShowTouchscreenControls(true);
                 userWantsControlsShown = true;
                 showInputControls(defaultVg);
+                // #345 FIX-1/2/4: persist the smart-default Virtual Gamepad as the SELECTED profile by
+                // its stable id. Before this, the overlay was shown but no selection was recorded, so
+                // (a) the in-game profile selector read "-- Disabled --" while a VG overlay was live and
+                // driving user 0 (state/label out of sync), and (b) the choice never survived a relaunch.
+                // Persisting the id makes the selector reflect "Virtual Gamepad" and makes it a default
+                // that is honored on the next launch. Timeout stays OFF by default (touchscreen_timeout_
+                // enabled default false — unchanged), per the on-device correction.
+                preferences.edit().putInt("selected_profile_id", defaultVg.id).apply();
             } else {
                 // No profile selected, ensure the controls are hidden
                 hideInputControls();

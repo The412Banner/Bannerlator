@@ -5836,3 +5836,43 @@ STRICT PER-SCOPE + PER-ENGINE CONFIG (no bleed on any axis) — DEVICE-PROVEN:
 - **Root cause:** `ProcessHelper.listRunningWineProcesses()` matched the filter `{"wine","exe"}` against `/proc/<pid>/stat`, whose `comm` field is truncated to 15 chars (TASK_COMM_LEN). `NINJA GAIDEN SI` → `.exe` chopped off → no match → never SIGSTOP'd by `pauseAllWineProcesses()`. Short-named exes (e.g. `witcher3.exe`) keep `.exe` within 15 chars, which is why it paused correctly for most users.
 - **Fix (additive, no regression surface):** also match the FULL untruncated argv from `/proc/<pid>/cmdline` (new `readCmdline()` helper — same source `findLinuxPidByExe` already uses). A pid the stat check matched is still matched; we only ADD the previously-missed game process. Also added a `break` so a pid matching both filters is added once (was double-added). Java-only, single file.
 - Base: clean `ad03f23f` (branched off before the stray `mali-report … wine_debug.log` commits that landed on origin/main a36ecc25→8b314ef2 — those look accidental, clean up separately).
+
+## 2026-08-15 — 🎮 #345 controller: audit + fix batch (A/B/C), device-tested on Pocket FIT
+Branch `fix/controller-slot-takeover-345`, tip `19c4b048` (= base `a5a72d70` + 3 commits). NOT merged.
+
+CORRECTNESS AUDIT (android-app-engineer) of the branch first caught that the planned test SETUP was broken:
+device had `selected_profile_id=4` and profile 4 "test" is controller-bindings-ONLY (no on-screen
+elements) → as the OSC overlay it holds no slot and draws nothing, AND an explicit profile id bypasses
+the smart-default suppression → every OSC test would be unobservable. Corrected setup: `selected_profile_id=-1`,
+overlay = Virtual Gamepad (profile 3), built-in pad `dc4619…` → Ignore via container `controllerSlotOverrides`.
+
+FIX BATCH (3 isolated commits, authored The412Banner):
+- A `70f369e8` (safe): FIX-3 (re-run refreshInGamePlayerSlotList after OSC seed → Players tab labels OSC
+  "Player 1" on relaunch, not "Unassigned"); gate the dead out-of-game OSC-row profile picker
+  (PlayerSlotsEditor `!row.isOnScreen`); empty-overlay guard (buildPlayerSlotRows only reports the OSC as a
+  player when isVirtualGamepad); disconnect notification (XServerDialogState empty-rows "disconnected" card).
+- B `c58f79f3` (F7b/FIX-5): make the on-screen YIELD hand-over ATOMIC — release the OSC slot instead of
+  parking it on Player 2. OSC_YIELD_RELEASED sentinel; assignSlot(OSC) returns -1 while RELEASED so a
+  visible/touched overlay can't re-grab P2; restoreYieldedOscIfHomeFree re-seats OSC on home when the pad
+  leaves (F5 preserved). WinHandler.java only.
+- C `19c4b048` (FIX-4): a pad PRESENT AT LAUNCH is seated by preAssignConnectedControllers on the bg thread
+  AFTER applyControllerProfiles already ran on the main thread (getDeviceIdForDescriptor returned 0 → silent
+  no-op), and nothing re-ran it → pad ran raw XInput, its assigned keyboard profile never loaded. FIX =
+  runOnUiThread(applyControllerProfiles) right after preAssign (XSDA :4141). Also: bindings-only profile is
+  activated via setProfile+syncInGameProfileSelector (drives pad + selector reflects it, no empty overlay);
+  guard against copyBindingsFrom(self) wiping bindings when the active profile IS the assigned profile; added
+  confirm-logging to applyControllerProfiles. XServerDisplayActivity.java only.
+
+DEVICE RESULTS (Pocket FIT, standard build com.winlator.banner; in-game `input tap` doesn't reach the
+Winlator surface so the USER drove in-game toggles, Claude read screenshots + logcat):
+- ✅ FIX-3, Option-A Players-tab UX, F7b/FIX-5 (logcat "OSC released Player 1 … pad takes it as the sole
+  controller"; OSC "Unassigned" not P2; overlay hidden), F5 restore ("F5: restored to home slot 0"),
+  disconnect notification ("INPUT UPDATED" card), T6 pad-at-launch suppression — all verified on build
+  c58f79f3 (A+B).
+- ❌ T7/FIX-4 FAILED on c58f79f3 (d-pad fired no arrows; logcat showed no profile application) → root-caused
+  to the launch-ordering bug above → commit C. Retest of C (build 31915779568) PENDING on device.
+
+NEXT: install `Bannerlator-controller-345-19c4b048-standard.apk`, launch Container-1 (already in T7 state),
+confirm the new FIX-4 logcat markers + a physical d-pad press moves the file-manager selection. Then T4
+(Share) / T5 (Keep) mode variants, then rebase onto current main + merge. Full detail: memory
+[[project_bannerlator_controller_345_audit]].

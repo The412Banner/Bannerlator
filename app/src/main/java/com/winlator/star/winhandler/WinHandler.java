@@ -2292,6 +2292,14 @@ public class WinHandler {
     /** Snapshot of every device the Players sub-tab should list: the OSC virtual pad (always), every
      *  connected game controller, and any device currently holding a slot (so a mis-slotted device can
      *  be freed). Sibling sub-devices are de-duplicated by descriptor. Main-thread only. */
+    /** #345 FIX-4: reverse-lookup a live deviceId for a device descriptor (0 if not connected). */
+    public int getDeviceIdForDescriptor(String descriptor) {
+        if (descriptor == null) return 0;
+        for (java.util.Map.Entry<Integer, String> e : deviceToDescriptor.entrySet())
+            if (descriptor.equals(e.getValue())) return e.getKey();
+        return 0;
+    }
+
     public java.util.List<PlayerSlotInfo> getPlayerSlotAssignments() {
         java.util.List<PlayerSlotInfo> out = new java.util.ArrayList<>();
 

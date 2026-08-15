@@ -7217,8 +7217,18 @@ return true;
             com.winlator.star.inputcontrols.ControlsProfile src = inputControlsManager.getProfile(pid);
             if (src == null) continue;
             com.winlator.star.inputcontrols.ExternalController srcC = src.getController(e.getKey());
-            com.winlator.star.inputcontrols.ExternalController dstC = active.getController(e.getKey());
-            if (srcC != null && dstC != null) dstC.copyBindingsFrom(srcC);
+            if (srcC == null || srcC.getControllerBindingCount() == 0) continue;
+            // Only for a CURRENTLY-CONNECTED device (need its live deviceId to create the instance).
+            int deviceId = winHandler.getDeviceIdForDescriptor(e.getKey());
+            if (deviceId == 0) continue;
+            // Host the assigned bindings on the ACTIVE profile's controller instance for this device —
+            // that is the exact instance the input path resolves (onGenericMotionEvent ->
+            // profile.getController(deviceId)) and remaps on. getOrCreateController creates it even when
+            // the Default template is empty (a fresh profile), which getController(int)'s gated seed does
+            // not — that was the bug: the assignment persisted but the pad had no runtime controller, so
+            // it ran raw XInput and the keyboard bindings never fired.
+            com.winlator.star.inputcontrols.ExternalController dstC = active.getOrCreateController(deviceId);
+            if (dstC != null) dstC.copyBindingsFrom(srcC);
         }
         if (winHandler != null) winHandler.sendGamepadState();
     }

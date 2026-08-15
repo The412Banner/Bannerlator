@@ -240,7 +240,11 @@ private fun PlayerSlotEditorRowItem(
 
         // #345 FIX-4: per-controller CONTROLS-PROFILE picker (only when the caller supplies options +
         // a persist callback). "Default" (-1) falls through to the active/default profile at launch.
-        if (profileOptions.isNotEmpty() && onProfileChange != null) {
+        // #345 B-4: NOT shown on the on-screen row. Launch resolution keys controllerProfiles by a live
+        // physical-device descriptor (getDeviceIdForDescriptor), so a value written under OSC_DESCRIPTOR
+        // is silently dropped at launch — the OSC's overlay profile is chosen elsewhere (the app-level
+        // selected profile / in-game On-screen row), not here. Hiding the picker removes the dead control.
+        if (!row.isOnScreen && profileOptions.isNotEmpty() && onProfileChange != null) {
             Spacer(Modifier.height(6.dp))
             val allProfileOptions = remember(profileOptions) { listOf(-1 to "Default") + profileOptions }
             val selectedProfileLabel =

@@ -479,7 +479,16 @@ object XServerDialogState {
                 isNew = changedDescriptor != null && r.descriptor == changedDescriptor,
             )
         }
-        if (rows.isEmpty()) return
+        if (rows.isEmpty()) {
+            // #345 disconnect notification: a removal that empties the visible list (the only pad
+            // unplugged, or set to Ignore, with no other slot-holder) would otherwise vanish silently —
+            // connects toast but disconnects wouldn't. Surface a rows-less info card so notifications
+            // fire in BOTH directions. Reuses the existing toast card (same style/copy family). Other
+            // reasons with nothing to show stay silent (there is genuinely nothing to report).
+            if (reason == "disconnected")
+                showInfoToast("CONTROLLER DISCONNECTED", "just now", "On-screen controls restored")
+            return
+        }
 
         val hasShare = rows.any { it.badge == ToastBadgeType.SHARE }
         val hasMouseKb = rows.any { it.icon == ToastIconType.MOUSE || it.icon == ToastIconType.KEYBOARD }

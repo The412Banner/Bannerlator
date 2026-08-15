@@ -5558,6 +5558,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // #333: apply auto-hide at launch — a pad connected before/at launch should already have the
         // overlay hidden, and the pad seated on the on-screen slot (YIELD pushed above).
         updateAutoHideForControllers();
+
+        // #345 FIX-3: the Players-tab row list was snapshotted once in setupUI, BEFORE the OSC slot was
+        // seeded just above (showInputControls -> sendGamepadState -> assignSlot(OSC)). Nothing re-ran
+        // the snapshot afterward, so on a fresh relaunch the tab kept the pre-seed state and labelled the
+        // on-screen pad "Unassigned / Auto" even though it holds Player 1 — only a later slot change /
+        // Reset Input / disconnect (which call refreshPlayerSlots) fixed it. Re-snapshot now that the OSC
+        // seat is settled so the label is correct from launch.
+        refreshInGamePlayerSlotList();
     }
 
     private void startTouchscreenTimeout() {
@@ -6248,7 +6256,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (info.isOnScreen) {
                 com.winlator.star.inputcontrols.ControlsProfile ap =
                         inputControlsView != null ? inputControlsView.getProfile() : null;
-                pid = ap != null ? ap.id : -1;
+                // #345 B-3 empty-overlay guard: only report the active profile as the ON-SCREEN overlay
+                // when it is actually a virtual gamepad. A controller-bindings-only ("test"-style) profile
+                // has no on-screen elements and never claims a player slot (sendGamepadState releases the
+                // OSC for it) — surfacing its id here would imply the OSC drives a player when it doesn't.
+                pid = (ap != null && ap.isVirtualGamepad()) ? ap.id : -1;
             } else {
                 Integer m = controllerProfileMap.get(info.descriptor);
                 pid = m != null ? m : -1;

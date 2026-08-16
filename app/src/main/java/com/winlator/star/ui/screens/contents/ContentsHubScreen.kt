@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -221,7 +221,7 @@ private fun SourceListPane(
             }
             Spacer(Modifier.height(6.dp))
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(sources, key = { it.name + it.url }) { source ->
+                itemsIndexed(sources, key = { i, s -> "$i-${s.name}-${s.url}" }) { _, source ->
                     RepoCard(source, isSelected = selected?.name == source.name,
                         onClick = { vm.selectSource(source) }, onMenu = { onMenu(source) })
                     Spacer(Modifier.height(10.dp))
@@ -240,7 +240,7 @@ private fun SourceListPane(
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(searchResults, key = { it.sourceName + it.type + it.versionName + it.downloadUrl }) { item ->
+                        itemsIndexed(searchResults, key = { i, it -> "$i-${it.sourceName}-${it.type}-${it.downloadUrl}" }) { _, item ->
                             ComponentRow(vm, item, showSource = true)
                             Spacer(Modifier.height(10.dp))
                         }
@@ -382,7 +382,7 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
             else -> {
                 val shown = if (filter == "All") items else items.filter { it.type == filter }
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(shown, key = { it.type + it.versionName + it.downloadUrl }) { item ->
+                    itemsIndexed(shown, key = { i, it -> "$i-${it.type}-${it.downloadUrl}" }) { _, item ->
                         ComponentRow(vm, item, showSource = false)
                         Spacer(Modifier.height(10.dp))
                     }
@@ -588,7 +588,7 @@ private fun MyFilesTab(vm: ContentsHubViewModel) {
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(folders.keys.toList(), key = { it }) { type ->
+                itemsIndexed(folders.keys.toList(), key = { i, t -> "$i-$t" }) { _, type ->
                     FolderCard(vm, type, folders[type].orEmpty(),
                         open = type in expanded.value,
                         onToggle = {

@@ -129,7 +129,9 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
                         .map { it.toCatalog(type) }
                 }
             }
-            _detailItems.value = items
+            // Community catalogs (and the loose contains-matching across type buckets) can list the
+            // same asset twice; dedupe by download URL so a duplicate never reaches the LazyColumn.
+            _detailItems.value = items.distinctBy { it.downloadUrl }
             _detailLoading.value = false
             refreshStatus()
         }
@@ -177,6 +179,7 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
                     runCatching { repo.refreshAllCache(_sources.value, ContentsTypes.ALL) }
                 }
                 RemoteSourceRepository.searchCache(q).map { it.item.toCatalog(canonicalType(it.componentType)) }
+                    .distinctBy { it.downloadUrl }
             }
             _searchResults.value = results
             _searching.value = false

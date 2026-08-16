@@ -7363,10 +7363,20 @@ return true;
 
     /** (profileId, name) options for the in-game Players-tab per-controller profile picker. */
     private void pushControllerProfileOptions() {
-        java.util.ArrayList<kotlin.Pair<Integer, String>> opts = new java.util.ArrayList<>();
-        for (com.winlator.star.inputcontrols.ControlsProfile p : inputControlsManager.getProfiles(true))
-            if (p != null) opts.add(new kotlin.Pair<>(p.id, p.getName()));
-        XServerDialogState.INSTANCE.setControllerProfileOptions(opts);
+        // #345 two-lane split: physical-controller rows get profiles WITHOUT on-screen elements (a physical
+        // pad must never be offered — and pop — an on-screen overlay); the on-screen-controls row gets the
+        // overlay profiles. hasOnScreenControls() is read straight off the streaming loader (reliable
+        // without parsing elements, unlike isVirtualGamepad which needs them loaded). An RTS/keyboard
+        // overlay HAS elements, so it correctly lands in the on-screen lane, not the physical lane.
+        java.util.ArrayList<kotlin.Pair<Integer, String>> physical = new java.util.ArrayList<>();
+        java.util.ArrayList<kotlin.Pair<Integer, String>> onScreen = new java.util.ArrayList<>();
+        for (com.winlator.star.inputcontrols.ControlsProfile p : inputControlsManager.getProfiles(true)) {
+            if (p == null) continue;
+            if (p.hasOnScreenControls()) onScreen.add(new kotlin.Pair<>(p.id, p.getName()));
+            else physical.add(new kotlin.Pair<>(p.id, p.getName()));
+        }
+        XServerDialogState.INSTANCE.setControllerProfileOptions(physical);
+        XServerDialogState.INSTANCE.setOnScreenProfileOptions(onScreen);
     }
 
     // Delegate to the shared schema helpers on WinHandler so the in-game Players tab, launch

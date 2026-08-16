@@ -66,10 +66,13 @@ internal fun buildControllerProfilesJson(map: Map<String, Int>): String {
 }
 
 /** (profileId, name) options for the per-controller Profile picker — the App / container / shortcut
- *  editors all feed this into PlayerSlotsEditor. Excludes templates (getProfiles(true)). */
+ *  editors all feed this into PlayerSlotsEditor (physical-controller rows only; the on-screen row's picker
+ *  is hidden out-of-game). Excludes templates (getProfiles(true)) AND #345 the on-screen (overlay)
+ *  profiles: a physical controller belongs to the physical lane and must never be offered an overlay
+ *  profile (e.g. Virtual Gamepad) — only non-on-screen profiles like the bundled "Physical Gamepad". */
 fun loadControllerProfileOptions(context: android.content.Context): List<Pair<Int, String>> = try {
     com.winlator.star.inputcontrols.InputControlsManager(context).getProfiles(true)
-        .mapNotNull { p -> p?.let { it.id to it.name } }
+        .mapNotNull { p -> p?.takeIf { !it.hasOnScreenControls() }?.let { it.id to it.name } }
 } catch (e: Exception) { emptyList() }
 
 /** Build the row list from a saved-overrides JSON: the on-screen pad first (always, pinnable to any slot

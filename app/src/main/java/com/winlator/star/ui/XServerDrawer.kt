@@ -3137,7 +3137,12 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
         // #345 FIX-4 Option A: ONE profile picker per row — the Players tab is the single source of truth.
         //   • On-screen controls row → the ACTIVE/overlay profile (what the OSD draws; -1 = Disabled).
         //   • Each controller row     → that device's profile (-1 = "Same as on-screen" = inherit the OSC).
-        val profileOptions by XServerDialogState.controllerProfileOptions.collectAsState()
+        // #345 two-lane split: the on-screen row draws from the on-screen (overlay) lane; a physical
+        // controller row draws from the physical lane (profiles without on-screen elements — e.g. the
+        // bundled "Physical Gamepad" passthrough), so a pad is never offered an overlay profile.
+        val physicalOptions by XServerDialogState.controllerProfileOptions.collectAsState()
+        val onScreenOptions by XServerDialogState.onScreenProfileOptions.collectAsState()
+        val profileOptions = if (row.isOnScreen) onScreenOptions else physicalOptions
         if (profileOptions.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
             val zeroLabel = if (row.isOnScreen) "-- Disabled --" else "Same as on-screen"

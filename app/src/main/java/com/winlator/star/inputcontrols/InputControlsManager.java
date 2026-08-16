@@ -8,6 +8,8 @@ import android.net.Uri;
 import android.os.Environment;
 import android.util.AtomicFile;
 import android.util.JsonReader;
+import android.util.JsonToken;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
@@ -149,6 +151,36 @@ public class InputControlsManager {
         Collections.sort(profiles);
         this.profiles = profiles;
         profilesLoaded = true;
+
+        ensureDefaultPhysicalProfile();
+    }
+
+    // #345: the default "Physical Gamepad" profile — a companion to the on-screen "Virtual Gamepad".
+    // No on-screen elements (never draws) and no controller bindings (raw XInput passthrough), a
+    // user-editable starting point to assign to a physical/Bluetooth controller in the physical lane.
+    public static final String PHYSICAL_GAMEPAD_PROFILE_NAME = "Physical Gamepad";
+    private static final String PREF_SEEDED_PHYSICAL_GAMEPAD = "seeded_physical_gamepad_default";
+
+    // Seed "Physical Gamepad" once, for BOTH fresh and existing installs (the asset re-copy in
+    // copyAssetProfilesIfNeeded only refreshes profiles that already exist by id+name, so it would never
+    // ADD a new default to an install that already has controls-1..N). Guarded by a one-time preference
+    // so a user who later deletes it is not re-seeded. createProfile allocates ++maxProfileId, so there
+    // is NO id/filename collision with any existing controls-N.icp. Runs from loadProfiles after the
+    // list + maxProfileId are settled.
+    private void ensureDefaultPhysicalProfile() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        if (prefs.getBoolean(PREF_SEEDED_PHYSICAL_GAMEPAD, false)) return;
+        boolean exists = false;
+        for (ControlsProfile p : profiles) {
+            if (p != null && PHYSICAL_GAMEPAD_PROFILE_NAME.equalsIgnoreCase(p.getName())) { exists = true; break; }
+        }
+        if (!exists) {
+            ControlsProfile created = createProfile(PHYSICAL_GAMEPAD_PROFILE_NAME);
+            Collections.sort(profiles);
+            Log.d("InputControlsManager", "#345 seeded default '" + PHYSICAL_GAMEPAD_PROFILE_NAME
+                    + "' profile id=" + created.id);
+        }
+        prefs.edit().putBoolean(PREF_SEEDED_PHYSICAL_GAMEPAD, true).apply();
     }
 
     public ControlsProfile createProfile(String name) {
@@ -691,6 +723,10 @@ public class InputControlsManager {
             float cursorSpeed = Float.NaN;
             boolean customAccentEnabled = false;
             int customAccentColor = 0xFF0055FF;
+            // #345: detect whether the profile carries on-screen elements WITHOUT parsing the whole
+            // (heavy) elements array — just note if the array has at least one entry. Drives the
+            // two-lane picker split (on-screen lane vs physical-controller lane).
+            boolean hasOnScreenControls = false;
 
             reader.beginObject();
             while (reader.hasNext()) {
@@ -711,6 +747,11 @@ public class InputControlsManager {
                 else if (name.equals("customAccentColor")) {
                     customAccentColor = reader.nextInt();
                 }
+                else if (name.equals("elements") && reader.peek() == JsonToken.BEGIN_ARRAY) {
+                    reader.beginArray();
+                    while (reader.hasNext()) { hasOnScreenControls = true; reader.skipValue(); }
+                    reader.endArray();
+                }
                 else {
                     reader.skipValue();
                 }
@@ -722,6 +763,7 @@ public class InputControlsManager {
             profile.setCursorSpeed(Float.isNaN(cursorSpeed) ? 1.0f : cursorSpeed);
             profile.setCustomAccentEnabled(customAccentEnabled);
             profile.setCustomAccentColor(customAccentColor);
+            profile.setHasOnScreenControls(hasOnScreenControls);
             return profile;
         }
         catch (IOException | IllegalStateException | NumberFormatException e) {

@@ -42,6 +42,14 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private boolean controllersLoaded = false;
     private boolean groupsLoaded = false;
     private boolean virtualGamepad = false;
+    // #345: does this profile carry any ON-SCREEN elements (a touch overlay), vs. being a
+    // controller-bindings-only / passthrough profile? Set cheaply by the streaming loader
+    // (InputControlsManager.loadProfile) WITHOUT parsing the whole elements array into a live view, and
+    // recomputed when elements are fully loaded. Drives the two-lane picker split (on-screen profiles for
+    // the OSC row, non-on-screen profiles for physical-controller rows). Distinct from virtualGamepad,
+    // which is stricter (elements that emit GAMEPAD buttons) and would misclassify an RTS/keyboard overlay
+    // as non-on-screen — that overlay still belongs to the on-screen lane.
+    private boolean hasOnScreenControls = false;
     private final ArrayList<Object> elementOrder = new ArrayList<>();
     private final Context context;
     private GamepadState gamepadState;
@@ -107,6 +115,17 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public boolean isVirtualGamepad() {
         return virtualGamepad;
+    }
+
+    // #345: true when the profile has on-screen touch elements (an overlay). Reliable straight off the
+    // streaming loader (unlike isVirtualGamepad, which needs elements fully parsed). Used to split the
+    // profile pickers into the on-screen lane (OSC row) and the physical-controller lane.
+    public boolean hasOnScreenControls() {
+        return hasOnScreenControls;
+    }
+
+    void setHasOnScreenControls(boolean hasOnScreenControls) {
+        this.hasOnScreenControls = hasOnScreenControls;
     }
 
     void updateVirtualGamepad() {
@@ -517,6 +536,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         elementOrder.clear();
         elementsLoaded = false;
         virtualGamepad = false;
+        hasOnScreenControls = false;
 
         File file = getProfileFile(context, id);
         if (!file.isFile()) {
@@ -683,6 +703,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     }
 
                     if (!virtualGamepad && elementUsesGamepad) virtualGamepad = true;
+                    hasOnScreenControls = true; // at least one on-screen element parsed
                     element.setSourceJSONObject(elementJSONObject);
                     elements.add(element);
                     elementOrder.add(element);

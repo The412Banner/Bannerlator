@@ -360,9 +360,17 @@ object XServerDialogState {
     val playerSlots: StateFlow<List<PlayerSlotRow>> = _playerSlots
 
     // #345 FIX-4: (profileId, name) options for the per-controller profile picker in the Players tab.
+    // #345 two-lane split: controllerProfileOptions is the PHYSICAL lane (non-on-screen profiles), shown
+    // on physical-controller rows; onScreenProfileOptions is the on-screen lane (overlay profiles), shown
+    // on the on-screen-controls row. Keeping them separate stops a physical controller from being offered
+    // — and popping — a virtual-gamepad/on-screen overlay.
     private val _controllerProfileOptions = MutableStateFlow<List<Pair<Int, String>>>(emptyList())
     val controllerProfileOptions: StateFlow<List<Pair<Int, String>>> = _controllerProfileOptions
     fun setControllerProfileOptions(v: List<Pair<Int, String>>) { _controllerProfileOptions.value = v }
+
+    private val _onScreenProfileOptions = MutableStateFlow<List<Pair<Int, String>>>(emptyList())
+    val onScreenProfileOptions: StateFlow<List<Pair<Int, String>>> = _onScreenProfileOptions
+    fun setOnScreenProfileOptions(v: List<Pair<Int, String>>) { _onScreenProfileOptions.value = v }
 
     // Fired when the user assigns a profile to a device in the Players tab (descriptor, profileId; -1 = default).
     fun interface ControllerProfileCallback { fun invoke(descriptor: String, profileId: Int) }
@@ -858,6 +866,7 @@ object XServerDialogState {
         _vibrationIntensity.value = 100
         _playerSlots.value     = emptyList()
         _controllerProfileOptions.value = emptyList()
+        _onScreenProfileOptions.value = emptyList()
         _gyroSupported.value   = false
         _gyroOrientationSupported.value = false
         _gyroEnabled.value     = true

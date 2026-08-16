@@ -7,6 +7,7 @@ import com.winlator.star.container.Container;
 import com.winlator.star.contents.ContentProfile;
 import com.winlator.star.contents.ContentsManager;
 import com.winlator.star.core.EnvVars;
+import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.KeyValueSet;
 import com.winlator.star.core.StringUtils;
 import com.winlator.star.core.VKD3DVersionItem;
@@ -97,19 +98,36 @@ public class DXVKConfigDialog {
     /** One installed VEGAS package that ships a stock config file, probed on-device. */
     public static final class StockSource {
         public final String verName;
+        /** Release tag from the GitHub release (e.g. "v2.4.1-3137660"); null for pre-sidecar installs. */
+        public final String tag;
+        /** Real asset name from the release (e.g. "vegas-config-2.4.1-3137660.conf" or "dxvk.conf"); null pre-sidecar. */
+        public final String assetName;
         public final java.io.File file;
 
         public StockSource(String verName, java.io.File file) {
+            this(verName, null, null, file);
+        }
+
+        public StockSource(String verName, String tag, String assetName, java.io.File file) {
             this.verName = verName;
+            this.tag = tag;
+            this.assetName = assetName;
             this.file = file;
+        }
+
+        /** Dropdown label — disambiguates same-verName releases (v2.7.3-vegas vs v2.7.3-vegas-stable). */
+        public String displayLabel() {
+            return tag != null ? verName + " · " + tag : verName;
         }
     }
 
     /**
      * Stock config files shipped ALONGSIDE installed VEGAS WCP packages: the download
      * sheet fetches the release's .conf asset on the same tap as the .wcp and parks it
-     * at <contentDir>/VEGAS/configs/<verName>.conf (see VegasDownloadSheet). This probe
+     * at <contentDir>/VEGAS/configs/<verName>.conf, recording the real asset name and
+     * release tag in a .provenance.json sidecar (see VegasDownloadSheet). This probe
      * resolves those — it never looks inside a package, because the config is not in it.
+     * Legacy parked files (pre-sidecar) still resolve via the file-name probe alone.
      */
     public static List<StockSource> loadVegasStockSources(Context context, ContentsManager contentsManager) {
         List<StockSource> out = new ArrayList<>();
@@ -117,12 +135,36 @@ public class DXVKConfigDialog {
         if (profiles == null) return out;
         java.io.File confDir = new java.io.File(
                 ContentsManager.getContentTypeDir(context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS), "configs");
+        org.json.JSONObject sidecar = loadStockProvenance(confDir);
+        java.util.Set<String> seen = new java.util.HashSet<>();
         for (ContentProfile profile : profiles) {
             if (profile.verName == null) continue;
+            // verName is NOT unique across releases (community vs stable tags share it) — dedupe per profile.
+            if (!seen.add(profile.verName)) continue;
             java.io.File conf = new java.io.File(confDir, profile.verName + ".conf");
-            if (conf.isFile()) out.add(new StockSource(profile.verName, conf));
+            if (!conf.isFile()) continue;
+            String tag = null, assetName = null;
+            if (sidecar != null && sidecar.has(profile.verName)) {
+                org.json.JSONObject entry = sidecar.optJSONObject(profile.verName);
+                if (entry != null) {
+                    tag = entry.optString("tag", null);
+                    assetName = entry.optString("assetName", null);
+                }
+            }
+            out.add(new StockSource(profile.verName, tag, assetName, conf));
         }
         return out;
+    }
+
+    /** configs/.provenance.json — verName -> {tag, assetName, url, parkedAt} (written by VegasDownloadSheet). */
+    private static org.json.JSONObject loadStockProvenance(java.io.File confDir) {
+        try {
+            java.io.File f = new java.io.File(confDir, ".provenance.json");
+            if (!f.isFile()) return null;
+            return new org.json.JSONObject(FileUtils.readString(f));
+        } catch (Exception e) {
+            return null; // corrupt/unreadable sidecar -> legacy fallback, never crash the sheet
+        }
     }
 
     public static KeyValueSet parseConfig(Object config) {

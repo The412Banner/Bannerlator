@@ -1933,7 +1933,7 @@ internal fun DxvkConfigDialog(
                 if (stored.isEmpty()) {
                     useDefaults = true
                 } else if (stockMatch != null) {
-                    selectedStock = stockMatch.verName
+                    selectedStock = stockMatch.displayLabel()
                     selectedCustom = null
                     useDefaults = false
                 } else {
@@ -1976,7 +1976,9 @@ internal fun DxvkConfigDialog(
     val activeConfigPath = remember(useDefaults, selectedStock, selectedCustom, stockSources.value) {
         when {
             useDefaults -> ""
-            selectedStock != null -> stockSources.value.firstOrNull { it.verName == selectedStock }?.file?.absolutePath ?: ""
+            selectedStock != null -> stockSources.value.firstOrNull {
+                it.verName == selectedStock || it.displayLabel() == selectedStock
+            }?.file?.absolutePath ?: ""
             selectedCustom != null -> selectedCustom!!
             else -> ""
         }
@@ -2181,7 +2183,7 @@ internal fun DxvkConfigDialog(
                         Spacer(Modifier.height(4.dp))
                         LabeledDropdown(
                             "Stock config (per version)",
-                            stockSources.value.map { it.verName },
+                            stockSources.value.map { it.displayLabel() },
                             selectedStock ?: "",
                             { s -> selectedStock = s; selectedCustom = null; useDefaults = false },
                             modifier = Modifier.fillMaxWidth()

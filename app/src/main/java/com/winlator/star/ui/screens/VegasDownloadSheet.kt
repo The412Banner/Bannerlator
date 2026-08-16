@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -187,18 +188,40 @@ fun VegasDownloadSheet(
                                                         cm.syncContents()
                                                         // Config is shipped ALONGSIDE the wcp (same release asset),
                                                         // never inside it — fetch it on the same tap and park it at
-                                                        // <contentDir>/VEGAS/configs/<verName>.conf for the stock
-                                                        // config source to pick up.
+                                                        // <contentDir>/VEGAS/configs/. Record provenance (release
+                                                        // tag + real asset name) in the .provenance.json sidecar so
+                                                        // the stock prober never has to guess the asset shape.
                                                         val confUrl = release.configAssetUrl
                                                         val confName = profile?.verName
                                                         if (confUrl != null && confName != null) {
+                                                            val assetName = confUrl.substringAfterLast('/', confUrl)
                                                             scope.launch {
                                                                 withContext(Dispatchers.IO) {
                                                                     val vegasDir = ContentsManager.getContentTypeDir(
                                                                         context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
                                                                     val confDir = File(vegasDir, "configs")
                                                                     if (!confDir.exists()) confDir.mkdirs()
-                                                                    Downloader.downloadFile(confUrl, File(confDir, "$confName.conf"), null)
+                                                                    val parked = File(confDir, "$confName.conf")
+                                                                    if (Downloader.downloadFile(confUrl, parked, null)) {
+                                                                        recordStockProvenance(
+                                                                            confDir, confName,
+                                                                            release.tagName, assetName, confUrl,
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+                                                        } else if (confName != null) {
+                                                            // Release ships NO config asset (repo reality: 2 of 5 builds
+                                                            // none) — clear any stale parked config from an earlier tag of
+                                                            // the same verName so the prober never surfaces a baseline
+                                                            // that does not belong to the installed build.
+                                                            scope.launch {
+                                                                withContext(Dispatchers.IO) {
+                                                                    val vegasDir = ContentsManager.getContentTypeDir(
+                                                                        context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+                                                                    val confDir = File(vegasDir, "configs")
+                                                                    File(confDir, "$confName.conf").delete()
+                                                                    removeStockProvenance(confDir, confName)
                                                                 }
                                                             }
                                                         }
@@ -225,6 +248,47 @@ fun VegasDownloadSheet(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+/** configs/.provenance.json — verName -> {tag, assetName, url, parkedAt}. Written by the
+ *  downloader at park time so the stock prober (DXVKConfigDialog.loadVegasStockSources)
+ *  never has to guess the asset shape from the filename. */
+private fun provenanceFile(confDir: File): File = File(confDir, ".provenance.json")
+
+private fun recordStockProvenance(
+    confDir: File,
+    verName: String,
+    tag: String,
+    assetName: String,
+    url: String,
+) {
+    try {
+        val f = provenanceFile(confDir)
+        val obj = if (f.exists()) JSONObject(f.readText()) else JSONObject()
+        obj.put(
+            verName,
+            JSONObject()
+                .put("tag", tag)
+                .put("assetName", assetName)
+                .put("url", url)
+                .put("parkedAt", System.currentTimeMillis()),
+        )
+        f.writeText(obj.toString())
+    } catch (e: Exception) {
+        // sidecar is best-effort; the parked file itself remains valid
+    }
+}
+
+private fun removeStockProvenance(confDir: File, verName: String) {
+    try {
+        val f = provenanceFile(confDir)
+        if (!f.exists()) return
+        val obj = JSONObject(f.readText())
+        obj.remove(verName)
+        if (obj.length() == 0) f.delete() else f.writeText(obj.toString())
+    } catch (e: Exception) {
+        // best-effort cleanup only
+    }
 }
 
 /** Download a .wcp file to cache dir and return a content:// URI. */

@@ -72,6 +72,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -114,34 +117,78 @@ import com.winlator.star.util.InAppFilePicker
 private val InstalledGreen = Color(0xFF37C26B)
 private val SavedBlue = Color(0xFF3D9BFF)
 
-private enum class HubTab(val label: String) { DOWNLOAD("Download Components"), MY_FILES("My Files"), INSTALLED("Installed") }
+private enum class HubTab(val label: String, val railLabel: String) {
+    DOWNLOAD("Download Components", "Download"),
+    MY_FILES("My Files", "My Files"),
+    INSTALLED("Installed", "Installed"),
+}
+
+private fun tabIcon(t: HubTab): ImageVector = when (t) {
+    HubTab.DOWNLOAD -> Icons.Filled.Download
+    HubTab.MY_FILES -> Icons.Filled.Folder
+    HubTab.INSTALLED -> Icons.Filled.CheckCircle
+}
 
 @Composable
 fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel()) {
     val cs = MaterialTheme.colorScheme
     var tab by remember { mutableStateOf(HubTab.DOWNLOAD) }
 
-    Column(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        TabRow(
-            selectedTabIndex = tab.ordinal,
-            containerColor = cs.background,
-            contentColor = cs.primary,
-        ) {
-            HubTab.values().forEach { t ->
-                Tab(
-                    selected = tab == t,
-                    onClick = { tab = t },
-                    text = { Text(t.label, fontWeight = FontWeight.Bold) },
-                    selectedContentColor = cs.primary,
-                    unselectedContentColor = cs.onSurfaceVariant,
-                )
+    // Same wide/narrow signal the Download tab uses for master–detail governs the tab chrome:
+    // narrow → top TabRow; wide → a left vertical NavigationRail, content filling the rest
+    // (so landscape reads rail · repo-list · detail).
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(cs.background)) {
+        val wide = maxWidth >= 760.dp
+        if (wide) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                NavigationRail(containerColor = cs.background) {
+                    HubTab.values().forEach { t ->
+                        NavigationRailItem(
+                            selected = tab == t,
+                            onClick = { tab = t },
+                            icon = { Icon(tabIcon(t), contentDescription = null) },
+                            label = { Text(t.railLabel, fontWeight = FontWeight.Bold, maxLines = 1) },
+                            colors = NavigationRailItemDefaults.colors(
+                                selectedIconColor = cs.primary,
+                                selectedTextColor = cs.primary,
+                                indicatorColor = cs.primary.copy(alpha = 0.16f),
+                                unselectedIconColor = cs.onSurfaceVariant,
+                                unselectedTextColor = cs.onSurfaceVariant,
+                            ),
+                        )
+                    }
+                }
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { HubTabContent(vm, tab) }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                TabRow(
+                    selectedTabIndex = tab.ordinal,
+                    containerColor = cs.background,
+                    contentColor = cs.primary,
+                ) {
+                    HubTab.values().forEach { t ->
+                        Tab(
+                            selected = tab == t,
+                            onClick = { tab = t },
+                            text = { Text(t.label, fontWeight = FontWeight.Bold) },
+                            selectedContentColor = cs.primary,
+                            unselectedContentColor = cs.onSurfaceVariant,
+                        )
+                    }
+                }
+                HubTabContent(vm, tab)
             }
         }
-        when (tab) {
-            HubTab.DOWNLOAD -> DownloadTab(vm)
-            HubTab.MY_FILES -> MyFilesTab(vm)
-            HubTab.INSTALLED -> InstalledTab(vm)
-        }
+    }
+}
+
+@Composable
+private fun HubTabContent(vm: ContentsHubViewModel, tab: HubTab) {
+    when (tab) {
+        HubTab.DOWNLOAD -> DownloadTab(vm)
+        HubTab.MY_FILES -> MyFilesTab(vm)
+        HubTab.INSTALLED -> InstalledTab(vm)
     }
 }
 

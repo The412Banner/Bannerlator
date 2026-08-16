@@ -99,6 +99,8 @@ import com.winlator.star.contents.ContentProfile
 import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
 import com.winlator.star.store.download.ContentDownloadState
+import com.winlator.star.ui.screens.adrenodownload.DriverFeed
+import com.winlator.star.ui.screens.adrenodownload.DriverSourceStore
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.outlinedMenuCard
@@ -147,7 +149,7 @@ private fun DownloadTab(vm: ContentsHubViewModel) {
     var showImport by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showLocation by remember { mutableStateOf(false) }
-    var menuFor by remember { mutableStateOf<RemoteSourceRepository.RemoteSource?>(null) }
+    var menuFor by remember { mutableStateOf<HubSource?>(null) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val wide = maxWidth >= 760.dp
@@ -175,7 +177,7 @@ private fun DownloadTab(vm: ContentsHubViewModel) {
         }
     }
 
-    if (showAdd) AddRepoDialog(onDismiss = { showAdd = false }, onAdd = { vm.addSource(it); showAdd = false })
+    if (showAdd) AddRepoDialog(vm, onDismiss = { showAdd = false })
     if (showImport) ImportExportDialog(vm, onDismiss = { showImport = false })
     if (showSettings) SettingsDialog(vm,
         onDismiss = { showSettings = false },
@@ -187,13 +189,13 @@ private fun DownloadTab(vm: ContentsHubViewModel) {
 @Composable
 private fun SourceListPane(
     vm: ContentsHubViewModel,
-    sources: List<RemoteSourceRepository.RemoteSource>,
+    sources: List<HubSource>,
     query: String,
-    selected: RemoteSourceRepository.RemoteSource?,
+    selected: HubSource?,
     onAdd: () -> Unit,
     onImport: () -> Unit,
     onSettings: () -> Unit,
-    onMenu: (RemoteSourceRepository.RemoteSource) -> Unit,
+    onMenu: (HubSource) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val searchResults by vm.searchResults.collectAsState()
@@ -231,8 +233,8 @@ private fun SourceListPane(
             }
             Spacer(Modifier.height(6.dp))
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(sources, key = { i, s -> "$i-${s.name}-${s.url}" }) { _, source ->
-                    RepoCard(source, isSelected = selected?.name == source.name,
+                itemsIndexed(sources, key = { i, s -> "$i-${s.name}-${s.driverOnly}" }) { _, source ->
+                    RepoCard(source, isSelected = selected == source,
                         onClick = { vm.selectSource(source) }, onMenu = { onMenu(source) })
                     Spacer(Modifier.height(10.dp))
                 }
@@ -263,14 +265,14 @@ private fun SourceListPane(
 
 @Composable
 private fun RepoCard(
-    source: RemoteSourceRepository.RemoteSource,
+    source: HubSource,
     isSelected: Boolean,
     onClick: () -> Unit,
     onMenu: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val driverOnly = source.supportedTypes.size == 1 &&
-        ContentsTypes.isDriver(source.supportedTypes.first())
+    val driverOnly = source.driverOnly
+    val pills = source.typePills
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -286,14 +288,14 @@ private fun RepoCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(source.name, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
-            Text(source.format.name.replace('_', ' '), style = MaterialTheme.typography.bodySmall,
+            Text(source.displayFormat, style = MaterialTheme.typography.bodySmall,
                 color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (source.supportedTypes.isNotEmpty()) {
+            if (pills.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp),
                     modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    source.supportedTypes.take(4).forEach { TypePill(it) }
-                    if (source.supportedTypes.size > 4) TypePill("+${source.supportedTypes.size - 4}")
+                    pills.take(4).forEach { TypePill(it) }
+                    if (pills.size > 4) TypePill("+${pills.size - 4}")
                 }
             }
         }
@@ -341,7 +343,7 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
     val loading by vm.detailLoading.collectAsState()
     val keepRaw by vm.keepRaw.collectAsState()
     val src = source ?: return
-    var filter by remember(src.name) { mutableStateOf("All") }
+    var filter by remember(src) { mutableStateOf("All") }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
         Spacer(Modifier.height(10.dp))
@@ -352,7 +354,7 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(src.name, style = MaterialTheme.typography.titleMedium, color = cs.onSurface,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
-                Text("${src.format.name.replace('_', ' ')} · ${items.size} components",
+                Text("${src.displayFormat} · ${items.size} ${if (src.driverOnly) "drivers" else "components"}",
                     style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
             IconButton(onClick = { vm.refreshSelected() }) { Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary) }
@@ -695,10 +697,11 @@ private fun typeIcon(type: String): ImageVector = when {
 
 // ── Dialogs ────────────────────────────────────────────────────────────────────
 @Composable
-private fun AddRepoDialog(onDismiss: () -> Unit, onAdd: (RemoteSourceRepository.RemoteSource) -> Unit) {
+private fun AddRepoDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
+    var isDriver by remember { mutableStateOf(false) }
     var format by remember { mutableStateOf(RemoteSourceRepository.SourceFormat.WCP_JSON) }
     var formatMenu by remember { mutableStateOf(false) }
 
@@ -715,16 +718,30 @@ private fun AddRepoDialog(onDismiss: () -> Unit, onAdd: (RemoteSourceRepository.
                     label = { Text("Display name") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(value = url, onValueChange = { url = it }, singleLine = true,
-                    label = { Text("URL (repo, releases API, or JSON)") }, modifier = Modifier.fillMaxWidth())
+                    label = { Text(if (isDriver) "GitHub repo (owner/repo) or JSON URL" else "URL (repo, releases API, or JSON)") },
+                    modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                Text("Source format", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
-                Box {
-                    TextButton(onClick = { formatMenu = true }) { Text(format.name.replace('_', ' '), color = cs.primary) }
-                    androidx.compose.material3.DropdownMenu(expanded = formatMenu, onDismissRequest = { formatMenu = false },
-                        modifier = Modifier.outlinedMenuCard()) {
-                        RemoteSourceRepository.SourceFormat.values().forEach { fmt ->
-                            androidx.compose.material3.DropdownMenuItem(text = { Text(fmt.name.replace('_', ' ')) },
-                                onClick = { format = fmt; formatMenu = false })
+                // GPU-driver sources persist through the shared adrenotools store (also visible in
+                // the AdrenoTools screen); component sources use the Contents source store.
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("GPU driver source", style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
+                        Text("Shared with the AdrenoTools screen", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                    }
+                    Switch(checked = isDriver, onCheckedChange = { isDriver = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = cs.primary))
+                }
+                if (!isDriver) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Source format", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                    Box {
+                        TextButton(onClick = { formatMenu = true }) { Text(format.name.replace('_', ' '), color = cs.primary) }
+                        androidx.compose.material3.DropdownMenu(expanded = formatMenu, onDismissRequest = { formatMenu = false },
+                            modifier = Modifier.outlinedMenuCard()) {
+                            RemoteSourceRepository.SourceFormat.values().forEach { fmt ->
+                                androidx.compose.material3.DropdownMenuItem(text = { Text(fmt.name.replace('_', ' ')) },
+                                    onClick = { format = fmt; formatMenu = false })
+                            }
                         }
                     }
                 }
@@ -732,10 +749,16 @@ private fun AddRepoDialog(onDismiss: () -> Unit, onAdd: (RemoteSourceRepository.
         },
         confirmButton = {
             TextButton(onClick = {
-                if (name.isNotBlank() && url.isNotBlank()) {
-                    onAdd(RemoteSourceRepository.RemoteSource(
-                        name = name.trim(), url = url.trim(), format = format,
-                        supportedTypes = emptyList(), isCustom = true))
+                val n = name.trim(); val u = url.trim()
+                if (n.isNotBlank() && u.isNotBlank()) {
+                    if (isDriver) {
+                        val feed = driverFeedFor(u)
+                        vm.addDriverSource(n, feed)
+                    } else {
+                        vm.addComponentSource(RemoteSourceRepository.RemoteSource(
+                            name = n, url = u, format = format, supportedTypes = emptyList(), isCustom = true))
+                    }
+                    onDismiss()
                 }
             }) { Text("Add source", color = cs.primary) }
         },
@@ -743,9 +766,20 @@ private fun AddRepoDialog(onDismiss: () -> Unit, onAdd: (RemoteSourceRepository.
     )
 }
 
+/** JSON feeds (.json / raw github) stay JSON; anything that parses as owner/repo becomes a releases feed. */
+private fun driverFeedFor(url: String): DriverFeed {
+    val looksJson = url.endsWith(".json", true) || url.contains("raw.githubusercontent.com", true)
+    if (!looksJson) {
+        DriverSourceStore.parseGithubRepo(url, "")?.let { (owner, repo) ->
+            return DriverFeed.GithubReleases(owner, repo)
+        }
+    }
+    return DriverFeed.Json(url)
+}
+
 @Composable
 private fun RepoMenuDialog(
-    vm: ContentsHubViewModel, source: RemoteSourceRepository.RemoteSource, onDismiss: () -> Unit,
+    vm: ContentsHubViewModel, source: HubSource, onDismiss: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -755,14 +789,14 @@ private fun RepoMenuDialog(
         title = { Text(source.name, color = cs.onSurface) },
         text = {
             Column {
-                MenuRow(Icons.Filled.Apps, "Browse components") { onDismiss(); vm.selectSource(source) }
+                MenuRow(Icons.Filled.Apps, if (source.driverOnly) "Browse drivers" else "Browse components") { onDismiss(); vm.selectSource(source) }
                 MenuItemDivider()
                 MenuRow(Icons.Filled.OpenInNew, "Open source page") {
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(vm.browseUrl(source)))) }
                     onDismiss()
                 }
                 MenuItemDivider()
-                MenuRow(Icons.Filled.Delete, if (source.isCustom) "Remove repository" else "Hide default repository",
+                MenuRow(Icons.Filled.Delete, if (source.removeIsHide) "Hide default repository" else "Remove repository",
                     tint = cs.error) { vm.removeSource(source); onDismiss() }
             }
         },

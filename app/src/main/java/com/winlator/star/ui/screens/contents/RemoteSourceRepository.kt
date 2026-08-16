@@ -239,24 +239,23 @@ class RemoteSourceRepository(private val context: Context) {
         PACK_JSON                    // Flat [{type, verName, remoteUrl}] — Arihany pack.json / Nightlies relay files
     }
 
-    // Default built-in sources mapped strictly to the components they provide
+    // Default built-in COMPONENT sources. GPU-driver repos are NOT listed here — they come
+    // exclusively from the shared adrenotools registry (DriverSources / DriverSourceStore), so a
+    // driver source is never double-listed and edits to it apply to both the Contents and
+    // AdrenoTools screens.
     private val defaultSources = listOf(
         RemoteSource(
             name = "StevenMXZ",
             url = "https://raw.githubusercontent.com/StevenMXZ/Winlator-Contents/main/contents.json",
             format = SourceFormat.WCP_JSON,
-            supportedTypes = listOf("dxvk", "vkd3d", "box64", "fex", "fexcore", "wine", "proton", "GPU Drivers"),
-            extraEndpoints = listOf(ExtraEndpoint("https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/stevenmxz_drivers.json", SourceFormat.PACK_JSON, listOf("GPU Drivers")))
+            supportedTypes = listOf("dxvk", "vkd3d", "box64", "fex", "fexcore", "wine", "proton")
         ),
         RemoteSource(
             name = "Arihany WCPHub",
             url = "https://raw.githubusercontent.com/Arihany/WinlatorWCPHub/refs/heads/main/pack.json",
             format = SourceFormat.PACK_JSON,
-            supportedTypes = listOf("dxvk", "vkd3d", "box64", "fex", "fexcore", "wine", "proton", "GPU Drivers")
+            supportedTypes = listOf("dxvk", "vkd3d", "box64", "fex", "fexcore", "wine", "proton")
         ),
-        RemoteSource("AdrenoToolsDrivers (K11MCH1)", "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/kimchi_drivers.json", SourceFormat.PACK_JSON, listOf("GPU Drivers")),
-        RemoteSource("freedreno Turnip CI (whitebelyash)", "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/white_drivers.json", SourceFormat.PACK_JSON, listOf("GPU Drivers")),
-        RemoteSource("MaxesTechReview (MTR)", "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/mtr_drivers.json", SourceFormat.PACK_JSON, listOf("GPU Drivers")),
         RemoteSource("Nightlies by The412Banner", "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/nightlies_components.json", SourceFormat.PACK_JSON, listOf("DXVK", "VKD3D", "FEXCore", "Box64", "WOWBox64")),
     )
 

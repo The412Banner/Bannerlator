@@ -1,12 +1,16 @@
 package com.winlator.star.ui.screens.contents
 
 import android.app.Application
-import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
+import com.winlator.star.ui.screens.adrenodownload.DriverFeed
+import com.winlator.star.ui.screens.adrenodownload.DriverSourceStore
+import com.winlator.star.ui.screens.adrenodownload.DriverSources
+import com.winlator.star.ui.screens.adrenodownload.RemoteDriverRepository
+import com.winlator.star.ui.screens.adrenodownload.RemoteDriverSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,13 +19,48 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
+ * One row in the Contents source list. Component sources (DXVK/VKD3D/…) are backed by
+ * [RemoteSourceRepository]; GPU-driver sources are backed by the SAME adrenotools registry the
+ * AdrenoTools screen uses ([DriverSources]/[DriverSourceStore]), so the two screens list — and
+ * share edits to — the same driver repos. Wrapping both in a sealed type disambiguates same-named
+ * sources (e.g. the component "StevenMXZ" vs the driver "StevenMXZ").
+ */
+sealed interface HubSource {
+    val name: String
+    val displayFormat: String
+    val typePills: List<String>
+    val driverOnly: Boolean
+    /** true → the remove action is "Hide default"; false → "Remove". */
+    val removeIsHide: Boolean
+
+    data class Component(val source: RemoteSourceRepository.RemoteSource) : HubSource {
+        override val name get() = source.name
+        override val displayFormat get() = source.format.name.replace('_', ' ')
+        override val typePills get() = source.supportedTypes
+        override val driverOnly get() = false
+        override val removeIsHide get() = !source.isCustom
+    }
+
+    data class Driver(val source: RemoteDriverSource) : HubSource {
+        override val name get() = source.name
+        override val displayFormat get() = "GPU driver source"
+        override val typePills get() = listOf(ContentsTypes.GPU_DRIVERS)
+        override val driverOnly get() = true
+        override val removeIsHide get() = source.builtIn
+    }
+}
+
+/**
  * Drives the Contents hub: the source list, per-source catalogs, cross-source search, the
  * keep-raw toggle, the My Files library, and installed/saved status for badges.
  */
 class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = RemoteSourceRepository(app)
+    private val driverRepo = RemoteDriverRepository(app)
     val library = ComponentLibrary(app)
+
+    private val appCtx: Application get() = getApplication()
 
     data class CatalogItem(
         val type: String,
@@ -38,14 +77,14 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
                 .ifBlank { "${versionName.replace(Regex("[^A-Za-z0-9._-]"), "_")}.wcp" }
     }
 
-    private val _sources = MutableStateFlow<List<RemoteSourceRepository.RemoteSource>>(emptyList())
-    val sources: StateFlow<List<RemoteSourceRepository.RemoteSource>> = _sources.asStateFlow()
+    private val _sources = MutableStateFlow<List<HubSource>>(emptyList())
+    val sources: StateFlow<List<HubSource>> = _sources.asStateFlow()
 
     private val _keepRaw = MutableStateFlow(library.keepRaw())
     val keepRaw: StateFlow<Boolean> = _keepRaw.asStateFlow()
 
-    private val _selected = MutableStateFlow<RemoteSourceRepository.RemoteSource?>(null)
-    val selected: StateFlow<RemoteSourceRepository.RemoteSource?> = _selected.asStateFlow()
+    private val _selected = MutableStateFlow<HubSource?>(null)
+    val selected: StateFlow<HubSource?> = _selected.asStateFlow()
 
     private val _detailTypes = MutableStateFlow<List<String>>(emptyList())
     val detailTypes: StateFlow<List<String>> = _detailTypes.asStateFlow()
@@ -79,6 +118,9 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
     private val _baseDisplay = MutableStateFlow(library.baseDisplay())
     val baseDisplay: StateFlow<String> = _baseDisplay.asStateFlow()
 
+    // Lazily-fetched driver entries for cross-source search (drivers aren't in the component cache).
+    private var driverSearchCache: List<CatalogItem>? = null
+
     init {
         reloadSources()
         refreshStatus()
@@ -87,7 +129,10 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Sources ─────────────────────────────────────────────────────────────────
     fun reloadSources() {
-        _sources.value = repo.getAllSources()
+        // Component sources first, then the shared GPU-driver registry (same list AdrenoTools shows).
+        _sources.value = repo.getAllSources().map { HubSource.Component(it) } +
+            DriverSources.allSources(appCtx).map { HubSource.Driver(it) }
+        driverSearchCache = null
     }
 
     fun refreshBase() {
@@ -101,7 +146,7 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ── Selection + per-source catalog ──────────────────────────────────────────
-    fun selectSource(source: RemoteSourceRepository.RemoteSource?) {
+    fun selectSource(source: HubSource?) {
         _selected.value = source
         if (source == null) {
             _detailTypes.value = emptyList()
@@ -113,31 +158,53 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshSelected() {
         RemoteSourceRepository.clearCache()
+        driverSearchCache = null
         _selected.value?.let { loadDetail(it) }
     }
 
-    private fun loadDetail(source: RemoteSourceRepository.RemoteSource) {
+    private fun loadDetail(source: HubSource) {
         _detailLoading.value = true
         _detailItems.value = emptyList()
         _detailTypes.value = emptyList()
         viewModelScope.launch {
-            val types = withContext(Dispatchers.IO) { resolveTypes(source) }
-            _detailTypes.value = types
-            val items = withContext(Dispatchers.IO) {
-                types.flatMap { type ->
-                    runCatching { repo.fetchFromSource(source, type) }.getOrDefault(emptyList())
-                        .map { it.toCatalog(type) }
+            val (types, items) = withContext(Dispatchers.IO) {
+                when (source) {
+                    is HubSource.Component -> {
+                        val ts = resolveTypes(source.source)
+                        val its = ts.flatMap { type ->
+                            runCatching { repo.fetchFromSource(source.source, type) }.getOrDefault(emptyList())
+                                .map { it.toCatalog(type) }
+                        }
+                        ts to its
+                    }
+                    is HubSource.Driver -> {
+                        val its = runCatching { driverRepo.fetchEntries(source.source).getOrDefault(emptyList()) }
+                            .getOrDefault(emptyList())
+                            .map { entry ->
+                                CatalogItem(
+                                    type = ContentsTypes.GPU_DRIVERS,
+                                    displayName = entry.displayName,
+                                    versionName = entry.displayName,
+                                    downloadUrl = entry.downloadUrl,
+                                    sourceName = source.source.name,
+                                    publishedAt = null,
+                                    sizeBytes = null,
+                                )
+                            }
+                        listOf(ContentsTypes.GPU_DRIVERS) to its
+                    }
                 }
             }
-            // Community catalogs (and the loose contains-matching across type buckets) can list the
-            // same asset twice; dedupe by download URL so a duplicate never reaches the LazyColumn.
+            _detailTypes.value = types
+            // Dedupe by download URL: community catalogs (and loose contains-matching) can list a
+            // single asset twice, which would crash the LazyColumn on a duplicate key.
             _detailItems.value = items.distinctBy { it.downloadUrl }
             _detailLoading.value = false
             refreshStatus()
         }
     }
 
-    /** Display-canonical, de-duplicated type list for a source (GPU keywords collapsed). */
+    /** Display-canonical, de-duplicated type list for a component source (GPU keywords collapsed). */
     private suspend fun resolveTypes(source: RemoteSourceRepository.RemoteSource): List<String> {
         val raw = if (source.supportedTypes.isNotEmpty()) source.supportedTypes
         else runCatching { repo.discoverTypes(source) }.getOrDefault(ContentsTypes.ALL)
@@ -165,7 +232,7 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
         sizeBytes = sizeBytes,
     )
 
-    // ── Cross-source search ─────────────────────────────────────────────────────
+    // ── Cross-source search (components + shared driver registry) ────────────────
     fun setQuery(q: String) {
         _query.value = q
         if (q.isBlank()) {
@@ -176,15 +243,35 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val results = withContext(Dispatchers.IO) {
                 if (!RemoteSourceRepository.hasCache()) {
-                    runCatching { repo.refreshAllCache(_sources.value, ContentsTypes.ALL) }
+                    val compTypes = ContentsTypes.ALL.filter { !ContentsTypes.isDriver(it) }
+                    runCatching { repo.refreshAllCache(repo.getAllSources(), compTypes) }
                 }
-                RemoteSourceRepository.searchCache(q).map { it.item.toCatalog(canonicalType(it.componentType)) }
-                    .distinctBy { it.downloadUrl }
+                val comp = RemoteSourceRepository.searchCache(q)
+                    .map { it.item.toCatalog(canonicalType(it.componentType)) }
+                val tokens = q.lowercase().trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+                val drv = driverEntriesForSearch().filter { item ->
+                    val hay = "${item.displayName} ${ContentsTypes.GPU_DRIVERS} ${item.sourceName}".lowercase()
+                    tokens.all { hay.contains(it) }
+                }
+                (comp + drv).distinctBy { it.downloadUrl }
             }
             _searchResults.value = results
             _searching.value = false
             refreshStatus()
         }
+    }
+
+    private suspend fun driverEntriesForSearch(): List<CatalogItem> {
+        driverSearchCache?.let { return it }
+        val list = DriverSources.allSources(appCtx).flatMap { s ->
+            runCatching { driverRepo.fetchEntries(s).getOrDefault(emptyList()) }.getOrDefault(emptyList())
+                .map { entry ->
+                    CatalogItem(ContentsTypes.GPU_DRIVERS, entry.displayName, entry.displayName,
+                        entry.downloadUrl, s.name, null, null)
+                }
+        }.distinctBy { it.downloadUrl }
+        driverSearchCache = list
+        return list
     }
 
     // ── Status (installed / saved) ──────────────────────────────────────────────
@@ -255,19 +342,35 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ── Source management ───────────────────────────────────────────────────────
-    fun addSource(source: RemoteSourceRepository.RemoteSource) {
+    /** Adds a component source (Contents store). */
+    fun addComponentSource(source: RemoteSourceRepository.RemoteSource) {
         repo.addCustomSource(source)
         reloadSources()
     }
 
-    fun removeSource(source: RemoteSourceRepository.RemoteSource) {
-        repo.removeSource(source)
-        if (_selected.value?.name == source.name) selectSource(null)
+    /** Adds a GPU-driver source through the SHARED adrenotools store (also visible in AdrenoTools). */
+    fun addDriverSource(name: String, feed: DriverFeed) {
+        DriverSourceStore(appCtx).addCustom(name, feed)
+        reloadSources()
+    }
+
+    fun removeSource(source: HubSource) {
+        when (source) {
+            is HubSource.Component -> repo.removeSource(source.source)
+            is HubSource.Driver -> {
+                val store = DriverSourceStore(appCtx)
+                if (source.source.builtIn) store.setBuiltInEnabled(source.source.name, false)
+                else store.removeCustom(source.source.name)
+            }
+        }
+        if (_selected.value == source) selectSource(null)
         reloadSources()
     }
 
     fun restoreDefaultSources() {
         repo.restoreDefaultSources()
+        val store = DriverSourceStore(appCtx)
+        DriverSources.BUILT_IN.forEach { store.setBuiltInEnabled(it.name, true) }
         reloadSources()
     }
 
@@ -279,5 +382,18 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
         true
     }.getOrDefault(false)
 
-    fun browseUrl(source: RemoteSourceRepository.RemoteSource): String = repo.getBrowseUrl(source)
+    /** Human browse URL for the source's "Open source page" menu action. */
+    fun browseUrl(source: HubSource): String = when (source) {
+        is HubSource.Component -> repo.getBrowseUrl(source.source)
+        is HubSource.Driver -> when (val f = source.source.feeds.firstOrNull()) {
+            is DriverFeed.GithubReleases -> "https://github.com/${f.owner}/${f.repo}"
+            is DriverFeed.Json -> f.url.let { url ->
+                if (url.contains("raw.githubusercontent.com/")) {
+                    val parts = url.substringAfter("raw.githubusercontent.com/").split("/")
+                    if (parts.size >= 2) "https://github.com/${parts[0]}/${parts[1]}" else url
+                } else url
+            }
+            null -> ""
+        }
+    }
 }

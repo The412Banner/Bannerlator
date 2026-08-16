@@ -142,6 +142,92 @@ public final class VegasKeyKnowledge {
         return Arrays.asList("dxvk.enableStarProfile = Auto", "vegas.enableUpscaler = Auto");
     }
 
+    /** One parsed line of a config file, classified against a selected version. */
+    public static final class KeyRow {
+        public final String key;
+        public final String value;
+        public final State state;
+
+        KeyRow(String key, String value, State state) {
+            this.key = key;
+            this.value = value;
+            this.state = state;
+        }
+    }
+
+    /**
+     * Parses config-file text ("key = value" lines, '#' comments, blank lines
+     * skipped) and classifies each key against the selected version. Pure text
+     * snapshot in, rows out — safe for UI previews; never re-reads the file.
+     */
+    public List<KeyRow> preview(String configText, String version) {
+        if (configText == null) return new ArrayList<>();
+        List<KeyRow> rows = new ArrayList<>();
+        for (String raw : configText.split("\n")) {
+            String line = raw.trim();
+            if (line.isEmpty() || line.startsWith("#") || line.startsWith(";")) continue;
+            int eq = line.indexOf('=');
+            if (eq <= 0) continue;
+            String key = line.substring(0, eq).trim();
+            if (key.isEmpty()) continue;
+            String value = line.substring(eq + 1).trim();
+            rows.add(new KeyRow(key, value, stateFor(key, version)));
+        }
+        return rows;
+    }
+
+    /**
+     * Fallback when no knowledge payload loaded (asset missing/schema rejected):
+     * parses the same config text but marks every key UNKNOWN, so the preview
+     * list still renders honestly — nothing claimed, nothing hidden.
+     */
+    public static List<KeyRow> previewUnclassified(String configText) {
+        if (configText == null) return new ArrayList<>();
+        List<KeyRow> rows = new ArrayList<>();
+        for (String raw : configText.split("\n")) {
+            String line = raw.trim();
+            if (line.isEmpty() || line.startsWith("#") || line.startsWith(";")) continue;
+            int eq = line.indexOf('=');
+            if (eq <= 0) continue;
+            String key = line.substring(0, eq).trim();
+            if (key.isEmpty()) continue;
+            rows.add(new KeyRow(key, line.substring(eq + 1).trim(), State.UNKNOWN));
+        }
+        return rows;
+    }
+
+    /**
+     * Human label for a key against a version — the badge text shown beside a
+     * preview row. Matches the locked UI wording; caller appends the value.
+     */
+    public String badgeFor(String key, String version) {
+        if (key == null) return "?";
+        if (vanilla.containsKey(key)) return "vanilla DXVK · every version";
+        State st = stateFor(key, version);
+        switch (st) {
+            case OK:
+                if (!key.startsWith("vegas.") && !key.startsWith("dxvk.")) return "[other] · always applies";
+                return "fork · applies to v" + version;
+            case LATE:
+                return "needs " + released.get(introduced.get(key)) + "+";
+            case REMOVED:
+                return "removed in " + released.get(removed.get(key));
+            case UNLISTED:
+                return "not in v" + version + " notes — DXVK still reads it";
+            case UNKNOWN:
+                return "? unknown for v" + version;
+            default:
+                return st.name();
+        }
+    }
+
+    /** True when this key's availability is gated by the selected version (fork-only surface). */
+    public boolean isGated(String key, String version) {
+        if (key == null) return false;
+        State st = stateFor(key, version);
+        return st == State.LATE || st == State.REMOVED;
+    }
+
     // ---------------------------------------------------------------- loading
 
     private static void validateTopLevel(Map<String, Object> root) {

@@ -3,49 +3,37 @@ package com.winlator.star.ui.screens
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.view.ContextThemeWrapper
+import android.os.Environment
+import android.provider.DocumentsContract
 import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Widgets
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -61,21 +49,14 @@ import com.winlator.star.contentdialog.WineD3DConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
-import com.winlator.star.contents.WrapperManager
-import com.winlator.star.contents.WrapperSettingsDictionary
 import com.winlator.star.core.AppUtils
 import com.winlator.star.core.DefaultVersion
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GPUInformation
 import com.winlator.star.core.ImageUtils
 import com.winlator.star.util.InAppFilePicker
-import java.io.File
 import com.winlator.star.core.StringUtils
-import com.winlator.star.ui.components.AudioSettingsDialog
-import com.winlator.star.ui.components.audioConfigFromEnv
-import com.winlator.star.ui.components.audioConfigToEnv
 import com.winlator.star.core.WineThemeManager
-import com.winlator.star.core.WineUtils
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.lazy.items
@@ -86,18 +67,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.util.concurrent.Executors
 import com.winlator.star.container.Container
-import com.winlator.star.widget.perfhud.parseHudOutline
-import com.winlator.star.widget.exportHudDiagnostics
 import com.winlator.star.widget.ColorPickerView
 import com.winlator.star.widget.CPUListView
-import com.winlator.star.ui.components.CollapsibleRail
-import com.winlator.star.ui.components.ContainerGlossarySheet
-import com.winlator.star.ui.components.EnvVarsEditor
-import com.winlator.star.ui.components.PlayerSlotsEditor
-import com.winlator.star.ui.components.RailItem
-import com.winlator.star.ui.components.RailLink
-import com.winlator.star.ui.components.RailSection
-import com.winlator.star.ui.components.rememberRailState
+import com.winlator.star.widget.EnvVarsView
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
@@ -118,46 +90,35 @@ fun ContainerDetailScreen(
     var showBox64DownloadSheet   by remember { mutableStateOf(false) }
     var showFexCoreDownloadSheet by remember { mutableStateOf(false) }
     var showDxvkDownloadSheet    by remember { mutableStateOf(false) }
-    // null = hidden; "" = glossary open unfiltered (the button); "term" = open at a field's term.
-    var glossaryQuery            by remember { mutableStateOf<String?>(null) }
     var showVegasDownloadSheet   by remember { mutableStateOf(false) }
     var showVkd3dDownloadSheet   by remember { mutableStateOf(false) }
-    var showD7vkDownloadSheet    by remember { mutableStateOf(false) }
     var showVulkanConfig          by remember { mutableStateOf(false) }
     // Bumped after a DXVK/VKD3D/Vegas download so the open DxvkConfigDialog re-reads its version lists.
     var dxvkRefreshKey           by remember { mutableStateOf(0) }
 
     // AndroidView references for custom views
+    val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
     val cpuListViewRef      = remember { mutableStateOf<CPUListView?>(null)      }
     val cpuListWoW64Ref     = remember { mutableStateOf<CPUListView?>(null)      }
     val colorPickerViewRef  = remember { mutableStateOf<ColorPickerView?>(null)  }
 
-    // DRIVES is per-container (letters map to real paths), so it's dropped in "New Container Defaults"
-    // mode. Content is dispatched by TITLE below (not raw index) so removing a tab never misaligns.
-    val tabTitles = if (viewModel.defaultsMode)
-        listOf("GENERAL", "ENVIROMENT", "WIN COMPONENTS", "ADVANCED")
-    else
-        listOf("GENERAL", "ENVIROMENT", "DRIVES", "WIN COMPONENTS", "ADVANCED")
+    val tabTitles = listOf(
+        "GENERAL",
+        "ENVIROMENT",
+        "DRIVES",
+        "WIN COMPONENTS",
+        "ADVANCED"
+    )
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    val duplicates = viewModel.duplicateDriveLetters
-                    if (duplicates.isNotEmpty()) {
-                        // Saving would write two drives onto one letter; send the user to the tab.
-                        viewModel.selectedTab = tabTitles.indexOf("DRIVES")
-                        Toast.makeText(
-                            context,
-                            "Two drives share " + duplicates.sorted().joinToString(", ") { "$it:" } +
-                                " — give each drive its own letter",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    } else if (!viewModel.isSaving) viewModel.confirm(
+                    if (!viewModel.isSaving) viewModel.confirm(
                         resolvedGraphicsDriverConfig = viewModel.graphicsDriverConfig,
                         resolvedDXWrapperConfig      = viewModel.dxWrapperConfig,
                         resolvedFPSCounterConfig     = viewModel.fpsCounterConfig,
-                        resolvedEnvVars      = viewModel.envVarsStr,
+                        resolvedEnvVars      = envVarsViewRef.value?.envVars ?: viewModel.envVarsStr,
                         resolvedCPUList      = cpuListViewRef.value?.checkedCPUListAsString ?: viewModel.cpuList,
                         resolvedCPUListWoW64 = cpuListWoW64Ref.value?.checkedCPUListAsString ?: viewModel.cpuListWoW64,
                         resolvedColorAsString = colorPickerViewRef.value?.colorAsString ?: "#0277bd",
@@ -173,132 +134,62 @@ fun ContainerDetailScreen(
             }
         }
     ) { padding ->
-        val contentScroll = rememberScrollState()
-
-        // ── Shared collapsible left rail (landscape: expanded by default + per-screen persistence A;
-        //    portrait: always collapsed, no toggle). See ui/components/CollapsibleRail. ─────────────
-        val railState = rememberRailState("containers")
-        val railCollapsed = railState.collapsed
-
-        val activeTab = tabTitles.getOrNull(viewModel.selectedTab) ?: "GENERAL"
-        val screenTitle = when {
-            viewModel.defaultsMode -> "New Container Defaults"
-            containerId <= 0 -> "New Container"
-            else -> "Edit Container"
-        }
-        val railLinks = buildList {
-            add(RailLink("What is all this?", Icons.Filled.Help) { glossaryQuery = "" })
-            if (viewModel.defaultsMode) {
-                add(RailLink(stringResource(R.string.reset_to_app_defaults), Icons.Filled.Restore) { viewModel.resetDefaults() })
-            }
-        }
-
-        val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
-
-        // The single scrolling content region — identical in portrait and landscape, so both layouts
-        // reuse it. A bottom buffer (FAB + nav-bar inset + margin) is the ONLY reserved space, so
-        // content reaches near the bottom instead of stopping in a dead zone.
-        val mainContent: @Composable () -> Unit = {
-            val bottomBuffer = 72.dp +
-                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(contentScroll)
-                    .padding(horizontal = 12.dp)
-                    .padding(top = 8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // ── Tabs ───────────────────────────────────────────────────────────
+            ScrollableTabRow(
+                selectedTabIndex = viewModel.selectedTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                edgePadding = 0.dp
             ) {
-                Column {
-                    // Dispatch by tab TITLE (not index): DRIVES is absent in defaults mode, so a
-                    // raw index would misalign the remaining tabs.
-                    when (activeTab) {
-                        "GENERAL" -> Column {
-                            TopLevelFields(
-                                viewModel = viewModel,
-                                onShowGfxConfig = { showGraphicsDriverConfig = true },
-                                onShowDxvkConfig = { showDxvkConfig = true },
-                                onShowWineD3DConfig = { showWineD3DConfig = true },
-                                onShowFpsConfig = { showFpsConfig = true },
-                                onShowWineDownloadSheet = { showWineDownloadSheet = true },
-                                onShowVulkanConfig = { showVulkanConfig = true },
-                            )
-                            WineConfigTab(viewModel, colorPickerViewRef)
-                        }
-                        "ENVIROMENT" -> EnvVarsTab(viewModel)
-                        "DRIVES" -> DrivesTab(viewModel)
-                        "WIN COMPONENTS" -> WinComponentsTab(viewModel)
-                        "ADVANCED" -> Column {
-                            AdvancedTab(
-                                viewModel,
-                                cpuListViewRef,
-                                cpuListWoW64Ref,
-                                onShowBox64DownloadSheet = { showBox64DownloadSheet = true },
-                                onShowFexCoreDownloadSheet = { showFexCoreDownloadSheet = true },
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-                            XRTab(viewModel)
-                        }
-                    }
-                    // Clears the save FAB + nav-bar inset so the last setting can scroll above them,
-                    // leaving only a small buffer rather than a large empty band.
-                    Spacer(modifier = Modifier.height(bottomBuffer))
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = viewModel.selectedTab == index,
+                        onClick = { viewModel.selectedTab = index },
+                        text = { Text(title, fontSize = 12.sp) }
+                    )
                 }
             }
-        }
 
-        if (isPortrait) {
-            // PORTRAIT (the 3 container screens): tabs run across the TOP as a horizontal icon bar,
-            // with the help/reset links in a slim row above them; content gets the full width. The
-            // collapsible left rail is landscape-only. Same icons/labels as the rail — repositioned.
-            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                ContainerTopTabs(
-                    tabs = tabTitles,
-                    selected = viewModel.selectedTab,
-                    links = railLinks,
-                    onSelect = { viewModel.selectedTab = it },
-                )
-                mainContent()
-            }
-        } else {
-            // LANDSCAPE: unchanged — the shared collapsible left rail beside full-height content.
-            Row(modifier = Modifier.fillMaxSize().padding(padding)) {
-                CollapsibleRail(
-                    state = railState,
-                    title = screenTitle,
-                    headerIcon = R.drawable.icon_menu_container,
-                    links = railLinks,
-                    sections = listOf(
-                        RailSection(
-                            header = null,
-                            items = tabTitles.mapIndexed { index, tab ->
-                                RailItem(tab, tabIcon(tab), index == viewModel.selectedTab) { viewModel.selectedTab = index }
-                            },
+            // ── Tab content ────────────────────────────────────────────────────
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                when (viewModel.selectedTab) {
+                    0 -> Column {
+                        TopLevelFields(
+                            viewModel = viewModel,
+                            onShowGfxConfig = { showGraphicsDriverConfig = true },
+                            onShowDxvkConfig = { showDxvkConfig = true },
+                            onShowWineD3DConfig = { showWineD3DConfig = true },
+                            onShowFpsConfig = { showFpsConfig = true },
+                            onShowWineDownloadSheet = { showWineDownloadSheet = true },
+                            onShowVulkanConfig = { showVulkanConfig = true },
                         )
-                    ),
-                )
-
-                // ── Content: full height beside the rail ───────────────────────────────────────
-                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    // Collapsed rail hides the tab labels, so surface the active tab name over the
-                    // content (mockup: "ctxhdr") — the user never loses their place.
-                    if (railCollapsed) {
-                        Text(
-                            activeTab,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.6.sp,
-                            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp),
-                        )
+                        WineConfigTab(viewModel, colorPickerViewRef)
                     }
-                    mainContent()
+                    1 -> EnvVarsTab(viewModel, envVarsViewRef)
+                    2 -> DrivesTab(viewModel)
+                    3 -> WinComponentsTab(viewModel)
+                    4 -> Column {
+                        AdvancedTab(
+                            viewModel,
+                            cpuListViewRef,
+                            cpuListWoW64Ref,
+                            onShowBox64DownloadSheet = { showBox64DownloadSheet = true },
+                            onShowFexCoreDownloadSheet = { showFexCoreDownloadSheet = true },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        XRTab(viewModel)
+                    }
                 }
             }
-        }
-    }
 
-    glossaryQuery?.let { q ->
-        ContainerGlossarySheet(initialQuery = q, onDismiss = { glossaryQuery = null })
+            Spacer(modifier = Modifier.height(80.dp)) // room for FAB
+        }
     }
 
     if (showGraphicsDriverConfig) {
@@ -310,15 +201,10 @@ fun ContainerDetailScreen(
         )
     }
     val isVegasWrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "").contains("vegas")
-    // Mali compat/bcn testers need DXVK 1.x reachable even with VKD3D selected, to try the
-    // 1.10.3 adapter-accept workaround (#137). Relax the #113 DXVK-2.x-only filter ONLY for the
-    // "Wrapper + compat + bcn" driver; every other driver keeps the guard unchanged.
-    val relaxDxvkFilter = StringUtils.parseIdentifier(viewModel.selectedGraphicsDriver) == "wrapper-compat-bcn"
     if (showDxvkConfig) {
         DxvkConfigDialog(
             isArm64EC = viewModel.isArm64EC,
             isVegas = isVegasWrapper,
-            relaxDxvkFilter = relaxDxvkFilter,
             refreshKey = dxvkRefreshKey,
             initialConfig = viewModel.dxWrapperConfig,
             onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showDxvkConfig = false },
@@ -326,8 +212,7 @@ fun ContainerDetailScreen(
             // Close the config dialog first — the download sheet is a ModalBottomSheet (activity
             // window) and would otherwise render BEHIND this AlertDialog. It reopens on sheet dismiss.
             onDownloadDxvk = { showDxvkConfig = false; if (isVegasWrapper) showVegasDownloadSheet = true else showDxvkDownloadSheet = true },
-            onDownloadVkd3d = { showDxvkConfig = false; showVkd3dDownloadSheet = true },
-            onDownloadD7vk = { showDxvkConfig = false; showD7vkDownloadSheet = true }
+            onDownloadVkd3d = { showDxvkConfig = false; showVkd3dDownloadSheet = true }
         )
     }
     if (showWineD3DConfig) {
@@ -364,8 +249,7 @@ fun ContainerDetailScreen(
                 viewModel.rendererSfCompatMode = m["sfCompatMode"] != "false"
                 showVulkanConfig = false
             },
-            onDismiss = { showVulkanConfig = false },
-            frameGenSelected = viewModel.frameGenEngine != "off"
+            onDismiss = { showVulkanConfig = false }
         )
     }
 
@@ -414,13 +298,6 @@ fun ContainerDetailScreen(
             onContentChanged = { dxvkRefreshKey++ }
         )
     }
-    if (showD7vkDownloadSheet) {
-        ContentDownloadSheet(
-            contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_D7VK,
-            onDismiss = { showD7vkDownloadSheet = false; showDxvkConfig = true },
-            onContentChanged = { dxvkRefreshKey++ }
-        )
-    }
     if (showVegasDownloadSheet) {
         VegasDownloadSheet(
             onDismiss = { showVegasDownloadSheet = false; showDxvkConfig = true },
@@ -437,136 +314,11 @@ private fun parseVulkanConfig(s: String): Map<String, String> =
         if (i <= 0) null else it.substring(0, i) to it.substring(i + 1)
     }.toMap()
 
-/** The Material icon for each container-settings tab (mirrors the mockup's glyphs). */
-private fun tabIcon(title: String): ImageVector = when (title) {
-    "GENERAL" -> Icons.Filled.Settings
-    "ENVIROMENT" -> Icons.Filled.Extension
-    "DRIVES" -> Icons.Filled.Storage
-    "WIN COMPONENTS" -> Icons.Filled.Widgets
-    "ADVANCED" -> Icons.Filled.Tune
-    else -> Icons.Filled.Settings
-}
-
-/** Abbreviates the two long tab titles so the portrait top bar stays tidy (mirrors the rail's
- *  collapsed labels). */
-private fun topTabLabel(title: String): String = when (title) {
-    "ENVIROMENT" -> "ENVIRON"
-    "WIN COMPONENTS" -> "WIN COMP"
-    else -> title
-}
-
-/**
- * Portrait-only: the container-editor tabs as a horizontal icon bar across the top (landscape keeps
- * the collapsible left rail instead). Same icons/labels as the rail — just repositioned. The help /
- * reset-to-defaults buttons are appended INLINE at the end of the same row (a faint divider hints
- * they're actions, not tabs). Every cell gets equal weight, so the tabs + buttons evenly fill the
- * full width. Used by all 3 container screens (New / Edit = tabs + help; Defaults = tabs + help +
- * reset). No separate button row above the tabs, so the top stays tight under the header.
- */
-@Composable
-private fun ContainerTopTabs(
-    tabs: List<String>,
-    selected: Int,
-    links: List<RailLink>,
-    onSelect: (Int) -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            tabs.forEachIndexed { index, tab ->
-                val active = index == selected
-                TopCell(
-                    icon = tabIcon(tab),
-                    label = topTabLabel(tab),
-                    tint = if (active) MaterialTheme.colorScheme.primary
-                           else MaterialTheme.colorScheme.onSurfaceVariant,
-                    highlight = active,
-                    indicatorOn = active,
-                    onClick = { onSelect(index) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (links.isNotEmpty()) {
-                // Faint separator: everything past here is an action button, not a tab.
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 2.dp)
-                        .width(1.dp)
-                        .height(30.dp)
-                        .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                )
-                links.forEach { link ->
-                    TopCell(
-                        icon = link.icon,
-                        label = topActionLabel(link.icon),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        highlight = false,
-                        indicatorOn = false,
-                        onClick = link.onClick,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        }
-        HorizontalDivider()
-    }
-}
-
-/** One cell of the portrait top bar — a tab or an action button (icon over a small label). The
- *  active underline collapses to zero width when off, so every cell keeps the same height. */
-@Composable
-private fun TopCell(
-    icon: ImageVector,
-    label: String,
-    tint: Color,
-    highlight: Boolean,
-    indicatorOn: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .clip(RoundedCornerShape(9.dp))
-            .background(if (highlight) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
-            .clickable { onClick() }
-            .padding(vertical = 6.dp, horizontal = 1.dp),
-    ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.height(3.dp))
-        Text(
-            label,
-            color = tint,
-            fontSize = 8.5.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.2.sp,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(2.dp))
-        Box(
-            modifier = Modifier
-                .height(2.dp)
-                .width(if (indicatorOn) 16.dp else 0.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(if (indicatorOn) MaterialTheme.colorScheme.primary else Color.Transparent),
-        )
-    }
-}
-
-/** Short label for the top-bar action buttons — only Help + Restore ever appear there. */
-private fun topActionLabel(icon: ImageVector): String =
-    if (icon == Icons.Filled.Restore) "RESET" else "HELP"
-
 @Composable
 internal fun VulkanSettingsDialog(
     initialConfig: String,
     onConfirm: (newConfig: String) -> Unit,
-    onDismiss: () -> Unit,
-    // The FG engine dropdown lives on the main screen, not in this dialog — pass whether one is
-    // selected so we can caption the Present Mode field about the temporary auto-switch to Mailbox.
-    frameGenSelected: Boolean = false
+    onDismiss: () -> Unit
 ) {
     // The config string is SEMICOLON-separated (see the confirm button below), so parse it that way.
     // (The old KeyValueSet path split on commas and silently returned every default.)
@@ -582,12 +334,7 @@ internal fun VulkanSettingsDialog(
     // (old config) resolves to true. ASR-only; independent of swapRB (Vulkan/GL).
     var sfCompatMode by remember { mutableStateOf(cfg["sfCompatMode"] != "false") }
 
-    // Per-field "?" help — this dialog is its own composable, so it carries its own helpRes.
-    // HelpDialog renders as a Dialog on top of this AlertDialog (fine — same pattern as elsewhere).
-    var helpRes by remember { mutableStateOf<Int?>(null) }
-    helpRes?.let { HelpDialog(it) { helpRes = null } }
-
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.vulkan_settings)) },
         text = {
@@ -604,9 +351,6 @@ internal fun VulkanSettingsDialog(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.renderer_native), Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_renderer_native }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
                     Switch(checked = nativeRender, onCheckedChange = { nativeRender = it })
                 }
 
@@ -617,56 +361,25 @@ internal fun VulkanSettingsDialog(
                     stringResource(R.string.renderer_present_mode_immediate)
                 )
                 val selectedPresentIdx = presentModes.indexOf(presentMode).coerceAtLeast(0)
-                // Present mode is ignored under Native Rendering (direct scanout goes straight to
-                // SurfaceFlinger, bypassing the swapchain), so grey it out while native is on.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        label = stringResource(R.string.renderer_present_mode),
-                        options = presentModeLabels,
-                        selectedOption = presentModeLabels[selectedPresentIdx],
-                        onSelect = { presentMode = presentModes[presentModeLabels.indexOf(it)] },
-                        enabled = !nativeRender,
-                        modifier = (if (nativeRender) Modifier.alpha(0.5f) else Modifier).weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.renderer_present_mode_help_content }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                // FG temporarily forces Mailbox; caption the field so FIFO-while-FG-selected isn't confusing.
-                if (frameGenSelected) {
-                    Text(
-                        stringResource(R.string.renderer_present_mode_fg_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                LabeledDropdown(
+                    label = stringResource(R.string.renderer_present_mode),
+                    options = presentModeLabels,
+                    selectedOption = presentModeLabels[selectedPresentIdx],
+                    onSelect = { presentMode = presentModes[presentModeLabels.indexOf(it)] }
+                )
 
-                // Renderer (compositor) driver: which Vulkan driver the present layer itself runs on —
-                // "System" (Android's own driver, the safe default) or an installed Turnip. This is the
-                // compositor, NOT where your game renders (that's the top-level Graphics Driver). Applied
-                // at launch by XServerDisplayActivity (VulkanRenderer.setDriverInfo before nativeInit).
-                // Vulkan-renderer only; a no-op on SurfaceFlinger/OpenGL. Options = System + installed
-                // adrenotools drivers; default stays System because a Turnip compositor can black-screen
-                // on builds whose WSI doesn't support the surface.
-                val vkCtx = androidx.compose.ui.platform.LocalContext.current
-                val rendererDriverOptions = remember {
-                    val installed = try {
-                        com.winlator.star.contents.AdrenotoolsManager(vkCtx).enumarateInstalledDrivers()
-                    } catch (e: Exception) { arrayListOf<String>() }
-                    (listOf("system") + installed).distinct()
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        label = stringResource(R.string.renderer_driver_id),
-                        options = rendererDriverOptions,
-                        selectedOption = if (rendererDriverOptions.contains(driverId)) driverId else "system",
-                        onSelect = { driverId = it },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_renderer_driver }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                val drivers = listOf("system", "turnip")
+                val driverLabels = listOf(
+                    stringResource(R.string.renderer_driver_system),
+                    stringResource(R.string.renderer_driver_turnip)
+                )
+                val selectedDriverIdx = drivers.indexOf(driverId).coerceAtLeast(0)
+                LabeledDropdown(
+                    label = stringResource(R.string.renderer_driver_id),
+                    options = driverLabels,
+                    selectedOption = driverLabels[selectedDriverIdx],
+                    onSelect = { driverId = drivers[driverLabels.indexOf(it)] }
+                )
 
                 // Filter mode (Nearest/Linear) is no longer edited here: the in-game
                 // drawer's "Scaling mode" picker is the single source of truth for
@@ -675,23 +388,9 @@ internal fun VulkanSettingsDialog(
                 // still seeds the drawer's initial scaling mode at launch
                 // (XServerDisplayActivity: getRendererFilterMode -> initialUpscaler).
 
-                // Colors = the game buffer's channel order. Device-confirmed: DXVK's scanout buffer is
-                // BGRA_8888 (AHardwareBuffer format 5), so BGRA (default) presents as-is; RGBA swaps R/B
-                // for the rare title whose buffer is actually RGBA-ordered (red/blue reversed on default).
-                // Backed by the same `swapRB` boolean (BGRA=false, RGBA=true); RGBA (swap) routes the
-                // container through the compositor (native scanout can't swap channels).
-                val colorOrders = listOf("BGRA", "RGBA")
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        label = stringResource(R.string.renderer_colors),
-                        options = colorOrders,
-                        selectedOption = if (swapRB) "RGBA" else "BGRA",
-                        onSelect = { swapRB = (it == "RGBA") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_renderer_colors }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
+                    Text(stringResource(R.string.renderer_swap_rb), Modifier.weight(1f))
+                    Switch(checked = swapRB, onCheckedChange = { swapRB = it })
                 }
                 // NOTE: "Correct SurfaceFlinger colours" (sfCompatMode) is NOT shown here — this
                 // dialog only opens for the Vulkan renderer, and that toggle only affects
@@ -728,24 +427,17 @@ private fun TopLevelFields(
     onShowWineDownloadSheet: () -> Unit,
 ) {
     val context = LocalContext.current
-    // Per-field "?" help — a centered, scrollable Compose dialog (HelpDialog), replacing the old
-    // top-left PopupWindow. null = no dialog; otherwise the string res of the field's help text.
-    var helpRes by remember { mutableStateOf<Int?>(null) }
-    var showAudioSettings by remember { mutableStateOf(false) }
-    helpRes?.let { HelpDialog(it) { helpRes = null } }
 
     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
 
-        // Name — per-container identity, hidden in "New Container Defaults" mode (not templatable).
-        if (!viewModel.defaultsMode) {
-            OutlinedTextField(
-                value = viewModel.containerName,
-                onValueChange = { viewModel.containerName = it },
-                label = { Text(stringResource(R.string.name)) },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-        }
+        // Name
+        OutlinedTextField(
+            value = viewModel.containerName,
+            onValueChange = { viewModel.containerName = it },
+            label = { Text(stringResource(R.string.name)) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
 
         // Screen Size
         LabeledDropdown(
@@ -772,43 +464,21 @@ private fun TopLevelFields(
             Spacer(Modifier.height(8.dp))
         }
 
-        // Wine Version (create/edit) OR Architecture selector (defaults mode). Defaults are stored
-        // per-arch (box64/wowbox64/emulator/FEXCore are arch-coupled) and wine is NEVER templated, so
-        // in defaults mode the arch selector replaces the wine version dropdown + its download gear and
-        // drives the arch-dependent fields via setDefaultsArch (which reloads that arch's profile).
-        if (viewModel.defaultsMode) {
-            val archValues = listOf(
-                com.winlator.star.core.NewContainerDefaults.ARCH_X86_64,
-                com.winlator.star.core.NewContainerDefaults.ARCH_ARM64EC,
-            )
-            val archLabels = listOf("x86-64", "arm64ec")
-            val archIdx = archValues.indexOf(viewModel.defaultsArch).coerceAtLeast(0)
+        // Wine Version + download gear
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             LabeledDropdown(
-                label = "Architecture",
-                options = archLabels,
-                selectedOption = archLabels[archIdx],
-                onSelect = { viewModel.selectDefaultsArch(archValues[archLabels.indexOf(it)]) }
+                label = stringResource(R.string.wine_version),
+                options = viewModel.wineVersionEntries,
+                selectedOption = viewModel.selectedWineVersion,
+                enabled = viewModel.wineVersionEnabled,
+                onSelect = { viewModel.onWineVersionChanged(it) },
+                modifier = Modifier.weight(1f)
             )
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                LabeledDropdown(
-                    label = stringResource(R.string.wine_version),
-                    options = viewModel.wineVersionEntries,
-                    selectedOption = viewModel.selectedWineVersion,
-                    enabled = viewModel.wineVersionEnabled,
-                    onSelect = { viewModel.onWineVersionChanged(it) },
-                    modifier = Modifier.weight(1f)
-                )
-                ContentInstallGear(onDownloadFile = onShowWineDownloadSheet)
-                IconButton(onClick = { helpRes = R.string.help_wine_version }) {
-                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                }
-            }
+            ContentInstallGear(onDownloadFile = onShowWineDownloadSheet)
         }
         Spacer(Modifier.height(8.dp))
 
-        // Graphics Driver + wrapper manager (cloud) + config button
-        var showWrapperManager by remember { mutableStateOf(false) }
+        // Graphics Driver + config button
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             LabeledDropdown(
                 label = stringResource(R.string.graphics_driver),
@@ -817,20 +487,10 @@ private fun TopLevelFields(
                 onSelect = { viewModel.selectedGraphicsDriver = it },
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = { helpRes = R.string.help_graphics_driver }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-            }
-            IconButton(onClick = { showWrapperManager = true }) {
-                Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.wrapper_manager_open))
-            }
             IconButton(onClick = onShowGfxConfig) {
                 Icon(Icons.Default.Settings, contentDescription = null)
             }
         }
-        if (showWrapperManager) WrapperManagerDialog(onDismiss = {
-            showWrapperManager = false
-            viewModel.refreshGraphicsDriverEntries() // pick up a just-imported/deleted wrapper
-        })
         Spacer(Modifier.height(8.dp))
 
         // DX Wrapper + config button
@@ -843,7 +503,9 @@ private fun TopLevelFields(
                     onSelect = { viewModel.selectedDXWrapper = it },
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = { helpRes = R.string.dxwrapper_help_content }) {
+                IconButton(onClick = {
+                    AppUtils.showHelpBox(context, View(context), R.string.dxwrapper_help_content)
+                }) {
                     Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
@@ -870,9 +532,6 @@ private fun TopLevelFields(
                 },
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = { helpRes = R.string.help_renderer }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-            }
             if (viewModel.selectedRenderer == "Vulkan") {
                 IconButton(onClick = onShowVulkanConfig) {
                     Icon(Icons.Default.Settings, contentDescription = null)
@@ -899,9 +558,6 @@ private fun TopLevelFields(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                IconButton(onClick = { helpRes = R.string.help_renderer_sf_compat }) {
-                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
                 }
                 Switch(
                     checked = viewModel.rendererSfCompatMode,
@@ -940,47 +596,12 @@ private fun TopLevelFields(
         Spacer(Modifier.height(8.dp))
 
         // Audio Driver
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LabeledDropdown(
-                label = stringResource(R.string.audio_driver),
-                options = viewModel.audioDriverEntries,
-                selectedOption = viewModel.selectedAudioDriver,
-                onSelect = {
-                    viewModel.selectedAudioDriver = it
-                    // DirectAudio is experimental — warn on select (reuses the HelpDialog surface).
-                    if (StringUtils.parseIdentifier(it) == "directaudio") helpRes = R.string.directaudio_experimental_warning
-                },
-                modifier = Modifier.weight(1f)
-            )
-            // Cog → adaptive audio presets & fine-tuning. Both engines honor the same presets/knobs
-            // (PulseAudio sink + ALSA player), so it's shown for either driver.
-            val audioId = StringUtils.parseIdentifier(viewModel.selectedAudioDriver)
-            if (audioId == "pulseaudio" || audioId == "alsa" || audioId == "directaudio") {
-                IconButton(onClick = { showAudioSettings = true }) {
-                    Icon(Icons.Default.Settings, contentDescription = "Audio settings", modifier = Modifier.size(18.dp))
-                }
-            }
-            IconButton(onClick = { helpRes = R.string.help_audio_driver }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-            }
-        }
-        if (showAudioSettings) {
-            AudioSettingsDialog(
-                initial = audioConfigFromEnv(viewModel.envVarsStr, StringUtils.parseIdentifier(viewModel.selectedAudioDriver)),
-                scopeLabel = "this container",
-                latencyLive = true,
-                driverLabel = when (StringUtils.parseIdentifier(viewModel.selectedAudioDriver)) {
-                    "alsa" -> "ALSA"; "pulseaudio" -> "PulseAudio"; "directaudio" -> "DirectAudio"
-                    else -> StringUtils.parseIdentifier(viewModel.selectedAudioDriver)
-                },
-                driverId = StringUtils.parseIdentifier(viewModel.selectedAudioDriver),
-                onDismiss = { showAudioSettings = false },
-                onSave = { cfg ->
-                    viewModel.envVarsStr = audioConfigToEnv(viewModel.envVarsStr, cfg, StringUtils.parseIdentifier(viewModel.selectedAudioDriver))
-                    showAudioSettings = false
-                }
-            )
-        }
+        LabeledDropdown(
+            label = stringResource(R.string.audio_driver),
+            options = viewModel.audioDriverEntries,
+            selectedOption = viewModel.selectedAudioDriver,
+            onSelect = { viewModel.selectedAudioDriver = it }
+        )
         Spacer(Modifier.height(8.dp))
 
         // Emulator (arm64ec only)
@@ -1046,38 +667,15 @@ private fun TopLevelFields(
             stringResource(R.string.frame_generation_lsfg)
         )
         val lsfgDllAvailable = remember { java.io.File(context.filesDir, "lsfg-vk/Lossless.dll").isFile }
-        val fgDisabledOpts = buildSet {
-            // bionic-fg re-enabled (2.9.4+): the FIFO-backpressure present-mode fix is the likely
-            // root of its old "doesn't reliably work" reports; still experimental — see the note below.
-            if (!lsfgDllAvailable) add(fgEngineLabels[2])   // lsfg-vk — needs an imported Lossless.dll
-        }
+        val fgDisabledOpts = if (lsfgDllAvailable) emptySet() else setOf(fgEngineLabels[2])
         val fgSelIdx = fgEngines.indexOf(viewModel.frameGenEngine).coerceAtLeast(0)
-        // FG's present-mode/mailbox delivery only exists on the Vulkan host renderer; OpenGL (GLRenderer)
-        // and SurfaceFlinger (ASR) have no present-mode control, so FG is unsupported there — gate the
-        // whole dropdown on Vulkan and grey it out otherwise (combined with the lsfg-DLL option gate).
-        val fgVulkan = viewModel.selectedRenderer == "Vulkan"
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LabeledDropdown(
-                label = stringResource(R.string.frame_generation),
-                options = fgEngineLabels,
-                selectedOption = fgEngineLabels[fgSelIdx],
-                onSelect = { viewModel.frameGenEngine = fgEngines[fgEngineLabels.indexOf(it)] },
-                enabled = fgVulkan,
-                disabledOptions = fgDisabledOpts,
-                modifier = (if (!fgVulkan) Modifier.alpha(0.5f) else Modifier).weight(1f)
-            )
-            IconButton(onClick = { helpRes = R.string.help_frame_generation }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-            }
-        }
-        if (!fgVulkan) {
-            Text(
-                text = stringResource(R.string.frame_generation_requires_vulkan),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-        }
+        LabeledDropdown(
+            label = stringResource(R.string.frame_generation),
+            options = fgEngineLabels,
+            selectedOption = fgEngineLabels[fgSelIdx],
+            onSelect = { viewModel.frameGenEngine = fgEngines[fgEngineLabels.indexOf(it)] },
+            disabledOptions = fgDisabledOpts
+        )
         if (!lsfgDllAvailable) {
             Text(
                 text = stringResource(R.string.frame_generation_lsfg_needs_dll),
@@ -1093,63 +691,10 @@ private fun TopLevelFields(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
             )
-            // Interpolation model. Default (0) is the long-standing chain; 1-3 are newer engines
-            // that are not yet device-proven, hence the explicit "experimental" labelling.
-            val fgModelLabels = listOf(
-                stringResource(R.string.frame_generation_model_default),
-                stringResource(R.string.frame_generation_model_traced),
-                stringResource(R.string.frame_generation_model_v2),
-                stringResource(R.string.frame_generation_model_fsr3),
-                stringResource(R.string.frame_generation_model_fsr3_v2)
-            )
-            LabeledDropdown(
-                label = stringResource(R.string.frame_generation_model),
-                options = fgModelLabels,
-                selectedOption = fgModelLabels[viewModel.frameGenModel.coerceIn(0, 4)],
-                onSelect = { viewModel.frameGenModel = fgModelLabels.indexOf(it) }
-            )
-            if (viewModel.frameGenModel != 0) {
-                Text(
-                    text = stringResource(R.string.frame_generation_model_experimental_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-                )
-            }
         }
         if (viewModel.frameGenEngine == "lsfg") {
             Text(
                 text = stringResource(R.string.frame_generation_lsfg_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-            // lsfg-vk performance_mode: lower quality for higher FPS. Also live-toggleable in-game.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = viewModel.lsfgPerformanceMode,
-                    onCheckedChange = { viewModel.lsfgPerformanceMode = it }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.fg_performance_mode), modifier = Modifier.weight(1f))
-            }
-            Text(
-                text = stringResource(R.string.fg_performance_mode_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-            // lsfg-vk auto-enable at launch: start frame gen live at the saved multiplier from launch.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = viewModel.lsfgAutoEnable,
-                    onCheckedChange = { viewModel.lsfgAutoEnable = it }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.lsfg_auto_enable), modifier = Modifier.weight(1f))
-            }
-            Text(
-                text = stringResource(R.string.lsfg_auto_enable_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
@@ -1166,9 +711,6 @@ private fun TopLevelFields(
             )
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.fps_limiter), modifier = Modifier.weight(1f))
-            IconButton(onClick = { helpRes = R.string.help_fps_limiter }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-            }
         }
         if (viewModel.fpsLimiterEnabled) {
             Text(
@@ -1238,55 +780,6 @@ private fun TopLevelFields(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
             )
-        }
-
-        // Single guest-side refresh control. Collapses the unlock toggle + rate cap into one dropdown:
-        //   Locked (60)  -> emulation stays on, game sits at 60 (unlockGameRefreshRate = false)
-        //   <rate> Hz    -> unlock on, capped at that rate (unlock = true, maxGameRefreshRate = rate)
-        //   Unlimited    -> unlock on, no cap (unlock = true, maxGameRefreshRate = 0)
-        // Default Unlimited. Drives the two underlying extras so the launch resolver is unchanged. Not
-        // gated on vrrCapable — a game choosing 120 Hz is meaningful even where the panel can't do VRR.
-        if (supportedRates.isNotEmpty()) {
-            val lockedLabel = stringResource(R.string.in_game_refresh_locked)
-            val unlimitedLabel = stringResource(R.string.max_game_refresh_rate_unlimited)
-            // Only rates ABOVE 60 are cap options — "Locked (60)" already covers 60.
-            val ratesAbove60 = supportedRates.filter { it > 60 }
-            // value model: -1 = Locked, 0 = Unlimited, N = cap N
-            val rrOptionValues = listOf(-1, 0) + ratesAbove60
-            val rrOptionLabels = listOf(lockedLabel, unlimitedLabel) + ratesAbove60.map { "$it Hz" }
-            val rrCurrentValue = if (!viewModel.unlockGameRefreshRate) -1 else viewModel.maxGameRefreshRate
-            val rrIdx = rrOptionValues.indexOf(rrCurrentValue).let { if (it >= 0) it else 1 } // fall back to Unlimited
-            LabeledDropdown(
-                label = stringResource(R.string.in_game_refresh_rate),
-                options = rrOptionLabels,
-                selectedOption = rrOptionLabels[rrIdx],
-                onSelect = {
-                    when (val v = rrOptionValues[rrOptionLabels.indexOf(it)]) {
-                        -1 -> { viewModel.unlockGameRefreshRate = false; viewModel.maxGameRefreshRate = 0 }
-                        else -> { viewModel.unlockGameRefreshRate = true; viewModel.maxGameRefreshRate = v }
-                    }
-                }
-            )
-            Text(
-                text = stringResource(R.string.in_game_refresh_rate_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-            // Warn when a non-Locked choice is set but the selected Proton has no xrandr — the unlock
-            // will be skipped at launch. Keyed on the wine version so the cached probe only re-runs when
-            // the layer changes.
-            val wineXrandrCapable = remember(viewModel.selectedWineVersion) {
-                viewModel.isWineXrandrCapable(viewModel.selectedWineVersion)
-            }
-            if (viewModel.unlockGameRefreshRate && !wineXrandrCapable) {
-                Text(
-                    text = stringResource(R.string.refresh_unlock_layer_incompatible_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-                )
-            }
         }
 
         // ReShade multi-effect loadout (vkBasalt drop-in), per-container default. The per-game shortcut
@@ -1470,26 +963,6 @@ private fun WineConfigTab(
                 onSelect = { opt -> viewModel.selectedMouseWarpIndex = viewModel.mouseWarpEntries.indexOf(opt).coerceAtLeast(0) }
             )
         }
-
-        // System section — "Run as administrator" (default ON) toggles UAC in the prefix. Backed by
-        // EnableLUA in .wine/system.reg (source of truth): the VM reads it on load and writes it on
-        // save/create (mirrors the DirectInput mouse-warp registry idiom above).
-        SectionBox(title = "System") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Run as administrator")
-                    Text(
-                        "Disables UAC so everything runs elevated (helps installers/tools that require admin)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = viewModel.runAsAdmin,
-                    onCheckedChange = { viewModel.runAsAdmin = it }
-                )
-            }
-        }
     }
 }
 
@@ -1563,15 +1036,51 @@ private fun WinComponentRow(comp: WinComponentEntry, onSelect: (Int) -> Unit) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun EnvVarsTab(viewModel: ContainerDetailViewModel) {
-    // The editor writes straight through to the ViewModel on every edit, so a tab switch
-    // can't drop in-progress edits and nothing has to be flushed back on dispose.
-    // gameDir is null here: a container has no single game folder to scan.
-    EnvVarsEditor(
-        value = viewModel.envVarsStr,
-        onValueChange = { viewModel.envVarsStr = it },
-        modifier = Modifier.fillMaxWidth()
-    )
+private fun EnvVarsTab(
+    viewModel: ContainerDetailViewModel,
+    envVarsViewRef: MutableState<EnvVarsView?>
+) {
+    var showAddEnvVar by remember { mutableStateOf(false) }
+    // Flush the legacy EnvVarsView's contents back to the ViewModel before the
+    // tab leaves composition, so a tab switch doesn't drop in-progress edits.
+    DisposableEffect(Unit) {
+        onDispose {
+            envVarsViewRef.value?.let { viewModel.envVarsStr = it.envVars }
+            envVarsViewRef.value = null
+        }
+    }
+    Column {
+        AndroidView(
+            factory = { ctx ->
+                EnvVarsView(ctx).also { ev ->
+                    ev.setDarkMode(true)
+                    ev.setEnvVars(com.winlator.star.core.EnvVars(viewModel.envVarsStr))
+                    envVarsViewRef.value = ev
+                }
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = { showAddEnvVar = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(R.string.add) + " " + stringResource(R.string.environment_variables))
+        }
+    }
+    if (showAddEnvVar) {
+        AddEnvVarComposable(
+            onConfirm = { name, value ->
+                envVarsViewRef.value?.let { ev ->
+                    if (name.isNotEmpty() && !ev.containsName(name)) ev.add(name, value)
+                }
+                showAddEnvVar = false
+            },
+            onDismiss = { showAddEnvVar = false }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1580,16 +1089,17 @@ private fun DrivesTab(viewModel: ContainerDetailViewModel) {
     val context = LocalContext.current
     var pendingDriveUid by remember { mutableStateOf<Long?>(null) }
 
-    // Uses the built-in picker rather than SAF: it returns a real absolute path, so a folder on the
-    // SD card yields /storage/<uuid>/... The SAF mapping produced /mnt/media_rw/<uuid>/..., the raw
-    // vold mount, which neither the app nor the container can read.
     val dirPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val path = InAppFilePicker.pickedPath(result.data)
-            val uid = pendingDriveUid
-            if (path != null && uid != null) viewModel.updateDrivePath(uid, path)
+            val uri = result.data?.data
+            if (uri != null && pendingDriveUid != null) {
+                val path = FileUtils.getFilePathFromUri(context, uri)
+                if (path != null) {
+                    viewModel.updateDrivePath(pendingDriveUid!!, path)
+                }
+            }
         }
         pendingDriveUid = null
     }
@@ -1602,34 +1112,21 @@ private fun DrivesTab(viewModel: ContainerDetailViewModel) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        val duplicateLetters = viewModel.duplicateDriveLetters
         viewModel.drives.forEach { drive ->
             DriveRow(
                 drive = drive,
                 letterOptions = viewModel.driveLetterOptions,
-                isDuplicate = drive.letter in duplicateLetters,
                 onLetterChange = { viewModel.updateDriveLetter(drive.uid, it) },
                 onPathChange   = { viewModel.updateDrivePath(drive.uid, it)   },
                 onBrowse = {
                     pendingDriveUid = drive.uid
-                    dirPickerLauncher.launch(
-                        InAppFilePicker.buildDirIntent(
-                            context,
-                            title = "Select folder for drive ${drive.letter}:",
-                            initialDir = drive.path.takeIf { it.isNotBlank() && File(it).isDirectory },
-                        )
-                    )
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                        putExtra(DocumentsContract.EXTRA_INITIAL_URI,
+                            Uri.fromFile(Environment.getExternalStorageDirectory()))
+                    }
+                    dirPickerLauncher.launch(intent)
                 },
                 onRemove = { viewModel.removeDrive(drive.uid) }
-            )
-        }
-        if (duplicateLetters.isNotEmpty()) {
-            Text(
-                "Each drive needs its own letter. Duplicated: " +
-                    duplicateLetters.sorted().joinToString(", ") { "$it:" },
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             )
         }
         Button(
@@ -1648,7 +1145,6 @@ private fun DrivesTab(viewModel: ContainerDetailViewModel) {
 private fun DriveRow(
     drive: DriveEntry,
     letterOptions: List<String>,
-    isDuplicate: Boolean,
     onLetterChange: (String) -> Unit,
     onPathChange: (String) -> Unit,
     onBrowse: () -> Unit,
@@ -1659,14 +1155,7 @@ private fun DriveRow(
             options = letterOptions,
             selectedOption = "${drive.letter}:",
             onSelect = { onLetterChange(it.trimEnd(':')) },
-            modifier = Modifier
-                .width(64.dp)
-                .then(
-                    if (isDuplicate) Modifier.border(
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                        RoundedCornerShape(4.dp),
-                    ) else Modifier
-                )
+            modifier = Modifier.width(64.dp)
         )
         OutlinedTextField(
             value = drive.path,
@@ -1694,9 +1183,6 @@ private fun AdvancedTab(
     onShowFexCoreDownloadSheet: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    // Per-field "?" help — centered scrollable Compose dialog (same as the General tab).
-    var helpRes by remember { mutableStateOf<Int?>(null) }
-    helpRes?.let { HelpDialog(it) { helpRes = null } }
     // Flush legacy CPUListView selections back to the ViewModel before the tab
     // leaves composition, so a tab switch doesn't drop in-progress edits.
     DisposableEffect(Unit) {
@@ -1742,24 +1228,15 @@ private fun AdvancedTab(
                         onSelect = { viewModel.selectedFEXCoreVersion = it },
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = { helpRes = R.string.help_fexcore_version }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
                     ContentInstallGear(onDownloadFile = onShowFexCoreDownloadSheet)
                 }
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        label = stringResource(R.string.fexcore_preset),
-                        options = viewModel.fexCorePresetEntries,
-                        selectedOption = viewModel.fexCorePresetEntries.getOrElse(viewModel.selectedFEXCorePresetIndex) { "" },
-                        onSelect = { opt -> viewModel.selectedFEXCorePresetIndex = viewModel.fexCorePresetEntries.indexOf(opt).coerceAtLeast(0) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_fexcore_preset }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(
+                    label = stringResource(R.string.fexcore_preset),
+                    options = viewModel.fexCorePresetEntries,
+                    selectedOption = viewModel.fexCorePresetEntries.getOrElse(viewModel.selectedFEXCorePresetIndex) { "" },
+                    onSelect = { opt -> viewModel.selectedFEXCorePresetIndex = viewModel.fexCorePresetEntries.indexOf(opt).coerceAtLeast(0) }
+                )
             }
         }
 
@@ -1773,7 +1250,7 @@ private fun AdvancedTab(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.enable_xinput_for_wine_game), modifier = Modifier.weight(1f))
-                IconButton(onClick = { helpRes = R.string.help_xinput }) {
+                IconButton(onClick = { AppUtils.showHelpBox(context, View(context), R.string.help_xinput) }) {
                     Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
@@ -1785,7 +1262,7 @@ private fun AdvancedTab(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.enable_dinput_for_wine_game), modifier = Modifier.weight(1f))
-                IconButton(onClick = { helpRes = R.string.help_dinput }) {
+                IconButton(onClick = { AppUtils.showHelpBox(context, View(context), R.string.help_dinput) }) {
                     Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
@@ -1796,277 +1273,19 @@ private fun AdvancedTab(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text("Exclusive Input", modifier = Modifier.weight(1f))
-                IconButton(onClick = { helpRes = R.string.help_exclusive_xinput }) {
+                IconButton(onClick = { AppUtils.showHelpBox(context, View(context), R.string.help_exclusive_xinput) }) {
                     Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
         }
 
-        // Vibration section — per-container rumble target + intensity default. Also live-tunable
-        // in-game from the drawer (this is just the value a new session launches with).
-        SectionBox(title = stringResource(R.string.vibration)) {
-            val vibrationModeLabels = listOf(
-                stringResource(R.string.vibration_mode_off),
-                stringResource(R.string.vibration_mode_controller),
-                stringResource(R.string.vibration_mode_device),
-                stringResource(R.string.vibration_mode_both),
-            )
-            LabeledDropdown(
-                label = stringResource(R.string.vibration_mode_label),
-                options = vibrationModeLabels,
-                selectedOption = vibrationModeLabels.getOrElse(viewModel.vibrationMode) {
-                    vibrationModeLabels[Container.VIBRATION_MODE_DEFAULT]
-                },
-                onSelect = { opt -> viewModel.vibrationMode = vibrationModeLabels.indexOf(opt).coerceAtLeast(0) }
-            )
-            if (viewModel.vibrationMode != Container.VIBRATION_MODE_OFF) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "${stringResource(R.string.vibration_intensity_label)}: ${viewModel.vibrationIntensity}%",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Slider(
-                    value = viewModel.vibrationIntensity.toFloat(),
-                    onValueChange = { viewModel.vibrationIntensity = it.toInt() },
-                    valueRange = 0f..100f, steps = 99
-                )
-            }
-        }
-
-        // Player Slots section — manual controller->player-slot pins that the launch pre-assignment
-        // applies. Same JSON schema and editor the in-game "Players" drawer tab uses, but here it's a
-        // saved default (applied on next launch), not a live reassignment.
-        SectionBox(title = "Player Slots") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "Pin controllers to players; assign two to one player to share control.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = { helpRes = R.string.help_player_slots }) {
-                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                }
-            }
-            // On-screen priority: what happens to the on-screen pad when a physical pad connects mid-game.
-            val onScreenModeLabels = listOf("Keep on-screen player", "Yield Player 1 to pad", "Share the player")
-            LabeledDropdown(
-                label = "On-screen priority",
-                options = onScreenModeLabels,
-                selectedOption = onScreenModeLabels.getOrElse(viewModel.onScreenControllerMode) { onScreenModeLabels[0] },
-                onSelect = { viewModel.onScreenControllerMode = onScreenModeLabels.indexOf(it).coerceAtLeast(0) },
-            )
-            Spacer(Modifier.height(8.dp))
-            // #333: auto-hide the on-screen touch controls when a physical controller takes over the
-            // on-screen pad's player slot; they reappear when it leaves. Slot-aware — a controller pinned
-            // to a DIFFERENT player (2-player setup) leaves the overlay up. Overrides Share while active.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = viewModel.autoHideControlsOnPad,
-                    onCheckedChange = { viewModel.autoHideControlsOnPad = it }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Hide on-screen controls when a controller connects")
-            }
-            Spacer(Modifier.height(8.dp))
-            PlayerSlotsEditor(
-                savedOverridesJson = viewModel.controllerSlotOverridesJson,
-                onOverridesChange = { viewModel.controllerSlotOverridesJson = it },
-            )
-        }
-
-        // Gyro (motion aim) section — the default a session (and a new shortcut) launches with.
-        // Enabled/target/activator/sensitivity/invert can be overridden per game in the shortcut
-        // editor; deadzone/smoothing stay container-wide because they track the hand and the device,
-        // not the game. All of them are also live-tunable from the in-game drawer.
-        SectionBox(title = stringResource(R.string.gyro)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = viewModel.gyroEnabled,
-                    onCheckedChange = { viewModel.gyroEnabled = it }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.gyro_enabled), modifier = Modifier.weight(1f))
-            }
-            if (viewModel.gyroEnabled) {
-                // Rate = tilt SPEED drives the target and it recentres when you stop; Tilt to Aim =
-                // the ANGLE held drives it, so a held tilt sustains. Mutually exclusive with the Mouse
-                // target: the mouse path emits relative deltas, so a held tilt would be a constant
-                // delta and the pointer would run to a screen edge and stay there. Each selection
-                // therefore knocks the other back to a working value (WinHandler enforces the same
-                // rule at launch, so a hand-edited container JSON can't reach the broken pair either).
-                val gyroModeLabels = listOf(
-                    stringResource(R.string.gyro_mode_rate),
-                    stringResource(R.string.gyro_mode_orientation),
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        label = stringResource(R.string.gyro_mode_label),
-                        options = gyroModeLabels,
-                        selectedOption = gyroModeLabels.getOrElse(viewModel.gyroMode) {
-                            gyroModeLabels[Container.GYRO_MODE_DEFAULT]
-                        },
-                        onSelect = { opt ->
-                            val mode = gyroModeLabels.indexOf(opt).coerceAtLeast(0)
-                            viewModel.gyroMode = mode
-                            if (mode == Container.GYRO_MODE_ORIENTATION && viewModel.gyroTarget == Container.GYRO_TARGET_MOUSE)
-                                viewModel.gyroTarget = Container.GYRO_TARGET_DEFAULT
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_gyro_mode }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                val gyroTargetLabels = listOf(
-                    stringResource(R.string.gyro_target_right_stick),
-                    stringResource(R.string.gyro_target_left_stick),
-                    stringResource(R.string.gyro_target_mouse),
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        label = stringResource(R.string.gyro_target_label),
-                        options = gyroTargetLabels,
-                        selectedOption = gyroTargetLabels.getOrElse(viewModel.gyroTarget) {
-                            gyroTargetLabels[Container.GYRO_TARGET_DEFAULT]
-                        },
-                        onSelect = { opt ->
-                            val target = gyroTargetLabels.indexOf(opt).coerceAtLeast(0)
-                            viewModel.gyroTarget = target
-                            if (target == Container.GYRO_TARGET_MOUSE)
-                                viewModel.gyroMode = Container.GYRO_MODE_RATE
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_gyro_target }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                val gyroActivatorLabels = listOf(
-                    stringResource(R.string.gyro_activator_l1),
-                    stringResource(R.string.gyro_activator_l2),
-                    stringResource(R.string.gyro_activator_r1),
-                    stringResource(R.string.gyro_activator_r3),
-                    stringResource(R.string.gyro_activator_always),
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        label = stringResource(R.string.gyro_activator_label),
-                        options = gyroActivatorLabels,
-                        selectedOption = gyroActivatorLabels.getOrElse(viewModel.gyroActivator) {
-                            gyroActivatorLabels[Container.GYRO_ACTIVATOR_DEFAULT]
-                        },
-                        onSelect = { opt -> viewModel.gyroActivator = gyroActivatorLabels.indexOf(opt).coerceAtLeast(0) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_gyro_activator }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                // Hold vs Toggle for that button. Pointless with "Always On" (no button to latch), so
-                // the picker is hidden rather than greyed here — an editor row has no live state to
-                // explain, unlike the in-game drawer where the row stays visible but disabled.
-                if (viewModel.gyroActivator != Container.GYRO_ACTIVATOR_ALWAYS) {
-                    val gyroActivationModeLabels = listOf(
-                        stringResource(R.string.gyro_activation_hold),
-                        stringResource(R.string.gyro_activation_toggle),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        LabeledDropdown(
-                            label = stringResource(R.string.gyro_activation_mode_label),
-                            options = gyroActivationModeLabels,
-                            selectedOption = gyroActivationModeLabels.getOrElse(viewModel.gyroActivationMode) {
-                                gyroActivationModeLabels[Container.GYRO_ACTIVATION_MODE_DEFAULT]
-                            },
-                            onSelect = { opt -> viewModel.gyroActivationMode = gyroActivationModeLabels.indexOf(opt).coerceAtLeast(0) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { helpRes = R.string.help_gyro_activation_mode }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "${stringResource(R.string.gyro_sensitivity_label)}: ${"%.1f".format(viewModel.gyroSensitivity)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_gyro_sensitivity }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                Slider(
-                    value = viewModel.gyroSensitivity,
-                    onValueChange = { viewModel.gyroSensitivity = it },
-                    valueRange = 0.1f..10f
-                )
-                Text(
-                    "${stringResource(R.string.gyro_deadzone_label)}: ${"%.2f".format(viewModel.gyroDeadzone)}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Slider(
-                    value = viewModel.gyroDeadzone,
-                    onValueChange = { viewModel.gyroDeadzone = it },
-                    valueRange = 0f..0.5f
-                )
-                Text(
-                    "${stringResource(R.string.gyro_smoothing_label)}: ${"%.2f".format(viewModel.gyroSmoothing)}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Slider(
-                    value = viewModel.gyroSmoothing,
-                    onValueChange = { viewModel.gyroSmoothing = it },
-                    valueRange = 0f..0.95f
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = viewModel.gyroInvertX,
-                        onCheckedChange = { viewModel.gyroInvertX = it }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.gyro_invert_x), modifier = Modifier.weight(1f))
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = viewModel.gyroInvertY,
-                        onCheckedChange = { viewModel.gyroInvertY = it }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.gyro_invert_y), modifier = Modifier.weight(1f))
-                }
-            }
-        }
-
         // Startup Selection
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LabeledDropdown(
-                label = stringResource(R.string.startup_selection),
-                options = viewModel.startupSelectionEntries,
-                selectedOption = viewModel.startupSelectionEntries.getOrElse(viewModel.selectedStartupSelection) { "" },
-                onSelect = { opt -> viewModel.selectedStartupSelection = viewModel.startupSelectionEntries.indexOf(opt).coerceAtLeast(0) },
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = { helpRes = R.string.help_startup_selection }) {
-                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-            }
-        }
-
-        // Custom per-service toggles — only shown when "Custom" (index 3) is selected.
-        if (viewModel.selectedStartupSelection == Container.STARTUP_SELECTION_CUSTOM.toInt()) {
-            StartupServicesToggleList(
-                enabled = viewModel.startupServicesEnabled,
-                onToggle = { raw, on ->
-                    viewModel.startupServicesEnabled =
-                        if (on) viewModel.startupServicesEnabled + raw
-                        else viewModel.startupServicesEnabled - raw
-                }
-            )
-        }
+        LabeledDropdown(
+            label = stringResource(R.string.startup_selection),
+            options = viewModel.startupSelectionEntries,
+            selectedOption = viewModel.startupSelectionEntries.getOrElse(viewModel.selectedStartupSelection) { "" },
+            onSelect = { opt -> viewModel.selectedStartupSelection = viewModel.startupSelectionEntries.indexOf(opt).coerceAtLeast(0) }
+        )
 
         // Processor Affinity
         SectionBox(title = stringResource(R.string.processor_affinity)) {
@@ -2144,34 +1363,63 @@ private fun XRTab(viewModel: ContainerDetailViewModel) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared composables
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Per-service on/off list for the "Custom" startup selection. Shared by the container editor and the
-// shortcut Advanced tab (both are in this package), so the service list, labels and ordering come
-// from the single WineUtils source of truth and can't drift between the two screens.
 @Composable
-internal fun StartupServicesToggleList(
-    enabled: Set<String>,
-    onToggle: (rawName: String, on: Boolean) -> Unit
+internal fun AddEnvVarComposable(
+    onConfirm: (name: String, value: String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    SectionBox(title = "Custom Services") {
-        Text(
-            "Custom starts with every service off — turn on only what you need. " +
-                "Disabling Wine Bus/HID can break controllers.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(8.dp))
-        WineUtils.STARTUP_SERVICES.forEachIndexed { i, entry ->
-            val raw = WineUtils.startupServiceRawName(entry)
-            val label = WineUtils.STARTUP_SERVICE_LABELS.getOrElse(i) { raw }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("$label ($raw)", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                Switch(checked = enabled.contains(raw), onCheckedChange = { onToggle(raw, it) })
+    var name by remember { mutableStateOf("") }
+    var value by remember { mutableStateOf("") }
+    var showPresets by remember { mutableStateOf(false) }
+
+    val knownNames = remember { EnvVarsView.knownEnvVars.map { it[0] } }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.new_environment_variable)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = { Text("Value") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Box {
+                    OutlinedButton(onClick = { showPresets = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Presets")
+                    }
+                    DropdownMenu(expanded = showPresets, onDismissRequest = { showPresets = false }) {
+                        knownNames.forEach { preset ->
+                            DropdownMenuItem(
+                                text = { Text(preset) },
+                                onClick = { name = preset; showPresets = false }
+                            )
+                        }
+                    }
+                }
             }
-            if (i < WineUtils.STARTUP_SERVICES.lastIndex) Spacer(Modifier.height(4.dp))
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val n = name.trim().replace(" ", "")
+                val v = value.trim().replace(" ", "")
+                onConfirm(n, v)
+            }) { Text(stringResource(android.R.string.ok)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
+    )
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 internal fun SectionBox(
@@ -2206,30 +1454,12 @@ internal fun LabeledDropdown(
     onSelect: (String) -> Unit,
     enabled: Boolean = true,
     disabledOptions: Set<String> = emptySet(),
-    modifier: Modifier = Modifier,
-    // ── Controller / D-pad support (all defaulted, so every existing touch caller is unaffected) ──
-    // [focused] draws the focus border on the anchor when this dropdown is the highlighted control.
-    // [expandedOverride] (when non-null) lets a parent CONTROL the open state instead of the internal
-    // one — the shortcut editor's root D-pad handler opens/closes exactly one dropdown at a time this
-    // way. [onExpandedChange] fires on every open/close request (touch tap, item pick, outside dismiss)
-    // so the parent's open-tracker stays in sync. [highlightedIndex] tints the option the D-pad cursor
-    // is on. With all four at their defaults the box behaves exactly as before (own state, no highlight).
-    focused: Boolean = false,
-    expandedOverride: Boolean? = null,
-    onExpandedChange: ((Boolean) -> Unit)? = null,
-    highlightedIndex: Int = -1,
+    modifier: Modifier = Modifier
 ) {
-    var internalExpanded by remember { mutableStateOf(false) }
-    val expanded = expandedOverride ?: internalExpanded
-    val setExpanded: (Boolean) -> Unit = { want ->
-        if (enabled) {
-            onExpandedChange?.invoke(want)
-            if (expandedOverride == null) internalExpanded = want
-        }
-    }
+    var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { setExpanded(it) },
+        onExpandedChange = { if (enabled) expanded = it },
         modifier = modifier
     ) {
         OutlinedTextField(
@@ -2239,17 +1469,11 @@ internal fun LabeledDropdown(
             enabled = enabled,
             label = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-                .then(
-                    if (focused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraSmall)
-                    else Modifier
-                )
+            modifier = Modifier.menuAnchor().fillMaxWidth()
         )
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { setExpanded(false) },
+            onDismissRequest = { expanded = false },
             modifier = Modifier.outlinedMenuCard(),
         ) {
             options.forEachIndexed { idx, opt ->
@@ -2258,10 +1482,7 @@ internal fun LabeledDropdown(
                 DropdownMenuItem(
                     text = { Text(opt) },
                     enabled = optEnabled,
-                    onClick = { if (optEnabled) { onSelect(opt); setExpanded(false) } },
-                    modifier = if (idx == highlightedIndex)
-                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
-                    else Modifier,
+                    onClick = { if (optEnabled) { onSelect(opt); expanded = false } }
                 )
             }
         }
@@ -2335,7 +1556,7 @@ internal fun GraphicsDriverConfigDialog(
     }
 
     var version          by remember { mutableStateOf(cfg["version"] ?: "") }
-    var vulkanVersion    by remember { mutableStateOf(cfg["vulkanVersion"] ?: "1.4") }
+    var vulkanVersion    by remember { mutableStateOf(cfg["vulkanVersion"] ?: "1.3") }
     var gpuName          by remember { mutableStateOf(cfg["gpuName"] ?: "Device") }
     var presentMode      by remember { mutableStateOf(cfg["presentMode"] ?: "mailbox") }
     var resourceType     by remember { mutableStateOf(cfg["resourceType"] ?: "auto") }
@@ -2349,54 +1570,8 @@ internal fun GraphicsDriverConfigDialog(
     var disablePresentWait by remember { mutableStateOf(cfg["disablePresentWait"] == "1") }
     var fdDevFeatures    by remember { mutableStateOf(cfg["fdDevFeatures"] == "1") }
 
-    // --- Turnip GMEM tri-state (task #1) + advanced TU_DEBUG tokens (task #2) ---
-    // turnipGmem: "auto" (default) | "on" | "off". Auto adds the `gmem` token only on Adreno
-    // 710/720/722 at launch (resolved in XServerDisplayActivity). turnip* token flags map to the
-    // opt-in advanced TU_DEBUG tokens, stored comma-joined under "turnipTokens".
-    var turnipGmem       by remember { mutableStateOf(cfg["turnipGmem"] ?: "auto") }
-    val initialTurnipTokens = remember(initialConfig) {
-        (cfg["turnipTokens"] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-    }
-    var turnipForceCb    by remember { mutableStateOf("forcecb" in initialTurnipTokens) }
-    var turnipNoCb       by remember { mutableStateOf("nocb" in initialTurnipTokens) }
-    var turnipSysmem     by remember { mutableStateOf("sysmem" in initialTurnipTokens) }
-    var turnipDeckEmu    by remember { mutableStateOf("deck_emu" in initialTurnipTokens) }
-    var turnipSectionExpanded by remember { mutableStateOf(false) }
-
-    // --- #132 Smart Wrapper Manager: capability + GPU gating (replaces the old exact-name gates) ---
-    // Gate the BCn options by WHAT THE WRAPPER CONTAINS, not by its identifier string. capsFor()
-    // returns a bundled driver's known caps, or — for an imported wrapper — the caps detected from
-    // its .tzst at import time (libvulkan_wrapper.so / libbcn_layer.so / libdxvk_mali_compat_layer.so,
-    // cached in the .meta). This reproduces every bundled driver's current gating exactly, while
-    // letting an imported wrapper that actually carries a BCn layer (e.g. "112") show the same
-    // options. hasCompatLayer drives the DX12/compat UI (sparse binding / "Use GameNative engine")
-    // brought in from the Mali branch below.
-    val caps = remember(graphicsDriver) { WrapperManager(context).capsFor(graphicsDriver) }
-    val isImported = remember(graphicsDriver) { WrapperManager(context).isImported(graphicsDriver) }
-    // Integrated-BCn ICD = a wrapper ICD that honors WRAPPER_BCN_ASTC. Bundled: only wrapper-gamenative
-    // (hasIcd + hasBcnLayer). For IMPORTS we can't yet tell integrated-BCn (env baked into the ICD, no
-    // separate .so) from a plain ICD without an env-scan of the binary (Step-3 Layer 1, deferred), so
-    // any imported ICD shows the toggle — a non-gamenative ICD simply ignores WRAPPER_BCN_ASTC (inert,
-    // harmless). This keeps an imported GameNative wrapper from losing its ASTC toggle.
-    val isIntegratedBcn = (caps.hasIcd && caps.hasBcnLayer) || (isImported && caps.hasIcd)
-    // Standalone BCn Layer Settings (the implicit bcn_layer overlay's env block). Bundled: only
-    // wrapper-bcn_layer (hasBcnLayer, no own ICD). For imports: any archive carrying a BCn layer.
-    // The bundled integrated-BCn ICD (gamenative, hasIcd + hasBcnLayer but NOT an import) is excluded
-    // — it drives BCn through WRAPPER_EMULATE_BCN, not the implicit-layer env — so its dialog stays
-    // byte-for-byte as today.
-    val showBcnLayerSettings = caps.hasBcnLayer && (isImported || !caps.hasIcd)
-    // GPU awareness: BCn transcode/emulation is inert on Qualcomm/Adreno (native BCn). Mirror XSDA's
-    // activateBcnLayer = getVendorID != 0x5143 gate so we MARK (never silently hide) those options.
-    val isQualcomm = remember { GPUInformation.getVendorID(null, null) == 0x5143 }
-    val gpuModel = remember { GPUInformation.extractModelName(GPUInformation.getRenderer(null, context)) ?: "" }
-    // --- Mali branch: name-based gates for the new "Wrapper + compat + bcn" (DX12) driver. Kept
-    // alongside the capability gates above — downstream UI uses BOTH (caps gates for the generic BCn
-    // panel; these for the compat-driver-specific DX12/GameNative-engine controls). ---
-    // BCn Layer (leegao bcn_layer) settings; meaningful for both the bcn_layer driver and the
-    // "Wrapper + compat + bcn" driver, which reuses the same BCn transcode panel.
-    val isBcnLayer = graphicsDriver == "wrapper-bcn_layer" || graphicsDriver == "wrapper-compat-bcn"
-    // compat_layer (DX12 feature emulation) is exclusive to "Wrapper + compat + bcn".
-    val isCompatDriver = graphicsDriver == "wrapper-compat-bcn"
+    // --- BCn Layer (leegao bcn_layer) settings; only meaningful when driver == wrapper-bcn_layer ---
+    val isBcnLayer = graphicsDriver == "wrapper-bcn_layer"
     // The integrated-BCn wrapper (Wrapper-gamenative) is the only wrapper ICD that actually honors
     // WRAPPER_BCN_ASTC (see XServerDisplayActivity BCn env block). The older wrappers
     // (original/leegao/legacy) ignore it, and Wrapper + bcn_layer has its own ASTC control
@@ -2410,46 +1585,6 @@ internal fun GraphicsDriverConfigDialog(
     // Storage image path -> BCN_COMPUTE_IMAGE_VIEW=1. Default ON.
     var bcnImageView      by remember { mutableStateOf(cfg["bcnImageView"]?.let { it == "1" } ?: true) }
     var bcnDebugLog       by remember { mutableStateOf(cfg["bcnDebugLog"] == "1") }
-    // compat_layer: emulate D3D12 tiled/sparse resources (COMPAT_EMULATE_SPARSE_BINDING). Opt-in,
-    // only honored by the "Wrapper + compat + bcn" driver on a Valhall Mali. Default OFF.
-    var bcnCompatSparse   by remember { mutableStateOf(cfg["bcnCompatSparse"] == "1") }
-    // compat engine selection: OFF (default) = leegao bcn_layer + compat_layer (BCn textures only,
-    // no DX12). ON = swap the ICD base to the GameNative wrapper (wrapper-gamenative.tzst), which
-    // reports Vulkan 1.3 + emulates the promoted entrypoints so DXVK/VKD3D accept the adapter (DX12),
-    // and uses its own integrated BCn. Only for "Wrapper + compat + bcn"; a Valhall Mali (r32p1+) is
-    // required at activation time (XServerDisplayActivity gates it and falls back with a warning).
-    var compatUseGamenative by remember { mutableStateOf(cfg["compatUseGamenative"] == "1") }
-
-    // --- #132 Smart Wrapper Manager, Layer 1: auto-detected settings for IMPORTED wrappers only ---
-    // The env-var NAMES were scanned out of the wrapper's binaries at import and cached in its .meta.
-    // We only READ the .meta here (off-main via IO, keyed on the config so it can't drift), then render
-    // one control per detected key that ISN'T already exposed by a curated control above. Values live in
-    // graphicsDriverConfig under the RAW ENV KEY so they round-trip and XSDA emits them generically.
-    var detectedKeys by remember(graphicsDriver) { mutableStateOf<List<String>>(emptyList()) }
-    val detectedValues = remember(graphicsDriver) { mutableStateMapOf<String, String>() }
-    LaunchedEffect(graphicsDriver, isImported) {
-        if (!isImported) { detectedKeys = emptyList(); return@LaunchedEffect }
-        val wm = WrapperManager(context)
-        // A detected key is a settable SETTING only if it isn't already exposed by a curated control
-        // (HANDLED_ENV_KEYS), isn't debug/diagnostics plumbing (isDebugEnvKey), and hasn't been hidden
-        // for this wrapper via "Edit settings" (hiddenKeys). Same predicate as XSDA emission + the
-        // Edit-settings dialog.
-        val hidden = withContext(Dispatchers.IO) { wm.hiddenKeys(graphicsDriver) }
-        val keys = withContext(Dispatchers.IO) { wm.detectedEnvKeys(graphicsDriver) }
-            .filter {
-                it !in WrapperManager.HANDLED_ENV_KEYS && !WrapperManager.isDebugEnvKey(it) &&
-                    !WrapperManager.isDriverInternalEnvKey(it) && it !in hidden
-            }
-        keys.forEach { k ->
-            val def = WrapperSettingsDictionary.defFor(k)
-            // Seed from the stored config; a toggle normalises to "1"/"0", others keep the raw string.
-            detectedValues[k] = when (def.type) {
-                WrapperSettingsDictionary.Type.TOGGLE -> if (cfg[k] == "1") "1" else "0"
-                else -> cfg[k] ?: ""
-            }
-        }
-        detectedKeys = keys
-    }
 
     val deviceMemoryEntries = remember { context.resources.getStringArray(R.array.device_memory_entries).toList() }
     var selectedMemoryEntry by remember {
@@ -2466,13 +1601,6 @@ internal fun GraphicsDriverConfigDialog(
     var blacklisted   by remember { mutableStateOf(initialBlacklist) }
     var showAllDrivers by remember { mutableStateOf(false) }
     var showExtPicker by remember { mutableStateOf(false) }
-    // True when the picked custom driver couldn't load on this GPU and the native probe fell
-    // back to the system ICD (instead of crashing). Drives the inline note under the dropdown.
-    var driverFellBack by remember { mutableStateOf(false) }
-    // True when the selected version is an installed custom (Qualcomm proprietary) Adreno
-    // driver, whose extensions we intentionally don't probe here — the UI shows an explanatory
-    // note instead of a misleading "0/0 extensions".
-    var isCustomDriver by remember { mutableStateOf(false) }
 
     LaunchedEffect(showAllDrivers) {
         val atVersions = withContext(Dispatchers.IO) {
@@ -2506,30 +1634,9 @@ internal fun GraphicsDriverConfigDialog(
     }
 
     LaunchedEffect(version) {
-        // Is the selected version an installed Adrenotools custom (Qualcomm proprietary)
-        // driver? Query the filesystem directly so this is race-free regardless of when the
-        // driver-list effect above finishes.
-        val isCustomAdrenotools = version.isNotEmpty() && withContext(Dispatchers.IO) {
-            AdrenotoolsManager(context).enumarateInstalledDrivers()
-                .any { it.equals(version, ignoreCase = true) }
-        }
-        isCustomDriver = isCustomAdrenotools
-        if (version.isEmpty()) {
-            driverFellBack = false
-        } else if (isCustomAdrenotools) {
-            // Installed Adrenotools custom (Qualcomm proprietary) driver: skip the native
-            // extension probe entirely — it instantiates the proprietary blob in-app and can
-            // SIGSEGV inside the vendor Adreno app-profile HAL. The driver is realized at game
-            // launch instead (GameNative's approach). No extension blacklist offered here.
-            allExtensions = emptyList()
-            driverFellBack = false
-            if (version != cfg["version"]) blacklisted = emptySet()
-        } else {
+        if (version.isNotEmpty()) {
             val exts = GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
             allExtensions = exts
-            // If a real installed Adrenotools driver couldn't load on this GPU, the native
-            // probe now falls back to the system ICD instead of crashing — reflect that.
-            driverFellBack = GPUInformation.driverLoadedFellBack()
             if (version != cfg["version"]) blacklisted = emptySet()
         }
     }
@@ -2550,12 +1657,7 @@ internal fun GraphicsDriverConfigDialog(
     val bcnTypeEntries      = remember { context.resources.getStringArray(R.array.bcn_emulation_type_entries).toList() }
     val bcnCacheEntries     = remember { context.resources.getStringArray(R.array.bcn_emulation_cache_entries).toList() }
 
-    // Per-option "?" help — this dialog is its own composable, so it carries its own helpRes.
-    // HelpDialog renders as a Dialog on top of this AlertDialog (same pattern as elsewhere).
-    var helpRes by remember { mutableStateOf<Int?>(null) }
-    helpRes?.let { HelpDialog(it) { helpRes = null } }
-
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.graphics_driver_configuration)) },
         text = {
@@ -2569,290 +1671,62 @@ internal fun GraphicsDriverConfigDialog(
                     .heightIn(max = maxContentHeight)
                     .verticalScroll(rememberScrollState())
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_vulkan_version), vulkanVersions, vulkanVersion, { vulkanVersion = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_vulkan_version }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(stringResource(R.string.graphics_driver_vulkan_version), vulkanVersions, vulkanVersion, { vulkanVersion = it })
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_graphics_driver_version }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                if (driverFellBack) {
-                    Text(
-                        text = "This driver couldn't load on your GPU — using the system driver instead. It may need a build patched for this chipset.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
-                    )
-                }
+                LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it })
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = showAllDrivers, onCheckedChange = { showAllDrivers = it })
-                    Text(stringResource(R.string.graphics_driver_show_incompatible), modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_show_incompatible_drivers }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
+                    Text(stringResource(R.string.graphics_driver_show_incompatible))
                 }
                 Spacer(Modifier.height(8.dp))
-                if (isCustomDriver) {
-                    Text(
-                        text = "Custom Qualcomm (Adreno) driver — its extensions load when a game starts, so none are listed here. That's expected, not an error: the driver is applied in-game, where your HUD will show it's active.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp, end = 4.dp)
-                    )
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(
-                            onClick = { showExtPicker = true },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            val enabled = allExtensions.size - blacklisted.size
-                            Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
-                        }
-                        IconButton(onClick = { helpRes = R.string.help_available_extensions }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
+                OutlinedButton(
+                    onClick = { showExtPicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val enabled = allExtensions.size - blacklisted.size
+                    Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
                 }
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_gpu_name }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it })
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_max_device_memory), deviceMemoryEntries, selectedMemoryEntry, { selectedMemoryEntry = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_max_device_memory }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(stringResource(R.string.graphics_driver_max_device_memory), deviceMemoryEntries, selectedMemoryEntry, { selectedMemoryEntry = it })
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_present_modes), presentModeEntries, presentMode, { presentMode = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_wrapper_present_modes }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(stringResource(R.string.graphics_driver_present_modes), presentModeEntries, presentMode, { presentMode = it })
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_resource_type), resourceTypeEntries, resourceType, { resourceType = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_resource_type }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(stringResource(R.string.graphics_driver_resource_type), resourceTypeEntries, resourceType, { resourceType = it })
                 Spacer(Modifier.height(8.dp))
-                // #132 GPU-context note: BCn transcode/emulation (and the compat layers) only do
-                // anything on Mali/non-Qualcomm GPUs — Adreno has native BCn. Surface the real chip so
-                // Adreno users understand why these options are inert for them (a real point of confusion).
-                Text(
-                    (if (gpuModel.isNotEmpty()) "GPU: $gpuModel — " else "") +
-                        "BCn/compat layers apply to Mali and other non-Qualcomm GPUs",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation), bcnEmulationEntries, bcnEmulation, { bcnEmulation = it })
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation), bcnEmulationEntries, bcnEmulation, { bcnEmulation = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_bcn_emulation }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_type), bcnTypeEntries, bcnEmulationType, { bcnEmulationType = it })
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_type), bcnTypeEntries, bcnEmulationType, { bcnEmulationType = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_bcn_emulation_type }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
+                LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_cache), bcnCacheEntries, bcnEmulationCache, { bcnEmulationCache = it })
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(stringResource(R.string.graphics_driver_bcn_emulation_cache), bcnCacheEntries, bcnEmulationCache, { bcnEmulationCache = it }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_bcn_emulation_cache }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                // ASTC transcode is offered by any integrated-BCn wrapper ICD (bundled Wrapper-
-                // gamenative, or an imported wrapper whose archive carries a BCn layer). The standalone
-                // bcn_layer driver has its own ASTC control in its section below; the older wrappers
-                // ignore WRAPPER_BCN_ASTC entirely — so gate on the detected capability, not the name.
-                if (isIntegratedBcn) {
+                // ASTC transcode is offered by the BCn-integrated wrapper (Wrapper-gamenative).
+                // The Wrapper + bcn_layer driver has its own ASTC control in its section below;
+                // the older wrappers ignore WRAPPER_BCN_ASTC entirely, so only expose it here for
+                // the gamenative integrated-BCn wrapper.
+                if (isGamenative) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = bcnEmulationAstc, onCheckedChange = { bcnEmulationAstc = it })
-                        Text(stringResource(R.string.graphics_driver_bcn_emulation_astc), modifier = Modifier.weight(1f))
-                        IconButton(onClick = { helpRes = R.string.help_bcn_transcode_astc }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    if (isQualcomm) {
-                        Text(
-                            "No effect on Adreno (native BCn)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                // Compute-layer BCn -> ASTC target on the DEFAULT driver. When BCn type = compute, the
-                // implicit leegao bcn_layer is the active decoder (ENABLE_BCN_COMPUTE) and honors
-                // BCN_TRANSCODE_TO_ASTC — previously only exposed on the explicit Wrapper + bcn_layer
-                // driver, so Mali users had to hand-add the env var. Reuses the same bcnTranscodeAstc
-                // state (already persisted); default off.
-                if (!isBcnLayer && bcnEmulationType == "compute" &&
-                    (bcnEmulation == "auto" || bcnEmulation == "full")) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = bcnTranscodeAstc, onCheckedChange = { bcnTranscodeAstc = it })
-                        Text(stringResource(R.string.bcn_layer_transcode_astc), modifier = Modifier.weight(1f))
-                        IconButton(onClick = { helpRes = R.string.help_bcn_transcode_astc }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    if (isQualcomm) {
-                        Text(
-                            "No effect on Adreno (native BCn)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text(stringResource(R.string.graphics_driver_bcn_emulation_astc))
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = syncFrame, onCheckedChange = { syncFrame = it })
-                    Text(stringResource(R.string.graphics_driver_sync_frame), modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_sync_every_frame }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
+                    Text(stringResource(R.string.graphics_driver_sync_frame))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = disablePresentWait, onCheckedChange = { disablePresentWait = it })
-                    Text(stringResource(R.string.graphics_driver_disable_present_wait), modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_disable_present_wait }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
+                    Text(stringResource(R.string.graphics_driver_disable_present_wait))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = fdDevFeatures, onCheckedChange = { fdDevFeatures = it })
-                    Text("OneUI / HyperOS Fix", modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_oneui_hyperos_fix }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
+                    Text("OneUI / HyperOS Fix")
                 }
 
-                // --- Turnip GMEM (task #1) — always visible: this is the escape hatch for 710/720/722
-                // users on a STOCK driver. Tri-state maps to whether `gmem` joins TU_DEBUG at launch. ---
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Turnip GMEM",
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Spacer(Modifier.height(4.dp))
-                val gmemLabels = listOf("Auto (Adreno 710/720/722)", "Force On", "Force Off")
-                val gmemValues = listOf("auto", "on", "off")
-                val gmemSel = gmemLabels[gmemValues.indexOf(turnipGmem).coerceAtLeast(0)]
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown("GMEM (tiled rendering)", gmemLabels, gmemSel, { picked ->
-                        turnipGmem = gmemValues[gmemLabels.indexOf(picked).coerceAtLeast(0)]
-                    }, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { helpRes = R.string.help_turnip_gmem }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                Text(
-                    "Auto forces GMEM tiled rendering (TU_DEBUG=gmem) only on Adreno 710/720/722; " +
-                        "Force On applies it on any GPU; Force Off never applies it. Leave on Auto unless a " +
-                        "game misbehaves.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                // --- Advanced TU_DEBUG tokens (task #2) — collapsed expert section, off by default. ---
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { turnipSectionExpanded = !turnipSectionExpanded }
-                ) {
-                    Text(
-                        (if (turnipSectionExpanded) "▾  " else "▸  ") + "Advanced Turnip (TU_DEBUG)",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (turnipSectionExpanded) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Expert-only Turnip debug tokens. Off by default — enable only if you know what " +
-                            "they do. These are unioned with the GMEM setting above into TU_DEBUG.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = turnipForceCb, onCheckedChange = { turnipForceCb = it })
-                        Text("forcecb — force concurrent binning", modifier = Modifier.weight(1f))
-                        IconButton(onClick = { helpRes = R.string.help_turnip_concurrent_binning }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = turnipNoCb, onCheckedChange = { turnipNoCb = it })
-                        Text("nocb — disable concurrent binning", modifier = Modifier.weight(1f))
-                        IconButton(onClick = { helpRes = R.string.help_turnip_concurrent_binning }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    // sysmem is the direct opposite of gmem and Turnip lets it defeat gmem, so when
-                    // GMEM = Force On the two would contradict. Grey out the pick (gmem always wins the
-                    // launch-time merge anyway) so the UI can't express the contradiction.
-                    val sysmemBlockedByGmem = turnipGmem == "on"
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = turnipSysmem && !sysmemBlockedByGmem,
-                            onCheckedChange = { turnipSysmem = it },
-                            enabled = !sysmemBlockedByGmem
-                        )
-                        Text(
-                            "sysmem — force sysmem (bypass GMEM)",
-                            modifier = Modifier.weight(1f),
-                            color = if (sysmemBlockedByGmem) MaterialTheme.colorScheme.onSurfaceVariant
-                                    else Color.Unspecified
-                        )
-                        IconButton(onClick = { helpRes = R.string.help_turnip_sysmem }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    if (sysmemBlockedByGmem) {
-                        Text(
-                            "Disabled — Turnip GMEM = Force On overrides sysmem.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = turnipDeckEmu, onCheckedChange = { turnipDeckEmu = it })
-                        Text("deck_emu — advertise as SteamDeck", modifier = Modifier.weight(1f))
-                        IconButton(onClick = { helpRes = R.string.help_turnip_deck_emu }) {
-                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    Text(
-                        "deck_emu requires a Banners-Turnip driver (ignored on stock Turnip).",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // BCn Layer Settings — shown when the wrapper carries a BCn layer as an implicit
-                // overlay: bundled wrapper-bcn_layer, or an imported wrapper whose .tzst contains
-                // libbcn_layer.so (e.g. "112"). Detected via caps, not the driver name.
-                if (showBcnLayerSettings) {
+                // BCn Layer Settings — only when the Wrapper + bcn_layer driver is selected.
+                if (isBcnLayer) {
                     Spacer(Modifier.height(12.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -2873,14 +1747,6 @@ internal fun GraphicsDriverConfigDialog(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (isQualcomm) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "No effect on Adreno (native BCn) — these apply to Mali/non-Qualcomm GPUs",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = bcnLayerAuto, onCheckedChange = { bcnLayerAuto = it })
@@ -2925,105 +1791,6 @@ internal fun GraphicsDriverConfigDialog(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        // compat_layer DX12 sparse-binding emulation — only for Wrapper + compat + bcn.
-                        if (isCompatDriver) {
-                            // Engine selector: swap the ICD base from leegao to the GameNative wrapper
-                            // for real DX12 support. Primary switch, shown above the sparse opt-in.
-                            Spacer(Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = compatUseGamenative, onCheckedChange = { compatUseGamenative = it })
-                                Text(stringResource(R.string.compat_use_gamenative))
-                            }
-                            Text(
-                                stringResource(R.string.compat_use_gamenative_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = bcnCompatSparse, onCheckedChange = { bcnCompatSparse = it })
-                                Text(stringResource(R.string.bcn_compat_sparse))
-                            }
-                            Text(
-                                stringResource(R.string.bcn_compat_sparse_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                // --- #132 Smart Wrapper Manager, Layer 1: auto-detected settings (imports only) ---
-                // One control per env-var name scanned from THIS wrapper's binaries, minus the keys a
-                // curated control above already exposes (HANDLED_ENV_KEYS). Values are stored under the
-                // raw env key and passed to the wrapper verbatim at launch. Bundled wrappers: not shown.
-                if (isImported) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Detected settings (advanced) — from scanning this wrapper",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Values are passed to the wrapper as-is; unknown ones are safe to leave blank.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    if (detectedKeys.isEmpty()) {
-                        Text(
-                            "No extra settings detected.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        detectedKeys.forEach { key ->
-                            val def = WrapperSettingsDictionary.defFor(key)
-                            val current = detectedValues[key] ?: ""
-                            when (def.type) {
-                                WrapperSettingsDictionary.Type.TOGGLE -> {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Checkbox(
-                                            checked = current == "1",
-                                            onCheckedChange = { detectedValues[key] = if (it) "1" else "0" }
-                                        )
-                                        Text(def.label)
-                                    }
-                                }
-                                WrapperSettingsDictionary.Type.DROPDOWN -> {
-                                    val selected = current.ifEmpty { def.default }.ifEmpty { def.choices.firstOrNull() ?: "" }
-                                    LabeledDropdown(def.label, def.choices, selected, { detectedValues[key] = it })
-                                }
-                                WrapperSettingsDictionary.Type.SLIDER -> {
-                                    val fv = current.toFloatOrNull() ?: def.default.toFloatOrNull() ?: def.min
-                                    Text("${def.label}: ${fv.toInt()}", style = MaterialTheme.typography.bodySmall)
-                                    Slider(
-                                        value = fv,
-                                        onValueChange = { detectedValues[key] = it.toInt().toString() },
-                                        valueRange = def.min..(if (def.max > def.min) def.max else def.min + 1f),
-                                        steps = if (def.step > 0f && def.max > def.min)
-                                            (((def.max - def.min) / def.step).toInt() - 1).coerceAtLeast(0) else 0
-                                    )
-                                }
-                                WrapperSettingsDictionary.Type.TEXT -> {
-                                    OutlinedTextField(
-                                        value = current,
-                                        onValueChange = { detectedValues[key] = it },
-                                        singleLine = true,
-                                        label = { Text(def.label) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                            if (def.hint.isNotBlank()) {
-                                Text(
-                                    def.hint,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(Modifier.height(8.dp))
-                        }
                     }
                 }
             }
@@ -3047,26 +1814,9 @@ internal fun GraphicsDriverConfigDialog(
                     "bcnTranscodeAstc=${if (bcnTranscodeAstc) "1" else "0"};" +
                     "bcnImageView=${if (bcnImageView) "1" else "0"};" +
                     "bcnDebugLog=${if (bcnDebugLog) "1" else "0"};" +
-                    "bcnCompatSparse=${if (bcnCompatSparse) "1" else "0"};" +
-                    "compatUseGamenative=${if (compatUseGamenative) "1" else "0"};" +
                     "gpuName=$gpuName" +
-                    ";fdDevFeatures=${if (fdDevFeatures) "1" else "0"}" +
-                    ";turnipGmem=$turnipGmem" +
-                    ";turnipTokens=" + buildList {
-                        if (turnipForceCb) add("forcecb")
-                        if (turnipNoCb) add("nocb")
-                        // Don't persist sysmem when GMEM = Force On overrides it (matches the greyed-out
-                        // checkbox); the launch-time merge would strip it anyway.
-                        if (turnipSysmem && turnipGmem != "on") add("sysmem")
-                        if (turnipDeckEmu) add("deck_emu")
-                    }.joinToString(",")
-                // #132 Layer 1: append auto-detected wrapper settings under their RAW ENV KEY. Sanitise
-                // values so they can't break the ";"/"=" k=v format the config round-trips through.
-                val detectedPart = detectedKeys.joinToString("") { key ->
-                    val v = (detectedValues[key] ?: "").replace(";", "").replace("=", "")
-                    ";$key=$v"
-                }
-                onConfirm(config + detectedPart)
+                    ";fdDevFeatures=${if (fdDevFeatures) "1" else "0"}"
+                onConfirm(config)
             }) { Text(stringResource(android.R.string.ok)) }
         },
         dismissButton = {
@@ -3086,7 +1836,7 @@ internal fun ExtensionPickerDialog(
         mutableStateOf(extensions.associateWith { !blacklisted.contains(it) })
     }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.graphics_driver_available_extensions)) },
         text = {
@@ -3128,14 +1878,12 @@ internal fun ExtensionPickerDialog(
 internal fun DxvkConfigDialog(
     isArm64EC: Boolean,
     isVegas: Boolean = false,
-    relaxDxvkFilter: Boolean = false,
     refreshKey: Int = 0,
     initialConfig: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
     onDownloadDxvk: () -> Unit = {},
     onDownloadVkd3d: () -> Unit = {},
-    onDownloadD7vk: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -3145,9 +1893,6 @@ internal fun DxvkConfigDialog(
 
     val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
     val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
-    // Seeded with the bundled sentinel so the D7VK version dropdown always offers "Bundled (default)"
-    // even before the async catalog load lands (or when there are no downloaded d7vk profiles).
-    val d7vkVersions    = remember { mutableStateOf(listOf(DXVKConfigDialog.D7VK_BUNDLED)) }
     val configSourceEntries = remember { mutableStateOf(listOf<String>()) }
 
     LaunchedEffect(refreshKey) {
@@ -3159,12 +1904,10 @@ internal fun DxvkConfigDialog(
             else
                 DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
             val vkd3d = DXVKConfigDialog.loadVkd3dVersionList(context, cm)
-            val d7vk = DXVKConfigDialog.loadD7vkVersionList(context, cm)
             val cfgsrc = DXVKConfigDialog.loadVegasConfigSourceList(context)
             withContext(Dispatchers.Main) {
                 allDxvkVersions.value = versions
                 vkd3dVersions.value = vkd3d
-                d7vkVersions.value = d7vk
                 configSourceEntries.value = cfgsrc
             }
         }
@@ -3172,23 +1915,9 @@ internal fun DxvkConfigDialog(
 
     var selectedVkd3d by remember { mutableStateOf(config.get("vkd3dVersion").ifEmpty { "None" }) }
 
-    // VKD3D-Proton needs DXVK 2.x's DXGI; DXVK 1.x can't back it, so the DX12 test fails to start.
-    // Filter the DXVK list to 2.x+ (keeping unparseable names, e.g. VEGAS) when VKD3D is enabled —
-    // matches the shortcut-level dialog, which already enforces this. Fixes #113.
-    // Exception: the Mali "Wrapper + compat + bcn" driver (relaxDxvkFilter) shows all DXVK versions
-    // so testers can try the DXVK 1.10.3 adapter-accept workaround with VKD3D on (#137).
-    val filteredDxvk = remember(selectedVkd3d, allDxvkVersions.value, relaxDxvkFilter) {
-        if (selectedVkd3d != "None" && !relaxDxvkFilter) {
-            allDxvkVersions.value.filter { v ->
-                val major = DXVKConfigDialog.tryGetMajor(v)
-                major == null || major >= 2
-            }
-        } else allDxvkVersions.value
-    }
-
-    var selectedDxvk by remember(filteredDxvk) {
+    var selectedDxvk by remember(allDxvkVersions.value) {
         val stored = config.get("version")
-        mutableStateOf(filteredDxvk.firstOrNull { it == stored } ?: filteredDxvk.firstOrNull() ?: stored)
+        mutableStateOf(allDxvkVersions.value.firstOrNull { it == stored } ?: allDxvkVersions.value.firstOrNull() ?: stored)
     }
 
     val dxvkType = remember(selectedDxvk) { DXVKConfigDialog.getDXVKType(selectedDxvk) }
@@ -3204,17 +1933,33 @@ internal fun DxvkConfigDialog(
     }
     var selectedFeatureLevel by remember { mutableStateOf(featureLevelEntries.firstOrNull { it == config.get("vkd3dLevel") } ?: featureLevelEntries.first()) }
     var selectedDdra         by remember { mutableStateOf(ddraEntries.firstOrNull { StringUtils.parseIdentifier(it) == config.get("ddrawrapper") } ?: ddraEntries.first()) }
-    // D7VK version (only meaningful when DDraw Wrapper == D7VK). Empty/unknown -> the bundled asset.
-    var selectedD7vk         by remember(d7vkVersions.value) {
-        val stored = config.get("d7vkVersion")
-        mutableStateOf(d7vkVersions.value.firstOrNull { it == stored } ?: DXVKConfigDialog.D7VK_BUNDLED)
-    }
     var selectedConfigSource by remember(configSourceEntries.value) {
         val stored = config.get("dxvkConfigFile")
         mutableStateOf(configSourceEntries.value.firstOrNull { it == stored } ?: configSourceEntries.value.firstOrNull() ?: "None")
     }
     var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
     var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
+
+    // VEGAS knowledge layer: bundled asset or null (null -> unclassified fallback).
+    val vegasKnowledge = remember { DXVKConfigDialog.loadVegasKeyKnowledge(context) }
+    var forkFilter by remember { mutableStateOf(false) }
+    // Config-file snapshot, read ONCE per source pick (never re-read on the fly):
+    // empty text = no file (USE DEFAULTS/None); missing = picked path not found.
+    val configSourceText = remember(selectedConfigSource) {
+        if (selectedConfigSource == "None" || selectedConfigSource.isEmpty()) ""
+        else {
+            val f = java.io.File(selectedConfigSource)
+            if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
+        }
+    }
+    val configSourceMissing = remember(selectedConfigSource) {
+        selectedConfigSource != "None" && selectedConfigSource.isNotEmpty() &&
+            !java.io.File(selectedConfigSource).isFile
+    }
+    val configRows = remember(vegasKnowledge, configSourceText, selectedDxvk) {
+        if (vegasKnowledge != null) vegasKnowledge.preview(configSourceText, selectedDxvk)
+        else DXVKConfigDialog.previewUnclassified(configSourceText)
+    }
 
     val pickVegasLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -3246,7 +1991,7 @@ internal fun DxvkConfigDialog(
         }
     }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isVegas) "VEGAS ${stringResource(R.string.configuration)}" else "DXVK ${stringResource(R.string.configuration)}") },
         text = {
@@ -3262,7 +2007,7 @@ internal fun DxvkConfigDialog(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     LabeledDropdown(
                         if (isVegas) "Vegas Selector" else stringResource(R.string.dxvk_version),
-                        filteredDxvk, selectedDxvk, { selectedDxvk = it },
+                        allDxvkVersions.value, selectedDxvk, { selectedDxvk = it },
                         modifier = Modifier.weight(1f)
                     )
                     ContentInstallGear(
@@ -3320,17 +2065,6 @@ internal fun DxvkConfigDialog(
                         }
                     }
                 }
-                // When VKD3D is on, filteredDxvk hides DXVK 1.x (it can't back VKD3D-Proton's DXGI, #113).
-                // Tell the user why those versions vanished — but only when the filter is actually active
-                // (the Mali relaxDxvkFilter driver keeps 1.x visible, so no reminder there).
-                if (selectedVkd3d != "None" && !relaxDxvkFilter) {
-                    Text(
-                        text = "VKD3D needs DXVK 2.0 or newer — older 1.x versions are hidden.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
-                    )
-                }
                 if (isProcessing) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
                 }
@@ -3355,22 +2089,44 @@ internal fun DxvkConfigDialog(
                 LabeledDropdown("VKD3D Feature Level", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown("DDraw Wrapper", ddraEntries, selectedDdra, { selectedDdra = it })
-                // D7VK is a catalog-backed component: when it's the chosen DDraw wrapper, offer a
-                // version dropdown ("Bundled (default)" + any downloaded profiles) and a cloud button
-                // to fetch more — mirroring the DXVK/VKD3D version UI above.
-                if (StringUtils.parseIdentifier(selectedDdra) == "d7vk") {
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        LabeledDropdown(
-                            "D7VK Version", d7vkVersions.value, selectedD7vk, { selectedD7vk = it },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ContentInstallGear(onDownloadFile = onDownloadD7vk)
-                    }
-                }
                 if (isVegas) {
                     Spacer(Modifier.height(8.dp))
                     LabeledDropdown("Config Source", configSourceEntries.value, selectedConfigSource, { selectedConfigSource = it })
+                    if (configSourceMissing) {
+                        Spacer(Modifier.height(4.dp))
+                        Text("not found: $selectedConfigSource", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    } else if (configSourceText.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(checked = forkFilter, onCheckedChange = { forkFilter = it }, modifier = Modifier.height(32.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Fork-feature filter", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        configRows.forEach { row ->
+                            val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
+                            if (forkFilter && gated) return@forEach
+                            val badge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    row.key,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                                             else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(badge, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    // Knowledge footer: provenance + state of the data layer
+                    Spacer(Modifier.height(6.dp))
+                    val footerText = if (vegasKnowledge != null)
+                        "knowledge: fork ${vegasKnowledge.forkBuild()} · ${vegasKnowledge.generated()}"
+                    else
+                        "knowledge data unavailable — showing keys unclassified"
+                    Text(footerText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
@@ -3384,7 +2140,6 @@ internal fun DxvkConfigDialog(
                 cfg.put("vkd3dVersion", selectedVkd3d)
                 cfg.put("vkd3dLevel", selectedFeatureLevel)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
-                cfg.put("d7vkVersion", selectedD7vk)
                 cfg.put("dxvkConfigFile", if (selectedConfigSource == "None") "" else selectedConfigSource)
                 onConfirm(cfg.toString())
             }) { Text(stringResource(android.R.string.ok)) }
@@ -3428,7 +2183,7 @@ internal fun WineD3DConfigDialog(
     var orm       by remember { mutableStateOf(config.get("OffscreenRenderingMode").ifEmpty { "fbo" }) }
     var renderer  by remember { mutableStateOf(config.get("renderer").ifEmpty { "gl" }) }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("WineD3D ${stringResource(R.string.configuration)}") },
         text = {
@@ -3483,32 +2238,12 @@ internal fun FpsCounterConfigDialog(
     }
 
     val cfg = remember(initialConfig) { parseConfig(initialConfig) }
-    val diagContext = LocalContext.current
     fun bool(k: String, fallbackKey: String, d: String) =
         cfg.getOrDefault(k, cfg.getOrDefault(fallbackKey, d)) == "1"
 
-    // Master HUD on/off — mirrors the in-game drawer's "Show HUD" toggle so the two surfaces keep an
-    // identical key set. When off, the overlay stays hidden even while a game window is bound.
-    var hudEnabled by remember { mutableStateOf(bool("hudEnabled", "hudEnabled", "1")) }
     // Orientation (vertical/horizontal) is toggled live by tapping the HUD in-game; preserve it.
     val hudMode = remember { cfg.getOrDefault("hudMode", "vertical") }
-    // 4-way HUD style: classic | gamehub | gamenative | fusion.
-    val styles = listOf("classic", "gamehub", "gamenative", "fusion")
-    var hudStyle by remember { mutableStateOf(cfg.getOrDefault("hudStyle", "fusion")) }
-    val gameHub = hudStyle == "gamehub"
-    val gameNative = hudStyle == "gamenative"
-    val fusion = hudStyle == "fusion"
-    val rich = gameHub || gameNative || fusion   // opacity + FPS graph + GPU model + color/outline
-    // Fusion size mode (Full/Tiles/Pill/Minimal/Mega); also live-cycled by tapping the Fusion HUD in-game.
-    val fusionSizes = listOf("full", "tiles", "pill", "minimal", "mega")
-    var fusionSize by remember { mutableStateOf(cfg.getOrDefault("hudSize", "pill")) }
-    // The chips this Fusion size actually renders (single source of truth in FusionSize) — used below to
-    // show only the relevant metric chips for the selected view/size.
-    val fusionChips = com.winlator.star.widget.fusionhud.FusionSize.from(fusionSize).supportedChips()
-    // GPU model defaults ON for Fusion (its spec), OFF for the others — matching each view's default.
-    val gpuModelDefault = if (cfg.getOrDefault("hudStyle", "fusion") == "fusion") "1" else "0"
-    // Clock defaults ON for Fusion (subtle corner readout), OFF elsewhere.
-    val clockDefault = if (cfg.getOrDefault("hudStyle", "fusion") == "fusion") "1" else "0"
+    var gameHub by remember { mutableStateOf(cfg.getOrDefault("hudStyle", "classic") == "gamehub") }
 
     // Unified metric toggles (emitted under both classic + gamehub key names so either HUD honors them).
     var showFPS      by remember { mutableStateOf(bool("showFPS", "showFPS", "1")) }
@@ -3519,66 +2254,23 @@ internal fun FpsCounterConfigDialog(
     var showPower    by remember { mutableStateOf(bool("showPower", "showPower", "1")) }
     var showTemp     by remember { mutableStateOf(bool("showTemp", "showBatteryTemp", "1")) }
     var showEngine   by remember { mutableStateOf(bool("showEngine", "showRenderer", "1")) }
-    var showGpuModel by remember { mutableStateOf(bool("showGpuModel", "showGpuModel", gpuModelDefault)) }
+    var showGpuModel by remember { mutableStateOf(bool("showGpuModel", "showGpuModel", "0")) }
     var dualBattery  by remember { mutableStateOf(bool("hudDualBattery", "hudDualBattery", "0")) }
-    // GameNative-only extra metrics (absent = off is the intended default).
-    var showGpuTemp  by remember { mutableStateOf(bool("showGpuTemp", "showGpuTemp", "0")) }
-    var showBattery  by remember { mutableStateOf(bool("showBattery", "showBattery", "0")) }
-    var showRuntime  by remember { mutableStateOf(bool("showRuntime", "showRuntime", "0")) }
-    var showClock    by remember { mutableStateOf(bool("showClock", "showClock", clockDefault)) }
-    var showCpuGraph by remember { mutableStateOf(bool("showCPUGraph", "showCPUGraph", "0")) }
-    var showGpuGraph by remember { mutableStateOf(bool("showGPUGraph", "showGPUGraph", "0")) }
-    // Fusion extra metrics + global lock (defaults match Container.DEFAULT_FPS_COUNTER_CONFIG).
-    var showVram     by remember { mutableStateOf(bool("showVram", "showVram", "1")) }
-    var showLow001   by remember { mutableStateOf(bool("showLow001", "showLow001", "1")) }
-    var fpsDecimal   by remember { mutableStateOf(bool("fpsDecimal", "fpsDecimal", "1")) }
-    var hudLocked    by remember { mutableStateOf(bool("hudLocked", "hudLocked", "0")) }
-    // Fusion Mega-only metrics (defaults match Container.DEFAULT_FPS_COUNTER_CONFIG).
-    var showPerCore  by remember { mutableStateOf(bool("showPerCore", "showPerCore", "1")) }
-    var showSwap     by remember { mutableStateOf(bool("showSwap", "showSwap", "1")) }
-    var showNet      by remember { mutableStateOf(bool("showNet", "showNet", "1")) }
-    var showResolution by remember { mutableStateOf(bool("showResolution", "showResolution", "1")) }
-    var showProton   by remember { mutableStateOf(bool("showProton", "showProton", "1")) }
-    var showWrapper  by remember { mutableStateOf(bool("showWrapper", "showWrapper", "1")) }
-    var showDxVer    by remember { mutableStateOf(bool("showDxVer", "showDxVer", "1")) }
-    var showSession  by remember { mutableStateOf(bool("showSession", "showSession", "1")) }
-    // Temperature display — same keys as the in-game drawer pane, so the two stay interchangeable.
-    var tempUnitF  by remember { mutableStateOf(cfg.getOrDefault("tempUnit", "c").equals("f", true)) }
-    var tempBands  by remember { mutableStateOf(cfg.getOrDefault("tempBands", "1") != "0") }
-    var tempAuto   by remember { mutableStateOf(cfg.getOrDefault("tempAuto", "1") != "0") }
-    var tempRedCpu by remember { mutableStateOf(cfg.getOrDefault("tempRedCpu", "90").toIntOrNull() ?: 90) }
-    var tempRedGpu by remember { mutableStateOf(cfg.getOrDefault("tempRedGpu", "90").toIntOrNull() ?: 90) }
-    var tempRedBat by remember { mutableStateOf(cfg.getOrDefault("tempRedBat", "48").toIntOrNull() ?: 48) }
 
-    var hudScale by remember { mutableStateOf(cfg.getOrDefault("hudScale", Container.DEFAULT_HUD_SCALE.toString()).toIntOrNull() ?: Container.DEFAULT_HUD_SCALE) }
+    var hudScale by remember { mutableStateOf(cfg.getOrDefault("hudScale", "92").toIntOrNull() ?: 92) }
     var hudOpacity by remember { mutableStateOf(cfg.getOrDefault("hudOpacity", "80").toIntOrNull() ?: 80) }
     var hudTransparency by remember { mutableStateOf(cfg.getOrDefault("hudTransparency", "0").toIntOrNull() ?: 0) }
 
     val skins = listOf("classic", "neon", "mono")
     val colors = listOf("soft", "mid", "vivid")
+    val outlines = listOf("off", "soft", "strong")
     var skin by remember { mutableStateOf(cfg.getOrDefault("hudSkin", "classic")) }
     var color by remember { mutableStateOf(cfg.getOrDefault("hudColor", "mid")) }
-    // hudOutline is a 0..100 intensity (legacy off/soft/strong strings map via parseHudOutline).
-    var outlineValue by remember { mutableStateOf(parseHudOutline(cfg.getOrDefault("hudOutline", "40"))) }
-    var outlineAccent by remember { mutableStateOf(cfg.getOrDefault("hudOutlineAccent", "1") == "1") }
+    var outline by remember { mutableStateOf(cfg.getOrDefault("hudOutline", "soft")) }
 
     fun i(v: Boolean) = if (v) "1" else "0"
     fun buildConfig(): String = listOf(
-        "hudStyle=$hudStyle",
-        "hudEnabled=${i(hudEnabled)}",
-        "hudSize=$fusionSize",
-        "hudLocked=${i(hudLocked)}",
-        "showVram=${i(showVram)}",
-        "showLow001=${i(showLow001)}",
-        "fpsDecimal=${i(fpsDecimal)}",
-        "showPerCore=${i(showPerCore)}",
-        "showSwap=${i(showSwap)}",
-        "showNet=${i(showNet)}",
-        "showResolution=${i(showResolution)}",
-        "showProton=${i(showProton)}",
-        "showWrapper=${i(showWrapper)}",
-        "showDxVer=${i(showDxVer)}",
-        "showSession=${i(showSession)}",
+        "hudStyle=${if (gameHub) "gamehub" else "classic"}",
         "hudMode=$hudMode",
         "showFPS=${i(showFPS)}",
         "showFPSGraph=${i(showGraph)}",
@@ -3593,28 +2285,15 @@ internal fun FpsCounterConfigDialog(
         "showRenderer=${i(showEngine)}",
         "showGpuModel=${i(showGpuModel)}",
         "hudDualBattery=${i(dualBattery)}",
-        "showGpuTemp=${i(showGpuTemp)}",
-        "showBattery=${i(showBattery)}",
-        "showRuntime=${i(showRuntime)}",
-        "showClock=${i(showClock)}",
-        "showCPUGraph=${i(showCpuGraph)}",
-        "showGPUGraph=${i(showGpuGraph)}",
-        "tempUnit=${if (tempUnitF) "f" else "c"}",
-        "tempBands=${i(tempBands)}",
-        "tempAuto=${i(tempAuto)}",
-        "tempRedCpu=$tempRedCpu",
-        "tempRedGpu=$tempRedGpu",
-        "tempRedBat=$tempRedBat",
         "hudSkin=$skin",
         "hudColor=$color",
-        "hudOutline=$outlineValue",
-        "hudOutlineAccent=${if (outlineAccent) 1 else 0}",
+        "hudOutline=$outline",
         "hudScale=$hudScale",
         "hudOpacity=$hudOpacity",
         "hudTransparency=$hudTransparency"
     ).joinToString(",")
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("FPS Counter Settings") },
         text = {
@@ -3623,38 +2302,16 @@ internal fun FpsCounterConfigDialog(
                     .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.7f).dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Master toggle (parity with the in-game drawer): hides the whole overlay when off.
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = hudEnabled,
-                        onCheckedChange = { hudEnabled = it }
-                    )
+                    Switch(checked = gameHub, onCheckedChange = { gameHub = it })
                     Spacer(Modifier.width(8.dp))
-                    Text("Show HUD")
+                    Text("GameHub-style HUD", modifier = Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(12.dp))
-                HudThreeStop(
-                    "HUD style",
-                    listOf("Classic", "GameHub", "GameNative", "Fusion"),
-                    styles.indexOf(hudStyle).coerceAtLeast(0)
-                ) { hudStyle = styles[it] }
                 Text(
-                    when (hudStyle) {
-                        "gamehub" -> "Rich overlay: skins, colored fields, live FPS graph."
-                        "gamenative" -> "GameNative-style overlay: compact pill or stacked list with live graphs."
-                        "fusion" -> "Fusion overlay: one color-coded look in 5 sizes (Full/Tiles/Pill/Minimal/Mega) with percentile lows, VRAM + a Mega everything-view."
-                        else -> "Classic Bannerlator overlay."
-                    },
+                    if (gameHub) "Rich overlay: skins, colored fields, live FPS graph."
+                    else "Classic Bannerlator overlay.",
                     style = MaterialTheme.typography.bodySmall
                 )
-                if (fusion) {
-                    Spacer(Modifier.height(8.dp))
-                    HudThreeStop(
-                        "Size",
-                        listOf("Full", "Tiles", "Pill", "Minimal", "Mega"),
-                        fusionSizes.indexOf(fusionSize).coerceAtLeast(0)
-                    ) { fusionSize = fusionSizes[it] }
-                }
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "Tip: tap the HUD in-game to switch vertical/horizontal layout.",
@@ -3662,98 +2319,17 @@ internal fun FpsCounterConfigDialog(
                 )
                 Spacer(Modifier.height(12.dp))
 
-                // Compact multi-select metric chips (filled = on) in a wrap layout,
-                // so ~13 metrics fit in a few rows instead of stacked Switch rows.
-                Text("Metrics", style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(4.dp))
-                // Build the currently-VISIBLE chips first (respecting per-style gating), then chunk
-                // into an aligned 3-wide grid — so hidden chips never leave holes. Each stays an
-                // independent toggle writing the same state as before.
-                // For Fusion, show only the chips the SELECTED SIZE draws (single source of truth in
-                // FusionSize.supportedChips()). For the other styles, keep the existing style gating.
-                // Hiding a chip is UI-only — buildConfig() still emits every key (strip-invariant).
-                fun show(label: String, styleOk: Boolean): Boolean = if (fusion) label in fusionChips else styleOk
-                val metricChips = buildList<Triple<String, Boolean, () -> Unit>> {
-                    if (show("FPS", true)) add(Triple("FPS", showFPS) { showFPS = !showFPS })
-                    if (show("FPS graph", rich)) add(Triple("FPS graph", showGraph) { showGraph = !showGraph })
-                    if (show("CPU", true)) add(Triple("CPU", showCPU) { showCPU = !showCPU })
-                    if (!fusion && gameNative) add(Triple("CPU graph", showCpuGraph) { showCpuGraph = !showCpuGraph })
-                    if (show("GPU", true)) add(Triple("GPU", showGPU) { showGPU = !showGPU })
-                    if (!fusion && gameNative) add(Triple("GPU graph", showGpuGraph) { showGpuGraph = !showGpuGraph })
-                    if (show("VRAM", false)) add(Triple("VRAM", showVram) { showVram = !showVram })
-                    if (show("RAM", true)) add(Triple("RAM", showRAM) { showRAM = !showRAM })
-                    if (show("Power", true)) add(Triple("Power", showPower) { showPower = !showPower })
-                    if (show("Temp", true)) add(Triple("Temp", showTemp) { showTemp = !showTemp })
-                    if (show("GPU temp", gameNative)) add(Triple("GPU temp", showGpuTemp) { showGpuTemp = !showGpuTemp })
-                    if (show("Battery", gameNative)) add(Triple("Battery", showBattery) { showBattery = !showBattery })
-                    if (!fusion && gameNative) add(Triple("Runtime", showRuntime) { showRuntime = !showRuntime })
-                    if (show("0.01% low", false)) add(Triple("0.01% low", showLow001) { showLow001 = !showLow001 })
-                    if (show("FPS .1", false)) add(Triple("FPS .1", fpsDecimal) { fpsDecimal = !fpsDecimal })
-                    // Fusion Mega-only metrics
-                    if (show("Per-core", false)) add(Triple("Per-core", showPerCore) { showPerCore = !showPerCore })
-                    if (show("Swap", false)) add(Triple("Swap", showSwap) { showSwap = !showSwap })
-                    if (show("Network", false)) add(Triple("Network", showNet) { showNet = !showNet })
-                    if (show("Resolution", false)) add(Triple("Resolution", showResolution) { showResolution = !showResolution })
-                    if (show("Proton", false)) add(Triple("Proton", showProton) { showProton = !showProton })
-                    if (show("Wrapper", false)) add(Triple("Wrapper", showWrapper) { showWrapper = !showWrapper })
-                    if (show("DX ver", false)) add(Triple("DX ver", showDxVer) { showDxVer = !showDxVer })
-                    if (show("Session", false)) add(Triple("Session", showSession) { showSession = !showSession })
-                    // Clock: gamenative's own chip, and every Fusion size (subtle corner readout)
-                    if (show("Clock", gameNative)) add(Triple("Clock", showClock) { showClock = !showClock })
-                    if (show("Engine", true)) add(Triple("Engine", showEngine) { showEngine = !showEngine })
-                    if (show("GPU model", rich)) add(Triple("GPU model", showGpuModel) { showGpuModel = !showGpuModel })
-                    if (!fusion && gameHub) add(Triple("Dual battery", dualBattery) { dualBattery = !dualBattery })
-                    // Global appearance control, shown for every style/size.
-                    add(Triple("Lock in place", hudLocked) { hudLocked = !hudLocked })
-                }
-                ModeChipGrid(metricChips, perRow = 3)
-
-                // ── Temperature display ── only meaningful when a temperature is on screen.
-                if (showTemp || ((gameNative || fusion) && (showGpuTemp || showBattery))) {
-                    Spacer(Modifier.height(12.dp))
-                    HudThreeStop("Temp unit", listOf("\u00B0C", "\u00B0F"), if (tempUnitF) 1 else 0) {
-                        tempUnitF = it == 1
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    // Danger bands as one 3-way rather than two toggles: "bands off but auto on"
-                    // isn't a distinct state worth exposing.
-                    val bandMode = if (!tempBands) 0 else if (tempAuto) 1 else 2
-                    HudThreeStop("Danger colors", listOf("Off", "Auto", "Manual"), bandMode) {
-                        tempBands = it != 0
-                        tempAuto = it != 2
-                    }
-                    Text(
-                        when (bandMode) {
-                            0 -> "Temperatures use their normal color."
-                            1 -> "Thresholds read from your device's own thermal trip points, falling back to safe defaults."
-                            else -> "Set the red point per sensor; amber sits just below it."
-                        },
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (bandMode == 2) {
-                        // Red point only; amber is derived. Always \u00B0C — thresholds never convert.
-                        Spacer(Modifier.height(4.dp))
-                        Text("CPU red at: $tempRedCpu\u00B0C", style = MaterialTheme.typography.bodySmall)
-                        Slider(
-                            value = tempRedCpu.toFloat(),
-                            onValueChange = { tempRedCpu = it.toInt() },
-                            valueRange = 50f..110f, steps = 59
-                        )
-                        if ((gameNative || fusion) && showGpuTemp) {
-                            Text("GPU red at: $tempRedGpu\u00B0C", style = MaterialTheme.typography.bodySmall)
-                            Slider(
-                                value = tempRedGpu.toFloat(),
-                                onValueChange = { tempRedGpu = it.toInt() },
-                                valueRange = 50f..110f, steps = 59
-                            )
-                        }
-                        Text("Battery red at: $tempRedBat\u00B0C", style = MaterialTheme.typography.bodySmall)
-                        Slider(
-                            value = tempRedBat.toFloat(),
-                            onValueChange = { tempRedBat = it.toInt() },
-                            valueRange = 35f..60f, steps = 24
-                        )
-                    }
+                HudToggleRow("Frame rate (FPS)", showFPS) { showFPS = it }
+                if (gameHub) HudToggleRow("FPS graph", showGraph) { showGraph = it }
+                HudToggleRow("CPU", showCPU) { showCPU = it }
+                HudToggleRow("GPU", showGPU) { showGPU = it }
+                HudToggleRow("Memory (RAM)", showRAM) { showRAM = it }
+                HudToggleRow("Power", showPower) { showPower = it }
+                HudToggleRow("Temperature", showTemp) { showTemp = it }
+                HudToggleRow("Engine", showEngine) { showEngine = it }
+                if (gameHub) {
+                    HudToggleRow("GPU model", showGpuModel) { showGpuModel = it }
+                    HudToggleRow("Dual-battery power fix", dualBattery) { dualBattery = it }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -3764,7 +2340,7 @@ internal fun FpsCounterConfigDialog(
                     valueRange = 50f..150f, steps = 99
                 )
 
-                if (rich) {
+                if (gameHub) {
                     Spacer(Modifier.height(4.dp))
                     Text("HUD Opacity: $hudOpacity%", style = MaterialTheme.typography.bodySmall)
                     Slider(
@@ -3773,18 +2349,9 @@ internal fun FpsCounterConfigDialog(
                         valueRange = 0f..100f, steps = 99
                     )
                     Spacer(Modifier.height(8.dp))
-                    if (gameHub) {
-                        HudThreeStop("HUD skin", listOf("Classic", "Neon", "Mono"), skins.indexOf(skin)) { skin = skins[it] }
-                    }
+                    HudThreeStop("HUD skin", listOf("Classic", "Neon", "Mono"), skins.indexOf(skin)) { skin = skins[it] }
                     HudThreeStop("HUD color", listOf("Soft", "Mid", "Vivid"), colors.indexOf(color)) { color = colors[it] }
-                    Spacer(Modifier.height(8.dp))
-                    Text("HUD outline: $outlineValue", style = MaterialTheme.typography.bodySmall)
-                    Slider(
-                        value = outlineValue.toFloat(),
-                        onValueChange = { outlineValue = it.toInt() },
-                        valueRange = 0f..100f, steps = 99
-                    )
-                    HudThreeStop("Outline color", listOf("Gray", "Accent"), if (outlineAccent) 1 else 0) { outlineAccent = it == 1 }
+                    HudThreeStop("HUD outline", listOf("Off", "Soft", "Strong"), outlines.indexOf(outline)) { outline = outlines[it] }
                 } else {
                     Spacer(Modifier.height(4.dp))
                     Text("HUD Transparency: $hudTransparency", style = MaterialTheme.typography.bodySmall)
@@ -3794,22 +2361,6 @@ internal fun FpsCounterConfigDialog(
                         valueRange = 0f..50f, steps = 49
                     )
                 }
-
-                // General HUD action (not gated to a style): dump every sensor path + value to a
-                // shareable text file so a device owner can report which nodes their SoC exposes.
-                Spacer(Modifier.height(16.dp))
-                OutlinedButton(
-                    onClick = { exportHudDiagnostics(diagContext) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Export HUD diagnostics")
-                }
-                Text(
-                    "Saves a sensor report (CPU/GPU/temp/VRAM…) straight to your Downloads folder.",
-                    style = MaterialTheme.typography.bodySmall
-                )
             }
         },
         confirmButton = {
@@ -3821,48 +2372,12 @@ internal fun FpsCounterConfigDialog(
     )
 }
 
-// Multi-select metric grid styled exactly like the in-game drawer's FullscreenModeButtons: each item
-// toggles independently, but shares the box style (accent fill + bold black text ON; black bg +
-// dimmed-accent 1dp border + accent medium text OFF) and the aligned equal-width grid (weight(1f),
-// short rows padded with Spacer so widths stay equal). Callers build the VISIBLE list first, then
-// this chunks per row so per-style gating never leaves holes. There's no LocalAccentDim in this
-// screen, so we derive the dim border from a 40%-alpha primary — reads the same as accentDim.
 @Composable
-private fun ModeChipGrid(items: List<Triple<String, Boolean, () -> Unit>>, perRow: Int) {
-    val accent = MaterialTheme.colorScheme.primary
-    val accentDim = accent.copy(alpha = 0.4f)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        items.chunked(perRow).forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                row.forEach { (label, isOn, onTap) ->
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isOn) accent else Color.Black)
-                            .border(
-                                width = 1.dp,
-                                color = if (isOn) accent else accentDim,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .clickable { onTap() }
-                            .padding(vertical = 9.dp)
-                    ) {
-                        Text(
-                            label,
-                            color = if (isOn) Color.Black else accent,
-                            fontSize = 12.sp,
-                            fontWeight = if (isOn) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
-                }
-                repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
+private fun HudToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Spacer(Modifier.width(8.dp))
+        Text(label, modifier = Modifier.weight(1f))
     }
 }
 

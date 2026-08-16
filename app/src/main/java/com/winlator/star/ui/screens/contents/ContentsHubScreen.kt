@@ -215,18 +215,24 @@ private fun DownloadTab(vm: ContentsHubViewModel) {
         if (wide) {
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
-                    SourceListPane(vm, sources, query, selected,
+                    // Left column always shows the search field + repo list (results go right).
+                    SourceListPane(vm, sources, query, selected, showInlineResults = false,
                         onAdd = { showAdd = true }, onImport = { showImport = true },
                         onSettings = { showSettings = true }, onMenu = { menuFor = it })
                 }
                 VerticalDivider(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outline)
                 Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    if (selected == null) EmptyDetailPlaceholder() else RepoDetail(vm, showBack = false)
+                    // Right pane priority: active search → results (full width); else selected repo; else empty.
+                    when {
+                        query.isNotBlank() -> SearchResultsPane(vm, Modifier.fillMaxSize().padding(top = 12.dp, start = 14.dp, end = 14.dp))
+                        selected != null -> RepoDetail(vm, showBack = false)
+                        else -> EmptyDetailPlaceholder()
+                    }
                 }
             }
         } else {
             if (selected == null) {
-                SourceListPane(vm, sources, query, selected,
+                SourceListPane(vm, sources, query, selected, showInlineResults = true,
                     onAdd = { showAdd = true }, onImport = { showImport = true },
                     onSettings = { showSettings = true }, onMenu = { menuFor = it })
             } else {
@@ -250,14 +256,15 @@ private fun SourceListPane(
     sources: List<HubSource>,
     query: String,
     selected: HubSource?,
+    // Narrow: results replace the list inline when a query is active. Wide: false — the left column
+    // always shows the search field + repo list, and results render in the right detail pane instead.
+    showInlineResults: Boolean,
     onAdd: () -> Unit,
     onImport: () -> Unit,
     onSettings: () -> Unit,
     onMenu: (HubSource) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val searchResults by vm.searchResults.collectAsState()
-    val searching by vm.searching.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
         Spacer(Modifier.height(12.dp))
@@ -278,7 +285,7 @@ private fun SourceListPane(
         )
         Spacer(Modifier.height(12.dp))
 
-        if (query.isBlank()) {
+        if (query.isBlank() || !showInlineResults) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("Select Online Repository", style = MaterialTheme.typography.titleMedium,
                     color = cs.onSurface, modifier = Modifier.weight(1f))
@@ -298,22 +305,36 @@ private fun SourceListPane(
                 }
             }
         } else {
-            if (searching) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = cs.primary) }
+            SearchResultsPane(vm, Modifier.fillMaxSize())
+        }
+    }
+}
+
+/** The cross-source search results block: "N results" header + full-width ComponentRow list. Rendered
+ *  inline in the single column when narrow, and in the right detail pane when wide. */
+@Composable
+private fun SearchResultsPane(vm: ContentsHubViewModel, modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    val query by vm.query.collectAsState()
+    val searchResults by vm.searchResults.collectAsState()
+    val searching by vm.searching.collectAsState()
+
+    Column(modifier = modifier) {
+        if (searching) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = cs.primary) }
+        } else {
+            Text("${searchResults.size} result${if (searchResults.size != 1) "s" else ""}",
+                style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
+            Spacer(Modifier.height(8.dp))
+            if (searchResults.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No components match “$query”.", color = cs.onSurfaceVariant)
+                }
             } else {
-                Text("${searchResults.size} result${if (searchResults.size != 1) "s" else ""}",
-                    style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-                Spacer(Modifier.height(8.dp))
-                if (searchResults.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No components match “$query”.", color = cs.onSurfaceVariant)
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        itemsIndexed(searchResults, key = { i, it -> "$i-${it.sourceName}-${it.type}-${it.downloadUrl}" }) { _, item ->
-                            ComponentRow(vm, item, showSource = true)
-                            Spacer(Modifier.height(10.dp))
-                        }
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    itemsIndexed(searchResults, key = { i, it -> "$i-${it.sourceName}-${it.type}-${it.downloadUrl}" }) { _, item ->
+                        ComponentRow(vm, item, showSource = true)
+                        Spacer(Modifier.height(10.dp))
                     }
                 }
             }
@@ -617,7 +638,7 @@ private fun MyFilesTab(vm: ContentsHubViewModel) {
 
     val installPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri ->
+            InAppFilePicker.pickedUri(result.data)?.let { uri ->
                 val name = uri.lastPathSegment?.substringAfterLast('/') ?: "file"
                 val type = if (name.endsWith(".wcp", true) || name.endsWith(".tzst", true)) "" else ContentsTypes.GPU_DRIVERS
                 ContentsInstaller.installFromFile(context.applicationContext, type, name, uri) { vm.refreshStatus() }
@@ -654,9 +675,7 @@ private fun MyFilesTab(vm: ContentsHubViewModel) {
         Spacer(Modifier.height(12.dp))
         PrimaryButton("Install content from file…", Icons.Filled.FolderOpen, enabled = true,
             container = cs.onSurface.copy(alpha = 0.06f), content = cs.onSurface, modifier = Modifier.fillMaxWidth()) {
-            installPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
-            })
+            installPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP, "Select content pack"))
         }
         Spacer(Modifier.height(14.dp))
 
@@ -767,10 +786,10 @@ private fun InstalledTab(vm: ContentsHubViewModel) {
     var confirmRemoveProfile by remember { mutableStateOf<ContentProfile?>(null) }
     val expanded = remember { mutableStateOf(setOf<String>()) }
 
-    // GPU-driver .zip picker — ported from AdrenoToolsScreen (InAppFilePicker.DRIVER + SAF fallback).
+    // GPU-driver .zip picker — always the in-app file manager (InAppFilePicker.DRIVER), no system SAF.
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            (result.data?.data ?: InAppFilePicker.pickedUri(result.data))?.let { uri ->
+            InAppFilePicker.pickedUri(result.data)?.let { uri ->
                 val id = manager.installDriver(uri)
                 if (id.isNotEmpty()) { refreshKey++; vm.refreshStatus() }
             }
@@ -814,7 +833,7 @@ private fun InstalledTab(vm: ContentsHubViewModel) {
         }
     }
 
-    // Confirm: install GPU driver (ported verbatim from AdrenoToolsScreen).
+    // Confirm: install GPU driver (install_drivers warning) → in-app file manager only, no system SAF.
     if (confirmInstall) {
         OutlinedAlertDialog(
             onDismissRequest = { confirmInstall = false },
@@ -828,16 +847,8 @@ private fun InstalledTab(vm: ContentsHubViewModel) {
                 }) { Text("Browse files", color = cs.primary) }
             },
             dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        confirmInstall = false
-                        filePicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                            addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
-                        })
-                    }) { Text("Pick via system…", color = cs.primary) }
-                    TextButton(onClick = { confirmInstall = false }) {
-                        Text(context.getString(android.R.string.cancel), color = cs.primary)
-                    }
+                TextButton(onClick = { confirmInstall = false }) {
+                    Text(context.getString(android.R.string.cancel), color = cs.primary)
                 }
             },
         )

@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -87,6 +88,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -155,6 +157,10 @@ private fun DownloadTab(vm: ContentsHubViewModel) {
     var showSettings by remember { mutableStateOf(false) }
     var showLocation by remember { mutableStateOf(false) }
     var menuFor by remember { mutableStateOf<HubSource?>(null) }
+
+    // Device/gesture back returns to the source list (both narrow single-pane and wide) instead of
+    // leaving the Contents screen; only intercepts while a repo detail is open.
+    BackHandler(enabled = selected != null) { vm.selectSource(null) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val wide = maxWidth >= 760.dp
@@ -538,10 +544,13 @@ private fun PrimaryButton(
     text: String, icon: ImageVector, enabled: Boolean, container: Color, content: Color,
     modifier: Modifier = Modifier, onClick: () -> Unit,
 ) {
+    // Respect the caller's container alpha (faint tints must stay translucent); dim the whole
+    // component when disabled rather than forcing the fill opaque.
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
         modifier = modifier
-            .background(container.copy(alpha = if (enabled) 1f else 0.9f), RoundedCornerShape(11.dp))
+            .background(container, RoundedCornerShape(11.dp))
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .alpha(if (enabled) 1f else 0.5f)
             .padding(vertical = 10.dp)) {
         Icon(icon, null, tint = content, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))

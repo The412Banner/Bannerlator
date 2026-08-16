@@ -35,10 +35,10 @@ object AppThemeState {
 
     /** Global interface scale (Compose density multiplier) and font scale, applied in
      *  WinlatorTheme. 1.0 = unchanged; clamped 0.5..1.5 by the setters. */
-    private val _uiScale = MutableStateFlow(1.0f)
+    private val _uiScale = MutableStateFlow(0.9f)
     val uiScale: StateFlow<Float> = _uiScale
 
-    private val _fontScale = MutableStateFlow(1.0f)
+    private val _fontScale = MutableStateFlow(0.9f)
     val fontScale: StateFlow<Float> = _fontScale
 
     // The preset whose background/surface colors back the custom accent
@@ -91,8 +91,8 @@ object AppThemeState {
         _showStores.value = themePrefs.getBoolean("show_stores", true)
         _showInternalStorage.value = themePrefs.getBoolean("show_internal_storage", true)
         _showSdStorage.value = themePrefs.getBoolean("show_sd_storage", true)
-        _uiScale.value = themePrefs.getFloat("ui_scale", 1.0f).coerceIn(0.5f, 1.5f)
-        _fontScale.value = themePrefs.getFloat("font_scale", 1.0f).coerceIn(0.5f, 1.5f)
+        _uiScale.value = themePrefs.getFloat("ui_scale", 0.9f).coerceIn(0.5f, 1.5f)
+        _fontScale.value = themePrefs.getFloat("font_scale", 0.9f).coerceIn(0.5f, 1.5f)
     }
 
     /** Show or hide the drawer's Stores section. Default on, so nothing changes until asked. */

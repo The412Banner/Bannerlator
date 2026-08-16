@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,6 +77,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -151,13 +153,13 @@ private fun DownloadTab(vm: ContentsHubViewModel) {
 
         if (wide) {
             Row(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.width(360.dp).fillMaxSize()) {
+                Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
                     SourceListPane(vm, sources, query, selected,
                         onAdd = { showAdd = true }, onImport = { showImport = true },
                         onSettings = { showSettings = true }, onMenu = { menuFor = it })
                 }
-                Divider(modifier = Modifier.fillMaxSize().width(1.dp), color = MaterialTheme.colorScheme.outline)
-                Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                VerticalDivider(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outline)
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     if (selected == null) EmptyDetailPlaceholder() else RepoDetail(vm, showBack = false)
                 }
             }

@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-08-16 (later) — 🐛 **Contents hub: fix empty right pane in landscape master–detail**
+> Wide/two-pane layout showed the left 360dp source list fine but a blank right detail pane. The inter-pane separator was a horizontal `Divider(Modifier.fillMaxSize().width(1.dp))` — a Material3 horizontal `Divider` internally forces `fillMaxWidth()`, overriding the 1dp width, so as a non-weighted Row child it ate all remaining horizontal space and the weighted right `Box` measured to 0 width (invisible). Swapped it for `VerticalDivider(Modifier.fillMaxHeight())` (fills height, thickness-wide). Also made both panes' height-fill explicit (`.width(360.dp).fillMaxHeight()` / `.weight(1f).fillMaxHeight()`) so neither relies on constraint-order to keep its width. One file, `ContentsHubScreen.kt`.
+
 ## 2026-08-16 (later) — 🐛 **Contents hub: fix multi-word cross-source search**
 > "dxvk 2" returned 0 results ("dxvk" and "2" each worked). `searchCache` matched the whole query as one substring against each field separately, so a query whose words straddle name ("DXVK") and version ("2.4.1") matched nothing, and it never searched type/source. Now it splits the query into whitespace-delimited tokens and requires EVERY token to appear in a combined per-item haystack (`displayName + versionName + componentType + sourceName`, lowercased). Keeps the `SearchResult(sourceName, componentType, item)` shape and the `distinctBy { it.item.downloadUrl }` dedupe (crash-fix invariant); the VM's own `.distinctBy` on mapped results is unchanged.
 

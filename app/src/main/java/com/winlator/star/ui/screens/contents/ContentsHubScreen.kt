@@ -95,7 +95,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.winlator.star.R
+import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
+import com.winlator.star.contents.ContentsManager
 import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
 import com.winlator.star.store.download.ContentDownloadState
@@ -104,11 +107,12 @@ import com.winlator.star.ui.screens.adrenodownload.DriverSourceStore
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.outlinedMenuCard
+import com.winlator.star.util.InAppFilePicker
 
 private val InstalledGreen = Color(0xFF37C26B)
 private val SavedBlue = Color(0xFF3D9BFF)
 
-private enum class HubTab(val label: String) { DOWNLOAD("Download Components"), MY_FILES("My Files") }
+private enum class HubTab(val label: String) { DOWNLOAD("Download Components"), MY_FILES("My Files"), INSTALLED("Installed") }
 
 @Composable
 fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel()) {
@@ -134,6 +138,7 @@ fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel()) {
         when (tab) {
             HubTab.DOWNLOAD -> DownloadTab(vm)
             HubTab.MY_FILES -> MyFilesTab(vm)
+            HubTab.INSTALLED -> InstalledTab(vm)
         }
     }
 }
@@ -679,6 +684,218 @@ private fun shareArchive(context: Context, f: ComponentLibrary.SavedFile) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "Share ${f.name}"))
+    }
+}
+
+// ── Installed tab (parity with AdrenoToolsScreen) ────────────────────────────────
+@Composable
+private fun InstalledTab(vm: ContentsHubViewModel) {
+    val cs = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val manager = remember { AdrenotoolsManager(context) }
+    var refreshKey by remember { mutableStateOf(0) }
+
+    // Metadata-only listing (name/version) — never probes a driver (a6xx-safe).
+    val drivers = remember(refreshKey) { manager.enumarateInstalledDrivers().toList() }
+    val components = remember(refreshKey) {
+        val cm = ContentsManager(context)
+        cm.syncContents()
+        ContentProfile.ContentType.values().mapNotNull { type ->
+            val installed = (cm.getProfiles(type) ?: emptyList()).filter { it.remoteUrl == null }
+            if (installed.isEmpty()) null else type to installed
+        }
+    }
+
+    var confirmInstall by remember { mutableStateOf(false) }
+    var confirmRemoveDriver by remember { mutableStateOf<String?>(null) }
+    var confirmRemoveProfile by remember { mutableStateOf<ContentProfile?>(null) }
+    val expanded = remember { mutableStateOf(setOf<String>()) }
+
+    // GPU-driver .zip picker — ported from AdrenoToolsScreen (InAppFilePicker.DRIVER + SAF fallback).
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            (result.data?.data ?: InAppFilePicker.pickedUri(result.data))?.let { uri ->
+                val id = manager.installDriver(uri)
+                if (id.isNotEmpty()) { refreshKey++; vm.refreshStatus() }
+            }
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+        InstalledSectionHeader("GPU Drivers", Icons.Filled.ViewInAr)
+        Spacer(Modifier.height(10.dp))
+        PrimaryButton("Install GPU driver from file…", Icons.Filled.FolderOpen, enabled = true,
+            container = cs.onSurface.copy(alpha = 0.06f), content = cs.onSurface, modifier = Modifier.fillMaxWidth()) {
+            confirmInstall = true
+        }
+        Spacer(Modifier.height(12.dp))
+        if (drivers.isEmpty()) {
+            InstalledEmpty("No GPU drivers installed.")
+        } else {
+            drivers.forEach { id ->
+                InstalledRow(icon = Icons.Filled.ViewInAr, driver = true,
+                    title = manager.getDriverName(id), subtitle = manager.getDriverVersion(id),
+                    onRemove = { confirmRemoveDriver = id })
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+        InstalledSectionHeader("Components", Icons.Filled.Extension)
+        Spacer(Modifier.height(10.dp))
+        if (components.isEmpty()) {
+            InstalledEmpty("No components installed.")
+        } else {
+            components.forEach { (type, profiles) ->
+                val label = type.toString()
+                InstalledComponentFolder(
+                    type = label, profiles = profiles,
+                    open = label in expanded.value,
+                    onToggle = { expanded.value = if (label in expanded.value) expanded.value - label else expanded.value + label },
+                    onRemove = { confirmRemoveProfile = it })
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+    }
+
+    // Confirm: install GPU driver (ported verbatim from AdrenoToolsScreen).
+    if (confirmInstall) {
+        OutlinedAlertDialog(
+            onDismissRequest = { confirmInstall = false },
+            containerColor = cs.surfaceContainerHigh,
+            title = { Text(context.getString(R.string.install_drivers_message), color = cs.onSurface) },
+            text = { Text(context.getString(R.string.install_drivers_warning), color = cs.onSurface) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmInstall = false
+                    filePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DRIVER, "Select GPU driver"))
+                }) { Text("Browse files", color = cs.primary) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        confirmInstall = false
+                        filePicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+                        })
+                    }) { Text("Pick via system…", color = cs.primary) }
+                    TextButton(onClick = { confirmInstall = false }) {
+                        Text(context.getString(android.R.string.cancel), color = cs.primary)
+                    }
+                }
+            },
+        )
+    }
+
+    // Confirm: remove driver (same manager.removeDriver path as AdrenoToolsScreen).
+    confirmRemoveDriver?.let { id ->
+        OutlinedAlertDialog(
+            onDismissRequest = { confirmRemoveDriver = null },
+            containerColor = cs.surfaceContainerHigh,
+            title = { Text("Remove driver?", color = cs.onSurface) },
+            text = { Text("Remove \"${manager.getDriverName(id)}\"?", color = cs.onSurface) },
+            confirmButton = {
+                TextButton(onClick = {
+                    manager.removeDriver(id); confirmRemoveDriver = null; refreshKey++; vm.refreshStatus()
+                }) { Text("Remove", color = cs.primary) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveDriver = null }) { Text("Cancel", color = cs.primary) } },
+        )
+    }
+
+    // Confirm: remove component.
+    confirmRemoveProfile?.let { profile ->
+        OutlinedAlertDialog(
+            onDismissRequest = { confirmRemoveProfile = null },
+            containerColor = cs.surfaceContainerHigh,
+            title = { Text("Remove component?", color = cs.onSurface) },
+            text = { Text("Remove \"${profile.verName}\"?", color = cs.onSurface) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val cm = ContentsManager(context); cm.removeContent(profile); cm.syncContents()
+                    confirmRemoveProfile = null; refreshKey++; vm.refreshStatus()
+                }) { Text("Remove", color = cs.primary) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveProfile = null }) { Text("Cancel", color = cs.primary) } },
+        )
+    }
+}
+
+@Composable
+private fun InstalledSectionHeader(title: String, icon: ImageVector) {
+    val cs = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = cs.primary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, color = cs.onSurface, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun InstalledEmpty(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(vertical = 8.dp))
+}
+
+@Composable
+private fun InstalledRow(icon: ImageVector, driver: Boolean, title: String, subtitle: String, onRemove: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+            .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
+            .background(cs.surface, RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Box(modifier = Modifier.size(38.dp)
+            .background(if (driver) cs.primary.copy(alpha = 0.14f) else cs.onSurface.copy(alpha = 0.05f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = if (driver) cs.primary else cs.onSurface, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = cs.onSurface, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        IconButton(onClick = onRemove) { Icon(Icons.Filled.DeleteOutline, "Remove", tint = cs.onSurfaceVariant) }
+    }
+}
+
+@Composable
+private fun InstalledComponentFolder(
+    type: String, profiles: List<ContentProfile>, open: Boolean, onToggle: () -> Unit,
+    onRemove: (ContentProfile) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Column(modifier = Modifier.fillMaxWidth()
+        .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
+        .background(cs.surface, RoundedCornerShape(14.dp))) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(15.dp)) {
+            Icon(typeIcon(type), null, tint = cs.primary, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(13.dp))
+            Text(type, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
+                fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text("${profiles.size}", style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant,
+                modifier = Modifier.background(cs.onSurface.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 9.dp, vertical = 2.dp))
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Filled.ExpandMore, null, tint = cs.onSurfaceVariant)
+        }
+        if (open) {
+            Divider(color = cs.outline)
+            profiles.forEach { p ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(p.verName, style = MaterialTheme.typography.bodySmall, color = cs.onSurface,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+                        Text("Code ${p.verCode}", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { onRemove(p) }) { Icon(Icons.Filled.DeleteOutline, "Remove", tint = cs.onSurfaceVariant) }
+                }
+            }
+        }
     }
 }
 

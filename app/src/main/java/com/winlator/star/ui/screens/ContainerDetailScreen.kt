@@ -1891,9 +1891,23 @@ internal fun DxvkConfigDialog(
     val activity = context.findActivity() ?: return
     var isProcessing by remember { mutableStateOf(false) }
 
+    // Virtual "Browse…" entry in the custom-source dropdown; launches the file picker.
+    val BROWSE_CONFIG_MARKER = "Browse for file…"
+
     val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
     val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
     val configSourceEntries = remember { mutableStateOf(listOf<String>()) }
+
+    // ---- VEGAS config source: stock/custom two-source model (Tier-2B) ----
+    // Declared before LaunchedEffect: the init block below references these on first load.
+    val stockSources = remember { mutableStateOf(listOf<DXVKConfigDialog.StockSource>()) }
+    val customEntries = remember { mutableStateOf(listOf<String>()) }
+    var useDefaults by remember { mutableStateOf(true) }
+    var selectedStock by remember { mutableStateOf<String?>(null) }   // stock verName
+    var selectedCustom by remember { mutableStateOf<String?>(null) }  // custom file path
+    var stockEdited by remember { mutableStateOf(false) }
+    var toggleVersion by remember { mutableStateOf(0) }               // bump after a write -> re-snapshot
+    var pendingToggle by remember { mutableStateOf<Pair<VegasKeyKnowledge.EditRow, Boolean>?>(null) }
 
     LaunchedEffect(refreshKey) {
         withContext(Dispatchers.IO) {
@@ -1905,10 +1919,28 @@ internal fun DxvkConfigDialog(
                 DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
             val vkd3d = DXVKConfigDialog.loadVkd3dVersionList(context, cm)
             val cfgsrc = DXVKConfigDialog.loadVegasConfigSourceList(context)
+            val stock = if (isVegas) DXVKConfigDialog.loadVegasStockSources(context, cm) else listOf()
             withContext(Dispatchers.Main) {
                 allDxvkVersions.value = versions
                 vkd3dVersions.value = vkd3d
                 configSourceEntries.value = cfgsrc
+                stockSources.value = stock
+                // Tier-2B init: restore the two-source selection from the stored dxvkConfigFile
+                val stored = config.get("dxvkConfigFile")
+                val stockMatch = stock.firstOrNull { it.file.absolutePath == stored }
+                val customBase = cfgsrc.filter { it != "None" }
+                customEntries.value = if (stored.isNotEmpty() && stored !in customBase) customBase + stored else customBase
+                if (stored.isEmpty()) {
+                    useDefaults = true
+                } else if (stockMatch != null) {
+                    selectedStock = stockMatch.verName
+                    selectedCustom = null
+                    useDefaults = false
+                } else {
+                    selectedCustom = stored
+                    selectedStock = null
+                    useDefaults = false
+                }
             }
         }
     }
@@ -1933,32 +1965,80 @@ internal fun DxvkConfigDialog(
     }
     var selectedFeatureLevel by remember { mutableStateOf(featureLevelEntries.firstOrNull { it == config.get("vkd3dLevel") } ?: featureLevelEntries.first()) }
     var selectedDdra         by remember { mutableStateOf(ddraEntries.firstOrNull { StringUtils.parseIdentifier(it) == config.get("ddrawrapper") } ?: ddraEntries.first()) }
-    var selectedConfigSource by remember(configSourceEntries.value) {
-        val stored = config.get("dxvkConfigFile")
-        mutableStateOf(configSourceEntries.value.firstOrNull { it == stored } ?: configSourceEntries.value.firstOrNull() ?: "None")
-    }
     var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
     var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
 
     // VEGAS knowledge layer: bundled asset or null (null -> unclassified fallback).
     val vegasKnowledge = remember { DXVKConfigDialog.loadVegasKeyKnowledge(context) }
     var forkFilter by remember { mutableStateOf(false) }
-    // Config-file snapshot, read ONCE per source pick (never re-read on the fly):
-    // empty text = no file (USE DEFAULTS/None); missing = picked path not found.
-    val configSourceText = remember(selectedConfigSource) {
-        if (selectedConfigSource == "None" || selectedConfigSource.isEmpty()) ""
+
+    // The active source's absolute path; "" = USE DEFAULTS (env-var semantics, no file).
+    val activeConfigPath = remember(useDefaults, selectedStock, selectedCustom, stockSources.value) {
+        when {
+            useDefaults -> ""
+            selectedStock != null -> stockSources.value.firstOrNull { it.verName == selectedStock }?.file?.absolutePath ?: ""
+            selectedCustom != null -> selectedCustom!!
+            else -> ""
+        }
+    }
+    // Config-file snapshot, read ONCE per source pick or per write (never re-read on the fly):
+    // empty text = USE DEFAULTS; missing = active path not found on disk.
+    val configSourceText = remember(activeConfigPath, toggleVersion) {
+        if (activeConfigPath.isEmpty()) ""
         else {
-            val f = java.io.File(selectedConfigSource)
+            val f = java.io.File(activeConfigPath)
             if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
         }
     }
-    val configSourceMissing = remember(selectedConfigSource) {
-        selectedConfigSource != "None" && selectedConfigSource.isNotEmpty() &&
-            !java.io.File(selectedConfigSource).isFile
+    val configSourceMissing = remember(activeConfigPath) {
+        activeConfigPath.isNotEmpty() && !java.io.File(activeConfigPath).isFile
     }
     val configRows = remember(vegasKnowledge, configSourceText, selectedDxvk) {
-        if (vegasKnowledge != null) vegasKnowledge.preview(configSourceText, selectedDxvk)
-        else DXVKConfigDialog.previewUnclassified(configSourceText)
+        if (vegasKnowledge != null) vegasKnowledge.editRows(configSourceText, selectedDxvk)
+        else VegasKeyKnowledge.editRowsUnclassified(configSourceText)
+    }
+
+    val pickCustomConfigLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val path = InAppFilePicker.pickedPath(result.data)
+            if (path != null) {
+                selectedCustom = path
+                selectedStock = null
+                useDefaults = false
+                if (path !in customEntries.value) customEntries.value = customEntries.value + path
+            }
+        }
+    }
+
+    // Comment/uncomment the exact config line. Stock files: direct write, .bak on first
+    // write, provenance promotes to "Edited · yours now". Custom files: confirm-write only.
+    fun applyToggle(row: VegasKeyKnowledge.EditRow, enable: Boolean, confirmed: Boolean = false) {
+        val path = activeConfigPath
+        if (path.isEmpty()) return
+        val isStockPath = stockSources.value.any { it.file.absolutePath == path }
+        if (!isStockPath && !confirmed) { pendingToggle = row to enable; return }
+        val file = java.io.File(path)
+        val wasStock = isStockPath
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                if (!file.isFile) return@withContext false
+                val text = runCatching { file.readText() }.getOrNull() ?: return@withContext false
+                val next = VegasKeyKnowledge.toggleLine(text, row.key, enable) ?: return@withContext false
+                if (wasStock && !stockEdited) {
+                    val bakFile = java.io.File(path + ".bak")
+                    if (runCatching { file.copyTo(bakFile, overwrite = true) }.isFailure) return@withContext false
+                }
+                runCatching { file.writeText(next) }.isSuccess
+            }
+            if (ok) {
+                if (wasStock) stockEdited = true
+                toggleVersion++
+            } else {
+                Toast.makeText(activity, "Failed to update config file", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     val pickVegasLauncher = rememberLauncherForActivityResult(
@@ -2091,33 +2171,84 @@ internal fun DxvkConfigDialog(
                 LabeledDropdown("DDraw Wrapper", ddraEntries, selectedDdra, { selectedDdra = it })
                 if (isVegas) {
                     Spacer(Modifier.height(8.dp))
-                    LabeledDropdown("Config Source", configSourceEntries.value, selectedConfigSource, { selectedConfigSource = it })
-                    if (configSourceMissing) {
+                    // ---- config source: two-source model (stock/custom), one ACTIVE ----
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = useDefaults, onCheckedChange = { useDefaults = it }, modifier = Modifier.height(32.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Use defaults (no config file)", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (!useDefaults) {
                         Spacer(Modifier.height(4.dp))
-                        Text("not found: $selectedConfigSource", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    } else if (configSourceText.isNotEmpty()) {
-                        Spacer(Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(checked = forkFilter, onCheckedChange = { forkFilter = it }, modifier = Modifier.height(32.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Fork-feature filter", style = MaterialTheme.typography.bodySmall)
+                        LabeledDropdown(
+                            "Stock config (per version)",
+                            stockSources.value.map { it.verName },
+                            selectedStock ?: "",
+                            { s -> selectedStock = s; selectedCustom = null; useDefaults = false },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (stockSources.value.isEmpty()) {
+                            Text(
+                                "no installed VEGAS package ships a config — install one via the sheet",
+                                color = MaterialTheme.colorScheme.outline,
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
-                        Spacer(Modifier.height(2.dp))
-                        configRows.forEach { row ->
-                            val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
-                            if (forkFilter && gated) return@forEach
-                            val badge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    row.key,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
-                                             else MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(4.dp))
+                        LabeledDropdown(
+                            "Custom config file",
+                            customEntries.value + BROWSE_CONFIG_MARKER,
+                            selectedCustom ?: "",
+                            { c ->
+                                if (c == BROWSE_CONFIG_MARKER) {
+                                    pickCustomConfigLauncher.launch(
+                                        InAppFilePicker.buildIntent(context, emptyArray(), "Select config file")
+                                    )
+                                } else {
+                                    selectedCustom = c; selectedStock = null; useDefaults = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (activeConfigPath.isNotEmpty()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "📍 $activeConfigPath",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        if (configSourceMissing) {
+                            Spacer(Modifier.height(4.dp))
+                            Text("not found: $activeConfigPath", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        } else if (configSourceText.isNotEmpty()) {
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(checked = forkFilter, onCheckedChange = { forkFilter = it }, modifier = Modifier.height(32.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Fork-feature filter", style = MaterialTheme.typography.bodySmall)
                             }
-                            Text(badge, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(2.dp))
+                            configRows.forEach { row ->
+                                val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
+                                if (forkFilter && gated) return@forEach
+                                val badge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Switch(
+                                        checked = row.enabled,
+                                        onCheckedChange = { applyToggle(row, it) },
+                                        modifier = Modifier.height(32.dp).width(48.dp)
+                                    )
+                                    Text(
+                                        row.key,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                                                 else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Text(badge, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
                     // Knowledge footer: provenance + state of the data layer
@@ -2127,6 +2258,27 @@ internal fun DxvkConfigDialog(
                     else
                         "knowledge data unavailable — showing keys unclassified"
                     Text(footerText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (stockEdited) {
+                        Text(
+                            "Edited · yours now (backup: $activeConfigPath.bak)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    // Custom-file writes require explicit confirmation (confirm-write only).
+                    pendingToggle?.let { (row, enable) ->
+                        AlertDialog(
+                            onDismissRequest = { pendingToggle = null },
+                            title = { Text("Write to custom config file?") },
+                            text = { Text("This file applies to every VEGAS version. The change is written to the file immediately.") },
+                            confirmButton = {
+                                TextButton(onClick = { pendingToggle = null; applyToggle(row, enable, confirmed = true) }) {
+                                    Text("Write")
+                                }
+                            },
+                            dismissButton = { TextButton(onClick = { pendingToggle = null }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
                 }
             }
         },
@@ -2140,7 +2292,7 @@ internal fun DxvkConfigDialog(
                 cfg.put("vkd3dVersion", selectedVkd3d)
                 cfg.put("vkd3dLevel", selectedFeatureLevel)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
-                cfg.put("dxvkConfigFile", if (selectedConfigSource == "None") "" else selectedConfigSource)
+                cfg.put("dxvkConfigFile", activeConfigPath)
                 onConfirm(cfg.toString())
             }) { Text(stringResource(android.R.string.ok)) }
         },

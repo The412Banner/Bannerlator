@@ -34,6 +34,7 @@ private data class VegasRelease(
     val displayName: String,
     val wcpAssetUrl: String?,
     val rawZipAssetUrl: String?,
+    val configAssetUrl: String?,
 )
 
 /**
@@ -71,20 +72,25 @@ fun VegasDownloadSheet(
                     val name = rel.optString("name", tag)
                     var wcpUrl: String? = null
                     var zipUrl: String? = null
+                    var confUrl: String? = null
                     val assets = rel.optJSONArray("assets")
                     if (assets != null) {
                         for (j in 0 until assets.length()) {
                             val a = assets.getJSONObject(j)
                             val aname = a.getString("name")
-                    if (aname.startsWith("vegas-") && aname.endsWith(".wcp")) {
-                        wcpUrl = a.getString("browser_download_url")
-                    } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
-                        zipUrl = a.getString("browser_download_url")
-                    }
+                            if (aname.startsWith("vegas-") && aname.endsWith(".wcp")) {
+                                wcpUrl = a.getString("browser_download_url")
+                            } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
+                                zipUrl = a.getString("browser_download_url")
+                            } else if (aname.endsWith(".conf") &&
+                                       (aname.startsWith("vegas-config-") || aname == "dxvk.conf")) {
+                                // Config is shipped ALONGSIDE the wcp (release asset), never inside it
+                                confUrl = a.getString("browser_download_url")
+                            }
                         }
                     }
                     if (wcpUrl != null) {
-                        list.add(VegasRelease(tag, name, wcpUrl, zipUrl))
+                        list.add(VegasRelease(tag, name, wcpUrl, zipUrl, confUrl))
                     }
                 }
                 releases = list
@@ -116,7 +122,7 @@ fun VegasDownloadSheet(
 
     // Error dialog
     errorMsg?.let { msg ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { errorMsg = null },
             title = { Text("Error", color = MaterialTheme.colorScheme.onSurface) },
             text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },
@@ -125,7 +131,7 @@ fun VegasDownloadSheet(
     }
 
     // Main dialog
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("VEGAS Downloads", color = MaterialTheme.colorScheme.onSurface) },
         text = {
@@ -175,10 +181,27 @@ fun VegasDownloadSheet(
                                             downloadingTag = null
                                             if (uri != null) {
                                                 installing = true
-                                                installWcp(context, cm, uri) { ok ->
+                                                installWcp(context, cm, uri) { ok, profile ->
                                                     installing = false
                                                     if (ok) {
                                                         cm.syncContents()
+                                                        // Config is shipped ALONGSIDE the wcp (same release asset),
+                                                        // never inside it — fetch it on the same tap and park it at
+                                                        // <contentDir>/VEGAS/configs/<verName>.conf for the stock
+                                                        // config source to pick up.
+                                                        val confUrl = release.configAssetUrl
+                                                        val confName = profile?.verName
+                                                        if (confUrl != null && confName != null) {
+                                                            scope.launch {
+                                                                withContext(Dispatchers.IO) {
+                                                                    val vegasDir = ContentsManager.getContentTypeDir(
+                                                                        context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+                                                                    val confDir = File(vegasDir, "configs")
+                                                                    if (!confDir.exists()) confDir.mkdirs()
+                                                                    Downloader.downloadFile(confUrl, File(confDir, "$confName.conf"), null)
+                                                                }
+                                                            }
+                                                        }
                                                         onContentChanged()
                                                         onDismiss()
                                                     } else {
@@ -213,16 +236,17 @@ private fun downloadWcp(context: Context, url: String, tag: String, onProgress: 
     return if (Downloader.downloadFile(url, f, listener)) Uri.fromFile(f) else null
 }
 
-/** Install a .wcp content package via ContentsManager. */
+/** Install a .wcp content package via ContentsManager; reports the installed profile
+ *  (needed to name the alongside config file after the package's verName). */
 private fun installWcp(
     context: Context,
     cm: ContentsManager,
     uri: Uri,
-    onDone: (Boolean) -> Unit,
+    onDone: (Boolean, ContentProfile?) -> Unit,
 ) {
     val activity = context.findActivity()
     if (activity == null) {
-        onDone(false)
+        onDone(false, null)
         return
     }
     Executors.newSingleThreadExecutor().execute {
@@ -230,7 +254,7 @@ private fun installWcp(
             cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
                 var phase = 0
                 override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
-                    activity.runOnUiThread { onDone(false) }
+                    activity.runOnUiThread { onDone(false, null) }
                 }
                 override fun onSucceed(profile: ContentProfile) {
                     try {
@@ -238,17 +262,17 @@ private fun installWcp(
                             phase = 1
                             cm.finishInstallContent(profile, this)
                         } else {
-                            activity.runOnUiThread { onDone(true) }
+                            activity.runOnUiThread { onDone(true, profile) }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        activity.runOnUiThread { onDone(false) }
+                        activity.runOnUiThread { onDone(false, null) }
                     }
                 }
             })
         } catch (e: Exception) {
             e.printStackTrace()
-            activity.runOnUiThread { onDone(false) }
+            activity.runOnUiThread { onDone(false, null) }
         }
     }
 }

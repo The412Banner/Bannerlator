@@ -196,6 +196,138 @@ public final class VegasKeyKnowledge {
         return rows;
     }
 
+    /** One editable row of a config file: key, value, classification, and whether the
+     *  line is currently ACTIVE (uncommented in the file). Commented keys are listed
+     *  too, so the sheet can offer #-toggles on them. */
+    public static final class EditRow {
+        public final String key;
+        public final String value;
+        public final State state;
+        public final boolean enabled;
+
+        EditRow(String key, String value, State state, boolean enabled) {
+            this.key = key;
+            this.value = value;
+            this.state = state;
+            this.enabled = enabled;
+        }
+    }
+
+    /**
+     * Parses config-file text INCLUDING commented lines, deduping by key — the last
+     * occurrence wins, matching DXVK's read order. Used by the editor sheet: rows
+     * carry {@code enabled} so toggles can comment/uncomment the exact line.
+     */
+    public List<EditRow> editRows(String configText, String version) {
+        List<EditRow> rows = new ArrayList<>();
+        Map<String, Integer> indexByKey = new LinkedHashMap<>();
+        if (configText != null) {
+            for (String raw : configText.split("\n")) {
+                Line l = Line.parse(raw);
+                if (l == null) continue;
+                int idx = rows.size();
+                rows.add(new EditRow(l.key, l.value, stateFor(l.key, version), l.enabled));
+                Integer prev = indexByKey.put(l.key, idx);
+                if (prev != null) rows.set(prev, null); // last occurrence wins
+            }
+        }
+        List<EditRow> out = new ArrayList<>();
+        for (EditRow r : rows) if (r != null) out.add(r);
+        return out;
+    }
+
+    /** Fallback edit view without a knowledge payload: same parse, every key UNKNOWN. */
+    public static List<EditRow> editRowsUnclassified(String configText) {
+        List<EditRow> rows = new ArrayList<>();
+        Map<String, Integer> indexByKey = new LinkedHashMap<>();
+        if (configText != null) {
+            for (String raw : configText.split("\n")) {
+                Line l = Line.parse(raw);
+                if (l == null) continue;
+                int idx = rows.size();
+                rows.add(new EditRow(l.key, l.value, State.UNKNOWN, l.enabled));
+                Integer prev = indexByKey.put(l.key, idx);
+                if (prev != null) rows.set(prev, null);
+            }
+        }
+        List<EditRow> out = new ArrayList<>();
+        for (EditRow r : rows) if (r != null) out.add(r);
+        return out;
+    }
+
+    /**
+     * Comments ("# key = …") or uncomments the LAST occurrence of {@code key} in the
+     * config text. Returns the new text, or null when the key has no line at all
+     * (nothing to toggle). Uncommenting strips exactly one leading '#'/';' and one
+     * optional space; everything else in the line is preserved byte-for-byte.
+     */
+    public static String toggleLine(String configText, String key, boolean enable) {
+        if (configText == null || key == null) return null;
+        String[] lines = configText.split("\n", -1);
+        int target = -1;
+        for (int i = lines.length - 1; i >= 0; i--) {
+            Line l = Line.parse(lines[i]);
+            if (l != null && l.key.equals(key)) { target = i; break; }
+        }
+        if (target < 0) return null;
+        Line cur = Line.parse(lines[target]);
+        if (cur == null || cur.enabled == enable) return configText; // already in target state
+        String replaced = enable ? uncommentLine(lines[target]) : commentLine(lines[target]);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) sb.append('\n');
+            sb.append(i == target ? replaced : lines[i]);
+        }
+        return sb.toString();
+    }
+
+    /** Parsed config line: key, value, and whether the line is uncommented. */
+    private static final class Line {
+        final String key;
+        final String value;
+        final boolean enabled;
+
+        Line(String key, String value, boolean enabled) {
+            this.key = key;
+            this.value = value;
+            this.enabled = enabled;
+        }
+
+        static Line parse(String raw) {
+            String t = raw.trim();
+            if (t.isEmpty()) return null;
+            boolean enabled = true;
+            if (t.startsWith("#") || t.startsWith(";")) {
+                enabled = false;
+                t = t.substring(1);
+                if (t.startsWith(" ")) t = t.substring(1);
+                if (t.isEmpty()) return null;
+            }
+            int eq = t.indexOf('=');
+            if (eq <= 0) return null;
+            String k = t.substring(0, eq).trim();
+            if (k.isEmpty()) return null;
+            return new Line(k, t.substring(eq + 1).trim(), enabled);
+        }
+    }
+
+    /** "  key = v" -> "  # key = v"; preserves leading whitespace. */
+    private static String commentLine(String line) {
+        int i = 0;
+        while (i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t')) i++;
+        return line.substring(0, i) + "# " + line.substring(i);
+    }
+
+    /** "  # key = v" / "  ; key = v" -> "  key = v"; strips one marker + one optional space. */
+    private static String uncommentLine(String line) {
+        int i = 0;
+        while (i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t')) i++;
+        String rest = line.substring(i);
+        rest = rest.startsWith("#") || rest.startsWith(";") ? rest.substring(1) : rest;
+        if (rest.startsWith(" ")) rest = rest.substring(1);
+        return line.substring(0, i) + rest;
+    }
+
     /**
      * Human label for a key against a version — the badge text shown beside a
      * preview row. Matches the locked UI wording; caller appends the value.

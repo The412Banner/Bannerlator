@@ -94,6 +94,37 @@ public class DXVKConfigDialog {
         return new ArrayList<>(Arrays.asList(original));
     }
 
+    /** One installed VEGAS package that ships a stock config file, probed on-device. */
+    public static final class StockSource {
+        public final String verName;
+        public final java.io.File file;
+
+        public StockSource(String verName, java.io.File file) {
+            this.verName = verName;
+            this.file = file;
+        }
+    }
+
+    /**
+     * Stock config files shipped ALONGSIDE installed VEGAS WCP packages: the download
+     * sheet fetches the release's .conf asset on the same tap as the .wcp and parks it
+     * at <contentDir>/VEGAS/configs/<verName>.conf (see VegasDownloadSheet). This probe
+     * resolves those — it never looks inside a package, because the config is not in it.
+     */
+    public static List<StockSource> loadVegasStockSources(Context context, ContentsManager contentsManager) {
+        List<StockSource> out = new ArrayList<>();
+        List<ContentProfile> profiles = contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS);
+        if (profiles == null) return out;
+        java.io.File confDir = new java.io.File(
+                ContentsManager.getContentTypeDir(context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS), "configs");
+        for (ContentProfile profile : profiles) {
+            if (profile.verName == null) continue;
+            java.io.File conf = new java.io.File(confDir, profile.verName + ".conf");
+            if (conf.isFile()) out.add(new StockSource(profile.verName, conf));
+        }
+        return out;
+    }
+
     public static KeyValueSet parseConfig(Object config) {
         String data = config != null && !config.toString().isEmpty() ? config.toString() : DEFAULT_CONFIG;
         return new KeyValueSet(data);

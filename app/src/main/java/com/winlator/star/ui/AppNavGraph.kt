@@ -16,6 +16,7 @@ import com.winlator.star.ui.screens.AppearanceScreen
 import com.winlator.star.ui.screens.BigPictureScreen
 import com.winlator.star.ui.screens.ContainerDetailScreen
 import com.winlator.star.ui.screens.ContainersScreen
+import com.winlator.star.ui.screens.contents.ContentsHubScreen
 import com.winlator.star.ui.screens.FileManagerScreen
 import com.winlator.star.ui.screens.FragmentScreen
 import com.winlator.star.ui.screens.SavesScreen
@@ -67,6 +68,10 @@ fun AppNavGraph(
 
         composable(Screen.Games.route) {
             ShortcutsScreen()
+        }
+
+        composable(Screen.Contents.route) {
+            ContentsHubScreen()
         }
 
         composable(Screen.BigPicture.route) {

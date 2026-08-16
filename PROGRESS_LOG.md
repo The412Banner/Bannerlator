@@ -5876,3 +5876,42 @@ NEXT: install `Bannerlator-controller-345-19c4b048-standard.apk`, launch Contain
 confirm the new FIX-4 logcat markers + a physical d-pad press moves the file-manager selection. Then T4
 (Share) / T5 (Keep) mode variants, then rebase onto current main + merge. Full detail: memory
 [[project_bannerlator_controller_345_audit]].
+
+## 2026-08-16 — 🎮 #345 controller (cont.): FIX-4 fully fixed (C+D), device-proven, rebased onto main
+Continues 2026-08-15 entry. Branch `fix/controller-slot-takeover-345` rebased onto current `main`
+(`a1c9faf5`), new tip `210ebd12`. NOT merged (full-matrix retest of rebased build in progress).
+
+T7/FIX-4 (reporter's "keyboard bindings don't work") took TWO fixes, both device-proven on Pocket FIT:
+- **C** (`…apply container-assigned profiles for pads present at launch…`): a pad PRESENT AT LAUNCH is
+  seated by preAssignConnectedControllers on the bg thread AFTER applyControllerProfiles already ran on
+  the main thread (getDeviceIdForDescriptor→0, silent no-op) and nothing re-ran it. FIX =
+  runOnUiThread(applyControllerProfiles) right after preAssign (XSDA :4141). Also found + guarded a 2nd
+  latent bug: the establish-active path made the assigned profile active, so `active.getOrCreateController`
+  == the profile's own controller (same cached instance) → `copyBindingsFrom(self)` (which clears first)
+  would WIPE the 7 bindings. Guard: skip copy when dstC==srcC. Plus confirm-logging in applyControllerProfiles.
+- **D** (`…make the view visible+focused so joystick motion reaches the remapper`): even with the profile
+  active, the D-pad STILL didn't work — because the X-Box D-pad is a joystick MOTION event (AXIS_HAT_X/Y),
+  and joystick motion only reaches InputControlsView.onGenericMotionEvent via the framework's FOCUS-based
+  dispatch (dispatchGenericMotionEvent does NOT forward to it). Commit C's bindings-only path used
+  setProfile() only → view GONE/unfocused → motion went to raw XInput. KEY events (e.g. A) are exempt
+  (dispatchKeyEvent calls onKeyEvent directly), which masked the split. FIX = both establish-active
+  branches call `setShowTouchscreenControls(p.isVirtualGamepad()); showInputControls(p)` — showInputControls
+  sets VISIBLE + requestFocus() unconditionally so motion routes; a bindings-only profile keeps
+  showTouchscreenControls=false so nothing draws (no elements) and touches route to the touchpad. Bonus:
+  Reset Input now recovers delivery too.
+
+DEVICE RESULTS (Pocket FIT; in-game input-tap doesn't reach the Winlator surface, so the USER drives
+in-game taps/presses, Claude reads logcat+screenshots): FIX-3, Option-A UX, F7b/FIX-5 (OSC released not
+P2), F5 restore, disconnect-notif ("INPUT UPDATED" card), T6 suppression — all ✅ on build c58f79f3.
+❌→✅ T7/FIX-4 on build 0c8c677e: d-pad navigates the Wine file manager at launch in BOTH the profile-as-
+overlay case AND the clean reporter case (selected_profile_id=-1, OSC suppressed) — logcat "established
+active profile 4 (virtualGamepad=false)" → d-pad HAT motion routes; survives container relaunch.
+
+REBASE: 21 commits replayed onto a1c9faf5; only real overlap ContainerDetailScreen.kt (auto-merged,
+non-overlapping) + PROGRESS_LOG.md (union merge). No conflict markers; commit D intact. Rebased build
+`210ebd12` (run 31955075030) staged `Bannerlator-controller-345-rebased-210ebd12-standard.apk` sha
+`294de879`, installed on device.
+
+NEXT: full-matrix retest on the rebased build (FIX-3/OSC → F7b/F5 → T6 → T7 d-pad → eyeball touch+mouse
+still works + selector reads "test"), optional T4 Share / T5 Keep, THEN merge to main. Full trail:
+memory [[project_bannerlator_controller_345_audit]].

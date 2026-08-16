@@ -45,6 +45,7 @@ import com.winlator.star.MainActivity
 import com.winlator.star.R
 import com.winlator.star.ui.findActivity
 import com.winlator.star.contentdialog.DXVKConfigDialog
+import com.winlator.star.contentdialog.VegasKeyCatalog
 import com.winlator.star.contentdialog.WineD3DConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
@@ -1970,6 +1971,16 @@ internal fun DxvkConfigDialog(
 
     // VEGAS knowledge layer: bundled asset or null (null -> unclassified fallback).
     val vegasKnowledge = remember { DXVKConfigDialog.loadVegasKeyKnowledge(context) }
+    // VEGAS key catalog (classifier ground truth, §6b): null -> classifier off, rows unverified.
+    val vegasCatalog = remember { DXVKConfigDialog.loadVegasKeyCatalog(context) }
+    val activeStockTag = remember(selectedStock, stockSources.value) {
+        stockSources.value.firstOrNull { it.verName == selectedStock || it.displayLabel() == selectedStock }?.tag
+    }
+    // Coverage rule: installed tag missing from catalog (or no tag recorded) -> "catalog behind build".
+    val catalogBehind = remember(vegasCatalog, activeStockTag) {
+        vegasCatalog != null && (activeStockTag == null || !vegasCatalog.isCovered(activeStockTag))
+    }
+    var showCatalogDialog by remember { mutableStateOf(false) }
     var forkFilter by remember { mutableStateOf(false) }
 
     // The active source's absolute path; "" = USE DEFAULTS (env-var semantics, no file).
@@ -2233,7 +2244,16 @@ internal fun DxvkConfigDialog(
                             configRows.forEach { row ->
                                 val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
                                 if (forkFilter && gated) return@forEach
-                                val badge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
+                                val baseBadge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
+                                val bucketPart = if (vegasCatalog != null && activeStockTag != null)
+                                    when (vegasCatalog.classify(row.key, activeStockTag)) {
+                                        VegasKeyCatalog.Bucket.IN_BUILD -> ""
+                                        VegasKeyCatalog.Bucket.OTHER_BUILD -> " · another VEGAS build"
+                                        VegasKeyCatalog.Bucket.UPSTREAM -> " · upstream DXVK"
+                                        VegasKeyCatalog.Bucket.NOWHERE -> " · not in any VEGAS config"
+                                    }
+                                else ""
+                                val badge = baseBadge + bucketPart + if (catalogBehind) " · unverified" else ""
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                     Switch(
                                         checked = row.enabled,
@@ -2260,6 +2280,33 @@ internal fun DxvkConfigDialog(
                     else
                         "knowledge data unavailable — showing keys unclassified"
                     Text(footerText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val catalogFooter = when {
+                        vegasCatalog == null -> "catalog unavailable — classifier off, rows marked unverified"
+                        activeStockTag == null -> "catalog: newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()} — preset tag unknown"
+                        catalogBehind -> "catalog behind build — key classes unverified (newest known: ${vegasCatalog.newestTag()})"
+                        else -> "catalog: covered · newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()}"
+                    }
+                    Text(catalogFooter, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick = { showCatalogDialog = true }) { Text("Check catalog", style = MaterialTheme.typography.bodySmall) }
+                    if (showCatalogDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showCatalogDialog = false },
+                            title = { Text("VEGAS key catalog") },
+                            text = {
+                                Column {
+                                    Text("generated ${vegasCatalog?.generatedAt() ?: "n/a"} · upstream ${vegasCatalog?.upstreamSource() ?: "n/a"} (${vegasCatalog?.upstreamFetchedAt() ?: "n/a"})")
+                                    Spacer(Modifier.height(4.dp))
+                                    vegasCatalog?.knownTags()?.forEach { t ->
+                                        val st = vegasCatalog.stateOf(t)
+                                        Text("$t — ${st?.name?.lowercase()?.replace('_', '-') ?: "?"}")
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("Updated at build time (assistant-side maintenance). No background watcher — Bannerlator has no WorkManager/JobScheduler; check again in a future build.")
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { showCatalogDialog = false }) { Text("OK") } }
+                        )
+                    }
                     if (stockEdited) {
                         Text(
                             "Edited · yours now (backup: $activeConfigPath.bak)",

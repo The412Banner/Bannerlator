@@ -25,6 +25,7 @@ public class DXVKConfigDialog {
     public static final int DXVK_TYPE_ASYNC = 1;
     public static final int DXVK_TYPE_GPLASYNC = 2;
     public static final String VEGAS_KNOWLEDGE_ASSET = "vegas_knowledge.json";
+    public static final String VEGAS_KEY_CATALOG_ASSET = "vegas_key_catalog.json";
     public static final String[] VKD3D_FEATURE_LEVEL = {"12_0", "12_1", "12_2", "11_1", "11_0", "10_1", "10_0", "9_3", "9_2", "9_1"};
 
     private static final Pattern SEMVER = Pattern.compile("(\\d+)\\.(\\d+)(?:\\.(\\d+))?");
@@ -184,6 +185,24 @@ public class DXVKConfigDialog {
             int n;
             while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
             return new VegasKeyKnowledge(out.toString("UTF-8"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Loads the bundled VEGAS key catalog (vegas_key_catalog.json). Returns null on
+     * any failure — missing asset or schema rejection — so callers can annotate rows
+     * "unverified" instead of crashing the sheet. READ-ONLY by contract (§6b): this
+     * class owns no adoption/migration path and never writes user config.
+     */
+    public static VegasKeyCatalog loadVegasKeyCatalog(Context context) {
+        try (java.io.InputStream in = context.getAssets().open(VEGAS_KEY_CATALOG_ASSET)) {
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+            return new VegasKeyCatalog(out.toString("UTF-8"));
         } catch (Exception e) {
             return null;
         }

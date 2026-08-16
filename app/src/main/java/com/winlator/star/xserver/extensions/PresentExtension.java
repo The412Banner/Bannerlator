@@ -15,8 +15,6 @@ import com.winlator.star.xserver.Pixmap;
 import com.winlator.star.xserver.Window;
 import com.winlator.star.xserver.XClient;
 import com.winlator.star.xserver.XLock;
-import com.winlator.star.xserver.XResource;
-import com.winlator.star.xserver.XResourceManager;
 import com.winlator.star.xserver.XServer;
 import com.winlator.star.xserver.errors.BadImplementation;
 import com.winlator.star.xserver.errors.BadMatch;
@@ -28,7 +26,7 @@ import com.winlator.star.xserver.events.PresentIdleNotify;
 
 import java.io.IOException;
 
-public class PresentExtension implements Extension, XResourceManager.OnResourceLifecycleListener {
+public class PresentExtension implements Extension {
     public static final byte MAJOR_OPCODE = -103;
     private static final int FAKE_INTERVAL = 1000000 / 60;
     public enum Kind {PIXMAP, MSC_NOTIFY}
@@ -369,23 +367,6 @@ public class PresentExtension implements Extension, XResourceManager.OnResourceL
                 events.put(eventId, event);
             }
         }
-    }
-
-    // A window was destroyed: drop its Present event registrations and its FPS-limiter pacing
-    // state (windowTimings and any still-pending idle), all keyed by window, which would
-    // otherwise accumulate for the life of the session as windows come and go. Only entries for
-    // the freed window are touched, so live windows' pacing is untouched. Registered on the
-    // window manager, so `resource` is always a Window here.
-    @Override
-    public void onFreeResource(XResource resource) {
-        synchronized (events) {
-            for (int i = events.size() - 1; i >= 0; i--) {
-                Event event = events.valueAt(i);
-                if (event.window != null && event.window.id == resource.id) events.removeAt(i);
-            }
-        }
-        windowTimings.remove(resource.id);
-        pendingIdles.remove(resource.id);
     }
 
     @Override

@@ -207,17 +207,8 @@ public class XServer {
         extensions.put(BigReqExtension.MAJOR_OPCODE, new BigReqExtension());
         extensions.put(MITSHMExtension.MAJOR_OPCODE, new MITSHMExtension());
         extensions.put(DRI3Extension.MAJOR_OPCODE, new DRI3Extension());
-        // Register Present/Sync as resource-lifecycle listeners so their per-window/per-drawable
-        // bookkeeping (Present events + FPS-limiter pacing state; Sync fences) is pruned when the
-        // window/drawable is destroyed, instead of leaking for the life of the session.
-        PresentExtension presentExtension = new PresentExtension();
-        windowManager.addOnResourceLifecycleListener(presentExtension);
-        extensions.put(PresentExtension.MAJOR_OPCODE, presentExtension);
-
-        SyncExtension syncExtension = new SyncExtension();
-        windowManager.addOnResourceLifecycleListener(syncExtension);
-        pixmapManager.addOnResourceLifecycleListener(syncExtension);
-        extensions.put(SyncExtension.MAJOR_OPCODE, syncExtension);
+        extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension());
+        extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension());
         extensions.put(RandrExtension.MAJOR_OPCODE, new RandrExtension(screenInfo));
     }
 

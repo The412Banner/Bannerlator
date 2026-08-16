@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-08-16 (later) — 🐛 **Contents hub: stop doubling item titles**
+> Screenshot showed every title twice ("FEX-2507 FEX-2507", "FEX-2512G FEX-2512G"). PACK_JSON / release-tag sources (Nightlies) set `name == version` (both the tag), so the naive `"$name $version"` printed it twice. In `ComponentRow` (the single renderer for both the repo-detail card and cross-source search) the title is now de-duplicating: show just `name` when the version is blank, equals the name, or is already contained in it; otherwise `"$name $version"`. The filename/size/date row (which already carries the version) is untouched.
+
 ## 2026-08-16 (later) — 🐛 **Contents hub: fix duplicate-key crash on opening a repo**
 > Device test crashed opening StevenMXZ (and again on a FEXCore item): `IllegalArgumentException: Key "…Box640.4.1-fix …box64-0.4.1-fix.wcp" was already used` — Compose throws hard when a `LazyColumn` sees a duplicate key. Community catalogs (StevenMXZ points assets at ziad9267's repo) list the same asset twice, and the loose contains-matching across type buckets can surface one asset under two types. **Fix (2 files):** (1) dedupe at the data layer — `ContentsHubViewModel` now `distinctBy { it.downloadUrl }` on both the per-source `detailItems` and the cross-source `searchResults`, so a real duplicate never reaches the list; (2) defense-in-depth — every LazyColumn in `ContentsHubScreen` (repo list, repo-detail items, search results, My Files folders) switched to `itemsIndexed` with an index-prefixed key (`"$i-…"`) so a collision can't crash the UI again. List assembly already fully replaces (never appends onto a populated list), and the repo cache is keyed per `source::type` with overwrite — no separate dup path.
 

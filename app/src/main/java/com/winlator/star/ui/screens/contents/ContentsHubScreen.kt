@@ -438,7 +438,13 @@ private fun ComponentRow(vm: ContentsHubViewModel, item: ContentsHubViewModel.Ca
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 if (showSource) Text(item.sourceName, style = MaterialTheme.typography.labelSmall, color = cs.primary, fontWeight = FontWeight.Bold)
-                Text("${item.displayName} ${item.versionName}".trim(), style = MaterialTheme.typography.bodyLarge,
+                // PACK_JSON / release-tag sources set name == version (both the tag), so a naive
+                // "name version" doubles the title. The filename row below already shows the version.
+                val title = remember(item.displayName, item.versionName) {
+                    val n = item.displayName.trim(); val v = item.versionName.trim()
+                    if (v.isEmpty() || n == v || n.contains(v, ignoreCase = true)) n else "$n $v"
+                }
+                Text(title, style = MaterialTheme.typography.bodyLarge,
                     color = cs.onSurface, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {

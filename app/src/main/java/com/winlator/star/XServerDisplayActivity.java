@@ -7297,17 +7297,22 @@ return true;
                 com.winlator.star.inputcontrols.ControlsProfile p = inputControlsManager.getProfile(pid);
                 if (p != null) {
                     // #345 FIX-4: activate the assigned profile so the pad drives the guest through it.
-                    // BOTH branches must make the view VISIBLE + FOCUSED via showInputControls — joystick
-                    // MOTION events (the X-Box pad's D-pad is an AXIS_HAT_* motion, plus the analog sticks)
-                    // are focus-routed by the framework and only reach InputControlsView.onGenericMotionEvent
-                    // when this view holds focus. dispatchGenericMotionEvent does NOT forward to it, so a
-                    // setProfile-only path (commit C) left the view GONE/unfocused and the D-pad went to
-                    // WinHandler as raw XInput, never hitting the keyboard remap. (Key events reach
-                    // onKeyEvent directly via dispatchKeyEvent regardless of visibility; motion does not.)
-                    // A virtual-gamepad profile additionally shows its on-screen overlay; a bindings-only
-                    // profile keeps the touch overlay OFF — it has no elements to draw, and with
-                    // showTouchscreenControls false onTouchEvent routes touches straight to the touchpad.
-                    inputControlsView.setShowTouchscreenControls(p.isVirtualGamepad());
+                    // showInputControls makes the view VISIBLE + FOCUSED — joystick MOTION events (the
+                    // X-Box pad's D-pad is an AXIS_HAT_* motion, plus the analog sticks) are focus-routed
+                    // by the framework and only reach InputControlsView.onGenericMotionEvent when this view
+                    // holds focus. dispatchGenericMotionEvent does NOT forward to it, so a setProfile-only
+                    // path (commit C) left the view GONE/unfocused and the D-pad went to WinHandler as raw
+                    // XInput, never hitting the remap. (Key events reach onKeyEvent directly via
+                    // dispatchKeyEvent regardless of visibility; motion does not.)
+                    // #345 (b): this establish-active path is per-connected-PHYSICAL-controller — it is
+                    // NEVER the OSC overlay. Keep the touch overlay OFF unconditionally, even when the
+                    // assigned profile is a virtual gamepad: a physical controller must not pop the
+                    // on-screen controls (the reported "assigning Virtual Gamepad to a BT pad brings the
+                    // overlay up" bug). onDraw (InputControlsView:278) gates drawing on showTouchscreenControls
+                    // and sendGamepadState releases the OSC slot when it's off, so the view stays
+                    // visible+focused for motion delivery but draws nothing and claims no player slot. The
+                    // OSC overlay is driven only by the on-screen row (onActiveProfileChanged / smart-default).
+                    inputControlsView.setShowTouchscreenControls(false);
                     showInputControls(p);
                     active = inputControlsView.getProfile();
                     Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: established active profile "

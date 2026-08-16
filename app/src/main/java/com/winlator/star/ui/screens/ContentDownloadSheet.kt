@@ -13,7 +13,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.*
@@ -45,6 +46,8 @@ import com.winlator.star.store.download.ContentDownloadState
 import com.winlator.star.store.download.formatEta
 import com.winlator.star.store.download.startContentDownload
 import com.winlator.star.ui.findActivity
+import com.winlator.star.ui.screens.contents.RemoteSourceRepository
+import kotlin.math.absoluteValue
 import com.winlator.star.util.ImportEtaTracker
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
@@ -95,6 +98,15 @@ fun ContentDownloadSheet(
     // When more than one content type is shown (Wine + Proton), chips at the top filter the list.
     var selectedType by remember(contentTypes) { mutableStateOf(contentTypes.first()) }
 
+    // ── Community-repo source toggle (opt-in; persisted globally). OFF = Official contents.json only.
+    val srcPrefs = remember { context.getSharedPreferences(COMMUNITY_PREFS, Context.MODE_PRIVATE) }
+    var includeCommunity by remember { mutableStateOf(srcPrefs.getBoolean(COMMUNITY_KEY, false)) }
+    var communityGroups by remember { mutableStateOf<List<CommunityGroup>>(emptyList()) }
+    var communityLoading by remember { mutableStateOf(false) }
+    // Which groups are shown via the chip row. Official is always available and can't be emptied out.
+    var activeSources by remember { mutableStateOf(setOf(OFFICIAL_KEY)) }
+    var selectAllOnLoad by remember { mutableStateOf(includeCommunity) }
+
     LaunchedEffect(contentTypes, refreshKey) {
         val json = withContext(Dispatchers.IO) {
             Downloader.downloadString(ContentsManager.REMOTE_PROFILES)
@@ -102,6 +114,34 @@ fun ContentDownloadSheet(
         if (json != null) cm.setRemoteProfiles(json) else cm.syncContents()
         loadProfiles(cm, contentTypes) { profiles = it }
         isLoadingRemote = false
+    }
+
+    // Fetch community versions for the ACTIVE type from the Contents-screen COMPONENT sources — only
+    // when the toggle is on (network-heavy), lazily and per type. Driver sources are never consulted.
+    LaunchedEffect(includeCommunity, selectedType, refreshKey) {
+        if (!includeCommunity) {
+            communityGroups = emptyList(); communityLoading = false
+            return@LaunchedEffect
+        }
+        communityLoading = true
+        val typeStr = selectedType.toString()
+        val groups = withContext(Dispatchers.IO) {
+            val repo = RemoteSourceRepository(context)
+            repo.getAllSources()
+                .filter { sourceSupportsType(it, typeStr) }
+                .mapNotNull { s ->
+                    val items = runCatching { repo.fetchFromSource(s, typeStr) }.getOrDefault(emptyList())
+                        .map { it.toProfile(selectedType) }
+                        .distinctBy { it.remoteUrl }
+                    if (items.isEmpty()) null else CommunityGroup(s.name, items)
+                }
+        }
+        communityGroups = groups
+        if (selectAllOnLoad) {
+            activeSources = setOf(OFFICIAL_KEY) + groups.map { it.name }
+            selectAllOnLoad = false
+        }
+        communityLoading = false
     }
 
     // Manual "install from file" picker. Handles both the in-app picker (selectedFile path,
@@ -281,51 +321,115 @@ fun ContentDownloadSheet(
                 }
                 Divider(color = MaterialTheme.colorScheme.outline)
 
+                // ── Component source control: Official (contents.json) default, opt-in community repos.
+                SourceToggleBox(
+                    includeCommunity = includeCommunity,
+                    communityGroups = communityGroups,
+                    activeSources = activeSources,
+                    onToggle = { on ->
+                        includeCommunity = on
+                        srcPrefs.edit().putBoolean(COMMUNITY_KEY, on).apply()
+                        if (on) selectAllOnLoad = true else activeSources = setOf(OFFICIAL_KEY)
+                    },
+                    onChipToggle = { key ->
+                        activeSources = activeSources.toMutableSet().apply {
+                            if (contains(key)) remove(key) else add(key)
+                            if (isEmpty()) add(OFFICIAL_KEY) // never let the user empty the list
+                        }
+                    },
+                )
+
                 if (isLoadingRemote) {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else {
-                    val shown = remember(profiles, selectedType, multiType) {
+                    val official = remember(profiles, selectedType, multiType) {
                         profiles
                             .filter { !multiType || it.type == selectedType }
                             .sortedByDescending { p -> if (p.remoteUrl == null) 1 else 0 }
                     }
-                    if (shown.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            Text("No content available.", color = MaterialTheme.colorScheme.onSurface)
+                    // Versions already installed locally (normalized type+version) → a community duplicate
+                    // shows an Installed badge instead of a redundant second download.
+                    val installedKeys = remember(official) {
+                        official.filter { it.remoteUrl == null }
+                            .map { normVer(it.type.toString(), it.verName) }.toSet()
+                    }
+                    // Ordered sections: Official first, then each ACTIVE community source (in source order).
+                    val sections = remember(official, communityGroups, activeSources, includeCommunity) {
+                        buildList {
+                            if (OFFICIAL_KEY in activeSources && official.isNotEmpty())
+                                add(SheetSection("Official", community = false, color = OfficialColor, rows = official))
+                            if (includeCommunity) communityGroups.forEach { g ->
+                                if (g.name in activeSources)
+                                    add(SheetSection(g.name, community = true, color = sourceColorFor(g.name), rows = g.profiles))
+                            }
                         }
-                    } else {
-                        Box(Modifier.fillMaxWidth().weight(1f)) {
+                    }
+                    val totalRows = sections.sumOf { it.rows.size }
+
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        if (totalRows == 0 && !communityLoading) {
+                            Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                                Text("No content available.", color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        } else {
                             LazyColumn(
                                 Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(shown, key = { ContentsManager.getEntryName(it) }) { profile ->
-                                    val key = ContentsManager.getEntryName(profile)
-                                    val isLocal = profile.remoteUrl == null
-                                    // Live phase/percent for this row come from the process-lifetime
-                                    // registry, so a backgrounded download keeps the bar moving.
-                                    val cds = contentStates[key]
-                                    DownloadContentItem(
-                                        profile = profile,
-                                        isLocal = isLocal,
-                                        isInUse = isInUse(profile, inUseKey),
-                                        isDownloading = cds?.phase == ContentDownloadPhase.DOWNLOADING,
-                                        isInstalling = cds?.phase == ContentDownloadPhase.INSTALLING,
-                                        progress = if (cds?.phase == ContentDownloadPhase.DOWNLOADING) cds.fraction else null,
-                                        installProgress = if (cds?.phase == ContentDownloadPhase.INSTALLING) cds.fraction else null,
-                                        onDownload = {
-                                            // Fire-and-forget onto the process-lifetime controller (bracketed by the
-                                            // shared download foreground service). It seeds + drives the registry; the
-                                            // sheet just re-attaches its progress card to this key.
-                                            startContentDownload(context.applicationContext, profile)
-                                            dialogKey = key
-                                        },
-                                        onInfo = { showInfoProfile = profile },
-                                        onRemove = { confirmRemoveProfile = profile },
+                                item(key = "count") {
+                                    val nSrc = sections.size
+                                    Text(
+                                        "Showing $totalRows version${if (totalRows != 1) "s" else ""} from " +
+                                            "$nSrc source${if (nSrc != 1) "s" else ""}" +
+                                            (if (!includeCommunity) " · community repos off" else ""),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
                                     )
+                                }
+                                sections.forEachIndexed { si, section ->
+                                    item(key = "hdr-$si-${section.label}") { SourceGroupHeader(section) }
+                                    itemsIndexed(
+                                        section.rows,
+                                        // Collision-proof: section+index prefix so an official + community
+                                        // duplicate of the same version can never share a LazyColumn key.
+                                        key = { ri, p -> "row-$si-$ri-${p.remoteUrl ?: ContentsManager.getEntryName(p)}" },
+                                    ) { _, profile ->
+                                        val key = ContentsManager.getEntryName(profile)
+                                        val isLocal = profile.remoteUrl == null
+                                        val cds = contentStates[key]
+                                        val communityInstalled = section.community &&
+                                            normVer(profile.type.toString(), profile.verName) in installedKeys
+                                        DownloadContentItem(
+                                            profile = profile,
+                                            isLocal = isLocal,
+                                            isInUse = isInUse(profile, inUseKey),
+                                            isDownloading = cds?.phase == ContentDownloadPhase.DOWNLOADING,
+                                            isInstalling = cds?.phase == ContentDownloadPhase.INSTALLING,
+                                            progress = if (cds?.phase == ContentDownloadPhase.DOWNLOADING) cds.fraction else null,
+                                            installProgress = if (cds?.phase == ContentDownloadPhase.INSTALLING) cds.fraction else null,
+                                            sourceLabel = if (section.community) section.label else null,
+                                            sourceColor = section.color,
+                                            communityInstalled = communityInstalled,
+                                            onDownload = {
+                                                // Same process-lifetime pipeline for official + community;
+                                                // community installs from the bridged profile's remoteUrl.
+                                                startContentDownload(context.applicationContext, profile)
+                                                dialogKey = key
+                                            },
+                                            onInfo = { showInfoProfile = profile },
+                                            onRemove = { confirmRemoveProfile = profile },
+                                        )
+                                    }
+                                }
+                                if (communityLoading) item(key = "community-loading") {
+                                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+                                    }
                                 }
                             }
                         }
@@ -362,13 +466,18 @@ private fun DownloadContentItem(
     onDownload: () -> Unit,
     onInfo: () -> Unit,
     onRemove: () -> Unit,
+    // Community provenance: a small colored source pill + (if the same version is already installed)
+    // an Installed badge instead of a redundant download action.
+    sourceLabel: String? = null,
+    sourceColor: Color = Color.Unspecified,
+    communityInstalled: Boolean = false,
 ) {
     val busy = isDownloading || isInstalling
     val installedBlue = Color(0xFF4FC3F7) // intentional: distinct installed/in-use status blue, not the accent
     val cs = MaterialTheme.colorScheme
     // Whole card is tappable to download when it's an available (not-installed, not-busy) entry —
     // matches the adrenotools EntryRow behaviour.
-    val rowClickable = !busy && !isLocal
+    val rowClickable = !busy && !isLocal && !communityInstalled
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -382,10 +491,17 @@ private fun DownloadContentItem(
                 Icon(Icons.Filled.Memory, contentDescription = null, tint = cs.primary, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(profile.verName, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        if (sourceLabel != null && sourceColor != Color.Unspecified) {
+                            Spacer(Modifier.width(8.dp))
+                            SourcePill(sourceLabel, sourceColor)
+                        }
+                    }
                     val sub = when {
                         isInUse -> "In use"
-                        isLocal -> "Installed"
+                        isLocal || communityInstalled -> "Installed"
                         !profile.desc.isNullOrEmpty() -> profile.desc
                         else -> null
                     }
@@ -409,6 +525,8 @@ private fun DownloadContentItem(
                         Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Color(0xFFEF5350), // intentional: destructive-action red
                             modifier = Modifier.size(20.dp).clickable(onClick = onRemove))
                     }
+                    communityInstalled -> Icon(Icons.Filled.CheckCircle, contentDescription = "Installed",
+                        tint = installedBlue, modifier = Modifier.size(20.dp))
                     else -> Icon(Icons.Filled.CloudDownload, contentDescription = "Download", tint = cs.primary,
                         modifier = Modifier.size(22.dp))
                 }
@@ -646,4 +764,157 @@ internal fun installContent(
             activity.runOnUiThread { onDone(false) }
         }
     }
+}
+
+// ── Community source unification (opt-in) ─────────────────────────────────────
+
+private const val COMMUNITY_PREFS = "component_download_prefs"
+private const val COMMUNITY_KEY = "include_community"
+private const val OFFICIAL_KEY = "__official__"
+
+private val OfficialColor = Color(0xFF37C26B)
+private val CommunityPalette = listOf(
+    Color(0xFF3D9BFF), Color(0xFFB98CFF), Color(0xFFFF7A18),
+    Color(0xFF4DD0E1), Color(0xFFFFB300), Color(0xFF66BB6A),
+)
+private fun sourceColorFor(name: String): Color =
+    CommunityPalette[name.hashCode().absoluteValue % CommunityPalette.size]
+
+/** A community repo's versions for the active type, bridged to installable ContentProfiles. */
+private data class CommunityGroup(val name: String, val profiles: List<ContentProfile>)
+
+/** One rendered group in the sheet: Official (contents.json) or a community source. */
+private data class SheetSection(
+    val label: String,
+    val community: Boolean,
+    val color: Color,
+    val rows: List<ContentProfile>,
+)
+
+/** True if [source] lists this sheet's [typeStr] (case-insensitive; fex/fexcore bridged). Empty = include. */
+private fun sourceSupportsType(source: RemoteSourceRepository.RemoteSource, typeStr: String): Boolean {
+    if (source.supportedTypes.isEmpty()) return true
+    val t = typeStr.lowercase()
+    return source.supportedTypes.any { st ->
+        val s = st.lowercase()
+        s == t || (t.contains("fex") && s.contains("fex"))
+    }
+}
+
+/**
+ * Bridge a RemoteItem → an installable ContentProfile (remoteUrl set), so the existing
+ * startContentDownload / ContentsManager pipeline installs it unchanged. verCode is derived from the
+ * URL only to make the registry/entry key unique — the real type/version/code come from the archive's
+ * own profile.json at extract time, so this synthetic code never affects where it installs.
+ */
+private fun RemoteSourceRepository.RemoteItem.toProfile(type: ContentProfile.ContentType): ContentProfile =
+    ContentProfile().also {
+        it.type = type
+        it.verName = versionName
+        it.verCode = downloadUrl.hashCode().absoluteValue
+        it.remoteUrl = downloadUrl
+        it.desc = description
+    }
+
+/** Normalized identity for cross-checking an installed version against a community duplicate. */
+private fun normVer(type: String, ver: String?): String =
+    (type + (ver ?: "")).lowercase().filter { it.isLetterOrDigit() }
+
+@Composable
+private fun SourceToggleBox(
+    includeCommunity: Boolean,
+    communityGroups: List<CommunityGroup>,
+    activeSources: Set<String>,
+    onToggle: (Boolean) -> Unit,
+    onChipToggle: (String) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = cs.surfaceContainer),
+        border = BorderStroke(1.dp, cs.outline),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            ) {
+                Icon(Icons.Filled.Hub, contentDescription = null, tint = cs.primary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Include community repos", style = MaterialTheme.typography.bodyMedium,
+                        color = cs.onSurface, fontWeight = FontWeight.SemiBold)
+                    Text("Add versions from the Contents screen's sources",
+                        style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                }
+                Switch(checked = includeCommunity, onCheckedChange = onToggle,
+                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = cs.primary))
+            }
+            if (includeCommunity) {
+                Divider(color = cs.outline.copy(alpha = 0.4f))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SourceChip("Official", OfficialColor, OFFICIAL_KEY in activeSources) { onChipToggle(OFFICIAL_KEY) }
+                    communityGroups.forEach { g ->
+                        SourceChip(g.name, sourceColorFor(g.name), g.name in activeSources) { onChipToggle(g.name) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceChip(label: String, color: Color, selected: Boolean, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) cs.primary else cs.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(vertical = 7.dp, horizontal = 12.dp),
+    ) {
+        if (!selected) {
+            Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(color))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelMedium,
+            color = if (selected) cs.onPrimary else cs.onSurface,
+            fontWeight = FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun SourceGroupHeader(section: SheetSection) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
+    ) {
+        Box(Modifier.size(11.dp).clip(RoundedCornerShape(6.dp)).background(section.color))
+        Spacer(Modifier.width(9.dp))
+        Text(section.label, style = MaterialTheme.typography.labelLarge, color = cs.onSurface, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            if (section.community) "Community" else "Official",
+            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = section.color,
+            modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(section.color.copy(alpha = 0.14f))
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+        Spacer(Modifier.weight(1f))
+        Text("${section.rows.size}", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun SourcePill(label: String, color: Color) {
+    Text(
+        label, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold, maxLines = 1,
+        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(color.copy(alpha = 0.14f))
+            .padding(horizontal = 7.dp, vertical = 1.dp),
+    )
 }

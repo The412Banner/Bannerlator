@@ -63,6 +63,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material.icons.filled.Widgets
@@ -158,7 +159,7 @@ fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel()) {
                         )
                     }
                 }
-                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { HubTabContent(vm, tab) }
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) { HubTabContent(vm, tab, wide = true) }
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -177,16 +178,20 @@ fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel()) {
                         )
                     }
                 }
-                HubTabContent(vm, tab)
+                // Weighted so the tab content gets the REMAINING height after the TabRow and its own
+                // internal lists scroll within it (never clipped, incl. large interface scale).
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) { HubTabContent(vm, tab, wide = false) }
             }
         }
     }
 }
 
 @Composable
-private fun HubTabContent(vm: ContentsHubViewModel, tab: HubTab) {
+private fun HubTabContent(vm: ContentsHubViewModel, tab: HubTab, wide: Boolean) {
     when (tab) {
-        HubTab.DOWNLOAD -> DownloadTab(vm)
+        // A single wide/narrow decision, taken once from the full screen width, drives BOTH the tab
+        // chrome (rail vs top tabs) and the Download master–detail — so it's never rail + single-pane.
+        HubTab.DOWNLOAD -> DownloadTab(vm, wide)
         HubTab.MY_FILES -> MyFilesTab(vm)
         HubTab.INSTALLED -> InstalledTab(vm)
     }
@@ -194,7 +199,7 @@ private fun HubTabContent(vm: ContentsHubViewModel, tab: HubTab) {
 
 // ── Download tab (master–detail) ───────────────────────────────────────────────
 @Composable
-private fun DownloadTab(vm: ContentsHubViewModel) {
+private fun DownloadTab(vm: ContentsHubViewModel, wide: Boolean) {
     val sources by vm.sources.collectAsState()
     val selected by vm.selected.collectAsState()
     val query by vm.query.collectAsState()
@@ -209,35 +214,33 @@ private fun DownloadTab(vm: ContentsHubViewModel) {
     // leaving the Contents screen; only intercepts while a repo detail is open.
     BackHandler(enabled = selected != null) { vm.selectSource(null) }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val wide = maxWidth >= 760.dp
-
-        if (wide) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
-                    // Left column always shows the search field + repo list (results go right).
-                    SourceListPane(vm, sources, query, selected, showInlineResults = false,
-                        onAdd = { showAdd = true }, onImport = { showImport = true },
-                        onSettings = { showSettings = true }, onMenu = { menuFor = it })
-                }
-                VerticalDivider(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outline)
-                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    // Right pane priority: active search → results (full width); else selected repo; else empty.
-                    when {
-                        query.isNotBlank() -> SearchResultsPane(vm, Modifier.fillMaxSize().padding(top = 12.dp, start = 14.dp, end = 14.dp))
-                        selected != null -> RepoDetail(vm, showBack = false)
-                        else -> EmptyDetailPlaceholder()
-                    }
-                }
-            }
-        } else {
-            if (selected == null) {
-                SourceListPane(vm, sources, query, selected, showInlineResults = true,
+    // [wide] is decided once from the FULL screen width (passed down), so a wide screen always gets
+    // rail + master–detail and never rail + single-pane.
+    if (wide) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
+                // Left column always shows the search field + repo list (results go right).
+                SourceListPane(vm, sources, query, selected, showInlineResults = false,
                     onAdd = { showAdd = true }, onImport = { showImport = true },
                     onSettings = { showSettings = true }, onMenu = { menuFor = it })
-            } else {
-                RepoDetail(vm, showBack = true)
             }
+            VerticalDivider(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outline)
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                // Right pane priority: active search → results (full width); else selected repo; else empty.
+                when {
+                    query.isNotBlank() -> SearchResultsPane(vm, Modifier.fillMaxSize().padding(top = 12.dp, start = 14.dp, end = 14.dp))
+                    selected != null -> RepoDetail(vm, showBack = false)
+                    else -> EmptyDetailPlaceholder()
+                }
+            }
+        }
+    } else {
+        if (selected == null) {
+            SourceListPane(vm, sources, query, selected, showInlineResults = true,
+                onAdd = { showAdd = true }, onImport = { showImport = true },
+                onSettings = { showSettings = true }, onMenu = { menuFor = it })
+        } else {
+            RepoDetail(vm, showBack = true)
         }
     }
 
@@ -293,11 +296,11 @@ private fun SourceListPane(
                     Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary)
                 }
                 IconButton(onClick = onImport) { Icon(Icons.Filled.FileDownload, "Import list", tint = cs.primary) }
-                IconButton(onClick = onSettings) { Icon(Icons.Filled.FolderSpecial, "Settings", tint = cs.primary) }
+                IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings", tint = cs.primary) }
                 IconButton(onClick = onAdd) { Icon(Icons.Filled.Add, "Add repository", tint = cs.primary) }
             }
             Spacer(Modifier.height(6.dp))
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 itemsIndexed(sources, key = { i, s -> "$i-${s.name}-${s.driverOnly}" }) { _, source ->
                     RepoCard(source, isSelected = selected == source,
                         onClick = { vm.selectSource(source) }, onMenu = { onMenu(source) })
@@ -305,7 +308,7 @@ private fun SourceListPane(
                 }
             }
         } else {
-            SearchResultsPane(vm, Modifier.fillMaxSize())
+            SearchResultsPane(vm, Modifier.weight(1f).fillMaxWidth())
         }
     }
 }
@@ -321,17 +324,17 @@ private fun SearchResultsPane(vm: ContentsHubViewModel, modifier: Modifier = Mod
 
     Column(modifier = modifier) {
         if (searching) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = cs.primary) }
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = cs.primary) }
         } else {
             Text("${searchResults.size} result${if (searchResults.size != 1) "s" else ""}",
                 style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
             Spacer(Modifier.height(8.dp))
             if (searchResults.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text("No components match “$query”.", color = cs.onSurfaceVariant)
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     itemsIndexed(searchResults, key = { i, it -> "$i-${it.sourceName}-${it.type}-${it.downloadUrl}" }) { _, item ->
                         ComponentRow(vm, item, showSource = true)
                         Spacer(Modifier.height(10.dp))
@@ -420,7 +423,6 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
     val types by vm.detailTypes.collectAsState()
     val items by vm.detailItems.collectAsState()
     val loading by vm.detailLoading.collectAsState()
-    val keepRaw by vm.keepRaw.collectAsState()
     val src = source ?: return
     var filter by remember(src) { mutableStateOf("All") }
 
@@ -439,23 +441,7 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
             IconButton(onClick = { vm.refreshSelected() }) { Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary) }
         }
 
-        Spacer(Modifier.height(6.dp))
-        // Keep-raw bar
-        Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-                .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
-                .background(cs.surface, RoundedCornerShape(14.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Icon(Icons.Filled.Save, null, tint = cs.primary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Keep raw archive", style = MaterialTheme.typography.bodyMedium, color = cs.onSurface, fontWeight = FontWeight.Bold)
-                Text("Also save the downloaded file to My Files", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-            }
-            Switch(checked = keepRaw, onCheckedChange = { vm.setKeepRaw(it) },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = cs.primary))
-        }
-
+        // Keep-raw is controlled once from Contents settings (single source of truth); no per-repo bar.
         Spacer(Modifier.height(12.dp))
         // Filter chips
         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -466,13 +452,13 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
 
         Spacer(Modifier.height(12.dp))
         when {
-            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = cs.primary) }
-            items.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            loading -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = cs.primary) }
+            items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text("No components available.", color = cs.onSurfaceVariant)
             }
             else -> {
                 val shown = if (filter == "All") items else items.filter { it.type == filter }
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     itemsIndexed(shown, key = { i, it -> "$i-${it.type}-${it.downloadUrl}" }) { _, item ->
                         ComponentRow(vm, item, showSource = false)
                         Spacer(Modifier.height(10.dp))
@@ -680,12 +666,12 @@ private fun MyFilesTab(vm: ContentsHubViewModel) {
         Spacer(Modifier.height(14.dp))
 
         if (folders.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text("No saved archives yet.\nEnable “Keep raw archive” before downloading.",
                     color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 itemsIndexed(folders.keys.toList(), key = { i, t -> "$i-$t" }) { _, type ->
                     FolderCard(vm, type, folders[type].orEmpty(),
                         open = type in expanded.value,

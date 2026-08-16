@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-08-16 (later) — 🐛 **Contents hub: fix multi-word cross-source search**
+> "dxvk 2" returned 0 results ("dxvk" and "2" each worked). `searchCache` matched the whole query as one substring against each field separately, so a query whose words straddle name ("DXVK") and version ("2.4.1") matched nothing, and it never searched type/source. Now it splits the query into whitespace-delimited tokens and requires EVERY token to appear in a combined per-item haystack (`displayName + versionName + componentType + sourceName`, lowercased). Keeps the `SearchResult(sourceName, componentType, item)` shape and the `distinctBy { it.item.downloadUrl }` dedupe (crash-fix invariant); the VM's own `.distinctBy` on mapped results is unchanged.
+
 ## 2026-08-16 (later) — 🐛 **Contents hub: stop doubling item titles**
 > Screenshot showed every title twice ("FEX-2507 FEX-2507", "FEX-2512G FEX-2512G"). PACK_JSON / release-tag sources (Nightlies) set `name == version` (both the tag), so the naive `"$name $version"` printed it twice. In `ComponentRow` (the single renderer for both the repo-detail card and cross-source search) the title is now de-duplicating: show just `name` when the version is blank, equals the name, or is already contained in it; otherwise `"$name $version"`. The filename/size/date row (which already carries the version) is untouched.
 

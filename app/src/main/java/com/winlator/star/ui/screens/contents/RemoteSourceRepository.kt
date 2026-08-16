@@ -59,21 +59,22 @@ class RemoteSourceRepository(private val context: Context) {
 
         /** Search all cached items across every source and type. */
         fun searchCache(query: String): List<SearchResult> {
-            if (query.isBlank()) return emptyList()
-            val q = query.lowercase().trim()
+            // Match EVERY whitespace-delimited token against a combined haystack (name + version +
+            // type + source), so multi-word queries like "dxvk 2" work even though the words straddle
+            // separate fields. Single-substring matching failed there — name/version are distinct fields.
+            val tokens = query.lowercase().trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+            if (tokens.isEmpty()) return emptyList()
             val results = mutableListOf<SearchResult>()
             cache.forEach { (key, items) ->
                 val parts = key.split("::")
                 if (parts.size != 2) return@forEach
                 val (sourceName, componentType) = parts
-                items.filter {
-                    it.displayName.lowercase().contains(q) ||
-                    it.versionName.lowercase().contains(q)
-                }.forEach { item ->
-                    results.add(SearchResult(sourceName, componentType, item))
+                items.forEach { item ->
+                    val hay = "${item.displayName} ${item.versionName} $componentType $sourceName".lowercase()
+                    if (tokens.all { t -> hay.contains(t) }) results.add(SearchResult(sourceName, componentType, item))
                 }
             }
-            return results.sortedBy { it.item.displayName.lowercase() }
+            return results.distinctBy { it.item.downloadUrl }.sortedBy { it.item.displayName.lowercase() }
         }
     }
 

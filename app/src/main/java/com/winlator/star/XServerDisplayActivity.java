@@ -7296,17 +7296,19 @@ return true;
                 if (winHandler.getDeviceIdForDescriptor(e.getKey()) == 0) continue; // not connected
                 com.winlator.star.inputcontrols.ControlsProfile p = inputControlsManager.getProfile(pid);
                 if (p != null) {
-                    // #345 FIX-4: a controller-bindings-only profile has no on-screen elements — activate it
-                    // for the remapper and point the in-game selector at it, but DON'T enable the touch
-                    // overlay (setProfile alone; no setShowTouchscreenControls / no visible overlay). Only a
-                    // real virtual-gamepad profile draws + claims the on-screen slot via showInputControls.
-                    if (p.isVirtualGamepad()) {
-                        inputControlsView.setShowTouchscreenControls(true);
-                        showInputControls(p);
-                    } else {
-                        inputControlsView.setProfile(p);
-                        syncInGameProfileSelector(p);
-                    }
+                    // #345 FIX-4: activate the assigned profile so the pad drives the guest through it.
+                    // BOTH branches must make the view VISIBLE + FOCUSED via showInputControls — joystick
+                    // MOTION events (the X-Box pad's D-pad is an AXIS_HAT_* motion, plus the analog sticks)
+                    // are focus-routed by the framework and only reach InputControlsView.onGenericMotionEvent
+                    // when this view holds focus. dispatchGenericMotionEvent does NOT forward to it, so a
+                    // setProfile-only path (commit C) left the view GONE/unfocused and the D-pad went to
+                    // WinHandler as raw XInput, never hitting the keyboard remap. (Key events reach
+                    // onKeyEvent directly via dispatchKeyEvent regardless of visibility; motion does not.)
+                    // A virtual-gamepad profile additionally shows its on-screen overlay; a bindings-only
+                    // profile keeps the touch overlay OFF — it has no elements to draw, and with
+                    // showTouchscreenControls false onTouchEvent routes touches straight to the touchpad.
+                    inputControlsView.setShowTouchscreenControls(p.isVirtualGamepad());
+                    showInputControls(p);
                     active = inputControlsView.getProfile();
                     Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: established active profile "
                             + p.id + " (virtualGamepad=" + p.isVirtualGamepad() + ") from device " + e.getKey());

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Delete
@@ -206,6 +207,13 @@ private fun SourceListPane(
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search all repositories…") },
             leadingIcon = { Icon(Icons.Filled.Search, null, tint = cs.onSurfaceVariant) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { vm.setQuery("") }) {
+                        Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = cs.onSurfaceVariant)
+                    }
+                }
+            },
             singleLine = true,
         )
         Spacer(Modifier.height(12.dp))

@@ -254,7 +254,6 @@ class RemoteSourceRepository(private val context: Context) {
             format = SourceFormat.PACK_JSON,
             supportedTypes = listOf("dxvk", "vkd3d", "box64", "fex", "fexcore", "wine", "proton", "GPU Drivers")
         ),
-        RemoteSource("Xnick417x", "https://raw.githubusercontent.com/Xnick417x/Winlator-Bionic-Nightly-wcp/refs/heads/main/content.json", SourceFormat.WCP_JSON, listOf("dxvk", "vkd3d", "box64", "fex", "fexcore", "wine", "proton")),
         RemoteSource("AdrenoToolsDrivers (K11MCH1)", "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/kimchi_drivers.json", SourceFormat.PACK_JSON, listOf("GPU Drivers")),
         RemoteSource("freedreno Turnip CI (whitebelyash)", "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/white_drivers.json", SourceFormat.PACK_JSON, listOf("GPU Drivers")),
         RemoteSource("MaxesTechReview (MTR)", "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/mtr_drivers.json", SourceFormat.PACK_JSON, listOf("GPU Drivers")),

@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-08-16 (later) — ✨ **Contents hub: clear-search button + drop Xnick417x default**
+> Added a trailing clear (✕) button to the "Search all repositories…" field in `SourceListPane` — shown only when the query is non-empty, `Icons.Filled.Close` tinted `onSurfaceVariant` (matching the leading search icon), contentDescription "Clear search". It calls the same `vm.setQuery("")` the field's `onValueChange` uses, so query text AND `searchResults` reset and the pane returns to the "Select Online Repository" list (no stale "0 results"). Separately, removed the `Xnick417x` (`Winlator-Bionic-Nightly-wcp`) entry from `RemoteSourceRepository.defaultSources`; defaults are now the 6: StevenMXZ, Arihany WCPHub, AdrenoToolsDrivers (K11MCH1), freedreno Turnip CI (whitebelyash), MaxesTechReview (MTR), Nightlies by The412Banner. Custom add/import/export machinery untouched.
+
 ## 2026-08-16 (later) — 🐛 **Contents hub: fix empty right pane in landscape master–detail**
 > Wide/two-pane layout showed the left 360dp source list fine but a blank right detail pane. The inter-pane separator was a horizontal `Divider(Modifier.fillMaxSize().width(1.dp))` — a Material3 horizontal `Divider` internally forces `fillMaxWidth()`, overriding the 1dp width, so as a non-weighted Row child it ate all remaining horizontal space and the weighted right `Box` measured to 0 width (invisible). Swapped it for `VerticalDivider(Modifier.fillMaxHeight())` (fills height, thickness-wide). Also made both panes' height-fill explicit (`.width(360.dp).fillMaxHeight()` / `.weight(1f).fillMaxHeight()`) so neither relies on constraint-order to keep its width. One file, `ContentsHubScreen.kt`.
 

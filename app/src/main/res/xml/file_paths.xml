@@ -4,4 +4,7 @@
     <external-cache-path name="update_cache" path="." />
     <!-- Community config exports are written to internal cacheDir before ACTION_SEND share. -->
     <cache-path name="community_export" path="community_configs/export/" />
+    <!-- Log Manager copies a log here before sharing it, so a chooser never gets access to the
+         user's own log folder (which can be anywhere they picked). -->
+    <cache-path name="log_share" path="logs/share/" />
 </paths>

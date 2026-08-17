@@ -248,19 +248,18 @@ object CommunityConfigApply {
         // Turnip/adrenotools has no single-type content sheet: an unresolved driver becomes a structured
         // [MissingDriver] (installable via the adrenotools driver browser) ONLY on Adreno; on other GPUs
         // an adrenotools driver is meaningless, so it stays a plain advisory.
+        // graphicsDriverConfig sub-key merges accumulate into ONE update map + a single commit, so the
+        // (component-resolved) version and the direct bcnCompatSparse writes can't clobber each other by
+        // each merging off the same pre-write gdcCurrent snapshot (the dxwrapperConfig path above does the
+        // same). Every other sub-key (gpuName, BCn format tuning, HUD, fps, …) is still preserved untouched.
         val gdcCurrent = currentOrDefault(shortcut, "graphicsDriverConfig", shortcut.container?.getGraphicsDriverConfig())
+        val gdcUpdates = LinkedHashMap<String, String>()
         config.graphicsDriverConfig["version"]?.let { wanted ->
             val current = subValue(gdcCurrent, ";", "version")
             when (val r = installed.resolve("adrenotools", wanted, current)) {
                 is InstalledComponents.Resolution.Match -> {
                     val token = r.token // null = already aligned; nothing to write.
-                    if (token != null) {
-                        val merged = mergeList(gdcCurrent, linkedMapOf("version" to token), ";")
-                        if (merged != gdcCurrent) {
-                            commit("graphicsDriverConfig", merged)
-                            changed.add("graphicsDriverConfig.version → $token")
-                        }
-                    }
+                    if (token != null) gdcUpdates["version"] = token
                 }
                 InstalledComponents.Resolution.Missing -> {
                     val have = current?.takeIf { it.isNotBlank() }
@@ -271,6 +270,18 @@ object CommunityConfigApply {
                         advisories.add("config wants Turnip $wanted;$had install it to honor.")
                     }
                 }
+            }
+        }
+        // bcnCompatSparse — the one GAME-portable graphicsDriverConfig sub-key ("Emulate sparse binding
+        // (DX12)" for the Wrapper+compat+bcn driver). Direct preserve-others merge, no component resolution.
+        config.graphicsDriverConfig["bcnCompatSparse"]?.let { sparse ->
+            if (subValue(gdcCurrent, ";", "bcnCompatSparse") != sparse) gdcUpdates["bcnCompatSparse"] = sparse
+        }
+        if (gdcUpdates.isNotEmpty()) {
+            val merged = mergeList(gdcCurrent, gdcUpdates, ";")
+            if (merged != gdcCurrent) {
+                commit("graphicsDriverConfig", merged)
+                gdcUpdates.forEach { (k, v) -> changed.add("graphicsDriverConfig.$k → $v") }
             }
         }
 

@@ -131,6 +131,24 @@ public class ReshadeManager {
         return null;
     }
 
+    /**
+     * Delete a downloaded effect's entire subfolder from the ReShade dir (recursive). Returns true when
+     * the folder was found and removed. Only ever deletes a directory that sits directly inside
+     * {@link #getReshadeDir} — a crafted name that would escape the dir (or resolve to the root itself)
+     * is refused, so this can never remove anything outside a single effect folder.
+     */
+    public static boolean deleteEffect(Context context, String name) {
+        if (name == null || name.isEmpty()) return false;
+        File root = getReshadeDir(context);
+        ReshadeEffect e = findEffect(context, name);
+        File dir = (e != null) ? e.dir : new File(root, name);
+        File parent = dir.getParentFile();
+        if (parent == null || !parent.equals(root) || dir.equals(root)) return false;
+        boolean ok = FileUtils.delete(dir);
+        if (!ok) Log.w("ReshadeManager", "Failed to delete effect folder: " + dir);
+        return ok;
+    }
+
     public static File findFxFile(File dir) {
         File[] files = dir.listFiles();
         if (files == null) return null;

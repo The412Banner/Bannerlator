@@ -7,6 +7,7 @@ import com.winlator.star.xconnector.XOutputStream;
 import com.winlator.star.xconnector.XStreamLock;
 import com.winlator.star.xserver.Drawable;
 import com.winlator.star.xserver.Bitmask;
+import com.winlator.star.xserver.Colormap;
 import com.winlator.star.xserver.WindowAttributes;
 import com.winlator.star.xserver.errors.BadDrawable;
 import com.winlator.star.xserver.errors.BadIdChoice;
@@ -75,7 +76,10 @@ public abstract class WindowRequests {
             outputStream.writeByte((byte)1);
             outputStream.writeByte((byte)window.getMapState().ordinal());
             outputStream.writeByte((byte)(window.attributes.isOverrideRedirect() ? 1 : 0));
-            outputStream.writeInt(0);
+            // ERL bug report #7: report the window's real colormap (this is the field Mesa
+            // reads) instead of hardcoding None, which caused "Window has no colormap!".
+            Colormap colormap = window.attributes.getColormap();
+            outputStream.writeInt(colormap != null ? colormap.id : 0);
             outputStream.writeInt(window.getAllEventMasks().getBits());
             outputStream.writeInt(client.getEventMaskForWindow(window).getBits());
             outputStream.writeShort((short)window.attributes.getDoNotPropagateMask().getBits());

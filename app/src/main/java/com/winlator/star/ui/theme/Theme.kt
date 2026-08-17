@@ -10,9 +10,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import com.winlator.star.R
 
 private val DefaultColorScheme = darkColorScheme(
@@ -61,7 +63,17 @@ val LocalAccentDim = staticCompositionLocalOf { Color(0xFF002277) }
 fun WinlatorTheme(content: @Composable () -> Unit) {
     val colorScheme by AppThemeState.colorScheme.collectAsState(initial = AppThemeState.currentColorSchemeSnapshot())
     val accentDim by AppThemeState.accentDim.collectAsState(initial = AppThemeState.currentAccentDimSnapshot())
-    CompositionLocalProvider(LocalAccentDim provides accentDim) {
+    val uiScale by AppThemeState.uiScale.collectAsState()
+    val fontScale by AppThemeState.fontScale.collectAsState()
+    // Fold the user's interface-scale prefs into the ambient density so every WinlatorTheme
+    // surface — including the in-game drawer/dialogs — scales together. The native OSC and
+    // perf HUD aren't Compose, so they stay fixed on their own.
+    val base = LocalDensity.current
+    val scaledDensity = Density(base.density * uiScale, base.fontScale * fontScale)
+    CompositionLocalProvider(
+        LocalAccentDim provides accentDim,
+        LocalDensity provides scaledDensity,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = AppTypography,

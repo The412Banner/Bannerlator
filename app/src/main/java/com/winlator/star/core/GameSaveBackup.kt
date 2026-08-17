@@ -187,6 +187,30 @@ object GameSaveBackup {
         gameName: String?,
         layout: BackupLayout,
     ): BackupResult {
+        val outDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Winlator/Backups/GameSaves"
+        )
+        outDir.mkdirs()
+        val safeName = sanitize((gameName ?: container.name).ifBlank { "container-${container.id}" })
+        val outFile = File(outDir, "${safeName}_${System.currentTimeMillis()}.zip")
+        return backupToFile(container, roots, layout, outFile)
+    }
+
+    /**
+     * Additive: zip a container's saves to a caller-specified [outFile] and return synchronously
+     * (no threading, no result posting). Same walk / layout re-rooting / noise-filtering as the
+     * Downloads-writing [backup]; the ONLY difference is the output location is the caller's, which
+     * lets callers manage their own destination (e.g. a persistent per-game vault). Creates the
+     * parent dir; deletes [outFile] and reports failure when there is nothing to back up. Callers are
+     * responsible for running this off the main thread.
+     */
+    fun backupToFile(
+        container: Container,
+        roots: List<String>?,
+        layout: BackupLayout,
+        outFile: File,
+    ): BackupResult {
         val profile = File(container.rootDir, ".wine/drive_c/users/${ImageFs.USER}")
         if (!profile.isDirectory) {
             return BackupResult(false, null, 0, "No save profile found in this container")
@@ -202,13 +226,7 @@ object GameSaveBackup {
         val scopeDirs: List<File> = if (roots == null) listOf(profile)
         else roots.map { File(profile, it) }.filter { it.exists() }
 
-        val outDir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "Winlator/Backups/GameSaves"
-        )
-        outDir.mkdirs()
-        val safeName = sanitize((gameName ?: container.name).ifBlank { "container-${container.id}" })
-        val outFile = File(outDir, "${safeName}_${System.currentTimeMillis()}.zip")
+        outFile.parentFile?.mkdirs()
 
         var count = 0
         ZipOutputStream(BufferedOutputStream(FileOutputStream(outFile))).use { zos ->

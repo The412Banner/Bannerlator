@@ -66,27 +66,37 @@ fun PauseBoxOverlay(state: XServerDialogState) {
             }
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .wrapContentSize()
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                .clickable { state.onRequestResume?.run() }
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Icon(
-                Icons.Filled.PlayArrow,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Paused — tap to resume",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+        PauseBoxContent(onResume = { state.onRequestResume?.run() })
+    }
+}
+
+/**
+ * The pause pill visual, shared by the on-phone Dialog overlay ([PauseBoxOverlay]) and the on-TV
+ * host. The on-TV pause indicator is a separate plain view (ExternalDisplayController) because a
+ * ComposeView tied to the backgrounded activity would stop composing exactly when it's needed.
+ */
+@Composable
+fun PauseBoxContent(onResume: () -> Unit, label: String = "Paused — tap to resume") {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .wrapContentSize()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            .clickable { onResume() }
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        Icon(
+            Icons.Filled.PlayArrow,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

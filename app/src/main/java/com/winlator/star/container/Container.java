@@ -30,20 +30,36 @@ public class Container {
     public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 TU_DEBUG=noconform,sysmem DXVK_HUD=devinfo,fps,frametimes,gpuload,version,api";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_GRAPHICS_DRIVER = "wrapper";
-    public static final String DEFAULT_AUDIO_DRIVER = "alsa";
+    /**
+     * The graphics wrapper built for non-Adreno parts (Mali, Xclipse, PowerVR) — the WrapperManager
+     * slot identifier, not an adrenotools driver id. New containers on those GPUs default to this
+     * instead of {@link #DEFAULT_GRAPHICS_DRIVER}, which targets Adreno/Turnip.
+     */
+    public static final String GRAPHICS_DRIVER_GAMENATIVE = "wrapper-gamenative";
+    public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk+vkd3d";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.getVegasDefault() + ",framerate=0,async=0,asyncCache=0" + ",vkd3dVersion=2.8" + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG =
-            "vulkanVersion=1.3" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device" + ";fdDevFeatures=0";
+            "vulkanVersion=1.4" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device" + ";fdDevFeatures=0";
     public static final String DEFAULT_DDRAWRAPPER = "none";
-    public static final String DEFAULT_FPS_COUNTER_CONFIG = "hudMode=horizontal,showFPS=1,showCPULoad=1,showGPULoad=1,showRAM=1,showRenderer=1,showBatteryTemp=1,hudScale=75";
+    /**
+     * Canonical default HUD scale (percent). Referenced by every overlay view and both HUD config
+     * surfaces when the {@code hudScale} key is absent, so a config missing that key resolves to the
+     * SAME size everywhere (previously classic launched at 100 while the drawer emitted 92 → the
+     * overlay jumped size on the first metric toggle).
+     */
+    public static final int DEFAULT_HUD_SCALE = 100;
+    public static final String DEFAULT_FPS_COUNTER_CONFIG = "hudStyle=fusion,hudEnabled=1,hudMode=horizontal,showFPS=1,showCPULoad=1,showGPULoad=1,showRAM=1,showRenderer=1,showBatteryTemp=1,hudScale=" + DEFAULT_HUD_SCALE + ",hudSize=pill,showVram=1,showLow001=1,fpsDecimal=1,hudLocked=0,showPerCore=1,showSwap=1,showNet=1,showResolution=1,showProton=1,showWrapper=1,showDxVer=1,showSession=1";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=0,directmusic=0,directshow=0,directplay=0,xaudio=0,vcrun2010=1";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,xaudio=1,vcrun2010=1";
     public static final String DEFAULT_DRIVES = "F:"+Environment.getExternalStorageDirectory().getAbsolutePath()+"D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
+    // Custom: per-service on/off. The enabled set is stored in startupServices (CSV of ENABLED
+    // service raw names); everything not listed is disabled. Custom starts all-off (empty CSV).
+    public static final byte STARTUP_SELECTION_CUSTOM = 3;
     public static final byte MAX_DRIVE_LETTERS = 26;
     public final int id;
     private String name;
@@ -76,6 +92,10 @@ public class Container {
     public static final int FULLSCREEN_INTEGER = 4;  // fullscreen-immersive, largest whole-number scale (pixel-perfect, centered)
     private int fullscreenMode = FULLSCREEN_OFF;
     private byte startupSelection = STARTUP_SELECTION_ESSENTIAL;
+    // CSV of ENABLED service raw names when startupSelection == CUSTOM. "" (default) = none enabled
+    // (Custom starts every service off). Ignored by the other three presets. Per-game shortcuts
+    // inherit this via the getExtra("startupServices", container default) fallback at launch.
+    private String startupServices = "";
     private String cpuList;
     private String cpuListWoW64;
     private String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
@@ -269,6 +289,14 @@ public class Container {
         this.startupSelection = startupSelection;
     }
 
+    public String getStartupServices() {
+        return startupServices;
+    }
+
+    public void setStartupServices(String startupServices) {
+        this.startupServices = startupServices != null ? startupServices : "";
+    }
+
     public String getCPUList() {
         return getCPUList(false);
     }
@@ -354,6 +382,13 @@ public class Container {
         }
     }
 
+    // Whether an extra was explicitly written (vs. absent and only serving a default). Used to tell an
+    // untouched default apart from a deliberate user choice — e.g. so the refresh-unlock "needs a
+    // compatible layer" Toast only nags users who actually opted in, not every default container.
+    public boolean hasExtra(String name) {
+        return extraData != null && extraData.has(name);
+    }
+
     public void putExtra(String name, Object value) {
         if (extraData == null) extraData = new JSONObject();
         try {
@@ -370,6 +405,10 @@ public class Container {
     // are tuned live from the in-game side menu (both hot-reload via conf.toml).
     public static final int FRAMEGEN_DEFAULT_MULTIPLIER = 2;
     public static final float FRAMEGEN_DEFAULT_FLOW_SCALE = 0.6f;
+    // lsfg-vk runs best at a higher flow scale than bionic-fg (GameNative's proven default). Only the
+    // UNSET default differs per engine (see getFrameGenFlowScale) — an explicit user value wins either way.
+    public static final float LSFG_DEFAULT_FLOW_SCALE = 0.80f;
+    public static final int FRAMEGEN_DEFAULT_MODEL = 0;
 
     public boolean isFrameGenEnabled() {
         return getExtra("frameGenEnabled", "0").equals("1");
@@ -416,18 +455,339 @@ public class Container {
     }
 
     public float getFrameGenFlowScale() {
+        // Engine-dependent UNSET default: lsfg-vk defaults to 0.80, bionic-fg stays at 0.60. An explicit
+        // frameGenFlowScale extra (whatever the engine) is always honored — only the fallback differs.
+        float dflt = getFrameGenEngine().equals("lsfg") ? LSFG_DEFAULT_FLOW_SCALE : FRAMEGEN_DEFAULT_FLOW_SCALE;
+        if (!hasExtra("frameGenFlowScale")) return dflt;
         try {
-            float f = Float.parseFloat(getExtra("frameGenFlowScale", String.valueOf(FRAMEGEN_DEFAULT_FLOW_SCALE)));
+            float f = Float.parseFloat(getExtra("frameGenFlowScale"));
             // Mirror the layer's clamp range (layer.cpp parseConfigFile).
-            return (f < 0.2f || f > 1.0f) ? FRAMEGEN_DEFAULT_FLOW_SCALE : f;
+            return (f < 0.2f || f > 1.0f) ? dflt : f;
         }
         catch (NumberFormatException e) {
-            return FRAMEGEN_DEFAULT_FLOW_SCALE;
+            return dflt;
         }
     }
 
     public void setFrameGenFlowScale(float flowScale) {
         putExtra("frameGenFlowScale", String.valueOf(flowScale));
+    }
+
+    // bionic-fg interpolation model (conf.toml `model`, layer clamp 0-4):
+    //   0 = hand-written optical-flow chain (the long-standing default)
+    //   1 = GameScopeVK's traced dispatch graph
+    //   2 = same graph fed libGameScopeV2's shader variants
+    //   3 = FidelityFX Optical Flow
+    //   4 = FidelityFX Optical Flow v2 — 3's front-end with a per-block search, a wider
+    //       match window, sub-pixel refinement and a true bidirectional solve whose
+    //       forward/backward disagreement gates the flow at occlusion edges. 3 is kept
+    //       unchanged alongside it so the two can be compared live in the same scene.
+    // 1-4 are unproven on device; 0 stays the default so behaviour is unchanged unless chosen.
+    // BIONIC_FG_MODEL in the container/shortcut env vars still overrides this at the layer.
+    public int getFrameGenModel() {
+        try {
+            int m = Integer.parseInt(getExtra("frameGenModel", String.valueOf(FRAMEGEN_DEFAULT_MODEL)));
+            return (m < 0 || m > 4) ? FRAMEGEN_DEFAULT_MODEL : m;
+        }
+        catch (NumberFormatException e) {
+            return FRAMEGEN_DEFAULT_MODEL;
+        }
+    }
+
+    public void setFrameGenModel(int model) {
+        putExtra("frameGenModel", String.valueOf(model));
+    }
+
+    // lsfg-vk "performance mode" (conf.toml performance_mode): trades interpolation quality for FPS.
+    // Per-container, default ON (matches GameNative — the lighter LSFG_3_1P model is cheaper on Adreno).
+    // Also live-toggleable from the in-game FG menu.
+    public boolean isLsfgPerformanceMode() {
+        return getExtra("lsfgPerformanceMode", "1").equals("1");
+    }
+
+    public void setLsfgPerformanceMode(boolean performanceMode) {
+        putExtra("lsfgPerformanceMode", performanceMode ? "1" : "0");
+    }
+
+    // lsfg-vk "auto-enable at launch": when ON, the container starts frame generation LIVE at its saved
+    // multiplier from the first frame (GameNative-style) instead of the safe global default (layer loaded
+    // but frame gen OFF, opt-in per session from the FG drawer). Per-container, default ON to match
+    // GameNative — uncheck it to restore the start-off behavior for a given lsfg container. Note this
+    // only affects lsfg containers; bionic-fg still always starts off in-game.
+    public boolean isLsfgAutoEnable() {
+        return getExtra("lsfgAutoEnable", "1").equals("1");
+    }
+
+    public void setLsfgAutoEnable(boolean autoEnable) {
+        putExtra("lsfgAutoEnable", autoEnable ? "1" : "0");
+    }
+
+    // NOTE: the power-user performance toggles (sustainedPerfMode / perfPriorityBoost / preferBigCores)
+    // are deliberately NOT container-level. The locked resolution model is two levels only —
+    // per-game shortcut override -> global default (com.winlator.star.perf.PerformanceSettings).
+    // Shortcuts still store their own override under these extraData keys; the container is not a base.
+
+    // Controller vibration (PC-accurate dual-motor rumble), per-container. Mode gates WHERE rumble
+    // goes: 0=Off 1=Controller(default, matches the pre-existing hardcoded behavior) 2=Device(phone)
+    // 3=Both. Intensity (0..100) scales amplitude on top of the master/per-slot toggles in WinHandler.
+    // Both are also live-tunable from the in-game drawer (WinHandler.setVibrationTuning), which is why
+    // these getters clamp/validate exactly like isLsfgPerformanceMode/getFrameGenMultiplier above.
+    public static final int VIBRATION_MODE_OFF = 0;
+    public static final int VIBRATION_MODE_CONTROLLER = 1;
+    public static final int VIBRATION_MODE_DEVICE = 2;
+    public static final int VIBRATION_MODE_BOTH = 3;
+    public static final int VIBRATION_MODE_DEFAULT = VIBRATION_MODE_CONTROLLER;
+    public static final int VIBRATION_INTENSITY_DEFAULT = 100;
+
+    public int getVibrationMode() {
+        try {
+            int m = Integer.parseInt(getExtra("vibrationMode", String.valueOf(VIBRATION_MODE_DEFAULT)));
+            return (m < VIBRATION_MODE_OFF || m > VIBRATION_MODE_BOTH) ? VIBRATION_MODE_DEFAULT : m;
+        }
+        catch (NumberFormatException e) {
+            return VIBRATION_MODE_DEFAULT;
+        }
+    }
+
+    public void setVibrationMode(int mode) {
+        putExtra("vibrationMode", String.valueOf(mode));
+    }
+
+    public int getVibrationIntensity() {
+        try {
+            int v = Integer.parseInt(getExtra("vibrationIntensity", String.valueOf(VIBRATION_INTENSITY_DEFAULT)));
+            return (v < 0 || v > 100) ? VIBRATION_INTENSITY_DEFAULT : v;
+        }
+        catch (NumberFormatException e) {
+            return VIBRATION_INTENSITY_DEFAULT;
+        }
+    }
+
+    public void setVibrationIntensity(int intensity) {
+        putExtra("vibrationIntensity", String.valueOf(intensity));
+    }
+
+    // Manual controller slot overrides (in-game "Players" sub-tab), per-container. Stored as a raw
+    // JSON object string mapping a stable device descriptor -> desired slot: 0..3 pins the device to
+    // that XInput player slot, WinHandler.SLOT_IGNORE (-2) means "never take a slot", and a missing
+    // key = auto (FCFS). The on-screen pad uses the WinHandler.OSC_DESCRIPTOR sentinel as its key.
+    // Kept as an opaque string here (same discipline as getFPSCounterConfig): XServerDisplayActivity
+    // parses it into a Map for WinHandler.setManualSlotOverrides and writes edits back through here.
+    public String getControllerSlotOverrides() {
+        return getExtra("controllerSlotOverrides", "{}");
+    }
+
+    public void setControllerSlotOverrides(String json) {
+        putExtra("controllerSlotOverrides", json == null || json.isEmpty() ? "{}" : json);
+    }
+
+    // On-screen-controls vs physical-pad priority, per-container. Mirrors the WinHandler.ON_SCREEN_MODE_*
+    // constants (duplicated here for the same reason VIBRATION_MODE_* is — the editor VM shouldn't import
+    // winhandler). KEEP (default) = the historical behavior: the on-screen pad keeps whatever slot it
+    // holds, so a pad hot-plugged mid-game lands on the next free player. YIELD = a pad connecting while
+    // the on-screen pad holds Player 1 promotes to Player 1 (on-screen steps up to the next free slot).
+    // SHARE = that pad co-occupies the on-screen pad's slot (both drive that player, merged). Default is
+    // KEEP so existing containers behave exactly as before. Resolved (shortcut-override-else-container)
+    // and pushed to WinHandler at launch (XServerDisplayActivity.setupUI).
+    public static final int ON_SCREEN_MODE_KEEP = 0;
+    public static final int ON_SCREEN_MODE_YIELD = 1;
+    public static final int ON_SCREEN_MODE_SHARE = 2;
+    public static final int ON_SCREEN_MODE_DEFAULT = ON_SCREEN_MODE_KEEP;
+
+    public int getOnScreenControllerMode() {
+        try {
+            int m = Integer.parseInt(getExtra("onScreenControllerMode", String.valueOf(ON_SCREEN_MODE_DEFAULT)));
+            return (m < ON_SCREEN_MODE_KEEP || m > ON_SCREEN_MODE_SHARE) ? ON_SCREEN_MODE_DEFAULT : m;
+        }
+        catch (NumberFormatException e) {
+            return ON_SCREEN_MODE_DEFAULT;
+        }
+    }
+
+    public void setOnScreenControllerMode(int mode) {
+        putExtra("onScreenControllerMode", String.valueOf(mode));
+    }
+
+    // Auto-hide the on-screen touch controls when a physical controller takes over the on-screen pad's
+    // player slot (issue #333). Per-container, resolved shortcut-override-else-container and applied live
+    // at launch + on hot-plug. The container-level fallback is FALSE so existing containers are unchanged;
+    // a NEW container is seeded from the app-drawer global (GlobalControllerPrefs, default ON) at creation,
+    // exactly like onScreenControllerMode above. Stored as "1"/"0" in extraData (matches the shortcut
+    // "exclusiveXInput"/"inputType" extra convention that XServerDisplayActivity reads with equals("1")).
+    public static final boolean AUTO_HIDE_CONTROLS_ON_PAD_DEFAULT = false;
+
+    public boolean isAutoHideControlsOnPad() {
+        return getExtra("autoHideControlsOnPad", AUTO_HIDE_CONTROLS_ON_PAD_DEFAULT ? "1" : "0").equals("1");
+    }
+
+    public void setAutoHideControlsOnPad(boolean enabled) {
+        putExtra("autoHideControlsOnPad", enabled ? "1" : "0");
+    }
+
+    // Gyro (motion aim), per-container. Mirrors the WinHandler.GYRO_* constants so the editor VM and
+    // the shortcut screen can talk about targets/activators without importing winhandler (same reason
+    // the VIBRATION_MODE_* values are duplicated above). Enabled/target/sensitivity/activator/invert
+    // are ALSO per-game (the shortcut extra of the same name wins — see XServerDisplayActivity);
+    // deadzone/smoothing are container-only, they describe the hand/device, not the game.
+    // NOTE: the calibration bias is deliberately NOT here — it's a physical property of this phone's
+    // IMU and stays a global pref, so a container copy or an imported config can't carry someone
+    // else's sensor zero. The clamps below match the WinHandler setters exactly, so a hand-edited
+    // container JSON can't push e.g. smoothing >= 1.0 and make the low-pass diverge.
+    public static final int GYRO_TARGET_RIGHT_STICK = 0;
+    public static final int GYRO_TARGET_LEFT_STICK = 1;
+    public static final int GYRO_TARGET_MOUSE = 2;
+    public static final int GYRO_ACTIVATOR_L1 = 0;
+    public static final int GYRO_ACTIVATOR_L2 = 1;
+    public static final int GYRO_ACTIVATOR_R1 = 2;
+    public static final int GYRO_ACTIVATOR_R3 = 3;
+    public static final int GYRO_ACTIVATOR_ALWAYS = 4;
+    public static final int GYRO_ACTIVATION_HOLD = 0;
+    public static final int GYRO_ACTIVATION_TOGGLE = 1;
+    // How the tilt is read. RATE = the shipped behaviour (angular velocity -> stick deflection, the
+    // stick recentres the moment you stop moving). ORIENTATION = "tilt to aim": the stick follows the
+    // ANGLE you're holding the device at, so a held tilt keeps the stick deflected.
+    public static final int GYRO_MODE_RATE = 0;
+    public static final int GYRO_MODE_ORIENTATION = 1;
+
+    // OFF for new containers: motion aim is a deliberate choice, not something a fresh
+    // container should start doing on its own. Existing containers are unaffected — the
+    // one-time gyro pref migration wrote an explicit gyroEnabled on every container, so this
+    // default is only consulted when the extra is genuinely absent (i.e. a new container).
+    public static final boolean GYRO_ENABLED_DEFAULT = false;
+    public static final int GYRO_TARGET_DEFAULT = GYRO_TARGET_RIGHT_STICK;
+    public static final float GYRO_DEADZONE_DEFAULT = 0.05f;
+    public static final float GYRO_SENSITIVITY_DEFAULT = 2.0f;
+    public static final float GYRO_SMOOTHING_DEFAULT = 0.5f;
+    public static final int GYRO_ACTIVATOR_DEFAULT = GYRO_ACTIVATOR_L1;
+    // HOLD is the default on purpose: it's what the gyro has always done, so an existing container
+    // that has never seen this key behaves exactly as before.
+    public static final int GYRO_ACTIVATION_MODE_DEFAULT = GYRO_ACTIVATION_HOLD;
+    // RATE for the same reason HOLD is the activation default: it's what the gyro has always done, so
+    // a container that has never seen this key behaves exactly as it did before tilt-to-aim existed.
+    public static final int GYRO_MODE_DEFAULT = GYRO_MODE_RATE;
+    public static final boolean GYRO_INVERT_X_DEFAULT = false;
+    public static final boolean GYRO_INVERT_Y_DEFAULT = false;
+
+    public boolean isGyroEnabled() {
+        return getExtra("gyroEnabled", GYRO_ENABLED_DEFAULT ? "1" : "0").equals("1");
+    }
+
+    public void setGyroEnabled(boolean enabled) {
+        putExtra("gyroEnabled", enabled ? "1" : "0");
+    }
+
+    public int getGyroMode() {
+        try {
+            int m = Integer.parseInt(getExtra("gyroMode", String.valueOf(GYRO_MODE_DEFAULT)));
+            return (m < GYRO_MODE_RATE || m > GYRO_MODE_ORIENTATION) ? GYRO_MODE_DEFAULT : m;
+        }
+        catch (NumberFormatException e) {
+            return GYRO_MODE_DEFAULT;
+        }
+    }
+
+    public void setGyroMode(int mode) {
+        putExtra("gyroMode", String.valueOf(mode));
+    }
+
+    public int getGyroTarget() {
+        try {
+            int t = Integer.parseInt(getExtra("gyroTarget", String.valueOf(GYRO_TARGET_DEFAULT)));
+            return (t < GYRO_TARGET_RIGHT_STICK || t > GYRO_TARGET_MOUSE) ? GYRO_TARGET_DEFAULT : t;
+        }
+        catch (NumberFormatException e) {
+            return GYRO_TARGET_DEFAULT;
+        }
+    }
+
+    public void setGyroTarget(int target) {
+        putExtra("gyroTarget", String.valueOf(target));
+    }
+
+    public int getGyroActivator() {
+        try {
+            int a = Integer.parseInt(getExtra("gyroActivator", String.valueOf(GYRO_ACTIVATOR_DEFAULT)));
+            return (a < GYRO_ACTIVATOR_L1 || a > GYRO_ACTIVATOR_ALWAYS) ? GYRO_ACTIVATOR_DEFAULT : a;
+        }
+        catch (NumberFormatException e) {
+            return GYRO_ACTIVATOR_DEFAULT;
+        }
+    }
+
+    public void setGyroActivator(int activator) {
+        putExtra("gyroActivator", String.valueOf(activator));
+    }
+
+    public int getGyroActivationMode() {
+        try {
+            int m = Integer.parseInt(getExtra("gyroActivationMode", String.valueOf(GYRO_ACTIVATION_MODE_DEFAULT)));
+            return (m < GYRO_ACTIVATION_HOLD || m > GYRO_ACTIVATION_TOGGLE) ? GYRO_ACTIVATION_MODE_DEFAULT : m;
+        }
+        catch (NumberFormatException e) {
+            return GYRO_ACTIVATION_MODE_DEFAULT;
+        }
+    }
+
+    public void setGyroActivationMode(int activationMode) {
+        putExtra("gyroActivationMode", String.valueOf(activationMode));
+    }
+
+    public float getGyroSensitivity() {
+        try {
+            float v = Float.parseFloat(getExtra("gyroSensitivity", String.valueOf(GYRO_SENSITIVITY_DEFAULT)));
+            return Math.min(10.0f, Math.max(0.1f, v));
+        }
+        catch (NumberFormatException e) {
+            return GYRO_SENSITIVITY_DEFAULT;
+        }
+    }
+
+    public void setGyroSensitivity(float sensitivity) {
+        putExtra("gyroSensitivity", String.valueOf(Math.min(10.0f, Math.max(0.1f, sensitivity))));
+    }
+
+    public float getGyroDeadzone() {
+        try {
+            float v = Float.parseFloat(getExtra("gyroDeadzone", String.valueOf(GYRO_DEADZONE_DEFAULT)));
+            return Math.min(0.5f, Math.max(0.0f, v));
+        }
+        catch (NumberFormatException e) {
+            return GYRO_DEADZONE_DEFAULT;
+        }
+    }
+
+    public void setGyroDeadzone(float deadzone) {
+        putExtra("gyroDeadzone", String.valueOf(Math.min(0.5f, Math.max(0.0f, deadzone))));
+    }
+
+    public float getGyroSmoothing() {
+        try {
+            float v = Float.parseFloat(getExtra("gyroSmoothing", String.valueOf(GYRO_SMOOTHING_DEFAULT)));
+            return Math.min(0.95f, Math.max(0.0f, v));
+        }
+        catch (NumberFormatException e) {
+            return GYRO_SMOOTHING_DEFAULT;
+        }
+    }
+
+    public void setGyroSmoothing(float smoothing) {
+        putExtra("gyroSmoothing", String.valueOf(Math.min(0.95f, Math.max(0.0f, smoothing))));
+    }
+
+    public boolean isGyroInvertX() {
+        return getExtra("gyroInvertX", GYRO_INVERT_X_DEFAULT ? "1" : "0").equals("1");
+    }
+
+    public void setGyroInvertX(boolean invert) {
+        putExtra("gyroInvertX", invert ? "1" : "0");
+    }
+
+    public boolean isGyroInvertY() {
+        return getExtra("gyroInvertY", GYRO_INVERT_Y_DEFAULT ? "1" : "0").equals("1");
+    }
+
+    public void setGyroInvertY(boolean invert) {
+        putExtra("gyroInvertY", invert ? "1" : "0");
     }
 
     // FPS limiter (implemented by the bionic-fg layer: paces the real/base frames, so with
@@ -476,6 +836,34 @@ public class Container {
 
     public void setManualRefreshRate(int rate) {
         putExtra("manualRefreshRate", String.valueOf(rate));
+    }
+
+    // Ceiling (Hz) on the refresh rates our RandR extension advertises to Wine, which is what
+    // populates a game's own in-game refresh/display dropdown. 0 = no cap (offer every rate the
+    // panel supports). NOTE this is the GUEST-side list and is a different axis from
+    // matchRefreshRate/manualRefreshRate above, which drive the HOST Android surface: this one
+    // bounds what the game is allowed to ask for, those decide what the panel actually runs at.
+    public int getMaxGameRefreshRate() {
+        try { return Integer.parseInt(getExtra("maxGameRefreshRate", "0")); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    public void setMaxGameRefreshRate(int rate) {
+        putExtra("maxGameRefreshRate", String.valueOf(rate));
+    }
+
+    // Unlock the game's own in-game refresh dropdown by turning OFF Wine's win32u display-mode
+    // emulation (which otherwise discards the rates our RandR extension advertises and hardcodes the
+    // guest to {60, current}). Applied as the two "X11 Driver" registry values EmulateModelist /
+    // EmulateModeset = "Y" (INVERTED semantics: "Y" disables emulation). Default ON — the whole
+    // refresh feature is opt-in-by-hardware; the toggle lets a user turn it off if a game misbehaves
+    // with the reduced (container-res-capped) resolution ladder emulation-off produces.
+    public boolean isUnlockGameRefreshRate() {
+        return getExtra("unlockGameRefreshRate", "1").equals("1");
+    }
+
+    public void setUnlockGameRefreshRate(boolean unlock) {
+        putExtra("unlockGameRefreshRate", unlock ? "1" : "0");
     }
 
     // --- ReShade effect (vkBasalt drop-in), per-container default; the per-game shortcut can
@@ -633,7 +1021,18 @@ public class Container {
 
     public void saveData() {
         try {
-            JSONObject data = new JSONObject();
+            FileUtils.writeString(getConfigFile(), getData().toString());
+        }
+        catch (JSONException e) {}
+    }
+
+    // The full config JSON exactly as saveData() persists it (extraData included). Split out of
+    // saveData() so callers that need the serialized form WITHOUT writing to disk — e.g. the
+    // "New Container Defaults" profile, which templates a transient container and strips the
+    // per-container name/drives — can reuse the identical field set instead of drifting a copy.
+    public JSONObject getData() throws JSONException {
+        JSONObject data = new JSONObject();
+        {
             data.put("id", id);
             data.put("name", name);
             data.put("screenSize", screenSize);
@@ -653,6 +1052,7 @@ public class Container {
             data.put("fullscreenMode", fullscreenMode);
             data.put("inputType", inputType);
             data.put("startupSelection", startupSelection);
+            data.put("startupServices", startupServices);
             data.put("box64Version", box64Version);
             data.put("fexcorePreset", fexcorePreset);
             data.put("fexcoreVersion", fexcoreVersion);
@@ -673,9 +1073,8 @@ public class Container {
             // Default is TRUE, so only persist the off state (absent token => correct colours).
             if (!rendererSfCompatMode) data.put("rendererSfCompatMode", false);
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
-            FileUtils.writeString(getConfigFile(), data.toString());
         }
-        catch (JSONException e) {}
+        return data;
     }
 
 
@@ -744,6 +1143,9 @@ public class Container {
                     break;
                 case "startupSelection" :
                     setStartupSelection((byte)data.getInt(key));
+                    break;
+                case "startupServices" :
+                    setStartupServices(data.getString(key));
                     break;
                 case "extraData" : {
                     JSONObject extraData = data.getJSONObject(key);

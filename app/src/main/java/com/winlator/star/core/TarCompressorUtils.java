@@ -246,6 +246,159 @@ public abstract class TarCompressorUtils {
         }
     }
 
+    /**
+     * Read a single small UTF-8 text entry (exact [entryName]) out of a compressed tar without
+     * extracting anything. Returns null when the archive is missing/unreadable or the entry is
+     * absent. Never throws — used by the wrapper manager to surface an optional version.txt.
+     */
+    public static String readTextFile(Type type, File source, String entryName) {
+        if (source == null || !source.isFile() || entryName == null) return null;
+        try {
+            return readTextFile(type, new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE), entryName);
+        }
+        catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Asset overload: read a small UTF-8 text entry from a bundled .tzst without extracting it. */
+    public static String readTextFile(Type type, Context context, String assetFile, String entryName) {
+        if (context == null || assetFile == null || entryName == null) return null;
+        try {
+            return readTextFile(type, context.getAssets().open(assetFile), entryName);
+        }
+        catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Stream core: reads [entryName] from a raw (uncompressed) input stream and closes it. */
+    private static String readTextFile(Type type, InputStream source, String entryName) {
+        if (source == null || entryName == null) return null;
+        try (InputStream inStream = getCompressorInputStream(type, source);
+             ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
+            TarArchiveEntry entry;
+            while ((entry = (TarArchiveEntry) tar.getNextEntry()) != null) {
+                if (entry.isDirectory() || !tar.canReadEntryData(entry)) continue;
+                if (entryName.equals(entry.getName())) {
+                    java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                    StreamUtils.copy(tar, bos);
+                    return bos.toString("UTF-8");
+                }
+            }
+        }
+        catch (Exception e) {
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * True iff [source] opens as a valid compressed tar (its first entry can be read without
+     * error). Used to reject a corrupt/non-tzst file before accepting it as an override. Never throws.
+     */
+    public static boolean isValidArchive(Type type, File source) {
+        if (source == null || !source.isFile()) return false;
+        try (InputStream inStream = getCompressorInputStream(type, new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE));
+             ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
+            return tar.getNextEntry() != null;
+        }
+        catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * True iff the compressed tar contains an entry whose name equals [entryName]. Used to validate
+     * a user-supplied wrapper archive before accepting it. Never throws.
+     */
+    // Lenient membership check: real-world wrapper tarballs vary in layout — a leading "./",
+    // a top-level directory, etc. — so we match on the normalized path OR the bare file name,
+    // and skip macOS AppleDouble "._" sidecar entries. Exact-matching the full path here was
+    // too brittle and rejected valid third-party wrappers (issue #132 device test).
+    public static boolean containsEntry(Type type, File source, String entryName) {
+        if (source == null || !source.isFile() || entryName == null) return false;
+        String wantPath = entryName.replaceFirst("^\\./", "").replaceFirst("^/", "");
+        String wantBase = wantPath.substring(wantPath.lastIndexOf('/') + 1);
+        try (InputStream inStream = getCompressorInputStream(type, new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE));
+             ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
+            TarArchiveEntry entry;
+            while ((entry = (TarArchiveEntry) tar.getNextEntry()) != null) {
+                String name = entry.getName().replaceFirst("^\\./", "").replaceFirst("^/", "");
+                String base = name.substring(name.lastIndexOf('/') + 1);
+                if (base.startsWith("._")) continue; // AppleDouble sidecar
+                if (name.equals(wantPath) || name.endsWith("/" + wantPath) || base.equals(wantBase))
+                    return true;
+            }
+        }
+        catch (Exception e) {
+            return false;
+        }
+        return false;
+    }
+
+    /**
+     * Stream a SINGLE tar entry (lenient name match, same rules as {@link #containsEntry}) and collect
+     * every identifier token in its bytes that fully matches [tokenPattern]. This is the "strings on a
+     * binary" trick used by the Smart Wrapper Manager (#132) to auto-detect the env-var NAMES a wrapper
+     * .so references, with zero cooperation from the wrapper author.
+     *
+     * A token is a maximal run of {@code [A-Za-z0-9_]} of length &gt;= 4; [tokenPattern] is applied to
+     * each WHOLE token (anchor it with {@code ^...$}). Uncompressed bytes read from the entry are capped
+     * at [maxBytes] so a multi-MB .so can't hang the import worker. Never throws — returns whatever was
+     * collected before an error/cap (possibly empty).
+     */
+    public static java.util.Set<String> scanEntryForTokens(Type type, File source, String entryName,
+                                                            java.util.regex.Pattern tokenPattern, long maxBytes) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (source == null || !source.isFile() || entryName == null || tokenPattern == null) return out;
+        String wantPath = entryName.replaceFirst("^\\./", "").replaceFirst("^/", "");
+        String wantBase = wantPath.substring(wantPath.lastIndexOf('/') + 1);
+        try (InputStream inStream = getCompressorInputStream(type, new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE));
+             ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
+            TarArchiveEntry entry;
+            while ((entry = (TarArchiveEntry) tar.getNextEntry()) != null) {
+                if (entry.isDirectory() || !tar.canReadEntryData(entry)) continue;
+                String name = entry.getName().replaceFirst("^\\./", "").replaceFirst("^/", "");
+                String base = name.substring(name.lastIndexOf('/') + 1);
+                if (base.startsWith("._")) continue; // AppleDouble sidecar
+                if (!(name.equals(wantPath) || name.endsWith("/" + wantPath) || base.equals(wantBase))) continue;
+
+                // Matching entry found — walk its bytes, building identifier tokens across buffer reads.
+                byte[] buf = new byte[StreamUtils.BUFFER_SIZE];
+                StringBuilder token = new StringBuilder();
+                long scanned = 0;
+                int n;
+                while (scanned < maxBytes && (n = tar.read(buf)) > 0) {
+                    scanned += n;
+                    for (int i = 0; i < n; i++) {
+                        int c = buf[i] & 0xFF;
+                        boolean idChar = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                                      || (c >= '0' && c <= '9') || c == '_';
+                        if (idChar) {
+                            if (token.length() < 128) token.append((char) c); // env names are short; cap growth
+                        } else {
+                            // Only emit on a NUL terminator: a real getenv() argument is a standalone
+                            // NUL-terminated C-string literal, whereas a token embedded in a larger string
+                            // (e.g. "WRAPPER_TEX" inside the log format "[WRAPPER_TEX %d] bc=%d ...") is
+                            // terminated by a space/%/] — a false positive we must NOT surface as a setting.
+                            if (c == 0 && token.length() >= 4 && tokenPattern.matcher(token).matches())
+                                out.add(token.toString());
+                            token.setLength(0);
+                        }
+                    }
+                }
+                // A token still open at EOF / byte-cap was never NUL-terminated in the scanned region — do
+                // not emit it (same rule as above), just drop it.
+                break; // only the first matching entry
+            }
+        }
+        catch (Exception e) {
+            // Best-effort: degrade to whatever was collected. Auto-detect must never crash an import.
+        }
+        return out;
+    }
+
     private static InputStream getCompressorInputStream(Type type, InputStream source) throws IOException {
         if (type == Type.XZ) {
             return new XZCompressorInputStream(source);

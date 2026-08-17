@@ -37,6 +37,9 @@
     <!-- Held only while a depot download is running (SteamDepotDownloader) so the aggressive OEM
          task-killer can't kill the process mid-download and cause a LogonSessionReplaced churn. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Lets the user exempt the app from battery optimisation so a multi-hour background
+         extraction (UnpackService) isn't paused/killed by aggressive OEM power managers. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
@@ -51,6 +54,7 @@
         android:appCategory="game"
         android:isGame="true"
         android:largeHeap="true"
+        android:extractNativeLibs="true"
         android:allowBackup="false"
         android:allowAudioPlaybackCapture="true"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -61,7 +65,7 @@
         <!-- Main activity -->
         <activity
             android:name="com.winlator.star.MainActivity"
-            android:theme="@style/AppTheme.Dark"
+            android:theme="@style/Theme.Bannerlator.Splash"
             android:screenOrientation="sensor"
             android:exported="true"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation">
@@ -70,12 +74,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <activity
-            android:name="com.winlator.star.BigPictureActivity"
-            android:theme="@style/Theme.AppCompat"
-            android:exported="false" />
-
 
         <activity
             android:name="com.winlator.star.XServerDisplayActivity"
@@ -254,9 +252,24 @@
         <activity android:name="com.winlator.star.store.SteamGamesActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <activity android:name="com.winlator.star.store.SteamGameDetailActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <activity android:name="com.winlator.star.store.DownloadManagerActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity android:name="com.winlator.star.store.SteamSaveManagerActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"/>
         <activity android:name="com.winlator.star.store.QrLoginActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity
+            android:name="com.winlator.star.UnpackArchiveActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="sensor"
+            android:exported="false" />
+
+        <service
+            android:name="com.winlator.star.core.unpack.UnpackService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
         <service android:name="com.winlator.star.store.SteamForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
         <service android:name="com.winlator.star.store.download.DownloadForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
+        <!-- Held while a container/game session is running so the OS low-memory killer can't reap
+             the guest while the app is backgrounded (else it "Shutting down" on return). -->
+        <service android:name="com.winlator.star.core.GameSessionForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>
     </application>
 </manifest>
 

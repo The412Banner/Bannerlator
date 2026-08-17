@@ -36,10 +36,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -141,7 +144,7 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
                 )
 
                 if (showSignOutDialog) {
-                    AlertDialog(
+                    OutlinedAlertDialog(
                         onDismissRequest = { showSignOutDialog = false },
                         title = { Text("Sign out of Steam?") },
                         text = { Text("Your saved login will be removed. You will need to sign in again.") },
@@ -349,7 +352,10 @@ private fun SteamGamesScreen(
     onLaunch: (SteamGame) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // Header bar
+        // Header — split across two rows so the title + status badge aren't crowded by the action
+        // icons. Row 1: back + title (left) and the Online badge (far right). Row 2: the five action
+        // icons on their own compact, right-aligned strip.
+        // Top row: back arrow + title on the left, status badge pinned to the far right.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -367,9 +373,20 @@ private fun SteamGamesScreen(
                 text = "Steam Library",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f).padding(start = 4.dp),
+                modifier = Modifier.padding(start = 4.dp),
             )
+            Spacer(Modifier.weight(1f))
             SteamStatusPill(status = steamStatus, onReconnect = onReconnect)
+        }
+
+        // Second row: the action icons on their own line, right-aligned and compact.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(onClick = onViewToggle) {
                 Icon(
                     imageVector = if (viewMode == "grid") Icons.Filled.ViewList else Icons.Filled.GridView,
@@ -381,6 +398,17 @@ private fun SteamGamesScreen(
                 Icon(
                     imageVector = Icons.Filled.Refresh,
                     contentDescription = "Refresh",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            // Save Manager — opens the central per-game cloud-save status list (no focus).
+            val saveMgrCtx = LocalContext.current
+            IconButton(onClick = {
+                saveMgrCtx.startActivity(Intent(saveMgrCtx, SteamSaveManagerActivity::class.java))
+            }) {
+                Icon(
+                    imageVector = Icons.Filled.CloudSync,
+                    contentDescription = "Save Manager",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -671,7 +699,7 @@ private fun ExePickerDialog(
     onDismiss: () -> Unit,
     onSelected: (String) -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {

@@ -10,6 +10,7 @@ import com.winlator.star.xserver.extensions.DRI3Extension;
 import com.winlator.star.xserver.extensions.Extension;
 import com.winlator.star.xserver.extensions.MITSHMExtension;
 import com.winlator.star.xserver.extensions.PresentExtension;
+import com.winlator.star.xserver.extensions.RandrExtension;
 import com.winlator.star.xserver.extensions.SyncExtension;
 
 import java.nio.charset.Charset;
@@ -24,6 +25,7 @@ public class XServer {
     public final SparseArray<Extension> extensions = new SparseArray<>();
     public final ScreenInfo screenInfo;
     public final PixmapManager pixmapManager;
+    public final ColormapManager colormapManager = new ColormapManager();
     public final ResourceIDs resourceIDs = new ResourceIDs(128);
     public final GraphicsContextManager graphicsContextManager = new GraphicsContextManager();
     public final SelectionManager selectionManager;
@@ -178,6 +180,13 @@ public class XServer {
         }
     }
 
+    public void injectPointerButtonPulse(Pointer.Button buttonCode) {
+        try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+            pointer.setButton(buttonCode, true);
+            pointer.setButton(buttonCode, false);
+        }
+    }
+
     public void injectKeyPress(XKeycode xKeycode) {
         injectKeyPress(xKeycode, 0);
     }
@@ -200,6 +209,7 @@ public class XServer {
         extensions.put(DRI3Extension.MAJOR_OPCODE, new DRI3Extension());
         extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension());
         extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension());
+        extensions.put(RandrExtension.MAJOR_OPCODE, new RandrExtension(screenInfo));
     }
 
     public <T extends Extension> T getExtension(int opcode) {

@@ -13,6 +13,8 @@ val OnSurface = Color(0xFFEEEEEE)
 val OnSurfaceVariant = Color(0xFF999999)
 val OnBackground = Color(0xFFFFFFFF)
 val Error = Color(0xFFCF6679)
+/** Destructive actions — delete buttons, selected-for-removal state. */
+val DangerRed = Color(0xFFE05C4A)
 val Divider = Color(0xFF111111)
 val GlowPurple = Primary
 val AccentBlue = Primary

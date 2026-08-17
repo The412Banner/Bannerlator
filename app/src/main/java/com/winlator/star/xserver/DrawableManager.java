@@ -56,6 +56,7 @@ public class DrawableManager extends XResourceManager implements XResourceManage
         if (onDestroyListener != null) onDestroyListener.call(drawable);
 
         drawable.setOnDrawListener(null);
+        drawable.releaseBuffer();
         drawables.remove(id);
     }
 

@@ -122,7 +122,7 @@ class ConfigExporterTest {
         assertEquals("dxvk", config.scalars["dxwrapper"])
         assertEquals("box64", config.scalars["emulator"])
         assertEquals("pulseaudio", config.scalars["audioDriver"])
-        assertEquals("1", config.scalars["inputType"])
+        assertEquals("4", config.scalars["inputType"])
         assertEquals("2.4.1", config.dxwrapperConfig["version"])
         // Heuristic async ("0" — name has no "async") is untouched with no bl_ext to override it.
         assertEquals("0", config.dxwrapperConfig["async"])
@@ -200,6 +200,47 @@ class ConfigExporterTest {
         )
         // Five fields, each sanitized [^a-zA-Z0-9_\-] -> _, unix seconds, .json.
         assertEquals("Crysis_3__Remaster_-Google-Pixel_8-Adreno_750-1778449587.json", name)
+    }
+
+    @Test
+    fun roundTrip_bcnCompatSparse_travels_butOtherGdcKeysDoNot() {
+        // The "Wrapper + compat + bcn" driver's ONE game-portable sub-key must round-trip, while the rest
+        // of graphicsDriverConfig (gpuName + BCn format tuning) stays device-local and does NOT travel.
+        val effective = linkedMapOf(
+            "graphicsDriver" to "wrapper-compat-bcn",
+            "graphicsDriverConfig" to
+                "version=Mesa Turnip v25.0.0;gpuName=Mali-G715;bcnTranscodeAstc=1;bcnCompatSparse=1",
+        )
+
+        val json = ConfigExporter.export(effective, meta)
+        val config = ConfigTranslator.translate(JSONObject(json))
+
+        // The new driver selection round-trips (plain scalar).
+        assertEquals("wrapper-compat-bcn", config.scalars["graphicsDriver"])
+        // bcnCompatSparse travels — and lands in the graphicsDriverConfig MAP (a sub-key), not scalars,
+        // so the launch gate (graphicsDriverConfig.get("bcnCompatSparse")) reads it.
+        assertEquals("1", config.graphicsDriverConfig["bcnCompatSparse"])
+        assertFalse(config.scalars.containsKey("bcnCompatSparse"))
+        // The turnip version still travels (via pc_ls_GPU_DRIVER_), as before.
+        assertEquals("Mesa Turnip v25.0.0", config.graphicsDriverConfig["version"])
+        // Device-local sub-keys do NOT travel: gpuName and the BCn format-tuning toggle are excluded.
+        assertFalse(config.graphicsDriverConfig.containsKey("gpuName"))
+        assertFalse(config.graphicsDriverConfig.containsKey("bcnTranscodeAstc"))
+        assertFalse(config.scalars.containsKey("gpuName"))
+    }
+
+    @Test
+    fun export_bcnCompatSparseOff_notEmitted() {
+        // Default-off (bcnCompatSparse=0) is noise — it must NOT be lifted into bl_ext (absence = off).
+        val effective = mapOf(
+            "graphicsDriver" to "wrapper-compat-bcn",
+            "graphicsDriverConfig" to "gpuName=Mali-G715;bcnCompatSparse=0",
+        )
+        val settings = JSONObject(ConfigExporter.export(effective, meta)).getJSONObject("settings")
+        // graphicsDriver still emits, but there is no bl_ext (nothing portable to carry).
+        assertEquals("wrapper-compat-bcn", settings.getString("pc_ls_GRAPHICS_WRAPPER"))
+        val blExt = settings.optJSONObject("bl_ext")
+        assertTrue(blExt == null || !blExt.has("bcnCompatSparse"))
     }
 
     @Test

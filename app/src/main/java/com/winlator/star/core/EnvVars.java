@@ -23,6 +23,13 @@ public class EnvVars implements Iterable<String> {
         String[] parts = values.split(" ");
         for (String part : parts) {
             int index = part.indexOf("=");
+            // Skip anything that is not NAME=VALUE instead of throwing. indexOf returns -1 for a token
+            // with no '=', and substring(0, -1) then blows up — inside the launch path, so a single
+            // typo in the environment box cost the whole launch rather than the one variable. index 0
+            // is skipped for the same reason: "=value" has no name to bind to. Reachable from the
+            // editor's raw "Edit as text" mode (which stores what you type verbatim), a hand-edited
+            // .desktop, or an imported container config.
+            if (index <= 0) continue;
             String name = part.substring(0, index);
             String value = part.substring(index+1);
             data.put(name, value);

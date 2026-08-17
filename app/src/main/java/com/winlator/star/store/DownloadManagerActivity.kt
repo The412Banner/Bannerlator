@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -713,7 +714,7 @@ private fun ExePickerDialogDm(
     onDismiss: () -> Unit,
     onSelected: (String) -> Unit,
 ) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select executable for \"$gameName\"") },
         text = {

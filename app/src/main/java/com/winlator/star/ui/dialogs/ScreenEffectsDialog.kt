@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.MenuItemDivider
+import com.winlator.star.ui.screens.OutlinedAlertDialog
+import com.winlator.star.ui.screens.outlinedMenuCard
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -108,9 +111,11 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
                     )
                     ExposedDropdownMenu(
                         expanded = profileDropdownExpanded,
-                        onDismissRequest = { profileDropdownExpanded = false }
+                        onDismissRequest = { profileDropdownExpanded = false },
+                        modifier = Modifier.outlinedMenuCard()
                     ) {
                         profileItems.forEachIndexed { i, label ->
+                            if (i > 0) MenuItemDivider()
                             DropdownMenuItem(
                                 text = { Text(label) },
                                 onClick = { profileIndex = i; profileDropdownExpanded = false }
@@ -171,7 +176,7 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
 
     // Add profile dialog
     if (showAddProfileDialog) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showAddProfileDialog = false },
             title = { Text("Add Profile") },
             text = {
@@ -202,7 +207,7 @@ fun ScreenEffectsDialog(state: XServerDialogState) {
 
     // Remove profile confirm
     if (showRemoveConfirm) {
-        AlertDialog(
+        OutlinedAlertDialog(
             onDismissRequest = { showRemoveConfirm = false },
             title = { Text("Remove Profile") },
             text = { Text("Remove '${profileItems.getOrElse(profileIndex) { "" }}'?") },

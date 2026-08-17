@@ -53,10 +53,28 @@ public class Drawable extends XResource {
             }
         }
         if (this.data == null) {
-            this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+            this.data = DrawableBufferPool.obtain(width * height * 4);
         }
         if (this.data == null) {
             throw new IllegalStateException("Drawable.data initialized as null!");
+        }
+    }
+
+    // ERL bug report #3/#4: null-check must happen INSIDE renderLock — two concurrent
+    // removeDrawable() calls (direct + onFreeResource listener path) could otherwise both
+    // observe non-null data and both release the same buffer into two pool slots.
+    // The NativeTexture guard is issue #4: once data has been repointed at a NativeTexture's
+    // (GPUImage/AHBImage) AHardwareBuffer memory, it was never pool-allocated — releasing it
+    // to the pool hands live hardware-buffer memory back out of obtain() for something
+    // unrelated (the "10000x10000"/instant-crash pattern on several D3D9 titles).
+    public void releaseBuffer() {
+        synchronized (renderLock) {
+            if (data != null) {
+                if (!DRAWABLE_FOR_ASR && !(texture instanceof NativeTexture)) {
+                    DrawableBufferPool.release(data);
+                }
+                data = null;
+            }
         }
     }
 
@@ -73,7 +91,19 @@ public class Drawable extends XResource {
     public void setTexture(Texture texture) {
         if (texture instanceof NativeTexture) {
             ByteBuffer vd = ((NativeTexture)texture).getVirtualData();
-            if (vd != null) data = vd;
+            if (vd != null) {
+                // ERL bug report #8: on the FIRST transition from a pool-owned buffer to a
+                // NativeTexture's virtual data, release the old pool buffer instead of orphaning
+                // it. The guard fires only when data is genuinely still pool-owned (not ASR, and
+                // this.texture not already a NativeTexture) — otherwise we'd pool-release
+                // hardware-buffer memory (the issue #4 bug in reverse).
+                synchronized (renderLock) {
+                    if (data != null && !DRAWABLE_FOR_ASR && !(this.texture instanceof NativeTexture)) {
+                        DrawableBufferPool.release(data);
+                    }
+                    data = vd;
+                }
+            }
         }
         this.texture = texture;
     }

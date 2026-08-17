@@ -57,7 +57,7 @@ internal fun rendererLabelOf(renderer: String): String = when (renderer.lowercas
 
 // Map a frame-gen engine id (bionic/lsfg/off) to a display label, or "" if off/unknown.
 internal fun frameGenLabelOf(engine: String): String = when (engine) {
-    "bionic" -> "Bionic-FG"
+    "bionic" -> "Win-FG"
     "lsfg" -> "LSFG-VK"
     else -> ""
 }

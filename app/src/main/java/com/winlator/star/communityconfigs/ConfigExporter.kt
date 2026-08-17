@@ -1,5 +1,6 @@
 package com.winlator.star.communityconfigs
 
+import com.winlator.star.winhandler.WinHandler
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -39,11 +40,29 @@ object ConfigExporter {
         // would be lost on import; carrying it verbatim makes every wrapper — incl. VEGAS — round-trip.
         "dxwrapper",
         "screenSize", "renderer", "renderScale", "sfCompatMode", "fullscreenMode", "frameGenEngine",
+        // Vulkan renderer per-game settings (added 2026-07): Native Rendering, Colors (swapRB), present mode.
+        "native", "swapRB", "presentMode",
         "fpsLimiterEnabled", "sharpnessEffect", "sharpnessLevel", "sharpnessDenoise", "reshadeLoadout",
         "reshadeMode", "reshadeParams", "reshadeEffect", "emulator", "box64Version", "box64Preset",
-        "fexcorePreset", "cpuList", "startupSelection", "exclusiveXInput", "disableXinput",
+        "fexcorePreset", "cpuList", "startupSelection", "inputType", "exclusiveXInput", "disableXinput",
         "simTouchScreen", "numControllers", "controlsProfile", "wincomponents", "midiSoundFont",
         "lc_all", "autoCloseOnExit",
+        // Community-config coverage pass (2026-07): per-game HUD blob + motion/refresh/frame-gen/
+        // vibration/upscaler overrides that were previously dropped. Each round-trips as a scalar the
+        // import write loop applies verbatim; the launch path in XServerDisplayActivity honors every one
+        // as a per-shortcut override (see the resolved*/shortcut.getExtra reads there).
+        //   fpsCounterConfig — the WHOLE HUD KeyValueSet (hudStyle incl. Fusion, hudSize, hudLocked,
+        //   every show* chip, temp unit, colors/outline/opacity/scale, engine/wrapper/dxver).
+        "fpsCounterConfig",
+        // Motion aim (gyro). Deadzone/smoothing are intentionally NOT here — they describe the hand and
+        // the device, not the game, and stay container-scoped (matching the launch resolver).
+        "gyroEnabled", "gyroTarget", "gyroActivator", "gyroActivationMode", "gyroMode",
+        "gyroSensitivity", "gyroInvertX", "gyroInvertY",
+        // In-game refresh cap (both keys; unlock resolved to 1/0, cap 0 = no ceiling).
+        "maxGameRefreshRate", "unlockGameRefreshRate",
+        // #168 custom startup service set (only consumed when startupSelection = Custom); frame-gen
+        // interpolation model; dual-motor vibration; sticky per-game upscaler override.
+        "startupServices", "frameGenModel", "vibrationMode", "vibrationIntensity", "scalingMode",
     )
 
     /**
@@ -67,6 +86,11 @@ object ConfigExporter {
         val uploadToken: String,
         val uploaderName: String? = null,
         val uploaderAvatarUrl: String? = null,
+        // Authoritative Steam appid for the game, when the shortcut carries one (its `steamAppId`
+        // extra). Stamped into meta.steam_appid so the backend can aggregate this upload under the
+        // correct appid-keyed canonical game instead of guessing from the (renameable) name slug —
+        // the export-side counterpart to the appid-first import match. Null for non-Steam titles.
+        val steamAppId: String? = null,
     )
 
     /**
@@ -104,9 +128,13 @@ object ConfigExporter {
         effective["audioDriver"].nonBlank()?.let {
             settings.put("pc_ls_AUDIO_DRIVER", if (it == "pulseaudio") "1" else "0")
         }
-        // inputType "1"/"0" → xinput-enabled boolean.
+        // inputType is a BITMASK (FLAG_INPUT_TYPE_XINPUT = 0x04, FLAG_INPUT_TYPE_DINPUT = 0x08), NOT a
+        // 1/0 flag — an XInput-on shortcut reads "4", never "1". Export the boolean from the XInput bit.
+        // (The raw inputType is also carried in bl_ext below, so DInput/combined states round-trip exactly
+        // on our configs; this boolean is the BannerHub-compatible fallback.)
         effective["inputType"].nonBlank()?.let {
-            settings.put("pc_ls_update_enable_xinput", it == "1")
+            val v = it.toIntOrNull() ?: WinHandler.DEFAULT_INPUT_TYPE.toInt()
+            settings.put("pc_ls_update_enable_xinput", (v and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0)
         }
         effective["envVars"].nonBlank()?.let { settings.put("pc_ls_environment_variable", it) }
         effective["execArgs"].nonBlank()?.let { settings.put("pc_ls_boot_option", it) }
@@ -124,6 +152,14 @@ object ConfigExporter {
             effective[key].nonBlank()?.let { blExt.put(key, it) }
         }
         dxwCfg.nonBlank()?.let { blExt.put("dxwrapperConfig", it) }
+        // bcnCompatSparse — the "Emulate sparse binding (DX12)" toggle for the "Wrapper + compat + bcn"
+        // driver. It lives INSIDE graphicsDriverConfig (which is otherwise deliberately NOT carried), but
+        // unlike the rest of that string (device gpuName + BCn format tuning) it is a GAME property — does
+        // THIS DX12 title use tiled/sparse resources — so it IS portable. Lift just this one sub-key out
+        // into bl_ext when the user opted in ("1"); it is re-injected into graphicsDriverConfig on import
+        // (NOT overlaid as a scalar). The rest of graphicsDriverConfig still never travels.
+        subValue(effective["graphicsDriverConfig"].orEmpty(), ";", "bcnCompatSparse")
+            ?.takeIf { it == "1" }?.let { blExt.put("bcnCompatSparse", it) }
         if (blExt.length() > 0) settings.put("bl_ext", blExt)
 
         val metaObj = JSONObject()
@@ -131,6 +167,7 @@ object ConfigExporter {
         meta.device.nonBlank()?.let { metaObj.put("device", it) }
         meta.soc.nonBlank()?.let { metaObj.put("soc", it) }
         meta.version.nonBlank()?.let { metaObj.put("bh_version", it) }
+        meta.steamAppId.nonBlank()?.let { metaObj.put("steam_appid", it) }
         // Optional signed-in attribution (Phase 2). Only written when logged in; the config-detail page
         // reads it back to show "by <username>", falling back to "Anonymous user" when it's absent.
         meta.uploaderName.nonBlank()?.let { name ->

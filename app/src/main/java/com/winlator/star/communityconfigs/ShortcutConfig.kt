@@ -1,6 +1,6 @@
 package com.winlator.star.communityconfigs
 
-import android.util.Log
+import com.winlator.star.winhandler.WinHandler
 import org.json.JSONObject
 
 /**
@@ -51,8 +51,6 @@ data class ShortcutConfig(
  * XiaoJi-only fields (steam_client, hub_type, base component) are dropped.
  */
 object ConfigTranslator {
-
-    private const val TAG = "CommunityConfigs"
 
     /** Component values are JSON blobs; pull the human {@code name}/{@code displayName}. */
     private fun jname(raw: String?): String {
@@ -126,7 +124,12 @@ object ConfigTranslator {
         val wrapper = s.optString("pc_ls_GRAPHICS_WRAPPER", "").trim()
         if (wrapper.isNotEmpty()) scalars["graphicsDriver"] = wrapper
         scalars["audioDriver"] = if (s.optString("pc_ls_AUDIO_DRIVER", "1") == "1") "pulseaudio" else "alsa"
-        scalars["inputType"] = if (s.optBoolean("pc_ls_update_enable_xinput", true)) "1" else "0"
+        // inputType is a bitmask — XInput-on is FLAG_INPUT_TYPE_XINPUT (0x04 = "4"), NOT "1" (a "1" has
+        // no XInput bit, so the app would read it as OFF). BannerHub-origin configs carry only this
+        // boolean; OUR exports also carry the raw inputType in bl_ext (overlaid below), which restores
+        // DInput/combined states exactly.
+        scalars["inputType"] =
+            if (s.optBoolean("pc_ls_update_enable_xinput", true)) WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt().toString() else "0"
         val envv = s.optString("pc_ls_environment_variable", "").trim()
         if (envv.isNotEmpty()) scalars["envVars"] = envv
         val boot = s.optString("pc_ls_boot_option", "").trim()
@@ -160,13 +163,18 @@ object ConfigTranslator {
                         if (eq <= 0) continue
                         dxw[part.substring(0, eq).trim()] = part.substring(eq + 1)
                     }
+                } else if (key == "bcnCompatSparse") {
+                    // A graphicsDriverConfig SUB-KEY (not a scalar): route into the gdc merge map so it
+                    // lands back inside the semicolon graphicsDriverConfig list, where the launch gate
+                    // reads it (graphicsDriverConfig.get("bcnCompatSparse")). If it went into scalars it
+                    // would be written as a top-level extra the driver never reads.
+                    gdc[key] = value
                 } else {
                     scalars[key] = value
                 }
             }
         }
 
-        Log.d(TAG, "Translated config: dxwrapper=$dxwrapper dxvk=$dxvk vkd3d=$vkd3d turnip=$turnip fex=$fex proton=$proton")
         return ShortcutConfig(
             scalars = scalars,
             dxwrapperConfig = dxw,

@@ -359,15 +359,6 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <com.winlator.star.widget.EnvVarsView
-                android:id="@+id/EnvVarsView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingLeft="16dp"
-                android:paddingRight="16dp"/>
-
-            <View style="@style/HorizontalLine" />
-
             <Button
                 style="@style/ButtonNeutral"
                 android:id="@+id/BTAddEnvVar"

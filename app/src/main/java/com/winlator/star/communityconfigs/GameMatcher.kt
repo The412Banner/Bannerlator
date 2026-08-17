@@ -19,7 +19,7 @@ object GameMatcher {
     private val NOISE_TOKENS = setOf(
         "the", "remastered", "remaster", "remake", "edition", "goty", "definitive", "deluxe",
         "complete", "enhanced", "ultimate", "hd", "gold", "collection", "anniversary",
-        "directors", "cut", "repack", "reloaded", "codex", "steam",
+        "directors", "cut", "repack", "reloaded", "codex", "steam", "tm",
     )
 
     /**
@@ -76,9 +76,14 @@ object GameMatcher {
             if (score >= MIN_SCORE) candidates.add(GameCandidate(game, score, exact))
         }
 
+        // Tie-break DETERMINISTICALLY by name (never by popularity): a generic shortcut like
+        // "Dragon Age" ties several canonical entries on score, and ranking by config count would
+        // surface the more-popular game (Veilguard) over the user's (Inquisition). A stable
+        // alphabetical tiebreak keeps ordering reproducible; genuine ties are disambiguated by the
+        // caller's "Which game is this?" picker (see matchCommunityConfigs). (issue #167)
         return candidates.sortedWith(
             compareByDescending<GameCandidate> { it.score }
-                .thenByDescending { it.game.configCount }
+                .thenBy { it.game.name.lowercase() }
         )
     }
 

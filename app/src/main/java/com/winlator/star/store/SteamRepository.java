@@ -340,6 +340,10 @@ public final class SteamRepository {
         manager     = new CallbackManager(steamClient);
         steamUser   = steamClient.getHandler(SteamUser.class);
         steamApps   = steamClient.getHandler(SteamApps.class);
+        // SteamCloud is a core JavaSteam handler (auto-registered by SteamClient). It was declared
+        // + exposed via getSteamCloud() but never bound, so cloud saves could not work. Bind it here
+        // so SteamCloudSaveManager (per-game cloud save up/download) has a live handle after login.
+        steamCloud  = steamClient.getHandler(SteamCloud.class);
 
         registerCallbacks();
         Log.i(TAG, "SteamRepository initialised");

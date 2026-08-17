@@ -22,10 +22,11 @@ import java.nio.ByteBuffer;
  * {@code xServerView}. The Vulkan path is intentionally NOT refactored to delegate here
  * (that is the optional P6 cleanup); Vulkan stays byte-for-byte.
  *
- * <p><b>P1 status:</b> DORMANT. Nothing constructs or calls this class yet; it exists so the
- * lib loads and the API compiles. Child SCs need API 29+; {@code setFrameRate} needs API 30+
- * (both guarded exactly as VulkanRenderer guards them). The cursor transactions apply inline
- * inside the native lib (the GL model — no render-loop deferral).
+ * <p><b>Status:</b> ACTIVE. Constructed and driven by {@link GLRenderer} on the Native
+ * Rendering path ({@code presentScanout} -> {@code setBuffer}/{@code setCursorImage}). Child
+ * SCs need API 29+; {@code setFrameRate} needs API 30+ (both guarded exactly as VulkanRenderer
+ * guards them). The cursor transactions apply inline inside the native lib (the GL model — no
+ * render-loop deferral).
  */
 public class DirectScanout {
     private static final String TAG = "DirectScanout";
@@ -108,6 +109,20 @@ public class DirectScanout {
             }
         } catch (Exception e) {
             Log.w(TAG, "Child SC build failed: " + e);
+        }
+    }
+
+    /** Re-vote the game layer's preferred frame rate (API 30+). Called when the container's
+     *  FPS-limiter value changes at runtime so SurfaceFlinger's VRR pick tracks the cap, mirroring
+     *  {@code VulkanRenderer.setFpsLimit}. No-op if the game SC isn't built yet. */
+    public synchronized void setTargetFps(float targetFps) {
+        if (Build.VERSION.SDK_INT < 30 || gameSC == null) return;
+        try {
+            new SurfaceControl.Transaction()
+                .setFrameRate(gameSC, targetFps, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT)
+                .apply();
+        } catch (Exception e) {
+            Log.w(TAG, "setTargetFps failed: " + e);
         }
     }
 

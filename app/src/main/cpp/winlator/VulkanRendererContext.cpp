@@ -760,7 +760,12 @@ void VulkanRendererContext::endOneTime(VkCommandBuffer cb) {
     VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO; si.commandBufferCount=1; si.pCommandBuffers=&cb;
     VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; VkFence fence;
     vk_.CreateFence(device,&fi,nullptr,&fence);
-    vk_.QueueSubmit(graphicsQueue,1,&si,fence); vk_.WaitForFences(device,1,&fence,VK_TRUE,UINT64_MAX);
+    vk_.QueueSubmit(graphicsQueue,1,&si,fence);
+    // ERL bug report #9: bound the wait so a never-signalling fence can't hang the render
+    // thread forever with no log output (was UINT64_MAX).
+    if (vk_.WaitForFences(device,1,&fence,VK_TRUE,2000000000ULL) != VK_SUCCESS) {
+        RLOG_E("endOneTime: fence wait timed out after 2s");
+    }
     vk_.DestroyFence(device,fence,nullptr); vk_.FreeCommandBuffers(device,cmdPool,1,&cb);
 }
 
@@ -1500,7 +1505,17 @@ void VulkanRendererContext::renderFrame() {
     if (surfaceWidth==0||surfaceHeight==0) return;
 
     if (fbResized.load()) {
-        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        // ERL bug report #9: on timeout, do NOT proceed to cleanupSwapchain() (which would
+        // destroy resources possibly still in flight) - leave fbResized true and retry next frame.
+        bool fencesOk = true;
+        for (auto& f:inFlightFences) {
+            if (vk_.WaitForFences(device,1,&f,VK_TRUE,2000000000ULL) != VK_SUCCESS) {
+                RLOG_E("renderFrame: fence wait timed out during resize (2s) - deferring swapchain recreation");
+                fencesOk = false;
+                break;
+            }
+        }
+        if (!fencesOk) return;
         cleanupSwapchain();
         bool ok=false;
         try{createSwapchain();createFramebuffers();createCmdBufs();imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
@@ -1512,12 +1527,16 @@ ok=true;}catch(...){}
     if (currentFrame >= cmdBufs.size() || cmdBufs[currentFrame] == VK_NULL_HANDLE) return;
     bool currentFenceWaited = false;
     if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY) {
-        vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
+        if (vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,2000000000ULL) != VK_SUCCESS) {
+            RLOG_E("renderFrame: current-frame fence wait timed out (2s), skipping frame");
+            return;
+        }
         currentFenceWaited = true;
     }
 
     uint32_t imgIdx;
-    VkResult res=vk_.AcquireNextImageKHR(device,swapchain,UINT64_MAX,imgAvailSems[currentFrame],VK_NULL_HANDLE,&imgIdx);
+    // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.
+    VkResult res=vk_.AcquireNextImageKHR(device,swapchain,2000000000ULL,imgAvailSems[currentFrame],VK_NULL_HANDLE,&imgIdx);
     if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR){fbResized.store(true);return;}
     if (res!=VK_SUCCESS&&res!=VK_SUBOPTIMAL_KHR) return;
     if (imgIdx >= swapchainFBs.size() || imgIdx >= swapchainImages.size()) {
@@ -1530,7 +1549,10 @@ ok=true;}catch(...){}
     if (imgInFlight[imgIdx]!=VK_NULL_HANDLE &&
         (!currentFenceWaited || imgInFlight[imgIdx] != inFlightFences[currentFrame])) {
         if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, imgInFlight[imgIdx]) == VK_NOT_READY) {
-            vk_.WaitForFences(device,1,&imgInFlight[imgIdx],VK_TRUE,UINT64_MAX);
+            if (vk_.WaitForFences(device,1,&imgInFlight[imgIdx],VK_TRUE,2000000000ULL) != VK_SUCCESS) {
+                RLOG_E("renderFrame: in-flight image fence wait timed out (2s), skipping frame");
+                return;
+            }
         }
     }
     imgInFlight[imgIdx]=inFlightFences[currentFrame];
@@ -1750,6 +1772,27 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
         cit = ahbImportCache.find(ahb);
         RLOG("updateWindowContentAHB: imported new AHB %p for id=%" PRId64 " (%dx%d)",
             (void*)ahb, id, tmp.w, tmp.h);
+
+        // ERL bug report #9: a window that receives many distinct AHB pointers over its
+        // lifetime (rather than cycling a small fixed swapchain pool) otherwise accumulates
+        // one VkImage+VkDeviceMemory+descriptor set per import forever. Cap at 4 tracked
+        // per window; evict the oldest via the existing deleteQueue deferred-destruction path
+        // (same one used for whole-window teardown, drained under renderMutex each frame).
+        // The just-imported AHB is newest (at back) so it is never the one evicted, keeping cit valid.
+        auto& list = windowAhbs[id];
+        constexpr size_t kMaxTrackedPerWindow = 4;
+        while (list.size() > kMaxTrackedPerWindow) {
+            AHardwareBuffer* stale = list.front();
+            list.erase(list.begin());
+            auto sit = ahbImportCache.find(stale);
+            if (sit != ahbImportCache.end()) {
+                WinTex deferred = sit->second;
+                deferred.isAHB = false;
+                deleteQueue.push_back(deferred);
+                AHardwareBuffer_release(stale);
+                ahbImportCache.erase(sit);
+            }
+        }
     }
 
 

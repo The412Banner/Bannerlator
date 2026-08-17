@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -21,20 +22,55 @@ public class Downloader {
     }
 
     public static boolean downloadFile(String address, File file, ProgressListener listener) {
+        return downloadFile(address, file, false, listener);
+    }
+
+    /**
+     * Download {@code address} into {@code file}. When {@code resume} is true and a partial
+     * {@code file} already exists, an HTTP {@code Range: bytes=N-} request is sent and the body
+     * appended, so a download interrupted by process death picks up where it left off. This is
+     * backward-safe: a server that ignores Range (returns 200) simply restarts the file from
+     * scratch, and a server that answers 416 (range past EOF) is treated as "already complete".
+     */
+    public static boolean downloadFile(String address, File file, boolean resume, ProgressListener listener) {
         try {
+            long existing = (resume && file.exists()) ? file.length() : 0;
+
             URL url = new URL(address);
             URLConnection connection = url.openConnection();
             connection.setConnectTimeout(15000);
             connection.setReadTimeout(30000);
+            if (existing > 0) connection.setRequestProperty("Range", "bytes=" + existing + "-");
+
+            boolean append = false;
+            long readTotal = 0;
+            long total;
+
+            if (connection instanceof HttpURLConnection) {
+                HttpURLConnection http = (HttpURLConnection) connection;
+                int code = http.getResponseCode();
+                if (existing > 0 && code == HttpURLConnection.HTTP_PARTIAL) {
+                    // 206: server honoured the range — resume by appending.
+                    append = true;
+                    readTotal = existing;
+                    total = existing + connection.getContentLengthLong();
+                } else if (existing > 0 && code == 416 /* Requested Range Not Satisfiable */) {
+                    // The local file is already at/past EOF — treat the partial as the finished file.
+                    if (listener != null) listener.onProgress(1f);
+                    return true;
+                } else {
+                    // 200 (or any non-206): full body — restart the file from scratch.
+                    total = connection.getContentLengthLong();
+                }
+            } else {
+                total = connection.getContentLengthLong();
+            }
+
             InputStream input = connection.getInputStream();
-
-            long total = connection.getContentLengthLong();
-
-            OutputStream output = new FileOutputStream(file.getAbsolutePath());
+            OutputStream output = new FileOutputStream(file.getAbsolutePath(), append);
 
             byte[] data = new byte[8192];
 
-            long readTotal = 0;
             float lastReported = -2f;
             int count;
             while ((count = input.read(data)) != -1) {

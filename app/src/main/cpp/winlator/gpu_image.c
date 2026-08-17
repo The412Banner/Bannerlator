@@ -159,6 +159,16 @@ Java_com_winlator_star_renderer_GPUImage_lockHardwareBuffer(JNIEnv *env, jobject
     jmethodID setStride = (*env)->GetMethodID(env, cls, "setStride", "(S)V");
     if (setStride)
         (*env)->CallVoidMethod(env, obj, setStride, (jshort)desc.stride);
+    // ERL bug report #6: forward the buffer's REAL width/height (already in desc,
+    // same struct) so DRI3 can stop trusting the wire-protocol height, which for
+    // some titles (HoMM V: Hammer of Fate) doesn't match the buffer and produced a
+    // garbage swapchain size -> system-wide OOM kill.
+    jmethodID setWidth = (*env)->GetMethodID(env, cls, "setWidth", "(S)V");
+    if (setWidth)
+        (*env)->CallVoidMethod(env, obj, setWidth, (jshort)desc.width);
+    jmethodID setHeight = (*env)->GetMethodID(env, cls, "setHeight", "(S)V");
+    if (setHeight)
+        (*env)->CallVoidMethod(env, obj, setHeight, (jshort)desc.height);
 
     jobject buffer = (*env)->NewDirectByteBuffer(env, addr, (jlong)desc.stride * desc.height * 4);
     if (!buffer) {

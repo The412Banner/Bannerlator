@@ -35,10 +35,10 @@ import com.winlator.star.communityconfigs.UploadedConfigsStore.UploadedConfig
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
-import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GPUInformation
+import com.winlator.star.core.GameFolderScanner
+import com.winlator.star.core.GameIdentifier
 import com.winlator.star.core.WinePath
-import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.ui.screens.adrenodownload.DriverSources
 import com.winlator.star.ui.screens.adrenodownload.RemoteDriverRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -58,10 +58,26 @@ import java.util.Collections
 
 enum class ShortcutSortOrder { NAME_ASC, NAME_DESC, CONTAINER }
 
+/**
+ * How the games library is laid out. GRID is the original adaptive grid; GRID_COMPACT fixes four
+ * columns so more covers fit at once. Ordinals are persisted — append, never reorder.
+ */
+enum class ShortcutViewMode { LIST, GRID, GRID_COMPACT }
+
 sealed class ImportResult {
-    data class Success(val shortcutName: String) : ImportResult()
+    /** [appId] = the Steam appId identified on disk (if any), so the confirm dialog can seed
+     *  its "Search Steam" box and apply the right cover art. */
+    data class Success(val shortcutName: String, val appId: Int? = null) : ImportResult()
     data class Error(val message: String) : ImportResult()
 }
+
+/** Outcome of a bulk games-folder import. [failures] carries one line per game that couldn't be
+ *  written, so a partial success can say which ones need attention rather than just a count. */
+data class BulkImportSummary(val added: Int, val failed: Int, val failures: List<String>)
+
+/** An asynchronous auto-rename applied by the importer's background thread (Steam name upgrade),
+ *  surfaced so an open confirm/rename dialog can keep its Save target and pre-filled name in sync. */
+data class ImportedNameUpdate(val oldBase: String, val newBase: String)
 
 /**
  * Result of matching a shortcut against the community-config index. [match] is null when nothing
@@ -76,6 +92,10 @@ data class CommunityMatchResult(
     // the "Matches my device" filter (which matches SoC/GPU against each config's device/soc strings).
     val userSoc: String? = null,
     val userGpu: String? = null,
+    // Genuine ambiguity: the candidates that tied [match] on score (top-first, [match] included, capped).
+    // Empty when the top match is unambiguous OR the game was chosen/remembered — the UI only draws the
+    // "Which game is this?" picker when size > 1. (issue #167)
+    val alternatives: List<CanonicalGame> = emptyList(),
 )
 
 /**
@@ -136,6 +156,13 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _shortcuts = MutableStateFlow<List<Shortcut>>(emptyList())
 
+    // Emitted when the importer's background thread upgrades a shortcut's name to Steam's
+    // authoritative title. The Shortcuts screen observes this to follow the rename in an open
+    // confirm dialog. One-shot: consumed via [consumeImportedNameUpdate].
+    private val _importedNameUpdate = MutableStateFlow<ImportedNameUpdate?>(null)
+    val importedNameUpdate: StateFlow<ImportedNameUpdate?> = _importedNameUpdate
+    fun consumeImportedNameUpdate() { _importedNameUpdate.value = null }
+
     private val _sortOrder = MutableStateFlow(
         ShortcutSortOrder.entries[
             prefs.getInt("sort_order", ShortcutSortOrder.NAME_ASC.ordinal)
@@ -144,8 +171,18 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     )
     val sortOrder: StateFlow<ShortcutSortOrder> = _sortOrder
 
-    private val _isGridView = MutableStateFlow(prefs.getBoolean("is_grid_view", false))
-    val isGridView: StateFlow<Boolean> = _isGridView
+    // Three layouts now, so the old is_grid_view boolean cannot express it. Read the boolean once
+    // to seed the new key, so anyone already on grid stays on grid instead of being reset to list.
+    private val _viewMode = MutableStateFlow(
+        ShortcutViewMode.entries[
+            prefs.getInt(
+                "view_mode",
+                if (prefs.getBoolean("is_grid_view", false)) ShortcutViewMode.GRID.ordinal
+                else ShortcutViewMode.LIST.ordinal
+            ).coerceIn(0, ShortcutViewMode.entries.size - 1)
+        ]
+    )
+    val viewMode: StateFlow<ShortcutViewMode> = _viewMode
 
     val shortcuts: kotlinx.coroutines.flow.Flow<List<Shortcut>> =
         combine(_shortcuts, _sortOrder) { list, order ->
@@ -173,7 +210,39 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 val games = communityRepo.getGames()
-                val best = GameMatcher.match(shortcut.name, games).firstOrNull()?.game
+                val ranked = GameMatcher.match(shortcut.name, games)
+
+                // Honor a remembered per-shortcut pick FIRST: once the user has told us which game a
+                // generic name (e.g. "Dragon Age") refers to, resolve straight to it with no picker.
+                val rememberedId = shortcut.getExtra("communityGameIdentity", "")
+                val remembered = rememberedId.takeIf { it.isNotBlank() }
+                    ?.let { id -> games.firstOrNull { it.identity == id } }
+
+                // Then an AUTHORITATIVE Steam appId, when the shortcut carries one. Steam-identified
+                // games persist their appid in the `steamAppId` extra (via the cover-art flow; it
+                // rides the .desktop through renames), and the canonical index is keyed BY appid
+                // (CanonicalGame.identity), so this is an exact, unambiguous match that beats fuzzy
+                // name matching and needs no "Which game is this?" picker. Non-Steam titles or a
+                // not-yet-resolved appid simply fall through to the name match below. A user's
+                // remembered pick still wins over the appid (explicit override).
+                val appId = shortcut.getExtra("steamAppId", "").takeIf { it.isNotBlank() }
+                val byAppId = if (remembered != null) null
+                    else appId?.let { id -> games.firstOrNull { it.steamAppId == id } }
+
+                val best = remembered ?: byAppId ?: ranked.firstOrNull()?.game
+                // Surface genuine ties as alternatives: candidates whose score sits within a tiny
+                // epsilon of the top score, top-first (top match included), capped. size <= 1 → no
+                // ambiguity, so no picker. Suppressed entirely once we have a DEFINITIVE identity —
+                // a remembered pick or an exact appId match.
+                val alternatives = if (remembered != null || byAppId != null) emptyList() else {
+                    val top = ranked.firstOrNull()?.score
+                    if (top == null) emptyList()
+                    else ranked.filter { top - it.score <= TIE_EPSILON }
+                        .map { it.game }
+                        .take(MAX_TIE_ALTERNATIVES)
+                        .let { if (it.size <= 1) emptyList() else it }
+                }
+
                 val userSoc = DeviceIdentity.soc()
                 val userGpu = DeviceIdentity.gpu(getApplication())
                 val devices = best?.let { GameMatcher.rankDevices(it.devices, userSoc, userGpu) } ?: emptyList()
@@ -184,9 +253,23 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                     userHardwareLabel = userSoc ?: userGpu,
                     userSoc = userSoc,
                     userGpu = userGpu,
+                    alternatives = alternatives,
                 )
             }
             onResult(result)
+        }
+    }
+
+    /**
+     * Remember, per shortcut, which canonical game a (possibly ambiguous) name maps to — so the
+     * "Which game is this?" picker (and a manual search-pick) only has to be answered once. Persists
+     * onto the shortcut's own extra data via [Shortcut.saveData]; [matchCommunityConfigs] reads it back
+     * on the next open. Off the main thread. (issue #167)
+     */
+    fun rememberCommunityGame(shortcut: Shortcut, game: CanonicalGame) {
+        viewModelScope.launch(Dispatchers.IO) {
+            shortcut.putExtra("communityGameIdentity", game.identity)
+            shortcut.saveData()
         }
     }
 
@@ -845,7 +928,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val shortlist = withContext(Dispatchers.IO) {
                 val repo = RemoteDriverRepository(getApplication())
-                val entries = DriverSources.ALL
+                val entries = DriverSources.allSources(getApplication())
                     .map { src -> async { repo.fetchEntries(src).getOrDefault(emptyList()) } }
                     .awaitAll()
                     .flatten()
@@ -860,9 +943,15 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putInt("sort_order", order.ordinal).apply()
     }
 
-    fun setGridView(grid: Boolean) {
-        _isGridView.value = grid
-        prefs.edit().putBoolean("is_grid_view", grid).apply()
+    fun setViewMode(mode: ShortcutViewMode) {
+        _viewMode.value = mode
+        prefs.edit().putInt("view_mode", mode.ordinal).apply()
+    }
+
+    /** Cycles list → grid → compact grid → list, driven by the single header button. */
+    fun cycleViewMode() {
+        val next = ShortcutViewMode.entries[(_viewMode.value.ordinal + 1) % ShortcutViewMode.entries.size]
+        setViewMode(next)
     }
 
     // Only containers still present on disk (with a ".container" config). A deleted container can
@@ -870,6 +959,69 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     // getDesktopDir().mkdirs(), which then breaks future container creation. Filtering here keeps
     // stale entries out of the picker AND out of import/clone. (issue #45)
     private fun liveContainers() = manager.getContainers().filter { it.configFile.isFile }
+
+    /**
+     * Scans [folderPath] for games, ready for the bulk-import confirm screen.
+     *
+     * Blocking and filesystem-heavy — call from a background dispatcher. Games already present in
+     * the target container come back flagged rather than removed, so re-scanning the same library
+     * after adding a few titles shows what was skipped instead of silently duplicating everything.
+     */
+    fun scanGamesFolder(containerIndex: Int, folderPath: String): List<GameFolderScanner.Candidate> {
+        val containers = liveContainers()
+        if (containerIndex < 0 || containerIndex >= containers.size) return emptyList()
+        return GameFolderScanner.scan(File(folderPath), importedExePaths(containers[containerIndex]))
+    }
+
+    /** Canonical paths of every exe already imported into [container], for duplicate detection. */
+    private fun importedExePaths(container: Container): Set<String> {
+        val desktopDir = runCatching { container.getDesktopDir() }.getOrNull() ?: return emptySet()
+        val files = desktopDir.listFiles { f -> f.isFile && f.name.endsWith(".desktop") } ?: return emptySet()
+        return files.mapNotNullTo(HashSet()) { f ->
+            runCatching {
+                val exec = f.readLines().firstOrNull { it.startsWith("Exec=") } ?: return@runCatching null
+                // Exec=wine <win path>, written with 4-backslash separators by escapeForExec.
+                val winPath = exec.removePrefix("Exec=").removePrefix("wine ").trim()
+                    .replace("\\\\\\\\", "\\").trim('"')
+                WinePath.resolveAndroidPath(container, winPath)?.canonicalPath
+            }.getOrNull()
+        }
+    }
+
+    /**
+     * Writes a shortcut for each confirmed [candidates] entry, reusing the same importer the
+     * single-exe "+" flow uses so bulk-added games are indistinguishable from hand-added ones
+     * (same naming, same Steam-name upgrade, same cover-art chain).
+     *
+     * Blocking — call from a background dispatcher. One failure does not abort the rest.
+     */
+    fun importScannedGames(
+        containerIndex: Int,
+        candidates: List<GameFolderScanner.Candidate>,
+        context: Context,
+    ): BulkImportSummary {
+        val containers = liveContainers()
+        if (containerIndex < 0 || containerIndex >= containers.size) {
+            return BulkImportSummary(0, candidates.size, listOf("That container no longer exists."))
+        }
+        val container = containers[containerIndex]
+        var added = 0
+        val failures = mutableListOf<String>()
+        for (c in candidates) {
+            try {
+                ExeShortcutImporter.addToShortcuts(
+                    context, container, c.exe, c.name, c.appId,
+                    onCoverArtReady = { refresh() },
+                )
+                added++
+            } catch (e: Exception) {
+                Log.e(TAG, "Bulk import failed for ${c.name}", e)
+                failures += "${c.name}: ${e.message ?: e.javaClass.simpleName}"
+            }
+        }
+        refresh()
+        return BulkImportSummary(added, failures.size, failures)
+    }
 
     fun importShortcut(containerIndex: Int, uri: Uri, context: Context): ImportResult {
         val containers = liveContainers()
@@ -898,39 +1050,37 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         if (!exeFile.isFile) {
             return ImportResult.Error("Could not access EXE on disk: $realPath")
         }
-        val displayName = sourceName.substringBeforeLast('.', sourceName)
+        // Identify the game from its on-disk footprint (steam_appid.txt / Steam & GOG
+        // manifests / PE version info) so the shortcut gets the real title — which is
+        // then what the SGDB cover-art search runs on — instead of the raw exe filename.
+        val identity = GameIdentifier.identify(exeFile)
+        val fallbackName = sourceName.substringBeforeLast('.', sourceName)
+        val displayName = identity.name?.takeIf { it.isNotBlank() } ?: fallbackName
+        Log.d(TAG, "importExe: identified '$displayName' (appId=${identity.appId}, source=${identity.source})")
         return try {
-            val shortcutFile = writeExeShortcut(container, exeFile, displayName)
-            refresh()
-            // Cover art on a background thread — SteamGridDB lookup involves network I/O.
-            // Fallback chain: store URL (none here) → SGDB → PE icon extraction from the EXE.
-            val safeName = shortcutFile.nameWithoutExtension
-            val appCtx = context.applicationContext
-            Thread({
-                try {
-                    StarLaunchBridge.saveCoverArt(appCtx, container, shortcutFile, safeName, null)
-                    val iconFile = container.getIconsDir(64)?.let { File(it, "$safeName.png") }
-                    if (iconFile == null || !iconFile.exists()) {
-                        // SGDB miss — try extracting an icon from the EXE itself.
-                        ExeIconExtractor.extract(exeFile)?.let { bmp ->
-                            container.getIconsDir(64)?.let { iconsDir ->
-                                if (!iconsDir.exists()) iconsDir.mkdirs()
-                                FileUtils.saveBitmapToFile(bmp, File(iconsDir, "$safeName.png"))
-                            }
-                            try {
-                                Shortcut(container, shortcutFile).saveCustomCoverArt(bmp)
-                            } catch (e: Exception) {
-                                Log.w(TAG, "saveCustomCoverArt failed for $safeName", e)
-                            }
-                            Log.d(TAG, "PE icon extraction succeeded for $safeName")
-                        }
-                    }
+            // Delegate to the shared importer so the "+" flow and the File Manager's
+            // "Add to shortcuts" action write shortcuts identically. The proper name is
+            // written first; cover art (SGDB by appId → by name) resolves on a background
+            // thread and calls back via onCoverArtReady once the icon lands.
+            val shortcutFile = ExeShortcutImporter.addToShortcuts(
+                context, container, exeFile, displayName, identity.appId,
+                onCoverArtReady = { refresh() },
+                onNameResolved = { oldBase, newBase ->
+                    // Background thread upgraded the name to Steam's authoritative title; publish
+                    // it so an open confirm dialog follows the on-disk rename. Fires on the main thread.
+                    _importedNameUpdate.value = ImportedNameUpdate(oldBase, newBase)
                     refresh()
-                } catch (e: Exception) {
-                    Log.w(TAG, "Cover art lookup failed for $safeName", e)
-                }
-            }, "exe-import-cover-art").start()
-            ImportResult.Success(shortcutFile.nameWithoutExtension)
+                },
+            )
+            refresh()
+            ImportResult.Success(shortcutFile.nameWithoutExtension, identity.appId)
+        } catch (e: WinePath.NoFreeDriveLetterException) {
+            Log.e(TAG, "No free drive letter for ${e.mountPath}", e)
+            ImportResult.Error(
+                "This container has no free drive letters left. Remove a drive you no longer " +
+                    "need in the container's Drives tab, or move the game somewhere an " +
+                    "existing drive already covers."
+            )
         } catch (e: IOException) {
             Log.e(TAG, "Failed to write EXE shortcut", e)
             ImportResult.Error("Failed to write shortcut: ${e.message ?: e.javaClass.simpleName}")
@@ -965,35 +1115,6 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun writeExeShortcut(container: Container, exeFile: File, displayName: String): File {
-        val desktopDir = container.getDesktopDir()
-        if (!desktopDir.exists()) desktopDir.mkdirs()
-
-        val safeName = displayName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim().ifEmpty { "game" }
-        val shortcutFile = File(desktopDir, "$safeName.desktop")
-
-        // Resolve to a Wine drive letter against the container's mount map. Z: would
-        // map to imagefs root (chroot view) and not reach external storage, so we use
-        // F:/D:/etc. as defined in container.drives. If no existing drive contains the
-        // EXE path we add and persist a new letter pointing at the parent directory.
-        val winPath = WinePath.resolveWindowsPath(container, exeFile.absolutePath)
-        // 4-backslash separators per Winlator's two-pass StringUtils.unescape().
-        val escaped = WinePath.escapeForExec(winPath)
-        val content = buildString {
-            append("[Desktop Entry]\n")
-            append("Name=").append(displayName).append("\n")
-            append("Exec=wine ").append(escaped).append("\n")
-            append("Icon=").append(safeName).append("\n")
-            append("Type=Application\n")
-            append("StartupWMClass=explorer\n")
-            append("\n")
-            append("[Extra Data]\n")
-        }
-        shortcutFile.writeText(content)
-        Log.d(TAG, "Wrote EXE shortcut: ${shortcutFile.path} -> $winPath ($exeFile)")
-        return shortcutFile
-    }
-
     private fun resolveLocalPath(ctx: Context, uri: Uri): String? {
         if (uri.scheme == "file") return uri.path
         if (uri.scheme != "content") return null
@@ -1020,6 +1141,12 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refresh() {
+        // Re-scan the home dir first: this manager is constructed once and lives for the whole
+        // session, so a container created in the container editor (its own ContainerManager
+        // instance) is otherwise absent from our in-memory list until the ViewModel is rebuilt.
+        // That's the "new container doesn't show in the add-game picker until you launch/restart"
+        // bug — refresh() runs on ON_RESUME, so re-scanning here surfaces it on return to the tab.
+        manager.reloadContainers()
         val raw = manager.loadShortcuts()
         // filter out corrupted entries (matches original Fragment logic)
         _shortcuts.value = raw.filter { it != null && it.file != null && it.file.name.isNotEmpty() }
@@ -1059,23 +1186,26 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     fun containers() = liveContainers()
 
     fun renameImportedShortcut(containerIndex: Int, oldName: String, newName: String) {
-        if (oldName == newName || newName.isBlank()) return
+        val safe = newName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
+        if (oldName == safe || safe.isBlank()) return
         val containers = liveContainers()
         if (containerIndex < 0 || containerIndex >= containers.size) return
-        val container = containers[containerIndex]
-        val desktopDir = container.getDesktopDir()
-        val oldFile = File(desktopDir, "$oldName.desktop")
-        val newFile = File(desktopDir, "$newName.desktop")
-        if (oldFile.isFile && !newFile.isFile && oldFile.renameTo(newFile)) {
-            val oldLnk = File(desktopDir, "$oldName.lnk")
-            val newLnk = File(desktopDir, "$newName.lnk")
-            if (oldLnk.isFile) oldLnk.renameTo(newLnk)
+        // Robust rename (moves .desktop/.lnk + icon PNGs + cover-art PNG, rewrites Icon= and
+        // customCoverArtPath) so a renamed import keeps its scraped art. Shared with the importer's
+        // auto-rename via ExeShortcutImporter.renameShortcutFiles so the two never drift.
+        if (ExeShortcutImporter.renameShortcutFiles(containers[containerIndex], oldName, safe)) {
             refresh()
         }
     }
 
     companion object {
         private const val TAG = "ShortcutsImport"
+
+        // A shortcut name genuinely ties several canonical games when their match scores sit within
+        // this epsilon of the top score → the "Which game is this?" picker (issue #167). Capped so a
+        // very generic name can't spill a huge list into the sheet.
+        private const val TIE_EPSILON = 1e-6
+        private const val MAX_TIE_ALTERNATIVES = 6
 
         fun disableOnScreen(context: Context, shortcut: Shortcut) {
             try {

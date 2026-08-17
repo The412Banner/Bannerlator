@@ -72,7 +72,7 @@ SOFTWARE.
 | [bcn_layer](https://github.com/leegao/bcn_layer) + ASTC/ETC compute encoders | **leegao** | **MIT** ✔ | BCn texture-decompression Vulkan layer (Mali GPU compatibility) + real-time transcoders |
 | [JavaSteam](https://github.com/Longi94/JavaSteam) + `javasteam-depotdownloader` | **Longi94** / **joshuatam** | **MIT** ✔ | Steam connection-manager client and the depot-download engine behind the Steam store |
 | [vkBasalt](https://github.com/DadSchoorse/vkBasalt) | **DadSchoorse** | **Zlib** ✔ | The Vulkan post-processing layer (embeds the ReShade FX compiler) behind the **ReShade** feature; patched here for live on-device toggle/slider control |
-| [bionic-fg](https://github.com/xXJSONDeruloXx/bionic-fg) | **xXJSONDeruloXx** | *no standard `LICENSE` file* ² | The bionic Vulkan frame-generation layer (default FG engine); in-tree as a submodule **with the author's permission** |
+| **win-fg** (Bannerlator's own frame-gen layer) | **Bannerlator** | clean-room; **MIT** deps only | The default FG engine. Written from the ground up: optical-flow front end adapts **AMD FidelityFX FSR3** (MIT — see §4), synthesis written from first principles. Bundles **no proprietary code or weights** |
 | [Box64](https://github.com/ptitSeb/box64) (+ [Pipetto fix branch](https://github.com/Pipetto-crypto/box64)) | **ptitSeb** / Pipetto-crypto | MIT *(per upstream)* | x86_64 → ARM64 translation |
 | FEXCore | FEX-Emu | MIT *(per upstream)* | x86/x64 translation (alternate) |
 | Wine / Proton | WineHQ / Valve | LGPL-2.1+ *(per upstream)* | The Windows runtime |
@@ -81,8 +81,6 @@ SOFTWARE.
 | VKD3D-Proton | Valve / Wine | LGPL-2.1 *(per upstream)* | D3D12 → Vulkan |
 | [OpenXR-SDK](https://github.com/KhronosGroup/OpenXR-SDK) | Khronos | Apache-2.0 *(per upstream)* | XR support |
 
-² *No SPDX-detectable `LICENSE` in the upstream repo as of 2026-07-07; included per the author's explicit permission. If/when the author publishes a license, record it here.*
-
 ---
 
 ## 4. Shaders & upscaling algorithms
@@ -90,7 +88,7 @@ SOFTWARE.
 | Component | Author(s) | License |
 |---|---|---|
 | ReShade `.fx` effects (bundled + catalog) | **crosire** ([reshade-shaders](https://github.com/crosire/reshade-shaders)), **prod80**, **luluco250** ([FXShaders](https://github.com/luluco250/FXShaders)), **fubax** | **MIT / CC0**, each under its own per-file header *(per upstream)* |
-| AMD FidelityFX **FSR** & **CAS** | AMD | MIT *(per upstream)* |
+| AMD FidelityFX **FSR**, **CAS** & **FSR3 optical flow** *(the last adapted into win-fg's motion estimation)* | AMD | MIT *(per upstream)* |
 | NVIDIA **Image Scaling (NIS)** | NVIDIA | MIT *(per upstream)* |
 | Qualcomm **Snapdragon GSR (SGSR)** | Qualcomm | BSD-3-Clause *(per upstream)* |
 

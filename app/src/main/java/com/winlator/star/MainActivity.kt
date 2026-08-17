@@ -11,9 +11,11 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.Image
@@ -31,6 +33,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.DrawerValue
@@ -92,7 +95,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE: Byte = 1
         const val OPEN_FILE_REQUEST_CODE: Byte = 2
-        const val EDIT_INPUT_CONTROLS_REQUEST_CODE: Byte = 3
         const val OPEN_DIRECTORY_REQUEST_CODE: Byte = 4
         const val OPEN_IMAGE_REQUEST_CODE: Byte = 5
 
@@ -111,8 +113,10 @@ class MainActivity : AppCompatActivity() {
         ViewModelProvider(this)[SplashViewModel::class.java]
     }
 
-    private var selectedProfileId: Int = 0
-    private var editInputControls: Boolean = false
+    // Holds the OS cold-start splash on screen only until the Compose UI is about to draw its first
+    // frame. Not held for the imagefs install — that has its own in-app SplashScreen surface.
+    @Volatile
+    private var contentReady = false
 
     private val showAllFilesDialog = mutableStateOf(false)
     private val showAboutDialog = mutableStateOf(false)
@@ -135,56 +139,52 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
+        // Wire the AndroidX cold-start splash BEFORE super.onCreate so the OS splash bridges the gap
+        // to our first Compose frame; hold it only until the UI is ready to draw (set just below).
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        splashScreen.setKeepOnScreenCondition { !contentReady }
 
         PACKAGE_NAME = applicationContext.packageName
         AppThemeState.init(this)
+        // Apply the user's App-orientation preference to THIS app-UI activity only (the game's
+        // XServerDisplayActivity manages its own orientation and is unaffected).
+        com.winlator.star.core.AppOrientation.apply(this)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-
-        if (prefs.getBoolean("enable_big_picture_mode", false)) {
-            startActivity(Intent(this, BigPictureActivity::class.java))
-        }
 
         val winlatorDir = File(SettingsFragment.DEFAULT_WINLATOR_PATH)
         if (!winlatorDir.exists()) winlatorDir.mkdirs()
 
         containerManager = ContainerManager(this)
 
-        editInputControls = intent.getBooleanExtra("edit_input_controls", false)
-        selectedProfileId = intent.getIntExtra("selected_profile_id", 0)
+        val selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0)
+        val startRoute = validRouteOrNull(intent.getStringExtra(EXTRA_OPEN_SCREEN))
+            ?: menuItemIdToRoute(selectedMenuItemId)
+            ?: when {
+                prefs.getBoolean("enable_big_picture_mode", false) -> Screen.BigPicture.route
+                prefs.getString("default_landing_screen", "games") == "containers" -> Screen.Containers.route
+                else -> Screen.Games.route
+            }
 
-        val startRoute = when {
-            editInputControls -> Screen.InputControls.route
-            else -> {
-                val selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0)
-                validRouteOrNull(intent.getStringExtra(EXTRA_OPEN_SCREEN))
-                    ?: menuItemIdToRoute(selectedMenuItemId)
-                    // User-chosen default landing screen (Settings). Only applies when nothing else
-                    // dictated the route (no deep-link / menu nav / edit-controls). Defaults to
-                    // "games" = the Game Shortcuts page, i.e. the historical default.
-                    ?: if (prefs.getString("default_landing_screen", "games") == "containers")
-                        Screen.Containers.route else Screen.Games.route
+        val willInstall = splashViewModel.installIfNeeded(this)
+        if (!willInstall) {
+            // Already installed — request permissions immediately
+            requestAppPermissions()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                showAllFilesDialog.value = true
+            }
+            if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
             }
         }
+        // If willInstall == true: permissions are requested after user taps Proceed
 
-        if (!editInputControls) {
-            val willInstall = splashViewModel.installIfNeeded(this)
-            if (!willInstall) {
-                // Already installed — request permissions immediately
-                requestAppPermissions()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-                    showAllFilesDialog.value = true
-                }
-                if (Build.VERSION.SDK_INT >= 33 &&
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED
-                ) {
-                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
-                }
-            }
-            // If willInstall == true: permissions are requested after user taps Proceed
-        }
+        // First-run/install decision is made; let the OS splash hand off to the Compose UI.
+        contentReady = true
 
         setContent {
             WinlatorTheme {
@@ -197,8 +197,6 @@ class MainActivity : AppCompatActivity() {
                         startRoute = startRoute,
                         pendingRoute = pendingRoute.value,
                         onPendingRouteConsumed = { pendingRoute.value = null },
-                        editInputControls = editInputControls,
-                        selectedInputProfileId = selectedProfileId,
                         showAllFilesDialog = showAllFilesDialog.value,
                         showAboutDialog = showAboutDialog.value,
                         onDismissAllFilesDialog = { showAllFilesDialog.value = false },
@@ -214,7 +212,11 @@ class MainActivity : AppCompatActivity() {
                     )
 
                     // Resume a mid-flight component installer (Phase 3b) after the app restarts.
-                    com.winlator.star.ui.screens.ComponentInstallResume()
+                    // On completion/discard it routes back to Games (via pendingRoute, same one-shot
+                    // channel the store deep-link uses) so the user isn't stranded on the resume dialog.
+                    com.winlator.star.ui.screens.ComponentInstallResume(
+                        onNavigateToGames = { pendingRoute.value = Screen.Games.route },
+                    )
 
                     if (isInstalling) {
                         SplashScreen(
@@ -319,8 +321,6 @@ private fun AppShell(
     startRoute: String,
     pendingRoute: String?,
     onPendingRouteConsumed: () -> Unit,
-    editInputControls: Boolean,
-    selectedInputProfileId: Int,
     showAllFilesDialog: Boolean,
     showAboutDialog: Boolean,
     onDismissAllFilesDialog: () -> Unit,
@@ -337,6 +337,10 @@ private fun AppShell(
 
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route ?: startRoute
+
+    // Big Picture is a full-bleed couch/TV launcher: no top bar, no drawer gestures, no scaffold
+    // content padding (it draws its own immersive layout).
+    val isBigPicture = currentRoute == Screen.BigPicture.route
 
     // In-app update banner: only when a newer stable exists, notify is on, and
     // this version wasn't skipped.
@@ -381,7 +385,12 @@ private fun AppShell(
     val screenTitle = when {
         currentRoute.startsWith("container_detail") -> {
             val id = backstackEntry?.arguments?.getInt("id") ?: -1
-            if (id > 0) context.getString(R.string.edit_container) else context.getString(R.string.new_container)
+            when {
+                id == com.winlator.star.ui.screens.ContainerDetailViewModel.EDIT_DEFAULTS_ID ->
+                    context.getString(R.string.new_container_defaults)
+                id > 0 -> context.getString(R.string.edit_container)
+                else -> context.getString(R.string.new_container)
+            }
         }
         else -> Screen.drawerItems.firstOrNull { it.route == currentRoute }?.label ?: "Winlator"
     }
@@ -389,7 +398,7 @@ private fun AppShell(
     CompositionLocalProvider(LocalTopBarActions provides topBarActionsState) {
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = !editInputControls && !currentRoute.startsWith("container_detail"),
+        gesturesEnabled = !currentRoute.startsWith("container_detail") && !isBigPicture,
         drawerContent = {
             AppDrawerContent(
                 currentRoute = currentRoute,
@@ -426,28 +435,26 @@ private fun AppShell(
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                AppTopBar(
-                    title = screenTitle,
-                    showBack = editInputControls,
-                    // Signed-in + has a picture → the ☰ becomes their avatar (still opens the drawer).
-                    // Versioned URL so a live picture change refreshes the swap in lockstep with the drawer.
-                    avatarUrl = account?.displayAvatarUrl,
-                    onNavClick = {
-                        if (editInputControls) {
-                            navController.popBackStack()
-                        } else {
+                if (!isBigPicture) {
+                    AppTopBar(
+                        title = screenTitle,
+                        showBack = false,
+                        // Signed-in + has a picture → the ☰ becomes their avatar (still opens the drawer).
+                        // Versioned URL so a live picture change refreshes the swap in lockstep with the drawer.
+                        avatarUrl = account?.displayAvatarUrl,
+                        onNavClick = {
                             scope.launch {
                                 if (drawerState.isOpen) drawerState.close() else drawerState.open()
                             }
-                        }
-                    },
-                    actions = topBarActionsState.value,
-                )
+                        },
+                        actions = topBarActionsState.value,
+                    )
+                }
             },
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)) {
+            Column(modifier = Modifier.padding(if (isBigPicture) PaddingValues(0.dp) else innerPadding)) {
                 val upd = bannerUpdate
-                if (upd != null && !bannerDismissed && !editInputControls) {
+                if (upd != null && !bannerDismissed && !isBigPicture) {
                     UpdateBanner(
                         versionName = upd.versionName,
                         onUpdate = {
@@ -461,10 +468,15 @@ private fun AppShell(
                 }
                 AppNavGraph(
                     navController = navController,
-                    selectedInputProfileId = selectedInputProfileId,
                     startRoute = startRoute,
                     modifier = Modifier.weight(1f),
                 )
+                // App-wide minimized progress pill for a running archive unpack. Renders nothing when
+                // idle; sits below the nav content so it floats over every screen. Hidden in Big
+                // Picture (fullscreen) mode.
+                if (!isBigPicture) {
+                    com.winlator.star.ui.UnpackProgressPill()
+                }
             }
         }
     }
@@ -484,7 +496,7 @@ private fun AppShell(
 
 @Composable
 private fun AllFilesAccessDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
+    OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("All Files Access Required") },
         text = {

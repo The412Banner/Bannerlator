@@ -27,6 +27,7 @@ public class WindowAttributes {
     private BackingStore backingStore = BackingStore.NOT_USEFUL;
     private BitGravity bitGravity = BitGravity.CENTER;
     private Cursor cursor;
+    private Colormap colormap;
     private Bitmask doNotPropagateMask = new Bitmask(0);
     private Bitmask eventMask = new Bitmask(0);
     private boolean mapped = false;
@@ -55,6 +56,10 @@ public class WindowAttributes {
 
     public BitGravity getBitGravity() {
         return bitGravity;
+    }
+
+    public Colormap getColormap() {
+        return colormap;
     }
 
     public Cursor getCursor() {
@@ -146,10 +151,14 @@ public class WindowAttributes {
                 case FLAG_CURSOR:
                     cursor = client.xServer.cursorManager.getCursor(inputStream.readInt());
                     break;
+                case FLAG_COLORMAP:
+                    // ERL bug report #7: actually store the colormap so GetWindowAttributes
+                    // can report it, instead of skipping it and always returning None.
+                    colormap = client.xServer.colormapManager.getColormap(inputStream.readInt());
+                    break;
                 case FLAG_BACKGROUND_PIXMAP:
                 case FLAG_BORDER_PIXMAP:
                 case FLAG_BORDER_PIXEL:
-                case FLAG_COLORMAP:
                     inputStream.skip(4);
                     break;
             }

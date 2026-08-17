@@ -1,11 +1,13 @@
 package com.winlator.star.ui.screens.adrenodownload
 
 import android.app.Activity
+import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,17 +25,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -65,7 +74,10 @@ fun AdrenoDriverDownloadSheet(
     val cs = MaterialTheme.colorScheme
 
     val repo = remember { RemoteDriverRepository(context) }
-    val sources = remember { DriverSources.ALL }
+    // Recomputed whenever the manage dialog changes a source (add/remove/toggle), via manageRefreshKey.
+    var manageRefreshKey by remember { mutableStateOf(0) }
+    val sources = remember(manageRefreshKey) { DriverSources.allSources(context) }
+    var showManage by remember { mutableStateOf(false) }
 
     var selectedSourceIndex by remember { mutableStateOf(0) }
     var loading by remember { mutableStateOf(true) }
@@ -78,11 +90,20 @@ fun AdrenoDriverDownloadSheet(
     var downloadStage by remember { mutableStateOf("") }
     var refreshKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(selectedSourceIndex, refreshKey) {
+    // Keep the selected chip in range if a source is disabled/removed out from under it.
+    LaunchedEffect(sources.size) {
+        if (selectedSourceIndex > sources.lastIndex) selectedSourceIndex = 0
+    }
+
+    LaunchedEffect(selectedSourceIndex, refreshKey, manageRefreshKey) {
+        val source = sources.getOrNull(selectedSourceIndex)
+        if (source == null) {
+            entries = emptyList(); errorMessage = null; loading = false
+            return@LaunchedEffect
+        }
         loading = true
         errorMessage = null
         entries = emptyList()
-        val source = sources[selectedSourceIndex]
         repo.fetchEntries(source).fold(
             onSuccess = { entries = it },
             onFailure = { errorMessage = it.message ?: it::class.java.simpleName },
@@ -101,12 +122,22 @@ fun AdrenoDriverDownloadSheet(
                 .fillMaxWidth()
                 .fillMaxHeight(0.92f)
         ) {
-            Text(
-                text = "Download GPU drivers",
-                style = MaterialTheme.typography.titleLarge,
-                color = cs.onSurface,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Download GPU drivers",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = cs.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { showManage = true }) {
+                    Icon(Icons.Filled.Tune, contentDescription = "Manage sources", tint = cs.onSurfaceVariant)
+                }
+            }
 
             // Horizontally scrollable source chip row
             Row(
@@ -153,9 +184,17 @@ fun AdrenoDriverDownloadSheet(
         }
     }
 
+    if (showManage) {
+        ManageSourcesDialog(
+            context = context,
+            onDismiss = { showManage = false },
+            onChanged = { manageRefreshKey++ },
+        )
+    }
+
     pendingEntry?.let { entry ->
         if (!downloading) {
-            AlertDialog(
+            OutlinedAlertDialog(
                 onDismissRequest = { pendingEntry = null },
                 title = { Text("Download driver?") },
                 text = {
@@ -220,7 +259,7 @@ fun AdrenoDriverDownloadSheet(
                 },
             )
         } else {
-            AlertDialog(
+            OutlinedAlertDialog(
                 onDismissRequest = { /* block dismiss while busy */ },
                 title = { Text(downloadStage) },
                 text = {
@@ -358,3 +397,154 @@ private fun CenteredError(message: String, onRetry: () -> Unit) {
         }
     }
 }
+
+// Manage driver sources (issue #160): toggle built-ins, delete custom sources, and add a new one
+// (a JSON url, or a GitHub owner/repo). Mutations persist via [DriverSourceStore] and bump [onChanged]
+// so the sheet's chip row recomputes. Styling matches the sheet (M3 + the local SourceChip toggle).
+@Composable
+private fun ManageSourcesDialog(
+    context: Context,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val store = remember { DriverSourceStore(context) }
+    // Re-read from the store after each mutation by bumping this.
+    var version by remember { mutableStateOf(0) }
+    val disabled = remember(version) { store.disabledBuiltIns() }
+    val custom = remember(version) { store.customSources() }
+
+    var newName by remember { mutableStateOf("") }
+    var isGithub by remember { mutableStateOf(false) }
+    var newUrl by remember { mutableStateOf("") }
+    var newOwner by remember { mutableStateOf("") }
+    var newRepo by remember { mutableStateOf("") }
+
+    fun mutate(block: () -> Unit) { block(); version++; onChanged() }
+
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Manage driver sources") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text("Built-in sources", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+                DriverSources.BUILT_IN.forEach { src ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    ) {
+                        Text(src.name, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface, modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = src.name !in disabled,
+                            onCheckedChange = { on -> mutate { store.setBuiltInEnabled(src.name, on) } },
+                        )
+                    }
+                }
+
+                if (custom.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Divider(color = cs.outline.copy(alpha = 0.3f))
+                    Spacer(Modifier.height(8.dp))
+                    Text("Custom sources", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+                    Spacer(Modifier.height(4.dp))
+                    custom.forEach { src ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(src.name, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
+                                Text(feedSummary(src), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                            }
+                            IconButton(onClick = { mutate { store.removeCustom(src.name) } }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = cs.error)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Divider(color = cs.outline.copy(alpha = 0.3f))
+                Spacer(Modifier.height(8.dp))
+                Text("Add source", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SourceChip("JSON URL", selected = !isGithub, onClick = { isGithub = false })
+                    SourceChip("GitHub repo", selected = isGithub, onClick = { isGithub = true })
+                }
+                Spacer(Modifier.height(8.dp))
+                if (!isGithub) {
+                    OutlinedTextField(
+                        value = newUrl,
+                        onValueChange = { newUrl = it },
+                        label = { Text("JSON URL") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = newOwner,
+                        onValueChange = { newOwner = it },
+                        label = { Text("Owner (or github.com/owner/repo)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = newRepo,
+                        onValueChange = { newRepo = it },
+                        label = { Text("Repo") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = {
+                    val name = newName.trim()
+                    when {
+                        name.isEmpty() ->
+                            Toast.makeText(context, "Enter a name", Toast.LENGTH_SHORT).show()
+                        !isGithub && newUrl.isBlank() ->
+                            Toast.makeText(context, "Enter a JSON URL", Toast.LENGTH_SHORT).show()
+                        !isGithub -> {
+                            mutate { store.addCustom(name, DriverFeed.Json(newUrl.trim())) }
+                            newName = ""; newUrl = ""; newOwner = ""; newRepo = ""
+                        }
+                        else -> {
+                            val gh = DriverSourceStore.parseGithubRepo(newOwner, newRepo)
+                            if (gh == null) {
+                                Toast.makeText(context, "Enter owner and repo", Toast.LENGTH_SHORT).show()
+                            } else {
+                                mutate { store.addCustom(name, DriverFeed.GithubReleases(gh.first, gh.second)) }
+                                newName = ""; newUrl = ""; newOwner = ""; newRepo = ""
+                            }
+                        }
+                    }
+                }) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Add source")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+    )
+}
+
+private fun feedSummary(src: RemoteDriverSource): String =
+    when (val f = src.feeds.firstOrNull()) {
+        is DriverFeed.Json -> f.url
+        is DriverFeed.GithubReleases -> "github.com/${f.owner}/${f.repo}"
+        null -> ""
+    }

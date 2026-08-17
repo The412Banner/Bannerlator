@@ -22,12 +22,15 @@ import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -136,6 +139,7 @@ private fun ReshadeCatalogSheet(
     var phaseLabel by remember { mutableStateOf("") }
     var progress by remember { mutableStateOf(0f) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    var pendingDelete by remember { mutableStateOf<ReshadeCatalogEntry?>(null) }
 
     LaunchedEffect(Unit) {
         val result = withContext(Dispatchers.IO) { ReshadeCatalog.loadCached(context) }
@@ -255,7 +259,7 @@ private fun ReshadeCatalogSheet(
                             item("__installed_hdr__") { GroupHeader("Installed (${installedRows.size})") }
                             items(installedRows, key = { "i_${it.id}" }) { entry ->
                                 CatalogRowItem(entry, installed, ::isSelected, downloadingId, phaseLabel, progress, offline, cs,
-                                    onToggle, { startDownload(it) }) { errorMsg = it }
+                                    onToggle, { startDownload(it) }, { pendingDelete = entry }) { errorMsg = it }
                                 Divider(color = cs.outlineVariant.copy(alpha = 0.5f))
                             }
                         }
@@ -264,7 +268,7 @@ private fun ReshadeCatalogSheet(
                             item("__available_hdr__") { GroupHeader("Available (${availableRows.size})") }
                             items(availableRows, key = { "a_${it.id}" }) { entry ->
                                 CatalogRowItem(entry, installed, ::isSelected, downloadingId, phaseLabel, progress, offline, cs,
-                                    onToggle, { startDownload(it) }) { errorMsg = it }
+                                    onToggle, { startDownload(it) }, { pendingDelete = entry }) { errorMsg = it }
                                 Divider(color = cs.outlineVariant.copy(alpha = 0.5f))
                             }
                         }
@@ -287,6 +291,33 @@ private fun ReshadeCatalogSheet(
             }
         }
     }
+
+    // Confirm-then-delete: removes the effect's folder from the ReShade dir, drops the row back to
+    // "Available", and takes it out of the loadout. Re-downloadable afterwards.
+    pendingDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete ${entry.name}?") },
+            text = { Text("This removes the downloaded effect from storage and takes it out of your loadout. You can re-download it any time.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = entry.id
+                    pendingDelete = null
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) { ReshadeManager.deleteEffect(context, id) }
+                        if (ok) {
+                            installed = installed - id      // row drops back to the "Available" group
+                            onToggle(id, false)             // and out of the current loadout
+                            onCatalogChanged()              // parent rescans the drop-in folder
+                        } else errorMsg = "Couldn't delete ${entry.name}."
+                    }
+                }) { Text("Delete", color = cs.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancel", color = cs.primary) }
+            },
+        )
+    }
 }
 
 // One catalog row + its tap behaviour: installed rows TOGGLE loadout membership; available rows
@@ -303,6 +334,7 @@ private fun CatalogRowItem(
     cs: ColorScheme,
     onToggle: (String, Boolean) -> Unit,
     onDownload: (ReshadeCatalogEntry) -> Unit,
+    onDelete: () -> Unit,
     onHint: (String) -> Unit,
 ) {
     val isInstalled = entry.id in installed
@@ -316,6 +348,8 @@ private fun CatalogRowItem(
         offline = offline,
         phaseLabel = if (isBusy) phaseLabel else "",
         progress = if (isBusy) progress else null,
+        // Delete only makes sense for a downloaded effect; hidden while a download is in flight.
+        onDelete = if (isInstalled && !isBusy) onDelete else null,
         onClick = {
             when {
                 isInstalled -> onToggle(entry.id, !selected)             // toggle membership
@@ -348,6 +382,7 @@ private fun ReshadeCatalogRow(
     offline: Boolean,
     phaseLabel: String,
     progress: Float?,
+    onDelete: (() -> Unit)?,
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -382,11 +417,20 @@ private fun ReshadeCatalogRow(
             }
             when {
                 isBusy -> {}
-                isInstalled -> Icon(
-                    if (isSelected) Icons.Filled.CheckBox else Icons.Filled.CheckBoxOutlineBlank,
-                    contentDescription = null, tint = if (isSelected) installedBlue else cs.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp),
-                )
+                isInstalled -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Trash: its own tap target, so it never triggers the row's loadout toggle.
+                    onDelete?.let { del ->
+                        IconButton(onClick = del, modifier = Modifier.size(34.dp)) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete download",
+                                tint = cs.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                        }
+                    }
+                    Icon(
+                        if (isSelected) Icons.Filled.CheckBox else Icons.Filled.CheckBoxOutlineBlank,
+                        contentDescription = null, tint = if (isSelected) installedBlue else cs.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
                 offline -> Icon(Icons.Filled.CloudOff, contentDescription = "Offline", tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
                 else -> Icon(Icons.Filled.CloudDownload, contentDescription = "Download", tint = cs.primary, modifier = Modifier.size(22.dp))
             }

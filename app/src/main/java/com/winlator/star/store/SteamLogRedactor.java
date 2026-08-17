@@ -59,10 +59,44 @@ public final class SteamLogRedactor {
         for (String s : SECRETS) {
             if (!s.isEmpty() && out.contains(s)) out = out.replace(s, "[redacted]");
         }
+        if (!maybeHasPattern(out)) return out;   // nothing a pattern could match — skip four regexes
         out = EMAIL.matcher(out).replaceAll("[email]");
         out = JWT.matcher(out).replaceAll("[token]");
         out = LONG_TOKEN.matcher(out).replaceAll("[token]");
         out = STEAMID64.matcher(out).replaceAll("[steamid]");
         return out;
+    }
+
+    /**
+     * Cheap pre-check: could any of the four patterns possibly match?
+     *
+     * Added so redaction is affordable on a HOT path. The Wine debug callback fires once per line
+     * of Wine output — a {@code +seh} run emits tens of millions of them — and running four regex
+     * passes over every one costs frame time during a game. Every pattern needs a specific
+     * character or digit to be present at all: an email needs '@', a JWT needs "ey", a long token
+     * needs a 88-char unbroken run, a SteamID64 needs the literal "76561". One linear scan rules
+     * all four out for the overwhelming majority of Wine lines, which are prose and hex addresses.
+     *
+     * Conservative by construction: it may return true when nothing matches (costing only the old
+     * behaviour), and returns true whenever it is unsure. It must never return false for a string
+     * a pattern would have caught — so the run-length check counts the exact character class
+     * LONG_TOKEN uses.
+     */
+    private static boolean maybeHasPattern(String s) {
+        int run = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '@') return true;                                   // EMAIL
+            if (c == 'e' && i + 1 < s.length() && s.charAt(i + 1) == 'y') return true;   // JWT
+            if (c == '7' && s.startsWith("76561", i)) return true;       // STEAMID64
+            // LONG_TOKEN: [A-Za-z0-9_-]{88,}
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '_' || c == '-') {
+                if (++run >= 88) return true;
+            } else {
+                run = 0;
+            }
+        }
+        return false;
     }
 }

@@ -80,7 +80,7 @@ public class FEXCorePresetManager {
             envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
             envVars.put("FEX_X87REDUCEDPRECISION", "1");
             envVars.put("FEX_MULTIBLOCK", "1");
-            envVars.put("FEX_SMC_CHECKS", "full");
+            envVars.put("FEX_SMCCHECKS", "full");
             envVars.put("FEX_HIDEHYPERVISORBIT", "1");
         }
         else if (id.startsWith(FEXCorePreset.CUSTOM)) {

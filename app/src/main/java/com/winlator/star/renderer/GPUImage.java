@@ -9,6 +9,8 @@ public class GPUImage extends NativeTexture {
     private long imageKHRPtr;
     private ByteBuffer virtualData;
     private short stride;
+    private short width;
+    private short height;
     private static boolean supported = false;
 
     static {
@@ -69,6 +71,18 @@ public class GPUImage extends NativeTexture {
     private void setStride(short stride) {
         this.stride = stride;
     }
+
+    // ERL bug report #6: real buffer dimensions from AHardwareBuffer_describe.
+    // @Keep because gpu_image.c resolves these by name via GetMethodID.
+    public short getWidth() { return width; }
+
+    public short getHeight() { return height; }
+
+    @Keep
+    private void setWidth(short width) { this.width = width; }
+
+    @Keep
+    private void setHeight(short height) { this.height = height; }
 
     @Override
     public ByteBuffer getVirtualData() {

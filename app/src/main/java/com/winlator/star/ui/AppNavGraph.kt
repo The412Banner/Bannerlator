@@ -26,7 +26,6 @@ import com.winlator.star.ui.screens.ShortcutsScreen
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    selectedInputProfileId: Int,
     startRoute: String = Screen.Games.route,
     modifier: Modifier = Modifier,
 ) {

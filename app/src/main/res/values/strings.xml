@@ -1245,6 +1245,20 @@ E.g. <b>META</b> for <i>META key</i>, \n
         buffer</b> rows below instead.<br /><br />
         Change those to adjust ALSA\'s delay. This slider is greyed out here because nothing reads it.
     ]]></string>
+
+    <!-- Plurals merged from upstream (sync) -->
+<plurals name="custom_icon_in_use">
+        <item quantity="one">This icon is used by %1$d control. Reassign it before deleting the icon.</item>
+        <item quantity="other">This icon is used by %1$d controls. Reassign them before deleting the icon.</item>
+    </plurals>
+<plurals name="custom_icon_profiles_in_use">
+        <item quantity="one">Used in %1$d profile:</item>
+        <item quantity="other">Used in %1$d profiles:</item>
+    </plurals>
+<plurals name="profiles_not_imported">
+        <item quantity="one">%1$d profile could not be imported</item>
+        <item quantity="other">%1$d profiles could not be imported</item>
+    </plurals>
 </resources>
 
 

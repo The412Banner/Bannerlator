@@ -44,6 +44,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.MainActivity
 import com.winlator.star.R
 import com.winlator.star.ui.findActivity
+import com.winlator.star.ui.components.AudioSettingsDialog
+import com.winlator.star.ui.components.audioConfigFromEnv
+import com.winlator.star.ui.components.audioConfigToEnv
 import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.VegasKeyCatalog
 import com.winlator.star.contentdialog.WineD3DConfigDialog
@@ -439,6 +442,10 @@ private fun TopLevelFields(
     onShowWineDownloadSheet: () -> Unit,
 ) {
     val context = LocalContext.current
+    // Per-field "?" help — a centered, scrollable Compose dialog (HelpDialog). null = no dialog.
+    var helpRes by remember { mutableStateOf<Int?>(null) }
+    var showAudioSettings by remember { mutableStateOf(false) }
+    helpRes?.let { HelpDialog(it) { helpRes = null } }
 
     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
 
@@ -1613,6 +1620,9 @@ internal fun GraphicsDriverConfigDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    // Per-field "?" help — a centered, scrollable Compose dialog (HelpDialog). null = no dialog.
+    var helpRes by remember { mutableStateOf<Int?>(null) }
+    helpRes?.let { HelpDialog(it) { helpRes = null } }
 
     val cfg = remember(initialConfig) {
         initialConfig.split(";").associate { elem ->
@@ -1667,6 +1677,13 @@ internal fun GraphicsDriverConfigDialog(
     var blacklisted   by remember { mutableStateOf(initialBlacklist) }
     var showAllDrivers by remember { mutableStateOf(false) }
     var showExtPicker by remember { mutableStateOf(false) }
+    // True when the picked custom driver couldn't load on this GPU and the native probe fell
+    // back to the system ICD (instead of crashing). Drives the inline note under the dropdown.
+    var driverFellBack by remember { mutableStateOf(false) }
+    // True when the selected version is an installed custom (Qualcomm proprietary) Adreno
+    // driver, whose extensions we intentionally don't probe here — the UI shows an explanatory
+    // note instead of a misleading "0/0 extensions".
+    var isCustomDriver by remember { mutableStateOf(false) }
 
     LaunchedEffect(showAllDrivers) {
         val atVersions = withContext(Dispatchers.IO) {

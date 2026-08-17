@@ -582,6 +582,25 @@ private enum class InstallCardPhase { DOWNLOADING, INSTALLING, DONE, ERROR }
 
 // Snapshot the install-card dialog renders. Catalog installs seed every field up front; local-file
 // imports seed title/type only and fill the % bar as extraction runs.
+
+// Map a process-lifetime registry snapshot onto the sheet's install-card model, so a catalog
+// download rendered from ContentDownloadRegistry reuses the exact same card UI as before.
+private fun ContentDownloadState.toInstallCardState() = InstallCardState(
+    title = title,
+    type = type,
+    verName = verName,
+    verCode = verCode,
+    desc = desc,
+    fraction = fraction,
+    phase = when (phase) {
+        ContentDownloadPhase.DOWNLOADING -> InstallCardPhase.DOWNLOADING
+        ContentDownloadPhase.INSTALLING -> InstallCardPhase.INSTALLING
+        ContentDownloadPhase.DONE -> InstallCardPhase.DONE
+        ContentDownloadPhase.ERROR -> InstallCardPhase.ERROR
+    },
+    error = error,
+)
+
 private data class InstallCardState(
     val title: String,
     val type: String? = null,

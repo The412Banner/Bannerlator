@@ -49,6 +49,7 @@ import com.winlator.star.ui.components.audioConfigFromEnv
 import com.winlator.star.ui.components.audioConfigToEnv
 import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.VegasKeyCatalog
+import com.winlator.star.contentdialog.VegasKeyKnowledge
 import com.winlator.star.contentdialog.WineD3DConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
@@ -1558,6 +1559,31 @@ internal fun LabeledDropdown(
                     onClick = { if (optEnabled) { onSelect(opt); expanded = false } }
                 )
             }
+        }
+    }
+}
+
+@Composable
+internal fun StartupServicesToggleList(
+    enabled: Set<String>,
+    onToggle: (rawName: String, on: Boolean) -> Unit
+) {
+    SectionBox(title = "Custom Services") {
+        Text(
+            "Custom starts with every service off — turn on only what you need. " +
+                "Disabling Wine Bus/HID can break controllers.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        WineUtils.STARTUP_SERVICES.forEachIndexed { i, entry ->
+            val raw = WineUtils.startupServiceRawName(entry)
+            val label = WineUtils.STARTUP_SERVICE_LABELS.getOrElse(i) { raw }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("$label ($raw)", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = enabled.contains(raw), onCheckedChange = { onToggle(raw, it) })
+            }
+            if (i < WineUtils.STARTUP_SERVICES.lastIndex) Spacer(Modifier.height(4.dp))
         }
     }
 }

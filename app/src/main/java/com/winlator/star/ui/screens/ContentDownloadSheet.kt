@@ -42,6 +42,7 @@ import com.winlator.star.contents.Downloader
 import com.winlator.star.core.TarCompressorUtils
 import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
+import com.winlator.star.store.download.ContentDownloadState
 import com.winlator.star.store.download.formatEta
 import com.winlator.star.store.download.startContentDownload
 import com.winlator.star.ui.findActivity

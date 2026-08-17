@@ -61,6 +61,7 @@ import com.winlator.star.core.GPUInformation
 import com.winlator.star.core.ImageUtils
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.core.StringUtils
+import com.winlator.star.core.WineUtils
 import com.winlator.star.core.WineThemeManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -1528,12 +1529,30 @@ internal fun LabeledDropdown(
     onSelect: (String) -> Unit,
     enabled: Boolean = true,
     disabledOptions: Set<String> = emptySet(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // ── Controller / D-pad support (all defaulted, so every existing touch caller is unaffected) ──
+    // [focused] draws the focus border on the anchor when this dropdown is the highlighted control.
+    // [expandedOverride] (when non-null) lets a parent CONTROL the open state instead of the internal
+    // one — the shortcut editor's root D-pad handler opens/closes exactly one dropdown at a time this
+    // way. [onExpandedChange] fires on every open/close request (touch tap, item pick, outside dismiss)
+    // so the parent's open-tracker stays in sync. [highlightedIndex] tints the option the D-pad cursor
+    // is on. With all four at their defaults the box behaves exactly as before (own state, no highlight).
+    focused: Boolean = false,
+    expandedOverride: Boolean? = null,
+    onExpandedChange: ((Boolean) -> Unit)? = null,
+    highlightedIndex: Int = -1,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var internalExpanded by remember { mutableStateOf(false) }
+    val expanded = expandedOverride ?: internalExpanded
+    val setExpanded: (Boolean) -> Unit = { want ->
+        if (enabled) {
+            onExpandedChange?.invoke(want)
+            if (expandedOverride == null) internalExpanded = want
+        }
+    }
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { if (enabled) expanded = it },
+        onExpandedChange = { setExpanded(it) },
         modifier = modifier
     ) {
         OutlinedTextField(
@@ -1543,11 +1562,17 @@ internal fun LabeledDropdown(
             enabled = enabled,
             label = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .then(
+                    if (focused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraSmall)
+                    else Modifier
+                )
         )
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
+            onDismissRequest = { setExpanded(false) },
             modifier = Modifier.outlinedMenuCard(),
         ) {
             options.forEachIndexed { idx, opt ->
@@ -1556,7 +1581,10 @@ internal fun LabeledDropdown(
                 DropdownMenuItem(
                     text = { Text(opt) },
                     enabled = optEnabled,
-                    onClick = { if (optEnabled) { onSelect(opt); expanded = false } }
+                    onClick = { if (optEnabled) { onSelect(opt); setExpanded(false) } },
+                    modifier = if (idx == highlightedIndex)
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+                    else Modifier,
                 )
             }
         }
@@ -2054,6 +2082,8 @@ internal fun DxvkConfigDialog(
     onDismiss: () -> Unit,
     onDownloadDxvk: () -> Unit = {},
     onDownloadVkd3d: () -> Unit = {},
+    onDownloadD7vk: () -> Unit = {},
+    relaxDxvkFilter: Boolean = false,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -2067,6 +2097,9 @@ internal fun DxvkConfigDialog(
     val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
     val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
     val configSourceEntries = remember { mutableStateOf(listOf<String>()) }
+    // Seeded with the bundled sentinel so the D7VK version dropdown always offers "Bundled (default)"
+    // even before the async catalog load lands (or when there are no downloaded d7vk profiles).
+    val d7vkVersions    = remember { mutableStateOf(listOf(DXVKConfigDialog.D7VK_BUNDLED)) }
 
     // ---- VEGAS config source: stock/custom two-source model (Tier-2B) ----
     // Declared before LaunchedEffect: the init block below references these on first load.
@@ -2088,11 +2121,13 @@ internal fun DxvkConfigDialog(
             else
                 DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
             val vkd3d = DXVKConfigDialog.loadVkd3dVersionList(context, cm)
+            val d7vk = DXVKConfigDialog.loadD7vkVersionList(context, cm)
             val cfgsrc = DXVKConfigDialog.loadVegasConfigSourceList(context)
             val stock = if (isVegas) DXVKConfigDialog.loadVegasStockSources(context, cm) else listOf()
             withContext(Dispatchers.Main) {
                 allDxvkVersions.value = versions
                 vkd3dVersions.value = vkd3d
+                d7vkVersions.value = d7vk
                 configSourceEntries.value = cfgsrc
                 stockSources.value = stock
                                 // Tier-2B init: restore the two-source selection from the stored dxvkConfigFile
@@ -2131,6 +2166,20 @@ internal fun DxvkConfigDialog(
 
     var selectedVkd3d by remember { mutableStateOf(config.get("vkd3dVersion").ifEmpty { "None" }) }
 
+    // VKD3D-Proton needs DXVK 2.x's DXGI; DXVK 1.x can't back it, so the DX12 test fails to start.
+    // Filter the DXVK list to 2.x+ (keeping unparseable names, e.g. VEGAS) when VKD3D is enabled —
+    // matches the shortcut-level dialog, which already enforces this. Fixes #113.
+    // Exception: the Mali "Wrapper + compat + bcn" driver (relaxDxvkFilter) shows all DXVK versions
+    // so testers can try the DXVK 1.10.3 adapter-accept workaround with VKD3D on (#137).
+    val filteredDxvk = remember(selectedVkd3d, allDxvkVersions.value, relaxDxvkFilter) {
+        if (selectedVkd3d != "None" && !relaxDxvkFilter) {
+            allDxvkVersions.value.filter { v ->
+                val major = DXVKConfigDialog.tryGetMajor(v)
+                major == null || major >= 2
+            }
+        } else allDxvkVersions.value
+    }
+
     var selectedDxvk by remember(allDxvkVersions.value) {
         val stored = config.get("version")
         mutableStateOf(allDxvkVersions.value.firstOrNull { it == stored } ?: allDxvkVersions.value.firstOrNull() ?: stored)
@@ -2149,6 +2198,11 @@ internal fun DxvkConfigDialog(
     }
     var selectedFeatureLevel by remember { mutableStateOf(featureLevelEntries.firstOrNull { it == config.get("vkd3dLevel") } ?: featureLevelEntries.first()) }
     var selectedDdra         by remember { mutableStateOf(ddraEntries.firstOrNull { StringUtils.parseIdentifier(it) == config.get("ddrawrapper") } ?: ddraEntries.first()) }
+    // D7VK version (only meaningful when DDraw Wrapper == D7VK). Empty/unknown -> the bundled asset.
+    var selectedD7vk         by remember(d7vkVersions.value) {
+        val stored = config.get("d7vkVersion")
+        mutableStateOf(d7vkVersions.value.firstOrNull { it == stored } ?: DXVKConfigDialog.D7VK_BUNDLED)
+    }
     var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
     var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
 
@@ -2443,7 +2497,7 @@ internal fun DxvkConfigDialog(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     LabeledDropdown(
                         if (isVegas) "Vegas Selector" else stringResource(R.string.dxvk_version),
-                        allDxvkVersions.value, selectedDxvk, { selectedDxvk = it },
+                        filteredDxvk, selectedDxvk, { selectedDxvk = it },
                         modifier = Modifier.weight(1f)
                     )
                     ContentInstallGear(
@@ -2525,6 +2579,19 @@ internal fun DxvkConfigDialog(
                 LabeledDropdown("VKD3D Feature Level", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown("DDraw Wrapper", ddraEntries, selectedDdra, { selectedDdra = it })
+                // D7VK is a catalog-backed component: when it's the chosen DDraw wrapper, offer a
+                // version dropdown ("Bundled (default)" + any downloaded profiles) and a cloud button
+                // to fetch more — mirroring the DXVK/VKD3D version UI above.
+                if (StringUtils.parseIdentifier(selectedDdra) == "d7vk") {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LabeledDropdown(
+                            "D7VK Version", d7vkVersions.value, selectedD7vk, { selectedD7vk = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ContentInstallGear(onDownloadFile = onDownloadD7vk)
+                    }
+                }
                 if (isVegas) {
                     Spacer(Modifier.height(8.dp))
                     // ---- config source: two-source model (stock/custom), one ACTIVE ----
@@ -2824,6 +2891,7 @@ internal fun DxvkConfigDialog(
                 cfg.put("vkd3dVersion", selectedVkd3d)
                 cfg.put("vkd3dLevel", selectedFeatureLevel)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
+                cfg.put("d7vkVersion", selectedD7vk)
                 cfg.put("dxvkConfigFile", if (activeExists && activeFile != null) activeFile.absolutePath else activeConfigPath)
                 onConfirm(cfg.toString())
             }) { Text(stringResource(android.R.string.ok)) }

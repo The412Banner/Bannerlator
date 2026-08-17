@@ -16,6 +16,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // topjohnwu libsu (root shell for the power-user perf toggles) is jitpack-only.
+        maven { url 'https://jitpack.io' }
     }
 }
 

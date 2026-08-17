@@ -1,0 +1,1510 @@
+=== Wine Debug Log ===
+WINEDEBUG: +warn,+err,+fixme
+WINEPREFIX: /data/user/0/com.winlator.banner/files/imagefs/home/xuser/.wine
+Container ID: 1
+Shortcut: null (launching Wine File Manager)
+--- DX Wrapper State ---
+dxwrapper type: dxvk+vkd3d
+dxwrapperConfig (raw): version=2.7.1-0,framerate=0,async=0,asyncCache=0,vkd3dVersion=3.0.1-arm64ec-0,vkd3dLevel=12_0,ddrawrapper=none,csmt=3,gpuName=NVIDIA GeForce GTX 480,videoMemorySize=2048,strict_shader_math=1,OffscreenRenderingMode=fbo,renderer=gl,dxvkConfigFile=
+vkd3dVersion (parsed): 3.0.1-arm64ec-0
+dxvk version (parsed): 2.7.1-0
+ddrawrapper (parsed): none
+cached dxwrapper extra: dxvk-2.7.1-0;vkd3d-3.0.1-arm64ec-0;none
+expected full string: dxvk-2.7.1-0;vkd3d-3.0.1-arm64ec-0;none
+extraction will run: false
+--- End DX Wrapper State ---
+=== Wine output below ===
+_r_debug not found in ld.so
+esync: up and running.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+_r_debug not found in ld.so
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0094:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+_r_debug not found in ld.so
+00c8:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+00e4:err:nsi:poll_events bind failed, errno 13.
+0070:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+00f0:fixme:fsync:do_fsync futexes not supported on this platform.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+_r_debug not found in ld.so
+0104:fixme:fsync:do_fsync futexes not supported on this platform.
+0104:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+_r_debug not found in ld.so
+0114:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+0140:fixme:fsync:do_fsync futexes not supported on this platform.
+0148:fixme:fsync:do_fsync futexes not supported on this platform.
+0148:err:environ:init_peb starting L"C:\\windows\\wfm.exe" in experimental ARM64EC mode
+0140:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+0140:fixme:uiautomation:uia_get_providers_for_hwnd Override provider callback currently unimplemented.
+0140:fixme:uiautomation:default_uia_provider_callback Default ProviderType_NonClientArea provider unimplemented.
+0140:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+0140:fixme:uiautomation:base_hwnd_fragment_get_FragmentRoot 00000000006FD9E8, 000000000011FC08: stub!
+0140:fixme:uiautomation:base_hwnd_fragment_GetEmbeddedFragmentRoots 00000000006FD9E8, 000000000011FBF8: stub!
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000722100, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"SysListView32"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000722100, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+_r_debug not found in ld.so
+01c8:fixme:fsync:do_fsync futexes not supported on this platform.
+01c8:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaHorizon4.exe" in experimental ARM64EC mode
+01c8:fixme:vcruntime:__telemetry_main_invoke_trigger (0000006FFD740000)
+01c8:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+01c8:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+01c8:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000006FFD40B885, 52) stub
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {00000000-0000-0000-0000-000000000001}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {4e8f98a2-3dc0-4dd8-bb6f-7335068650a5}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {00000000-0000-0000-0000-000000000001}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {4e8f98a2-3dc0-4dd8-bb6f-7335068650a5}
+01c8:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000006FF385B8BE, 52) stub
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+01c8:fixme:heap:SetThreadSelectedCpuSets thread 00000000000000D4, cpu_set_ids 0000000000000000, count 0 stub.
+01c8:fixme:heap:SetThreadSelectedCpuSets thread 0000000000000100, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000011C, cpu_set_ids 0000000000000000, count 0 stub.
+01e4:fixme:kernelbase:AppPolicyGetThreadInitializationType FFFFFFFFFFFFFFFA, 000000000310FF80
+01d4:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 00000001465DA871, 45) stub
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000703040, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+01d4:fixme:mmdevapi:SAC_GetMaxDynamicObjectCount (00000000005FCF40)->(0000000002CCE070)
+warn:  CreateDXGIFactory2: Ignoring flags
+info:  Game: ForzaHorizon4.exe
+info:  DXVK: v2.7.1
+info:  Build: x86_64 clang 21.1.8
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2797cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Found device: Wrapper(Mali-G925-Immortalis MC12) (Wrapper driver 49.1.0)
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BA8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BAC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BB0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BBC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BC4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BC8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BCC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BD0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BD4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BD8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BDC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BE0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BE8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BEC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BF0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BF4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BF8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BFC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C00, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C04, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C0C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C10, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C14, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C18, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C9C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004CA4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C9C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCD410
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C9C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D30, cpu_set_ids 0000000000000000, count 0 stub.
+0284:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D38, cpu_set_ids 0000000000000000, count 0 stub.
+0284:fixme:mmdevapi:SAC_GetMaxDynamicObjectCount (00000000005FDE10)->(0000000009C8F6A0)
+0284:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D38, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D44, cpu_set_ids 0000000000000000, count 0 stub.
+0240:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D54, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:ver:GetFileVersionInfoSizeExW flags 0x2 ignored
+01d4:fixme:ver:GetFileVersionInfoExW flags 0x2 ignored
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D6C, cpu_set_ids 0000000000000000, count 0 stub.
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071E9E0, 10002, 000000000142F980: stub
+warn:  DxgiAdapter::QueryInterface: Unknown interface query
+warn:  f0db4c7f-fe5a-42a2-bd62-f2a6cf6fc83e
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[info]: create_bcn_compute_pipelines took 1145 ms
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005DDC, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005DF8, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005DFC, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E00, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E24, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E24, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E28, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E28, cpu_set_ids 0000000000000000, count 0 stub.
+warn:  DXGI: MakeWindowAssociation: Ignoring flags
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E40, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E44, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E48, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E4C, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E50, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E54, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E58, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E64, cpu_set_ids 0000000000000000, count 0 stub.
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EA8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EAC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EB4, cpu_set_ids 0000000000000000, count 0 stub.
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005ED0, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EB8, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EB8, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EB8, cpu_set_ids 0000000000000000, count 0 stub.
+02a4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EB8, cpu_set_ids 0000000000000000, count 0 stub.
+warn:  DxgiSwapChain::GetFrameStatistics: Frame statistics may be inaccurate
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005ECC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005ED4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EDC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EE0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EE0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008A44, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:bcrypt:BCryptGenRandom ignoring selected algorithm
+01d4:fixme:bcrypt:BCryptGenerateSymmetricKey ignoring object buffer
+01d4:fixme:winsock:WSAIoctl SIO_UDP_CONNRESET stub
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCE0E0
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCE0D0
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCE160
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008A8C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008A8C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCCEF0
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008AA0, cpu_set_ids 0000000000000000, count 0 stub.
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCF120
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0294:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 0000000009F8F508, 4): stub
+0294:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+0294:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 00000000097F7A90, 16) stub
+0394:fixme:nls:RtlGetThreadPreferredUILanguages 00000038, 000000002B6AF854, 0000000000000000 000000002B6AF850
+0394:fixme:nls:get_dummy_preferred_ui_language (0x38 0x409 000000002B6AF854 0000000000000000 000000002B6AF850) returning a dummy value (current locale)
+0394:fixme:nls:RtlGetThreadPreferredUILanguages 00000038, 000000002B6AF854, 000000002B6AF830 000000002B6AF850
+0394:fixme:nls:get_dummy_preferred_ui_language (0x38 0x409 000000002B6AF854 000000002B6AF830 000000002B6AF850) returning a dummy value (current locale)
+0394:fixme:winsock:WSALookupServiceBeginW (000000002B6AF490 0xff0 000000002B6AF508) Stub!
+0394:fixme:userenv:RegisterGPNotification 0000000000008D04 0
+0394:fixme:userenv:RegisterGPNotification 0000000000008D08 1
+0394:fixme:shcore:IsOS (OS_DOMAINMEMBER) What should we return here?
+03b0:fixme:wtsapi:WTSRegisterSessionNotification Stub 00000000000300DA 0x00000001
+0394:fixme:win:GetPointerDevices (000000002B6AF0A4 0000000000000000): partial stub
+0394:fixme:system:NtUserDisplayConfigGetDeviceInfo Unimplemented packet type 11.
+0394:fixme:combase:RoActivateInstance (0000000028723870, 000000002B6AEF00): semi-stub
+0394:fixme:combase:RoGetActivationFactory (L"Windows.UI.ViewManagement.UISettings", {00000035-0000-0000-c000-000000000046}, 000000002B6AECC8): semi-stub
+0394:fixme:ui:uisettings2_add_TextScaleFactorChanged iface 000000001C0511C8, handler 000000001C0511F0, cookie 0000006FFC261410 stub!
+0394:fixme:ui:uisettings2_get_TextScaleFactor iface 000000001C0511C8, value 000000002B6AEF10 stub!
+03b4:fixme:wpc:WindowsParentalControls_GetUserSettings ((null) 000000002C0AF8F0)
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008DFC, cpu_set_ids 0000000000000000, count 0 stub.
+03a0:fixme:netapi32:NetGetJoinInformation Semi-stub (null) 000000002B9AF840 000000002B9AF810
+_r_debug not found in ld.so
+03e4:fixme:fsync:do_fsync futexes not supported on this platform.
+03e4:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaWebHelper.exe" in experimental ARM64EC mode
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+03e4:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+03e4:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+03e4:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 000000000011FE98, 4): stub
+03e4:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+03e4:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000000000658E40, 16) stub
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.7.1
+info:  Build: x86_64 clang 21.1.8
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2797cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Found device: Wrapper(Mali-G925-Immortalis MC12) (Wrapper driver 49.1.0)
+03e4:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+03f4:fixme:thread:QueryThreadCycleTime (000000000000010C,00000000023CFD70): stub!
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.7.1
+info:  Build: x86_64 clang 21.1.8
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2797cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Found device: Wrapper(Mali-G925-Immortalis MC12) (Wrapper driver 49.1.0)
+warn:  D3D11DeviceFeatures: Some formats not supported for resource sharing
+info:  D3D11InternalCreateDevice: Maximum supported feature level: D3D_FEATURE_LEVEL_11_0
+info:  D3D11InternalCreateDevice: Using feature level D3D_FEATURE_LEVEL_11_0
+info:  Creating device:
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver   : Wrapper driver 49.1.0
+info:  Queues:
+info:    Graphics : (0, 0)
+info:    Transfer : (0, 0)
+info:    Sparse   : (4294967295, 0)
+info:  Memory:
+info:    Heap 0: 14.95 GiB (DEVICE_LOCAL)
+info:      Type  0: DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT
+info:      Type  1: DEVICE_LOCAL | HOST_VISIBLE | HOST_CACHED
+info:      Type  2: DEVICE_LOCAL | LAZILY_ALLOCATED
+info:    Heap 1: 100 MiB (DEVICE_LOCAL)
+info:      Type  3: DEVICE_LOCAL | PROTECTED
+info:  Enabled extensions:
+info:    VK_EXT_conservative_rasterization
+info:    VK_EXT_custom_border_color
+info:    VK_EXT_depth_clip_enable
+info:    VK_EXT_extended_dynamic_state3
+info:    VK_EXT_line_rasterization
+info:    VK_EXT_robustness2
+info:    VK_EXT_swapchain_maintenance1
+info:    VK_EXT_transform_feedback
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_external_memory_win32
+info:    VK_KHR_external_semaphore_win32
+info:    VK_KHR_load_store_op_none
+info:    VK_KHR_maintenance5
+info:    VK_KHR_maintenance6
+info:    VK_KHR_pipeline_library
+info:    VK_KHR_present_id
+info:    VK_KHR_present_wait
+info:    VK_KHR_swapchain
+info:    VK_KHR_swapchain_mutable_format
+info:    VK_KHR_win32_keyed_mutex
+info:  Enabled features:
+info:    depthBiasClamp                 : 1
+info:    depthBounds                    : 0
+info:    depthClamp                     : 1
+info:    drawIndirectFirstInstance      : 1
+info:    dualSrcBlend                   : 1
+info:    fillModeNonSolid               : 1
+info:    fragmentStoresAndAtomics       : 1
+info:    fullDrawIndexUint32            : 1
+info:    geometryShader                 : 1
+info:    imageCubeArray                 : 1
+info:    independentBlend               : 1
+info:    logicOp                        : 1
+info:    multiDrawIndirect              : 1
+info:    multiViewport                  : 1
+info:    occlusionQueryPrecise          : 1
+info:    pipelineStatisticsQuery        : 0
+info:    robustBufferAccess             : 1
+info:    sampleRateShading              : 1
+info:    samplerAnisotropy              : 1
+info:    shaderClipDistance             : 1
+info:    shaderCullDistance             : 1
+info:    shaderFloat64                  : 0
+info:    shaderImageGatherExtended      : 1
+info:    shaderInt16                    : 1
+info:    shaderInt64                    : 1
+info:    shaderSampledImageArrayDynamicIndexing : 1
+info:    sparseBinding                  : 0
+info:    sparseResidencyBuffer          : 0
+info:    sparseResidencyImage2D         : 0
+info:    sparseResidencyImage3D         : 0
+info:    sparseResidency2Samples        : 0
+info:    sparseResidency4Samples        : 0
+info:    sparseResidency8Samples        : 0
+info:    sparseResidency16Samples       : 0
+info:    sparseResidencyAliased         : 0
+info:    shaderResourceResidency        : 0
+info:    shaderResourceMinLod           : 0
+info:    tessellationShader             : 1
+info:    textureCompressionBC           : 1
+info:    variableMultisampleRate        : 0
+info:    vertexPipelineStoresAndAtomics : 0
+info:    wideLines                      : 1
+info:    shaderDrawParameters           : 1
+info:    storagePushConstant16          : 1
+info:    bufferDeviceAddress            : 1
+info:    descriptorIndexing             : 1
+info:    descriptorBindingSampledImageUpdateAfterBind : 1
+info:    descriptorBindingUpdateUnusedWhilePending : 1
+info:    descriptorBindingPartiallyBound : 1
+info:    drawIndirectCount              : 1
+info:    hostQueryReset                 : 1
+info:    runtimeDescriptorArray         : 1
+info:    samplerFilterMinmax            : 1
+info:    samplerMirrorClampToEdge       : 1
+info:    shaderInt8                     : 1
+info:    shaderOutputViewportIndex      : 1
+info:    shaderOutputLayer              : 1
+info:    timelineSemaphore              : 1
+info:    uniformBufferStandardLayout    : 1
+info:    vulkanMemoryModel              : 1
+info:    dynamicRendering               : 1
+info:    maintenance4                   : 1
+info:    robustImageAccess              : 1
+info:    pipelineCreationCacheControl   : 1
+info:    shaderDemoteToHelperInvocation : 1
+info:    shaderZeroInitializeWorkgroupMemory : 1
+info:    synchronization2               : 1
+info:  VK_EXT_attachment_feedback_loop_layout:
+info:    attachmentFeedbackLoopLayout   : 0
+info:  VK_EXT_conservative_rasterization:
+info:    extConservativeRasterization   : 1
+info:  VK_EXT_custom_border_color:
+info:    customBorderColors             : 1
+info:    customBorderColorWithoutFormat : 1
+info:  VK_EXT_depth_clip_enable:
+info:    depthClipEnable                : 1
+info:  VK_EXT_depth_bias_control:
+info:    depthBiasControl               : 0
+info:    leastRepresentableValueForceUnormRepresentation : 0
+info:    floatRepresentation            : 0
+info:    depthBiasExact                 : 0
+info:  VK_EXT_descriptor_buffer:
+info:    descriptorBuffer               : 0
+info:  VK_EXT_extended_dynamic_state3:
+info:    extendedDynamicState3AlphaToCoverageEnable : 0
+info:    extendedDynamicState3DepthClipEnable : 1
+info:    extendedDynamicState3RasterizationSamples : 0
+info:    extendedDynamicState3SampleMask : 1
+info:    extendedDynamicState3LineRasterizationMode : 1
+info:  VK_EXT_fragment_shader_interlock:
+info:    fragmentShaderSampleInterlock  : 0
+info:    fragmentShaderPixelInterlock   : 0
+info:  VK_EXT_full_screen_exclusive:
+info:    extFullScreenExclusive         : 0
+info:  VK_EXT_graphics_pipeline_library:
+info:    graphicsPipelineLibrary        : 0
+info:  VK_EXT_hdr_metadata:
+info:    extHdrMetadata                 : 0
+info:  VK_EXT_line_rasterization:
+info:    rectangularLines               : 1
+info:    smoothLines                    : 0
+info:  VK_EXT_memory_budget:
+info:    extMemoryBudget                : 0
+info:  VK_EXT_memory_priority:
+info:    memoryPriority                 : 0
+info:  VK_EXT_multi_draw:
+info:    multiDraw                      : 0
+info:  VK_EXT_non_seamless_cube_map:
+info:    nonSeamlessCubeMap             : 0
+info:  VK_EXT_pageable_device_local_memory:
+info:    pageableDeviceLocalMemory      : 0
+info:  VK_EXT_robustness2:
+info:    robustBufferAccess2            : 1
+info:    robustImageAccess2             : 0
+info:    nullDescriptor                 : 1
+info:  VK_EXT_shader_module_identifier:
+info:    shaderModuleIdentifier         : 0
+info:  VK_EXT_shader_stencil_export:
+info:    extShaderStencilExport         : 0
+info:  VK_EXT_swapchain_colorspace:
+info:    extSwapchainColorSpace         : 0
+info:  VK_EXT_swapchain_maintenance1:
+info:    swapchainMaintenance1          : 1
+info:  VK_EXT_transform_feedback:
+info:    transformFeedback              : 1
+info:    geometryStreams                : 0
+info:  VK_EXT_vertex_attribute_divisor:
+info:    vertexAttributeInstanceRateDivisor : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_external_memory_win32:
+info:    khrExternalMemoryWin32         : 1
+info:  VK_KHR_external_semaphore_win32:
+info:    khrExternalSemaphoreWin32      : 1
+info:  VK_KHR_load_store_op_none:
+info:    khrLoadStoreOpNone             : 1
+info:  VK_KHR_maintenance5:
+info:    maintenance5                   : 1
+info:  VK_KHR_maintenance6:
+info:    maintenance6                   : 1
+info:  VK_KHR_maintenance7:
+info:    maintenance7                   : 0
+info:  VK_KHR_pipeline_library:
+info:    khrPipelineLibrary             : 1
+info:  VK_KHR_present_id:
+info:    presentId                      : 1
+info:  VK_KHR_present_wait:
+info:    presentWait                    : 1
+info:  VK_KHR_swapchain:
+info:    khrSwapchain                   : 1
+info:  VK_KHR_swapchain_mutable_format:
+info:    khrSwapchainMutableFormat      : 1
+info:  VK_KHR_win32_keyed_mutex:
+info:    khrWin32KeyedMutex             : 1
+info:  VK_NV_descriptor_pool_overallocation:
+info:    descriptorPoolOverallocation   : 0
+info:  VK_NV_low_latency2:
+info:    nvLowLatency2                  : 0
+info:  VK_NV_raw_access_chains:
+info:    shaderRawAccessChains          : 0
+info:  VK_NVX_binary_import:
+info:    nvxBinaryImport                : 0
+info:  VK_NVX_image_view_handle:
+info:    nvxImageViewHandle             : 0
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[info]: create_bcn_compute_pipelines took 1036 ms
+info:  Memory type mask for buffer resources: 0x3, usage: 0x219ff
+info:  DXVK: Graphics pipeline libraries not supported
+info:  DXGI: VK_FORMAT_A8_UNORM_KHR -> VK_FORMAT_R8_UNORM
+03e4:fixme:combase:RoGetActivationFactory (L"Windows.Foundation.Metadata.ApiInformation", {997439fe-f681-4a11-b416-c13a47e8ba36}, 000000000011E3B8): semi-stub
+03e4:fixme:wintypes:api_information_statics_IsApiContractPresentByMajor iface 0000006FF0D82110, contract_name L"Windows.Foundation.UniversalApiContract", major_version 6, value 000000000011E3C7 semi-stub.
+03e4:fixme:dcomp:DCompositionCreateDevice2 00000000006BC1D0, {5f4633fe-1e08-4cb8-8c75-ce24333f5602}, 000000000011EFC0.
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+03ac:err:esync:__esync_wait_objects Polling on fd 6271 returned 0x20.
+warn:  D3D11VideoDevice::GetVideoDecoderProfileCount: Stub
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+03c8:fixme:sync:NtSetInformationJobObject stub: 0x911c 4 0x2c5af318 4
+_r_debug not found in ld.so
+0428:fixme:fsync:do_fsync futexes not supported on this platform.
+0428:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaWebHelper.exe" in experimental ARM64EC mode
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0428:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+0428:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+0428:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 000000000011FE98, 4): stub
+0428:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+0428:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 00000000006566A0, 16) stub
+043c:fixme:winsock:WSALookupServiceBeginW (00000000026FE400 0xff0 00000000026FE478) Stub!
+043c:fixme:wlanapi:WlanEnumInterfaces (0000000000000001, 0000000000000000, 00000000026FD858) semi-stub
+03ac:err:esync:__esync_wait_objects Polling on fd 9570 returned 0x20.
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+[info]: create_bcn_compute_pipelines took 7886 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Wrapper(Mali-G925-Immortalis MC12)) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+MESA: info: threaded context 4151744736 created
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+MESA: info: threaded context 4151744736 created
+MESA: info: threaded context 4151744736 created
+MESA: info: threaded context 4151744736 created
+MESA: info: threaded context 4151744736 created
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+MESA: info: threaded context 4151744736 created
+MESA: info: threaded context 4151744736 created
+MESA: info: threaded context 4151744736 created
+Mesa: warning: Window 100663298 has no colormap!
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000009AF4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000009AF4, cpu_set_ids 0000000000000000, count 0 stub.
+038c:err:sync:RtlpWaitForCriticalSection section 00000000006788E0 "?" wait timed out in thread 038c, blocked by 0000, retrying (60 sec)
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0278:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0434:err:virtual:virtual_setup_exception nested exception on signal stack addr 0x6e8a5747f4 stack 0x7ff9e9e0
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A4C0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A4C0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A4D8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A4D8, cpu_set_ids 0000000000000000, count 0 stub.
+0278:fixme:file:CreateFile2 Ignoring extended parameters 000000000815F9F0
+0278:fixme:file:CreateFile2 Ignoring extended parameters 000000000815F9F0
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A4D8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCED10
+_r_debug not found in ld.so
+04a0:fixme:fsync:do_fsync futexes not supported on this platform.
+04a0:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaWebHelper.exe" in experimental ARM64EC mode
+04a0:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+04a0:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+04a0:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 000000000011FE98, 4): stub
+04a0:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+04a0:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 000000000065A210, 16) stub
+04a0:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.7.1
+info:  Build: x86_64 clang 21.1.8
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2797cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Found device: Wrapper(Mali-G925-Immortalis MC12) (Wrapper driver 49.1.0)
+warn:  D3D11DeviceFeatures: Some formats not supported for resource sharing
+info:  D3D11InternalCreateDevice: Maximum supported feature level: D3D_FEATURE_LEVEL_11_0
+info:  D3D11InternalCreateDevice: Using feature level D3D_FEATURE_LEVEL_11_0
+info:  Creating device:
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver   : Wrapper driver 49.1.0
+info:  Queues:
+info:    Graphics : (0, 0)
+info:    Transfer : (0, 0)
+info:    Sparse   : (4294967295, 0)
+info:  Memory:
+info:    Heap 0: 14.95 GiB (DEVICE_LOCAL)
+info:      Type  0: DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT
+info:      Type  1: DEVICE_LOCAL | HOST_VISIBLE | HOST_CACHED
+info:      Type  2: DEVICE_LOCAL | LAZILY_ALLOCATED
+info:    Heap 1: 100 MiB (DEVICE_LOCAL)
+info:      Type  3: DEVICE_LOCAL | PROTECTED
+info:  Enabled extensions:
+info:    VK_EXT_conservative_rasterization
+info:    VK_EXT_custom_border_color
+info:    VK_EXT_depth_clip_enable
+info:    VK_EXT_extended_dynamic_state3
+info:    VK_EXT_line_rasterization
+info:    VK_EXT_robustness2
+info:    VK_EXT_swapchain_maintenance1
+info:    VK_EXT_transform_feedback
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_external_memory_win32
+info:    VK_KHR_external_semaphore_win32
+info:    VK_KHR_load_store_op_none
+info:    VK_KHR_maintenance5
+info:    VK_KHR_maintenance6
+info:    VK_KHR_pipeline_library
+info:    VK_KHR_present_id
+info:    VK_KHR_present_wait
+info:    VK_KHR_swapchain
+info:    VK_KHR_swapchain_mutable_format
+info:    VK_KHR_win32_keyed_mutex
+info:  Enabled features:
+info:    depthBiasClamp                 : 1
+info:    depthBounds                    : 0
+info:    depthClamp                     : 1
+info:    drawIndirectFirstInstance      : 1
+info:    dualSrcBlend                   : 1
+info:    fillModeNonSolid               : 1
+info:    fragmentStoresAndAtomics       : 1
+info:    fullDrawIndexUint32            : 1
+info:    geometryShader                 : 1
+info:    imageCubeArray                 : 1
+info:    independentBlend               : 1
+info:    logicOp                        : 1
+info:    multiDrawIndirect              : 1
+info:    multiViewport                  : 1
+info:    occlusionQueryPrecise          : 1
+info:    pipelineStatisticsQuery        : 0
+info:    robustBufferAccess             : 1
+info:    sampleRateShading              : 1
+info:    samplerAnisotropy              : 1
+info:    shaderClipDistance             : 1
+info:    shaderCullDistance             : 1
+info:    shaderFloat64                  : 0
+info:    shaderImageGatherExtended      : 1
+info:    shaderInt16                    : 1
+info:    shaderInt64                    : 1
+info:    shaderSampledImageArrayDynamicIndexing : 1
+info:    sparseBinding                  : 0
+info:    sparseResidencyBuffer          : 0
+info:    sparseResidencyImage2D         : 0
+info:    sparseResidencyImage3D         : 0
+info:    sparseResidency2Samples        : 0
+info:    sparseResidency4Samples        : 0
+info:    sparseResidency8Samples        : 0
+info:    sparseResidency16Samples       : 0
+info:    sparseResidencyAliased         : 0
+info:    shaderResourceResidency        : 0
+info:    shaderResourceMinLod           : 0
+info:    tessellationShader             : 1
+info:    textureCompressionBC           : 1
+info:    variableMultisampleRate        : 0
+info:    vertexPipelineStoresAndAtomics : 0
+info:    wideLines                      : 1
+info:    shaderDrawParameters           : 1
+info:    storagePushConstant16          : 1
+info:    bufferDeviceAddress            : 1
+info:    descriptorIndexing             : 1
+info:    descriptorBindingSampledImageUpdateAfterBind : 1
+info:    descriptorBindingUpdateUnusedWhilePending : 1
+info:    descriptorBindingPartiallyBound : 1
+info:    drawIndirectCount              : 1
+info:    hostQueryReset                 : 1
+info:    runtimeDescriptorArray         : 1
+info:    samplerFilterMinmax            : 1
+info:    samplerMirrorClampToEdge       : 1
+info:    shaderInt8                     : 1
+info:    shaderOutputViewportIndex      : 1
+info:    shaderOutputLayer              : 1
+info:    timelineSemaphore              : 1
+info:    uniformBufferStandardLayout    : 1
+info:    vulkanMemoryModel              : 1
+info:    dynamicRendering               : 1
+info:    maintenance4                   : 1
+info:    robustImageAccess              : 1
+info:    pipelineCreationCacheControl   : 1
+info:    shaderDemoteToHelperInvocation : 1
+info:    shaderZeroInitializeWorkgroupMemory : 1
+info:    synchronization2               : 1
+info:  VK_EXT_attachment_feedback_loop_layout:
+info:    attachmentFeedbackLoopLayout   : 0
+info:  VK_EXT_conservative_rasterization:
+info:    extConservativeRasterization   : 1
+info:  VK_EXT_custom_border_color:
+info:    customBorderColors             : 1
+info:    customBorderColorWithoutFormat : 1
+info:  VK_EXT_depth_clip_enable:
+info:    depthClipEnable                : 1
+info:  VK_EXT_depth_bias_control:
+info:    depthBiasControl               : 0
+info:    leastRepresentableValueForceUnormRepresentation : 0
+info:    floatRepresentation            : 0
+info:    depthBiasExact                 : 0
+info:  VK_EXT_descriptor_buffer:
+info:    descriptorBuffer               : 0
+info:  VK_EXT_extended_dynamic_state3:
+info:    extendedDynamicState3AlphaToCoverageEnable : 0
+info:    extendedDynamicState3DepthClipEnable : 1
+info:    extendedDynamicState3RasterizationSamples : 0
+info:    extendedDynamicState3SampleMask : 1
+info:    extendedDynamicState3LineRasterizationMode : 1
+info:  VK_EXT_fragment_shader_interlock:
+info:    fragmentShaderSampleInterlock  : 0
+info:    fragmentShaderPixelInterlock   : 0
+info:  VK_EXT_full_screen_exclusive:
+info:    extFullScreenExclusive         : 0
+info:  VK_EXT_graphics_pipeline_library:
+info:    graphicsPipelineLibrary        : 0
+info:  VK_EXT_hdr_metadata:
+info:    extHdrMetadata                 : 0
+info:  VK_EXT_line_rasterization:
+info:    rectangularLines               : 1
+info:    smoothLines                    : 0
+info:  VK_EXT_memory_budget:
+info:    extMemoryBudget                : 0
+info:  VK_EXT_memory_priority:
+info:    memoryPriority                 : 0
+info:  VK_EXT_multi_draw:
+info:    multiDraw                      : 0
+info:  VK_EXT_non_seamless_cube_map:
+info:    nonSeamlessCubeMap             : 0
+info:  VK_EXT_pageable_device_local_memory:
+info:    pageableDeviceLocalMemory      : 0
+info:  VK_EXT_robustness2:
+info:    robustBufferAccess2            : 1
+info:    robustImageAccess2             : 0
+info:    nullDescriptor                 : 1
+info:  VK_EXT_shader_module_identifier:
+info:    shaderModuleIdentifier         : 0
+info:  VK_EXT_shader_stencil_export:
+info:    extShaderStencilExport         : 0
+info:  VK_EXT_swapchain_colorspace:
+info:    extSwapchainColorSpace         : 0
+info:  VK_EXT_swapchain_maintenance1:
+info:    swapchainMaintenance1          : 1
+info:  VK_EXT_transform_feedback:
+info:    transformFeedback              : 1
+info:    geometryStreams                : 0
+info:  VK_EXT_vertex_attribute_divisor:
+info:    vertexAttributeInstanceRateDivisor : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_external_memory_win32:
+info:    khrExternalMemoryWin32         : 1
+info:  VK_KHR_external_semaphore_win32:
+info:    khrExternalSemaphoreWin32      : 1
+info:  VK_KHR_load_store_op_none:
+info:    khrLoadStoreOpNone             : 1
+info:  VK_KHR_maintenance5:
+info:    maintenance5                   : 1
+info:  VK_KHR_maintenance6:
+info:    maintenance6                   : 1
+info:  VK_KHR_maintenance7:
+info:    maintenance7                   : 0
+info:  VK_KHR_pipeline_library:
+info:    khrPipelineLibrary             : 1
+info:  VK_KHR_present_id:
+info:    presentId                      : 1
+info:  VK_KHR_present_wait:
+info:    presentWait                    : 1
+info:  VK_KHR_swapchain:
+info:    khrSwapchain                   : 1
+info:  VK_KHR_swapchain_mutable_format:
+info:    khrSwapchainMutableFormat      : 1
+info:  VK_KHR_win32_keyed_mutex:
+info:    khrWin32KeyedMutex             : 1
+info:  VK_NV_descriptor_pool_overallocation:
+info:    descriptorPoolOverallocation   : 0
+info:  VK_NV_low_latency2:
+info:    nvLowLatency2                  : 0
+info:  VK_NV_raw_access_chains:
+info:    shaderRawAccessChains          : 0
+info:  VK_NVX_binary_import:
+info:    nvxBinaryImport                : 0
+info:  VK_NVX_image_view_handle:
+info:    nvxImageViewHandle             : 0
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[info]: create_bcn_compute_pipelines took 1002 ms
+info:  Memory type mask for buffer resources: 0x3, usage: 0x219ff
+info:  DXVK: Graphics pipeline libraries not supported
+info:  DXGI: VK_FORMAT_A8_UNORM_KHR -> VK_FORMAT_R8_UNORM
+03ac:err:esync:__esync_wait_objects Polling on fd 10850 returned 0x20.
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.7.1
+info:  Build: x86_64 clang 21.1.8
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2797cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Found device: Wrapper(Mali-G925-Immortalis MC12) (Wrapper driver 49.1.0)
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[info]: create_bcn_compute_pipelines took 993 ms
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.7.1
+info:  Build: x86_64 clang 21.1.8
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2797cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+info:  Found device: Wrapper(Mali-G925-Immortalis MC12) (Wrapper driver 49.1.0)
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[info]: create_bcn_compute_pipelines took 950 ms
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A4D8, cpu_set_ids 0000000000000000, count 0 stub.
+03a0:fixme:userenv:UnregisterGPNotification 0000000000008D04
+03ac:err:esync:__esync_wait_objects Polling on fd 9307 returned 0x20.
+03a0:fixme:userenv:UnregisterGPNotification 0000000000008D08
+03ac:err:esync:__esync_wait_objects Polling on fd 9352 returned 0x20.
+0444:err:esync:__esync_wait_objects Polling on fd 86 returned 0x20.
+0444:err:esync:__esync_wait_objects Polling on fd 98 returned 0x20.
+0418:err:esync:__esync_wait_objects Polling on fd 132 returned 0x20.
+0418:err:esync:__esync_wait_objects Polling on fd 245 returned 0x20.
+0394:fixme:wtsapi:WTSUnRegisterSessionNotification Stub 00000000000300DA
+03ac:err:esync:__esync_wait_objects Polling on fd 9287 returned 0x20.
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 0000000002CCD510
+039c:err:virtual:virtual_setup_exception nested exception on signal stack addr 0x7b596e87f4 stack 0x1812e9e0
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+026c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+02a4:err:sync:RtlpWaitForCriticalSection section 0000000000677EE0 "?" wait timed out in thread 02a4, blocked by 0000, retrying (60 sec)
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0270:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0264:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+02e0:err:msvcrt:_wassert (L"!status && \"vkCreateShaderModule\"",L"dlls/winevulkan/loader_thunks.c",3520)
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071E9E0, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"#32770"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0284:err:sync:RtlLeaveCriticalSection section 00000001809D7D60 "?" is not acquired
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+02e0:fixme:vcruntime:__telemetry_main_return_trigger (0000006FFD740000)
+libc++abi: terminating
+02e0:err:seh:call_seh_handlers invalid frame 1079ff390 (0000000013BB2000-0000000013CB0000)
+02e0:err:seh:NtRaiseException Exception frame is not in stack limits => unable to dispatch exception.
+02b0:err:sync:RtlLeaveCriticalSection section 00000001809D7D60 "?" is not acquired
+02b0:err:sync:RtlLeaveCriticalSection section 00000001809D7D60 "?" is not acquired

@@ -1,0 +1,38 @@
+{
+  "id": "2026-08-02T15-25-35-41759b",
+  "created": "2026-08-02T15:25:35.713Z",
+  "ip_hash": "t9StMKE+aW",
+  "fields": {
+    "reporter_name": "Omar",
+    "device_model": "Xiaomi 14t",
+    "soc": "Dimensity 8300 Ultra",
+    "gpu": "Mali-G615 MC6",
+    "android": "Android 16",
+    "ram": "12 GB",
+    "app_version": "ben-dxvk-standard  Bannerlator-1-0-mall-",
+    "install_source": "إصدار GitHub",
+    "game_name": "Forza Horizon 4",
+    "steam_appid": "1293830",
+    "store": "بخار",
+    "exe": "ForzaHorizon4.exe",
+    "symptom": "يتجمد / يعلق",
+    "when": "لا يتم تشغيله على الإطلاق",
+    "graphics_driver": "Wrapper Driver 44.1.0 (mali-bcn)",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1-sarek",
+    "proton": "Proton 9.0",
+    "box64": "Performance / Compatibility",
+    "resolution": "1280x720",
+    "framegen": "Disabled / None",
+    "repro": "1. Launch Forza Horizon 4 using Bannerlator (Mali Wrapper 44.1.0).\n2. The game starts initiating Vulkan/DXVK/VKD3D pipeline.\n3. App crashes immediately and drops back to the emulator main interface.",
+    "tried": "Tried changing DX Wrapper between DXVK 2.4.1 (VKD3D) and DXVK 1.11.1-sarek (DX11). Both fail. Logs show crash at VK_EXT_device_fault enabling and Null Pointer page fault on Heap[1] (100MB memory limit issue)."
+  },
+  "logs": [
+    {
+      "name": "wine_debug.log"
+    },
+    {
+      "name": "D3D11_x64_d3d11.log"
+    }
+  ]
+}

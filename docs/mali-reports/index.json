@@ -1,0 +1,396 @@
+[
+  {
+    "id": "2026-08-15T12-38-00-9521ad",
+    "created": "2026-08-15T12:38:00.759Z",
+    "reporter": "",
+    "device": "Oppo reno2 f",
+    "gpu": "Mail-715",
+    "game": "Grand theft Auto v",
+    "symptom": "Black screen (no image)",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-13T22-48-32-ea612e",
+    "created": "2026-08-13T22:48:32.894Z",
+    "reporter": "Oscar",
+    "device": "S24 ultra",
+    "gpu": "Adreno 750",
+    "game": "Todos los juegos",
+    "symptom": "Otro",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-13T12-45-26-770e94",
+    "created": "2026-08-13T12:45:26.336Z",
+    "reporter": "",
+    "device": "Redmi Pad 2",
+    "gpu": "Mali G57 MC2",
+    "game": "GTA IV",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-13T05-50-55-ffe524",
+    "created": "2026-08-13T05:50:55.663Z",
+    "reporter": "Rayhan",
+    "device": "Iqoo Z10x",
+    "gpu": "Mali-G615 MC2",
+    "game": "Pro Evolution Soccer - 2017",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-12T11-49-37-4097a6",
+    "created": "2026-08-12T11:49:37.637Z",
+    "reporter": "Inigo",
+    "device": "Poco X7 Pro",
+    "gpu": "Mali-G720 MC7",
+    "game": "Project Cars 1 GOTY (Game Of The Year)",
+    "symptom": "Freezes / hangs",
+    "logs": 2
+  },
+  {
+    "id": "2026-08-10T22-33-57-72de83",
+    "created": "2026-08-10T22:33:57.214Z",
+    "reporter": "Dr. Waleed Arain",
+    "device": "Motorola Edge Plus 2020",
+    "gpu": "Adreno 650",
+    "game": "A plague Tale: Innocence",
+    "symptom": "Crashes / closes to home",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-08T17-33-36-13900e",
+    "created": "2026-08-08T17:33:36.184Z",
+    "reporter": "",
+    "device": "Poco X8 Pro",
+    "gpu": "Mali-G720 MC8",
+    "game": "Re2R",
+    "symptom": "Tela preta (sem imagem)",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-08T17-00-15-be74e5",
+    "created": "2026-08-08T17:00:15.020Z",
+    "reporter": "Krabkush",
+    "device": "Pixel 9 pro 256gb",
+    "gpu": "Mali-g715",
+    "game": "Fallen aces",
+    "symptom": "Other",
+    "logs": 5
+  },
+  {
+    "id": "2026-08-08T05-28-30-2d5cef",
+    "created": "2026-08-08T05:28:30.622Z",
+    "reporter": "josh",
+    "device": "poco f5 pro",
+    "gpu": "adreno 730",
+    "game": "nba 2k16",
+    "symptom": "Other",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-08T00-38-07-a4ead5",
+    "created": "2026-08-08T00:38:07.202Z",
+    "reporter": "split",
+    "device": "vivo x200s",
+    "gpu": "Mali-G925-Immortalis MC12",
+    "game": "Forza Horizon 4",
+    "symptom": "图形故障(损坏、闪烁、缺少纹理)",
+    "logs": 3
+  },
+  {
+    "id": "2026-08-07T14-41-10-021a5c",
+    "created": "2026-08-07T14:41:10.621Z",
+    "reporter": "Wawa",
+    "device": "17t pro",
+    "gpu": "Mali g1 ultra",
+    "game": "Dishonored",
+    "symptom": "Crashes / closes to home",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-06T03-29-24-7e68f0",
+    "created": "2026-08-06T03:29:24.870Z",
+    "reporter": "Split",
+    "device": "vivo x200s",
+    "gpu": "Mali-G925-Immortalis MC12",
+    "game": "Forza Horizon 4",
+    "symptom": "图形故障(损坏、闪烁、缺少纹理)",
+    "logs": 5
+  },
+  {
+    "id": "2026-08-05T14-52-07-cd04fe",
+    "created": "2026-08-05T14:52:07.264Z",
+    "reporter": "Alex",
+    "device": "Motorola Moto G72",
+    "gpu": "Mali-G57 MC2",
+    "game": "Factorio",
+    "symptom": "Crashes / closes to home",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-05T11-01-56-77ad96",
+    "created": "2026-08-05T11:01:56.661Z",
+    "reporter": "kLow",
+    "device": "Redmi Turbo 5 max",
+    "gpu": "Mali-G925-Immortalis-MC12",
+    "game": "Hellblade Senua's Sacrifice",
+    "symptom": "Freezes / hangs",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-05T00-05-49-501296",
+    "created": "2026-08-05T00:05:49.843Z",
+    "reporter": "Ipaw",
+    "device": "Samsung Galaxy M22",
+    "gpu": "Mali-G52 MC2",
+    "game": "Pro Evolution Soccer 2013",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-04T18-12-08-a9e547",
+    "created": "2026-08-04T18:12:08.601Z",
+    "reporter": "Fasil",
+    "device": "Oppo Find X9 Pro",
+    "gpu": "Mali-G1-Ultra MC12",
+    "game": "SP Football Life 2026",
+    "symptom": "Crashes / closes to home",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-04T02-41-38-b92741",
+    "created": "2026-08-04T02:41:38.108Z",
+    "reporter": "Cran",
+    "device": "Poco x8 pro",
+    "gpu": "Mali-G720 MC8",
+    "game": "Persona 5",
+    "symptom": "Black screen (no image)",
+    "logs": 1
+  },
+  {
+    "id": "2026-08-03T10-38-21-e22b52",
+    "created": "2026-08-03T10:38:21.743Z",
+    "reporter": "Silvaryll",
+    "device": "poco x8pro",
+    "gpu": "Mali-G720 MC8",
+    "game": "Persona 5 royal",
+    "symptom": "Crashes / closes to home",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-03T02-17-44-9f1241",
+    "created": "2026-08-03T02:17:44.411Z",
+    "reporter": "Serg_str",
+    "device": "Tecno pova LJ7",
+    "gpu": "Mali-G615 MC2",
+    "game": "Hollow knight",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 4
+  },
+  {
+    "id": "2026-08-02T15-25-35-41759b",
+    "created": "2026-08-02T15:25:35.713Z",
+    "reporter": "Omar",
+    "device": "Xiaomi 14t",
+    "gpu": "Mali-G615 MC6",
+    "game": "Forza Horizon 4",
+    "symptom": "يتجمد / يعلق",
+    "logs": 2
+  },
+  {
+    "id": "2026-08-02T13-57-37-27af72",
+    "created": "2026-08-02T13:57:37.748Z",
+    "reporter": "",
+    "device": "SM-A376B",
+    "gpu": "Electronics",
+    "game": "GtA v",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-02T13-34-24-841d6a",
+    "created": "2026-08-02T13:34:24.220Z",
+    "reporter": "",
+    "device": "A36 G5",
+    "gpu": "Samsung Xclipse 530",
+    "game": "Gta v",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-01T14-32-35-7c2073",
+    "created": "2026-08-01T14:32:35.499Z",
+    "reporter": "",
+    "device": "iPhone 7 plus",
+    "gpu": "Gpu",
+    "game": "Gustavo",
+    "symptom": "Crashes / closes to home",
+    "logs": 0
+  },
+  {
+    "id": "2026-08-01T07-15-20-91dc1f",
+    "created": "2026-08-01T07:15:20.079Z",
+    "reporter": "Jeysi",
+    "device": "Poco x8 pro",
+    "gpu": "Mali-G720 MC8",
+    "game": "Gta V",
+    "symptom": "Freezes / hangs",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-31T23-34-38-270942",
+    "created": "2026-07-31T23:34:38.298Z",
+    "reporter": "",
+    "device": "Poco x8pro",
+    "gpu": "Mali-G720 mc8",
+    "game": "Pes 201u",
+    "symptom": "Crashes / closes to home",
+    "logs": 1
+  },
+  {
+    "id": "2026-07-31T17-23-09-0701b3",
+    "created": "2026-07-31T17:23:09.350Z",
+    "reporter": "",
+    "device": "Itel p55 plus",
+    "gpu": "Mali G57",
+    "game": "Pes2017",
+    "symptom": "Other",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-30T12-30-31-8c0a46",
+    "created": "2026-07-30T12:30:31.774Z",
+    "reporter": "Kong",
+    "device": "VIVO Y18",
+    "gpu": "MALI G52 MC2",
+    "game": "PES2013",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-29T21-54-13-b7021c",
+    "created": "2026-07-29T21:54:13.878Z",
+    "reporter": "",
+    "device": "Techno pop 9",
+    "gpu": "Mali g710",
+    "game": "All",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-29T06-26-16-23041b",
+    "created": "2026-07-29T06:26:16.052Z",
+    "reporter": "Unknown",
+    "device": "Infinix hot 30i",
+    "gpu": "G37",
+    "game": "Eruo simulator",
+    "symptom": "Other",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-29T03-36-51-a8e6ad",
+    "created": "2026-07-29T03:36:51.304Z",
+    "reporter": "Elc",
+    "device": "Samsung Galaxy A15",
+    "gpu": "Mali g57 mc2",
+    "game": "\"Many Titles\"",
+    "symptom": "Other",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-28T16-49-33-1e5fd5",
+    "created": "2026-07-28T16:49:33.271Z",
+    "reporter": "Omar",
+    "device": "Xiaomi 14t",
+    "gpu": "Mali g615 mc6",
+    "game": "Forza horizon 4",
+    "symptom": "شاشة سوداء (بدون صورة)",
+    "logs": 1
+  },
+  {
+    "id": "2026-07-28T13-25-40-f843c1",
+    "created": "2026-07-28T13:25:40.245Z",
+    "reporter": "Tharusha",
+    "device": "POCO X7 pro",
+    "gpu": "Mali G720 MC7",
+    "game": "COJ Gunslinger, Darkness 2, Shadow warrior 1 and 2, literally every game",
+    "symptom": "Black screen (no image)",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-28T04-15-03-d5d710",
+    "created": "2026-07-28T04:15:03.307Z",
+    "reporter": "",
+    "device": "Realme gt neo 3",
+    "gpu": "mali g610",
+    "game": "Naruto Storm 4 evolution",
+    "symptom": "Black screen (no image)",
+    "logs": 1
+  },
+  {
+    "id": "2026-07-27T18-56-17-e60fb6",
+    "created": "2026-07-27T18:56:17.126Z",
+    "reporter": "",
+    "device": "Poco X6 pro",
+    "gpu": "Mali-G615 MC 6",
+    "game": "God of War",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-27T18-25-39-48f3ae",
+    "created": "2026-07-27T18:25:39.727Z",
+    "device": "Daria Bond 1",
+    "gpu": "MALi _ g68 mc4",
+    "game": "GTA V",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-27T16-55-36-99eb48",
+    "created": "2026-07-27T16:55:36.294Z",
+    "device": "Poco X6 Pro / Redmi K70E",
+    "gpu": "Mali G615 Mc-6",
+    "game": "Grand Theft Auto V",
+    "symptom": "Other",
+    "logs": 1
+  },
+  {
+    "id": "2026-07-27T14-40-42-485d83",
+    "created": "2026-07-27T14:40:42.481Z",
+    "device": "Poco x6 pro",
+    "gpu": "Malig615mc6",
+    "game": "Resident evil 2 remake",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 1
+  },
+  {
+    "id": "2026-07-27T14-09-33-edd8f6",
+    "created": "2026-07-27T14:09:33.921Z",
+    "device": "Realme 12 5g",
+    "gpu": "Mail G57 Mc2 in",
+    "game": "FNAF 1",
+    "symptom": "Crashes / closes to home",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-27T13-58-49-9eda2a",
+    "created": "2026-07-27T13:58:49.931Z",
+    "device": "Tecno pova le8",
+    "gpu": "Mali-g68 cm4",
+    "game": "Need for speed rivals",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-07-27T13-56-36-56acad",
+    "created": "2026-07-27T13:56:36.448Z",
+    "device": "Tecno pova le8",
+    "gpu": "Mali-G68 mc4",
+    "game": "Xenia",
+    "symptom": "Other",
+    "logs": 2
+  }
+]

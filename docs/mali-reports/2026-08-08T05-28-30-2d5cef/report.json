@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-08T05-28-30-2d5cef",
+  "created": "2026-08-08T05:28:30.622Z",
+  "ip_hash": "8fb3LGNMWs",
+  "fields": {
+    "reporter_name": "josh",
+    "device_model": "poco f5 pro",
+    "soc": "Snapdragon 8 plus gen 1",
+    "gpu": "adreno 730",
+    "android": "android 15",
+    "ram": "8gb",
+    "app_version": "2.9.7",
+    "install_source": "GitHub release",
+    "game_name": "nba 2k16",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "nba2k16.exe",
+    "symptom": "Other",
+    "when": "",
+    "graphics_driver": "turnip 25.1.0",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.3.0",
+    "proton": "wine 9.16 x86_64",
+    "box64": "performance",
+    "resolution": "960x544",
+    "framegen": "no",
+    "repro": "1. open the game\n2. the virtual gamepad cant detected/not working",
+    "tried": "i tried switching xinput and dinput and turn off the exclusive input"
+  },
+  "logs": []
+}

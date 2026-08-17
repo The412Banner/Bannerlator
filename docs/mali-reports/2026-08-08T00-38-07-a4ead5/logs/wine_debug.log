@@ -1,0 +1,1950 @@
+=== Wine Debug Log ===
+WINEDEBUG: +warn,+err,+fixme
+WINEPREFIX: /data/user/0/com.winlator.banner/files/imagefs/home/xuser/.wine
+Container ID: 1
+Shortcut: null (launching Wine File Manager)
+--- DX Wrapper State ---
+dxwrapper type: dxvk+vkd3d
+dxwrapperConfig (raw): version=2.3.1-arm64ec-0,framerate=0,async=0,asyncCache=0,vkd3dVersion=3.0b-0,vkd3dLevel=12_0,ddrawrapper=none,csmt=3,gpuName=NVIDIA GeForce GTX 480,videoMemorySize=2048,strict_shader_math=1,OffscreenRenderingMode=fbo,renderer=gl,dxvkConfigFile=
+vkd3dVersion (parsed): 3.0b-0
+dxvk version (parsed): 2.3.1-arm64ec-0
+ddrawrapper (parsed): none
+cached dxwrapper extra: dxvk-2.3.1-arm64ec-0;vkd3d-3.0b-0;none
+expected full string: dxvk-2.3.1-arm64ec-0;vkd3d-3.0b-0;none
+extraction will run: false
+--- End DX Wrapper State ---
+=== Wine output below ===
+_r_debug not found in ld.so
+esync: up and running.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+_r_debug not found in ld.so
+0098:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+_r_debug not found in ld.so
+00c0:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+00e0:err:nsi:poll_events bind failed, errno 13.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0070:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+00f4:fixme:fsync:do_fsync futexes not supported on this platform.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+_r_debug not found in ld.so
+0108:fixme:fsync:do_fsync futexes not supported on this platform.
+0108:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+_r_debug not found in ld.so
+0118:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+013c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0148:fixme:fsync:do_fsync futexes not supported on this platform.
+0148:err:environ:init_peb starting L"C:\\windows\\wfm.exe" in experimental ARM64EC mode
+013c:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+013c:fixme:uiautomation:uia_get_providers_for_hwnd Override provider callback currently unimplemented.
+013c:fixme:uiautomation:default_uia_provider_callback Default ProviderType_NonClientArea provider unimplemented.
+013c:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+013c:fixme:uiautomation:base_hwnd_fragment_get_FragmentRoot 00000000006FD718, 000000000011FC08: stub!
+013c:fixme:uiautomation:base_hwnd_fragment_GetEmbeddedFragmentRoots 00000000006FD718, 000000000011FBF8: stub!
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000712BD0, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"SysListView32"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071FF70, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+_r_debug not found in ld.so
+01c8:fixme:fsync:do_fsync futexes not supported on this platform.
+01c8:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaHorizon4.exe" in experimental ARM64EC mode
+01c8:fixme:vcruntime:__telemetry_main_invoke_trigger (0000006FFD6B0000)
+01c8:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+01c8:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+01c8:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000006FFD37B885, 52) stub
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {00000000-0000-0000-0000-000000000001}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {4e8f98a2-3dc0-4dd8-bb6f-7335068650a5}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {00000000-0000-0000-0000-000000000001}
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {4e8f98a2-3dc0-4dd8-bb6f-7335068650a5}
+01c8:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000006FF380B8BE, 52) stub
+01c8:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+01c8:fixme:heap:SetThreadSelectedCpuSets thread 00000000000000D4, cpu_set_ids 0000000000000000, count 0 stub.
+01c8:fixme:heap:SetThreadSelectedCpuSets thread 0000000000000100, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000011C, cpu_set_ids 0000000000000000, count 0 stub.
+01e4:fixme:kernelbase:AppPolicyGetThreadInitializationType FFFFFFFFFFFFFFFA, 0000000066B6FF80
+01d4:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 00000001465DA871, 45) stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071FF70, 10002, 000000000142F980: stub
+01d4:fixme:mmdevapi:SAC_GetMaxDynamicObjectCount (0000000040A699E0)->(000000006359E070)
+warn:  CreateDXGIFactory2: Ignoring flags
+info:  Game: ForzaHorizon4.exe
+info:  DXVK: v2.3.1-arm64ec
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2747cc0
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver : Wrapper driver 49.1.0
+info:    Memory Heap[0]: 
+info:      Size: 15311 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BA8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BAC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BB0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BBC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BC4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BC8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BCC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BD0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BD4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BD8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BDC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BE0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BE8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BEC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BF0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BF4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BF8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004BFC, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C00, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C04, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C0C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C10, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C14, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C18, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C9C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004CA4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C9C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 000000006359D410
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000004C9C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D30, cpu_set_ids 0000000000000000, count 0 stub.
+0288:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D38, cpu_set_ids 0000000000000000, count 0 stub.
+0288:fixme:mmdevapi:SAC_GetMaxDynamicObjectCount (0000000040A6AEA0)->(0000000065DBF6A0)
+01d4:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0240:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D38, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D48, cpu_set_ids 0000000000000000, count 0 stub.
+0288:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D4C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:ver:GetFileVersionInfoSizeExW flags 0x2 ignored
+01d4:fixme:ver:GetFileVersionInfoExW flags 0x2 ignored
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005D78, cpu_set_ids 0000000000000000, count 0 stub.
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071C850, 10002, 000000000142F980: stub
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver : Wrapper driver 49.1.0
+info:    Memory Heap[0]: 
+info:      Size: 15311 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[info]: create_bcn_compute_pipelines took 2844 ms
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+[error]: Failed to create buffer, res -1000072003
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005DDC, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005DF8, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005DFC, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E00, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E20, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E20, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E24, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E24, cpu_set_ids 0000000000000000, count 0 stub.
+warn:  DXGI: MakeWindowAssociation: Ignoring flags
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E3C, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E40, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E44, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E48, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E4C, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E50, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E54, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E60, cpu_set_ids 0000000000000000, count 0 stub.
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EA4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EA8, cpu_set_ids 0000000000000000, count 0 stub.
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EB0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005ECC, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EC4, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EC4, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EC4, cpu_set_ids 0000000000000000, count 0 stub.
+02ac:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EC4, cpu_set_ids 0000000000000000, count 0 stub.
+warn:  DxgiSwapChain::GetFrameStatistics: Frame statistics may be inaccurate
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EC4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005ED4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005ED8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EE0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005EE0, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008A3C, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:bcrypt:BCryptGenRandom ignoring selected algorithm
+01d4:fixme:bcrypt:BCryptGenerateSymmetricKey ignoring object buffer
+01d4:fixme:winsock:WSAIoctl SIO_UDP_CONNRESET stub
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 000000006359E0E0
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 000000006359E0D0
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 000000006359E160
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008A88, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008A88, cpu_set_ids 0000000000000000, count 0 stub.
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000005E80, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 000000006359F120
+0298:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 000000006771F508, 4): stub
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0298:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+0298:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 000000013D51B3F0, 16) stub
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0398:fixme:nls:RtlGetThreadPreferredUILanguages 00000038, 0000000139A7F854, 0000000000000000 0000000139A7F850
+0398:fixme:nls:get_dummy_preferred_ui_language (0x38 0x409 0000000139A7F854 0000000000000000 0000000139A7F850) returning a dummy value (current locale)
+0398:fixme:nls:RtlGetThreadPreferredUILanguages 00000038, 0000000139A7F854, 0000000139A7F830 0000000139A7F850
+0398:fixme:nls:get_dummy_preferred_ui_language (0x38 0x409 0000000139A7F854 0000000139A7F830 0000000139A7F850) returning a dummy value (current locale)
+0398:fixme:winsock:WSALookupServiceBeginW (0000000139A7F490 0xff0 0000000139A7F508) Stub!
+0398:fixme:userenv:RegisterGPNotification 0000000000008D30 0
+0398:fixme:userenv:RegisterGPNotification 0000000000008D34 1
+0398:fixme:shcore:IsOS (OS_DOMAINMEMBER) What should we return here?
+03b4:fixme:wtsapi:WTSRegisterSessionNotification Stub 00000000000500DA 0x00000001
+0398:fixme:win:GetPointerDevices (0000000139A7F0A4 0000000000000000): partial stub
+0398:fixme:system:NtUserDisplayConfigGetDeviceInfo Unimplemented packet type 11.
+0398:fixme:combase:RoActivateInstance (0000000073959A70, 0000000139A7EF00): semi-stub
+0398:fixme:combase:RoGetActivationFactory (L"Windows.UI.ViewManagement.UISettings", {00000035-0000-0000-c000-000000000046}, 0000000139A7ECC8): semi-stub
+0398:fixme:ui:uisettings2_add_TextScaleFactorChanged iface 000000013F141AC8, handler 000000013D1BD320, cookie 0000006FFC1E1410 stub!
+0398:fixme:ui:uisettings2_get_TextScaleFactor iface 000000013F141AC8, value 0000000139A7EF10 stub!
+03b8:fixme:wpc:WindowsParentalControls_GetUserSettings ((null) 0000000176D5F8F0)
+03a4:fixme:netapi32:NetGetJoinInformation Semi-stub (null) 0000000174D8F840 0000000174D8F810
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000008DE4, cpu_set_ids 0000000000000000, count 0 stub.
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+_r_debug not found in ld.so
+03ec:fixme:fsync:do_fsync futexes not supported on this platform.
+03ec:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaWebHelper.exe" in experimental ARM64EC mode
+03ec:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+03ec:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+03ec:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 000000000011FE98, 4): stub
+03ec:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+03ec:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000000040AB5F90, 16) stub
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.3.1-arm64ec
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2747cc0
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver : Wrapper driver 49.1.0
+info:    Memory Heap[0]: 
+info:      Size: 15311 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+03ec:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+03f4:fixme:thread:QueryThreadCycleTime (0000000000000108,0000000062C9FD70): stub!
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.3.1-arm64ec
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2747cc0
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver : Wrapper driver 49.1.0
+info:    Memory Heap[0]: 
+info:      Size: 15311 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+warn:  D3D11DeviceFeatures: Some formats not supported for resource sharing
+info:  D3D11InternalCreateDevice: Maximum supported feature level: D3D_FEATURE_LEVEL_11_0
+info:  D3D11InternalCreateDevice: Using feature level D3D_FEATURE_LEVEL_11_0
+info:  Device properties:
+info:    Device : Wrapper(Mali-G925-Immortalis MC12)
+info:    Driver : Wrapper driver 49.1.0
+info:  Enabled device extensions:
+info:    VK_EXT_conservative_rasterization
+info:    VK_EXT_custom_border_color
+info:    VK_EXT_depth_clip_enable
+info:    VK_EXT_extended_dynamic_state3
+info:    VK_EXT_robustness2
+info:    VK_EXT_swapchain_maintenance1
+info:    VK_EXT_transform_feedback
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_external_memory_win32
+info:    VK_KHR_external_semaphore_win32
+info:    VK_KHR_maintenance5
+info:    VK_KHR_present_id
+info:    VK_KHR_present_wait
+info:    VK_KHR_swapchain
+info:    VK_KHR_win32_keyed_mutex
+info:  Device features:
+info:    robustBufferAccess                     : 1
+info:    fullDrawIndexUint32                    : 1
+info:    imageCubeArray                         : 1
+info:    independentBlend                       : 1
+info:    geometryShader                         : 1
+info:    tessellationShader                     : 1
+info:    sampleRateShading                      : 1
+info:    dualSrcBlend                           : 1
+info:    logicOp                                : 1
+info:    multiDrawIndirect                      : 1
+info:    drawIndirectFirstInstance              : 1
+info:    depthClamp                             : 1
+info:    depthBiasClamp                         : 1
+info:    fillModeNonSolid                       : 1
+info:    depthBounds                            : 0
+info:    wideLines                              : 1
+info:    multiViewport                          : 1
+info:    samplerAnisotropy                      : 1
+info:    textureCompressionBC                   : 1
+info:    occlusionQueryPrecise                  : 1
+info:    pipelineStatisticsQuery                : 0
+info:    vertexPipelineStoresAndAtomics         : 0
+info:    fragmentStoresAndAtomics               : 1
+info:    shaderImageGatherExtended              : 1
+info:    shaderClipDistance                     : 1
+info:    shaderCullDistance                     : 1
+info:    shaderFloat64                          : 0
+info:    shaderInt64                            : 1
+info:    variableMultisampleRate                : 0
+info:    shaderResourceResidency                : 0
+info:    shaderResourceMinLod                   : 0
+info:    sparseBinding                          : 0
+info:    sparseResidencyBuffer                  : 0
+info:    sparseResidencyImage2D                 : 0
+info:    sparseResidencyImage3D                 : 0
+info:    sparseResidency2Samples                : 0
+info:    sparseResidency4Samples                : 0
+info:    sparseResidency8Samples                : 0
+info:    sparseResidency16Samples               : 0
+info:    sparseResidencyAliased                 : 0
+info:  Vulkan 1.1
+info:    shaderDrawParameters                   : 1
+info:  Vulkan 1.2
+info:    samplerMirrorClampToEdge               : 1
+info:    drawIndirectCount                      : 1
+info:    samplerFilterMinmax                    : 1
+info:    hostQueryReset                         : 1
+info:    timelineSemaphore                      : 1
+info:    bufferDeviceAddress                    : 0
+info:    shaderOutputViewportIndex              : 1
+info:    shaderOutputLayer                      : 1
+info:    vulkanMemoryModel                      : 1
+info:  Vulkan 1.3
+info:    robustImageAccess                      : 1
+info:    pipelineCreationCacheControl           : 1
+info:    shaderDemoteToHelperInvocation         : 1
+info:    shaderZeroInitializeWorkgroupMemory    : 0
+info:    synchronization2                       : 1
+info:    dynamicRendering                       : 1
+info:  VK_AMD_shader_fragment_mask
+info:    extension supported                    : 0
+info:  VK_EXT_attachment_feedback_loop_layout
+info:    attachmentFeedbackLoopLayout           : 0
+info:  VK_EXT_conservative_rasterization
+info:    extension supported                    : 1
+info:  VK_EXT_custom_border_color
+info:    customBorderColors                     : 1
+info:    customBorderColorWithoutFormat         : 1
+info:  VK_EXT_depth_clip_enable
+info:    depthClipEnable                        : 1
+info:  VK_EXT_depth_bias_control
+info:    depthBiasControl                       : 0
+info:    leastRepresentableValueForceUnormRepresentation : 0
+info:    floatRepresentation                    : 0
+info:    depthBiasExact                         : 0
+info:  VK_EXT_extended_dynamic_state3
+info:    extDynamicState3AlphaToCoverageEnable  : 0
+info:    extDynamicState3DepthClipEnable        : 1
+info:    extDynamicState3RasterizationSamples   : 0
+info:    extDynamicState3SampleMask             : 1
+info:    extDynamicState3LineRasterizationMode  : 1
+info:  VK_EXT_fragment_shader_interlock
+info:    fragmentShaderSampleInterlock          : 0
+info:    fragmentShaderPixelInterlock           : 0
+info:  VK_EXT_full_screen_exclusive
+info:    extension supported                    : 0
+info:  VK_EXT_graphics_pipeline_library
+info:    graphicsPipelineLibrary                : 0
+info:  VK_EXT_line_rasterization
+info:    rectangularLines                       : 1
+info:    smoothLines                            : 0
+info:  VK_EXT_memory_budget
+info:    extension supported                    : 0
+info:  VK_EXT_memory_priority
+info:    memoryPriority                         : 0
+info:  VK_EXT_non_seamless_cube_map
+info:    nonSeamlessCubeMap                     : 0
+info:  VK_EXT_robustness2
+info:    robustBufferAccess2                    : 1
+info:    robustImageAccess2                     : 0
+info:    nullDescriptor                         : 1
+info:  VK_EXT_shader_module_identifier
+info:    shaderModuleIdentifier                 : 0
+info:  VK_EXT_shader_stencil_export
+info:    extension supported                    : 0
+info:  VK_EXT_swapchain_colorspace
+info:    extension supported                    : 0
+info:  VK_EXT_swapchain_maintenance1
+info:    swapchainMaintenance1                  : 1
+info:  VK_EXT_hdr_metadata
+info:    extension supported                    : 0
+info:  VK_EXT_transform_feedback
+info:    transformFeedback                      : 1
+info:    geometryStreams                        : 1
+info:  VK_EXT_vertex_attribute_divisor
+info:    vertexAttributeInstanceRateDivisor     : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_external_memory_win32
+info:    extension supported                    : 1
+info:  VK_KHR_external_semaphore_win32
+info:    extension supported                    : 1
+info:  VK_KHR_maintenance5
+info:    maintenance5                           : 1
+info:  VK_KHR_present_id
+info:    presentId                              : 1
+info:  VK_KHR_present_wait
+info:    presentWait                            : 1
+info:  VK_NV_raw_access_chains
+info:    shaderRawAccessChains                  : 0
+info:  VK_NVX_binary_import
+info:    extension supported                    : 0
+info:  VK_NVX_image_view_handle
+info:    extension supported                    : 0
+info:  VK_KHR_win32_keyed_mutex
+info:    extension supported                    : 1
+info:  Queue families:
+info:    Graphics : 0
+info:    Transfer : 0
+info:    Sparse   : n/a
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+[info]: create_bcn_compute_pipelines took 11674 ms
+warn:  DXVK: No state cache file found
+info:  DXVK: Graphics pipeline libraries not supported
+03ec:fixme:combase:RoGetActivationFactory (L"Windows.Foundation.Metadata.ApiInformation", {997439fe-f681-4a11-b416-c13a47e8ba36}, 000000000011E3B8): semi-stub
+03ec:fixme:wintypes:api_information_statics_IsApiContractPresentByMajor iface 0000006FF0D22110, contract_name L"Windows.Foundation.UniversalApiContract", major_version 6, value 000000000011E3C7 semi-stub.
+03ec:fixme:dcomp:DCompositionCreateDevice2 0000000040B1CC00, {5f4633fe-1e08-4cb8-8c75-ce24333f5602}, 000000000011EFC0.
+03b0:err:esync:__esync_wait_objects Polling on fd 9381 returned 0x20.
+err:   D3D11VideoDevice::GetVideoDecoderProfileCount: Stub
+03cc:fixme:sync:NtSetInformationJobObject stub: 0x9628 4 0x17920f318 4
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+_r_debug not found in ld.so
+0428:fixme:fsync:do_fsync futexes not supported on this platform.
+0428:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaWebHelper.exe" in experimental ARM64EC mode
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 00000000000096F4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 00000000000096F4, cpu_set_ids 0000000000000000, count 0 stub.
+0428:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+0428:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+0428:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 000000000011FE98, 4): stub
+0428:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+0428:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000000040AB37E0, 16) stub
+0440:fixme:winsock:WSALookupServiceBeginW (0000000063CEE400 0xff0 0000000063CEE478) Stub!
+0440:fixme:wlanapi:WlanEnumInterfaces (0000000000000001, 0000000000000000, 0000000063CED858) semi-stub
+03b0:err:esync:__esync_wait_objects Polling on fd 9889 returned 0x20.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000000172A27DE0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+[info]: create_bcn_compute_pipelines took 24283 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Wrapper(Mali-G925-Immortalis MC12)) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 4154693856 created
+MESA: info: threaded context 4154693856 created
+MESA: info: threaded context 4154693856 created
+MESA: info: threaded context 4154693856 created
+MESA: info: threaded context 4154693856 created
+MESA: info: threaded context 4154693856 created
+MESA: info: threaded context 4154693856 created
+MESA: info: threaded context 4154693856 created
+Mesa: warning: Window 100663298 has no colormap!
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+027c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A5E8, cpu_set_ids 0000000000000000, count 0 stub.
+027c:fixme:file:CreateFile2 Ignoring extended parameters 0000000072A5F9F0
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A5E8, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A5D4, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A5F4, cpu_set_ids 0000000000000000, count 0 stub.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFD50)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFD80)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+027c:fixme:file:CreateFile2 Ignoring extended parameters 0000000072A5F9F0
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A5F4, cpu_set_ids 0000000000000000, count 0 stub.
+027c:fixme:file:CreateFile2 Ignoring extended parameters 0000000072A5F9F0
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFDB0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A5D4, cpu_set_ids 0000000000000000, count 0 stub.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFDE0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFE10)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFE40)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFE70)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFEA0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFED0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFF00)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFF30)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFF60)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFF90)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFFC0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B97FFFF0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B9800020)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B9800050)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B9800080)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B98000B0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B98000E0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B9800110)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B9800140)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022B9800170)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (00000022929089D0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908A00)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+_r_debug not found in ld.so
+04ac:fixme:fsync:do_fsync futexes not supported on this platform.
+04ac:err:environ:init_peb starting L"E:\\R\\A2109   v1.478.564.0\\ForzaWebHelper.exe" in experimental ARM64EC mode
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908A30)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908A60)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908A90)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908AC0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908AF0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+04ac:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+04ac:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+04ac:fixme:process:GetProcessMitigationPolicy (FFFFFFFFFFFFFFFF, 4, 000000000011FE98, 4): stub
+04ac:fixme:heap:RtlSetHeapInformation HEAP_INFORMATION_CLASS 1 not implemented!
+04ac:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000000040AB9050, 16) stub
+04ac:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.3.1-arm64ec
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908B20)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2747cc0
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908B50)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver : Wrapper driver 49.1.0
+info:    Memory Heap[0]: 
+info:      Size: 15311 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+warn:  D3D11DeviceFeatures: Some formats not supported for resource sharing
+info:  D3D11InternalCreateDevice: Maximum supported feature level: D3D_FEATURE_LEVEL_11_0
+info:  D3D11InternalCreateDevice: Using feature level D3D_FEATURE_LEVEL_11_0
+info:  Device properties:
+info:    Device : Wrapper(Mali-G925-Immortalis MC12)
+info:    Driver : Wrapper driver 49.1.0
+info:  Enabled device extensions:
+info:    VK_EXT_conservative_rasterization
+info:    VK_EXT_custom_border_color
+info:    VK_EXT_depth_clip_enable
+info:    VK_EXT_extended_dynamic_state3
+info:    VK_EXT_robustness2
+info:    VK_EXT_swapchain_maintenance1
+info:    VK_EXT_transform_feedback
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_external_memory_win32
+info:    VK_KHR_external_semaphore_win32
+info:    VK_KHR_maintenance5
+info:    VK_KHR_present_id
+info:    VK_KHR_present_wait
+info:    VK_KHR_swapchain
+info:    VK_KHR_win32_keyed_mutex
+info:  Device features:
+info:    robustBufferAccess                     : 1
+info:    fullDrawIndexUint32                    : 1
+info:    imageCubeArray                         : 1
+info:    independentBlend                       : 1
+info:    geometryShader                         : 1
+info:    tessellationShader                     : 1
+info:    sampleRateShading                      : 1
+info:    dualSrcBlend                           : 1
+info:    logicOp                                : 1
+info:    multiDrawIndirect                      : 1
+info:    drawIndirectFirstInstance              : 1
+info:    depthClamp                             : 1
+info:    depthBiasClamp                         : 1
+info:    fillModeNonSolid                       : 1
+info:    depthBounds                            : 0
+info:    wideLines                              : 1
+info:    multiViewport                          : 1
+info:    samplerAnisotropy                      : 1
+info:    textureCompressionBC                   : 1
+info:    occlusionQueryPrecise                  : 1
+info:    pipelineStatisticsQuery                : 0
+info:    vertexPipelineStoresAndAtomics         : 0
+info:    fragmentStoresAndAtomics               : 1
+info:    shaderImageGatherExtended              : 1
+info:    shaderClipDistance                     : 1
+info:    shaderCullDistance                     : 1
+info:    shaderFloat64                          : 0
+info:    shaderInt64                            : 1
+info:    variableMultisampleRate                : 0
+info:    shaderResourceResidency                : 0
+info:    shaderResourceMinLod                   : 0
+info:    sparseBinding                          : 0
+info:    sparseResidencyBuffer                  : 0
+info:    sparseResidencyImage2D                 : 0
+info:    sparseResidencyImage3D                 : 0
+info:    sparseResidency2Samples                : 0
+info:    sparseResidency4Samples                : 0
+info:    sparseResidency8Samples                : 0
+info:    sparseResidency16Samples               : 0
+info:    sparseResidencyAliased                 : 0
+info:  Vulkan 1.1
+info:    shaderDrawParameters                   : 1
+info:  Vulkan 1.2
+info:    samplerMirrorClampToEdge               : 1
+info:    drawIndirectCount                      : 1
+info:    samplerFilterMinmax                    : 1
+info:    hostQueryReset                         : 1
+info:    timelineSemaphore                      : 1
+info:    bufferDeviceAddress                    : 0
+info:    shaderOutputViewportIndex              : 1
+info:    shaderOutputLayer                      : 1
+info:    vulkanMemoryModel                      : 1
+info:  Vulkan 1.3
+info:    robustImageAccess                      : 1
+info:    pipelineCreationCacheControl           : 1
+info:    shaderDemoteToHelperInvocation         : 1
+info:    shaderZeroInitializeWorkgroupMemory    : 0
+info:    synchronization2                       : 1
+info:    dynamicRendering                       : 1
+info:  VK_AMD_shader_fragment_mask
+info:    extension supported                    : 0
+info:  VK_EXT_attachment_feedback_loop_layout
+info:    attachmentFeedbackLoopLayout           : 0
+info:  VK_EXT_conservative_rasterization
+info:    extension supported                    : 1
+info:  VK_EXT_custom_border_color
+info:    customBorderColors                     : 1
+info:    customBorderColorWithoutFormat         : 1
+info:  VK_EXT_depth_clip_enable
+info:    depthClipEnable                        : 1
+info:  VK_EXT_depth_bias_control
+info:    depthBiasControl                       : 0
+info:    leastRepresentableValueForceUnormRepresentation : 0
+info:    floatRepresentation                    : 0
+info:    depthBiasExact                         : 0
+info:  VK_EXT_extended_dynamic_state3
+info:    extDynamicState3AlphaToCoverageEnable  : 0
+info:    extDynamicState3DepthClipEnable        : 1
+info:    extDynamicState3RasterizationSamples   : 0
+info:    extDynamicState3SampleMask             : 1
+info:    extDynamicState3LineRasterizationMode  : 1
+info:  VK_EXT_fragment_shader_interlock
+info:    fragmentShaderSampleInterlock          : 0
+info:    fragmentShaderPixelInterlock           : 0
+info:  VK_EXT_full_screen_exclusive
+info:    extension supported                    : 0
+info:  VK_EXT_graphics_pipeline_library
+info:    graphicsPipelineLibrary                : 0
+info:  VK_EXT_line_rasterization
+info:    rectangularLines                       : 1
+info:    smoothLines                            : 0
+info:  VK_EXT_memory_budget
+info:    extension supported                    : 0
+info:  VK_EXT_memory_priority
+info:    memoryPriority                         : 0
+info:  VK_EXT_non_seamless_cube_map
+info:    nonSeamlessCubeMap                     : 0
+info:  VK_EXT_robustness2
+info:    robustBufferAccess2                    : 1
+info:    robustImageAccess2                     : 0
+info:    nullDescriptor                         : 1
+info:  VK_EXT_shader_module_identifier
+info:    shaderModuleIdentifier                 : 0
+info:  VK_EXT_shader_stencil_export
+info:    extension supported                    : 0
+info:  VK_EXT_swapchain_colorspace
+info:    extension supported                    : 0
+info:  VK_EXT_swapchain_maintenance1
+info:    swapchainMaintenance1                  : 1
+info:  VK_EXT_hdr_metadata
+info:    extension supported                    : 0
+info:  VK_EXT_transform_feedback
+info:    transformFeedback                      : 1
+info:    geometryStreams                        : 1
+info:  VK_EXT_vertex_attribute_divisor
+info:    vertexAttributeInstanceRateDivisor     : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_external_memory_win32
+info:    extension supported                    : 1
+info:  VK_KHR_external_semaphore_win32
+info:    extension supported                    : 1
+info:  VK_KHR_maintenance5
+info:    maintenance5                           : 1
+info:  VK_KHR_present_id
+info:    presentId                              : 1
+info:  VK_KHR_present_wait
+info:    presentWait                            : 1
+info:  VK_NV_raw_access_chains
+info:    shaderRawAccessChains                  : 0
+info:  VK_NVX_binary_import
+info:    extension supported                    : 0
+info:  VK_NVX_image_view_handle
+info:    extension supported                    : 0
+info:  VK_KHR_win32_keyed_mutex
+info:    extension supported                    : 1
+info:  Queue families:
+info:    Graphics : 0
+info:    Transfer : 0
+info:    Sparse   : n/a
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908B80)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908BB0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908BE0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908C10)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908C40)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908C70)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908CA0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908CD0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908D00)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908D30)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908D60)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (0000002292908D90)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698310)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698340)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698370)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6983A0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6983D0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698400)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698430)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698460)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698490)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6984C0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6984F0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698520)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698550)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698580)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+027c:fixme:file:CreateFile2 Ignoring extended parameters 0000000072A5F9F0
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6985B0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6985E0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698610)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698640)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698670)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6986A0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E6986D0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698700)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698730)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000013E698760)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D512FA0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D512FD0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513000)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513030)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513060)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513090)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D5130C0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D5130F0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513120)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513150)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513180)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A860, cpu_set_ids 0000000000000000, count 0 stub.
+027c:fixme:file:CreateFile2 Ignoring extended parameters 0000000072A5F9F0
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D5131B0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D5131E0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513210)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513240)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513270)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D5132A0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D5132D0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513300)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000012D513330)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+[info]: create_bcn_compute_pipelines took 33288 ms
+warn:  DXVK: No state cache file found
+info:  DXVK: Graphics pipeline libraries not supported
+03b0:err:esync:__esync_wait_objects Polling on fd 9114 returned 0x20.
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.3.1-arm64ec
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2747cc0
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver : Wrapper driver 49.1.0
+info:    Memory Heap[0]: 
+info:      Size: 15311 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783980)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B7839B0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B7839E0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783A10)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783A40)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783A70)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783AA0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783AD0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783B00)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783B30)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783B60)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783B90)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0288:fixme:sapi:token_category_GetDefaultTokenId (000000017B783BC0)->(0000000065DBFAE8): semi-stub
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:com_get_class_object class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:err:ole:create_server class {52808ae1-d977-4cd8-92d2-feacb92fe276} not registered
+0288:fixme:ole:com_get_class_object CLSCTX_REMOTE_SERVER not supported
+0288:err:ole:com_get_class_object no class object {52808ae1-d977-4cd8-92d2-feacb92fe276} could be created for context 0x17
+0288:err:sapi:spvoice_Speak Failed to create engine: 0x80040154.
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+[info]: create_bcn_compute_pipelines took 16663 ms
+info:  Game: ForzaWebHelper.exe
+info:  DXVK: v2.3.1-arm64ec
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2747cc0
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+info:  Wrapper(Mali-G925-Immortalis MC12):
+info:    Driver : Wrapper driver 49.1.0
+info:    Memory Heap[0]: 
+info:      Size: 15311 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[info]: create_bcn_compute_pipelines took 5739 ms
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:err:sync:RtlpWaitForCriticalSection section 0000000040AD1FF0 "?" wait timed out in thread 01d4, blocked by 0000, retrying (60 sec)
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0268:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:fixme:heap:SetThreadSelectedCpuSets thread 000000000000A628, cpu_set_ids 0000000000000000, count 0 stub.
+01d4:fixme:file:CreateFile2 Ignoring extended parameters 000000006359D8A0
+027c:fixme:file:CreateFile2 Ignoring extended parameters 0000000072A5F9F0
+03d8:fixme:userenv:UnregisterGPNotification 0000000000008D30
+03b0:err:esync:__esync_wait_objects Polling on fd 9347 returned 0x20.
+03d8:fixme:userenv:UnregisterGPNotification 0000000000008D34
+0448:err:esync:__esync_wait_objects Polling on fd 84 returned 0x20.
+03b0:err:esync:__esync_wait_objects Polling on fd 9360 returned 0x20.
+0418:err:esync:__esync_wait_objects Polling on fd 134 returned 0x20.
+0418:err:esync:__esync_wait_objects Polling on fd 132 returned 0x20.
+0398:fixme:wtsapi:WTSUnRegisterSessionNotification Stub 00000000000500DA
+03b0:err:esync:__esync_wait_objects Polling on fd 9286 returned 0x20.
+03a0:err:virtual:virtual_setup_exception nested exception on signal stack addr 0x7ac1ae17f4 stack 0x131cee9e0
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+02ac:err:sync:RtlpWaitForCriticalSection section 0000000040AD1C30 "?" wait timed out in thread 02ac, blocked by 0274, retrying (60 sec)
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+01d4:err:msvcrt:_wassert (L"!status && \"vkBeginCommandBuffer\"",L"dlls/winevulkan/loader_thunks.c",114)
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071C850, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"#32770"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0274:fixme:bcrypt:BCryptCreateHash ignoring object buffer

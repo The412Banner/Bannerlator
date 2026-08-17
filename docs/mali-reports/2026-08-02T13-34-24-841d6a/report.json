@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-02T13-34-24-841d6a",
+  "created": "2026-08-02T13:34:24.220Z",
+  "ip_hash": "3OnrXqKFkX",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "A36 G5",
+    "soc": "EXYNOS 1480",
+    "gpu": "Samsung Xclipse 530",
+    "android": "16",
+    "ram": "8",
+    "app_version": "2.9 2",
+    "install_source": "",
+    "game_name": "Gta v",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Runs but very low FPS",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "1328×600",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

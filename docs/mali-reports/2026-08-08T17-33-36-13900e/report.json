@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-08T17-33-36-13900e",
+  "created": "2026-08-08T17:33:36.184Z",
+  "ip_hash": "HrNnS6SRiV",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Poco X8 Pro",
+    "soc": "Dimensity 8500 Ultra",
+    "gpu": "Mali-G720 MC8",
+    "android": "Android 16\\Hyper OS 3.0.303.0",
+    "ram": "12 GB",
+    "app_version": "1.2.0",
+    "install_source": "Lançamento no GitHub",
+    "game_name": "Re2R",
+    "steam_appid": "",
+    "store": "Outro",
+    "exe": "",
+    "symptom": "Tela preta (sem imagem)",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.14",
+    "proton": "Proton 11",
+    "box64": "Fex",
+    "resolution": "1280x720",
+    "framegen": "Não",
+    "repro": "Ao abrir o jogo, tela preta com um erro",
+    "tried": "Já fiz todas as combinações possíveis"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_2026-08-05-19-01-59-838_banner.hub.jpg"
+    }
+  ]
+}

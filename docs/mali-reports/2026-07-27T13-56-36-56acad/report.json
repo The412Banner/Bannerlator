@@ -1,0 +1,37 @@
+{
+  "id": "2026-07-27T13-56-36-56acad",
+  "created": "2026-07-27T13:56:36.448Z",
+  "ip_hash": "eRJlcrtuX+",
+  "fields": {
+    "device_model": "Tecno pova le8",
+    "soc": "Dimensity 900",
+    "gpu": "Mali-G68 mc4",
+    "android": "Android 11",
+    "ram": "8gb",
+    "app_version": "2.8.2",
+    "install_source": "GitHub release",
+    "game_name": "Xenia",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Xenia_edge.exe",
+    "symptom": "Other",
+    "when": "Crashes in the main menu",
+    "graphics_driver": "System",
+    "dx_wrapper": "VKD3D",
+    "dxvk": "2.4.1",
+    "proton": "Proton 9arm",
+    "box64": "Performance",
+    "resolution": "1280/720",
+    "framegen": "Lossless",
+    "repro": "Run the program then encountered error, 1st cant access local machine in registry and 2nd unable to initialize direct3d subsystem",
+    "tried": "Changed the dxvk to vegasvkd"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_20260726-192850.jpg"
+    },
+    {
+      "name": "Screenshot_20260726-172648.jpg"
+    }
+  ]
+}

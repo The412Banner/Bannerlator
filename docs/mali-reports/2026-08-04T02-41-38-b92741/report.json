@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-04T02-41-38-b92741",
+  "created": "2026-08-04T02:41:38.108Z",
+  "ip_hash": "NGlXz90RRb",
+  "fields": {
+    "reporter_name": "Cran",
+    "device_model": "Poco x8 pro",
+    "soc": "Dimensity 8500 Ultra",
+    "gpu": "Mali-G720 MC8",
+    "android": "Android 16",
+    "ram": "8GB",
+    "app_version": "2.9.4",
+    "install_source": "GitHub release",
+    "game_name": "Persona 5",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "P5r.exe",
+    "symptom": "Black screen (no image)",
+    "when": "Never launches at all",
+    "graphics_driver": "",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.7.3-async-0",
+    "proton": "Proton-10.0-arm64ec-0",
+    "box64": "Performance (Mali)",
+    "resolution": "855x480",
+    "framegen": "No",
+    "repro": "Open the container - click the exe - black screen stable fps - after some seconds crash",
+    "tried": "Swicht dxvk to (1.11.1 sareek) (1.10.3arm64ec-async) (1.10.3)(2.7.11-sdk36-arm64ec) (2.3.1-arm64ec-gplasync) (1.7.3-async-0) (1.7.2-0) the graphic driver always in leggao i also try other box 64 vertion from 0.3.7 to 0.4.1 In my tests, I used only my phone's high performance cores specifically, cores 4 through 7 I tried different configurations from other users, but nothing works. The main limitation seems to be the 8GB of RAM. I currently doubt it can run on this phone but I'll keep trying"
+  },
+  "logs": [
+    {
+      "name": "0.7z"
+    }
+  ]
+}

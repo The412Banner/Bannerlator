@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bannerlator · Mali Reports</title>
+<style>
+:root{
+  --bg:#08090C; --bg-2:#0E1015; --panel:#14161D; --panel-2:#191C25;
+  --line:#242833; --line-2:#2E3340;
+  --ink:#EEF0F5; --muted:#9BA1AF; --faint:#6B7180;
+  --violet:#7C5CFF; --violet-2:#A98BFF; --pink:#FF4FA3; --cyan:#36D1DC;
+  --ok:#3DD68C; --ok-bg:#10221A; --warn:#FFB02E; --warn-bg:#241B08; --err:#FF5D70; --err-bg:#2A1418;
+  --font:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:var(--font);line-height:1.5;
+  background:radial-gradient(1200px 600px at 80% -10%,#171a24,transparent),var(--bg)}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 18px 80px}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font:600 12px/1 var(--mono);
+  letter-spacing:.2em;text-transform:uppercase;color:var(--violet-2)}
+.hex{width:15px;height:17px;background:linear-gradient(150deg,var(--violet-2),var(--pink));
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+h1{font-size:1.7rem;margin:12px 0 4px}
+h1 .accent{background:linear-gradient(100deg,var(--violet-2),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--muted);font-size:15px;margin:0;max-width:64ch}
+a.cta{color:var(--cyan);text-decoration:none;font-weight:600;font-size:14px}
+input,select{font:inherit;background:var(--bg-2);border:1px solid var(--line-2);border-radius:9px;color:var(--ink);padding:9px 11px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px #7c5cff33}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+.bar .grow{flex:1}
+.count{color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:7px 13px;border-radius:999px;background:var(--panel);border:1px solid var(--line-2);color:var(--muted);cursor:pointer;font-size:13px;font-weight:600}
+.tab.on{color:#fff;background:linear-gradient(100deg,var(--violet),var(--pink));border-color:transparent}
+
+.card{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 17px;margin-bottom:13px;transition:border-color .15s,transform .05s}
+.card:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.card.new{border-left:3px solid var(--warn)}
+.card.read{border-left:3px solid var(--cyan)}
+.card.fixed{border-left:3px solid var(--ok)}
+.card.closed{opacity:.72}
+.chead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.card h3{margin:0 0 3px;font-size:1.04rem}
+.sub{color:var(--muted);font-size:12.5px}
+.sub code{font-family:var(--mono);color:var(--faint)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;align-items:center}
+.badge{font:600 11px/1 var(--mono);padding:5px 8px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line-2);color:var(--muted)}
+.badge b{color:var(--ink);font-weight:600}
+.st{font:600 10.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:5px 9px;border-radius:999px}
+.st.new{background:var(--warn-bg);color:var(--warn)}
+.st.read{background:#0c2226;color:var(--cyan)}
+.st.fixed{background:var(--ok-bg);color:var(--ok)}
+.pill{font:600 11px/1 var(--mono);padding:5px 8px;border-radius:6px}
+.pill.ans{background:var(--ok-bg);color:var(--ok);border:1px solid #1c4433}
+.pill.rep{background:var(--panel-2);color:var(--violet-2);border:1px solid var(--line-2)}
+.pill.lock{background:var(--err-bg);color:var(--err);border:1px solid #4a2028}
+.empty{color:var(--faint);text-align:center;padding:48px;font-size:14px}
+.foot{margin-top:34px;color:var(--faint);font-size:13px;text-align:center}
+.foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="eyebrow"><span class="hex"></span>Bannerlator</span>
+  <h1>Mali <span class="accent">reports</span></h1>
+  <p class="lede">Every Mali GPU game report and its discussion. Tap one to read the full report and the back-and-forth with the developers — or <a class="cta" href="./">file a new report →</a></p>
+
+  <div class="bar">
+    <div class="tabs">
+      <span class="tab on" data-f="all">All</span>
+      <span class="tab" data-f="answered">Answered</span>
+      <span class="tab" data-f="new">Awaiting</span>
+      <span class="tab" data-f="fixed">Fixed</span>
+      <span class="tab" data-f="open">Open</span>
+      <span class="tab" data-f="closed">Closed</span>
+    </div>
+    <div class="grow"></div>
+    <input id="search" placeholder="Search game, device, GPU…" style="min-width:220px">
+    <span class="count" id="count"></span>
+  </div>
+
+  <div id="list"><div class="empty">Loading reports…</div></div>
+
+  <p class="foot">Bannerlator · Mali diagnostics · <a href="./">Submit a report</a></p>
+</div>
+
+<script>
+const WORKER = "https://bannerlator-mali-reports.the412banner.workers.dev";
+let REPORTS = [], FILTER = "all", Q = "";
+const $ = (s)=>document.querySelector(s);
+
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function fmt(t){ try{ return new Date(t).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); }catch(e){ return t; } }
+
+async function load(){
+  try{
+    const res = await fetch(WORKER + "/reports");
+    const out = await res.json();
+    REPORTS = (out && out.reports) || [];
+    render();
+  }catch(e){ $("#list").innerHTML = '<div class="empty">Could not load reports. Try again shortly.</div>'; }
+}
+
+function matchFilter(r){
+  if(FILTER==="all") return true;
+  if(FILTER==="answered") return r.answered;
+  if(FILTER==="open") return !r.closed;
+  if(FILTER==="closed") return r.closed;
+  return r.status === FILTER; // new | fixed
+}
+
+function render(){
+  const list = $("#list");
+  let items = REPORTS.filter(matchFilter);
+  if(Q) items = items.filter(r => (r.game+" "+r.device+" "+r.gpu+" "+r.symptom+" "+r.id).toLowerCase().includes(Q));
+  $("#count").textContent = items.length + " of " + REPORTS.length;
+  if(!items.length){ list.innerHTML = '<div class="empty">No reports here yet.</div>'; return; }
+  list.innerHTML = items.map(cardHtml).join("");
+}
+
+function cardHtml(r){
+  const badge = (k,v)=> v ? '<span class="badge">'+k+' <b>'+esc(v)+'</b></span>' : "";
+  const ans  = r.answered ? '<span class="pill ans">✓ Dev answered</span>' : "";
+  const reps = r.replies>0 ? '<span class="pill rep">💬 '+r.replies+'</span>' : "";
+  const lock = r.closed ? '<span class="pill lock">🔒 Closed</span>' : "";
+  const statusLabel = r.status==="new" ? "awaiting" : r.status;
+  return '<a class="card '+esc(r.status)+(r.closed?" closed":"")+'" href="'+esc(r.report_url)+'">'
+    + '<div class="chead"><div>'
+    +   '<h3>'+esc(r.game||"(no game)")+' — '+esc(r.symptom||"?")+'</h3>'
+    +   '<div class="sub">'+esc(r.device||"?")+' · '+esc(fmt(r.created))+' · <code>'+esc(r.id)+'</code></div>'
+    + '</div><span class="st '+esc(r.status)+'">'+esc(statusLabel)+'</span></div>'
+    + '<div class="badges">'+badge("By",r.reporter)+badge("GPU",r.gpu)+badge("Device",r.device)+ans+reps+lock+'</div>'
+    + '</a>';
+}
+
+$("#search").addEventListener("input", e=>{ Q=e.target.value.toLowerCase(); render(); });
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+  t.classList.add("on"); FILTER=t.dataset.f; render();
+}));
+
+load();
+</script>
+</body>
+</html>

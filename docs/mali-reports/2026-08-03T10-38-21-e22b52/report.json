@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-03T10-38-21-e22b52",
+  "created": "2026-08-03T10:38:21.743Z",
+  "ip_hash": "brQ/f+tzbz",
+  "fields": {
+    "reporter_name": "Silvaryll",
+    "device_model": "poco x8pro",
+    "soc": "Dimensity 8500-Ultra",
+    "gpu": "Mali-G720 MC8",
+    "android": "Android 16",
+    "ram": "8 GB",
+    "app_version": "2.9.3",
+    "install_source": "",
+    "game_name": "Persona 5 royal",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "P5R.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Crashes in the main menu",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "1.11.1-sarek",
+    "proton": "Proton-10.0-arm64ec-0",
+    "box64": "Performance (mali)",
+    "resolution": "854x480",
+    "framegen": "No",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

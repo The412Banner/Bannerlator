@@ -1,0 +1,64 @@
+name: Build PulseAudio 13.0 + adaptive AAudio sink (arm64)
+
+# Cross-compiles the PulseAudio 13.0 stack (stock upstream, ac_cv bionic overrides) + our enhanced
+# module-aaudio-sink for Android arm64, from native/pulseaudio-android/. Uploads the .so set as an
+# artifact for integration into jniLibs + pulseaudio.tzst. Manual only — this is a slow, occasional build.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake libtool libtool-bin m4 pkg-config gettext autopoint \
+            intltool gperf perl git zstd file build-essential
+
+      - name: Resolve NDK (pin r27c — runner default is an r29 preview with changed toolchain paths)
+        run: |
+          NDK="$HOME/android-ndk-r27c"
+          if [ ! -d "$NDK" ]; then
+            curl -sSL -o /tmp/ndk.zip https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
+            unzip -q /tmp/ndk.zip -d "$HOME"
+          fi
+          echo "NDK_PATH=$NDK" >> "$GITHUB_ENV"
+          echo "using NDK at $NDK"
+          ls "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/" | grep -i 'android26-clang$' | head
+
+      - name: Build PulseAudio 13.0 stack
+        working-directory: native/pulseaudio-android
+        run: |
+          chmod +x build-stack.sh build-module.sh
+          ./build-stack.sh
+
+      - name: Build enhanced module-aaudio-sink
+        working-directory: native/pulseaudio-android
+        run: ./build-module.sh
+
+      - name: Package
+        working-directory: native/pulseaudio-android
+        run: |
+          # tzst matching our asset layout: modules/arm64/*.so
+          rm -rf pkg && mkdir -p pkg/modules/arm64
+          cp -a output/arm64/modules/*.so pkg/modules/arm64/
+          tar -I 'zstd --ultra -22' -cf pulseaudio.tzst -C pkg .
+          file output/arm64/*.so output/arm64/modules/*.so | tee soinfo.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulseaudio-arm64
+          path: |
+            native/pulseaudio-android/output/arm64/*.so
+            native/pulseaudio-android/output/arm64/modules/*.so
+            native/pulseaudio-android/pulseaudio.tzst
+            native/pulseaudio-android/soinfo.txt

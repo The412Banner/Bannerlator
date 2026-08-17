@@ -1,0 +1,132 @@
+=== Wine Debug Log ===
+WINEDEBUG: +warn,+err,+fixme
+WINEPREFIX: /data/user/0/com.winlator.banner/files/imagefs/home/xuser/.wine
+Container ID: 1
+Shortcut: null (launching Wine File Manager)
+--- DX Wrapper State ---
+dxwrapper type: dxvk+vkd3d
+dxwrapperConfig (raw): version=2.4.1-0,framerate=0,async=0,asyncCache=0,vkd3dVersion=2.14.1,vkd3dLevel=12_1,ddrawrapper=none,csmt=3,gpuName=NVIDIA GeForce GTX 480,videoMemorySize=2048,strict_shader_math=1,OffscreenRenderingMode=fbo,renderer=gl,dxvkConfigFile=
+vkd3dVersion (parsed): 2.14.1
+dxvk version (parsed): 2.4.1-0
+ddrawrapper (parsed): none
+cached dxwrapper extra: dxvk-2.4.1-0;vkd3d-2.14.1;none
+expected full string: dxvk-2.4.1-0;vkd3d-2.14.1;none
+extraction will run: false
+--- End DX Wrapper State ---
+=== Wine output below ===
+_r_debug not found in ld.so
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0070:err:hid:pdo_pnp_dispatch Failed to start device 00000000009136C0, status 0xc0000005
+0070:fixme:hid:bus_create_hid_device failed to create device error 0xc0000035
+0070:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+00ac:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+00c8:fixme:fsync:do_fsync futexes not supported on this platform.
+00c8:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+00c8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21cd60,0x00000004) stub
+00ac:err:ole:start_rpcss Failed to start RpcSs service
+00ac:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+_r_debug not found in ld.so
+00dc:fixme:fsync:do_fsync futexes not supported on this platform.
+00dc:err:environ:init_peb starting L"C:\\windows\\wfm.exe" in experimental ARM64EC mode
+00dc:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21cd60,0x00000004) stub
+_r_debug not found in ld.so
+00e4:fixme:fsync:do_fsync futexes not supported on this platform.
+00e4:err:environ:init_peb starting L"D:\\Forza Horizon 4\\ForzaHorizon4.exe" in experimental ARM64EC mode
+00e4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x11cd60,0x00000004) stub
+00e4:fixme:vcruntime:__telemetry_main_invoke_trigger (0000004FF94E0000)
+00e4:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+00e4:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+00e4:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000004FF884B885, 52) stub
+00e4:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+00e4:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {00000000-0000-0000-0000-000000000001}
+00e4:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {4e8f98a2-3dc0-4dd8-bb6f-7335068650a5}
+00e4:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+00e4:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {00000000-0000-0000-0000-000000000001}
+00e4:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {4e8f98a2-3dc0-4dd8-bb6f-7335068650a5}
+00e4:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 0000004FECBAB8BE, 52) stub
+00e4:fixme:ntdll:EtwRegisterTraceGuidsW   register trace class {b895a8ee-76c9-4fb5-af4b-6beb6b4e05a0}
+00e4:fixme:heap:SetThreadSelectedCpuSets thread 00000000000000D4, cpu_set_ids 0000000000000000, count 0 stub.
+00e4:fixme:heap:SetThreadSelectedCpuSets thread 0000000000000100, cpu_set_ids 0000000000000000, count 0 stub.
+00f0:fixme:heap:SetThreadSelectedCpuSets thread 0000000000000118, cpu_set_ids 0000000000000000, count 0 stub.
+00f0:fixme:ntdll:EtwEventSetInformation (deadbeef, 2, 00000001465DA871, 45) stub
+0050:fixme:mountmgr:enumerate_credentials not supported
+0050:fixme:mountmgr:enumerate_credentials not supported
+0050:fixme:mountmgr:enumerate_credentials not supported
+00f0:fixme:mmdevapi:SAC_GetMaxDynamicObjectCount (0000000000A4BC60)->(00000000039FE070)
+0050:fixme:mountmgr:enumerate_credentials not supported
+warn:  CreateDXGIFactory2: Ignoring flags
+info:  Game: ForzaHorizon4.exe
+info:  DXVK: v2.4.1
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x4ff7467cc0
+info:  Built-in extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+011c:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+info:  OpenVR: Failed to locate module
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+info:  Wrapper(Mali-G615 MC6):
+info:    Driver : Wrapper driver 44.1.0
+info:    Memory Heap[0]: 
+info:      Size: 11262 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x7
+info:      Memory Type[1]: Property Flags = 0xb
+info:      Memory Type[2]: Property Flags = 0x11
+info:    Memory Heap[1]: 
+info:      Size: 100 MiB
+info:      Flags: 0x1
+info:      Memory Type[3]: Property Flags = 0x21
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+wineserver: file_set_error() can't map error: Transport endpoint is not connected
+00f0:fixme:heap:SetThreadSelectedCpuSets thread 00000000000001D4, cpu_set_ids 0000000000000000, count 0 stub.
+00f0:fixme:heap:SetThreadSelectedCpuSets thread 00000000000001D8, cpu_set_ids 0000000000000000, count 0 stub.
+00f0:fixme:heap:SetThreadSelectedCpuSets thread 00000000000001DC, cpu_set_ids 0000000000000000, count 0 stub.
+00f0:fixme:heap:SetThreadSelectedCpuSets thread 00000000000001E8, cpu_set_ids 0000000000000000, count 0 stub.
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:seh:WerRegisterFile (L"C:\\users\\xuser\\AppData\\Local\\ForzaHorizon4\\scratch\\CrashReport.xml", 2, 2) stub
+wine: Unhandled page fault on read access to 0000000000000000 at address 00000001441E7C82 (thread 00f0), starting debugger...
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+00f0:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+_r_debug not found in ld.so
+0138:fixme:fsync:do_fsync futexes not supported on this platform.
+0138:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+_r_debug not found in ld.so
+0140:fixme:fsync:do_fsync futexes not supported on this platform.
+0138:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL
+0138:fixme:file:errno_to_status Converting errno 107 to STATUS_UNSUCCESSFUL

@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-02T13-57-37-27af72",
+  "created": "2026-08-02T13:57:37.748Z",
+  "ip_hash": "3OnrXqKFkX",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "SM-A376B",
+    "soc": "Exynos 1480",
+    "gpu": "Electronics",
+    "android": "UI 8.5",
+    "ram": "8",
+    "app_version": "2.9.2",
+    "install_source": "",
+    "game_name": "GtA v",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Runs but very low FPS",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "1080×2340",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

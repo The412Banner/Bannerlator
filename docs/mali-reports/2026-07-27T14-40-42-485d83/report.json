@@ -1,0 +1,34 @@
+{
+  "id": "2026-07-27T14-40-42-485d83",
+  "created": "2026-07-27T14:40:42.481Z",
+  "ip_hash": "y42XmJW96e",
+  "fields": {
+    "device_model": "Poco x6 pro",
+    "soc": "Dimensity 8300u",
+    "gpu": "Malig615mc6",
+    "android": "Android 16",
+    "ram": "8gb",
+    "app_version": "2.8.2",
+    "install_source": "GitHub release",
+    "game_name": "Resident evil 2 remake",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Re3",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1",
+    "proton": "Proton 10",
+    "box64": "Performance",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": [
+    {
+      "name": "logs.txt"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import com.winlator.star.ui.screens.AdrenoToolsScreen
 import com.winlator.star.ui.screens.AppearanceScreen
 import com.winlator.star.ui.screens.ContainerDetailScreen
 import com.winlator.star.ui.screens.ContainersScreen
+import com.winlator.star.ui.screens.contents.ContentsHubScreen
 import com.winlator.star.ui.screens.FileManagerScreen
 import com.winlator.star.ui.screens.FragmentScreen
 import com.winlator.star.ui.screens.SavesScreen
@@ -66,6 +67,13 @@ fun AppNavGraph(
         composable(Screen.Games.route) {
             ShortcutsScreen()
         }
+
+composable(Screen.Contents.route) {
+            ContentsHubScreen()
+        }
+
+        // BigPicture (Screen.BigPicture / BigPictureScreen) is an upstream feature whose
+        // screen + steamgrid subsystem are absent from this fork — not ported in this sync.
 
         composable(Screen.InputControls.route) {
             InputControlsScreen()

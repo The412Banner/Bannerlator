@@ -1,0 +1,31 @@
+{
+  "id": "2026-07-29T03-36-51-a8e6ad",
+  "created": "2026-07-29T03:36:51.304Z",
+  "ip_hash": "Yhh97iqxuV",
+  "fields": {
+    "reporter_name": "Elc",
+    "device_model": "Samsung Galaxy A15",
+    "soc": "Helio g99",
+    "gpu": "Mali g57 mc2",
+    "android": "Android 14/One UI 6.1",
+    "ram": "8",
+    "app_version": "2.9",
+    "install_source": "GitHub release",
+    "game_name": "\"Many Titles\"",
+    "steam_appid": "",
+    "store": "",
+    "exe": "zxcv.exe",
+    "symptom": "Other",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "Sarek v1.11.1",
+    "proton": "Wine 10",
+    "box64": "Performance",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "Hi devs, finally found some issues for my potato mali after some searching.\n\n- Device : Samsung A15/Mali g57 mc2\n- App : Bannerlator v2.9. Dont know if these issues happens on older versions too because this is my first bannerlator version\n- Android : 14\n- Setups : Happens on every setups that i had tested\n\nIssues :\n1. When starting a game using Phone s Home Screen shortcut, the ui font color will always revert to default. Furthermore, sometimes, rarely, the whole virtual button color reverts to default.\n2. The UI app's game shortcut and launch screen, displays FEXCore instead of Box, despite using an x86 64 wine.\n3. Doing a picture in picture pauses the program/game, and when returning to that program, the graphics gets blurry. This happens on Winlator Ref4rik as well.\n4. Game shortcut setup for CAS and DLS sharpness are not the one used in-game.\n5. Native rendering displays wrong color. Bgra and rgba has the same wrong color visuals.\n6. When returning back to a running program/game after leaving it in background for some seconds, the sound very frequently get muted. Can only be fixed when restarting the app. Happens even with small phone ram usage and when using pip too. Also happens when trying to open system phone browsing.\n\nIf a log is needed for these issues, what do you think are needed to be active?",
+    "tried": "Every setup that usually works for mali."
+  },
+  "logs": []
+}

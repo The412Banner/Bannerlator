@@ -1,0 +1,31 @@
+{
+  "id": "2026-07-31T17-23-09-0701b3",
+  "created": "2026-07-31T17:23:09.350Z",
+  "ip_hash": "GewaH/7YvR",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Itel p55 plus",
+    "soc": "Unisoc",
+    "gpu": "Mali G57",
+    "android": "14",
+    "ram": "8GB",
+    "app_version": "2.9.2",
+    "install_source": "GitHub release",
+    "game_name": "Pes2017",
+    "steam_appid": "",
+    "store": "",
+    "exe": "pes2017.exe",
+    "symptom": "Other",
+    "when": "",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.10.3",
+    "proton": "Proton 9 86 63",
+    "box64": "Performance",
+    "resolution": "960 544",
+    "framegen": "No",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

@@ -20,7 +20,12 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
 
     companion object {
         val drawerItems by lazy {
-            listOf(Games, Containers, FileManager, Settings, Appearance, InputControls, AdrenoTools, Saves)
+            // Upstream (The412Banner) moved to: Games, Containers, FileManager, Settings,
+            // Appearance, InputControls, Contents, Saves — and dropped AdrenoTools on the
+            // way. Our fork's AdrenoTools screen is a live route with an AppDrawer icon
+            // mapping and no alternate entry point (upstream's ☁-button goes to its own
+            // Wrappers screen, which this fork doesn't have), so it stays in the drawer.
+            listOf(Games, Containers, FileManager, Settings, Appearance, InputControls, AdrenoTools, Contents, Saves)
         }
         val storeItems by lazy {
             listOf(Gog, Epic, Amazon, Steam)

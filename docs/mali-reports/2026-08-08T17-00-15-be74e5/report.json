@@ -1,0 +1,47 @@
+{
+  "id": "2026-08-08T17-00-15-be74e5",
+  "created": "2026-08-08T17:00:15.020Z",
+  "ip_hash": "RGtAXAy31q",
+  "fields": {
+    "reporter_name": "Krabkush",
+    "device_model": "Pixel 9 pro 256gb",
+    "soc": "Tensor-g4",
+    "gpu": "Mali-g715",
+    "android": "17",
+    "ram": "16",
+    "app_version": "Newest",
+    "install_source": "GitHub release",
+    "game_name": "Fallen aces",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Fallenaces.exe",
+    "symptom": "Other",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "System",
+    "dx_wrapper": "VKD3D",
+    "dxvk": "2.7.1 arm64ec",
+    "proton": "Proton 10. Controller fix",
+    "box64": "Performance. Tried every other setting performance works best",
+    "resolution": "1280 x 720",
+    "framegen": "No",
+    "repro": "1. Open game\n2. Menu fully boots around 90 fps\n3. Have tried all video setting quality's,\n4. Set shadows to none, turn off v sync\n4 1/2. Main menu graphics are glitch/artifact free\n5. New game\n6. First act first level\n7. Pre level cutscene plays fully\n8. Make it to pre loading screen \n9. Originally only loads to around 60% full bar and hangs\nMusic continues to play.\nFps stuck at 45-60 frozen fps\nMusic still plays,\nAfter 1-2 minutes it will jump to about 75% loaded and then permanently hang at a sudden frame drop. \nMusic plays infinitely,\n\nAfter switching files to c drive I can manage to load to around 80% ending with the same frame drop/hang with music still playing. App does not crash at any point",
+    "tried": "Switched vkd3d, and dxvk versions\nSwitched fex core versions and presets\nIncreased mesa shader to 2048MB &everything in-between\nPut game files directly onto c-drive\nInstalled every pre requisut in every combo (DirectX,v++,dotnet,mono,) best results come from NO pre reqs installed\nChanged system and video memory from default 0 4gb, 6gb, 8gb , 12gb no difference."
+  },
+  "logs": [
+    {
+      "name": "Screenshot_20260808-125633.png"
+    },
+    {
+      "name": "Screenshot_20260808-125644.png"
+    },
+    {
+      "name": "Screenshot_20260808-125657.png"
+    },
+    {
+      "name": "Screenshot_20260808-125734.png"
+    },
+    {
+      "name": "Screenshot_20260808-125808.png"
+    }
+  ]
+}

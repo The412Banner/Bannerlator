@@ -65,6 +65,8 @@ import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import java.util.concurrent.Executors
 import com.winlator.star.container.Container
@@ -75,6 +77,10 @@ import com.winlator.star.core.HttpUtils
 import com.winlator.star.widget.ColorPickerView
 import com.winlator.star.widget.CPUListView
 import com.winlator.star.widget.EnvVarsView
+
+// Serializes all native adrenotools probing (isDriverSupported + enumerateExtensions) off the
+// main thread. Serial = no concurrent AdrenoTools hooks (old SIGSEGV); off-main = no ANR.
+private val graphicsProbeMutex = Mutex()
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
@@ -602,12 +608,66 @@ private fun TopLevelFields(
         Spacer(Modifier.height(8.dp))
 
         // Audio Driver
-        LabeledDropdown(
-            label = stringResource(R.string.audio_driver),
-            options = viewModel.audioDriverEntries,
-            selectedOption = viewModel.selectedAudioDriver,
-            onSelect = { viewModel.selectedAudioDriver = it }
-        )
+        // DirectAudio only loads on the four arm64ec Proton builds its .drv is built for; off those
+        // layers it does nothing / breaks audio. Grey the option out (keyed on the selected layer so it
+        // re-evaluates when the Wine version changes) and never let it be picked there. The ViewModel
+        // also coerces it back to the default on save / layer-change, so the two can't drift.
+        val directAudioSupported = remember(viewModel.selectedWineVersion) {
+            com.winlator.star.core.DirectAudioSupport.isSupported(viewModel.selectedWineVersion)
+        }
+        val directAudioEntry = remember(viewModel.audioDriverEntries) {
+            viewModel.audioDriverEntries.firstOrNull { StringUtils.parseIdentifier(it) == "directaudio" }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LabeledDropdown(
+                label = stringResource(R.string.audio_driver),
+                options = viewModel.audioDriverEntries,
+                selectedOption = viewModel.selectedAudioDriver,
+                disabledOptions = if (!directAudioSupported && directAudioEntry != null) setOf(directAudioEntry) else emptySet(),
+                onSelect = {
+                    viewModel.selectedAudioDriver = it
+                    // DirectAudio is experimental — warn on select (reuses the HelpDialog surface).
+                    if (StringUtils.parseIdentifier(it) == "directaudio") helpRes = R.string.directaudio_experimental_warning
+                },
+                modifier = Modifier.weight(1f)
+            )
+            // Cog → adaptive audio presets & fine-tuning. Both engines honor the same presets/knobs
+            // (PulseAudio sink + ALSA player), so it's shown for either driver.
+            val audioId = StringUtils.parseIdentifier(viewModel.selectedAudioDriver)
+            if (audioId == "pulseaudio" || audioId == "alsa" || audioId == "directaudio") {
+                IconButton(onClick = { showAudioSettings = true }) {
+                    Icon(Icons.Default.Settings, contentDescription = "Audio settings", modifier = Modifier.size(18.dp))
+                }
+            }
+            IconButton(onClick = { helpRes = R.string.help_audio_driver }) {
+                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+            }
+        }
+        if (!directAudioSupported && directAudioEntry != null) {
+            Text(
+                "DirectAudio requires Proton ${com.winlator.star.core.DirectAudioSupport.SUPPORTED_LABEL}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.5.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            )
+        }
+        if (showAudioSettings) {
+            AudioSettingsDialog(
+                initial = audioConfigFromEnv(viewModel.envVarsStr, StringUtils.parseIdentifier(viewModel.selectedAudioDriver)),
+                scopeLabel = "this container",
+                latencyLive = true,
+                driverLabel = when (StringUtils.parseIdentifier(viewModel.selectedAudioDriver)) {
+                    "alsa" -> "ALSA"; "pulseaudio" -> "PulseAudio"; "directaudio" -> "DirectAudio"
+                    else -> StringUtils.parseIdentifier(viewModel.selectedAudioDriver)
+                },
+                driverId = StringUtils.parseIdentifier(viewModel.selectedAudioDriver),
+                onDismiss = { showAudioSettings = false },
+                onSave = { cfg ->
+                    viewModel.envVarsStr = audioConfigToEnv(viewModel.envVarsStr, cfg, StringUtils.parseIdentifier(viewModel.selectedAudioDriver))
+                    showAudioSettings = false
+                }
+            )
+        }
         Spacer(Modifier.height(8.dp))
 
         // Emulator (arm64ec only)
@@ -1621,13 +1681,16 @@ internal fun GraphicsDriverConfigDialog(
             } catch (_: Exception) {}
             list
         }
-        // isDriverSupported() is a native JNI call — must run on main thread to avoid
-        // concurrent AdrenoTools hook invocations that cause SIGSEGV.
+        // isDriverSupported() is a native JNI call. It used to run on the main thread to keep
+        // AdrenoTools hook calls serial (concurrency caused SIGSEGV); running it there blocked
+        // the UI and caused ANRs. Run it off-main but serialized via graphicsProbeMutex instead.
         val wrapperVersions = context.resources
             .getStringArray(R.array.wrapper_graphics_driver_version_entries)
             .let { arr ->
                 if (showAllDrivers) arr.toList()
-                else arr.filter { GPUInformation.isDriverSupported(it, context) }
+                else withContext(Dispatchers.IO) {
+                    graphicsProbeMutex.withLock { arr.filter { GPUInformation.isDriverSupported(it, context) } }
+                }
             }
 
         driverVersions = wrapperVersions + atVersions
@@ -1640,11 +1703,49 @@ internal fun GraphicsDriverConfigDialog(
     }
 
     LaunchedEffect(version) {
-        if (version.isNotEmpty()) {
-            val exts = GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
-            allExtensions = exts
-            if (version != cfg["version"]) blacklisted = emptySet()
+        if (version.isEmpty()) {
+            allExtensions = emptyList()
+            driverFellBack = false
+            isCustomDriver = false
+            return@LaunchedEffect
         }
+        // Proprietary Qualcomm (Adreno) blobs must NEVER be probed in-process: on some a6xx
+        // devices the in-app instance creation aborts inside the vendor app-profile/log path
+        // with a -fstack-protector stack smash (SIGABRT) — uncatchable by the SEGV/BUS guard —
+        // or corrupts the linker heap on dlopen (hotice77's Redmi Note 11, Aug 2026). Mesa
+        // wrappers (Turnip/freedreno, panfrost, ...) export libvulkan_*.so and ARE safe to
+        // probe, so they still list their real extensions. Anything that isn't a libvulkan_*
+        // Mesa wrapper (a vulkan.ad*.so Qualcomm blob, or an unreadable meta) is skipped here
+        // and shows the "applied in-game" note; the driver still loads at game launch.
+        val probeUnsafe = withContext(Dispatchers.IO) {
+            graphicsProbeMutex.withLock {
+                val mgr = AdrenotoolsManager(context)
+                val installed = mgr.enumarateInstalledDrivers()
+                if (installed.none { it.equals(version, ignoreCase = true) }) {
+                    false // wrapper/bundled entry (not a custom import) -> safe to probe
+                } else {
+                    !mgr.getLibraryName(version).startsWith("libvulkan", ignoreCase = true)
+                }
+            }
+        }
+        if (probeUnsafe) {
+            allExtensions = emptyList()
+            driverFellBack = false
+            isCustomDriver = true
+            if (version != cfg["version"]) blacklisted = emptySet()
+            return@LaunchedEffect
+        }
+        // Soft-probe the (Mesa/wrapper) driver. Serialized + off-main via the mutex so it can
+        // never wedge the UI thread (ANR) or run concurrently with the isDriverSupported filter.
+        val exts = withContext(Dispatchers.IO) {
+            graphicsProbeMutex.withLock {
+                GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
+            }
+        }
+        allExtensions = exts
+        driverFellBack = GPUInformation.driverLoadedFellBack()
+        isCustomDriver = exts.isEmpty()
+        if (version != cfg["version"]) blacklisted = emptySet()
     }
 
     if (showExtPicker) {
@@ -1679,19 +1780,38 @@ internal fun GraphicsDriverConfigDialog(
             ) {
                 LabeledDropdown(stringResource(R.string.graphics_driver_vulkan_version), vulkanVersions, vulkanVersion, { vulkanVersion = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it })
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it }, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { helpRes = R.string.help_graphics_driver_version }) {
+                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = showAllDrivers, onCheckedChange = { showAllDrivers = it })
                     Text(stringResource(R.string.graphics_driver_show_incompatible))
                 }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { showExtPicker = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val enabled = allExtensions.size - blacklisted.size
-                    Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
+                if (isCustomDriver) {
+                    Text(
+                        text = "Custom Qualcomm (Adreno) driver — its extensions load when a game starts, so none are listed here. That's expected, not an error: the driver is applied in-game, where your HUD will show it's active.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, end = 4.dp)
+                    )
+                } else if (allExtensions.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(
+                            onClick = { showExtPicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            val enabled = allExtensions.size - blacklisted.size
+                            Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
+                        }
+                        IconButton(onClick = { helpRes = R.string.help_available_extensions }) {
+                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        }
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it })

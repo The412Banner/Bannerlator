@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-15T12-38-00-9521ad",
+  "created": "2026-08-15T12:38:00.759Z",
+  "ip_hash": "rCq2GnUk/D",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Oppo reno2 f",
+    "soc": "",
+    "gpu": "Mail-715",
+    "android": "Android 11",
+    "ram": "4 GB",
+    "app_version": "2.8.2",
+    "install_source": "GitHub release",
+    "game_name": "Grand theft Auto v",
+    "steam_appid": "",
+    "store": "Steam",
+    "exe": "",
+    "symptom": "Black screen (no image)",
+    "when": "Crashes after a while in-game",
+    "graphics_driver": "",
+    "dx_wrapper": "WineD3D",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

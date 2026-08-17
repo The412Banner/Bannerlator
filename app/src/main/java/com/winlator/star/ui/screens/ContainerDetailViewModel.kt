@@ -321,9 +321,13 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         selectedDXWrapper        = identifierToDisplay(c?.getDXWrapper() ?: Container.DEFAULT_DXWRAPPER, dxWrapperEntries)
         dxWrapperConfig          = c?.getDXWrapperConfig() ?: Container.DEFAULT_DXWRAPPERCONFIG
 
-        // Audio / emulator (load as display name)
+// Audio / emulator (load as display name). Upstream's seeded-template machinery
+        // (NewContainerDefaults/buildTemplateContainer) is not present in this fork, so the
+        // seed replacement stays on the real container `c`; DirectAudio self-heal is
+        // upstream's and IS ported (coerceAudioDriverForWine is defined below).
         selectedAudioDriver = identifierToDisplay(c?.audioDriver ?: Container.DEFAULT_AUDIO_DRIVER, audioDriverEntries)
         selectedEmulator    = identifierToDisplay(c?.emulator ?: Container.DEFAULT_EMULATOR, emulatorEntries)
+        coerceAudioDriverForWine()
 
         // MIDI
         val midiVal = c?.getMIDISoundFont() ?: ""
@@ -485,9 +489,38 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             ?: entries.firstOrNull()
             ?: id
 
-    fun onWineVersionChanged(version: String) {
+    /**
+     * DirectAudio only loads on the four supported arm64ec Proton builds; on any other layer it does
+     * nothing / breaks audio. So it must never survive as the chosen driver on an unsupported layer:
+     * if the currently-selected driver is DirectAudio but [selectedWineVersion] isn't one of those
+     * builds, fall back to the app default (PulseAudio). Called on load, on a Wine-version change, and
+     * again at save — the UI grey-out stops a fresh pick, this stops an already-set one from persisting.
+     */
+    private fun coerceAudioDriverForWine() {
+        if (StringUtils.parseIdentifier(selectedAudioDriver) == "directaudio" &&
+            !com.winlator.star.core.DirectAudioSupport.isSupported(selectedWineVersion)) {
+            selectedAudioDriver = identifierToDisplay(Container.DEFAULT_AUDIO_DRIVER, audioDriverEntries)
+        }
+    }
+
+fun onWineVersionChanged(version: String) {
         selectedWineVersion = version
+        // Upstream additionally re-seeds arch-dependent defaults here (wasArm64 /
+        // seedArchDependentDefaults) — that machinery (NewContainerDefaults template) is
+        // not present in this fork, so the pre-sync behavior is kept.
         refreshWineDependent(version)
+    }
+
+    /**
+     * Defaults mode: switch which architecture's profile the form is editing. Reloads the WHOLE form
+     * from THAT arch's saved profile (or its built-in defaults if unset) — loadContainerData rebuilds
+     * the template from NewContainerDefaults.load(context, defaultsArch) and applies applyArch() — so
+     * flipping the selector shows exactly the other arch's saved defaults.
+     */
+    fun selectDefaultsArch(arch: String) {
+        if (arch == defaultsArch) return
+        defaultsArch = arch
+        loadContainerData()
     }
 
     fun refreshWineVersions() {
@@ -562,6 +595,11 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         colorAsString: String,
         onComplete: () -> Unit
     ) {
+        // Belt-and-suspenders: never write Audio=directaudio for a layer that can't load it. The UI
+        // grey-out already blocks a fresh pick, but a container loaded already-set (or edited without
+        // touching the audio row) reaches here — drop it back to the default first.
+        coerceAudioDriverForWine()
+
         // Finalize graphics driver config (ensure version is set)
         var finalGDConfig = gdConfig
         try {

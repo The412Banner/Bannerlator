@@ -1,0 +1,30 @@
+{
+  "id": "2026-07-27T13-58-49-9eda2a",
+  "created": "2026-07-27T13:58:49.931Z",
+  "ip_hash": "2T/B7jvLyd",
+  "fields": {
+    "device_model": "Tecno pova le8",
+    "soc": "Dimensity 900",
+    "gpu": "Mali-g68 cm4",
+    "android": "Android 11",
+    "ram": "8",
+    "app_version": "2.82",
+    "install_source": "GitHub release",
+    "game_name": "Need for speed rivals",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": ".exe",
+    "symptom": "Runs but very low FPS",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

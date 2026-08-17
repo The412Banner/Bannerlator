@@ -1,0 +1,35 @@
+{
+  "id": "2026-07-31T23-34-38-270942",
+  "created": "2026-07-31T23:34:38.298Z",
+  "ip_hash": "TPWR6yKtck",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Poco x8pro",
+    "soc": "Dimensity 8500 ultra",
+    "gpu": "Mali-G720 mc8",
+    "android": "Android 16",
+    "ram": "8gb",
+    "app_version": "2.9.2",
+    "install_source": "GitHub release",
+    "game_name": "Pes 201u",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Pes2017.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Never launches at all",
+    "graphics_driver": "Sistem",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.7.3",
+    "proton": "Proton.10.0arm64ec-0",
+    "box64": "Extreme",
+    "resolution": "1289×720",
+    "framegen": "",
+    "repro": "Can't run the game",
+    "tried": "Yes"
+  },
+  "logs": [
+    {
+      "name": "16682.jpg"
+    }
+  ]
+}

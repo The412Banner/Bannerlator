@@ -1,0 +1,30 @@
+{
+  "id": "2026-07-27T14-09-33-edd8f6",
+  "created": "2026-07-27T14:09:33.921Z",
+  "ip_hash": "8SPdQb5zy6",
+  "fields": {
+    "device_model": "Realme 12 5g",
+    "soc": "Dimensty 6100+",
+    "gpu": "Mail G57 Mc2 in",
+    "android": "Android 16",
+    "ram": "8 GB",
+    "app_version": "2.82",
+    "install_source": "GitHub release",
+    "game_name": "FNAF 1",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "",
+    "symptom": "Crashes / closes to home",
+    "when": "Crashes in the main menu",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.31",
+    "proton": "Proton 10",
+    "box64": "Performance",
+    "resolution": "960",
+    "framegen": "No",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

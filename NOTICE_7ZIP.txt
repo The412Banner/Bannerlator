@@ -1,0 +1,54 @@
+7-Zip console engine bundled as lib7zz.so (+ libc++_shared.so)
+==============================================================
+
+Files in this APK (app/src/main/jniLibs/arm64-v8a/):
+  lib7zz.so          7-Zip 24.08 console (7zz), built for ANDROID/bionic — see below
+  libc++_shared.so   the matching C++ runtime it links against (NDK r29 libc++)
+
+Product:            7-Zip 24.08 (2024-08-11), https://www.7-zip.org / https://github.com/ip7z/7zip
+Source tarball:     https://github.com/ip7z/7zip/releases/download/24.08/7z2408-src.tar.xz
+Target:             arm64-v8a (aarch64), Android/bionic, dynamically linked
+                    (interpreter /system/bin/linker64), built by NDK r29 (14206865) clang.
+
+WHY A CUSTOM ANDROID BUILD (not the official generic-Linux binary)
+------------------------------------------------------------------
+The official 7-Zip "linux-arm64" download is a GENERIC-LINUX (glibc-oriented) static
+build. Spawned from inside an Android app it inherits the app's seccomp-bpf filter and
+hits a syscall the filter TRAPs, dying with SIGSYS (exit 159, silently — the binary is
+not bionic/NDK-linked so it has neither bionic's SIGSYS logger nor debuggerd hooks). It
+runs fine from a root shell (laxer seccomp) but is non-functional inside the app.
+
+So lib7zz.so is 7-Zip 24.08 rebuilt FROM SOURCE with the Android NDK r29 clang toolchain,
+targeting bionic. A bionic build integrates with Android's seccomp (its pthread/syscall
+wrappers use the allowed calls / fall back correctly) — the same reason Termux's p7zip
+runs under an app. Verified on-device: lists and extracts (incl. -mmt multithread).
+
+BUILD RECIPE (reproducible)
+---------------------------
+  toolchain: Android NDK r29 clang (aarch64-linux-android)
+  cd CPP/7zip/Bundles/Alone2
+  make -f makefile.gcc CC=<ndk-clang> CXX=<ndk-clang++> \
+       CFLAGS_WARN_WALL="-Wall" CFLAGS_BASE_LIST="-c -O2" LDFLAGS="-llog -s"
+  output: _o/7zz  ->  vendored as lib7zz.so
+
+One-line portability patch to CPP/Windows/TimeUtils.cpp (Android defines TIME_UTC but
+timespec_get() only exists from API 29; steer 7-Zip to clock_gettime, always present on
+bionic):
+    -  #if defined(TIME_UTC)
+    +  #if defined(TIME_UTC) && !defined(__ANDROID__)
+No functional change beyond the time source.
+
+Runtime: exec'd from applicationInfo.nativeLibraryDir (the exec-able dir under scoped
+storage) with LD_LIBRARY_PATH set to that dir so the loader finds the bundled
+libc++_shared.so. Used by the File Manager "Unpack Archive" feature to extract disc
+images (ISO9660/UDF), RAR, 7z, zip and split volumes in userspace (the device kernel has
+no iso9660/udf filesystem support, so a loop-mount is impossible).
+
+LICENSE
+-------
+7-Zip is licensed under the GNU LGPL v2.1, with additional restrictions for the unRAR
+code (the unRAR license forbids using its RAR-decompression sources to recreate the RAR
+compression algorithm). The upstream License.txt is included as License_7zip.txt.
+Corresponding source: https://github.com/ip7z/7zip (24.08), plus the one-line patch above.
+libc++_shared.so is part of the LLVM project (Apache-2.0 WITH LLVM-exception), redistributed
+as built by the NDK r29 toolchain.

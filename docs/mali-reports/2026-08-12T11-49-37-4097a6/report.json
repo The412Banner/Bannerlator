@@ -1,0 +1,38 @@
+{
+  "id": "2026-08-12T11-49-37-4097a6",
+  "created": "2026-08-12T11:49:37.637Z",
+  "ip_hash": "IQiZMvbCVH",
+  "fields": {
+    "reporter_name": "Inigo",
+    "device_model": "Poco X7 Pro",
+    "soc": "Dimensity 8400 Ultra",
+    "gpu": "Mali-G720 MC7",
+    "android": "Android 16/Hyper OS 3.3",
+    "ram": "8 GB",
+    "app_version": "2.9.8",
+    "install_source": "GitHub release",
+    "game_name": "Project Cars 1 GOTY (Game Of The Year)",
+    "steam_appid": "1062990",
+    "store": "Other",
+    "exe": "pCars.exe",
+    "symptom": "Freezes / hangs",
+    "when": "Crashes after a while in-game",
+    "graphics_driver": "Wrapper GameNative",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1 Sarek",
+    "proton": "Proton 10",
+    "box64": "Compability/Performance TSO",
+    "resolution": "1280×720",
+    "framegen": "No/Disabled",
+    "repro": "After about 5 minutes of playing, the game freezes, but the audio is still playing. The DXVK HUD also freezes.",
+    "tried": "I already tried using different wrappers and DXVK versions, but I got the same results, even with NVIDIA PhysX installed."
+  },
+  "logs": [
+    {
+      "name": "pCARS_d3d11.log"
+    },
+    {
+      "name": "pCARS_dxgi.log"
+    }
+  ]
+}

@@ -24,16 +24,17 @@
         <item>Wrapper-legacy</item>
         <item>Wrapper-gamenative</item>
         <item>Wrapper + bcn_layer</item>
+        <item>Wrapper + compat + bcn</item>
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>
         <item>v819</item>
         <item>turnip-sdk36</item>
-        <item>turnip-26.1.0</item>
     </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
         <item>PulseAudio</item>
+        <item>DirectAudio (Experimental)</item>
     </string-array>
     <string-array name="binding_type_entries">
         <item>Keyboard</item>
@@ -47,6 +48,7 @@
     </string-array>
     <string-array name="ddrawrapper_entries">
         <item>CnC-DDraw</item>
+        <item>D7VK</item>
         <item>Dd7To9</item>
         <item>Dgvoodoo</item>
         <item>None</item>
@@ -66,9 +68,7 @@
         <item>/storage/emulated/0/dxvk.conf</item>
         <item>/storage/emulated/0/starengine.ini</item>
         <item>/storage/emulated/0/Download/dxvk.conf</item>
-        <item>/storage/emulated/0/Download/starengine.ini</item>
         <item>/storage/emulated/0/Winlator/dxvk.conf</item>
-        <item>/storage/emulated/0/Winlator/starengine.ini</item>
     </string-array>
     <string-array name="dxvk_max_device_memory_entries">
         <item>0 (Default)</item>
@@ -178,6 +178,7 @@
         <item>Normal (Load all services)</item>
         <item>Essential (Load only essential services)</item>
         <item>Aggressive (Stop services on startup)</item>
+        <item>Custom (Pick services individually)</item>
     </string-array>
     <string-array name="vkd3d_version_entries">
         <item>None</item>
@@ -338,9 +339,11 @@
         <item>FEXCore</item>
         <item>Box64</item>
     </string-array>
-    <string-array name="wine_entries">
-        <item>proton-9.0-arm64ec</item>
-    </string-array>
+    <!-- Intentionally EMPTY: no Wine/Proton ships in the APK any more (the bundled
+         proton-9.0-arm64ec was ~106 MB of assets and was broken at launch). Users install a
+         Proton from the in-app catalog on first run. installWineFromAssets() iterates this
+         array, so an empty list makes it a no-op. -->
+    <string-array name="wine_entries" />
     <string-array name="vkbasalt_sharpness_entries">
         <item>None</item>
         <item>CAS</item>

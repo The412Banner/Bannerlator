@@ -34,6 +34,14 @@
         <item name="popupMenuStyle">@style/PopupMenu.Dark</item>
     </style>
 
+    <!-- Cold-start splash (AndroidX core-splashscreen). Shown by the OS before the launcher
+         activity's first frame, then hands off to postSplashScreenTheme (AppTheme.Dark). -->
+    <style name="Theme.Bannerlator.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/window_background_color_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.Dark</item>
+    </style>
+
     <!-- Light Theme Fullscreen -->
     <style name="AppThemeFullscreen" parent="@style/AppTheme">
         <item name="android:windowFullscreen">true</item>

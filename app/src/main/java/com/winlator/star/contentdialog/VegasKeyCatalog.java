@@ -42,6 +42,18 @@ public final class VegasKeyCatalog {
     public enum Bucket { IN_BUILD, OTHER_BUILD, UPSTREAM, NOWHERE }
     public enum BuildState { KNOWN, NO_CONFIG_ASSET, EXTRACTION_FAILED }
 
+    /**
+     * Documented key-schema families (report §2): Sarek line uses the dxvk.vegas.*
+     * namespace with per-game sections; Star Engine line uses vegas.* /
+     * dxvk.enableStarProfile. Cross-line keys are not merely "unknown" — they belong
+     * to a schema the installed build does not implement (§6a.6: block-with-explanation).
+     */
+    public enum Schema { SAREK, STAR }
+
+    private static final String SAREK_PREFIX = "dxvk.vegas.";
+    private static final String STAR_PREFIX = "vegas.";
+    private static final String STAR_PROFILE_KEY = "dxvk.enableStarProfile";
+
     private static final Set<String> TOP_FIELDS = new LinkedHashSet<>(Arrays.asList(
             "schema", "orderBy", "generatedAt", "builds", "upstream"));
     private static final Set<String> BUILD_FIELDS = new LinkedHashSet<>(Arrays.asList(
@@ -157,11 +169,16 @@ public final class VegasKeyCatalog {
 
     public boolean hasTag(String tag) { return indexOf(tagOf(tag)) >= 0; }
 
+    /** publishedAt (ISO date) of a known tag; "" for unknown tags. */
+    public String publishedAtOf(String tag) {
+        return publishedAtOf0(tag);
+    }
+
     /** Newest known tag by publishedAt string order (ISO dates — lexicographic == chronological). */
     public String newestTag() {
         String best = null;
         for (Build b : builds)
-            if (best == null || b.publishedAt.compareTo(publishedAtOf(best)) > 0) best = b.tag;
+            if (best == null || b.publishedAt.compareTo(publishedAtOf0(best)) > 0) best = b.tag;
         return best;
     }
 
@@ -174,6 +191,42 @@ public final class VegasKeyCatalog {
         List<String> out = new ArrayList<>();
         for (Build b : builds) out.add(b.tag);
         return out;
+    }
+
+    /* ===================== schema family (§6a.6) ===================== */
+
+    /** Family of a single key; null = schema-neutral (e.g. upstream dxgi.*, dxvk.*). */
+    public Schema familyOf(String key) {
+        if (key == null) return null;
+        if (key.startsWith(SAREK_PREFIX)) return Schema.SAREK;
+        if (key.startsWith(STAR_PREFIX) || STAR_PROFILE_KEY.equals(key)) return Schema.STAR;
+        return null;
+    }
+
+    /**
+     * Schema family of an installed build, derived from its DOCUMENTED key set
+     * (majority of family-classified keys; a tie is ambiguous -> null). Null also for
+     * unknown tags, key-less builds (no-config-asset) and schema-neutral sets.
+     * Blocking only fires on an UNambiguous installed schema — never by guessing.
+     */
+    public Schema schemaFamilyOf(String installedTag) {
+        int idx = indexOf(tagOf(installedTag));
+        if (idx < 0) return null;
+        int sarek = 0, star = 0;
+        for (String k : builds.get(idx).keys) {
+            Schema f = familyOf(k);
+            if (f == Schema.SAREK) sarek++;
+            else if (f == Schema.STAR) star++;
+        }
+        if (sarek == star) return null;                       // zero-classified keys: 0 == 0 -> null
+        return sarek > star ? Schema.SAREK : Schema.STAR;
+    }
+
+    /** True when the key's family is known AND the installed build's family is the OTHER one. */
+    public boolean isWrongFamily(String key, String installedTag) {
+        Schema keyFam = familyOf(key);
+        Schema instFam = schemaFamilyOf(installedTag);
+        return keyFam != null && instFam != null && keyFam != instFam;
     }
 
     /* ===================== strict validation ===================== */
@@ -197,7 +250,7 @@ public final class VegasKeyCatalog {
         return -1;
     }
 
-    private String publishedAtOf(String tag) {
+    private String publishedAtOf0(String tag) {
         int idx = indexOf(tag);
         return idx >= 0 ? builds.get(idx).publishedAt : "";
     }

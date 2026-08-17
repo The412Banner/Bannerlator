@@ -69,6 +69,9 @@ import org.json.JSONArray
 import java.util.concurrent.Executors
 import com.winlator.star.container.Container
 import com.winlator.star.container.VegasActiveConfig
+import com.winlator.star.container.VegasMigration
+import com.winlator.star.container.VegasLiveCheck
+import com.winlator.star.core.HttpUtils
 import com.winlator.star.widget.ColorPickerView
 import com.winlator.star.widget.CPUListView
 import com.winlator.star.widget.EnvVarsView
@@ -2001,6 +2004,14 @@ internal fun DxvkConfigDialog(
     }
     var showCatalogDialog by remember { mutableStateOf(false) }
     var forkFilter by remember { mutableStateOf(false) }
+    // §6a.6 schema-aware editor: wrong-family key awaiting the block-with-explanation dialog.
+    var pendingSchemaBlock by remember { mutableStateOf<String?>(null) }
+    // §5 migration detector: the stored dxvkConfigFile as it existed BEFORE this session
+    // (legacy containers persist the parked stock path; the split world persists active.conf).
+    var legacyStoredPath by remember { mutableStateOf(config.get("dxvkConfigFile").ifEmpty { "" }) }
+    // §6b.1 user-initiated "Check for new builds" (report only — observation, never mutation).
+    var liveReport by remember { mutableStateOf<VegasLiveCheck.Report?>(null) }
+    var liveChecking by remember { mutableStateOf(false) }
 
         // The active source's absolute path; "" = USE DEFAULTS (env-var semantics, no file).
     val activeConfigPath = remember(useDefaults, selectedStock, selectedCustom, stockSources.value) {
@@ -2020,14 +2031,36 @@ internal fun DxvkConfigDialog(
     // Baseline path awaiting the "create active config" decision row (set by stock toggles
     // before any write, and by the "Use as my config" action).
     var pendingBaselineSeed by remember { mutableStateOf<String?>(null) }
+    // §5a/§6d custom import semantics: when a custom file is selected with a container
+    // present, the FIRST write is an IMPORT (replaces the active config + provenance event,
+    // prior working copy backed up); once the active config's last import came from this
+    // exact file, toggles are ordinary edits. True also when no active config exists yet
+    // (import seeds it). Container-less custom selection keeps legacy direct-write.
+    val customImportPending = remember(selectedCustom, activeExists, toggleVersion, containerRootDir) {
+        if (selectedCustom == null || containerRootDir == null) false
+        else {
+            val activeNow = VegasActiveConfig.exists(containerRootDir)
+            if (!activeNow) true
+            else (VegasActiveConfig.events(containerRootDir)
+                .lastOrNull { it.type == VegasActiveConfig.EVENT_IMPORT }?.from ?: "") != selectedCustom
+        }
+    }
     // Config-file snapshot, read ONCE per source pick or per write (never re-read on the fly):
     // empty text = USE DEFAULTS; missing = active path not found on disk.
-    val configSourceText = remember(activeExists, selectedCustom, activeConfigPath, toggleVersion) {
+    val configSourceText = remember(activeExists, selectedCustom, activeConfigPath, toggleVersion, customImportPending) {
         when {
-            // Explicit custom selection keeps legacy direct-read semantics (§5a deferred).
+            // Custom selection: pre-import shows the SOURCE file (what the import will
+            // bring in); after import the working copy is the container's active config.
             selectedCustom != null -> {
-                val f = java.io.File(selectedCustom!!)
-                if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
+                if (customImportPending) {
+                    val f = java.io.File(selectedCustom!!)
+                    if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
+                } else if (containerRootDir != null && activeExists) {
+                    runCatching { VegasActiveConfig.activeFile(containerRootDir).readText() }.getOrDefault("")
+                } else {
+                    val f = java.io.File(selectedCustom!!)
+                    if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
+                }
             }
             activeExists && activeFile != null -> runCatching { activeFile.readText() }.getOrDefault("")
             activeConfigPath.isEmpty() -> ""
@@ -2043,6 +2076,69 @@ internal fun DxvkConfigDialog(
     val configRows = remember(vegasKnowledge, configSourceText, selectedDxvk) {
         if (vegasKnowledge != null) vegasKnowledge.editRows(configSourceText, selectedDxvk)
         else VegasKeyKnowledge.editRowsUnclassified(configSourceText)
+    }
+
+    // §5 migration detector: offered only when the stored dxvkConfigFile still points at a
+    // parked stock file, no active config exists yet, and no adopt/dismiss decision was
+    // recorded for it. Idempotent by construction (VegasMigration.plan).
+    val migrationPlan = remember(containerRootDir, legacyStoredPath, activeConfigPath, toggleVersion) {
+        VegasMigration.plan(containerRootDir, legacyStoredPath.ifEmpty { null }, activeConfigPath.ifEmpty { null })
+    }
+    // Classification summary for the adoption banner (stock vocabulary — the parked file
+    // is a VEGAS stock config). Counts what the user would see classified in the rows.
+    val migrationSummary = remember(configRows, migrationPlan, vegasCatalog, activeStockTag) {
+        if (migrationPlan != VegasMigration.Plan.ADOPT || vegasCatalog == null) null
+        else {
+            val inB = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.IN_BUILD }
+            val other = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.OTHER_BUILD }
+            val up = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.UPSTREAM }
+            val nowhere = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.NOWHERE }
+            "${configRows.size} lines · $inB in this build · $other another VEGAS build · $up upstream DXVK · $nowhere unclassified"
+        }
+    }
+
+    fun schemaName(s: VegasKeyCatalog.Schema?): String = when (s) {
+        VegasKeyCatalog.Schema.SAREK -> "Sarek (dxvk.vegas.*)"
+        VegasKeyCatalog.Schema.STAR -> "Star Engine (vegas.*)"
+        null -> "unknown"
+    }
+
+    fun adoptLegacy() {
+        val rootDir = containerRootDir
+        val path = activeConfigPath
+        if (rootDir == null || path.isEmpty()) return
+        val src = java.io.File(path)
+        val from = stockSources.value.firstOrNull { it.file.absolutePath == path }?.tag
+            ?: stockSources.value.firstOrNull { it.file.absolutePath == path }?.verName
+            ?: path
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                if (!src.isFile) false
+                else VegasMigration.adopt(rootDir, src, runCatching { src.readText() }.getOrDefault(""), from)
+            }
+            if (ok) { stockEdited = true; toggleVersion++ }
+            else Toast.makeText(activity, "Adoption failed — file unreadable", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun dismissLegacy() {
+        val rootDir = containerRootDir ?: return
+        VegasMigration.dismiss(rootDir, legacyStoredPath)
+        toggleVersion++
+    }
+
+    // §6b.1 user-initiated "Check for new builds" — report only, never writes.
+    fun runLiveCheck() {
+        if (liveChecking) return
+        liveChecking = true
+        HttpUtils.download("https://api.github.com/repos/isygold/vegas-releases/releases") { body ->
+            scope.launch {
+                val catalogNewest = vegasCatalog?.newestTag()
+                val newestAt = catalogNewest?.let { vegasCatalog?.publishedAtOf(it) }
+                liveReport = VegasLiveCheck.check(body, activeStockTag, catalogNewest, newestAt)
+                liveChecking = false
+            }
+        }
     }
 
     val pickCustomConfigLauncher = rememberLauncherForActivityResult(
@@ -2062,8 +2158,9 @@ internal fun DxvkConfigDialog(
     // Comment/uncomment the exact config line. Split (§6e): edits land in the container's
     // ACTIVE config (baseline stock files are structurally read-only — no in-place write
     // path exists anymore). Stock rows on an unseeded container open the seed decision
-    // row instead of writing. Custom files keep legacy confirm-write semantics (§5a
-    // import/replace lands with the migration session).
+    // row instead of writing. §6a.6: wrong-schema keys are BLOCKED with an explanation
+    // before anything else. §5a/§6d: custom selection imports (replaces) on first write,
+    // edits after.
     fun applyToggle(row: VegasKeyKnowledge.EditRow, enable: Boolean, confirmed: Boolean = false) {
         val path = activeConfigPath
         if (path.isEmpty()) return
@@ -2074,25 +2171,59 @@ internal fun DxvkConfigDialog(
             Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
             return
         }
-        if (!isStockPath && !confirmed) { pendingToggle = row to enable; return }
+        // §6a.6 schema-aware editor: block BEFORE the seed/import decision — a wrong-family
+        // key can never be meaningfully applied to this build's schema, so no write, no
+        // decision row, only the explanation. Stock rows only (custom files are user-owned).
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(row.key, activeStockTag)) {
+            pendingSchemaBlock = row.key
+            return
+        }
+        // Custom rows confirm only when the write is an IMPORT (a replace); plain edits
+        // after import behave like stock (no confirmation). Container-less custom keeps
+        // legacy confirm-write.
+        if (!isStockPath && !confirmed && (containerRootDir == null || customImportPending)) { pendingToggle = row to enable; return }
         val file = java.io.File(path)
         scope.launch {
             // 0 = failed, 1 = written, 2 = seed decision row needed (no active config yet)
             val result = withContext(Dispatchers.IO) {
                 if (isStockPath && activeFile != null && !activeFile.isFile) return@withContext 2
-                val target = when {
-                    isStockPath && activeExists -> activeFile!!
-                    else -> file                                  // custom legacy path
+                val readFrom = when {
+                    isStockPath && activeExists && activeFile != null -> activeFile
+                    // Custom edit mode (already imported): the working copy is the active config.
+                    !isStockPath && !customImportPending && activeExists && activeFile != null -> activeFile
+                    else -> file
                 }
-                if (!target.isFile) return@withContext 0
-                val text = runCatching { target.readText() }.getOrNull() ?: return@withContext 0
+                if (!readFrom.isFile) return@withContext 0
+                val text = runCatching { readFrom.readText() }.getOrNull() ?: return@withContext 0
                 val next = VegasKeyKnowledge.toggleLine(text, row.key, enable) ?: return@withContext 0
-                if (isStockPath && activeExists) {
-                    // Structural write path: every edit goes through VegasActiveConfig.
-                    val rootDir = containerRootDir ?: return@withContext 0
-                    if (VegasActiveConfig.edit(rootDir, next)) 1 else 0
-                } else {
-                    if (runCatching { target.writeText(next) }.isSuccess) 1 else 0
+                val rootDir = containerRootDir
+                when {
+                    // Stock + owned: the structural edit path (no lifecycle event).
+                    isStockPath && rootDir != null && activeExists ->
+                        if (VegasActiveConfig.edit(rootDir, next)) 1 else 0
+                    // Stock + unseeded: never write — the seed decision row decides.
+                    isStockPath -> 2
+                    // Custom + container: import on first write (replace + provenance +
+                    // backup), plain edits afterwards.
+                    rootDir != null -> {
+                        if (customImportPending) {
+                            // Preserve the prior working copy BEFORE the replace — explicit
+                            // user-invoked escape hatch, non-clobbering with counter suffixes.
+                            if (VegasActiveConfig.exists(rootDir)) {
+                                val prev = VegasActiveConfig.sourceType(rootDir) ?: "unknown"
+                                val active = VegasActiveConfig.activeFile(rootDir)
+                                var bak = java.io.File(active.absolutePath + ".bak-" + prev)
+                                var n = 2
+                                while (bak.isFile) { bak = java.io.File(active.absolutePath + ".bak-" + prev + "-" + n); n++ }
+                                runCatching { java.nio.file.Files.copy(active.toPath(), bak.toPath()) }
+                            }
+                            if (VegasActiveConfig.write(rootDir, next, VegasActiveConfig.EVENT_IMPORT, file.absolutePath)) 1 else 0
+                        } else {
+                            if (VegasActiveConfig.edit(rootDir, next)) 1 else 0
+                        }
+                    }
+                    // No container: legacy direct-write (custom only — stock is guarded above).
+                    else -> if (runCatching { file.writeText(next) }.isSuccess) 1 else 0
                 }
             }
             when (result) {
@@ -2240,6 +2371,20 @@ internal fun DxvkConfigDialog(
                         Text("Use defaults (no config file)", style = MaterialTheme.typography.bodySmall)
                     }
                     if (!useDefaults) {
+                        // §5 "Found your config": one-time, idempotent legacy adoption.
+                        // Decided here, recorded in the sidecar (adopt) or a dismiss marker.
+                        if (migrationPlan == VegasMigration.Plan.ADOPT) {
+                            Spacer(Modifier.height(4.dp))
+                            Text("Found your config", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                migrationSummary ?: "Your previous VEGAS config is preserved below, read-only.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Row {
+                                TextButton(onClick = { adoptLegacy() }) { Text("Use it", style = MaterialTheme.typography.bodySmall) }
+                                TextButton(onClick = { dismissLegacy() }) { Text("Start fresh", style = MaterialTheme.typography.bodySmall) }
+                            }
+                        }
                         Spacer(Modifier.height(4.dp))
                         LabeledDropdown(
                             "Stock config (per version)",
@@ -2364,9 +2509,48 @@ internal fun DxvkConfigDialog(
                                     }
                                     Spacer(Modifier.height(4.dp))
                                     Text("Updated at build time (assistant-side maintenance). No background watcher — Bannerlator has no WorkManager/JobScheduler; check again in a future build.")
+                                    Spacer(Modifier.height(6.dp))
+                                    TextButton(onClick = { runLiveCheck() }, enabled = !liveChecking) {
+                                        Text(if (liveChecking) "Checking…" else "Check for new builds", style = MaterialTheme.typography.bodySmall)
+                                    }
                                 }
                             },
                             confirmButton = { TextButton(onClick = { showCatalogDialog = false }) { Text("OK") } }
+                        )
+                    }
+                    // §6b.1 report dialog: observation only, zero writes. Shown regardless of
+                    // the catalog dialog's own visibility so a report survives its dismissal.
+                    liveReport?.let { r ->
+                        AlertDialog(
+                            onDismissRequest = { liveReport = null },
+                            title = { Text("VEGAS new-build check") },
+                            text = {
+                                Column {
+                                    if (!r.feedOk) {
+                                        Text("Could not reach the release feed (network or API failure).")
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("The bundled catalog is unchanged; keys for unknown builds stay 'unverified'.")
+                                    } else {
+                                        Text("Catalog newest: ${r.catalogNewestTag ?: "?"} (${r.catalogNewestAt.ifEmpty { "?" }}).")
+                                        Spacer(Modifier.height(4.dp))
+                                        if (r.newerCount == 0) {
+                                            Text("No newer releases found.")
+                                        } else {
+                                            Text("${r.newerCount} newer release(s) found" +
+                                                    (if (r.newBuildCount > 0) " — $r.newBuildCount stable" else " (all prerelease)") + ":")
+                                            r.newerTags.forEach { t -> Text("· $t", style = MaterialTheme.typography.bodySmall) }
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            if (r.installedFoundLive) "Your installed build is still listed upstream."
+                                            else "Your installed build is not in the current release list."
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("This check only reports — no writes, no catalog change. Download and classification still use the existing flows; the catalog asset updates at build time.")
+                                    }
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { liveReport = null }) { Text("OK") } }
                         )
                     }
                     if (stockEdited) {
@@ -2379,18 +2563,50 @@ internal fun DxvkConfigDialog(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    // Custom-file writes require explicit confirmation (confirm-write only).
+                    // Custom-file writes require explicit confirmation. With a container
+                    // present this is an IMPORT (replace + backup + provenance event);
+                    // without one it is the legacy direct write.
                     pendingToggle?.let { (row, enable) ->
                         AlertDialog(
                             onDismissRequest = { pendingToggle = null },
-                            title = { Text("Write to custom config file?") },
-                            text = { Text("This file applies to every VEGAS version. The change is written to the file immediately.") },
+                            title = { Text(if (containerRootDir != null) "Import into active config?" else "Write to custom config file?") },
+                            text = {
+                                Text(
+                                    if (containerRootDir != null)
+                                        "The custom file replaces this container's active config. The prior version is backed up and the import is recorded."
+                                    else
+                                        "This file applies to every VEGAS version. The change is written to the file immediately."
+                                )
+                            },
                             confirmButton = {
                                 TextButton(onClick = { pendingToggle = null; applyToggle(row, enable, confirmed = true) }) {
-                                    Text("Write")
+                                    Text(if (containerRootDir != null) "Import" else "Write")
                                 }
                             },
                             dismissButton = { TextButton(onClick = { pendingToggle = null }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
+                    // §6a.6 schema block: the key belongs to the OTHER line's schema. Nothing
+                    // is written — no decision row, no backup, just the explanation.
+                    pendingSchemaBlock?.let { key ->
+                        val keyFam = vegasCatalog?.familyOf(key)
+                        val instFam = activeStockTag?.let { vegasCatalog?.schemaFamilyOf(it) }
+                        val prefix = when (keyFam) {
+                            VegasKeyCatalog.Schema.SAREK -> "dxvk.vegas."
+                            VegasKeyCatalog.Schema.STAR -> if (key == "dxvk.enableStarProfile") key else "vegas."
+                            null -> "?"
+                        }
+                        AlertDialog(
+                            onDismissRequest = { pendingSchemaBlock = null },
+                            title = { Text("Key not applicable to this build's schema") },
+                            text = {
+                                Text(
+                                    "$key belongs to the ${schemaName(keyFam)} schema ($prefix…).\n\n" +
+                                    "This build (${activeStockTag ?: "unknown"}) uses the ${schemaName(instFam)} schema — " +
+                                    "the option cannot be applied and would be ignored."
+                                )
+                            },
+                            confirmButton = { TextButton(onClick = { pendingSchemaBlock = null }) { Text("Got it") } }
                         )
                     }
                     // Split decision row: seed (no active config yet) or switch (replace active

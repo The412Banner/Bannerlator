@@ -5,42 +5,54 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/ComposeToolbar"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="8dp" />
-
-    <View
-        android:id="@+id/VSidebarOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent"
-        android:clickable="true"
-        android:focusable="true"
-        android:visibility="gone" />
-
-    <ScrollView
-        android:id="@+id/SVSidebar"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="start|top"
-        android:background="#FF1A1A2E"
-        android:fillViewport="true"
-        android:visibility="gone">
+        android:layout_marginTop="8dp"
+        android:background="@drawable/input_controls_toolbar"
+        android:gravity="center_vertical"
+        android:padding="4dp">
 
         <LinearLayout
-            android:id="@+id/LLSidebarContent"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp" />
-    </ScrollView>
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp">
 
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/ComposeDialogHost"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textColor="#ffffff"
+                android:text="@string/profile" />
+
+            <TextView
+                android:id="@+id/TVProfileName"
+                android:layout_width="wrap_content"
+                android:textColor="@color/colorAccent"
+                android:textSize="14sp"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <View style="@style/VerticalLine" />
+
+        <ImageButton
+            android:id="@+id/BTAddElement"
+            style="@style/ToolButton"
+            android:src="@drawable/icon_add"  />
+
+        <ImageButton
+            android:id="@+id/BTRemoveElement"
+            style="@style/ToolButton"
+            android:src="@drawable/icon_remove"  />
+
+        <ImageButton
+            android:id="@+id/BTElementSettings"
+            style="@style/ToolButton"
+            android:src="@drawable/icon_settings"  />
+    </LinearLayout>
 </FrameLayout>

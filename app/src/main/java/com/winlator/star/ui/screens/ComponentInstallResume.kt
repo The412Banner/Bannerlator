@@ -14,10 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
 import com.winlator.star.components.ComponentExecInstaller
-import com.winlator.star.components.ComponentInstallReturn
-import com.winlator.star.ui.ComponentReturnBus
 import com.winlator.star.ui.findActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,7 +26,7 @@ import kotlinx.coroutines.withContext
  * registry/override steps and launches the next installer if the component has one — or discard it.
  */
 @Composable
-fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
+fun ComponentInstallResume() {
     val context = LocalContext.current
     val activity = context.findActivity()
     val scope = rememberCoroutineScope()
@@ -40,27 +37,8 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
     var progress by remember { mutableStateOf(0f) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    // Consume the session-return target set at the source (RecommendedComponentsSection / ComponentsSheet)
-    // before the install session restarted the app: land back on Games (Tier 1) and, when a shortcut is
-    // known, re-open its settings on the recommended-components tab (Tier 2). Best-effort — a missing or
-    // partial target just falls back to Games / a no-op. [installedName] non-null → show a success toast.
-    fun consumeReturn(installedName: String?) {
-        val target = runCatching { ComponentInstallReturn.get(context) }.getOrNull()
-        ComponentInstallReturn.clear(context)
-        installedName?.let {
-            runCatching { Toast.makeText(context, "Installed $it.", Toast.LENGTH_SHORT).show() }
-        }
-        // Tier 2: ask the Shortcuts screen to open this shortcut's settings once we arrive.
-        target?.shortcutBase?.let { base ->
-            ComponentReturnBus.openShortcutSettings =
-                ComponentReturnBus.ShortcutTarget(target.containerId, base)
-        }
-        // Tier 1: always route to Games so the user is never stranded on the resume dialog / default screen.
-        runCatching { onNavigateToGames() }
-    }
-
     message?.let { m ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { message = null },
             containerColor = cs.surfaceContainerHigh,
             text = { Text(m, color = cs.onSurface) },
@@ -70,7 +48,7 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
 
     val name = pending ?: return
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = { /* keep until the user chooses */ },
         containerColor = cs.surfaceContainerHigh,
         title = { Text("Finish installing $name", color = cs.onSurface) },
@@ -103,10 +81,8 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
                     busy = false
                     pending = null
                     when (res) {
-                        // Another installer session is coming — DON'T return yet; the return target
-                        // stays persisted for the next resume after that session restarts the app.
                         is ComponentExecInstaller.Result.Launched -> { /* heading into the next session */ }
-                        is ComponentExecInstaller.Result.Done -> consumeReturn(name)
+                        is ComponentExecInstaller.Result.Done -> message = "$name installed."
                         is ComponentExecInstaller.Result.Error -> message = "Couldn't finish $name: ${res.message}"
                         null -> {}
                     }
@@ -117,10 +93,6 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
             TextButton(enabled = !busy, onClick = {
                 ComponentExecInstaller.clearPlan(context)
                 pending = null
-                // Even on discard, return to Games so the user isn't stranded on the default screen.
-                // No success toast (nothing was installed); Tier 2 still re-opens the shortcut so they
-                // can retry from its recommendations.
-                consumeReturn(null)
             }) { Text("Discard", color = Color(0xFFE57373)) } // intentional: destructive-action red
         },
     )

@@ -3,9 +3,8 @@
 // NO adrenotools). Loaded by com.winlator.star.renderer.DirectScanout so a GL
 // container can drive direct scanout without dragging in libvulkan_renderer.
 //
-// This lib + DirectScanout.java back the GL renderer's Native Rendering path
-// (GLRenderer.presentScanout -> nativeSetBuffer/nativeSetCursorImage). Active,
-// not dormant.
+// P1 of the GL direct-scanout plan: this lib + DirectScanout.java are DORMANT —
+// wired into no renderer yet. It only needs to compile and load.
 //
 // Threading model (the GL model): unlike the Vulkan path, there is no render
 // loop here. The cursor setters apply their pending transaction INLINE: when
@@ -16,7 +15,6 @@
 // in this lib.
 
 #include <jni.h>
-#include <unistd.h>
 #include <android/native_window_jni.h>
 #include "ScanoutContext.h"
 
@@ -63,8 +61,6 @@ Java_com_winlator_star_renderer_DirectScanout_nativeSetBuffer(
     auto* c = ctx(handle);
     if (c && ahbPtr)
         c->setBuffer(reinterpret_cast<AHardwareBuffer*>(ahbPtr), x, y, w, h, fenceFd);
-    else if (fenceFd >= 0)
-        close(fenceFd);  // no consumer -> the acquire fence fd would otherwise leak
 }
 
 JNIEXPORT void JNICALL

@@ -12,7 +12,7 @@ import androidx.compose.runtime.Composable
  */
 @Composable
 fun SurfaceFlingerWarningDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("SurfaceFlinger renderer — Experimental") },
         text = {

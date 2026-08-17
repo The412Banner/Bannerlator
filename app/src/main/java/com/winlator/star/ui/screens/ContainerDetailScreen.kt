@@ -1976,9 +1976,11 @@ internal fun DxvkConfigDialog(
     val activeStockTag = remember(selectedStock, stockSources.value) {
         stockSources.value.firstOrNull { it.verName == selectedStock || it.displayLabel() == selectedStock }?.tag
     }
-    // Coverage rule: installed tag missing from catalog (or no tag recorded) -> "catalog behind build".
-    val catalogBehind = remember(vegasCatalog, activeStockTag) {
-        vegasCatalog != null && (activeStockTag == null || !vegasCatalog.isCovered(activeStockTag))
+    // Coverage rule (STOCK rows only): installed tag missing from catalog (or no tag
+    // recorded) -> "catalog behind build". Custom files are user-owned — classifier
+    // vocabulary (including "unverified") never annotates them.
+    val catalogBehind = remember(vegasCatalog, selectedStock, activeStockTag) {
+        vegasCatalog != null && selectedStock != null && (activeStockTag == null || !vegasCatalog.isCovered(activeStockTag))
     }
     var showCatalogDialog by remember { mutableStateOf(false) }
     var forkFilter by remember { mutableStateOf(false) }
@@ -2245,7 +2247,10 @@ internal fun DxvkConfigDialog(
                                 val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
                                 if (forkFilter && gated) return@forEach
                                 val baseBadge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
-                                val bucketPart = if (vegasCatalog != null && activeStockTag != null)
+                                // Bucket vocabulary describes VEGAS stock configs; a custom (user-owned) file is
+                                // by definition not a VEGAS build — suffixes would read as warnings
+                                // about something the user did deliberately. Stock-only.
+                                val bucketPart = if (vegasCatalog != null && selectedStock != null)
                                     when (vegasCatalog.classify(row.key, activeStockTag)) {
                                         VegasKeyCatalog.Bucket.IN_BUILD -> ""
                                         VegasKeyCatalog.Bucket.OTHER_BUILD -> " · another VEGAS build"
@@ -2282,7 +2287,8 @@ internal fun DxvkConfigDialog(
                     Text(footerText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val catalogFooter = when {
                         vegasCatalog == null -> "catalog unavailable — classifier off, rows marked unverified"
-                        activeStockTag == null -> "catalog: newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()} — preset tag unknown"
+                        selectedCustom != null -> "catalog: newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()} — classifier applies to stock configs"
+                        activeStockTag == null -> "catalog: newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()} — no stock source selected"
                         catalogBehind -> "catalog behind build — key classes unverified (newest known: ${vegasCatalog.newestTag()})"
                         else -> "catalog: covered · newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()}"
                     }

@@ -19,7 +19,6 @@ public class ExternalControllerBinding {
     public static final byte AXIS_RZ_POSITIVE = -8;
     private short keyCode;
     private Binding binding = Binding.NONE;
-    private String serializedBindingName;
 
     public int getKeyCode() {
         return keyCode;
@@ -34,21 +33,14 @@ public class ExternalControllerBinding {
     }
 
     public void setBinding(Binding binding) {
-        this.binding = binding != null ? binding : Binding.NONE;
-        serializedBindingName = null;
-    }
-
-    public void setLoadedBinding(Binding binding, String serializedBindingName) {
-        this.binding = binding != null ? binding : Binding.NONE;
-        this.serializedBindingName = serializedBindingName;
+        this.binding = binding;
     }
 
     public JSONObject toJSONObject() {
         try {
             JSONObject controllerBindingJSONObject = new JSONObject();
             controllerBindingJSONObject.put("keyCode", keyCode);
-            controllerBindingJSONObject.put("binding",
-                    ControlElement.getSerializedBindingName(binding, serializedBindingName));
+            controllerBindingJSONObject.put("binding", binding.name());
             return controllerBindingJSONObject;
         }
         catch (JSONException e) {

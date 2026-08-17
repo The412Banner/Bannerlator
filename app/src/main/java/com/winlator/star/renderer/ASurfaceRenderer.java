@@ -443,10 +443,9 @@ public class ASurfaceRenderer implements HostRenderer,
         if (!surfaceInitialized || !cursorVisible) return;
         if (cursor != null && !cursor.isVisible()) return;
         Drawable cd = cursor != null ? cursor.cursorImage : null;
-        if (cd == null) return;
+        if (cd == null || cd.getBuffer() == null) return;
         synchronized (cd.renderLock) {
             ByteBuffer buf = cd.getBuffer();
-            if (buf == null) return;
             nativeScanoutSetCursorImage(buf, cd.width, cd.height, (short) (buf.capacity() / (cd.height * 4)));
         }
     }

@@ -127,7 +127,7 @@ fun AdrenoToolsScreen() {
 
     // Confirm: install
     if (confirmInstallPrompt) {
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmInstallPrompt = false },
             title = { Text(context.getString(R.string.install_drivers_message)) },
             text = { Text(context.getString(R.string.install_drivers_warning)) },
@@ -157,7 +157,7 @@ fun AdrenoToolsScreen() {
 
     // Confirm: remove
     confirmRemoveIndex?.let { idx ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmRemoveIndex = null },
             title = { Text("Remove driver?") },
             text = { Text("Remove \"${manager.getDriverName(drivers[idx])}\"?") },

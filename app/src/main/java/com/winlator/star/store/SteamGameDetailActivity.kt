@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -28,7 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import com.winlator.star.ui.screens.OutlinedAlertDialog
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -83,19 +82,6 @@ private enum class PauseAction { PAUSE, RESUME }
 /** Semantic install status; colour resolves inside the composable (installed = green,
  *  failed = error, everything else = onSurfaceVariant). */
 private enum class GameStatus { NOT_INSTALLED, INSTALLED, CANCELLED, FAILED }
-
-/** The four granular save moves across the three tiers (Cloud ⇄ Library ⇄ Container), plus the two
- *  end-to-end combos the primary UI now leads with: SYNC_FROM = Download+Apply (cloud → into game),
- *  SYNC_TO = Collect+Upload (game → to cloud). The granular four stay for the Advanced expander. */
-private enum class CloudMove { DOWNLOAD, UPLOAD, APPLY, COLLECT, SYNC_FROM, SYNC_TO }
-
-/** A pending cloud-save confirm dialog: which move, the target container's label, and (for the
- *  moves that need it) a non-blocking staleness warning line — null when there's nothing to warn. */
-private data class CloudConfirm(
-    val move: CloudMove,
-    val containerLabel: String,
-    val stalenessWarning: String?,
-)
 
 /** The labeled size breakdown shown under the info chips. Empty strings render nothing. */
 private data class SizeBreakdown(
@@ -173,24 +159,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
     private var steamStatus by mutableStateOf(SteamRepository.getInstance().status)
 
-    // Steam Cloud saves — three-tier save library (Cloud ⇄ Library ⇄ Container). Only meaningful
-    // once the game is installed AND a Steam session is live (SteamRepository.getSteamCloud() != null).
-    private var cloudVisible by mutableStateOf(false)
-    private var cloudBusy by mutableStateOf(false)
-    private var cloudStatus by mutableStateOf<String?>(null)
-    // Container resolution for the Apply/Collect tier. cloudResolved flips true once the async
-    // resolveContainer() returns; cloudContainerReady = the game has a launch container (else the
-    // section shows the "set up first" state). cloudContainerLabel names it in every confirm dialog.
-    private var cloudResolved by mutableStateOf(false)
-    private var cloudContainerReady by mutableStateOf(false)
-    private var cloudContainerLabel by mutableStateOf<String?>(null)
-    // Pending per-move confirm dialog (move + container label + optional staleness warning).
-    private var cloudConfirm by mutableStateOf<CloudConfirm?>(null)
-    // One-time third-party disclaimer (persisted in steam_prefs). pendingCloudMove is the move the
-    // user tried to run before accepting; it's dispatched once they tap "I understand".
-    private var showCloudDisclaimer by mutableStateOf(false)
-    private var pendingCloudMove by mutableStateOf<CloudMove?>(null)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         appId = intent.getIntExtra(EXTRA_APP_ID, 0)
@@ -198,11 +166,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
-        // Lazy-connect: opening a detail page directly (e.g. drawer → Save Manager → tap a card) skips
-        // the store home that starts SteamForegroundService, so the CM connection would stay down and
-        // the status badge read offline. Ensure it here when signed in — idempotent (start/connect
-        // guard double-connect), and a no-op for users without a saved Steam account.
-        if (SteamPrefs.isLoggedIn) SteamForegroundService.start(this)
 
         setContent {
             WinlatorTheme {
@@ -244,68 +207,11 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     goldbergSizeLabel = goldbergSizeLabel,
                     onGoldbergDownloadClick = { onGoldbergDownloadClicked() },
                     onGoldbergModeSelected = { onGoldbergModeSelected(it) },
-                    cloudVisible = cloudVisible,
-                    cloudBusy = cloudBusy,
-                    cloudStatus = cloudStatus,
-                    cloudResolved = cloudResolved,
-                    cloudContainerReady = cloudContainerReady,
-                    cloudContainerLabel = cloudContainerLabel,
-                    cloudLibraryPath = SteamCloudSavePaths.libraryDir(this, appId).absolutePath,
-                    onCloudSyncFrom = { onCloudMoveRequested(CloudMove.SYNC_FROM) },
-                    onCloudSyncTo = { onCloudMoveRequested(CloudMove.SYNC_TO) },
-                    onCloudDownload = { onCloudMoveRequested(CloudMove.DOWNLOAD) },
-                    onCloudApply = { onCloudMoveRequested(CloudMove.APPLY) },
-                    onCloudCollect = { onCloudMoveRequested(CloudMove.COLLECT) },
-                    onCloudUpload = { onCloudMoveRequested(CloudMove.UPLOAD) },
-                    onCloudSetUp = { onLaunchClicked() },
                     onBack = { finish() },
                     onInstallClick = { onInstallClicked() },
                     onPauseResumeClick = { onPauseResumeClicked() },
                     onLaunchClick = { onLaunchClicked() },
                 )
-
-                // One-time third-party disclaimer — gates the FIRST cloud action (any game). On accept
-                // we persist the flag and dispatch the move the user was trying to run.
-                if (showCloudDisclaimer) {
-                    OutlinedAlertDialog(
-                        onDismissRequest = { showCloudDisclaimer = false; pendingCloudMove = null },
-                        title = { Text("Third-party cloud sync") },
-                        text = {
-                            Text(
-                                "Steam Cloud save syncing here is handled by a third-party tool, not " +
-                                    "official Steam. Managing game saves this way can corrupt or lose " +
-                                    "your saves. Use at your own risk."
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                showCloudDisclaimer = false
-                                setCloudDisclaimerAccepted()
-                                pendingCloudMove?.let { prepareCloudConfirm(it) }
-                                pendingCloudMove = null
-                            }) { Text("I understand") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = {
-                                showCloudDisclaimer = false
-                                pendingCloudMove = null
-                            }) { Text("Cancel") }
-                        },
-                    )
-                }
-
-                // Per-move confirm dialog — names the target container, states direction + semantics,
-                // folds in the staleness warning (Apply/Upload) and the third-party reminder.
-                cloudConfirm?.let { confirm ->
-                    CloudConfirmDialog(
-                        confirm = confirm,
-                        onConfirm = {
-                            cloudConfirm = null
-                            executeCloudMove(confirm.move)
-                        },
-                        onDismiss = { cloudConfirm = null },
-                    )
-                }
 
                 if (showSpeedPicker) {
                     DownloadSpeedPickerDialog(
@@ -348,12 +254,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                             addToShortcuts = null
                             StarLaunchBridge.writeShortcutAsync(
                                 this@SteamGameDetailActivity, container,
-                                req.gameName, req.exePath, req.coverUrl, appId,
+                                req.gameName, req.exePath, req.coverUrl,
                             ) { success, message ->
                                 addResult = AddShortcutResult(req.gameName, success, message)
-                                // The game now has a launch container — re-resolve so the Cloud Saves
-                                // section flips out of the "set up first" state.
-                                if (success) game?.let { resolveCloudContainer(it) }
                             }
                         },
                     )
@@ -371,7 +274,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 }
 
                 goldbergMessage?.let { msg ->
-                    OutlinedAlertDialog(
+                    AlertDialog(
                         onDismissRequest = { goldbergMessage = null },
                         title = { Text("Steam Emulator (Goldberg)") },
                         text = { Text(msg) },
@@ -688,11 +591,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             installAction = InstallAction.UNINSTALL
             installBtnEnabled = true
             launchBtnEnabled = true
-            // Cloud saves need a live Steam session (the SteamCloud handle is only bound after login).
-            cloudVisible = SteamRepository.getInstance().steamCloud != null
-            // Resolve the game's launch container off the UI thread AFTER the game row is bound —
-            // drives the Apply/Collect tier and the "set up first" gate.
-            if (cloudVisible) resolveCloudContainer(g)
             goldbergMode = SteamPrefs.getGoldbergMode(appId)
             goldbergInstalled = GoldbergComponent.isInstalled(this)
             // If the global component isn't downloaded yet, fetch the catalog in
@@ -709,10 +607,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             installAction = InstallAction.INSTALL
             installBtnEnabled = true
             launchBtnEnabled = false
-            cloudVisible = false
-            cloudResolved = false
-            cloudContainerReady = false
-            cloudContainerLabel = null
         }
     }
 
@@ -767,38 +661,14 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
         if (g.isInstalled) {
             uninstallingName = g.name
-            val installDir = g.installDir
-
-            // Then delete the game's files. Split out so the pre-uninstall save backup can run first
-            // and this proceeds regardless of whether that backup succeeded.
-            val proceedUninstall = {
-                StoreUninstaller.run(
-                    installDir = installDir,
-                    mark = { SteamRepository.getInstance().database.markUninstalled(appId) },
-                ) { ok ->
-                    uninstallingName = null
-                    uninstallResult = if (ok) "${g.name} uninstalled" else "Couldn't fully remove ${g.name}"
-                    loadGame()
-                }
+            StoreUninstaller.run(
+                installDir = g.installDir,
+                mark = { SteamRepository.getInstance().database.markUninstalled(appId) },
+            ) { ok ->
+                uninstallingName = null
+                uninstallResult = if (ok) "${g.name} uninstalled" else "Couldn't fully remove ${g.name}"
+                loadGame()
             }
-
-            // Best-effort: snapshot this game's saves into the local Library (Container -> Library)
-            // BEFORE its files are deleted, so the Library is current at removal time (it lives on
-            // external storage and already survives uninstall — this just makes it CURRENT). Collect
-            // only — nothing is uploaded to the cloud. If the collect fails (e.g. never set up in a
-            // container), log it and uninstall anyway — the backup must never block removal.
-            SteamCloudSaveManager.collectFromContainer(this, appId, installDir,
-                object : SteamCloudSaveManager.Callback {
-                    override fun onStatus(message: String) {}
-                    override fun onDone(summary: String) {
-                        Log.i("BH_SAVE_SYNC", "pre-uninstall collect (appId $appId): $summary")
-                        runOnUiThread { proceedUninstall() }
-                    }
-                    override fun onError(message: String) {
-                        Log.w("BH_SAVE_SYNC", "pre-uninstall collect failed (appId $appId): $message")
-                        runOnUiThread { proceedUninstall() }
-                    }
-                })
         } else {
             showSpeedPicker = true
         }
@@ -858,111 +728,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 showExePicker = ExePickerDataGame(g.name, candidates, coverUrl)
             }
         }.start()
-    }
-
-    // ── Steam Cloud saves — three-tier save library (Cloud ⇄ Library ⇄ Container) ────────────
-    // Persisted one-time third-party disclaimer, keyed globally (any game). Stored in the same
-    // steam_prefs store SteamPrefs uses; SteamPrefs itself is owned by a parallel workstream so we
-    // read/write the flag directly here rather than adding a field to it.
-    private fun cloudDisclaimerAccepted(): Boolean =
-        getSharedPreferences("steam_prefs", MODE_PRIVATE)
-            .getBoolean("cloud_saves_disclaimer_accepted", false)
-
-    private fun setCloudDisclaimerAccepted() {
-        getSharedPreferences("steam_prefs", MODE_PRIVATE)
-            .edit().putBoolean("cloud_saves_disclaimer_accepted", true).apply()
-    }
-
-    /**
-     * Resolve the game's launch container (via its shortcut) off the UI thread, then publish whether
-     * it's set up + its label. Seeds the Apply/Collect tier state — called AFTER the game row is bound.
-     */
-    private fun resolveCloudContainer(g: SteamGame) {
-        Thread {
-            val container = try {
-                SteamCloudSavePaths.resolveContainer(this, appId, g.installDir)
-            } catch (_: Throwable) { null }
-            val label = container?.let {
-                try { SteamCloudSavePaths.containerLabel(it) } catch (_: Throwable) { null }
-            }
-            runOnUiThread {
-                cloudContainerReady = container != null
-                cloudContainerLabel = label
-                cloudResolved = true
-            }
-        }.apply { isDaemon = true; name = "SteamCloudResolve" }.start()
-    }
-
-    /** Entry point for all four buttons: gate on the one-time disclaimer, then build the confirm. */
-    private fun onCloudMoveRequested(move: CloudMove) {
-        if (cloudBusy) return
-        if (!cloudDisclaimerAccepted()) {
-            pendingCloudMove = move
-            showCloudDisclaimer = true
-            return
-        }
-        prepareCloudConfirm(move)
-    }
-
-    /**
-     * Build the per-move confirm. Apply and Upload first sample the container-vs-Library freshness
-     * (off the UI thread) so the dialog can carry a non-blocking "Collect first?" warning when the
-     * container holds newer saves than the Library. Download/Collect need no staleness check.
-     */
-    private fun prepareCloudConfirm(move: CloudMove) {
-        val g = game ?: return
-        val label = cloudContainerLabel ?: return   // gated by cloudContainerReady, but guard anyway
-        if (move == CloudMove.APPLY || move == CloudMove.UPLOAD) {
-            Thread {
-                val stale = try {
-                    SteamCloudSaveManager.staleness(this, appId, g.installDir)
-                } catch (_: Throwable) { null }
-                val warning = stale?.let { cloudStalenessWarning(it) }
-                runOnUiThread { cloudConfirm = CloudConfirm(move, label, warning) }
-            }.apply { isDaemon = true; name = "SteamCloudStale" }.start()
-        } else {
-            cloudConfirm = CloudConfirm(move, label, null)
-        }
-    }
-
-    /**
-     * Warn when the CONTAINER holds newer saves than the Library (the user played but forgot to
-     * Collect): Apply would push a stale Library over newer container progress, and Upload would push
-     * that stale Library to the cloud. Non-blocking — the user can still proceed.
-     */
-    private fun cloudStalenessWarning(s: SteamCloudSaveManager.Staleness): String? =
-        if (s.containerFileCount > 0 && s.containerNewestMtime > s.libraryNewestMtime)
-            "⚠️ This container has newer saves than your Library — Collect first?"
-        else null
-
-    /** Dispatch the confirmed move to the frozen manager API. Each runs on its own worker thread. */
-    private fun executeCloudMove(move: CloudMove) {
-        if (cloudBusy) return
-        val g = game ?: return
-        cloudBusy = true
-        cloudStatus = when (move) {
-            CloudMove.DOWNLOAD  -> "Preparing download…"
-            CloudMove.UPLOAD    -> "Preparing upload…"
-            CloudMove.APPLY     -> "Applying to container…"
-            CloudMove.COLLECT   -> "Collecting from container…"
-            CloudMove.SYNC_FROM -> "Syncing from Cloud…"
-            CloudMove.SYNC_TO   -> "Syncing to Cloud…"
-        }
-        val cb = object : SteamCloudSaveManager.Callback {
-            override fun onStatus(message: String) { runOnUiThread { cloudStatus = message } }
-            override fun onDone(summary: String) { runOnUiThread { cloudStatus = summary; cloudBusy = false } }
-            override fun onError(message: String) { runOnUiThread { cloudStatus = "Error: $message"; cloudBusy = false } }
-        }
-        when (move) {
-            CloudMove.DOWNLOAD  -> SteamCloudSaveManager.downloadToLibrary(this, appId, cb)
-            CloudMove.UPLOAD    -> SteamCloudSaveManager.uploadFromLibrary(this, appId, cb)
-            CloudMove.APPLY     -> SteamCloudSaveManager.applyToContainer(this, appId, g.installDir, cb)
-            CloudMove.COLLECT   -> SteamCloudSaveManager.collectFromContainer(this, appId, g.installDir, cb)
-            // Combos — chained Download+Apply / Collect+Upload; the manager guards not-set-up itself
-            // and reports progress across both phases via onStatus.
-            CloudMove.SYNC_FROM -> SteamCloudSaveManager.syncFromCloud(this, appId, g.installDir, cb)
-            CloudMove.SYNC_TO   -> SteamCloudSaveManager.syncToCloud(this, appId, g.installDir, cb)
-        }
     }
 
     /** Compose add-to-shortcuts flow: load containers, then show the M3 picker. */
@@ -1068,20 +833,6 @@ private fun SteamGameDetailScreen(
     goldbergSizeLabel: String,
     onGoldbergDownloadClick: () -> Unit,
     onGoldbergModeSelected: (GoldbergMode) -> Unit,
-    cloudVisible: Boolean,
-    cloudBusy: Boolean,
-    cloudStatus: String?,
-    cloudResolved: Boolean,
-    cloudContainerReady: Boolean,
-    cloudContainerLabel: String?,
-    cloudLibraryPath: String,
-    onCloudSyncFrom: () -> Unit,
-    onCloudSyncTo: () -> Unit,
-    onCloudDownload: () -> Unit,
-    onCloudApply: () -> Unit,
-    onCloudCollect: () -> Unit,
-    onCloudUpload: () -> Unit,
-    onCloudSetUp: () -> Unit,
     onBack: () -> Unit,
     onInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
@@ -1311,24 +1062,6 @@ private fun SteamGameDetailScreen(
                 onModeSelected = onGoldbergModeSelected,
             )
         }
-
-        if (cloudVisible) {
-            CloudSavesSection(
-                busy = cloudBusy,
-                status = cloudStatus,
-                resolved = cloudResolved,
-                containerReady = cloudContainerReady,
-                containerLabel = cloudContainerLabel,
-                libraryPath = cloudLibraryPath,
-                onSyncFromCloud = onCloudSyncFrom,
-                onSyncToCloud = onCloudSyncTo,
-                onDownload = onCloudDownload,
-                onApply = onCloudApply,
-                onCollect = onCloudCollect,
-                onUpload = onCloudUpload,
-                onSetUp = onCloudSetUp,
-            )
-        }
     }
 
     // DLC picker sheet — choose which owned DLC download with the game (opt-out).
@@ -1513,328 +1246,6 @@ private fun GoldbergSection(
     }
 }
 
-/**
- * Steam Cloud saves — the three-tier "save library" manager (Cloud ⇄ Library ⇄ Container). Four
- * directional moves grouped into a Cloud row (Download / Upload) and a Container row (Apply / Collect):
- *   Download  Cloud → Library      Apply    Library → Container
- *   Upload    Library → Cloud      Collect  Container → Library
- * Every button routes through the caller, which shows a per-move confirm naming the target container.
- * If the game has no launch container yet (containerReady == false) the section shows a "set up first"
- * state offering the add-to-container flow instead of the buttons. Shown only when signed in
- * (caller's `cloudVisible`); a live Steam session is required for the Cloud row.
- */
-@Composable
-private fun CloudSavesSection(
-    busy: Boolean,
-    status: String?,
-    resolved: Boolean,
-    containerReady: Boolean,
-    containerLabel: String?,
-    libraryPath: String,
-    onSyncFromCloud: () -> Unit,
-    onSyncToCloud: () -> Unit,
-    onDownload: () -> Unit,
-    onApply: () -> Unit,
-    onCollect: () -> Unit,
-    onUpload: () -> Unit,
-    onSetUp: () -> Unit,
-) {
-    // The four granular moves live under a collapsed "Advanced" expander; the primary UI is the two
-    // end-to-end combos. Collapsed by default so re-opening the page starts simple.
-    var advancedExpanded by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(16.dp),
-    ) {
-        Text(
-            text = "Steam Cloud Saves",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "Sync this game's saves with your Steam Cloud in one step, either direction. A local " +
-                "Library you own is kept as an internal middle copy along the way.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        // Always-visible third-party disclaimer note.
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "⚠️ Third-party cloud sync — use at your own risk.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-
-        when {
-            // Resolution still in flight — avoid flashing the "set up first" state before we know.
-            !resolved -> {
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "Checking this game's container…",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            // No launch container — Apply/Collect have nowhere to go. Offer the add-to-container flow.
-            !containerReady -> {
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "Set this game up in a container first. Its saves follow whichever " +
-                        "container you add it to — then you can sync them with the cloud here.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = onSetUp,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                ) { Text("Set up in a container", maxLines = 1) }
-            }
-
-            else -> {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "Container: ${containerLabel ?: "—"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "Library: $libraryPath",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                // Primary: the two end-to-end combos, each with a one-line description underneath.
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = onSyncFromCloud,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                ) { Text("⬇ Sync from Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "Bring your Steam Cloud saves down and into this game.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = onSyncToCloud,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                ) { Text("⬆ Sync to Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "Send this game's current saves up to Steam Cloud.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                // Advanced expander — the original four granular moves, hidden by default.
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { advancedExpanded = !advancedExpanded }
-                        .padding(vertical = 6.dp),
-                ) {
-                    Text(
-                        text = if (advancedExpanded) "▾ Advanced" else "▸ Advanced",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "individual Download / Apply / Collect / Upload",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                if (advancedExpanded) {
-                    // Cloud row — Download (Cloud → Library) / Upload (Library → Cloud, additive).
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Cloud",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = onDownload,
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                        ) { Text("⬇ Download", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-
-                        OutlinedButton(
-                            onClick = onUpload,
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                        ) { Text("⬆ Upload", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    }
-
-                    // Container row — Apply (Library → Container) / Collect (Container → Library).
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = "Container",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = onApply,
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                        ) { Text("→ Apply", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-
-                        OutlinedButton(
-                            onClick = onCollect,
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                        ) { Text("← Collect", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    }
-                }
-
-                if (busy) {
-                    Spacer(Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = status ?: "Working…",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else if (!status.isNullOrEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = status,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * Per-move confirm dialog. Names the target container, states the direction + additive/overwrite
- * semantics, surfaces the (non-blocking) staleness warning for Apply/Upload, and repeats the
- * third-party reminder. Confirm label matches the move.
- */
-@Composable
-private fun CloudConfirmDialog(
-    confirm: CloudConfirm,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val container = confirm.containerLabel
-    val (title, body, action) = when (confirm.move) {
-        CloudMove.DOWNLOAD -> Triple(
-            "Download from Cloud?",
-            "Download this game's Steam Cloud saves into your local save Library. This replaces the " +
-                "Library's copy of those files with the cloud versions. It doesn't touch the game's " +
-                "container — use Apply afterwards to put them where the game reads them.",
-            "Download",
-        )
-        CloudMove.APPLY -> Triple(
-            "Apply to container?",
-            "Copy the saves from your Library into $container (this game's container). This overwrites " +
-                "that container's copy of those files with your Library copy. Your Library isn't changed.",
-            "Apply",
-        )
-        CloudMove.COLLECT -> Triple(
-            "Collect from container?",
-            "Copy the saves from $container (this game's container) into your Library, capturing any " +
-                "progress you've made. This overwrites the Library's copy of those files. The container " +
-                "isn't changed.",
-            "Collect",
-        )
-        CloudMove.UPLOAD -> Triple(
-            "Upload to Cloud?",
-            "Upload the saves in your local Library to your Steam Cloud. This only ADDS or REPLACES " +
-                "cloud files — it never deletes anything from the cloud. If the Library is empty, " +
-                "nothing is sent. Make sure your Library has your latest saves (Collect after playing).",
-            "Upload",
-        )
-        CloudMove.SYNC_FROM -> Triple(
-            "Sync from Cloud?",
-            "Bring your Steam Cloud saves down and into $container (this game's container). This " +
-                "overwrites this container's saves with the cloud copy.",
-            "Sync from Cloud",
-        )
-        CloudMove.SYNC_TO -> Triple(
-            "Sync to Cloud?",
-            "Send this game's current saves from $container up to your Steam Cloud. Make sure this is " +
-                "the container with your latest saves — this only ADDS or REPLACES cloud files, it " +
-                "never deletes anything from the cloud.",
-            "Sync to Cloud",
-        )
-    }
-    OutlinedAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                Text(body)
-                if (confirm.stalenessWarning != null) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = confirm.stalenessWarning,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "Third-party cloud sync — use at your own risk.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(action) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
 @Composable
 private fun InfoChip(label: String) {
     Box(
@@ -1869,7 +1280,7 @@ private fun DownloadSpeedPickerDialog(
     // Per-download, not persisted — defaults off each time (scoped to this one download).
     var debugLog by remember { mutableStateOf(false) }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Download speed") },
         text = {
@@ -1955,7 +1366,7 @@ private fun ExePickerDialogGame(
     onDismiss: () -> Unit,
     onSelected: (String) -> Unit,
 ) {
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select executable for \"$gameName\"") },
         text = {

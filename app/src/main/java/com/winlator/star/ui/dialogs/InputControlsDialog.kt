@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
-import com.winlator.star.ui.screens.MenuItemDivider
-import com.winlator.star.ui.screens.OutlinedAlertDialog
-import com.winlator.star.ui.screens.outlinedMenuCard
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,7 +46,7 @@ fun InputControlsDialog(state: XServerDialogState) {
     val allItems = listOf("-- Disabled --") + profiles
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = { state.dismiss() },
         title = { Text("Input Controls") },
         text = {
@@ -71,11 +68,9 @@ fun InputControlsDialog(state: XServerDialogState) {
                     )
                     ExposedDropdownMenu(
                         expanded = dropdownExpanded,
-                        onDismissRequest = { dropdownExpanded = false },
-                        modifier = Modifier.outlinedMenuCard()
+                        onDismissRequest = { dropdownExpanded = false }
                     ) {
                         allItems.forEachIndexed { i, label ->
-                            if (i > 0) MenuItemDivider()
                             DropdownMenuItem(
                                 text = { Text(label) },
                                 onClick = {
@@ -96,13 +91,7 @@ fun InputControlsDialog(state: XServerDialogState) {
                 Spacer(Modifier.height(8.dp))
 
                 OutlinedButton(
-                    onClick = {
-                        state.onInputControlsConfirm?.invoke(
-                            selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled
-                        )
-                        state.onInputControlsSettings?.invoke(selectedIdx)
-                    },
-                    enabled = selectedIdx > 0,
+                    onClick = { state.onInputControlsSettings?.run() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Profile Settings…")
@@ -111,7 +100,6 @@ fun InputControlsDialog(state: XServerDialogState) {
         },
         confirmButton = {
             TextButton(onClick = {
-                state.setSelectedProfileIdx(selectedIdx)
                 state.onInputControlsConfirm?.invoke(
                     selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled
                 )

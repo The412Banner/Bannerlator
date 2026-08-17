@@ -588,22 +588,8 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
     @Override public void setFpsWindowId(int id) {}
     @Override public void setFrameRating(Object fr) {}
-    // Container FPS-limiter value (0 = uncapped), forwarded to the scanout game-layer setFrameRate
-    // VRR vote so SurfaceFlinger's refresh pick tracks the cap on the Native Rendering path (the
-    // guest IdleNotify limiter still does the actual pacing). Mirrors VulkanRenderer.
-    private int fpsLimit = 0;
-    @Override public int getFpsLimit() { return fpsLimit; }
-    @Override public void setFpsLimit(int limit) {
-        this.fpsLimit = limit;
-        if (nativeMode && scanout != null) scanout.setTargetFps(scanoutTargetFps());
-    }
-
-    /** FPS-limiter cap when set, else the display refresh rate — the frame-rate hint fed to the
-     *  scanout game SC's {@code setFrameRate} VRR vote. */
-    private float scanoutTargetFps() {
-        if (fpsLimit > 0) return (float) fpsLimit;
-        return xServerView.getDisplay() != null ? xServerView.getDisplay().getRefreshRate() : 60f;
-    }
+    @Override public int getFpsLimit() { return 0; }
+    @Override public void setFpsLimit(int limit) {}
 
     // ---- GL Native Rendering (direct scanout) lifecycle — mirrors VulkanRenderer ----
 
@@ -656,7 +642,8 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                     return;
                 }
                 if (scanout == null) scanout = new DirectScanout();
-                float targetFps = scanoutTargetFps();
+                float targetFps = xServerView.getDisplay() != null
+                    ? xServerView.getDisplay().getRefreshRate() : 60f;
                 // DirectScanout builds the child game (layer 1) + cursor (layer 2) SCs, both above the
                 // GL surface content; the opaque game SC stays bufferless until the P4 per-frame push.
                 scanout.enable(parent, xServer.screenInfo.width, xServer.screenInfo.height, targetFps, swapRB);
@@ -705,10 +692,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         } else {
             cd = rootCursorDrawable;
         }
-        if (cd != null) {
+        if (cd != null && cd.getBuffer() != null) {
             synchronized (cd.renderLock) {
                 ByteBuffer buf = cd.getBuffer();
-                if (buf == null) return;
                 short stride = (short) (buf.capacity() / (cd.height * 4));
                 scanout.setCursorImage(buf, cd.width, cd.height, stride);
             }

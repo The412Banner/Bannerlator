@@ -33,7 +33,6 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
             xServer.pixmapManager.addOnResourceLifecycleListener(this);
             xServer.graphicsContextManager.addOnResourceLifecycleListener(this);
             xServer.cursorManager.addOnResourceLifecycleListener(this);
-            xServer.colormapManager.addOnResourceLifecycleListener(this);
         }
     }
 
@@ -88,9 +87,6 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
                 else if (resource instanceof Cursor) {
                     xServer.cursorManager.freeCursor(resource.id);
                 }
-                else if (resource instanceof Colormap) {
-                    xServer.colormapManager.freeColormap(resource.id);
-                }
             }
 
             while (!eventListeners.isEmpty()) {
@@ -102,7 +98,6 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
             xServer.pixmapManager.removeOnResourceLifecycleListener(this);
             xServer.graphicsContextManager.removeOnResourceLifecycleListener(this);
             xServer.cursorManager.removeOnResourceLifecycleListener(this);
-            xServer.colormapManager.removeOnResourceLifecycleListener(this);
             xServer.resourceIDs.free(resourceIDBase);
         }
     }

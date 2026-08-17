@@ -1,13 +1,10 @@
 package com.winlator.star.container;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
-import androidx.preference.PreferenceManager;
 
 import com.winlator.star.R;
 import com.winlator.star.contents.ContentsManager;
@@ -17,7 +14,6 @@ import com.winlator.star.core.MSLink;
 import com.winlator.star.core.OnExtractFileListener;
 import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.core.WineInfo;
-import com.winlator.star.core.WineRegistryEditor;
 import com.winlator.star.xenvironment.ImageFs;
 
 import java.util.Arrays;
@@ -43,60 +39,7 @@ public class ContainerManager {
         File rootDir = ImageFs.find(context).getRootDir();
         homeDir = new File(rootDir, "home");
         loadContainers();
-        migrateGyroPrefsToContainers();
         isInitialized = true;
-    }
-
-    // One-shot migration of the old GLOBAL gyro prefs onto every container. The gyro settings used to
-    // live in SharedPreferences; they're per-container (and partly per-game) now, so without this a
-    // user who had tuned them would silently get the defaults back. Runs at most once, keyed on
-    // "gyro_migrated_to_container", and removes the old keys afterwards so it can't re-fire.
-    // gyro_bias_* is deliberately NOT touched — the calibration bias is a property of this phone's
-    // IMU and stays global (see GyroCalibrator).
-    private void migrateGyroPrefsToContainers() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        if (prefs.getBoolean("gyro_migrated_to_container", false)) return;
-
-        boolean hasOldKeys = prefs.contains("gyro_enabled") || prefs.contains("gyro_target")
-                || prefs.contains("gyro_activator") || prefs.contains("gyro_sensitivity")
-                || prefs.contains("gyro_deadzone") || prefs.contains("gyro_smoothing")
-                || prefs.contains("gyro_invert_x") || prefs.contains("gyro_invert_y");
-
-        if (hasOldKeys) {
-            boolean enabled = prefs.getBoolean("gyro_enabled", Container.GYRO_ENABLED_DEFAULT);
-            int target = prefs.getInt("gyro_target", Container.GYRO_TARGET_DEFAULT);
-            int activator = prefs.getInt("gyro_activator", Container.GYRO_ACTIVATOR_DEFAULT);
-            float sensitivity = prefs.getFloat("gyro_sensitivity", Container.GYRO_SENSITIVITY_DEFAULT);
-            float deadzone = prefs.getFloat("gyro_deadzone", Container.GYRO_DEADZONE_DEFAULT);
-            float smoothing = prefs.getFloat("gyro_smoothing", Container.GYRO_SMOOTHING_DEFAULT);
-            boolean invertX = prefs.getBoolean("gyro_invert_x", Container.GYRO_INVERT_X_DEFAULT);
-            boolean invertY = prefs.getBoolean("gyro_invert_y", Container.GYRO_INVERT_Y_DEFAULT);
-
-            for (Container container : containers) {
-                container.setGyroEnabled(enabled);
-                container.setGyroTarget(target);
-                container.setGyroActivator(activator);
-                container.setGyroSensitivity(sensitivity);
-                container.setGyroDeadzone(deadzone);
-                container.setGyroSmoothing(smoothing);
-                container.setGyroInvertX(invertX);
-                container.setGyroInvertY(invertY);
-                container.saveData();
-            }
-            Log.i("ContainerManager", "Migrated global gyro settings onto " + containers.size() + " container(s)");
-        }
-
-        prefs.edit()
-            .remove("gyro_enabled")
-            .remove("gyro_target")
-            .remove("gyro_activator")
-            .remove("gyro_sensitivity")
-            .remove("gyro_deadzone")
-            .remove("gyro_smoothing")
-            .remove("gyro_invert_x")
-            .remove("gyro_invert_y")
-            .putBoolean("gyro_migrated_to_container", true)
-            .apply();
     }
 
     // Check if the ContainerManager is fully initialized
@@ -106,15 +49,6 @@ public class ContainerManager {
 
     public ArrayList<Container> getContainers() {
         return containers;
-    }
-
-    // Re-scan the home dir so this instance's in-memory list picks up containers created (or removed)
-    // by a *different* ContainerManager instance since construction. Each screen news up its own
-    // manager, so a container created in the editor is otherwise invisible to a long-lived manager
-    // (e.g. ShortcutsViewModel's) until that ViewModel is reconstructed. Cheap disk walk; call it
-    // before reading getContainers() on a manager that outlives a create/delete elsewhere.
-    public void reloadContainers() {
-        loadContainers();
     }
 
     // Load containers from the home directory
@@ -209,19 +143,6 @@ public class ContainerManager {
             if (!extractContainerPatternFile(container, container.getWineVersion(), contentsManager, containerDir, null)) {
                 FileUtils.delete(containerDir);
                 return null;
-            }
-
-            // "Run as administrator" toggle (default ON). Wine's wineboot leaves EnableLUA=1 for most
-            // Wine versions (only some prefixPacks ship it off), which makes installers/tools that
-            // query the elevation token refuse to run. When the toggle is ON we stamp EnableLUA=0 on
-            // the freshly-extracted prefix so the container runs elevated (UAC off) regardless of the
-            // Wine version's default; OFF leaves UAC on (EnableLUA=1). The container editor mirrors
-            // this per-container in edit mode via the registry (system.reg = source of truth).
-            boolean runAsAdmin = data.optBoolean("runAsAdmin", true);
-            File systemRegFile = new File(containerDir, ".wine/system.reg");
-            try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
-                registryEditor.setCreateKeyIfNotExist(true);
-                registryEditor.setDwordValue("Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "EnableLUA", runAsAdmin ? 0 : 1);
             }
 
 //            // Extract the selected graphics driver files

@@ -2,7 +2,6 @@ package com.winlator.star.ui.dialogs
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
-import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,7 +23,7 @@ import com.winlator.star.ui.XServerDialogState
 fun NewTaskDialog(state: XServerDialogState) {
     var command by remember { mutableStateOf("taskmgr.exe") }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = { state.dismiss() },
         title = { Text(stringResource(R.string.new_task)) },
         text = {

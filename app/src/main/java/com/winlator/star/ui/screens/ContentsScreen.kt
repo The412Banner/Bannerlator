@@ -228,7 +228,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
 
     // ── Confirm: install from file ────────────────────────────────────────────
     if (confirmInstallPrompt) {
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmInstallPrompt = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(context.getString(R.string.do_you_want_to_install_content), color = MaterialTheme.colorScheme.onSurface) },
@@ -324,7 +324,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
             onConfirm = { installDialog = null; d.onConfirm() },
             onDismiss = { installDialog = null; d.onCancel() },
         )
-        is InstallDialogState.Alert -> OutlinedAlertDialog(
+        is InstallDialogState.Alert -> AlertDialog(
             onDismissRequest = { installDialog = null; d.onDismiss() },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             text = { Text(d.message, color = MaterialTheme.colorScheme.onSurface) },
@@ -339,7 +339,7 @@ fun ContentsScreen(vm: ContentsViewModel = viewModel()) {
 
     // ── Confirm: remove ───────────────────────────────────────────────────────
     confirmRemove?.let { profile ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmRemove = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(context.getString(R.string.do_you_want_to_remove_this_content), color = MaterialTheme.colorScheme.onSurface) },
@@ -386,7 +386,7 @@ private fun ContentInfoDialog(
     onConfirm: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
@@ -446,7 +446,7 @@ private fun UntrustedDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text("Warning", color = Color(0xFFFF8A80)) },
@@ -574,20 +574,15 @@ private fun ContentItem(
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                    modifier = Modifier.outlinedMenuCard(),
-                ) {
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
                         text = { Text("Info") },
-                        leadingIcon = { Icon(Icons.Filled.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(Icons.Filled.Info, null) },
                         onClick = { menuExpanded = false; onInfo() },
                     )
-                    MenuItemDivider()
                     DropdownMenuItem(
                         text = { Text("Remove") },
-                        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(Icons.Filled.Delete, null) },
                         onClick = { menuExpanded = false; onRemove() },
                     )
                 }

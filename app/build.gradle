@@ -19,43 +19,35 @@ plugins {
 apply plugin: 'kotlin-android'
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
-// Base rootfs, fetched at build time from OUR OWN pinned release rather than a third party's
-// moving branch. It used to come from star-emu/contents at refs/heads/main — no tag, no version,
-// no checksum — so whatever sat on someone else's main at build time got baked into the APK, and
-// an outage there simply broke the build (HTTP 504s, and a Connection reset that failed the
-// standard flavor on 2026-07-28). base-assets-v1 is byte-identical to that upstream as of
-// 2026-07-24: this is a pin, not a fork.
-//
-// The checksum is verified after download and the file is deleted on mismatch, so a corrupt or
-// swapped asset fails the build loudly instead of shipping silently. To move to a newer rootfs,
-// publish a new tag and update BOTH the URL and the hash together.
 tasks.register("downloadImageFS") {
     def assetDir = new File(project.rootDir, ["app","src","main","assets"].join(File.separator))
     File imageFS = new File(assetDir, "imagefs.tar.zst")
-    String imageFSURL = "https://github.com/The412Banner/winlator-contents/releases/download/base-assets-v1/imagefs.tar.zst"
-    String imageFSSha256 = "7838756e6a05c91afff68f4bf12aa2780f815877753f8dd354e203e99b9caf8a"
+    String imageFSURL = "https://github.com/star-emu/contents/raw/refs/heads/main/imagefs.tar.zst"
 
     doLast {
         if (!imageFS.exists()) {
             println("ImageFS was not present, downloading...\n")
             new URL(imageFSURL).withInputStream { i -> imageFS.withOutputStream { it << i } }
+        }
+    }
+}
 
-            def digest = java.security.MessageDigest.getInstance("SHA-256")
-            imageFS.eachByte(1024 * 1024) { buf, len -> digest.update(buf, 0, len) }
-            def actual = digest.digest().encodeHex().toString()
-            if (actual != imageFSSha256) {
-                imageFS.delete()
-                throw new GradleException(
-                    "imagefs.tar.zst checksum mismatch\n  expected ${imageFSSha256}\n  actual   ${actual}\n" +
-                    "Deleted the download. Either the release asset changed or the transfer was truncated.")
-            }
-            println("ImageFS checksum OK (${actual})\n")
+tasks.register("downloadProton") {
+    def assetDir = new File(project.rootDir, ["app","src","main","assets"].join(File.separator))
+    File protonARM64EC = new File(assetDir, "proton-9.0-arm64ec.tar.zst")
+    String protonARM64ECUrl = "https://github.com/star-emu/contents/raw/refs/heads/main/proton-9.0-arm64ec.tar.zst"
+
+    doLast {
+        if (!protonARM64EC.exists()) {
+            println("Proton 9.0 ARM64EC was not present, downloading...\n")
+            new URL(protonARM64ECUrl).withInputStream { i -> protonARM64EC.withOutputStream { it << i } }
         }
     }
 }
 
 tasks.register("prepareKotlinBuildScriptModel"){}
-preBuild.dependsOn(downloadImageFS)
+downloadProton.dependsOn(downloadImageFS)
+preBuild.dependsOn(downloadProton)
 
 android {
     namespace 'com.winlator.star'
@@ -65,13 +57,8 @@ android {
     defaultConfig {
         minSdkVersion 26
         targetSdkVersion 28
-        // Version code stays FROZEN across dev/pre builds — it only bumps on a STABLE cut. Reinstalling
-        // the same build number over-the-top works, so pre-build installs are unaffected.
-        // NB: do NOT write the camel-case build-code token in these comments — release.yml greps
-        //     for it and takes head -1; a comment match feeds jq an empty value and the job dies.
-        versionCode 71
-        versionName "2.9.9"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionCode 43
+        versionName "2.6"
 
         externalNativeBuild {
             cmake {
@@ -170,9 +157,6 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true
-            // lib7zz.so ships a bundled libc++_shared.so next to it; pickFirst in case the native
-            // build (or another prebuilt) ever emits its own copy, so packaging never fails on a dup.
-            pickFirsts += ['**/libc++_shared.so']
         }
     }
 }
@@ -225,27 +209,13 @@ dependencies {
     implementation 'org.bouncycastle:bcprov-jdk15on:1.68'
     implementation 'org.openjsse:openjsse:1.1.7'
     implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.core:core-splashscreen:1.0.1'
     implementation 'com.github.bumptech.glide:glide:4.11.0'
-    implementation 'com.caverock:androidsvg-aar:1.4'
     implementation 'com.kohlschutter.junixsocket:junixsocket-common:2.6.0'
     implementation 'com.kohlschutter.junixsocket:junixsocket-native-common:2.6.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
-
-    // topjohnwu libsu — the ONLY su-invoking dependency in the app. Used exclusively by
-    // com.winlator.star.perf.RootManager (the power-user performance toggles' root tier).
-    implementation 'com.github.topjohnwu.libsu:core:6.0.0'
-
-    // ProcessLifecycleOwner: the perf revert registry restores sysfs nodes when the whole app
-    // goes to background (not just when a single activity stops).
-    implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
 
     // JVM unit tests (community-config export round-trip). org.json is a real artifact here so the
     // core's JSONObject calls run on the JVM instead of hitting android.jar's "not mocked" stubs.
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20231013'
-    androidTestImplementation platform('androidx.compose:compose-bom:2024.02.00')
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test:runner:1.5.2'
-    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
 }

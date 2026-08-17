@@ -62,7 +62,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.winlator.star.ui.components.DraggableAddButton
 import com.winlator.star.ui.LocalTopBarActions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -176,12 +175,6 @@ fun ContainersScreen(
     // clear would steamroll it on first navigation to this screen.
     LaunchedEffect(Unit) {
         topBarActions.value = {
-            // New Container Defaults — opens the SAME container editor in "defaults mode" (the ✓ saves
-            // the field state as the seed for future new containers) via the EDIT_DEFAULTS_ID sentinel.
-            // Containers screen only. Sits next to the import action.
-            IconButton(onClick = { onNavigateToDetail(ContainerDetailViewModel.EDIT_DEFAULTS_ID) }) {
-                Icon(Icons.Filled.Settings, contentDescription = "New container defaults", tint = androidx.compose.ui.graphics.Color.White)
-            }
             IconButton(onClick = { showImportPicker = true }) {
                 Icon(Icons.Filled.FileDownload, contentDescription = "Import container", tint = androidx.compose.ui.graphics.Color.White)
             }
@@ -232,17 +225,15 @@ fun ContainersScreen(
             }
         }
 
-        // FAB — long-press and slide it along the bottom to get it off a card's play/overflow
-        // buttons. Position is remembered per screen.
-        DraggableAddButton(
-            prefKey = "containers",
+        // FAB
+        FloatingActionButton(
             onClick = {
                 if (ImageFs.find(context).isValid()) onNavigateToDetail(null)
             },
-            buttonModifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
+            containerColor = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(20.dp),
         ) {
             Icon(imageVector = Icons.Filled.Add, contentDescription = "Add container", tint = MaterialTheme.colorScheme.onPrimary)
         }
@@ -271,18 +262,14 @@ fun ContainersScreen(
     // Import picker dialog
     if (showImportPicker) {
         val backups = remember { vm.availableBackups() }
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { showImportPicker = false },
             title = { Text("Import Container") },
             text = {
                 if (backups.isEmpty()) {
                     Text("No exported containers found in Downloads/Winlator/Backups/Containers/.")
                 } else {
-                    androidx.compose.foundation.layout.Column(
-                        modifier = Modifier
-                            .heightIn(max = 420.dp)
-                            .verticalScroll(rememberScrollState()),
-                    ) {
+                    androidx.compose.foundation.layout.Column {
                         backups.forEach { dir ->
                             TextButton(
                                 onClick = {
@@ -309,7 +296,7 @@ fun ContainersScreen(
     confirmDialog?.let { action ->
         when (action) {
             is ConfirmAction.Duplicate -> {
-                OutlinedAlertDialog(
+                AlertDialog(
                     onDismissRequest = { confirmDialog = null },
                     title = { Text("Duplicate container?") },
                     text = { Text("Duplicate \"${action.container.name}\"?") },
@@ -325,7 +312,7 @@ fun ContainersScreen(
                 )
             }
             is ConfirmAction.Remove -> {
-                OutlinedAlertDialog(
+                AlertDialog(
                     onDismissRequest = { confirmDialog = null },
                     title = { Text("Remove container?") },
                     text = { Text("Remove \"${action.container.name}\" permanently?") },
@@ -351,7 +338,7 @@ fun ContainersScreen(
     // ---- Backup / Restore game save flow ----
     when (val flow = saveFlow) {
         null -> {}
-        is SaveFlow.Fork -> OutlinedAlertDialog(
+        is SaveFlow.Fork -> AlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text("Game saves") },
             text = {
@@ -370,7 +357,7 @@ fun ContainersScreen(
             },
             confirmButton = { TextButton(onClick = { saveFlow = null }) { Text("Cancel") } },
         )
-        is SaveFlow.RestoreSource -> OutlinedAlertDialog(
+        is SaveFlow.RestoreSource -> AlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text("Restore a save") },
             text = {
@@ -399,7 +386,7 @@ fun ContainersScreen(
             },
             confirmButton = { TextButton(onClick = { saveFlow = SaveFlow.Fork(flow.container) }) { Text("Back") } },
         )
-        is SaveFlow.Confirm -> OutlinedAlertDialog(
+        is SaveFlow.Confirm -> AlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text("Restore game save?") },
             text = {
@@ -424,7 +411,7 @@ fun ContainersScreen(
             },
             dismissButton = { TextButton(onClick = { saveFlow = null }) { Text("Cancel") } },
         )
-        is SaveFlow.BackupScope -> OutlinedAlertDialog(
+        is SaveFlow.BackupScope -> AlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text(stringResource(R.string.save_backup_scope_title)) },
             text = {
@@ -445,7 +432,7 @@ fun ContainersScreen(
         )
         is SaveFlow.GamePicker -> {
             val shortcuts = remember(flow.container.id) { vm.shortcutsFor(flow.container) }
-            OutlinedAlertDialog(
+            AlertDialog(
                 onDismissRequest = { saveFlow = null },
                 title = { Text(stringResource(R.string.save_backup_pick_game_title)) },
                 text = {
@@ -482,7 +469,7 @@ fun ContainersScreen(
                 saveFlow = SaveFlow.BackupFormat(flow.container, roots, flow.gameName)
             },
         )
-        is SaveFlow.BackupFormat -> OutlinedAlertDialog(
+        is SaveFlow.BackupFormat -> AlertDialog(
             onDismissRequest = { saveFlow = null },
             title = { Text(stringResource(R.string.save_backup_format_title)) },
             text = {
@@ -858,7 +845,7 @@ private fun GameSavesDialog(
     // Warn if any two ticked folders are nested (manual add can create that; shared subtree copied once).
     val overlap = checked.any { a -> checked.any { b -> a != b && (a.startsWith("$b/")) } }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(gameName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -940,7 +927,7 @@ private fun ManualAddDialog(container: Container, onPick: (File) -> Unit, onCanc
     val subDirs = remember(cur.path) {
         cur.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name.lowercase() } ?: emptyList()
     }
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(stringResource(R.string.save_backup_add_folder_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -1057,7 +1044,7 @@ private fun StorageInfoDialog(container: Container, onDismiss: () -> Unit) {
         }
     }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Storage Info") },
         text = {

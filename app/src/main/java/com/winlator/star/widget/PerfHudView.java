@@ -13,7 +13,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
-import com.winlator.star.container.Container;
 import com.winlator.star.core.KeyValueSet;
 
 import java.util.ArrayDeque;
@@ -38,8 +37,11 @@ public class PerfHudView extends View {
         public final float factor;
         ColorIntensity(float f) { this.factor = f; }
     }
-    /** Stroke width (dp, before density/scale) drawn behind the text at outline intensity 1.0. */
-    private static final float OUTLINE_MAX_DP = 3.5f;
+    public enum Outline {
+        OFF(0f), SOFT(1.0f), STRONG(1.4f);
+        public final float widthDp;
+        Outline(float w) { this.widthDp = w; }
+    }
 
     // ---- Per-field base colors (Classic skin) -----------------------------
     private static final int C_ENGINE = Color.rgb(255, 80, 160);
@@ -53,7 +55,7 @@ public class PerfHudView extends View {
     private static final int C_CHG    = Color.rgb(0, 255, 0);
     private static final int C_VALUE  = Color.WHITE;
     private static final int C_GRAPH  = Color.rgb(0, 255, 0);
-    private static final int C_OUTLINE_GRAY = Color.rgb(200, 200, 200);   // neutral light-grey outline (non-accent option)
+    private static final int C_OUTLINE = Color.argb(132, 0, 0, 0);
     private static final int C_SEP    = Color.argb(120, 120, 220, 255);
 
     // Neon / Mono overrides
@@ -65,13 +67,11 @@ public class PerfHudView extends View {
     // ---- Config ------------------------------------------------------------
     private boolean showEngine = true, showGpuModel = false, showGPU = true, showCPU = true;
     private boolean showRAM = true, showPower = true, showFPS = true, showGraph = false, showTemp = true;
-    private HudMetrics.TempDisplay tempDisplay = HudMetrics.TempDisplay.from(null);
     private boolean vertical = false;
     private Skin skin = Skin.CLASSIC;
     private ColorIntensity intensity = ColorIntensity.MID;
-    private float outlineIntensity = 0.4f;   // 0..1 (hudOutline 0..100 / 100); 0 = no stroke
-    private boolean outlineFollowAccent = true;   // outline colour: theme accent (true) or light grey (false)
-    private float scale = Container.DEFAULT_HUD_SCALE / 100f;   // [0.6, 1.4]
+    private Outline outline = Outline.SOFT;
+    private float scale = 0.92f;      // [0.6, 1.4]
     private float bgOpacity = 0.8f;   // [0, 1]
     private boolean dualBattery = false;
 
@@ -84,13 +84,10 @@ public class PerfHudView extends View {
     private final ArrayDeque<Float> fpsHistory = new ArrayDeque<>();
     private static final int GRAPH_SAMPLES = 50;
 
-    // ---- Metric collection (frame-tick, throttled to 500 ms) --------------
+    // ---- Metric collection (frame-tick, mirrors FrameRating.update()) -----
     private final HudMetrics metrics;
     private long lastTime = 0;
-
-    // Shared authoritative FPS source (single source of truth across all overlays). Set by the host.
-    private FpsCounter fpsCounter = null;
-    public void setFpsCounter(FpsCounter c) { this.fpsCounter = c; }
+    private int frameCount = 0;
 
     // ---- Paints (rebuilt when scale/skin/outline change) ------------------
     private final float density;
@@ -109,11 +106,6 @@ public class PerfHudView extends View {
     private java.util.function.BiConsumer<Float, Float> onMovedListener = null;
     public void setOnMovedListener(java.util.function.BiConsumer<Float, Float> l) { this.onMovedListener = l; }
 
-    // Shared lock / tap / drag behaviour (long-press toggles the position lock).
-    private final HudLockController lockController;
-    private java.util.function.Consumer<Boolean> onLockChangedListener = null;
-    public void setOnLockChangedListener(java.util.function.Consumer<Boolean> l) { this.onLockChangedListener = l; }
-
     public PerfHudView(Context context) { this(context, null); }
     public PerfHudView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -121,11 +113,6 @@ public class PerfHudView extends View {
         this.density = context.getResources().getDisplayMetrics().density;
         this.metrics = new HudMetrics(context);
         buildPaints();
-        lockController = new HudLockController(context, this, new HudLockController.Callbacks() {
-            @Override public void onTap() { if (onTapListener != null) onTapListener.run(); }
-            @Override public void onMoved(float x, float y) { if (onMovedListener != null) onMovedListener.accept(x, y); }
-            @Override public void onLockChanged(boolean locked) { if (onLockChangedListener != null) onLockChangedListener.accept(locked); }
-        });
     }
 
     // -----------------------------------------------------------------------
@@ -145,13 +132,13 @@ public class PerfHudView extends View {
         fillPaint.setLetterSpacing(0.04f);
         fillPaint.setStyle(Paint.Style.FILL);
 
-        // HUD outline = an accent-coloured border around the whole HUD box (game-card style), width
-        // driven by the outline slider. Accent = the live theme primary.
         strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        strokePaint.setTypeface(mono);
+        strokePaint.setTextSize(textSizePx);
+        strokePaint.setLetterSpacing(0.04f);
         strokePaint.setStyle(Paint.Style.STROKE);
-        strokePaint.setColor(outlineFollowAccent
-                ? com.winlator.star.ui.theme.AppThemeState.getCurrentAccentArgb() : C_OUTLINE_GRAY);
-        strokePaint.setStrokeWidth(outlineIntensity * OUTLINE_MAX_DP * density * scale);
+        strokePaint.setColor(C_OUTLINE);
+        strokePaint.setStrokeWidth(outline.widthDp * density * scale);
 
         graphPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         graphPaint.setStyle(Paint.Style.STROKE);
@@ -216,13 +203,7 @@ public class PerfHudView extends View {
         if (showPower) cells.add(new Cell(charging ? "CHG" : "PWR",
                                           String.format(Locale.ENGLISH, "%.1fW", powerW),
                                           charging ? C_CHG : C_PWR));
-        if (showTemp) {
-            // Only the CPU temp is shown in this style. Colour the whole cell by danger band; the
-            // label keeps its identity colour when banding is off.
-            HudMetrics.Thresholds t = metrics.resolveThresholds(HudMetrics.TempSensor.CPU, tempDisplay);
-            cells.add(new Cell("TMP", HudMetrics.formatTemp(tempC, tempDisplay, true),
-                               HudMetrics.tempColor(tempC, t, tempDisplay, C_TMP)));
-        }
+        if (showTemp)  cells.add(new Cell("TMP", String.format(Locale.ENGLISH, "%.1f°C", tempC), C_TMP));
         if (showFPS)   cells.add(new Cell("FPS", String.format(Locale.ENGLISH, "%.0f", fps), C_FPS));
         return cells;
     }
@@ -275,13 +256,6 @@ public class PerfHudView extends View {
         float radius = 6f * density * scale;
         canvas.drawRoundRect(new RectF(0, 0, getWidth(), getHeight()), radius, radius, bgPaint);
 
-        // Accent border around the box (like a game card), thickness from the outline slider.
-        if (outlineIntensity > 0f) {
-            float half = strokePaint.getStrokeWidth() / 2f;
-            canvas.drawRoundRect(new RectF(half, half, getWidth() - half, getHeight() - half),
-                                 radius, radius, strokePaint);
-        }
-
         float baseline = padPx - fm.ascent;
         if (vertical) {
             float y = baseline;
@@ -310,19 +284,20 @@ public class PerfHudView extends View {
                 drawGraph(canvas, x, getHeight() / 2f);
             }
         }
-
-        lockController.drawBadge(canvas);
     }
 
     /** Draws "LABEL value" at (x, baseline); returns the x cursor after the text. */
     private float drawCell(Canvas canvas, float x, float baseline, Cell c) {
-        // Outline is now the box border (see onDraw), not a per-glyph stroke.
+        boolean stroke = outline != Outline.OFF;
+        // label
         fillPaint.setColor(labelColorFor(c.labelColor));
+        if (stroke) canvas.drawText(c.label, x, baseline, strokePaint);
         canvas.drawText(c.label, x, baseline, fillPaint);
         float adv = fillPaint.measureText(c.label);
         if (!c.value.isEmpty()) {
             String v = " " + c.value;
             fillPaint.setColor(valueColorFor());
+            if (stroke) canvas.drawText(v, x + adv, baseline, strokePaint);
             canvas.drawText(v, x + adv, baseline, fillPaint);
             adv += fillPaint.measureText(v);
         }
@@ -356,53 +331,36 @@ public class PerfHudView extends View {
 
     private static float clamp01(float v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
 
-    // ---- Frame tick: refresh metrics every 500ms (FPS from shared counter) -
-    /**
-     * Called by the host on each presented frame. The FPS number comes from the shared
-     * {@link FpsCounter} (single source of truth); this method self-throttles the metric reads +
-     * UI post to 500 ms so sysfs is not hit every present on the epoll thread.
-     */
+    // ---- Frame tick: count frames, refresh metrics every 500ms ------------
+    /** Called by the host on each presented frame (same cadence as FrameRating.update()). */
     public void update() {
+        if (lastTime == 0) lastTime = SystemClock.elapsedRealtime();
         long time = SystemClock.elapsedRealtime();
-        if (lastTime != 0 && time < lastTime + 500) return;
-        lastTime = time;
-
-        fps = fpsCounter != null ? fpsCounter.getCurrentFPS() : 0f;
-        frameTimeMs = 1000f / Math.max(fps, 1f);
-        cpuUsage = metrics.getCPUUsage();
-        gpuUsage = metrics.getGPULoad();
-        ramPercent = metrics.getRAMPercent();
-        tempC = metrics.getTemperature();
-        HudMetrics.Battery b = metrics.getBattery(dualBattery);
-        powerW = b.watts;
-        charging = b.charging;
-        fpsHistory.addLast(fps);
-        while (fpsHistory.size() > GRAPH_SAMPLES) fpsHistory.removeFirst();
-        // update() runs on the X-server epoll thread; requestLayout()/invalidate()
-        // must touch the view on the UI thread (FrameRating does the same via post()).
-        post(refreshOnUi);
+        frameCount++;
+        if (time >= lastTime + 500) {
+            fps = (float) (frameCount * 1000) / (time - lastTime);
+            frameTimeMs = 1000f / Math.max(fps, 1f);
+            cpuUsage = metrics.getCPUUsage();
+            gpuUsage = metrics.getGPULoad();
+            ramPercent = metrics.getRAMPercent();
+            tempC = metrics.getTemperature();
+            HudMetrics.Battery b = metrics.getBattery(dualBattery);
+            powerW = b.watts;
+            charging = b.charging;
+            fpsHistory.addLast(fps);
+            while (fpsHistory.size() > GRAPH_SAMPLES) fpsHistory.removeFirst();
+            lastTime = time;
+            frameCount = 0;
+            // update() runs on the X-server epoll thread; requestLayout()/invalidate()
+            // must touch the view on the UI thread (FrameRating does the same via post()).
+            post(refreshOnUi);
+        }
     }
 
     // Reused each refresh (~2×/sec) to relayout+redraw on the UI thread.
     private final Runnable refreshOnUi = () -> { requestLayout(); invalidate(); };
     public void setEngineLabel(String s) { this.engineLabel = s == null ? "" : s; }
     public void setGpuModel(String s) { this.gpuModel = s == null ? "" : s; }
-
-    /**
-     * hudOutline is now a 0..100 intensity. Legacy string values are mapped for backward
-     * compatibility ("off"→0, "soft"→40, "strong"→70); a numeric string parses directly.
-     */
-    private static int parseOutlineIntensity(String v) {
-        if (v == null) return 40;
-        switch (v.trim().toLowerCase(Locale.ENGLISH)) {
-            case "off":    return 0;
-            case "soft":   return 40;
-            case "strong": return 70;
-            default:
-                try { return Math.max(0, Math.min(100, Integer.parseInt(v.trim()))); }
-                catch (Exception e) { return 40; }
-        }
-    }
 
     // ---- Config parsing ----------------------------------------------------
     public void applyConfig(String configString) {
@@ -415,7 +373,6 @@ public class PerfHudView extends View {
         showRAM      = cfg.get("showRAM", "1").equals("1");
         showPower    = cfg.get("showPower", "1").equals("1");
         showTemp     = cfg.get("showTemp", "1").equals("1");
-        tempDisplay  = HudMetrics.TempDisplay.from(cfg);
         showEngine   = cfg.get("showEngine", "1").equals("1");
         showGpuModel = cfg.get("showGpuModel", "0").equals("1");
         dualBattery  = cfg.get("hudDualBattery", "0").equals("1");
@@ -431,13 +388,15 @@ public class PerfHudView extends View {
             case "vivid": intensity = ColorIntensity.VIVID; break;
             default:      intensity = ColorIntensity.MID;
         }
-        outlineIntensity = parseOutlineIntensity(cfg.get("hudOutline", "40")) / 100f;
-        outlineFollowAccent = cfg.get("hudOutlineAccent", "1").equals("1");
-        if (lockController != null) lockController.setLocked(cfg.get("hudLocked", "0").equals("1"));
+        switch (cfg.get("hudOutline", "soft")) {
+            case "off":    outline = Outline.OFF; break;
+            case "strong": outline = Outline.STRONG; break;
+            default:       outline = Outline.SOFT;
+        }
         try {
-            int sc = Integer.parseInt(cfg.get("hudScale", String.valueOf(Container.DEFAULT_HUD_SCALE)));
+            int sc = Integer.parseInt(cfg.get("hudScale", "92"));
             scale = Math.max(60, Math.min(140, sc)) / 100f;
-        } catch (Exception e) { scale = Container.DEFAULT_HUD_SCALE / 100f; }
+        } catch (Exception e) { scale = 0.92f; }
         try {
             int op = Integer.parseInt(cfg.get("hudOpacity", "80"));
             bgOpacity = Math.max(0, Math.min(100, op)) / 100f;
@@ -451,9 +410,31 @@ public class PerfHudView extends View {
     public boolean isVertical() { return vertical; }
     public void setVertical(boolean v) { this.vertical = v; requestLayout(); invalidate(); }
 
-    // ---- Touch: long-press locks, tap toggles orientation, drag moves ------
+    // ---- Touch: tap toggles orientation, drag moves the overlay -----------
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        return lockController.onTouchEvent(event);
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                lastX = event.getRawX(); lastY = event.getRawY();
+                offsetX = getX(); offsetY = getY();
+                downTime = event.getEventTime(); moved = false;
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                float dx = event.getRawX() - lastX, dy = event.getRawY() - lastY;
+                int slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
+                if (Math.abs(dx) > slop || Math.abs(dy) > slop) moved = true;
+                setX(offsetX + dx); setY(offsetY + dy);
+                return true;
+            case MotionEvent.ACTION_UP:
+                if (!moved
+                        && (event.getEventTime() - downTime) <= ViewConfiguration.getLongPressTimeout()
+                        && onTapListener != null) {
+                    onTapListener.run();
+                } else if (moved && onMovedListener != null) {
+                    onMovedListener.accept(getX(), getY());
+                }
+                return true;
+        }
+        return super.onTouchEvent(event);
     }
 }

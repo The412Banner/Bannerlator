@@ -19,9 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.components.Component
 import com.winlator.star.components.ComponentCatalog
 import com.winlator.star.components.ComponentExecInstaller
-import com.winlator.star.components.ComponentInstallReturn
 import com.winlator.star.components.ComponentInstaller
-import com.winlator.star.components.PrefixInstalledDetector
 import com.winlator.star.container.Container
 import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.Divider as DividerColor
@@ -64,10 +62,6 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     // Run an installer-based component: download its installer, then launch the container session.
     fun runExecInstall(c: Component) {
         installing = c.name; progress = 0f
-        // Container editor has no originating shortcut → container-only return target (Tier 1: land
-        // back on Games instead of stranding the user after the install session restarts the app).
-        // Cleared below if no session actually launched (inline set_windows/uninstall, or error).
-        ComponentInstallReturn.set(context, container.id, null)
         scope.launch {
             val res = withContext(Dispatchers.IO) {
                 ComponentExecInstaller.startInstall(context, container, c) { f ->
@@ -76,22 +70,16 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
             }
             installing = null
             when (res) {
-                is ComponentExecInstaller.Result.Launched -> { /* session launched; return target consumed after restart */ }
-                is ComponentExecInstaller.Result.Done -> { markInstalled(c.name); ComponentInstallReturn.clear(context) }
-                is ComponentExecInstaller.Result.Error -> {
+                is ComponentExecInstaller.Result.Launched -> { /* session launched; app continues there */ }
+                is ComponentExecInstaller.Result.Done -> markInstalled(c.name)
+                is ComponentExecInstaller.Result.Error ->
                     message = "Couldn't install ${c.name}: ${res.message}"
-                    ComponentInstallReturn.clear(context)
-                }
             }
         }
     }
 
     LaunchedEffect(Unit) {
-        val recorded = installsPrefs.getStringSet(installKey, emptySet())?.toSet() ?: emptySet()
-        // Backfill: components installed before we recorded installs (or by hand) that leave a
-        // non-baseline prefix footprint (OpenAL/mono/PhysX/GFWL) — so they show as installed too.
-        val detected = withContext(Dispatchers.IO) { PrefixInstalledDetector.detect(container) }
-        installed = recorded + detected
+        installed = installsPrefs.getStringSet(installKey, emptySet())?.toSet() ?: emptySet()
         val list = withContext(Dispatchers.IO) { ComponentCatalog.load() }
         components = list
         loadError = list.isEmpty()
@@ -99,7 +87,7 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     }
 
     message?.let { m ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { message = null },
             containerColor = cs.surfaceContainerHigh,
             text = { Text(m, color = cs.onSurface) },
@@ -108,15 +96,15 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     }
 
     confirmExec?.let { c ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmExec = null },
             containerColor = cs.surfaceContainerHigh,
             title = { Text("Run ${c.name} installer", color = cs.onSurface) },
             text = {
                 Text(
-                    "This opens the container to a Windows desktop and runs the ${c.name} installer. " +
-                        "Click through the installer window that appears, then close the container when it's " +
-                        "done — you'll be brought back to finish setup.",
+                    "This installs ${c.name} by running its installer inside the container. " +
+                        "The container will open and run the installer — when it finishes, close it and " +
+                        "you'll be prompted to complete the install.",
                     color = cs.onSurface,
                 )
             },
@@ -152,19 +140,10 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                     Text("Couldn't load the component catalog.", color = cs.onSurfaceVariant)
                 }
                 else -> {
-                    // Name → component, for routing a base install to its file-drop `_dll` variant below.
-                    // Built from the full list (the `_dll` variants are hidden from `shown`, not dropped).
-                    val byName = remember(components) { components.associateBy { it.name } }
-                    // Installed components float to the top (checked), so what the container already
-                    // has is obvious and users don't reinstall. Stable within each group; re-sorts
-                    // live when something finishes installing (installed is a key). The file-drop `_dll`
-                    // variants are install-implementation (reached via routing in onInstall), so they're
-                    // filtered out here — otherwise vcredist2010 AND vcredist2010_dll show as duplicates.
-                    val shown = remember(components, query, installed) {
+                    val shown = remember(components, query) {
                         components.filter {
-                            !it.name.endsWith("_dll") &&
-                                (query.isBlank() || it.name.contains(query, true) || it.description.contains(query, true))
-                        }.sortedByDescending { it.name in installed }
+                            query.isBlank() || it.name.contains(query, true) || it.description.contains(query, true)
+                        }
                     }
                     Box(Modifier.fillMaxWidth().weight(1f)) {
                         LazyColumn(Modifier.fillMaxSize()) {
@@ -176,24 +155,17 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                                     progress = if (installing == c.name) progress else null,
                                     enabled = installing == null,
                                     onInstall = {
-                                        // Prefer the file-drop `_dll` variant when the catalog carries one:
-                                        // it copies DLLs straight into the prefix (no container session ⇒
-                                        // no black screen / app restart, works on Proton 11). The base
-                                        // component is what's rendered; installed-state is still recorded
-                                        // under the BASE name so the row + prefs stay consistent.
-                                        val target = byName["${c.name}_dll"] ?: c
                                         when {
                                             // Has an installer step → confirm, then run a container session.
-                                            // Only the base reaches here; `_dll` variants are file-drop.
-                                            ComponentExecInstaller.isExecComponent(target) -> confirmExec = target
+                                            ComponentExecInstaller.isExecComponent(c) -> confirmExec = c
                                             // Local-only but not pure file-drop (set_windows/uninstall) → run
                                             // inline via the exec driver; no session, no confirm needed.
-                                            ComponentExecInstaller.handlesComponent(target) -> runExecInstall(target)
+                                            ComponentExecInstaller.handlesComponent(c) -> runExecInstall(c)
                                             else -> {
                                                 installing = c.name; progress = 0f
                                                 scope.launch {
                                                     val err = withContext(Dispatchers.IO) {
-                                                        ComponentInstaller.install(context, container, target) { f ->
+                                                        ComponentInstaller.install(context, container, c) { f ->
                                                             activity?.runOnUiThread { progress = f }
                                                         }
                                                     }

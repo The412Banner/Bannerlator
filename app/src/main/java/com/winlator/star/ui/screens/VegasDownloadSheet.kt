@@ -23,7 +23,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -35,7 +34,6 @@ private data class VegasRelease(
     val displayName: String,
     val wcpAssetUrl: String?,
     val rawZipAssetUrl: String?,
-    val configAssetUrl: String?,
 )
 
 /**
@@ -73,25 +71,20 @@ fun VegasDownloadSheet(
                     val name = rel.optString("name", tag)
                     var wcpUrl: String? = null
                     var zipUrl: String? = null
-                    var confUrl: String? = null
                     val assets = rel.optJSONArray("assets")
                     if (assets != null) {
                         for (j in 0 until assets.length()) {
                             val a = assets.getJSONObject(j)
                             val aname = a.getString("name")
-                            if (aname.startsWith("vegas-") && aname.endsWith(".wcp")) {
-                                wcpUrl = a.getString("browser_download_url")
-                            } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
-                                zipUrl = a.getString("browser_download_url")
-                            } else if (aname.endsWith(".conf") &&
-                                       (aname.startsWith("vegas-config-") || aname == "dxvk.conf")) {
-                                // Config is shipped ALONGSIDE the wcp (release asset), never inside it
-                                confUrl = a.getString("browser_download_url")
-                            }
+                    if (aname.startsWith("vegas-") && aname.endsWith(".wcp")) {
+                        wcpUrl = a.getString("browser_download_url")
+                    } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
+                        zipUrl = a.getString("browser_download_url")
+                    }
                         }
                     }
                     if (wcpUrl != null) {
-                        list.add(VegasRelease(tag, name, wcpUrl, zipUrl, confUrl))
+                        list.add(VegasRelease(tag, name, wcpUrl, zipUrl))
                     }
                 }
                 releases = list
@@ -182,49 +175,10 @@ fun VegasDownloadSheet(
                                             downloadingTag = null
                                             if (uri != null) {
                                                 installing = true
-                                                installWcp(context, cm, uri) { ok, profile ->
+                                                installWcp(context, cm, uri) { ok ->
                                                     installing = false
                                                     if (ok) {
                                                         cm.syncContents()
-                                                        // Config is shipped ALONGSIDE the wcp (same release asset),
-                                                        // never inside it — fetch it on the same tap and park it at
-                                                        // <contentDir>/VEGAS/configs/. Record provenance (release
-                                                        // tag + real asset name) in the .provenance.json sidecar so
-                                                        // the stock prober never has to guess the asset shape.
-                                                        val confUrl = release.configAssetUrl
-                                                        val confName = profile?.verName
-                                                        if (confUrl != null && confName != null) {
-                                                            val assetName = confUrl.substringAfterLast('/', confUrl)
-                                                            scope.launch {
-                                                                withContext(Dispatchers.IO) {
-                                                                    val vegasDir = ContentsManager.getContentTypeDir(
-                                                                        context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                                                                    val confDir = File(vegasDir, "configs")
-                                                                    if (!confDir.exists()) confDir.mkdirs()
-                                                                    val parked = File(confDir, "$confName.conf")
-                                                                    if (Downloader.downloadFile(confUrl, parked, null)) {
-                                                                        recordStockProvenance(
-                                                                            confDir, confName,
-                                                                            release.tagName, assetName, confUrl,
-                                                                        )
-                                                                    }
-                                                                }
-                                                            }
-                                                        } else if (confName != null) {
-                                                            // Release ships NO config asset (repo reality: 2 of 5 builds
-                                                            // none) — clear any stale parked config from an earlier tag of
-                                                            // the same verName so the prober never surfaces a baseline
-                                                            // that does not belong to the installed build.
-                                                            scope.launch {
-                                                                withContext(Dispatchers.IO) {
-                                                                    val vegasDir = ContentsManager.getContentTypeDir(
-                                                                        context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                                                                    val confDir = File(vegasDir, "configs")
-                                                                    File(confDir, "$confName.conf").delete()
-                                                                    removeStockProvenance(confDir, confName)
-                                                                }
-                                                            }
-                                                        }
                                                         onContentChanged()
                                                         onDismiss()
                                                     } else {
@@ -250,47 +204,6 @@ fun VegasDownloadSheet(
     )
 }
 
-/** configs/.provenance.json — verName -> {tag, assetName, url, parkedAt}. Written by the
- *  downloader at park time so the stock prober (DXVKConfigDialog.loadVegasStockSources)
- *  never has to guess the asset shape from the filename. */
-private fun provenanceFile(confDir: File): File = File(confDir, ".provenance.json")
-
-private fun recordStockProvenance(
-    confDir: File,
-    verName: String,
-    tag: String,
-    assetName: String,
-    url: String,
-) {
-    try {
-        val f = provenanceFile(confDir)
-        val obj = if (f.exists()) JSONObject(f.readText()) else JSONObject()
-        obj.put(
-            verName,
-            JSONObject()
-                .put("tag", tag)
-                .put("assetName", assetName)
-                .put("url", url)
-                .put("parkedAt", System.currentTimeMillis()),
-        )
-        f.writeText(obj.toString())
-    } catch (e: Exception) {
-        // sidecar is best-effort; the parked file itself remains valid
-    }
-}
-
-private fun removeStockProvenance(confDir: File, verName: String) {
-    try {
-        val f = provenanceFile(confDir)
-        if (!f.exists()) return
-        val obj = JSONObject(f.readText())
-        obj.remove(verName)
-        if (obj.length() == 0) f.delete() else f.writeText(obj.toString())
-    } catch (e: Exception) {
-        // best-effort cleanup only
-    }
-}
-
 /** Download a .wcp file to cache dir and return a content:// URI. */
 private fun downloadWcp(context: Context, url: String, tag: String, onProgress: ((Float) -> Unit)? = null): Uri? {
     val f = File(context.cacheDir, "vegas_${tag}.wcp")
@@ -300,17 +213,16 @@ private fun downloadWcp(context: Context, url: String, tag: String, onProgress: 
     return if (Downloader.downloadFile(url, f, listener)) Uri.fromFile(f) else null
 }
 
-/** Install a .wcp content package via ContentsManager; reports the installed profile
- *  (needed to name the alongside config file after the package's verName). */
+/** Install a .wcp content package via ContentsManager. */
 private fun installWcp(
     context: Context,
     cm: ContentsManager,
     uri: Uri,
-    onDone: (Boolean, ContentProfile?) -> Unit,
+    onDone: (Boolean) -> Unit,
 ) {
     val activity = context.findActivity()
     if (activity == null) {
-        onDone(false, null)
+        onDone(false)
         return
     }
     Executors.newSingleThreadExecutor().execute {
@@ -318,7 +230,7 @@ private fun installWcp(
             cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
                 var phase = 0
                 override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
-                    activity.runOnUiThread { onDone(false, null) }
+                    activity.runOnUiThread { onDone(false) }
                 }
                 override fun onSucceed(profile: ContentProfile) {
                     try {
@@ -326,17 +238,17 @@ private fun installWcp(
                             phase = 1
                             cm.finishInstallContent(profile, this)
                         } else {
-                            activity.runOnUiThread { onDone(true, profile) }
+                            activity.runOnUiThread { onDone(true) }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        activity.runOnUiThread { onDone(false, null) }
+                        activity.runOnUiThread { onDone(false) }
                     }
                 }
             })
         } catch (e: Exception) {
             e.printStackTrace()
-            activity.runOnUiThread { onDone(false, null) }
+            activity.runOnUiThread { onDone(false) }
         }
     }
 }

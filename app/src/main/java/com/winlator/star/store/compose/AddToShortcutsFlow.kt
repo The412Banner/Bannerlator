@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,7 +61,7 @@ fun ContainerPickerDialog(
     onDismiss: () -> Unit,
     onSelected: (Container) -> Unit,
 ) {
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add \"$gameName\" to container") },
         text = {
@@ -129,7 +128,7 @@ fun AddResultDialog(
     onDismiss: () -> Unit,
 ) {
     if (result.success) {
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Added to Shortcuts") },
             text = { Text("\"${result.gameName}\" is ready in Shortcuts.") },
@@ -141,7 +140,7 @@ fun AddResultDialog(
             },
         )
     } else {
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Couldn't add shortcut") },
             text = { Text(result.message) },

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Closed-spinner view for the controller-binding spinners. Blue text so it
+     is readable on this screen's black colorPrimary background (mirrors the
+     header bar + trash icons). -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:gravity="center_vertical"
+    android:textColor="@color/colorPrimary"
+    android:textSize="16sp"
+    android:maxLines="1"
+    android:ellipsize="end" />

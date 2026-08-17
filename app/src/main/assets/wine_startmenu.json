@@ -3,38 +3,10 @@
     "children" : [
         {
             "name" : "AIO Graphics Test (32-bit)",
-            "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-32bit.exe"
-        },
-        {
-            "name" : "AIO Graphics Test (64-bit)",
-            "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-64bit.exe"
-        }
-        ]
-    },
-    {
-    "name" : "AIO Graphics Test (OpenGL)",
-    "children" : [
-        {
-            "name" : "AIO Graphics Test OpenGL (32-bit)",
-            "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-32bit.exe",
-            "cmdArgs" : "--force-gl"
-        },
-        {
-            "name" : "AIO Graphics Test OpenGL (64-bit)",
-            "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-64bit.exe",
-            "cmdArgs" : "--force-gl"
-        }
-        ]
-    },
-    {
-    "name" : "AIO Graphics Test (Classic)",
-    "children" : [
-        {
-            "name" : "AIO Graphics Test Classic (32-bit)",
             "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-32bit.exe"
         },
         {
-            "name" : "AIO Graphics Test Classic (64-bit)",
+            "name" : "AIO Graphics Test (64-bit)",
             "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-64bit.exe"
         }
         ]

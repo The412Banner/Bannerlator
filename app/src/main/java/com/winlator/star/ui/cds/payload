@@ -991,9 +991,6 @@ internal fun GraphicsDriverConfigDialog(
     }
     var blacklisted   by remember { mutableStateOf(initialBlacklist) }
     var showExtPicker by remember { mutableStateOf(false) }
-    // True for an installed custom (Qualcomm proprietary) Adreno driver — extensions aren't
-    // probed here, so the UI shows an explanatory note instead of a misleading "0/0".
-    var isCustomDriver by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val atVersions = withContext(Dispatchers.IO) {
@@ -1024,20 +1021,7 @@ internal fun GraphicsDriverConfigDialog(
     }
 
     LaunchedEffect(version) {
-        if (version.isEmpty()) { isCustomDriver = false; return@LaunchedEffect }
-        // Skip the native extension probe for installed Adrenotools custom (Qualcomm
-        // proprietary) drivers — instantiating the blob in-app can SIGSEGV in the vendor Adreno
-        // app-profile HAL. Realized at game launch instead (GameNative's approach). Queried
-        // from the filesystem so it's race-free vs. the driver-list effect above.
-        val isCustomAdrenotools = withContext(Dispatchers.IO) {
-            AdrenotoolsManager(context).enumarateInstalledDrivers()
-                .any { it.equals(version, ignoreCase = true) }
-        }
-        isCustomDriver = isCustomAdrenotools
-        if (isCustomAdrenotools) {
-            allExtensions = emptyList()
-            if (version != cfg["version"]) blacklisted = emptySet()
-        } else {
+        if (version.isNotEmpty()) {
             val exts = GPUInformation.enumerateExtensions(version, context)?.toList() ?: emptyList()
             allExtensions = exts
             if (version != cfg["version"]) blacklisted = emptySet()
@@ -1069,21 +1053,12 @@ internal fun GraphicsDriverConfigDialog(
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it })
                 Spacer(Modifier.height(8.dp))
-                if (isCustomDriver) {
-                    Text(
-                        text = "Custom Qualcomm (Adreno) driver — its extensions load when a game starts, so none are listed here. That's expected, not an error: the driver is applied in-game, where your HUD will show it's active.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                } else {
-                    OutlinedButton(
-                        onClick = { showExtPicker = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val enabled = allExtensions.size - blacklisted.size
-                        Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
-                    }
+                OutlinedButton(
+                    onClick = { showExtPicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val enabled = allExtensions.size - blacklisted.size
+                    Text(stringResource(R.string.graphics_driver_available_extensions) + " ($enabled/${allExtensions.size})")
                 }
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown(stringResource(R.string.gpu_name), gpuNames, gpuName, { gpuName = it })

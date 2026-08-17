@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,8 +54,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -83,6 +82,7 @@ import com.winlator.star.contentdialog.ContentDialog
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.core.AppUtils
 import com.winlator.star.core.FileUtils
+import com.winlator.star.core.LogLocation
 import com.winlator.star.core.PreloaderDialog
 import com.winlator.star.core.UpdateManager
 import com.winlator.star.fexcore.FEXCoreEditPresetDialog
@@ -127,6 +127,13 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     LaunchedEffect(Unit) {
         UpdateManager.check(context) { info -> activity?.runOnUiThread { updateInfo = info } }
     }
+    var enableWineDebug by remember { mutableStateOf(prefs.getBoolean("enable_wine_debug", false)) }
+    var wineDebugChannels by remember { mutableStateOf(
+        (prefs.getString("wine_debug_channels", SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS) ?: SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS).split(",").toMutableList()
+    ) }
+    var enableBox64Logs by remember { mutableStateOf(prefs.getBoolean("enable_box64_logs", false)) }
+    var logLocationMode by remember { mutableStateOf(prefs.getString(LogLocation.PREF_MODE, LogLocation.MODE_APP_DATA) ?: LogLocation.MODE_APP_DATA) }
+    var logLocationCustomPath by remember { mutableStateOf(prefs.getString(LogLocation.PREF_CUSTOM_PATH, "") ?: "") }
     var enableFileProvider by remember { mutableStateOf(prefs.getBoolean("enable_file_provider", true)) }
     var openWithBrowser by remember { mutableStateOf(prefs.getBoolean("open_with_android_browser", false)) }
     var shareClipboard by remember { mutableStateOf(prefs.getBoolean("share_android_clipboard", false)) }
@@ -156,10 +163,10 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
 
     var showBox64Dropdown by remember { mutableStateOf(false) }
     var showFEXCoreDropdown by remember { mutableStateOf(false) }
+    var showLogLocationDropdown by remember { mutableStateOf(false) }
     var showSFDropdown by remember { mutableStateOf(false) }
+    var showDebugChannelDialog by remember { mutableStateOf(false) }
     var showBackupDialog by remember { mutableStateOf(false) }
-    var showPerformanceMenu by remember { mutableStateOf(false) }
-    var showLogManager by remember { mutableStateOf(false) }
     var showRestoreConfirm by remember { mutableStateOf(false) }
     var isBackingUp by remember { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
@@ -199,12 +206,11 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         editor.putBoolean("use_dri3", useDRI3)
         editor.putBoolean("use_xr", useXR)
         editor.putFloat("cursor_speed", cursorSpeed)
-        // NOTE: enable_wine_debug / wine_debug_channels / enable_box64_logs / log_location_mode /
-        // log_location_custom_path are owned by the Log Manager now and are deliberately NOT saved
-        // here. This screen snapshots preferences into state at first composition and writes them
-        // back on the Save FAB; the Log Manager (opened as a dialog from this very screen, so this
-        // composition is never disposed) writes immediately. Saving them here would write the stale
-        // pre-dialog snapshot back over whatever the user just changed in the manager.
+        editor.putBoolean("enable_wine_debug", enableWineDebug)
+        editor.putString("wine_debug_channels", wineDebugChannels.joinToString(","))
+        editor.putBoolean("enable_box64_logs", enableBox64Logs)
+        editor.putString(LogLocation.PREF_MODE, logLocationMode)
+        editor.putString(LogLocation.PREF_CUSTOM_PATH, logLocationCustomPath)
         editor.putBoolean("enable_file_provider", enableFileProvider)
         editor.putBoolean("open_with_android_browser", openWithBrowser)
         editor.putBoolean("share_android_clipboard", shareClipboard)
@@ -231,6 +237,18 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         refreshFEXCorePresets()
         refreshSF()
         onDispose { }
+    }
+
+    // Log location "Choose folder…": pick a directory via the in-app File Manager (issue #70).
+    val logLocationDirLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            InAppFilePicker.pickedPath(result.data)?.let { path ->
+                logLocationCustomPath = path
+                logLocationMode = LogLocation.MODE_CUSTOM
+            }
+        }
     }
 
     val winlatorPathLauncher = rememberLauncherForActivityResult(
@@ -357,7 +375,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     }
 
     if (showBackupDialog) {
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { showBackupDialog = false },
             title = { Text("Backup Data") },
             text = { Text("Do you want to create a backup of the app's data directory?") },
@@ -391,7 +409,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     }
 
     if (showRestoreConfirm) {
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { showRestoreConfirm = false; pendingRestoreUri = null },
             title = { Text("Restore Data") },
             text = { Text("This will restart the app. Continue?") },
@@ -503,13 +521,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     val label = box64Presets.find { it.id == selectedBox64Preset }?.name ?: selectedBox64Preset
                     Text(label, color = MaterialTheme.colorScheme.onSurface)
                 }
-                DropdownMenu(
-                    expanded = showBox64Dropdown,
-                    onDismissRequest = { showBox64Dropdown = false },
-                    modifier = Modifier.outlinedMenuCard()
-                ) {
-                    box64Presets.forEachIndexed { i, preset ->
-                        if (i > 0) MenuItemDivider()
+                DropdownMenu(expanded = showBox64Dropdown, onDismissRequest = { showBox64Dropdown = false }) {
+                    box64Presets.forEach { preset ->
                         DropdownMenuItem(
                             text = { Text(preset.name) },
                             onClick = { selectedBox64Preset = preset.id; showBox64Dropdown = false }
@@ -572,13 +585,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     val label = fexcorePresets.find { it.id == selectedFEXCorePreset }?.name ?: selectedFEXCorePreset
                     Text(label, color = MaterialTheme.colorScheme.onSurface)
                 }
-                DropdownMenu(
-                    expanded = showFEXCoreDropdown,
-                    onDismissRequest = { showFEXCoreDropdown = false },
-                    modifier = Modifier.outlinedMenuCard()
-                ) {
-                    fexcorePresets.forEachIndexed { i, preset ->
-                        if (i > 0) MenuItemDivider()
+                DropdownMenu(expanded = showFEXCoreDropdown, onDismissRequest = { showFEXCoreDropdown = false }) {
+                    fexcorePresets.forEach { preset ->
                         DropdownMenuItem(
                             text = { Text(preset.name) },
                             onClick = { selectedFEXCorePreset = preset.id; showFEXCoreDropdown = false }
@@ -641,13 +649,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         modifier = Modifier.fillMaxWidth()) {
                         Text(sfNames.getOrElse(selectedSF) { "Default" }, color = MaterialTheme.colorScheme.onSurface)
                     }
-                    DropdownMenu(
-                        expanded = showSFDropdown,
-                        onDismissRequest = { showSFDropdown = false },
-                        modifier = Modifier.outlinedMenuCard()
-                    ) {
+                    DropdownMenu(expanded = showSFDropdown, onDismissRequest = { showSFDropdown = false }) {
                         sfNames.forEachIndexed { i, name ->
-                            if (i > 0) MenuItemDivider()
                             DropdownMenuItem(
                                 text = { Text(name) },
                                 onClick = { selectedSF = i; showSFDropdown = false }
@@ -819,24 +822,78 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
 
         // ── Logs ─────────────────────────────────────────────────────
-        // Everything logging now lives in the Log Manager: location, which types to record, the
-        // Wine channel chips, retention, and what is on disk per game. Deliberately NOT duplicated
-        // here — the toggles used to exist in both places writing the same preferences, and this
-        // screen saves on the FAB while the manager writes immediately, so one would silently
-        // overwrite the other.
         FieldSetLabel("Logs")
         FieldSet {
-            Text(
-                "Where logs are saved, which ones to record, how many past runs to keep, and what is " +
-                "on disk for each game. Two log types slow games down while enabled — the manager " +
-                "says which.",
-                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
-            Button(
-                onClick = { showLogManager = true },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) { Text("Open Log Manager", color = MaterialTheme.colorScheme.onPrimary) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = enableWineDebug, onCheckedChange = { enableWineDebug = it })
+                Text("Enable Wine Debug", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for ((i, channel) in wineDebugChannels.withIndex()) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        Text(channel, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
+                        IconButton(onClick = {
+                            wineDebugChannels = wineDebugChannels.toMutableList().also { it.removeAt(i) }
+                        }, modifier = Modifier.size(20.dp)) {
+                            Icon(Icons.Default.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                        }
+                    }
+                }
+                IconButton(onClick = { showDebugChannelDialog = true }) {
+                    Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                IconButton(onClick = {
+                    wineDebugChannels = SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS.split(",").toMutableList()
+                }) {
+                    Icon(Icons.Default.Refresh, "Reset", tint = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = enableBox64Logs, onCheckedChange = { enableBox64Logs = it })
+                Text("Enable Box64 Logs", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            // ── Log location (issue #70): where wine_debug.log + DXVK/DXGI/VKD3D logs are written ──
+            Text("Log location", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Spacer(Modifier.height(8.dp))
+            Box {
+                Button(onClick = { showLogLocationDropdown = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    modifier = Modifier.fillMaxWidth()) {
+                    val label = when (logLocationMode) {
+                        LogLocation.MODE_DOWNLOAD -> "Download (/sdcard/Download/bannerlator)"
+                        LogLocation.MODE_DOCUMENTS -> "Documents (/sdcard/Documents/bannerlator)"
+                        LogLocation.MODE_CUSTOM ->
+                            if (logLocationCustomPath.isNotEmpty()) logLocationCustomPath else "Choose folder…"
+                        else -> "App data (default)"
+                    }
+                    Text(label, color = MaterialTheme.colorScheme.onSurface)
+                }
+                DropdownMenu(expanded = showLogLocationDropdown, onDismissRequest = { showLogLocationDropdown = false }) {
+                    DropdownMenuItem(
+                        text = { Text("App data (default)") },
+                        onClick = { logLocationMode = LogLocation.MODE_APP_DATA; showLogLocationDropdown = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Download") },
+                        onClick = { logLocationMode = LogLocation.MODE_DOWNLOAD; showLogLocationDropdown = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Documents") },
+                        onClick = { logLocationMode = LogLocation.MODE_DOCUMENTS; showLogLocationDropdown = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Choose folder…") },
+                        onClick = {
+                            showLogLocationDropdown = false
+                            logLocationDirLauncher.launch(InAppFilePicker.buildDirIntent(context, "Select log folder"))
+                        }
+                    )
+                }
+            }
         }
 
         // ── Experimental ──────────────────────────────────────────────
@@ -929,42 +986,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
         }
 
-        // ── Performance (power-user toggles) ─────────────────────────────
-        FieldSetLabel("Performance")
-        FieldSet {
-            Text(
-                "Global performance defaults (Sustained Performance Mode, Thread Priority Boost, " +
-                "Prefer Big Cores, GPU clock lock) plus the opt-in root controls. Per-game overrides live in " +
-                "each game's settings and the in-game menu.",
-                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
-            Button(
-                onClick = { showPerformanceMenu = true },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) { Text("Open Performance settings", color = MaterialTheme.colorScheme.onPrimary) }
-        }
-
         Spacer(Modifier.height(72.dp))
-    }
-
-    // ── Performance menu (full-screen dialog; inline settings have no sub-screen nav host) ──
-    if (showPerformanceMenu) {
-        Dialog(
-            onDismissRequest = { showPerformanceMenu = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            PerformanceSettingsScreen(onClose = { showPerformanceMenu = false })
-        }
-    }
-
-    if (showLogManager) {
-        Dialog(
-            onDismissRequest = { showLogManager = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            LogManagerScreen(onClose = { showLogManager = false })
-        }
     }
 
     // ── FAB Save ─────────────────────────────────────────────────────────
@@ -982,6 +1004,53 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
     }
 
+    // ── Debug Channel Dialog ─────────────────────────────────────────
+    if (showDebugChannelDialog) {
+        val allChannels = remember {
+            try {
+                val json = FileUtils.readString(context, "wine_debug_channels.json")
+                val arr = org.json.JSONArray(json)
+                (0 until arr.length()).map { arr.getString(it) }
+            } catch (_: Exception) { emptyList() }
+        }
+        val selectedSet = remember { mutableStateOf(wineDebugChannels.toSet()) }
+
+        AlertDialog(
+            onDismissRequest = { showDebugChannelDialog = false },
+            title = { Text("Wine Debug Channels") },
+            text = {
+                // Hundreds of channels — bound the height and scroll so the whole
+                // alphabetical list (vulkan, heap, …) stays reachable, not just the top.
+                Column(modifier = Modifier
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState())) {
+                    allChannels.forEach { channel ->
+                        val checked = channel in selectedSet.value
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable {
+                                selectedSet.value = if (checked) selectedSet.value - channel
+                                else selectedSet.value + channel
+                            }) {
+                            Checkbox(checked = checked, onCheckedChange = {
+                                selectedSet.value = if (it) selectedSet.value + channel
+                                else selectedSet.value - channel
+                            })
+                            Text(channel)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    wineDebugChannels = selectedSet.value.toMutableList()
+                    showDebugChannelDialog = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDebugChannelDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 // ─── Reusable components ──────────────────────────────────────────────────
@@ -1001,13 +1070,8 @@ private fun ImportSourceIconButton(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) { Icon(icon, contentDescription, tint = tint) }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.outlinedMenuCard()
-        ) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(text = { Text("Browse files") }, onClick = { expanded = false; onInApp() })
-            MenuItemDivider()
             DropdownMenuItem(text = { Text("Pick via system…") }, onClick = { expanded = false; onSystem() })
         }
     }

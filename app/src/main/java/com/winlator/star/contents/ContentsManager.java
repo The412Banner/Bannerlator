@@ -30,8 +30,6 @@ public class ContentsManager {
             "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
     public static final String[] VKD3D_TRUST_FILES = {"${system32}/d3d12core.dll", "${system32}/d3d12.dll",
             "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
-    // d7vk ships a native ddraw.dll (proxies unimplemented 2D calls to the renamed builtin ddraw_.dll).
-    public static final String[] D7VK_TRUST_FILES = {"${system32}/ddraw.dll", "${syswow64}/ddraw.dll"};
     public static final String[] BOX64_TRUST_FILES = {"${bindir}/box64"};
     public static final String[] WOWBOX64_TRUST_FILES = {"${system32}/wowbox64.dll"};
     // The two DLLs (system32) plus, for unixlib FEXCore builds, the native .so in the shared
@@ -248,8 +246,6 @@ public class ContentsManager {
 
         if (!getTmpDir(context).renameTo(installPath)) {
             callback.onFailed(InstallFailedReason.ERROR_UNKNOWN, null);
-            return; // was missing: without it a failed rename still reported onSucceed (install "succeeded"
-                    // but the files never landed -> "downloaded but not usable")
         }
 
         callback.onSucceed(profile);
@@ -360,7 +356,6 @@ public class ContentsManager {
 
                 String[] paths = switch (type) {
                     case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
-                    case CONTENT_TYPE_D7VK -> D7VK_TRUST_FILES;
                     case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;
                     case CONTENT_TYPE_WOWBOX64 -> WOWBOX64_TRUST_FILES;

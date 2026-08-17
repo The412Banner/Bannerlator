@@ -39,16 +39,13 @@ import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
 import com.winlator.star.core.TarCompressorUtils
-import com.winlator.star.store.download.ContentDownloadPhase
-import com.winlator.star.store.download.ContentDownloadRegistry
-import com.winlator.star.store.download.ContentDownloadState
 import com.winlator.star.store.download.formatEta
-import com.winlator.star.store.download.startContentDownload
 import com.winlator.star.ui.findActivity
 import com.winlator.star.util.ImportEtaTracker
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
@@ -68,24 +65,17 @@ fun ContentDownloadSheet(
     inUseKey: String? = null,
 ) {
     val context = LocalContext.current
+    val activity = context.findActivity()
     val cm = remember { ContentsManager(context) }
+    val scope = rememberCoroutineScope()
 
     var profiles by remember { mutableStateOf<List<ContentProfile>>(emptyList()) }
-    // Component download/install state now lives on a PROCESS-lifetime registry (see
-    // ContentDownloadController) rather than composition-scoped state, so it keeps advancing while
-    // the app is backgrounded and the sheet re-attaches to an in-flight download on reopen.
-    val contentStates by ContentDownloadRegistry.states.collectAsState()
-    // Which in-flight catalog download the progress card is showing. Seeded on tap; re-attached to
-    // any still-running download when the sheet (re)enters composition (see LaunchedEffect below).
-    var dialogKey by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(contentStates.keys) {
-        val current = dialogKey
-        if (current == null || current !in contentStates) {
-            dialogKey = contentStates.entries.firstOrNull { !it.value.terminal }?.key
-        }
-    }
-    // The content-card install dialog for LOCAL-FILE import (catalog downloads render from the
-    // registry via dialogKey instead) — null when idle.
+    var downloadingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
+    // Install progress (0..1) — a time-based ramp for now; byte-accurate plumbing lands next build.
+    var installProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
+    var installingKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // The content-card install dialog (local-file import AND catalog download share it) — null when idle.
     var installDialog by remember { mutableStateOf<InstallCardState?>(null) }
     var showInfoProfile by remember { mutableStateOf<ContentProfile?>(null) }
     var confirmRemoveProfile by remember { mutableStateOf<ContentProfile?>(null) }
@@ -133,7 +123,7 @@ fun ContentDownloadSheet(
 
     // Info sub-dialog
     showInfoProfile?.let { profile ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { showInfoProfile = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text("Content Info", color = MaterialTheme.colorScheme.onSurface) },
@@ -156,7 +146,7 @@ fun ContentDownloadSheet(
 
     // Remove confirmation
     confirmRemoveProfile?.let { profile ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmRemoveProfile = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text("Remove content?", color = MaterialTheme.colorScheme.onSurface) },
@@ -176,7 +166,7 @@ fun ContentDownloadSheet(
 
     // Error sub-dialog
     errorMsg?.let { msg ->
-        OutlinedAlertDialog(
+        AlertDialog(
             onDismissRequest = { errorMsg = null },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             text = { Text(msg, color = MaterialTheme.colorScheme.onSurface) },
@@ -186,36 +176,11 @@ fun ContentDownloadSheet(
 
     // Content-card install dialog (shows Content-Info fields + a live 0..100% bar). Blocks dismiss
     // while the install is running; auto-closes shortly after it finishes.
-    // Catalog download → render its progress card straight from the process-lifetime registry, so it
-    // reflects live phase+percent even after backgrounding and re-attaches on reopen. The local-file
-    // import dialog only shows when no catalog card is active.
-    val catalogState = dialogKey?.let { contentStates[it] }
-    if (catalogState != null) {
-        InstallProgressDialog(catalogState.toInstallCardState(), onClose = {
-            ContentDownloadRegistry.remove(catalogState.key)
-            dialogKey = null
-        })
-    } else {
-        installDialog?.let { st -> InstallProgressDialog(st, onClose = { installDialog = null }) }
-    }
-    // Local-file import DONE auto-close (unchanged).
+    installDialog?.let { st -> InstallProgressDialog(st, onClose = { installDialog = null }) }
     LaunchedEffect(installDialog?.phase) {
         if (installDialog?.phase == InstallCardPhase.DONE) {
             delay(900)
             installDialog = null
-        }
-    }
-    // Catalog DONE: refresh the profile list + notify the parent, then auto-close the card. Fires
-    // once per transition to DONE (keyed on the phase); on reopen after completion the sheet's
-    // initial loadProfiles already reflects the installed component.
-    LaunchedEffect(catalogState?.phase) {
-        if (catalogState?.phase == ContentDownloadPhase.DONE) {
-            loadProfiles(cm, contentTypes) { profiles = it }
-            refreshKey++
-            onContentChanged()
-            delay(900)
-            ContentDownloadRegistry.remove(catalogState.key)
-            dialogKey = null
         }
     }
 
@@ -305,23 +270,65 @@ fun ContentDownloadSheet(
                                 items(shown, key = { ContentsManager.getEntryName(it) }) { profile ->
                                     val key = ContentsManager.getEntryName(profile)
                                     val isLocal = profile.remoteUrl == null
-                                    // Live phase/percent for this row come from the process-lifetime
-                                    // registry, so a backgrounded download keeps the bar moving.
-                                    val cds = contentStates[key]
                                     DownloadContentItem(
                                         profile = profile,
                                         isLocal = isLocal,
                                         isInUse = isInUse(profile, inUseKey),
-                                        isDownloading = cds?.phase == ContentDownloadPhase.DOWNLOADING,
-                                        isInstalling = cds?.phase == ContentDownloadPhase.INSTALLING,
-                                        progress = if (cds?.phase == ContentDownloadPhase.DOWNLOADING) cds.fraction else null,
-                                        installProgress = if (cds?.phase == ContentDownloadPhase.INSTALLING) cds.fraction else null,
+                                        isDownloading = key in downloadingKeys,
+                                        isInstalling = key in installingKeys,
+                                        progress = downloadProgress[key],
+                                        installProgress = installProgress[key],
                                         onDownload = {
-                                            // Fire-and-forget onto the process-lifetime controller (bracketed by the
-                                            // shared download foreground service). It seeds + drives the registry; the
-                                            // sheet just re-attaches its progress card to this key.
-                                            startContentDownload(context.applicationContext, profile)
-                                            dialogKey = key
+                                            // Seed the content-card dialog immediately with the full profile info.
+                                            installDialog = InstallCardState(
+                                                title = profile.verName,
+                                                type = profile.type.toString(),
+                                                verName = profile.verName,
+                                                verCode = profile.verCode.toString(),
+                                                desc = profile.desc,
+                                                phase = InstallCardPhase.DOWNLOADING,
+                                            )
+                                            downloadingKeys = downloadingKeys + key
+                                            downloadProgress = downloadProgress + (key to 0f)
+                                            scope.launch {
+                                                val uri = withContext(Dispatchers.IO) {
+                                                    downloadToCache(context, profile) { frac ->
+                                                        activity?.runOnUiThread {
+                                                            downloadProgress = downloadProgress + (key to frac)
+                                                            installDialog = installDialog?.copy(fraction = frac, phase = InstallCardPhase.DOWNLOADING)
+                                                        }
+                                                    }
+                                                }
+                                                if (uri != null) {
+                                                    installingKeys = installingKeys + key
+                                                    downloadingKeys = downloadingKeys - key
+                                                    downloadProgress = downloadProgress - key
+                                                    installProgress = installProgress + (key to 0f)
+                                                    installDialog = installDialog?.copy(fraction = 0f, phase = InstallCardPhase.INSTALLING)
+                                                    installContent(context, cm, uri, onProgress = { f, _ ->
+                                                        // Monotonic: ignore the brief XZ-probe reset before the ZSTD pass.
+                                                        val prev = installProgress[key] ?: 0f
+                                                        val next = maxOf(prev, f)
+                                                        installProgress = installProgress + (key to next)
+                                                        installDialog = installDialog?.copy(fraction = next, phase = InstallCardPhase.INSTALLING)
+                                                    }) { ok ->
+                                                        installingKeys = installingKeys - key
+                                                        installProgress = installProgress - key
+                                                        if (ok) {
+                                                            installDialog = installDialog?.copy(fraction = 1f, phase = InstallCardPhase.DONE)
+                                                            loadProfiles(cm, contentTypes) { profiles = it }
+                                                            refreshKey++
+                                                            onContentChanged()
+                                                        } else {
+                                                            installDialog = installDialog?.copy(phase = InstallCardPhase.ERROR, error = "Install failed.")
+                                                        }
+                                                    }
+                                                } else {
+                                                    downloadingKeys = downloadingKeys - key
+                                                    downloadProgress = downloadProgress - key
+                                                    installDialog = installDialog?.copy(phase = InstallCardPhase.ERROR, error = "Download failed.")
+                                                }
+                                            }
                                         },
                                         onInfo = { showInfoProfile = profile },
                                         onRemove = { confirmRemoveProfile = profile },
@@ -473,24 +480,6 @@ private data class InstallCardState(
     val error: String? = null,
 )
 
-// Map a process-lifetime registry snapshot onto the sheet's install-card model, so a catalog
-// download rendered from ContentDownloadRegistry reuses the exact same card UI as before.
-private fun ContentDownloadState.toInstallCardState() = InstallCardState(
-    title = title,
-    type = type,
-    verName = verName,
-    verCode = verCode,
-    desc = desc,
-    fraction = fraction,
-    phase = when (phase) {
-        ContentDownloadPhase.DOWNLOADING -> InstallCardPhase.DOWNLOADING
-        ContentDownloadPhase.INSTALLING -> InstallCardPhase.INSTALLING
-        ContentDownloadPhase.DONE -> InstallCardPhase.DONE
-        ContentDownloadPhase.ERROR -> InstallCardPhase.ERROR
-    },
-    error = error,
-)
-
 // The same outlined-card look as the content rows, carrying the Content-Info fields plus a live bar.
 // Dismiss is blocked until the install reaches a terminal (DONE / ERROR) state.
 @Composable
@@ -581,12 +570,8 @@ private fun loadProfiles(
 
 // internal (not private): the community-config inline installer reuses this same download path.
 internal fun downloadToCache(context: Context, profile: ContentProfile, onProgress: (Float) -> Unit): Uri? {
-    // Stable per-component temp name (NOT temp_<millis>, which orphans partials): a fixed name
-    // lets an interrupted download resume via HTTP Range on the next attempt instead of
-    // restarting from zero. Range-aware Downloader appends to this file when a partial exists.
-    val safe = ContentsManager.getEntryName(profile).replace(Regex("[^A-Za-z0-9._-]"), "_")
-    val f = File(context.cacheDir, "content_dl_$safe.part")
-    return if (Downloader.downloadFile(profile.remoteUrl, f, /* resume = */ true) { frac -> onProgress(frac) }) Uri.fromFile(f) else null
+    val f = File(context.cacheDir, "temp_${System.currentTimeMillis()}")
+    return if (Downloader.downloadFile(profile.remoteUrl, f) { frac -> onProgress(frac) }) Uri.fromFile(f) else null
 }
 
 // internal (not private): reused by the community-config inline installer (same install path).

@@ -13,7 +13,6 @@ import androidx.navigation.navArgument
 
 import com.winlator.star.ui.screens.AdrenoToolsScreen
 import com.winlator.star.ui.screens.AppearanceScreen
-import com.winlator.star.ui.screens.BigPictureScreen
 import com.winlator.star.ui.screens.ContainerDetailScreen
 import com.winlator.star.ui.screens.ContainersScreen
 import com.winlator.star.ui.screens.FileManagerScreen
@@ -22,12 +21,11 @@ import com.winlator.star.ui.screens.SavesScreen
 import com.winlator.star.ui.screens.InputControlsScreen
 import com.winlator.star.ui.screens.SettingsScreen
 import com.winlator.star.ui.screens.ShortcutsScreen
-import com.winlator.star.ui.screens.WrapperManagerScreen
-import com.winlator.star.store.SaveManagerScreen
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
+    selectedInputProfileId: Int,
     startRoute: String = Screen.Games.route,
     modifier: Modifier = Modifier,
 ) {
@@ -69,20 +67,12 @@ fun AppNavGraph(
             ShortcutsScreen()
         }
 
-        composable(Screen.BigPicture.route) {
-            BigPictureScreen(navController = navController)
-        }
-
         composable(Screen.InputControls.route) {
             InputControlsScreen()
         }
 
         composable(Screen.AdrenoTools.route) {
             AdrenoToolsScreen()
-        }
-
-        composable(Screen.Wrappers.route) {
-            WrapperManagerScreen()
         }
 
         composable(Screen.FileManager.route) {
@@ -107,10 +97,6 @@ fun AppNavGraph(
 
         composable(Screen.Saves.route) {
             SavesScreen()
-        }
-
-        composable(Screen.SaveManager.route) {
-            SaveManagerScreen()
         }
     }
 }

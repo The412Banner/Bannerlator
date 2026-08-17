@@ -5,6 +5,9 @@ import android.graphics.Rect;
 import com.winlator.star.widget.InputControlsView;
 import com.winlator.star.widget.TouchpadView;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class RangeScroller {
     private final InputControlsView inputControlsView;
     private final ControlElement element;
@@ -13,13 +16,9 @@ public class RangeScroller {
     private float lastPosition;
     private long touchTime;
     private Binding binding = Binding.NONE;
-    private Binding pressedBinding = Binding.NONE;
     private boolean isActionDown = false;
     private boolean scrolling = false;
-    private final Runnable longPressRunnable = () -> {
-        if (isActionDown && !scrolling) pressBinding();
-    };
-    private final Runnable releaseBindingRunnable = this::releasePressedBinding;
+    private Timer timer;
 
     public RangeScroller(InputControlsView inputControlsView, ControlElement element) {
         this.inputControlsView = inputControlsView;
@@ -72,27 +71,15 @@ public class RangeScroller {
         return (System.currentTimeMillis() - touchTime) < TouchpadView.MAX_TAP_MILLISECONDS;
     }
 
-    private void cancelDeferredCallbacks() {
-        inputControlsView.removeCallbacks(longPressRunnable);
-        inputControlsView.removeCallbacks(releaseBindingRunnable);
-    }
-
-    private void pressBinding() {
-        if (binding == Binding.NONE || pressedBinding != Binding.NONE) return;
-        pressedBinding = binding;
-        inputControlsView.handleCountedInputEvent(pressedBinding, true, 0, true);
-    }
-
-    private void releasePressedBinding() {
-        if (pressedBinding == Binding.NONE) return;
-        Binding bindingToRelease = pressedBinding;
-        pressedBinding = Binding.NONE;
-        inputControlsView.handleCountedInputEvent(bindingToRelease, false, 0, true);
+    private void destroyTimer() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
     }
 
     public void handleTouchDown(float x, float y) {
-        cancelDeferredCallbacks();
-        releasePressedBinding();
+        destroyTimer();
 
         scrolling = false;
         isActionDown = true;
@@ -101,7 +88,13 @@ public class RangeScroller {
         lastPosition = element.getOrientation() == 0 ? x : y;
         element.setBinding(Binding.NONE);
 
-        inputControlsView.postDelayed(longPressRunnable, TouchpadView.MAX_TAP_MILLISECONDS);
+        timer = new Timer(true);
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (!scrolling) inputControlsView.post(() -> inputControlsView.handleInputEvent(binding, true));
+            }
+        }, TouchpadView.MAX_TAP_MILLISECONDS);
     }
 
     public void handleTouchMove(float x, float y) {
@@ -111,7 +104,7 @@ public class RangeScroller {
 
             if (Math.abs(deltaPosition) >= TouchpadView.MAX_TAP_TRAVEL_DISTANCE) {
                 scrolling = true;
-                inputControlsView.removeCallbacks(longPressRunnable);
+                destroyTimer();
             }
 
             if (scrolling) {
@@ -129,24 +122,14 @@ public class RangeScroller {
 
     public void handleTouchUp() {
         if (isActionDown) {
-            isActionDown = false;
-            inputControlsView.removeCallbacks(longPressRunnable);
+            destroyTimer();
             if (isTap() && !scrolling) {
-                pressBinding();
-                if (pressedBinding != Binding.NONE
-                        && !inputControlsView.postDelayed(releaseBindingRunnable, 30)) {
-                    releasePressedBinding();
-                }
+                inputControlsView.handleInputEvent(binding, true);
+                final Binding finalBinding = binding;
+                inputControlsView.postDelayed(() -> inputControlsView.handleInputEvent(finalBinding, false), 30);
             }
-            else releasePressedBinding();
+            else inputControlsView.handleInputEvent(binding, false);
         }
-    }
-
-    public void releaseActiveInputs() {
         isActionDown = false;
-        scrolling = false;
-        cancelDeferredCallbacks();
-        releasePressedBinding();
-        binding = Binding.NONE;
     }
 }

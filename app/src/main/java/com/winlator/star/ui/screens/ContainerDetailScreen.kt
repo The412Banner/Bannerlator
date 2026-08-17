@@ -68,6 +68,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.util.concurrent.Executors
 import com.winlator.star.container.Container
+import com.winlator.star.container.VegasActiveConfig
 import com.winlator.star.widget.ColorPickerView
 import com.winlator.star.widget.CPUListView
 import com.winlator.star.widget.EnvVarsView
@@ -206,6 +207,7 @@ fun ContainerDetailScreen(
         DxvkConfigDialog(
             isArm64EC = viewModel.isArm64EC,
             isVegas = isVegasWrapper,
+            containerRootDir = viewModel.container?.rootDir,
             refreshKey = dxvkRefreshKey,
             initialConfig = viewModel.dxWrapperConfig,
             onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showDxvkConfig = false },
@@ -1879,6 +1881,7 @@ internal fun ExtensionPickerDialog(
 internal fun DxvkConfigDialog(
     isArm64EC: Boolean,
     isVegas: Boolean = false,
+    containerRootDir: java.io.File? = null,
     refreshKey: Int = 0,
     initialConfig: String,
     onConfirm: (String) -> Unit,
@@ -1926,21 +1929,35 @@ internal fun DxvkConfigDialog(
                 vkd3dVersions.value = vkd3d
                 configSourceEntries.value = cfgsrc
                 stockSources.value = stock
-                // Tier-2B init: restore the two-source selection from the stored dxvkConfigFile
+                                // Tier-2B init: restore the two-source selection from the stored dxvkConfigFile
                 val stored = config.get("dxvkConfigFile")
+                val activePath = containerRootDir?.let { VegasActiveConfig.activeFile(it).absolutePath }
                 val stockMatch = stock.firstOrNull { it.file.absolutePath == stored }
                 val customBase = cfgsrc.filter { it != "None" }
                 customEntries.value = if (stored.isNotEmpty() && stored !in customBase) customBase + stored else customBase
-                if (stored.isEmpty()) {
-                    useDefaults = true
-                } else if (stockMatch != null) {
-                    selectedStock = stockMatch.displayLabel()
-                    selectedCustom = null
-                    useDefaults = false
-                } else {
-                    selectedCustom = stored
-                    selectedStock = null
-                    useDefaults = false
+                when {
+                    // Split: stored pointer is this container's active.conf -> show its source
+                    // baseline in the stock dropdown (view), editor reads the active file.
+                    stored.isNotEmpty() && stored == activePath -> {
+                        val srcTag = containerRootDir?.let { VegasActiveConfig.sourceBaseline(it) }
+                        val src = srcTag?.let { t -> stock.firstOrNull { it.tag == t } }
+                        selectedStock = src?.displayLabel()
+                        selectedCustom = null
+                        useDefaults = false
+                    }
+                    stored.isEmpty() -> {
+                        useDefaults = true
+                    }
+                    stockMatch != null -> {
+                        selectedStock = stockMatch.displayLabel()
+                        selectedCustom = null
+                        useDefaults = false
+                    }
+                    else -> {
+                        selectedCustom = stored
+                        selectedStock = null
+                        useDefaults = false
+                    }
                 }
             }
         }
@@ -1985,7 +2002,7 @@ internal fun DxvkConfigDialog(
     var showCatalogDialog by remember { mutableStateOf(false) }
     var forkFilter by remember { mutableStateOf(false) }
 
-    // The active source's absolute path; "" = USE DEFAULTS (env-var semantics, no file).
+        // The active source's absolute path; "" = USE DEFAULTS (env-var semantics, no file).
     val activeConfigPath = remember(useDefaults, selectedStock, selectedCustom, stockSources.value) {
         when {
             useDefaults -> ""
@@ -1996,13 +2013,28 @@ internal fun DxvkConfigDialog(
             else -> ""
         }
     }
+    // Split (§6e): the container's own active config file + its existence. The editor
+    // reads THIS once the container has been seeded; baselines/custom remain view sources.
+    val activeFile = containerRootDir?.let { VegasActiveConfig.activeFile(it) }
+    val activeExists = remember(toggleVersion, containerRootDir) { activeFile != null && activeFile!!.isFile }
+    // Baseline path awaiting the "create active config" decision row (set by stock toggles
+    // before any write, and by the "Use as my config" action).
+    var pendingBaselineSeed by remember { mutableStateOf<String?>(null) }
     // Config-file snapshot, read ONCE per source pick or per write (never re-read on the fly):
     // empty text = USE DEFAULTS; missing = active path not found on disk.
-    val configSourceText = remember(activeConfigPath, toggleVersion) {
-        if (activeConfigPath.isEmpty()) ""
-        else {
-            val f = java.io.File(activeConfigPath)
-            if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
+    val configSourceText = remember(activeExists, selectedCustom, activeConfigPath, toggleVersion) {
+        when {
+            // Explicit custom selection keeps legacy direct-read semantics (§5a deferred).
+            selectedCustom != null -> {
+                val f = java.io.File(selectedCustom!!)
+                if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
+            }
+            activeExists && activeFile != null -> runCatching { activeFile.readText() }.getOrDefault("")
+            activeConfigPath.isEmpty() -> ""
+            else -> {
+                val f = java.io.File(activeConfigPath)
+                if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
+            }
         }
     }
     val configSourceMissing = remember(activeConfigPath) {
@@ -2027,31 +2059,46 @@ internal fun DxvkConfigDialog(
         }
     }
 
-    // Comment/uncomment the exact config line. Stock files: direct write, .bak on first
-    // write, provenance promotes to "Edited · yours now". Custom files: confirm-write only.
+    // Comment/uncomment the exact config line. Split (§6e): edits land in the container's
+    // ACTIVE config (baseline stock files are structurally read-only — no in-place write
+    // path exists anymore). Stock rows on an unseeded container open the seed decision
+    // row instead of writing. Custom files keep legacy confirm-write semantics (§5a
+    // import/replace lands with the migration session).
     fun applyToggle(row: VegasKeyKnowledge.EditRow, enable: Boolean, confirmed: Boolean = false) {
         val path = activeConfigPath
         if (path.isEmpty()) return
         val isStockPath = stockSources.value.any { it.file.absolutePath == path }
+        if (isStockPath && containerRootDir == null) {
+            // Structural guard: without a container there is no active.conf, and baseline
+            // files are never written in place. Refuse, never fall back to legacy writes.
+            Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (!isStockPath && !confirmed) { pendingToggle = row to enable; return }
         val file = java.io.File(path)
-        val wasStock = isStockPath
         scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                if (!file.isFile) return@withContext false
-                val text = runCatching { file.readText() }.getOrNull() ?: return@withContext false
-                val next = VegasKeyKnowledge.toggleLine(text, row.key, enable) ?: return@withContext false
-                if (wasStock && !stockEdited) {
-                    val bakFile = java.io.File(path + ".bak")
-                    if (runCatching { file.copyTo(bakFile, overwrite = true) }.isFailure) return@withContext false
+            // 0 = failed, 1 = written, 2 = seed decision row needed (no active config yet)
+            val result = withContext(Dispatchers.IO) {
+                if (isStockPath && activeFile != null && !activeFile.isFile) return@withContext 2
+                val target = when {
+                    isStockPath && activeExists -> activeFile!!
+                    else -> file                                  // custom legacy path
                 }
-                runCatching { file.writeText(next) }.isSuccess
+                if (!target.isFile) return@withContext 0
+                val text = runCatching { target.readText() }.getOrNull() ?: return@withContext 0
+                val next = VegasKeyKnowledge.toggleLine(text, row.key, enable) ?: return@withContext 0
+                if (isStockPath && activeExists) {
+                    // Structural write path: every edit goes through VegasActiveConfig.
+                    val rootDir = containerRootDir ?: return@withContext 0
+                    if (VegasActiveConfig.edit(rootDir, next)) 1 else 0
+                } else {
+                    if (runCatching { target.writeText(next) }.isSuccess) 1 else 0
+                }
             }
-            if (ok) {
-                if (wasStock) stockEdited = true
-                toggleVersion++
-            } else {
-                Toast.makeText(activity, "Failed to update config file", Toast.LENGTH_SHORT).show()
+            when (result) {
+                1 -> { if (isStockPath) stockEdited = true; toggleVersion++ }
+                2 -> pendingBaselineSeed = path
+                else -> Toast.makeText(activity, "Failed to update config file", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -2235,7 +2282,16 @@ internal fun DxvkConfigDialog(
                         if (configSourceMissing) {
                             Spacer(Modifier.height(4.dp))
                             Text("not found: $activeConfigPath", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        } else if (configSourceText.isNotEmpty()) {
+                        }
+                        // Split: baselines are read-only views; "Use as my config" is the explicit
+                        // decision row that seeds/switches this container's active config.
+                        if (selectedStock != null && selectedCustom == null && activeConfigPath.isNotEmpty()) {
+                            Spacer(Modifier.height(2.dp))
+                            TextButton(onClick = { pendingBaselineSeed = activeConfigPath }) {
+                                Text(if (activeExists) "Use as my config (switch)" else "Use as my config", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        if (!configSourceMissing && configSourceText.isNotEmpty()) {
                             Spacer(Modifier.height(6.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Switch(checked = forkFilter, onCheckedChange = { forkFilter = it }, modifier = Modifier.height(32.dp))
@@ -2315,7 +2371,10 @@ internal fun DxvkConfigDialog(
                     }
                     if (stockEdited) {
                         Text(
-                            "Edited · yours now (backup: $activeConfigPath.bak)",
+                            if (activeExists)
+                                "Edited · yours now (vegas/active.conf)"
+                            else
+                                "Edited · yours now (backup: $activeConfigPath.bak)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -2334,6 +2393,45 @@ internal fun DxvkConfigDialog(
                             dismissButton = { TextButton(onClick = { pendingToggle = null }) { Text(stringResource(android.R.string.cancel)) } }
                         )
                     }
+                    // Split decision row: seed (no active config yet) or switch (replace active
+                    // content). Baseline stays pristine either way; the event is recorded by
+                    // VegasActiveConfig — a write without this dialog is structurally impossible.
+                    pendingBaselineSeed?.let { baselinePath ->
+                        val baselineTag = stockSources.value.firstOrNull { it.file.absolutePath == baselinePath }?.tag
+                            ?: stockSources.value.firstOrNull { it.file.absolutePath == baselinePath }?.verName
+                            ?: baselinePath
+                        AlertDialog(
+                            onDismissRequest = { pendingBaselineSeed = null },
+                            title = { Text(if (activeExists) "Switch active config?" else "Create active config?") },
+                            text = {
+                                Text(
+                                    if (activeExists)
+                                        "This container's active config will be replaced from $baselineTag. The baseline file stays pristine."
+                                    else
+                                        "Edits go to this container's active config (vegas/active.conf). Create it from $baselineTag now? The baseline file stays pristine."
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    val rootDir = containerRootDir
+                                    val src = java.io.File(baselinePath)
+                                    if (rootDir != null && src.isFile) {
+                                        val content = runCatching { src.readText() }.getOrDefault("")
+                                        val from = baselineTag
+                                        scope.launch {
+                                            val seeded = withContext(Dispatchers.IO) {
+                                                VegasActiveConfig.write(rootDir, content, if (activeExists) "switch" else "seed", from)
+                                            }
+                                            if (seeded) { stockEdited = true; toggleVersion++ }
+                                            else Toast.makeText(activity, "Failed to create active config", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    pendingBaselineSeed = null
+                                }) { Text(if (activeExists) "Switch" else "Create") }
+                            },
+                            dismissButton = { TextButton(onClick = { pendingBaselineSeed = null }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
                 }
             }
         },
@@ -2347,7 +2445,7 @@ internal fun DxvkConfigDialog(
                 cfg.put("vkd3dVersion", selectedVkd3d)
                 cfg.put("vkd3dLevel", selectedFeatureLevel)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
-                cfg.put("dxvkConfigFile", activeConfigPath)
+                cfg.put("dxvkConfigFile", if (activeExists && activeFile != null) activeFile.absolutePath else activeConfigPath)
                 onConfirm(cfg.toString())
             }) { Text(stringResource(android.R.string.ok)) }
         },

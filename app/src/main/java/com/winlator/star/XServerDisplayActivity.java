@@ -595,19 +595,25 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     new java.io.FileReader(new java.io.File(p, "maps")))) {
                 String line;
                 while ((line = r.readLine()) != null) {
-                    if (line.indexOf(".dll") < 0) continue;
+                    // Case-INSENSITIVE: Windows DLL names are case-insensitive, and some titles map a
+                    // capitalised module the OS resolves the same — e.g. an Agility-SDK game's own
+                    // "D3D12Core.dll" (GTA V Enhanced). A lowercase-only match missed it, so a real
+                    // D3D12/VKD3D game stayed labelled as its configured DXGI wrapper (DXVK). Lowercase
+                    // the line once, then match.
+                    String ll = line.toLowerCase(java.util.Locale.ROOT);
+                    if (ll.indexOf(".dll") < 0) continue;
                     // NOTE: do NOT break on the d3d12 hit — a dual-API build maps d3d12core.dll for a
                     // startup probe yet renders on d3d11 (both resident), so we must keep scanning this
                     // process to learn whether d3d11 is ALSO mapped (resolved below via the engine log).
-                    if (line.indexOf("d3d12core.dll") >= 0 || line.indexOf("d3d12.dll") >= 0) { d3d12 = true; pHasD3d12 = true; }
-                    else if (line.indexOf("d3d11.dll") >= 0) d3d11 = true;
-                    else if (line.indexOf("d3d10.dll") >= 0) d3d10 = true;
-                    else if (line.indexOf("d3d9.dll") >= 0)  d3d9  = true;
+                    if (ll.indexOf("d3d12core.dll") >= 0 || ll.indexOf("d3d12.dll") >= 0) { d3d12 = true; pHasD3d12 = true; }
+                    else if (ll.indexOf("d3d11.dll") >= 0) d3d11 = true;
+                    else if (ll.indexOf("d3d10.dll") >= 0) d3d10 = true;
+                    else if (ll.indexOf("d3d9.dll") >= 0)  d3d9  = true;
                     // Wine PE names: winevulkan.dll (the Wine Vulkan driver) and vulkan-1.dll (the
                     // loader apps link against); opengl32.dll is Wine's GL. DXVK/VKD3D also pull in
                     // vulkan-1.dll, hence the D3D-first ordering below.
-                    else if (line.indexOf("winevulkan.dll") >= 0 || line.indexOf("vulkan-1.dll") >= 0) vulkan = true;
-                    else if (line.indexOf("opengl32.dll") >= 0) opengl = true;
+                    else if (ll.indexOf("winevulkan.dll") >= 0 || ll.indexOf("vulkan-1.dll") >= 0) vulkan = true;
+                    else if (ll.indexOf("opengl32.dll") >= 0) opengl = true;
                     // Once BOTH top ranks are seen we have everything the ambiguous dual-API case needs;
                     // stop scanning this process early (perf parity with the old break-on-d3d12).
                     if (d3d12 && d3d11) break;

@@ -111,6 +111,10 @@ internal object KnownEnvVars {
             "scale=0.5", "scale=0.7", "scale=1.0", "opacity=0.5", "opacity=0.7", "devinfo", "fps", "frametimes",
             "submissions", "drawcalls", "pipelines", "descriptors", "memory", "gpuload", "version", "api", "cs",
             "compiler", "samplers")),
+        // VEGAS-only HUD extras — merged with DXVK_HUD at runtime by VEGAS
+        // builds; ignored (harmless) on vanilla DXVK. Kept out of the shared
+        // DXVK_HUD list so vanilla users never see VEGAS-only tokens.
+        KnownEnvVar("VEGAS_HUD", EnvVarType.SELECT_MULTIPLE, listOf("commit", "vegas")),
         KnownEnvVar("DXVK_CONFIG_FILE", EnvVarType.SELECT, listOf(
             "/storage/emulated/0/starengine.ini",
             "/storage/emulated/0/Download/starengine.ini",

@@ -39,6 +39,8 @@ public class EnvVarsView extends FrameLayout {
         {"TU_DEBUG", "SELECT_MULTIPLE", "forcecb", "nocb", "startup", "deck_emu", "nir", "nobin", "sysmem", "gmem", "forcebin", "layout", "noubwc", "nomultipos", "nolrz", "nolrzfc", "perf", "perfc", "flushall", "syncdraw", "push_consts_per_stage", "rast_order", "unaligned_store", "log_skip_gmem_ops", "dynamic", "bos", "3d_load", "fdm", "noconform", "rd"},
         {"IR3_SHADER_DEBUG", "SELECT_MULTIPLE", "nouboopt", "nopreamble", "noearlypreamble"},
         {"DXVK_HUD", "SELECT_MULTIPLE", "scale=0.5", "scale=0.7", "scale=1.0", "opacity=0.5", "opacity=0.7", "devinfo", "fps", "frametimes", "submissions", "drawcalls", "pipelines", "descriptors", "memory", "gpuload", "version", "api", "cs", "compiler", "samplers"},
+        // VEGAS-only HUD extras; merged with DXVK_HUD by VEGAS builds, ignored by vanilla
+        {"VEGAS_HUD", "SELECT_MULTIPLE", "commit", "vegas"},
         {"DXVK_CONFIG_FILE", "SELECT", "/storage/emulated/0/starengine.ini", "/storage/emulated/0/Download/starengine.ini", "/storage/emulated/0/Winlator/starengine.ini"},
         {"MESA_EXTENSION_MAX_YEAR", "NUMBER"},
         {"WRAPPER_MAX_IMAGE_COUNT", "TEXT"},

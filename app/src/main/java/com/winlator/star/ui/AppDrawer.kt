@@ -448,6 +448,11 @@ private fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit
                     onOpenUrl = onOpenUrl
                 )
                 SupportLink(
+                    label = "VEGAS Releases & Notes",
+                    url = "https://github.com/isygold/vegas-releases",
+                    onOpenUrl = onOpenUrl
+                )
+                SupportLink(
                     label = "Discord Community",
                     url = "https://discord.gg/kk6GR3C2pX",
                     onOpenUrl = onOpenUrl

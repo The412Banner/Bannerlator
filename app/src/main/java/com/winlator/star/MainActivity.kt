@@ -602,6 +602,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                     AboutRow("Box64",   "x86_64 emulation on ARM")
                     AboutRow("FEX-Emu", "Fast x86 emulator")
                     AboutRow("Turnip",  "Open-source Vulkan driver")
+                    AboutRow("VEGAS",   "Adreno-targeted DXVK fork · Star Engine")
                 }
 
                 Spacer(androidx.compose.ui.Modifier.height(4.dp))
@@ -616,6 +617,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                     AboutRow("ptitSeb",         "Box64")
                     AboutRow("WineHQ",          "Wine project")
                     AboutRow("Mesa / Freedreno","Turnip Vulkan driver")
+                    AboutRow("isygold",      "VEGAS DEV")
                 }
 
                 Spacer(androidx.compose.ui.Modifier.height(8.dp))

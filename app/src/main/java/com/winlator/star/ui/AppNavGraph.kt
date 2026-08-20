@@ -73,6 +73,12 @@ composable(Screen.Contents.route) {
 
         // BigPicture (Screen.BigPicture / BigPictureScreen) is an upstream feature whose
         // screen + steamgrid subsystem are absent from this fork — not ported in this sync.
+        // Until it is, route big_picture to the games home. A missing composable throws
+        // "destination ... is not a direct child of this NavGraph" on EVERY launch whenever
+        // the start route is big_picture (enable_big_picture_mode or EXTRA_OPEN_SCREEN).
+        composable(Screen.BigPicture.route) {
+            ShortcutsScreen()
+        }
 
         composable(Screen.InputControls.route) {
             InputControlsScreen()

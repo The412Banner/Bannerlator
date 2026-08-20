@@ -13,6 +13,7 @@ import androidx.navigation.navArgument
 
 import com.winlator.star.ui.screens.AdrenoToolsScreen
 import com.winlator.star.ui.screens.AppearanceScreen
+import com.winlator.star.ui.screens.BigPictureScreen
 import com.winlator.star.ui.screens.ContainerDetailScreen
 import com.winlator.star.ui.screens.ContainersScreen
 import com.winlator.star.ui.screens.contents.ContentsHubScreen
@@ -71,13 +72,12 @@ composable(Screen.Contents.route) {
             ContentsHubScreen()
         }
 
-        // BigPicture (Screen.BigPicture / BigPictureScreen) is an upstream feature whose
-        // screen + steamgrid subsystem are absent from this fork — not ported in this sync.
-        // Until it is, route big_picture to the games home. A missing composable throws
-        // "destination ... is not a direct child of this NavGraph" on EVERY launch whenever
-        // the start route is big_picture (enable_big_picture_mode or EXTRA_OPEN_SCREEN).
+                // BigPicture: the screen file itself survived the merge (identical to upstream,
+        // com.winlator.star.ui.screens.BigPictureScreen — rail, cover wall, community
+        // sheets + steamgrid). Only the route registration was dropped — wire it back so
+        // enable_big_picture_mode / EXTRA_OPEN_SCREEN land here instead of crashing.
         composable(Screen.BigPicture.route) {
-            ShortcutsScreen()
+            BigPictureScreen(navController = navController)
         }
 
         composable(Screen.InputControls.route) {

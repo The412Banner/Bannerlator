@@ -80,8 +80,6 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import java.util.concurrent.Executors
 import com.winlator.star.container.Container
-import com.winlator.star.container.VegasActiveConfig
-import com.winlator.star.container.VegasMigration
 import com.winlator.star.container.VegasLiveCheck
 import com.winlator.star.core.HttpUtils
 import com.winlator.star.widget.ColorPickerView
@@ -1540,33 +1538,6 @@ private fun SectionLabel(
 }
 
 @Composable
-private fun DecisionCard(
-    title: String,
-    body: String,
-    modifier: Modifier = Modifier,
-    actions: @Composable RowScope.() -> Unit = {},
-) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(2.dp))
-            Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 6.dp),
-                content = actions
-            )
-        }
-    }
-}
-
-@Composable
 internal fun LabeledDropdown(
     label: String,
     options: List<String>,
@@ -2155,10 +2126,10 @@ internal fun DxvkConfigDialog(
     var selectedCustom by remember { mutableStateOf<String?>(null) }  // custom file path
     var stockEdited by remember { mutableStateOf(false) }
     var toggleVersion by remember { mutableStateOf(0) }               // bump after a write -> re-snapshot
-    // pending row awaiting the import-confirm dialog. Keyed by the config key; the value
-    // variant rides along in pendingValueWrite so one confirm serves both edit kinds.
-    var pendingToggle by remember { mutableStateOf<Pair<String, Boolean>?>(null) }  // (key, enable)
-    var pendingValueWrite by remember { mutableStateOf<String?>(null) }  // value awaiting import confirm
+    // Option B: live files already backed up THIS session — the first write to a live file
+    // keeps a copy beside it (restore-able). Per-session so re-opening the dialog can never
+    // accumulate stale archives, and per-path so stock/custom files never mix.
+    val backedUpPaths = remember { mutableSetOf<String>() }
     // §6c value editor: the row whose value picker is open + the freeform draft.
     var valuePickerRow by remember { mutableStateOf<VegasKeyKnowledge.EditRow?>(null) }
     var customValueDraft by remember { mutableStateOf("") }
@@ -2194,27 +2165,30 @@ internal fun DxvkConfigDialog(
                 d7vkVersions.value = d7vk
                 configSourceEntries.value = cfgsrc
                 stockSources.value = stock
-                                // Tier-2B init: restore the two-source selection from the stored dxvkConfigFile
+                                // Option B init: the stored dxvkConfigFile IS the live file. Restore by matching:
+                // parked stock file -> stock dropdown; sidecar of a known stock -> that stock
+                // baseline (the pointer moved when the first edit happened); anything else
+                // (custom path, incl. a legacy vegas/active.conf) -> custom dropdown, edited
+                // in place. No active.conf copy is ever created or implied.
                 val stored = config.get("dxvkConfigFile")
-                val activePath = containerRootDir?.let { VegasActiveConfig.activeFile(it).absolutePath }
                 val stockMatch = stock.firstOrNull { it.file.absolutePath == stored }
+                val sDir = containerRootDir?.let { java.io.File(java.io.File(it, "vegas"), "configs") }
+                val sidecarMatch = if (stored.isNotEmpty() && sDir != null && sDir.isDirectory) {
+                    stock.firstOrNull { it.tag != null && java.io.File(sDir, it.tag + ".user.conf").absolutePath == stored }
+                } else null
                 val customBase = cfgsrc.filter { it != "None" }
                 customEntries.value = if (stored.isNotEmpty() && stored !in customBase) customBase + stored else customBase
                 when {
-                    // Split: stored pointer is this container's active.conf -> show its source
-                    // baseline in the stock dropdown (view), editor reads the active file.
-                    stored.isNotEmpty() && stored == activePath -> {
-                        val srcTag = containerRootDir?.let { VegasActiveConfig.sourceBaseline(it) }
-                        val src = srcTag?.let { t -> stock.firstOrNull { it.tag == t } }
-                        selectedStock = src?.displayLabel()
-                        selectedCustom = null
-                        useDefaults = false
-                    }
                     stored.isEmpty() -> {
                         useDefaults = true
                     }
                     stockMatch != null -> {
                         selectedStock = stockMatch.displayLabel()
+                        selectedCustom = null
+                        useDefaults = false
+                    }
+                    sidecarMatch != null -> {
+                        selectedStock = sidecarMatch.displayLabel()
                         selectedCustom = null
                         useDefaults = false
                     }
@@ -2287,108 +2261,58 @@ internal fun DxvkConfigDialog(
     var forkFilter by remember { mutableStateOf(false) }
     // §6a.6 schema-aware editor: wrong-family key awaiting the block-with-explanation dialog.
     var pendingSchemaBlock by remember { mutableStateOf<String?>(null) }
-    // §5 migration detector: the stored dxvkConfigFile as it existed BEFORE this session
-    // (legacy containers persist the parked stock path; the split world persists active.conf).
-    var legacyStoredPath by remember { mutableStateOf(config.get("dxvkConfigFile").ifEmpty { "" }) }
     // §6b.1 user-initiated "Check for new builds" (report only — observation, never mutation).
     var liveReport by remember { mutableStateOf<VegasLiveCheck.Report?>(null) }
     var liveChecking by remember { mutableStateOf(false) }
 
-        // The active source's absolute path; "" = USE DEFAULTS (env-var semantics, no file).
-    val activeConfigPath = remember(useDefaults, selectedStock, selectedCustom, stockSources.value) {
-        when {
-            useDefaults -> ""
-            selectedStock != null -> stockSources.value.firstOrNull {
-                it.verName == selectedStock || it.displayLabel() == selectedStock
-            }?.file?.absolutePath ?: ""
-            selectedCustom != null -> selectedCustom!!
-            else -> ""
+        // ---- Option B: "the selected path IS the live file" ----
+    // Stock baseline: the parked stock file is read-only until the FIRST edit; that first
+    // write creates the user's own sidecar <container>/vegas/configs/<tag>.user.conf which
+    // becomes the live file (and the saved dxvkConfigFile pointer moves with it). Custom
+    // selections are the live file from the start, edited in place. No active.conf.
+    val stockPathForSelected = remember(selectedStock, stockSources.value) {
+        selectedStock?.let { s ->
+            stockSources.value.firstOrNull { it.verName == s || it.displayLabel() == s }?.file?.absolutePath
         }
     }
-    // Split (§6e): the container's own active config file + its existence. The editor
-    // reads THIS once the container has been seeded; baselines/custom remain view sources.
-    val activeFile = containerRootDir?.let { VegasActiveConfig.activeFile(it) }
-    val activeExists = remember(toggleVersion, containerRootDir) { activeFile != null && activeFile!!.isFile }
-    // §6d backups: archived active.conf copies (.bak-*), newest first; picker + confirm.
-    // NOTE: must come after activeExists (a remember key here) — it was moved here from
-    // the state block above to fix a forward-reference compile error.
-    val backupsList = remember(containerRootDir, toggleVersion, activeExists) {
-        val dir = containerRootDir?.let { VegasActiveConfig.activeFile(it).parentFile }
-        if (dir == null || !dir.isDirectory) emptyList()
-        else dir.listFiles { f -> f.isFile && f.name.startsWith("active.conf.bak") }
+    // Sidecar lives inside the container so it survives WCP updates of the parked file.
+    val sidecarPath = remember(containerRootDir, activeStockTag) {
+        if (containerRootDir == null || activeStockTag == null) null
+        else java.io.File(java.io.File(java.io.File(containerRootDir, "vegas"), "configs"), activeStockTag + ".user.conf").absolutePath
+    }
+    val sidecarExists = remember(toggleVersion, sidecarPath) { sidecarPath != null && java.io.File(sidecarPath!!).isFile }
+    val liveFile = remember(useDefaults, selectedStock, selectedCustom, stockPathForSelected, sidecarPath, sidecarExists) {
+        when {
+            useDefaults -> null
+            selectedStock != null && sidecarExists && sidecarPath != null -> java.io.File(sidecarPath!!)
+            selectedStock != null -> stockPathForSelected?.let { java.io.File(it) }
+            selectedCustom != null -> java.io.File(selectedCustom!!)
+            else -> null
+        }
+    }
+    // "" = USE DEFAULTS (no file).
+    val livePath = liveFile?.absolutePath ?: ""
+    // Option B backups: .bak-* copies beside the CURRENT live file, newest first.
+    val backupsList = remember(liveFile, toggleVersion) {
+        val dir = liveFile?.parentFile
+        val name = liveFile?.name
+        if (dir == null || name == null || !dir.isDirectory) emptyList()
+        else dir.listFiles { f -> f.isFile && f.name.startsWith(name + ".bak") }
             ?.sortedByDescending { it.lastModified() } ?: emptyList()
     }
-    // Baseline path awaiting the "create active config" decision row (set by stock toggles
-    // before any write, and by the "Use as my config" action).
-    var pendingBaselineSeed by remember { mutableStateOf<String?>(null) }
-    // §scenario cards: the baseline tag the user explicitly chose to keep — the switch
-    // card stays hidden for it (reset whenever the stock selection changes).
-    var keptMineTag by remember { mutableStateOf<String?>(null) }
-    // §5a/§6d custom import semantics: when a custom file is selected with a container
-    // present, the FIRST write is an IMPORT (replaces the active config + provenance event,
-    // prior working copy backed up); once the active config's last import came from this
-    // exact file, toggles are ordinary edits. True also when no active config exists yet
-    // (import seeds it). Container-less custom selection keeps legacy direct-write.
-    val customImportPending = remember(selectedCustom, activeExists, toggleVersion, containerRootDir) {
-        if (selectedCustom == null || containerRootDir == null) false
-        else {
-            val activeNow = VegasActiveConfig.exists(containerRootDir)
-            if (!activeNow) true
-            else (VegasActiveConfig.events(containerRootDir)
-                .lastOrNull { it.type == VegasActiveConfig.EVENT_IMPORT }?.from ?: "") != selectedCustom
-        }
-    }
     // Config-file snapshot, read ONCE per source pick or per write (never re-read on the fly):
-    // empty text = USE DEFAULTS; missing = active path not found on disk.
-    val configSourceText = remember(activeExists, selectedCustom, activeConfigPath, toggleVersion, customImportPending) {
-        when {
-            // Custom selection: pre-import shows the SOURCE file (what the import will
-            // bring in); after import the working copy is the container's active config.
-            selectedCustom != null -> {
-                if (customImportPending) {
-                    val f = java.io.File(selectedCustom!!)
-                    if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
-                } else if (containerRootDir != null && activeExists) {
-                    runCatching { VegasActiveConfig.activeFile(containerRootDir).readText() }.getOrDefault("")
-                } else {
-                    val f = java.io.File(selectedCustom!!)
-                    if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
-                }
-            }
-            activeExists && activeFile != null -> runCatching { activeFile.readText() }.getOrDefault("")
-            activeConfigPath.isEmpty() -> ""
-            else -> {
-                val f = java.io.File(activeConfigPath)
-                if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
-            }
-        }
+    // empty text = USE DEFAULTS; missing = live file not found on disk.
+    val configSourceText = remember(useDefaults, liveFile, toggleVersion) {
+        if (useDefaults || liveFile == null) ""
+        else if (liveFile.isFile) runCatching { liveFile.readText() }.getOrDefault("")
+        else ""
     }
-    val configSourceMissing = remember(activeConfigPath) {
-        activeConfigPath.isNotEmpty() && !java.io.File(activeConfigPath).isFile
+    val configSourceMissing = remember(liveFile, useDefaults) {
+        !useDefaults && liveFile != null && !liveFile.isFile
     }
     val configRows = remember(vegasKnowledge, configSourceText, selectedDxvk) {
         if (vegasKnowledge != null) vegasKnowledge.editRows(configSourceText, selectedDxvk)
         else VegasKeyKnowledge.editRowsUnclassified(configSourceText)
-    }
-
-    // §scenario cards (switch/upgrade): stock keys the SELECTED baseline has that the
-    // active config lacks — "N new keys — grab them or ignore". Null when not applicable
-    // (no active config, unknown source, same version, or custom-imported active file).
-    val upgradeDiffKeys = remember(activeExists, configRows, vegasKnowledge, toggleVersion, containerRootDir, activeStockTag, stockSources.value) {
-        if (!activeExists || containerRootDir == null || activeStockTag == null) null
-        else {
-            val cameFrom = VegasActiveConfig.sourceBaseline(containerRootDir)
-            if (cameFrom == null || cameFrom == activeStockTag) null
-            else {
-                val base = stockSources.value.firstOrNull { it.tag == activeStockTag }?.file
-                if (base == null || !base.isFile) null
-                else {
-                    val baseText = runCatching { base.readText() }.getOrDefault("")
-                    val baseKeys = (vegasKnowledge?.preview(baseText, selectedDxvk) ?: VegasKeyKnowledge.previewUnclassified(baseText)).map { it.key }.toSet()
-                    (baseKeys - configRows.map { it.key }.toSet()).toList().sorted()
-                }
-            }
-        }
     }
 
     // §6c value editor ground truth: distinct enabled values per key across ALL installed
@@ -2443,83 +2367,25 @@ internal fun DxvkConfigDialog(
         configRows.firstOrNull { it.key == "vegas.forceTier" }?.value?.toIntOrNull()
     }
 
-    // §5 migration detector: offered only when the stored dxvkConfigFile still points at a
-    // parked stock file, no active config exists yet, and no adopt/dismiss decision was
-    // recorded for it. Idempotent by construction (VegasMigration.plan).
-    val migrationPlan = remember(containerRootDir, legacyStoredPath, activeConfigPath, toggleVersion) {
-        VegasMigration.plan(containerRootDir, legacyStoredPath.ifEmpty { null }, activeConfigPath.ifEmpty { null })
-    }
-    // Classification summary for the adoption banner (stock vocabulary — the parked file
-    // is a VEGAS stock config). Counts what the user would see classified in the rows.
-    val migrationSummary = remember(configRows, migrationPlan, vegasCatalog, activeStockTag) {
-        if (migrationPlan != VegasMigration.Plan.ADOPT || vegasCatalog == null) null
-        else {
-            val inB = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.IN_BUILD }
-            val other = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.OTHER_BUILD }
-            val up = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.UPSTREAM }
-            val nowhere = configRows.count { vegasCatalog.classify(it.key, activeStockTag) == VegasKeyCatalog.Bucket.NOWHERE }
-            "${configRows.size} lines · $inB in this build · $other another VEGAS build · $up upstream DXVK · $nowhere unclassified"
-        }
-    }
-
     fun schemaName(s: VegasKeyCatalog.Schema?): String = when (s) {
         VegasKeyCatalog.Schema.SAREK -> "Sarek (dxvk.vegas.*)"
         VegasKeyCatalog.Schema.STAR -> "Star Engine (vegas.*)"
         null -> "unknown"
     }
 
-    fun adoptLegacy() {
-        val rootDir = containerRootDir
-        val path = activeConfigPath
-        if (rootDir == null || path.isEmpty()) return
-        val src = java.io.File(path)
-        val from = stockSources.value.firstOrNull { it.file.absolutePath == path }?.tag
-            ?: stockSources.value.firstOrNull { it.file.absolutePath == path }?.verName
-            ?: path
-        scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                if (!src.isFile) false
-                else VegasMigration.adopt(rootDir, src, runCatching { src.readText() }.getOrDefault(""), from)
-            }
-            if (ok) { stockEdited = true; toggleVersion++ }
-            else Toast.makeText(activity, "Adoption failed — file unreadable", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    fun dismissLegacy() {
-        val rootDir = containerRootDir ?: return
-        VegasMigration.dismiss(rootDir, legacyStoredPath)
-        toggleVersion++
-    }
-
-    // Archive the current active config before a replace ("Switch · back up mine"):
-    // best-effort copy to <active>.bak-<sourceBaseline|sourceType|previous> with counter
-    // suffixes, mirroring the custom-import path. True when nothing needed backing up
-    // or the copy succeeded (failure is non-fatal — the switch still proceeds, matching
-    // the import path's tolerance).
-    fun backupActiveConfig(rootDir: java.io.File): Boolean {
-        val active = VegasActiveConfig.activeFile(rootDir)
-        if (!active.isFile) return true // nothing to back up yet
-        val label = VegasActiveConfig.sourceBaseline(rootDir)
-            ?: VegasActiveConfig.sourceType(rootDir)
-            ?: "previous"
-        var bak = java.io.File(active.absolutePath + ".bak-" + label)
-        var n = 2
-        while (bak.isFile) { bak = java.io.File(active.absolutePath + ".bak-" + label + "-" + n); n++ }
-        return runCatching { java.nio.file.Files.copy(active.toPath(), bak.toPath()) }.isSuccess
-    }
-
-    // Restore a .bak archive as the active config: archive the CURRENT state first
-    // (nothing is lost), then write the backup's content with a "restore" event. The
-    // sidecar keeps the original sourceType/sourceBaseline — a restore never re-brands
-    // where the config came from (the event log records the restore, leniently).
+    // Restore a .bak archive as the LIVE file: the current state is archived beside it
+    // first (nothing is lost), then the backup's content is written in place.
     fun restoreBackup(backup: java.io.File) {
-        val rootDir = containerRootDir ?: return
+        val target = liveFile ?: return
         scope.launch {
             val ok = withContext(Dispatchers.IO) {
+                if (!target.isFile) return@withContext false
                 val content = runCatching { backup.readText() }.getOrNull() ?: return@withContext false
-                backupActiveConfig(rootDir)
-                VegasActiveConfig.write(rootDir, content, "restore", backup.name)
+                var bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis())
+                var n = 2
+                while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis() + "-" + n); n++ }
+                runCatching { java.nio.file.Files.copy(target.toPath(), bak.toPath()) }
+                runCatching { target.writeText(content) }.isSuccess
             }
             if (ok) { stockEdited = true; toggleVersion++ }
             else Toast.makeText(activity, "Failed to restore backup", Toast.LENGTH_SHORT).show()
@@ -2591,93 +2457,62 @@ internal fun DxvkConfigDialog(
         }
     }
 
-    // Comment/uncomment the exact config line. Split (§6e): edits land in the container's
-    // ACTIVE config (baseline stock files are structurally read-only — no in-place write
-    // path exists anymore). Stock rows on an unseeded container open the seed decision
-    // row instead of writing. §6a.6: wrong-schema keys are BLOCKED with an explanation
-    // before anything else. §5a/§6d: custom selection imports (replaces) on first write,
-    // edits after.
-    // Shared write pipeline for toggle AND value edits: resolves the working file (the
-    // container's active config once owned, the source file before import), applies the
-    // transform to its text, then writes strictly through the VegasActiveConfig paths.
-    // Result codes: 0 = failed, 1 = written, 2 = seed decision row needed (unowned).
-    fun commitConfigWrite(path: String, isStockPath: Boolean, transform: (String) -> String?) {
-        val file = java.io.File(path)
+    // Comment/uncomment the exact config line. Option B: the selected path IS the live
+    // file. Stock baselines stay pristine until the FIRST edit — that write creates the
+    // user's own sidecar copy (<container>/vegas/configs/<tag>.user.conf) which becomes
+    // the live file. Custom files are written in place from the start. No active.conf,
+    // no import, no seed/switch decision rows. §6a.6: wrong-schema keys are BLOCKED
+    // with an explanation before anything else (stock rows only — custom is user-owned).
+    fun commitConfigWrite(isStockPath: Boolean, transform: (String) -> String?) {
+        val target = liveFile ?: return
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                if (isStockPath && activeFile != null && !activeFile.isFile) return@withContext 2
-                val readFrom = when {
-                    isStockPath && activeExists && activeFile != null -> activeFile
-                    // Custom edit mode (already imported): the working copy is the active config.
-                    !isStockPath && !customImportPending && activeExists && activeFile != null -> activeFile
-                    else -> file
+            val ok = withContext(Dispatchers.IO) {
+                if (isStockPath && containerRootDir == null) return@withContext false
+                if (!target.isFile) return@withContext false
+                val text = runCatching { target.readText() }.getOrNull() ?: return@withContext false
+                val next = transform(text) ?: return@withContext false
+                // First write to this live file THIS session keeps a copy beside it.
+                if (backedUpPaths.add(target.absolutePath)) {
+                    var bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis())
+                    var n = 2
+                    while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis() + "-" + n); n++ }
+                    runCatching { java.nio.file.Files.copy(target.toPath(), bak.toPath()) }
                 }
-                if (!readFrom.isFile) return@withContext 0
-                val text = runCatching { readFrom.readText() }.getOrNull() ?: return@withContext 0
-                val next = transform(text) ?: return@withContext 0
-                val rootDir = containerRootDir
-                when {
-                    // Stock + owned: the structural edit path (no lifecycle event).
-                    isStockPath && rootDir != null && activeExists ->
-                        if (VegasActiveConfig.edit(rootDir, next)) 1 else 0
-                    // Stock + unseeded: never write — the seed decision row decides.
-                    isStockPath -> 2
-                    // Custom + container: import on first write (replace + provenance +
-                    // backup), plain edits afterwards.
-                    rootDir != null -> {
-                        if (customImportPending) {
-                            // Preserve the prior working copy BEFORE the replace — explicit
-                            // user-invoked escape hatch, non-clobbering with counter suffixes.
-                            if (VegasActiveConfig.exists(rootDir)) {
-                                val prev = VegasActiveConfig.sourceType(rootDir) ?: "unknown"
-                                val active = VegasActiveConfig.activeFile(rootDir)
-                                var bak = java.io.File(active.absolutePath + ".bak-" + prev)
-                                var n = 2
-                                while (bak.isFile) { bak = java.io.File(active.absolutePath + ".bak-" + prev + "-" + n); n++ }
-                                runCatching { java.nio.file.Files.copy(active.toPath(), bak.toPath()) }
-                            }
-                            if (VegasActiveConfig.write(rootDir, next, VegasActiveConfig.EVENT_IMPORT, file.absolutePath)) 1 else 0
-                        } else {
-                            if (VegasActiveConfig.edit(rootDir, next)) 1 else 0
-                        }
-                    }
-                    // No container: legacy direct-write (custom only — stock is guarded above).
-                    else -> if (runCatching { file.writeText(next) }.isSuccess) 1 else 0
+                // Stock + pristine baseline: materialize the sidecar with the edited content.
+                // From then on the sidecar IS the live file (pointer saved on OK).
+                if (isStockPath && !sidecarExists && sidecarPath != null) {
+                    val s = java.io.File(sidecarPath!!)
+                    if (!s.parentFile.exists() && !s.parentFile.mkdirs()) return@withContext false
+                    if (!s.parentFile.isDirectory) return@withContext false
+                    runCatching { s.writeText(next) }.isSuccess
+                } else {
+                    runCatching { target.writeText(next) }.isSuccess
                 }
             }
-            when (result) {
-                1 -> { if (isStockPath) stockEdited = true; toggleVersion++ }
-                2 -> pendingBaselineSeed = path
-                else -> Toast.makeText(activity, "Failed to update config file", Toast.LENGTH_SHORT).show()
-            }
+            if (ok) { if (isStockPath) stockEdited = true; toggleVersion++ }
+            else Toast.makeText(activity, "Failed to update config file", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Comment/uncomment the exact config line (§6e split semantics; §5a/§6d custom import
-    // confirmation; §6a.6 wrong-schema block). Pending (absent) keys: enabling appends the
-    // line with the row's stock default; disabling an absent key is a structural no-op.
-    fun applyToggle(key: String, value: String, enable: Boolean, confirmed: Boolean = false) {
-        val path = activeConfigPath
-        if (path.isEmpty()) return
-        val isStockPath = stockSources.value.any { it.file.absolutePath == path }
+    // Comment/uncomment the exact config line (Option B direct-write; §6a.6 wrong-schema
+    // block). Pending (absent) keys: enabling appends the line with the row's stock
+    // default; disabling an absent key is a structural no-op.
+    fun applyToggle(key: String, value: String, enable: Boolean) {
+        if (useDefaults || liveFile == null) return
+        val isStockPath = selectedStock != null
         if (isStockPath && containerRootDir == null) {
-            // Structural guard: without a container there is no active.conf, and baseline
-            // files are never written in place. Refuse, never fall back to legacy writes.
+            // Structural guard: without a container there is no sidecar target,
+            // and parked baseline files are never written in place.
             Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
             return
         }
-        // §6a.6 schema-aware editor: block BEFORE the seed/import decision — a wrong-family
-        // key can never be meaningfully applied to this build's schema, so no write, no
-        // decision row, only the explanation. Stock rows only (custom files are user-owned).
+        // §6a.6 schema-aware editor: block BEFORE the write — a wrong-family key can never
+        // be meaningfully applied to this build's schema. Stock rows only.
         if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
             pendingSchemaBlock = key
             return
         }
-        // Custom rows confirm only when the write is an IMPORT (a replace); plain edits
-        // after import behave like stock (no confirmation). Container-less custom keeps
-        // legacy confirm-write.
-        if (!isStockPath && !confirmed && (containerRootDir == null || customImportPending)) { pendingToggle = key to enable; return }
-        commitConfigWrite(path, isStockPath) { text ->
+        commitConfigWrite(isStockPath) { text ->
             VegasKeyKnowledge.toggleLine(text, key, enable)
                 ?: if (enable) VegasKeyKnowledge.setLine(text, key, value) else text
         }
@@ -2685,10 +2520,9 @@ internal fun DxvkConfigDialog(
 
     // Value edit (non-boolean keys via the value picker): same pipeline; setLine preserves
     // comment state and appends an enabled line for absent (pending) keys.
-    fun applyValue(key: String, value: String, confirmed: Boolean = false) {
-        val path = activeConfigPath
-        if (path.isEmpty()) return
-        val isStockPath = stockSources.value.any { it.file.absolutePath == path }
+    fun applyValue(key: String, value: String) {
+        if (useDefaults || liveFile == null) return
+        val isStockPath = selectedStock != null
         if (isStockPath && containerRootDir == null) {
             Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
             return
@@ -2697,12 +2531,7 @@ internal fun DxvkConfigDialog(
             pendingSchemaBlock = key
             return
         }
-        if (!isStockPath && !confirmed && (containerRootDir == null || customImportPending)) {
-            pendingValueWrite = value
-            pendingToggle = key to false
-            return
-        }
-        commitConfigWrite(path, isStockPath) { text ->
+        commitConfigWrite(isStockPath) { text ->
             VegasKeyKnowledge.setLine(text, key, value)
         }
     }
@@ -2905,7 +2734,7 @@ internal fun DxvkConfigDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 FilterChip(
                                     selected = tier == null,
                                     onClick = { tierChoice = null },
@@ -3008,30 +2837,36 @@ internal fun DxvkConfigDialog(
                         Text("Use defaults (no config file)", style = MaterialTheme.typography.bodySmall)
                     }
                     if (!useDefaults) {
-                        // §5 "Found your config": one-time, idempotent legacy adoption.
-                        // Decided here, recorded in the sidecar (adopt) or a dismiss marker.
-                        if (migrationPlan == VegasMigration.Plan.ADOPT) {
-                            Spacer(Modifier.height(6.dp))
-                            DecisionCard(
-                                title = "Found your config",
-                                body = migrationSummary ?: "Your previous VEGAS config is preserved below, read-only."
-                            ) {
-                                TextButton(onClick = { adoptLegacy() }) { Text("Use it", style = MaterialTheme.typography.bodySmall) }
-                                TextButton(onClick = { dismissLegacy() }) { Text("Start fresh", style = MaterialTheme.typography.bodySmall) }
-                            }
-                        }
+                        // Option B: the selected path IS the live file — no adoption banner,
+                        // no seed/switch decisions. Legacy containers' parked stock files are
+                        // simply live files (their content shows and applies).
                         Spacer(Modifier.height(4.dp))
                         LabeledDropdown(
                             "Stock config (per version)",
                             stockSources.value.map { it.displayLabel() },
                             selectedStock ?: "",
-                            { s -> selectedStock = s; selectedCustom = null; useDefaults = false; keptMineTag = null },
+                            { s -> selectedStock = s; selectedCustom = null; useDefaults = false },
                             modifier = Modifier.fillMaxWidth()
                         )
                         if (stockSources.value.isEmpty()) {
                             Text(
                                 "no installed VEGAS package ships a config — install one via the sheet",
                                 color = MaterialTheme.colorScheme.outline,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        // Option B stock edit info: pristine baselines stay read-only; the
+                        // FIRST edit creates the user's own sidecar which takes over as the
+                        // live file (and the saved pointer).
+                        if (selectedStock != null && selectedCustom == null && stockPathForSelected != null && !configSourceMissing) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                if (sidecarExists)
+                                    "Your edits live in your own copy — the stock version stays pristine."
+                                else
+                                    "Read-only until the first edit — changes create your own copy.",
+                                color = if (sidecarExists) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -3051,63 +2886,35 @@ internal fun DxvkConfigDialog(
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
-                        if (activeConfigPath.isNotEmpty()) {
+                        if (livePath.isNotEmpty()) {
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "📍 $activeConfigPath",
+                                "📍 $livePath",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
                         if (configSourceMissing) {
                             Spacer(Modifier.height(4.dp))
-                            Text("not found: $activeConfigPath", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            Text("not found: $livePath", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         }
-                        // Split: baselines are read-only views; scenario decision cards seed (no active
-                        // config yet) or switch (a different stock baseline is selected than the
-                        // one active.conf came from) this container's active config. Custom
-                        // selections are import-driven — no card.
-                        if (selectedStock != null && selectedCustom == null && activeConfigPath.isNotEmpty()) {
-                            Spacer(Modifier.height(6.dp))
-                            if (activeExists) {
-                                if (upgradeDiffKeys != null && keptMineTag != activeStockTag) {
-                                    DecisionCard(
-                                        title = "${activeStockTag ?: "This"} baseline available",
-                                        body = if (upgradeDiffKeys.isEmpty())
-                                            "Switching VEGAS versions can never change your settings — same keys as yours, only tuning values differ. Grab individual keys any time."
-                                        else
-                                            "Switching VEGAS versions can never change your settings — ${upgradeDiffKeys.size} new stock key${if (upgradeDiffKeys.size == 1) "" else "s"} (${upgradeDiffKeys.joinToString(", ") { k -> k.removePrefix("vegas.").removePrefix("dxvk.") }.take(60)}) — grab them or ignore."
-                                    ) {
-                                        TextButton(onClick = { keptMineTag = activeStockTag }) {
-                                            Text("Keep mine", style = MaterialTheme.typography.bodySmall)
-                                        }
-                                        TextButton(onClick = { pendingBaselineSeed = activeConfigPath }) {
-                                            Text("Switch · back up mine", style = MaterialTheme.typography.bodySmall)
-                                        }
-                                    }
-                                }
-                            } else {
-                                DecisionCard(
-                                    title = "Seed ${activeStockTag ?: "this"} baseline as your config?",
-                                    body = "Your copy is created in the container (vegas/active.conf); the baseline file stays pristine and read-only."
-                                ) {
-                                    TextButton(onClick = { pendingBaselineSeed = activeConfigPath }) {
-                                        Text("Seed baseline → active.conf", style = MaterialTheme.typography.bodySmall)
-                                    }
-                                }
-                            }
-                        }
-                        // §6d backups: restore from a .bak archive. Shown only when the container actually
-                        // owns an active config (nothing to restore otherwise).
-                        if (activeExists && backupsList.isNotEmpty()) {
+                        // Option B backups: .bak-* beside the CURRENT live file. Always visible
+                        // once a live file exists — an empty list reads as "no backups yet" —
+                        // so the restore entry point can never be hidden by state (user's #5).
+                        if (liveFile != null && !configSourceMissing) {
                             Spacer(Modifier.height(6.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    "Backups: ${backupsList.size} — restore a previously saved state",
+                                    if (backupsList.isEmpty())
+                                        "No backups yet — the first edit keeps a copy of the current file."
+                                    else
+                                        "Backups: ${backupsList.size} — restore a previously saved state",
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f)
                                 )
-                                TextButton(onClick = { showBackups = true }) { Text("Restore…", style = MaterialTheme.typography.bodySmall) }
+                                if (backupsList.isNotEmpty()) {
+                                    TextButton(onClick = { showBackups = true }) { Text("Restore…", style = MaterialTheme.typography.bodySmall) }
+                                }
                             }
                         }
                         if (!configSourceMissing && configSourceText.isNotEmpty()) {
@@ -3310,10 +3117,8 @@ internal fun DxvkConfigDialog(
                     }
                     if (stockEdited) {
                         Text(
-                            if (activeExists)
-                                "Edited · yours now (vegas/active.conf)"
-                            else
-                                "Edited · yours now (backup: $activeConfigPath.bak)",
+                            if (sidecarExists) "Edited · yours now — saved to your own copy"
+                            else "Edited · saved to the live config file",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -3347,8 +3152,9 @@ internal fun DxvkConfigDialog(
                             confirmButton = { TextButton(onClick = { showNotes = false }) { Text("OK") } }
                         )
                     }
-                    // §6d backup picker: newest-first list of .bak archives; tapping one opens the
-                    // danger-confirm (the restore itself backs up the current state first).
+                    // Option B backup picker: newest-first list of .bak archives beside the live
+                    // file; tapping one opens the danger-confirm (the restore itself backs
+                    // up the current state first).
                     if (showBackups) {
                         AlertDialog(
                             onDismissRequest = { showBackups = false },
@@ -3356,10 +3162,11 @@ internal fun DxvkConfigDialog(
                             text = {
                                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                                     if (backupsList.isEmpty()) {
-                                        Text("No backups yet — they appear after edits, imports, and switches.")
+                                        Text("No backups yet — they appear after the first edit to this config file.")
                                     }
                                     backupsList.forEach { b ->
-                                        val label = b.name.removePrefix("active.conf.bak").trimStart('-', ' ').ifEmpty { "previous" }
+                                        val label = b.name.removePrefix((liveFile?.name ?: "") + ".bak").trimStart('-', ' ')
+                                            .ifEmpty { "previous" }
                                         TextButton(
                                             onClick = { restoreTarget = b; showBackups = false },
                                             modifier = Modifier.fillMaxWidth()
@@ -3376,19 +3183,11 @@ internal fun DxvkConfigDialog(
                         )
                     }
                     restoreTarget?.let { backup ->
-                        val suffix = backup.name.removePrefix("active.conf.bak").trimStart('-', ' ').ifEmpty { null }
-                        val current = containerRootDir?.let { VegasActiveConfig.sourceBaseline(it) }
                         AlertDialog(
                             onDismissRequest = { restoreTarget = null },
                             title = { Text("Restore this backup?") },
                             text = {
-                                Column {
-                                    Text("Active config will be replaced by '${backup.name}'. The current state is backed up first — nothing is lost.")
-                                    if (suffix != null && current != null && suffix != current) {
-                                        Spacer(Modifier.height(4.dp))
-                                        Text("This backup is from a different VEGAS build ($suffix) than your current one ($current).", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                }
+                                Text("The live config file will be replaced by '${backup.name}'. The current state is backed up first — nothing is lost.")
                             },
                             confirmButton = {
                                 TextButton(onClick = { restoreBackup(backup); restoreTarget = null }) { Text("Restore") }
@@ -3451,42 +3250,6 @@ internal fun DxvkConfigDialog(
                             dismissButton = { TextButton(onClick = { valuePickerRow = null }) { Text(stringResource(android.R.string.cancel)) } }
                         )
                     }
-                    // Custom-file writes require explicit confirmation. With a container
-                    // present this is an IMPORT (replace + backup + provenance event);
-                    // without one it is the legacy direct write.
-                    pendingToggle?.let { (key, enable) ->
-                        AlertDialog(
-                            onDismissRequest = { pendingToggle = null; pendingValueWrite = null },
-                            title = { Text(if (containerRootDir != null) "Import into active config?" else "Write to custom config file?") },
-                            text = {
-                                Text(
-                                    if (containerRootDir != null)
-                                        "The custom file replaces this container's active config. The prior version is backed up and the import is recorded."
-                                    else
-                                        "This file applies to every VEGAS version. The change is written to the file immediately."
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    val v = pendingValueWrite
-                                    pendingToggle = null
-                                    pendingValueWrite = null
-                                    if (v != null) applyValue(key, v, confirmed = true)
-                                    else {
-                                        // Live default for a pending (absent) key comes from the
-                                        // selected baseline; otherwise from the current row.
-                                        val def = baselineRowsForSelected.firstOrNull { it.key == key }?.value
-                                            ?: configRows.firstOrNull { it.key == key }?.value
-                                            ?: ""
-                                        applyToggle(key, def, enable, confirmed = true)
-                                    }
-                                }) {
-                                    Text(if (containerRootDir != null) "Import" else "Write")
-                                }
-                            },
-                            dismissButton = { TextButton(onClick = { pendingToggle = null; pendingValueWrite = null }) { Text(stringResource(android.R.string.cancel)) } }
-                        )
-                    }
                     // §6a.6 schema block: the key belongs to the OTHER line's schema. Nothing
                     // is written — no decision row, no backup, just the explanation.
                     pendingSchemaBlock?.let { key ->
@@ -3510,48 +3273,6 @@ internal fun DxvkConfigDialog(
                             confirmButton = { TextButton(onClick = { pendingSchemaBlock = null }) { Text("Got it") } }
                         )
                     }
-                    // Split decision row: seed (no active config yet) or switch (replace active
-                    // content). Baseline stays pristine either way; the event is recorded by
-                    // VegasActiveConfig — a write without this dialog is structurally impossible.
-                    pendingBaselineSeed?.let { baselinePath ->
-                        val baselineTag = stockSources.value.firstOrNull { it.file.absolutePath == baselinePath }?.tag
-                            ?: stockSources.value.firstOrNull { it.file.absolutePath == baselinePath }?.verName
-                            ?: baselinePath
-                        AlertDialog(
-                            onDismissRequest = { pendingBaselineSeed = null },
-                            title = { Text(if (activeExists) "Switch active config?" else "Create active config?") },
-                            text = {
-                                Text(
-                                    if (activeExists)
-                                        "This container's active config will be replaced from $baselineTag. The baseline file stays pristine."
-                                    else
-                                        "Edits go to this container's active config (vegas/active.conf). Create it from $baselineTag now? The baseline file stays pristine."
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    val rootDir = containerRootDir
-                                    val src = java.io.File(baselinePath)
-                                    if (rootDir != null && src.isFile) {
-                                        val content = runCatching { src.readText() }.getOrDefault("")
-                                        val from = baselineTag
-                                        scope.launch {
-                                            // Switch: archive the current tuning FIRST ("Switch · back up
-                                            // mine"), then replace. Seed has nothing to back up.
-                                            val done = withContext(Dispatchers.IO) {
-                                                if (activeExists) backupActiveConfig(rootDir)
-                                                VegasActiveConfig.write(rootDir, content, if (activeExists) "switch" else "seed", from)
-                                            }
-                                            if (done) { stockEdited = true; keptMineTag = null; toggleVersion++ }
-                                            else Toast.makeText(activity, "Failed to create active config", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                    pendingBaselineSeed = null
-                                }) { Text(if (activeExists) "Switch" else "Create") }
-                            },
-                            dismissButton = { TextButton(onClick = { pendingBaselineSeed = null }) { Text(stringResource(android.R.string.cancel)) } }
-                        )
-                    }
                 }
             }
         },
@@ -3566,7 +3287,7 @@ internal fun DxvkConfigDialog(
                 cfg.put("vkd3dLevel", selectedFeatureLevel)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
                 cfg.put("d7vkVersion", selectedD7vk)
-                cfg.put("dxvkConfigFile", if (activeExists && activeFile != null) activeFile.absolutePath else activeConfigPath)
+                cfg.put("dxvkConfigFile", livePath)
                 onConfirm(cfg.toString())
             }) { Text(stringResource(android.R.string.ok)) }
         },

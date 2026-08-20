@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
@@ -61,7 +63,7 @@ fun VegasDownloadSheet(
     var downloadingTag by remember { mutableStateOf<String?>(null) }
     var downloadProgress by remember { mutableStateOf(0f) }
     var installing by remember { mutableStateOf(false) }
-    var expandedNotesTag by remember { mutableStateOf<String?>(null) }
+    var notesDialogTag by remember { mutableStateOf<String?>(null) }
 
     // Fetch releases from GitHub API
     LaunchedEffect(Unit) {
@@ -175,7 +177,6 @@ Column(modifier = Modifier.weight(1f)) {
                             val bundledNotes = VegasTierPresets.BUNDLED_NOTES[verKey]
                             val notes = liveNotes ?: bundledNotes?.joinToString("\n")
                             if (notes != null) {
-                                val expanded = expandedNotesTag == release.tagName
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         if (liveNotes != null) "\u25CF" else "\u25D0",
@@ -184,20 +185,20 @@ Column(modifier = Modifier.weight(1f)) {
                                     )
                                     Spacer(Modifier.width(4.dp))
                                     TextButton(onClick = {
-                                        expandedNotesTag = if (expanded) null else release.tagName
+                                        notesDialogTag = release.tagName
                                     }) {
-                                        Text(if (expanded) "Hide notes" else "What's new", style = MaterialTheme.typography.bodySmall)
+                                        Text("What's new", style = MaterialTheme.typography.bodySmall)
                                     }
                                 }
                                 Text(
                                     notes,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = if (expanded) 8 else 2,
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { expandedNotesTag = if (expanded) null else release.tagName },
+                                        .clickable { notesDialogTag = release.tagName },
                                 )
                             }
                         }
@@ -284,6 +285,36 @@ Column(modifier = Modifier.weight(1f)) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+
+    // Full-body release notes dialog — the inline preview stays at 2 lines by design
+    val notesTag = notesDialogTag
+    if (notesTag != null) {
+        val release = releases.firstOrNull { it.tagName == notesTag }
+        val verKey = notesTag.removePrefix("vegas-")
+        val notes = release?.body ?: VegasTierPresets.BUNDLED_NOTES[verKey]?.joinToString("\n")
+        if (notes != null) {
+            AlertDialog(
+                onDismissRequest = { notesDialogTag = null },
+                title = {
+                    Text(
+                        "What's new — ${release?.displayName ?: notesTag}",
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                },
+                text = {
+                    Text(
+                        notes,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                    )
+                },
+                confirmButton = { TextButton(onClick = { notesDialogTag = null }) { Text("Close") } },
+            )
+        } else {
+            notesDialogTag = null
+        }
+    }
 }
 
 /** configs/.provenance.json — verName -> {tag, assetName, url, parkedAt}. Written by the

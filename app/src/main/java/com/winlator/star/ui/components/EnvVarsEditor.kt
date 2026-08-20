@@ -115,10 +115,6 @@ internal object KnownEnvVars {
         // builds; ignored (harmless) on vanilla DXVK. Kept out of the shared
         // DXVK_HUD list so vanilla users never see VEGAS-only tokens.
         KnownEnvVar("VEGAS_HUD", EnvVarType.SELECT_MULTIPLE, listOf("commit", "vegas")),
-        KnownEnvVar("DXVK_CONFIG_FILE", EnvVarType.SELECT, listOf(
-            "/storage/emulated/0/starengine.ini",
-            "/storage/emulated/0/Download/starengine.ini",
-            "/storage/emulated/0/Winlator/starengine.ini")),
         KnownEnvVar("MESA_EXTENSION_MAX_YEAR", EnvVarType.NUMBER),
         KnownEnvVar("WRAPPER_MAX_IMAGE_COUNT", EnvVarType.TEXT),
         KnownEnvVar("MESA_GL_VERSION_OVERRIDE", EnvVarType.TEXT),

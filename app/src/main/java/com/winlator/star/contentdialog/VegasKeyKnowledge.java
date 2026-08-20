@@ -83,7 +83,7 @@ public final class VegasKeyKnowledge {
                 String rem = asNonEmptyString(e, "removedIn", "gated entry " + name);
                 Integer remIdx = released.indexOf(rem);
                 if (remIdx < 0) throw reject("gated key " + name + ": removedIn '" + rem + "' not in released");
-                if (remIdx < introIdx) throw reject("gated key " + name + ": removedIn before introducedIn");
+                if (remIdx <= introIdx) throw reject("gated key " + name + ": removedIn '" + rem + "' not after introducedIn '" + intro + "'");
                 removed.put(name, remIdx);
             }
             if (e.containsKey("note") && e.get("note") != null)
@@ -119,20 +119,38 @@ public final class VegasKeyKnowledge {
     }
 
     /**
+     * Tolerates bare key forms (e.g. "enableStarProfile") by resolving to the
+     * namespaced gated form when the gated manifest knows the alias.
+     */
+    public String normalizeKey(String key) {
+        if (key == null) return null;
+        if (key.startsWith("vegas.") || key.startsWith("dxvk.") || key.startsWith("d3d9.")
+                || key.startsWith("d3d10.") || key.startsWith("d3d11.") || key.startsWith("dxgi.")) {
+            return key;
+        }
+        if (introduced.containsKey("vegas." + key)) return "vegas." + key;
+        if (introduced.containsKey("dxvk." + key)) return "dxvk." + key;
+        return key;
+    }
+
+    /**
      * Classifies a config key against the selected VEGAS version string
      * (one of {@link #released()}). A null/unknown version yields UNKNOWN.
      */
     public State stateFor(String key, String version) {
         if (key == null) return State.UNKNOWN;
-        if (vanilla.containsKey(key)) return State.VANILLA;
+        // tolerate bare key forms (e.g. "enableStarProfile") emitted by older
+        // configs/templates; normalize to the gated namespaced lookup form
+        String norm = normalizeKey(key);
+        if (vanilla.containsKey(norm)) return State.VANILLA;
         // env-style [other] keys always apply — independent of the config file layer
         // (verified: DXVK_FRAME_RATE is emitted regardless; see DXVKConfigDialog.setEnvVars)
-        if (!key.startsWith("vegas.") && !key.startsWith("dxvk.")) return State.OK;
+        if (!norm.startsWith("vegas.") && !norm.startsWith("dxvk.")) return State.OK;
         int vIdx = released.indexOf(version);
         if (vIdx < 0) return State.UNKNOWN;                      // no stock template for this version
-        Integer introIdx = introduced.get(key);
+        Integer introIdx = introduced.get(norm);
         if (introIdx == null) return State.UNLISTED;             // unprovable fork/dxvk key
-        Integer remIdx = removed.get(key);
+        Integer remIdx = removed.get(norm);
         if (remIdx != null && vIdx >= remIdx) return State.REMOVED;
         return vIdx >= introIdx ? State.OK : State.LATE;
     }
@@ -365,16 +383,17 @@ public final class VegasKeyKnowledge {
      */
     public String badgeFor(String key, String version) {
         if (key == null) return "?";
-        if (vanilla.containsKey(key)) return "vanilla DXVK · every version";
-        State st = stateFor(key, version);
+        String norm = normalizeKey(key);
+        if (vanilla.containsKey(norm)) return "vanilla DXVK · every version";
+        State st = stateFor(norm, version);
         switch (st) {
             case OK:
-                if (!key.startsWith("vegas.") && !key.startsWith("dxvk.")) return "[other] · always applies";
+                if (!norm.startsWith("vegas.") && !norm.startsWith("dxvk.")) return "[other] · always applies";
                 return "fork · applies to v" + version;
             case LATE:
-                return "needs " + released.get(introduced.get(key)) + "+";
+                return "needs " + released.get(introduced.get(norm)) + "+";
             case REMOVED:
-                return "removed in " + released.get(removed.get(key));
+                return "removed in " + released.get(removed.get(norm));
             case UNLISTED:
                 return "not in v" + version + " notes — DXVK still reads it";
             case UNKNOWN:

@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
+import com.winlator.star.contentdialog.VegasTierPresets
 import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.Surface as SurfaceColor
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +28,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * Holds info about one downloadable vegas release from GitHub.
@@ -36,6 +39,7 @@ private data class VegasRelease(
     val wcpAssetUrl: String?,
     val rawZipAssetUrl: String?,
     val configAssetUrl: String?,
+    val body: String?,
 )
 
 /**
@@ -57,6 +61,7 @@ fun VegasDownloadSheet(
     var downloadingTag by remember { mutableStateOf<String?>(null) }
     var downloadProgress by remember { mutableStateOf(0f) }
     var installing by remember { mutableStateOf(false) }
+    var expandedNotesTag by remember { mutableStateOf<String?>(null) }
 
     // Fetch releases from GitHub API
     LaunchedEffect(Unit) {
@@ -71,6 +76,7 @@ fun VegasDownloadSheet(
                     val rel = arr.getJSONObject(i)
                     val tag = rel.getString("tag_name")
                     val name = rel.optString("name", tag)
+                    val body = rel.optString("body", "").trim().takeIf { it.isNotBlank() }
                     var wcpUrl: String? = null
                     var zipUrl: String? = null
                     var confUrl: String? = null
@@ -91,7 +97,7 @@ fun VegasDownloadSheet(
                         }
                     }
                     if (wcpUrl != null) {
-                        list.add(VegasRelease(tag, name, wcpUrl, zipUrl, confUrl))
+                        list.add(VegasRelease(tag, name, wcpUrl, zipUrl, confUrl, body))
                     }
                 }
                 releases = list
@@ -161,10 +167,40 @@ fun VegasDownloadSheet(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(release.displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                                Text(release.tagName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+Column(modifier = Modifier.weight(1f)) {
+                            Text(release.displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text(release.tagName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val verKey = release.tagName.removePrefix("vegas-")
+                            val liveNotes = release.body
+                            val bundledNotes = VegasTierPresets.BUNDLED_NOTES[verKey]
+                            val notes = liveNotes ?: bundledNotes
+                            if (notes != null) {
+                                val expanded = expandedNotesTag == release.tagName
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        if (liveNotes != null) "\u25CF" else "\u25D0",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (liveNotes != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    TextButton(onClick = {
+                                        expandedNotesTag = if (expanded) null else release.tagName
+                                    }) {
+                                        Text(if (expanded) "Hide notes" else "What's new", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                                Text(
+                                    notes,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = if (expanded) 8 else 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { expandedNotesTag = if (expanded) null else release.tagName },
+                                )
                             }
+                        }
                             if (isDownloading) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                             } else {

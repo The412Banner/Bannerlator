@@ -2167,13 +2167,6 @@ internal fun DxvkConfigDialog(
     // §tier: device detection, read once per dialog open (sysfs is cheap, still cached).
     val gpuModel = remember { VegasTierPresets.readGpuModel() }
     val detectedTier = remember { VegasTierPresets.classifyModel(gpuModel) }
-    // §6d backups: archived active.conf copies (.bak-*), newest first; picker + confirm.
-    val backupsList = remember(containerRootDir, toggleVersion, activeExists) {
-        val dir = containerRootDir?.let { VegasActiveConfig.activeFile(it).parentFile }
-        if (dir == null || !dir.isDirectory) emptyList()
-        else dir.listFiles { f -> f.isFile && f.name.startsWith("active.conf.bak") }
-            ?.sortedByDescending { it.lastModified() } ?: emptyList()
-    }
     var showBackups by remember { mutableStateOf(false) }
     var restoreTarget by remember { mutableStateOf<java.io.File?>(null) }
     // §7 release notes: live fetch (isygold/vegas-releases) cached per version per session,
@@ -2316,6 +2309,15 @@ internal fun DxvkConfigDialog(
     // reads THIS once the container has been seeded; baselines/custom remain view sources.
     val activeFile = containerRootDir?.let { VegasActiveConfig.activeFile(it) }
     val activeExists = remember(toggleVersion, containerRootDir) { activeFile != null && activeFile!!.isFile }
+    // §6d backups: archived active.conf copies (.bak-*), newest first; picker + confirm.
+    // NOTE: must come after activeExists (a remember key here) — it was moved here from
+    // the state block above to fix a forward-reference compile error.
+    val backupsList = remember(containerRootDir, toggleVersion, activeExists) {
+        val dir = containerRootDir?.let { VegasActiveConfig.activeFile(it).parentFile }
+        if (dir == null || !dir.isDirectory) emptyList()
+        else dir.listFiles { f -> f.isFile && f.name.startsWith("active.conf.bak") }
+            ?.sortedByDescending { it.lastModified() } ?: emptyList()
+    }
     // Baseline path awaiting the "create active config" decision row (set by stock toggles
     // before any write, and by the "Use as my config" action).
     var pendingBaselineSeed by remember { mutableStateOf<String?>(null) }
@@ -2529,7 +2531,7 @@ internal fun DxvkConfigDialog(
     // Falls back to the bundled per-build notes; hidden entirely when neither exists.
     fun openReleaseNotes() {
         val version = selectedDxvk.removePrefix("vegas-")
-        val cached = notesCache.value
+        val cached = notesCache
         if (cached != null && cached.first == version) {
             notesSource = "live"
             showNotes = true
@@ -2553,7 +2555,7 @@ internal fun DxvkConfigDialog(
                         ?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(8)
                 }.getOrNull()
                 if (parsed != null && parsed.isNotEmpty()) {
-                    notesCache.value = version to parsed
+                    notesCache = version to parsed
                     notesSource = "live"
                 }
                 notesLoading = false
@@ -3402,6 +3404,9 @@ internal fun DxvkConfigDialog(
                         AlertDialog(
                             onDismissRequest = { valuePickerRow = null },
                             title = { Text(row.key) },
+                            confirmButton = {
+                                TextButton(onClick = { valuePickerRow = null }) { Text("Done") }
+                            },
                             text = {
                                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                                     Text(

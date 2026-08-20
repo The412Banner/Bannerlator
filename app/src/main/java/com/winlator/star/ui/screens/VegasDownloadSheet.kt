@@ -173,7 +173,7 @@ Column(modifier = Modifier.weight(1f)) {
                             val verKey = release.tagName.removePrefix("vegas-")
                             val liveNotes = release.body
                             val bundledNotes = VegasTierPresets.BUNDLED_NOTES[verKey]
-                            val notes = liveNotes ?: bundledNotes
+                            val notes = liveNotes ?: bundledNotes?.joinToString("\n")
                             if (notes != null) {
                                 val expanded = expandedNotesTag == release.tagName
                                 Row(verticalAlignment = Alignment.CenterVertically) {

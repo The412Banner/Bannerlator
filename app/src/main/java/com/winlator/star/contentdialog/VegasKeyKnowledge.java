@@ -281,6 +281,37 @@ public final class VegasKeyKnowledge {
         return sb.toString();
     }
 
+    /**
+     * Sets the value of the LAST occurrence of {@code key}, preserving the line's
+     * comment state; when the key has no line at all, appends an enabled
+     * "key = value" line at the end (DXVK read order: last occurrence wins).
+     * Returns the new text, or null when the input is null. Used by the dropdown
+     * value editor: picking a value writes it in place; enabling a pending key
+     * appends the chosen value rather than guessing.
+     */
+    public static String setLine(String configText, String key, String value) {
+        if (configText == null || key == null || value == null) return null;
+        String[] lines = configText.split("\n", -1);
+        int target = -1;
+        for (int i = lines.length - 1; i >= 0; i--) {
+            Line l = Line.parse(lines[i]);
+            if (l != null && l.key.equals(key)) { target = i; break; }
+        }
+        String line = key + " = " + value;
+        if (target >= 0) {
+            Line cur = Line.parse(lines[target]);
+            if (cur == null) return null;
+            if (!cur.enabled) line = "# " + line;
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < lines.length; i++) {
+                if (i > 0) sb.append('\n');
+                sb.append(i == target ? line : lines[i]);
+            }
+            return sb.toString();
+        }
+        return configText + (configText.endsWith("\n") ? "" : "\n") + line;
+    }
+
     /** Parsed config line: key, value, and whether the line is uncommented. */
     private static final class Line {
         final String key;

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Settings
@@ -40,6 +41,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -52,6 +54,7 @@ import com.winlator.star.ui.components.audioConfigToEnv
 import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.VegasKeyCatalog
 import com.winlator.star.contentdialog.VegasKeyKnowledge
+import com.winlator.star.contentdialog.VegasTierPresets
 import com.winlator.star.contentdialog.WineD3DConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
@@ -1524,6 +1527,46 @@ internal fun SectionBox(
 }
 
 @Composable
+private fun SectionLabel(
+    text: String,
+) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        letterSpacing = 0.08.em,
+        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+    )
+}
+
+@Composable
+private fun DecisionCard(
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(2.dp))
+            Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 6.dp),
+                content = actions
+            )
+        }
+    }
+}
+
+@Composable
 internal fun LabeledDropdown(
     label: String,
     options: List<String>,
@@ -2112,7 +2155,33 @@ internal fun DxvkConfigDialog(
     var selectedCustom by remember { mutableStateOf<String?>(null) }  // custom file path
     var stockEdited by remember { mutableStateOf(false) }
     var toggleVersion by remember { mutableStateOf(0) }               // bump after a write -> re-snapshot
-    var pendingToggle by remember { mutableStateOf<Pair<VegasKeyKnowledge.EditRow, Boolean>?>(null) }
+    // pending row awaiting the import-confirm dialog. Keyed by the config key; the value
+    // variant rides along in pendingValueWrite so one confirm serves both edit kinds.
+    var pendingToggle by remember { mutableStateOf<Pair<String, Boolean>?>(null) }  // (key, enable)
+    var pendingValueWrite by remember { mutableStateOf<String?>(null) }  // value awaiting import confirm
+    // §6c value editor: the row whose value picker is open + the freeform draft.
+    var valuePickerRow by remember { mutableStateOf<VegasKeyKnowledge.EditRow?>(null) }
+    var customValueDraft by remember { mutableStateOf("") }
+    // §tier: staged FAQ tier selection (null = auto). Applied through vegas.forceTier.
+    var tierChoice by remember { mutableStateOf<Int?>(null) }
+    // §tier: device detection, read once per dialog open (sysfs is cheap, still cached).
+    val gpuModel = remember { VegasTierPresets.readGpuModel() }
+    val detectedTier = remember { VegasTierPresets.classifyModel(gpuModel) }
+    // §6d backups: archived active.conf copies (.bak-*), newest first; picker + confirm.
+    val backupsList = remember(containerRootDir, toggleVersion, activeExists) {
+        val dir = containerRootDir?.let { VegasActiveConfig.activeFile(it).parentFile }
+        if (dir == null || !dir.isDirectory) emptyList()
+        else dir.listFiles { f -> f.isFile && f.name.startsWith("active.conf.bak") }
+            ?.sortedByDescending { it.lastModified() } ?: emptyList()
+    }
+    var showBackups by remember { mutableStateOf(false) }
+    var restoreTarget by remember { mutableStateOf<java.io.File?>(null) }
+    // §7 release notes: live fetch (isygold/vegas-releases) cached per version per session,
+    // bundled fallback (VegasTierPresets.BUNDLED_NOTES), hidden when neither.
+    var notesCache by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+    var notesLoading by remember { mutableStateOf(false) }
+    var notesSource by remember { mutableStateOf<String?>(null) }  // "live" | "bundled" | "none"
+    var showNotes by remember { mutableStateOf(false) }
 
     LaunchedEffect(refreshKey) {
         withContext(Dispatchers.IO) {
@@ -2250,6 +2319,9 @@ internal fun DxvkConfigDialog(
     // Baseline path awaiting the "create active config" decision row (set by stock toggles
     // before any write, and by the "Use as my config" action).
     var pendingBaselineSeed by remember { mutableStateOf<String?>(null) }
+    // §scenario cards: the baseline tag the user explicitly chose to keep — the switch
+    // card stays hidden for it (reset whenever the stock selection changes).
+    var keptMineTag by remember { mutableStateOf<String?>(null) }
     // §5a/§6d custom import semantics: when a custom file is selected with a container
     // present, the FIRST write is an IMPORT (replaces the active config + provenance event,
     // prior working copy backed up); once the active config's last import came from this
@@ -2295,6 +2367,78 @@ internal fun DxvkConfigDialog(
     val configRows = remember(vegasKnowledge, configSourceText, selectedDxvk) {
         if (vegasKnowledge != null) vegasKnowledge.editRows(configSourceText, selectedDxvk)
         else VegasKeyKnowledge.editRowsUnclassified(configSourceText)
+    }
+
+    // §scenario cards (switch/upgrade): stock keys the SELECTED baseline has that the
+    // active config lacks — "N new keys — grab them or ignore". Null when not applicable
+    // (no active config, unknown source, same version, or custom-imported active file).
+    val upgradeDiffKeys = remember(activeExists, configRows, vegasKnowledge, toggleVersion, containerRootDir, activeStockTag, stockSources.value) {
+        if (!activeExists || containerRootDir == null || activeStockTag == null) null
+        else {
+            val cameFrom = VegasActiveConfig.sourceBaseline(containerRootDir)
+            if (cameFrom == null || cameFrom == activeStockTag) null
+            else {
+                val base = stockSources.value.firstOrNull { it.tag == activeStockTag }?.file
+                if (base == null || !base.isFile) null
+                else {
+                    val baseText = runCatching { base.readText() }.getOrDefault("")
+                    val baseKeys = (vegasKnowledge?.preview(baseText, selectedDxvk) ?: VegasKeyKnowledge.previewUnclassified(baseText)).map { it.key }.toSet()
+                    (baseKeys - configRows.map { it.key }.toSet()).toList().sorted()
+                }
+            }
+        }
+    }
+
+    // §6c value editor ground truth: distinct enabled values per key across ALL installed
+    // stock baseline files — the value-picker option pool. Boolean keys (only 0/1 values)
+    // stay switch-driven. Nothing when no stock package is installed.
+    val stockBaselineKeyValues = remember(stockSources.value, vegasKnowledge, selectedDxvk) {
+        val m = mutableMapOf<String, MutableSet<String>>()
+        for (src in stockSources.value) {
+            val f = src.file
+            if (!f.isFile) continue
+            val rows = (vegasKnowledge?.editRows(runCatching { f.readText() }.getOrDefault(""), src.verName)
+                ?: VegasKeyKnowledge.editRowsUnclassified(runCatching { f.readText() }.getOrDefault("")))
+            for (r in rows) if (r.enabled && r.value.isNotEmpty()) m.getOrPut(r.key) { linkedSetOf() }.add(r.value)
+        }
+        m.mapValues { it.value.toList() }
+    }
+    // The SELECTED baseline's rows: value-picker reset target + pending-row source.
+    val baselineRowsForSelected = remember(activeStockTag, vegasKnowledge, stockSources.value, selectedDxvk) {
+        if (selectedStock == null) emptyList()
+        else {
+            val f = stockSources.value.firstOrNull { it.tag == activeStockTag }?.file
+            if (f == null || !f.isFile) emptyList()
+            else (vegasKnowledge?.editRows(runCatching { f.readText() }.getOrDefault(""), selectedDxvk)
+                ?: VegasKeyKnowledge.editRowsUnclassified(runCatching { f.readText() }.getOrDefault("")))
+        }
+    }
+    // Pending rows (stock editor only): baseline keys ABSENT from the active config —
+    // switch OFF, "added on save" when enabled. Custom files are user-owned: never listed.
+    val pendingRows = remember(baselineRowsForSelected, configRows) {
+        val activeKeys = configRows.map { it.key }.toSet()
+        baselineRowsForSelected.filter { it.key !in activeKeys }
+    }
+    // Keys whose active row differs from the selected baseline (value or comment state) —
+    // "edited" mark + per-key reset in the value picker.
+    val changedKeys = remember(configRows, baselineRowsForSelected, selectedStock) {
+        if (selectedStock == null) emptySet()
+        else {
+            val base = baselineRowsForSelected.associateBy { it.key }
+            configRows.filter { r ->
+                val b = base[r.key]
+                b != null && (b.value != r.value || b.enabled != r.enabled)
+            }.map { it.key }.toSet()
+        }
+    }
+
+    fun isBooleanKey(key: String): Boolean =
+        stockBaselineKeyValues[key]?.isNotEmpty() == true && stockBaselineKeyValues[key]!!.all { it == "0" || it == "1" }
+
+    // §tier: the vegas.forceTier value currently in the active config (3 = high, 2 = mid,
+    // 1 = entry, 0 = auto, null = unset). Recomputed after every write (toggleVersion).
+    val activeForceTier = remember(configRows, toggleVersion) {
+        configRows.firstOrNull { it.key == "vegas.forceTier" }?.value?.toIntOrNull()
     }
 
     // §5 migration detector: offered only when the stored dxvkConfigFile still points at a
@@ -2346,6 +2490,77 @@ internal fun DxvkConfigDialog(
         toggleVersion++
     }
 
+    // Archive the current active config before a replace ("Switch · back up mine"):
+    // best-effort copy to <active>.bak-<sourceBaseline|sourceType|previous> with counter
+    // suffixes, mirroring the custom-import path. True when nothing needed backing up
+    // or the copy succeeded (failure is non-fatal — the switch still proceeds, matching
+    // the import path's tolerance).
+    fun backupActiveConfig(rootDir: java.io.File): Boolean {
+        val active = VegasActiveConfig.activeFile(rootDir)
+        if (!active.isFile) return true // nothing to back up yet
+        val label = VegasActiveConfig.sourceBaseline(rootDir)
+            ?: VegasActiveConfig.sourceType(rootDir)
+            ?: "previous"
+        var bak = java.io.File(active.absolutePath + ".bak-" + label)
+        var n = 2
+        while (bak.isFile) { bak = java.io.File(active.absolutePath + ".bak-" + label + "-" + n); n++ }
+        return runCatching { java.nio.file.Files.copy(active.toPath(), bak.toPath()) }.isSuccess
+    }
+
+    // Restore a .bak archive as the active config: archive the CURRENT state first
+    // (nothing is lost), then write the backup's content with a "restore" event. The
+    // sidecar keeps the original sourceType/sourceBaseline — a restore never re-brands
+    // where the config came from (the event log records the restore, leniently).
+    fun restoreBackup(backup: java.io.File) {
+        val rootDir = containerRootDir ?: return
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                val content = runCatching { backup.readText() }.getOrNull() ?: return@withContext false
+                backupActiveConfig(rootDir)
+                VegasActiveConfig.write(rootDir, content, "restore", backup.name)
+            }
+            if (ok) { stockEdited = true; toggleVersion++ }
+            else Toast.makeText(activity, "Failed to restore backup", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // §7 release notes: report-only fetch from the vegas-releases feed (the same source
+    // the live-check uses), matched by the SELECTED version's tag, cached per session.
+    // Falls back to the bundled per-build notes; hidden entirely when neither exists.
+    fun openReleaseNotes() {
+        val version = selectedDxvk.removePrefix("vegas-")
+        val cached = notesCache.value
+        if (cached != null && cached.first == version) {
+            notesSource = "live"
+            showNotes = true
+            return
+        }
+        val bundled = VegasTierPresets.BUNDLED_NOTES[version]
+        notesSource = if (bundled != null) "bundled" else "none"
+        showNotes = true
+        if (notesLoading) return
+        notesLoading = true
+        HttpUtils.download("https://api.github.com/repos/isygold/vegas-releases/releases") { body ->
+            scope.launch {
+                val parsed = runCatching {
+                    val arr = JSONArray(body)
+                    (0 until arr.length()).mapNotNull { i ->
+                        val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                        val tag = o.optString("tag_name", "").removePrefix("vegas-")
+                        val b = o.optString("body", "")
+                        tag to b
+                    }.firstOrNull { it.first == version }?.second
+                        ?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(8)
+                }.getOrNull()
+                if (parsed != null && parsed.isNotEmpty()) {
+                    notesCache.value = version to parsed
+                    notesSource = "live"
+                }
+                notesLoading = false
+            }
+        }
+    }
+
     // §6b.1 user-initiated "Check for new builds" — report only, never writes.
     fun runLiveCheck() {
         if (liveChecking) return
@@ -2380,30 +2595,13 @@ internal fun DxvkConfigDialog(
     // row instead of writing. §6a.6: wrong-schema keys are BLOCKED with an explanation
     // before anything else. §5a/§6d: custom selection imports (replaces) on first write,
     // edits after.
-    fun applyToggle(row: VegasKeyKnowledge.EditRow, enable: Boolean, confirmed: Boolean = false) {
-        val path = activeConfigPath
-        if (path.isEmpty()) return
-        val isStockPath = stockSources.value.any { it.file.absolutePath == path }
-        if (isStockPath && containerRootDir == null) {
-            // Structural guard: without a container there is no active.conf, and baseline
-            // files are never written in place. Refuse, never fall back to legacy writes.
-            Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
-            return
-        }
-        // §6a.6 schema-aware editor: block BEFORE the seed/import decision — a wrong-family
-        // key can never be meaningfully applied to this build's schema, so no write, no
-        // decision row, only the explanation. Stock rows only (custom files are user-owned).
-        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(row.key, activeStockTag)) {
-            pendingSchemaBlock = row.key
-            return
-        }
-        // Custom rows confirm only when the write is an IMPORT (a replace); plain edits
-        // after import behave like stock (no confirmation). Container-less custom keeps
-        // legacy confirm-write.
-        if (!isStockPath && !confirmed && (containerRootDir == null || customImportPending)) { pendingToggle = row to enable; return }
+    // Shared write pipeline for toggle AND value edits: resolves the working file (the
+    // container's active config once owned, the source file before import), applies the
+    // transform to its text, then writes strictly through the VegasActiveConfig paths.
+    // Result codes: 0 = failed, 1 = written, 2 = seed decision row needed (unowned).
+    fun commitConfigWrite(path: String, isStockPath: Boolean, transform: (String) -> String?) {
         val file = java.io.File(path)
         scope.launch {
-            // 0 = failed, 1 = written, 2 = seed decision row needed (no active config yet)
             val result = withContext(Dispatchers.IO) {
                 if (isStockPath && activeFile != null && !activeFile.isFile) return@withContext 2
                 val readFrom = when {
@@ -2414,7 +2612,7 @@ internal fun DxvkConfigDialog(
                 }
                 if (!readFrom.isFile) return@withContext 0
                 val text = runCatching { readFrom.readText() }.getOrNull() ?: return@withContext 0
-                val next = VegasKeyKnowledge.toggleLine(text, row.key, enable) ?: return@withContext 0
+                val next = transform(text) ?: return@withContext 0
                 val rootDir = containerRootDir
                 when {
                     // Stock + owned: the structural edit path (no lifecycle event).
@@ -2453,6 +2651,60 @@ internal fun DxvkConfigDialog(
         }
     }
 
+    // Comment/uncomment the exact config line (§6e split semantics; §5a/§6d custom import
+    // confirmation; §6a.6 wrong-schema block). Pending (absent) keys: enabling appends the
+    // line with the row's stock default; disabling an absent key is a structural no-op.
+    fun applyToggle(key: String, value: String, enable: Boolean, confirmed: Boolean = false) {
+        val path = activeConfigPath
+        if (path.isEmpty()) return
+        val isStockPath = stockSources.value.any { it.file.absolutePath == path }
+        if (isStockPath && containerRootDir == null) {
+            // Structural guard: without a container there is no active.conf, and baseline
+            // files are never written in place. Refuse, never fall back to legacy writes.
+            Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
+            return
+        }
+        // §6a.6 schema-aware editor: block BEFORE the seed/import decision — a wrong-family
+        // key can never be meaningfully applied to this build's schema, so no write, no
+        // decision row, only the explanation. Stock rows only (custom files are user-owned).
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+            pendingSchemaBlock = key
+            return
+        }
+        // Custom rows confirm only when the write is an IMPORT (a replace); plain edits
+        // after import behave like stock (no confirmation). Container-less custom keeps
+        // legacy confirm-write.
+        if (!isStockPath && !confirmed && (containerRootDir == null || customImportPending)) { pendingToggle = key to enable; return }
+        commitConfigWrite(path, isStockPath) { text ->
+            VegasKeyKnowledge.toggleLine(text, key, enable)
+                ?: if (enable) VegasKeyKnowledge.setLine(text, key, value) else text
+        }
+    }
+
+    // Value edit (non-boolean keys via the value picker): same pipeline; setLine preserves
+    // comment state and appends an enabled line for absent (pending) keys.
+    fun applyValue(key: String, value: String, confirmed: Boolean = false) {
+        val path = activeConfigPath
+        if (path.isEmpty()) return
+        val isStockPath = stockSources.value.any { it.file.absolutePath == path }
+        if (isStockPath && containerRootDir == null) {
+            Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+            pendingSchemaBlock = key
+            return
+        }
+        if (!isStockPath && !confirmed && (containerRootDir == null || customImportPending)) {
+            pendingValueWrite = value
+            pendingToggle = key to false
+            return
+        }
+        commitConfigWrite(path, isStockPath) { text ->
+            VegasKeyKnowledge.setLine(text, key, value)
+        }
+    }
+
     val pickVegasLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -2488,24 +2740,17 @@ internal fun DxvkConfigDialog(
         title = { Text(if (isVegas) "VEGAS ${stringResource(R.string.configuration)}" else "DXVK ${stringResource(R.string.configuration)}") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    LabeledDropdown(
-                        stringResource(R.string.vkd3d_version), vkd3dVersions.value, selectedVkd3d, { selectedVkd3d = it },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContentInstallGear(onDownloadFile = onDownloadVkd3d)
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    LabeledDropdown(
-                        if (isVegas) "Vegas Selector" else stringResource(R.string.dxvk_version),
-                        filteredDxvk, selectedDxvk, { selectedDxvk = it },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContentInstallGear(
-                        onDownloadFile = onDownloadDxvk
-                    )
-                    if (isVegas) {
+                // §VEGAS version management (VEGAS mode): top section, inline action cluster
+                // at the right edge — download gear, delete, install-from-file. Non-VEGAS
+                // keeps the original DXVK-first order below.
+                if (isVegas) {
+                    SectionLabel("VEGAS VERSION")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LabeledDropdown(
+                            "", filteredDxvk, selectedDxvk, { selectedDxvk = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ContentInstallGear(onDownloadFile = onDownloadDxvk)
                         IconButton(
                             onClick = {
                                 isProcessing = true
@@ -2556,11 +2801,49 @@ internal fun DxvkConfigDialog(
                             Icon(Icons.Default.FolderOpen, contentDescription = "Install from file", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
+                    if (isProcessing) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    // §7 release-notes chip: visible when notes exist for the selected version
+                    // (live-cached or bundled); ● live / ◐ bundled marker.
+                    val verKey = selectedDxvk.removePrefix("vegas-")
+                    if (notesCache?.first == verKey || VegasTierPresets.BUNDLED_NOTES[verKey] != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { openReleaseNotes() }) {
+                                Text("What's new in $selectedDxvk", style = MaterialTheme.typography.bodySmall)
+                            }
+                            val live = notesCache?.first == verKey
+                            Text(
+                                if (live) "● live" else "◐ bundled",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (live) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
-                if (isProcessing) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LabeledDropdown(
+                        stringResource(R.string.vkd3d_version), vkd3dVersions.value, selectedVkd3d, { selectedVkd3d = it },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ContentInstallGear(onDownloadFile = onDownloadVkd3d)
                 }
                 Spacer(Modifier.height(8.dp))
+                if (!isVegas) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LabeledDropdown(
+                            stringResource(R.string.dxvk_version),
+                            filteredDxvk, selectedDxvk, { selectedDxvk = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ContentInstallGear(onDownloadFile = onDownloadDxvk)
+                    }
+                    if (isProcessing) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
                 if (dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = asyncEnabled, onCheckedChange = { asyncEnabled = it })
@@ -2578,7 +2861,8 @@ internal fun DxvkConfigDialog(
                 }
                 LabeledDropdown(stringResource(R.string.frame_rate), framerateEntries, selectedFramerate, { selectedFramerate = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("VKD3D Feature Level", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
+                SectionLabel("API FEATURE LEVEL")
+                LabeledDropdown("", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown("DDraw Wrapper", ddraEntries, selectedDdra, { selectedDdra = it })
                 // D7VK is a catalog-backed component: when it's the chosen DDraw wrapper, offer a
@@ -2594,8 +2878,127 @@ internal fun DxvkConfigDialog(
                         ContentInstallGear(onDownloadFile = onDownloadD7vk)
                     }
                 }
+                // §tier: FAQ performance tiers (docs/vegas_faq.html #11) — GPU detection,
+                // staged selection → preview → apply as vegas.forceTier through the normal
+                // config write pipeline. Rendered above the Config section; writing to a
+                // file-based source only (defaults has no file, so Apply is gated).
                 if (isVegas) {
                     Spacer(Modifier.height(8.dp))
+                    SectionLabel("PERFORMANCE TIER")
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            val tier = tierChoice
+                            Text(
+                                when {
+                                    gpuModel == null -> "GPU model unreadable — tier is manual"
+                                    detectedTier != null -> "$gpuModel · auto Tier $detectedTier"
+                                    else -> "GPU: $gpuModel — no tier suggestion"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(
+                                    selected = tier == null,
+                                    onClick = { tierChoice = null },
+                                    label = { Text("Auto${if (detectedTier != null) " · T$detectedTier" else ""}") }
+                                )
+                                VegasTierPresets.TIERS.forEach { t ->
+                                    FilterChip(
+                                        selected = tier == t.number,
+                                        onClick = { tierChoice = t.number },
+                                        label = { Text(t.label) }
+                                    )
+                                }
+                            }
+                            val p = tier?.let { VegasTierPresets.PARAMS[it] }
+                            if (tier != null && p != null) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Draw threshold ${p.drawThreshold} (D3D9 ${p.drawThresholdD3D9}) · HAAE pacing ${p.haaePacing}ms · governor cap ${p.governorCap} · shader zero-init ${p.shaderZeroInit} · frame-gen ${p.frameGen}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    "will write: vegas.forceTier = $tier",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Row(modifier = Modifier.padding(top = 4.dp)) {
+                                    TextButton(
+                                        enabled = !useDefaults,
+                                        onClick = { applyValue("vegas.forceTier", tier.toString()); tierChoice = null }
+                                    ) { Text("Apply tier", style = MaterialTheme.typography.bodySmall) }
+                                    if (useDefaults) {
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            "pick a config source first — defaults has no file to write to",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            } else {
+                                val applied = activeForceTier
+                                if (applied != null) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        if (applied == 0) "Applied — auto (vegas.forceTier = 0)"
+                                        else "Applied — vegas.forceTier = $applied",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Row(modifier = Modifier.padding(top = 4.dp)) {
+                                        TextButton(
+                                            enabled = !useDefaults,
+                                            onClick = { applyValue("vegas.forceTier", "0"); tierChoice = null }
+                                        ) { Text("Reset to auto", style = MaterialTheme.typography.bodySmall) }
+                                        if (useDefaults) {
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                "pick a config source first",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Mali hint: non-Adreno device — the experimental Mali "Wrapper + compat +
+                    // bcn" driver (with the relaxed DXVK list) lives in the driver settings.
+                    if (gpuModel != null && !gpuModel.contains("adreno", ignoreCase = true)) {
+                        Spacer(Modifier.height(6.dp))
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f)),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("Experimental — Mali driver", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    "Pair the Mali 'Wrapper + compat + bcn' driver with the relaxed DXVK list (all DXVK versions) in the container's driver settings.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+                if (isVegas) {
+                    Spacer(Modifier.height(8.dp))
+                    SectionLabel("CONFIG")
                     // ---- config source: two-source model (stock/custom), one ACTIVE ----
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = useDefaults, onCheckedChange = { useDefaults = it }, modifier = Modifier.height(32.dp))
@@ -2606,13 +3009,11 @@ internal fun DxvkConfigDialog(
                         // §5 "Found your config": one-time, idempotent legacy adoption.
                         // Decided here, recorded in the sidecar (adopt) or a dismiss marker.
                         if (migrationPlan == VegasMigration.Plan.ADOPT) {
-                            Spacer(Modifier.height(4.dp))
-                            Text("Found your config", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                            Text(
-                                migrationSummary ?: "Your previous VEGAS config is preserved below, read-only.",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Row {
+                            Spacer(Modifier.height(6.dp))
+                            DecisionCard(
+                                title = "Found your config",
+                                body = migrationSummary ?: "Your previous VEGAS config is preserved below, read-only."
+                            ) {
                                 TextButton(onClick = { adoptLegacy() }) { Text("Use it", style = MaterialTheme.typography.bodySmall) }
                                 TextButton(onClick = { dismissLegacy() }) { Text("Start fresh", style = MaterialTheme.typography.bodySmall) }
                             }
@@ -2622,7 +3023,7 @@ internal fun DxvkConfigDialog(
                             "Stock config (per version)",
                             stockSources.value.map { it.displayLabel() },
                             selectedStock ?: "",
-                            { s -> selectedStock = s; selectedCustom = null; useDefaults = false },
+                            { s -> selectedStock = s; selectedCustom = null; useDefaults = false; keptMineTag = null },
                             modifier = Modifier.fillMaxWidth()
                         )
                         if (stockSources.value.isEmpty()) {
@@ -2660,12 +3061,51 @@ internal fun DxvkConfigDialog(
                             Spacer(Modifier.height(4.dp))
                             Text("not found: $activeConfigPath", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         }
-                        // Split: baselines are read-only views; "Use as my config" is the explicit
-                        // decision row that seeds/switches this container's active config.
+                        // Split: baselines are read-only views; scenario decision cards seed (no active
+                        // config yet) or switch (a different stock baseline is selected than the
+                        // one active.conf came from) this container's active config. Custom
+                        // selections are import-driven — no card.
                         if (selectedStock != null && selectedCustom == null && activeConfigPath.isNotEmpty()) {
-                            Spacer(Modifier.height(2.dp))
-                            TextButton(onClick = { pendingBaselineSeed = activeConfigPath }) {
-                                Text(if (activeExists) "Use as my config (switch)" else "Use as my config", style = MaterialTheme.typography.bodySmall)
+                            Spacer(Modifier.height(6.dp))
+                            if (activeExists) {
+                                if (upgradeDiffKeys != null && keptMineTag != activeStockTag) {
+                                    DecisionCard(
+                                        title = "${activeStockTag ?: "This"} baseline available",
+                                        body = if (upgradeDiffKeys.isEmpty())
+                                            "Switching VEGAS versions can never change your settings — same keys as yours, only tuning values differ. Grab individual keys any time."
+                                        else
+                                            "Switching VEGAS versions can never change your settings — ${upgradeDiffKeys.size} new stock key${if (upgradeDiffKeys.size == 1) "" else "s"} (${upgradeDiffKeys.joinToString(", ") { k -> k.removePrefix("vegas.").removePrefix("dxvk.") }.take(60)}) — grab them or ignore."
+                                    ) {
+                                        TextButton(onClick = { keptMineTag = activeStockTag }) {
+                                            Text("Keep mine", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                        TextButton(onClick = { pendingBaselineSeed = activeConfigPath }) {
+                                            Text("Switch · back up mine", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                            } else {
+                                DecisionCard(
+                                    title = "Seed ${activeStockTag ?: "this"} baseline as your config?",
+                                    body = "Your copy is created in the container (vegas/active.conf); the baseline file stays pristine and read-only."
+                                ) {
+                                    TextButton(onClick = { pendingBaselineSeed = activeConfigPath }) {
+                                        Text("Seed baseline → active.conf", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                        }
+                        // §6d backups: restore from a .bak archive. Shown only when the container actually
+                        // owns an active config (nothing to restore otherwise).
+                        if (activeExists && backupsList.isNotEmpty()) {
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Backups: ${backupsList.size} — restore a previously saved state",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { showBackups = true }) { Text("Restore…", style = MaterialTheme.typography.bodySmall) }
                             }
                         }
                         if (!configSourceMissing && configSourceText.isNotEmpty()) {
@@ -2692,10 +3132,11 @@ internal fun DxvkConfigDialog(
                                     }
                                 else ""
                                 val badge = baseBadge + bucketPart + if (catalogBehind) " · unverified" else ""
+                                val changed = selectedStock != null && row.key in changedKeys
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                     Switch(
                                         checked = row.enabled,
-                                        onCheckedChange = { applyToggle(row, it) },
+                                        onCheckedChange = { applyToggle(row.key, row.value, it) },
                                         modifier = Modifier.height(32.dp).width(48.dp)
                                     )
                                     Text(
@@ -2705,9 +3146,89 @@ internal fun DxvkConfigDialog(
                                                  else MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (isBooleanKey(row.key)) {
+                                        // Boolean keys stay switch-driven; the value is the comment state.
+                                        Text(
+                                            row.value,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (changed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    } else {
+                                        // Non-boolean keys open the value picker (stock vocabulary + custom).
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .clip(MaterialTheme.shapes.small)
+                                                .heightIn(min = 40.dp)
+                                                .clickable(enabled = !gated) {
+                                                    valuePickerRow = row
+                                                    customValueDraft = row.value
+                                                }
+                                        ) {
+                                            Text(
+                                                row.value,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (changed) MaterialTheme.colorScheme.primary
+                                                        else if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
+                                            if (!gated) Icon(
+                                                Icons.Default.ExpandMore,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
                                 }
                                 Text(badge, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                            // §6c pending rows (stock editor only): baseline keys ABSENT from the
+                            // active config — switch OFF, appended with the picked/stock value on enable.
+                            if (selectedStock != null && pendingRows.isNotEmpty()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text("New in this baseline — add them or ignore", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                pendingRows.forEach { row ->
+                                    val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        Switch(
+                                            checked = false,
+                                            onCheckedChange = { applyToggle(row.key, row.value, it) },
+                                            modifier = Modifier.height(32.dp).width(48.dp)
+                                        )
+                                        Text(
+                                            row.key,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                                                     else MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        if (isBooleanKey(row.key)) {
+                                            Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        } else {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier
+                                                    .clip(MaterialTheme.shapes.small)
+                                                    .heightIn(min = 40.dp)
+                                                    .clickable(enabled = !gated) {
+                                                        valuePickerRow = row
+                                                        customValueDraft = row.value
+                                                    }
+                                            ) {
+                                                Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                                                if (!gated) Icon(
+                                                    Icons.Default.ExpandMore,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Text("not in file — added on save", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         }
                     }
@@ -2795,12 +3316,142 @@ internal fun DxvkConfigDialog(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
+                    // §7 release-notes dialog: live or bundled notes for the selected version. Observation
+                    // only — the fetch never writes anything.
+                    if (showNotes) {
+                        val verKey = selectedDxvk.removePrefix("vegas-")
+                        val notes = notesCache?.takeIf { it.first == verKey }?.second
+                            ?: VegasTierPresets.BUNDLED_NOTES[verKey]
+                        AlertDialog(
+                            onDismissRequest = { showNotes = false },
+                            title = { Text("What's new — $verKey") },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    if (notes.isNullOrEmpty()) {
+                                        Text(if (notesLoading) "Fetching notes…" else "No release notes for this version.")
+                                    } else {
+                                        notes.forEach { n -> Text("· $n", style = MaterialTheme.typography.bodySmall) }
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        if (notesSource == "live") "Fetched from the vegas-releases feed."
+                                        else if (notesSource == "bundled") "Bundled with the app (offline)."
+                                        else "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { showNotes = false }) { Text("OK") } }
+                        )
+                    }
+                    // §6d backup picker: newest-first list of .bak archives; tapping one opens the
+                    // danger-confirm (the restore itself backs up the current state first).
+                    if (showBackups) {
+                        AlertDialog(
+                            onDismissRequest = { showBackups = false },
+                            title = { Text("Restore a backup") },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    if (backupsList.isEmpty()) {
+                                        Text("No backups yet — they appear after edits, imports, and switches.")
+                                    }
+                                    backupsList.forEach { b ->
+                                        val label = b.name.removePrefix("active.conf.bak").trimStart('-', ' ').ifEmpty { "previous" }
+                                        TextButton(
+                                            onClick = { restoreTarget = b; showBackups = false },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                "$label · ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT).format(b.lastModified())}",
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { showBackups = false }) { Text("Close") } }
+                        )
+                    }
+                    restoreTarget?.let { backup ->
+                        val suffix = backup.name.removePrefix("active.conf.bak").trimStart('-', ' ').ifEmpty { null }
+                        val current = containerRootDir?.let { VegasActiveConfig.sourceBaseline(it) }
+                        AlertDialog(
+                            onDismissRequest = { restoreTarget = null },
+                            title = { Text("Restore this backup?") },
+                            text = {
+                                Column {
+                                    Text("Active config will be replaced by '${backup.name}'. The current state is backed up first — nothing is lost.")
+                                    if (suffix != null && current != null && suffix != current) {
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("This backup is from a different VEGAS build ($suffix) than your current one ($current).", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { restoreBackup(backup); restoreTarget = null }) { Text("Restore") }
+                            },
+                            dismissButton = { TextButton(onClick = { restoreTarget = null }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
+                    // §6c value picker: tap a non-boolean key's value to pick from the stock vocabulary
+                    // (current file value first), the selected baseline's default (reset), or a
+                    // custom string. Value writes go through the same pipeline as toggles.
+                    valuePickerRow?.let { row ->
+                        val baseline = baselineRowsForSelected.firstOrNull { it.key == row.key }
+                        AlertDialog(
+                            onDismissRequest = { valuePickerRow = null },
+                            title = { Text(row.key) },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    Text(
+                                        "Values used in stock configs — pick one, reset to stock, or type your own.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    val opts = linkedSetOf<String>()
+                                    if (row.value.isNotEmpty()) opts.add(row.value)
+                                    stockBaselineKeyValues[row.key].orEmpty().forEach { opts.add(it) }
+                                    opts.forEach { v ->
+                                        TextButton(
+                                            onClick = { applyValue(row.key, v); valuePickerRow = null },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text(v, style = MaterialTheme.typography.bodySmall) }
+                                    }
+                                    if (baseline != null && (baseline.value != row.value || baseline.enabled != row.enabled)) {
+                                        TextButton(
+                                            onClick = { applyValue(row.key, baseline.value); valuePickerRow = null },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Reset to stock (${baseline.value})", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    OutlinedTextField(
+                                        value = customValueDraft,
+                                        onValueChange = { customValueDraft = it },
+                                        label = { Text("Custom value") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Row(modifier = Modifier.padding(top = 6.dp)) {
+                                        TextButton(
+                                            enabled = customValueDraft.isNotBlank(),
+                                            onClick = { applyValue(row.key, customValueDraft.trim()); valuePickerRow = null }
+                                        ) { Text("Apply") }
+                                    }
+                                }
+                            },
+                            dismissButton = { TextButton(onClick = { valuePickerRow = null }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
                     // Custom-file writes require explicit confirmation. With a container
                     // present this is an IMPORT (replace + backup + provenance event);
                     // without one it is the legacy direct write.
-                    pendingToggle?.let { (row, enable) ->
+                    pendingToggle?.let { (key, enable) ->
                         AlertDialog(
-                            onDismissRequest = { pendingToggle = null },
+                            onDismissRequest = { pendingToggle = null; pendingValueWrite = null },
                             title = { Text(if (containerRootDir != null) "Import into active config?" else "Write to custom config file?") },
                             text = {
                                 Text(
@@ -2811,11 +3462,24 @@ internal fun DxvkConfigDialog(
                                 )
                             },
                             confirmButton = {
-                                TextButton(onClick = { pendingToggle = null; applyToggle(row, enable, confirmed = true) }) {
+                                TextButton(onClick = {
+                                    val v = pendingValueWrite
+                                    pendingToggle = null
+                                    pendingValueWrite = null
+                                    if (v != null) applyValue(key, v, confirmed = true)
+                                    else {
+                                        // Live default for a pending (absent) key comes from the
+                                        // selected baseline; otherwise from the current row.
+                                        val def = baselineRowsForSelected.firstOrNull { it.key == key }?.value
+                                            ?: configRows.firstOrNull { it.key == key }?.value
+                                            ?: ""
+                                        applyToggle(key, def, enable, confirmed = true)
+                                    }
+                                }) {
                                     Text(if (containerRootDir != null) "Import" else "Write")
                                 }
                             },
-                            dismissButton = { TextButton(onClick = { pendingToggle = null }) { Text(stringResource(android.R.string.cancel)) } }
+                            dismissButton = { TextButton(onClick = { pendingToggle = null; pendingValueWrite = null }) { Text(stringResource(android.R.string.cancel)) } }
                         )
                     }
                     // §6a.6 schema block: the key belongs to the OTHER line's schema. Nothing
@@ -2867,10 +3531,13 @@ internal fun DxvkConfigDialog(
                                         val content = runCatching { src.readText() }.getOrDefault("")
                                         val from = baselineTag
                                         scope.launch {
-                                            val seeded = withContext(Dispatchers.IO) {
+                                            // Switch: archive the current tuning FIRST ("Switch · back up
+                                            // mine"), then replace. Seed has nothing to back up.
+                                            val done = withContext(Dispatchers.IO) {
+                                                if (activeExists) backupActiveConfig(rootDir)
                                                 VegasActiveConfig.write(rootDir, content, if (activeExists) "switch" else "seed", from)
                                             }
-                                            if (seeded) { stockEdited = true; toggleVersion++ }
+                                            if (done) { stockEdited = true; keptMineTag = null; toggleVersion++ }
                                             else Toast.makeText(activity, "Failed to create active config", Toast.LENGTH_SHORT).show()
                                         }
                                     }

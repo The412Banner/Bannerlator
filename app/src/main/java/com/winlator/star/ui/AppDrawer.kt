@@ -434,27 +434,29 @@ private fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "For bug reports, feature requests, and support, visit the GitHub repository.",
+                    "For bug reports, feature requests, and support — use the VEGAS repos below.",
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                // Link set mirrors the device's Repo-tree file (Vegas/Repo-tree/Repo) —
+                // the user's own repos; upstream Discord link removed.
                 SupportLink(
-                    label = "GitHub Repository",
-                    url = "https://github.com/The412Banner/Bannerlator",
+                    label = "VEGAS Releases (help & downloads)",
+                    url = "https://github.com/isygold/Vegas-releases",
                     onOpenUrl = onOpenUrl
                 )
                 SupportLink(
-                    label = "Report an Issue",
-                    url = "https://github.com/The412Banner/Bannerlator/issues",
+                    label = "Report an Issue (dev branch)",
+                    url = "https://github.com/isygold/vegas-private",
                     onOpenUrl = onOpenUrl
                 )
                 SupportLink(
-                    label = "VEGAS Releases & Notes",
-                    url = "https://github.com/isygold/vegas-releases",
+                    label = "Fork workspace",
+                    url = "https://github.com/jacojayy/Bannerlator",
                     onOpenUrl = onOpenUrl
                 )
                 SupportLink(
-                    label = "Discord Community",
-                    url = "https://discord.gg/kk6GR3C2pX",
+                    label = "UI workspace",
+                    url = "https://github.com/isygold/Bannerlator",
                     onOpenUrl = onOpenUrl
                 )
             }

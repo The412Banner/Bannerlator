@@ -459,6 +459,11 @@ private fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit
                     url = "https://github.com/isygold/Bannerlator",
                     onOpenUrl = onOpenUrl
                 )
+                SupportLink(
+                    label = "Discord Community",
+                    url = "https://discord.gg/kk6GR3C2pX",
+                    onOpenUrl = onOpenUrl
+                )
             }
         },
         confirmButton = {

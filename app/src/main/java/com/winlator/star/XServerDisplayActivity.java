@@ -5784,7 +5784,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     // --- Environment Variable Setup ---
     String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
-    if (vulkanVersion == null) vulkanVersion = "1.4";
+    if (vulkanVersion == null) vulkanVersion = "1.3";
     String driverVkVersion = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this);
     // The probe can return a short or non-dotted string for a driver it can't describe; the old
     // direct-ICD turnip used to be special-cased here. Fall back rather than crash the launch on

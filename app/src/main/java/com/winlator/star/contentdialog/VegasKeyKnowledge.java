@@ -118,6 +118,12 @@ public final class VegasKeyKnowledge {
         return key != null && (key.startsWith("vegas.") || introduced.containsKey(key));
     }
 
+    /** Public prose-guard for the editor UI: dotted names or ENV_STYLE caps only —
+     *  the same rule {@link Line} applies when parsing, so UI-validated keys always parse. */
+    public static boolean isValidConfigKey(String k) {
+        return Line.isValidKey(k);
+    }
+
     /**
      * Tolerates bare key forms (e.g. "enableStarProfile") by resolving to the
      * namespaced gated form when the gated manifest knows the alias.
@@ -370,7 +376,7 @@ public final class VegasKeyKnowledge {
         private static boolean isValidKey(String k) {
             if (k == null || k.isEmpty()) return false;
             if (k.indexOf('.') > 0) {
-                for (String part : k.split("\\.")) {
+                for (String part : k.split("\\.", -1)) {   // -1: keep trailing empties ("dxvk." invalid)
                     if (part.isEmpty() || !part.matches("[A-Za-z0-9_]+")) return false;
                 }
                 return true;

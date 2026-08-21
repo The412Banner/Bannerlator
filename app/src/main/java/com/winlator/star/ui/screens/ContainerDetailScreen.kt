@@ -2133,6 +2133,10 @@ internal fun DxvkConfigDialog(
     // §6c value editor: the row whose value picker is open + the freeform draft.
     var valuePickerRow by remember { mutableStateOf<VegasKeyKnowledge.EditRow?>(null) }
     var customValueDraft by remember { mutableStateOf("") }
+    // (+) add-key editor: freeform key/value appended to the live file (stock OR custom).
+    var showAddKey by remember { mutableStateOf(false) }
+    var addKeyDraft by remember { mutableStateOf("") }
+    var addValueDraft by remember { mutableStateOf("") }
     // §tier: staged FAQ tier selection (null = auto). Applied through vegas.forceTier.
     var tierChoice by remember { mutableStateOf<Int?>(null) }
     // §tier: device detection, read once per dialog open (sysfs is cheap, still cached).
@@ -2537,6 +2541,26 @@ internal fun DxvkConfigDialog(
         }
     }
 
+    // (+) Add a brand-new key=value line to the live file (stock sidecar OR custom —
+    // both are plain live files under Option B). setLine appends an enabled line at
+    // the end when the key is absent; an existing key gets its value updated in
+    // place instead of duplicating. Same guards as applyValue.
+    fun applyAddKey(key: String, value: String) {
+        if (useDefaults || liveFile == null) return
+        val isStockPath = selectedStock != null
+        if (isStockPath && containerRootDir == null) {
+            Toast.makeText(activity, "No container context — baseline configs are read-only", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+            pendingSchemaBlock = key
+            return
+        }
+        commitConfigWrite(isStockPath) { text ->
+            VegasKeyKnowledge.setLine(text, key, value)
+        }
+    }
+
     val pickVegasLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -2926,18 +2950,31 @@ internal fun DxvkConfigDialog(
                                 Text("Fork-feature filter", style = MaterialTheme.typography.bodySmall)
                             }
                             if (forkFilter) {
-                                val forkCount = configRows.count { vegasKnowledge?.isForkKey(it.key) == true }
+                                // Combined semantics: fork-only view AND unavailable
+                                // (LATE/REMOVED) keys hidden — count what actually shows.
+                                val shownCount = configRows.count { row ->
+                                    val k = vegasKnowledge
+                                    k?.isForkKey(row.key) == true && !k.isGated(row.key, selectedDxvk)
+                                }
                                 Text(
-                                    "Showing $forkCount fork feature${if (forkCount == 1) "" else "s"} of ${configRows.size} keys — the rest are hidden",
+                                    "Fork features only: $shownCount of ${configRows.size} keys shown",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Spacer(Modifier.height(2.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                TextButton(onClick = { showAddKey = true; addKeyDraft = ""; addValueDraft = "" }) {
+                                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Add key", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                            Spacer(Modifier.height(2.dp))
                             configRows.forEach { row ->
                                 // Filter ON = fork-only view: VEGAS-fork keys (vegas.* and the
-                                // gated manifest, e.g. dxvk.enableStarProfile). Vanilla/upstream
-                                // rows return when the toggle goes OFF.
+                                // gated manifest, e.g. dxvk.enableStarProfile), with keys
+                                // unavailable on this build (LATE/REMOVED) hidden as before.
                                 if (forkFilter && vegasKnowledge?.isForkKey(row.key) != true) return@forEach
                                 val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
                                 if (forkFilter && gated) return@forEach
@@ -3298,6 +3335,51 @@ internal fun DxvkConfigDialog(
                                 )
                             },
                             confirmButton = { TextButton(onClick = { pendingSchemaBlock = null }) { Text("Got it") } }
+                        )
+                    }
+                    // (+) add-key dialog: freeform key/value appended to the live file.
+                    // Works for stock (writes the sidecar) and custom alike; an existing
+                    // key updates in place instead of duplicating (setLine semantics).
+                    if (showAddKey) {
+                        val keyValid = VegasKeyKnowledge.isValidConfigKey(addKeyDraft.trim())
+                        AlertDialog(
+                            onDismissRequest = { showAddKey = false },
+                            title = { Text("Add config entry") },
+                            text = {
+                                Column {
+                                    OutlinedTextField(
+                                        value = addKeyDraft,
+                                        onValueChange = { addKeyDraft = it },
+                                        label = { Text("Key (e.g. dxvk.maxFrameLatency)") },
+                                        singleLine = true,
+                                        isError = addKeyDraft.isNotBlank() && !keyValid,
+                                        supportingText = {
+                                            if (addKeyDraft.isNotBlank() && !keyValid) {
+                                                Text("Not a valid config key — use a dotted name or ENV_STYLE caps")
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    OutlinedTextField(
+                                        value = addValueDraft,
+                                        onValueChange = { addValueDraft = it },
+                                        label = { Text("Value") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    enabled = addKeyDraft.isNotBlank() && addValueDraft.isNotBlank() && keyValid,
+                                    onClick = {
+                                        applyAddKey(addKeyDraft.trim(), addValueDraft.trim())
+                                        showAddKey = false
+                                    }
+                                ) { Text("Add") }
+                            },
+                            dismissButton = { TextButton(onClick = { showAddKey = false }) { Text(stringResource(android.R.string.cancel)) } }
                         )
                     }
                 }

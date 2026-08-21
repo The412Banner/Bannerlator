@@ -1866,6 +1866,17 @@ internal fun GraphicsDriverConfigDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 LabeledDropdown(stringResource(R.string.graphics_driver_vulkan_version), vulkanVersions, vulkanVersion, { vulkanVersion = it })
+                // An explicit sub-1.3 pick is honored verbatim by the wrapper — warn here so
+                // the resulting DXVK failure ("No adapters found") isn't a mystery later.
+                val vkChosenMinor = vulkanVersion.substringAfter('.').toIntOrNull() ?: 3
+                if (vkChosenMinor < 3) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Games using DXVK 2.x require Vulkan 1.3 and will fail to start with Vulkan $vulkanVersion",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(stringResource(R.string.graphics_driver_version), driverVersions, version, { version = it }, modifier = Modifier.weight(1f))

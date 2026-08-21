@@ -384,21 +384,34 @@ public class ContentsManager {
     }
 
     public void removeContent(ContentProfile profile) {
-        if (profilesMap.get(profile.type).contains(profile)) {
-            // A unixlib FEXCore drops a native .so into the SHARED aarch64-unix slot; deleting only
-            // the per-version install dir would leave that .so behind (and Proton's loader would keep
-            // loading it). Strip any .so this profile applied to the shared slot. The launch-time
-            // reconcile re-materializes the correct .so for whatever version a game next selects.
-            if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_FEXCORE && profile.fileList != null) {
-                for (ContentProfile.ContentFile contentFile : profile.fileList) {
-                    if (contentFile.target != null && contentFile.target.endsWith(".so"))
-                        new File(getPathFromTemplate(contentFile.target)).delete();
-                }
-            }
-            FileUtils.delete(getInstallDir(context, profile));
-            profilesMap.get(profile.type).remove(profile);
-            syncContents();
+        if (profile == null || profile.type == null) return;
+        // Callers (e.g. the Contents hub) may construct a FRESH ContentsManager per action and hand us
+        // a profile that was loaded by a DIFFERENT instance. That means profilesMap can be null here
+        // (constructor doesn't populate it — only syncContents() does), and ContentProfile has no
+        // equals() so object-identity contains()/remove() won't match across instances. So: populate
+        // the map if needed, and match by entry name (type+verName+verCode) instead of identity.
+        if (profilesMap == null) syncContents();
+        List<ContentProfile> list = profilesMap.get(profile.type);
+        if (list == null) return;
+        ContentProfile match = null;
+        String want = getEntryName(profile);
+        for (ContentProfile p : list) {
+            if (getEntryName(p).equals(want)) { match = p; break; }
         }
+        if (match == null) return;
+        // A unixlib FEXCore drops a native .so into the SHARED aarch64-unix slot; deleting only
+        // the per-version install dir would leave that .so behind (and Proton's loader would keep
+        // loading it). Strip any .so this profile applied to the shared slot. The launch-time
+        // reconcile re-materializes the correct .so for whatever version a game next selects.
+        if (match.type == ContentProfile.ContentType.CONTENT_TYPE_FEXCORE && match.fileList != null) {
+            for (ContentProfile.ContentFile contentFile : match.fileList) {
+                if (contentFile.target != null && contentFile.target.endsWith(".so"))
+                    new File(getPathFromTemplate(contentFile.target)).delete();
+            }
+        }
+        FileUtils.delete(getInstallDir(context, match));
+        list.remove(match);
+        syncContents();
     }
 
     public static String getEntryName(ContentProfile profile) {

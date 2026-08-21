@@ -5791,11 +5791,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
         ? driverVkVersion.split("\\.")
         : new String[] { "1", "3", "0" };
     String vulkanVersionPatch = driverVkParts[2];
-    // Never advertise a Vulkan minor the driver does not implement. We append the DRIVER's patch
+        // Never advertise a Vulkan minor the driver does not implement. We append the DRIVER's patch
     // level to the USER's chosen minor, so an unclamped "1.4" pick on a 1.3.289 driver would export
     // WRAPPER_VK_VERSION=1.4.289 and lie to DXVK/VKD3D about what the ICD actually supports.
     // Ported from WinNative PR #669.
-    try {
+    //
+    // EXCEPT: with no adrenotools driver configured (empty/null "version" — the fresh-container
+    // default) the probe above measured the SYSTEM ICD, while a wrapper slot bundles its own
+    // Turnip as the guest ICD (advertises Vulkan 1.3+ unconditionally since Mesa 22.3). On
+    // low-tier Adreno the system blob is Vulkan 1.1, so clamping here strangles the wrapper
+    // (WRAPPER_VK_VERSION=1.1 -> DXVK 2.x skips the device -> "No adapters found"). The probe
+    // says nothing about the ICD the guest will actually use, so the clamp must not fire.
+    // An explicitly chosen sub-1.3 version still passes through verbatim — honored, and DXVK
+    // will refuse it honestly (the container UI warns about that combination).
+    boolean probeReflectsGuestIcd = !((adrenoToolsDriverId == null || adrenoToolsDriverId.isEmpty())
+            && graphicsDriver.startsWith("wrapper") && GPUInformation.isAdrenoGPU(this));
+    if (probeReflectsGuestIcd) try {
         int driverMinor = Integer.parseInt(driverVkParts[1]);
         int chosenMinor = Integer.parseInt(vulkanVersion.split("\\.")[1]);
         if (driverMinor < chosenMinor) {

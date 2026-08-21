@@ -3905,6 +3905,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // DX wrapper diagnostic
                 wineDebugWriter.println("--- DX Wrapper State ---");
                 wineDebugWriter.println("dxwrapper type: " + this.dxwrapper);
+                wineDebugWriter.println("graphicsDriver: " + this.graphicsDriver);
+                wineDebugWriter.println("graphicsDriverConfig (raw): " + (container != null ? container.getGraphicsDriverConfig() : "null"));
                 wineDebugWriter.println("dxwrapperConfig (raw): " + (container != null ? container.getDXWrapperConfig() : "null"));
                 wineDebugWriter.println("vkd3dVersion (parsed): " + dxwrapperConfig.get("vkd3dVersion"));
                 wineDebugWriter.println("dxvk version (parsed): " + dxwrapperConfig.get("version"));
@@ -5796,15 +5798,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // WRAPPER_VK_VERSION=1.4.289 and lie to DXVK/VKD3D about what the ICD actually supports.
     // Ported from WinNative PR #669.
     //
-    // EXCEPT: with no adrenotools driver configured (empty/null "version" — the fresh-container
-    // default) the probe above measured the SYSTEM ICD, while a wrapper slot bundles its own
+    // EXCEPT: with NO custom adrenotools driver in play (empty/null "version", or the explicit
+    // "System" id) the probe above measured the SYSTEM ICD, while a wrapper slot bundles its own
     // Turnip as the guest ICD (advertises Vulkan 1.3+ unconditionally since Mesa 22.3). On
     // low-tier Adreno the system blob is Vulkan 1.1, so clamping here strangles the wrapper
     // (WRAPPER_VK_VERSION=1.1 -> DXVK 2.x skips the device -> "No adapters found"). The probe
     // says nothing about the ICD the guest will actually use, so the clamp must not fire.
     // An explicitly chosen sub-1.3 version still passes through verbatim — honored, and DXVK
     // will refuse it honestly (the container UI warns about that combination).
-    boolean probeReflectsGuestIcd = !((adrenoToolsDriverId == null || adrenoToolsDriverId.isEmpty())
+    boolean noCustomDriverConfigured = adrenoToolsDriverId == null || adrenoToolsDriverId.isEmpty()
+            || adrenoToolsDriverId.equals(DefaultVersion.WRAPPER);
+    boolean probeReflectsGuestIcd = !(noCustomDriverConfigured
             && graphicsDriver.startsWith("wrapper") && GPUInformation.isAdrenoGPU(this));
     if (probeReflectsGuestIcd) try {
         int driverMinor = Integer.parseInt(driverVkParts[1]);
@@ -5818,6 +5822,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Log.w("XServerVulkan", "Vulkan version clamp skipped — unparseable driver='"
             + driverVkVersion + "' chosen='" + vulkanVersion + "'");
     }
+    Log.i("XServerVulkan", "WRAPPER_VK_VERSION=" + vulkanVersion + "." + vulkanVersionPatch
+        + " driverId=" + adrenoToolsDriverId + " graphicsDriver=" + graphicsDriver
+        + " clampApplied=" + probeReflectsGuestIcd);
     vulkanVersion = vulkanVersion + "." + vulkanVersionPatch;
     envVars.put("WRAPPER_VK_VERSION", vulkanVersion);
 

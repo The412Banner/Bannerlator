@@ -187,7 +187,7 @@ public final class VegasKeyKnowledge {
             int eq = line.indexOf('=');
             if (eq <= 0) continue;
             String key = line.substring(0, eq).trim();
-            if (key.isEmpty()) continue;
+            if (!Line.isValidKey(key)) continue;   // prose guard, same as the editor parse
             String value = line.substring(eq + 1).trim();
             rows.add(new KeyRow(key, value, stateFor(key, version)));
         }
@@ -208,7 +208,7 @@ public final class VegasKeyKnowledge {
             int eq = line.indexOf('=');
             if (eq <= 0) continue;
             String key = line.substring(0, eq).trim();
-            if (key.isEmpty()) continue;
+            if (!Line.isValidKey(key)) continue;   // prose guard, same as the editor parse
             rows.add(new KeyRow(key, line.substring(eq + 1).trim(), State.UNKNOWN));
         }
         return rows;
@@ -355,8 +355,27 @@ public final class VegasKeyKnowledge {
             int eq = t.indexOf('=');
             if (eq <= 0) return null;
             String k = t.substring(0, eq).trim();
-            if (k.isEmpty()) return null;
-            return new Line(k, t.substring(eq + 1).trim(), enabled);
+            // Prose guard: doc-comment sentences containing '=' ("…override. 0=disable",
+            // "True=mailbox") must never become toggleable rows. Real keys are dotted
+            // names (dxvk.tearFree) or env-style caps (DXVK_FRAME_RATE).
+            if (!isValidKey(k)) return null;
+            String v = t.substring(eq + 1).trim();
+            // Inline trailing comments are documentation, not value: "# k = true  # ON by default".
+            int hash = v.indexOf('#');
+            if (hash >= 0) v = v.substring(0, hash).trim();
+            return new Line(k, v, enabled);
+        }
+
+        /** Dotted config names (dxvk.tearFree, d3d11.samplerAnisotropy) or ALL_CAPS env-style keys. */
+        private static boolean isValidKey(String k) {
+            if (k == null || k.isEmpty()) return false;
+            if (k.indexOf('.') > 0) {
+                for (String part : k.split("\\.")) {
+                    if (part.isEmpty() || !part.matches("[A-Za-z0-9_]+")) return false;
+                }
+                return true;
+            }
+            return k.matches("[A-Z][A-Z0-9_]*");
         }
     }
 

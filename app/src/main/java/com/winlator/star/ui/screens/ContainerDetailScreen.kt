@@ -2381,9 +2381,9 @@ internal fun DxvkConfigDialog(
             val ok = withContext(Dispatchers.IO) {
                 if (!target.isFile) return@withContext false
                 val content = runCatching { backup.readText() }.getOrNull() ?: return@withContext false
-                var bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis())
+                var bak = java.io.File(target.absolutePath + ".bak")
                 var n = 2
-                while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis() + "-" + n); n++ }
+                while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-" + n); n++ }
                 runCatching { java.nio.file.Files.copy(target.toPath(), bak.toPath()) }
                 runCatching { target.writeText(content) }.isSuccess
             }
@@ -2471,11 +2471,12 @@ internal fun DxvkConfigDialog(
                 if (!target.isFile) return@withContext false
                 val text = runCatching { target.readText() }.getOrNull() ?: return@withContext false
                 val next = transform(text) ?: return@withContext false
-                // First write to this live file THIS session keeps a copy beside it.
+                // First write to this live file THIS session keeps a copy beside it,
+                // named after the file itself: <name>.bak, <name>.bak-2, …
                 if (backedUpPaths.add(target.absolutePath)) {
-                    var bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis())
+                    var bak = java.io.File(target.absolutePath + ".bak")
                     var n = 2
-                    while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-" + System.currentTimeMillis() + "-" + n); n++ }
+                    while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-" + n); n++ }
                     runCatching { java.nio.file.Files.copy(target.toPath(), bak.toPath()) }
                 }
                 // Stock + pristine baseline: materialize the sidecar with the edited content.
@@ -2924,8 +2925,20 @@ internal fun DxvkConfigDialog(
                                 Spacer(Modifier.width(6.dp))
                                 Text("Fork-feature filter", style = MaterialTheme.typography.bodySmall)
                             }
+                            if (forkFilter) {
+                                val forkCount = configRows.count { vegasKnowledge?.isForkKey(it.key) == true }
+                                Text(
+                                    "Showing $forkCount fork feature${if (forkCount == 1) "" else "s"} of ${configRows.size} keys — the rest are hidden",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Spacer(Modifier.height(2.dp))
                             configRows.forEach { row ->
+                                // Filter ON = fork-only view: VEGAS-fork keys (vegas.* and the
+                                // gated manifest, e.g. dxvk.enableStarProfile). Vanilla/upstream
+                                // rows return when the toggle goes OFF.
+                                if (forkFilter && vegasKnowledge?.isForkKey(row.key) != true) return@forEach
                                 val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
                                 if (forkFilter && gated) return@forEach
                                 val baseBadge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
@@ -3115,7 +3128,9 @@ internal fun DxvkConfigDialog(
                             confirmButton = { TextButton(onClick = { liveReport = null }) { Text("OK") } }
                         )
                     }
-                    if (stockEdited) {
+                    // Only meaningful while a config file is actually in play — hidden under
+                    // "Use defaults" (no file to be edited).
+                    if (stockEdited && !useDefaults) {
                         Text(
                             if (sidecarExists) "Edited · yours now — saved to your own copy"
                             else "Edited · saved to the live config file",
@@ -3165,16 +3180,28 @@ internal fun DxvkConfigDialog(
                                         Text("No backups yet — they appear after the first edit to this config file.")
                                     }
                                     backupsList.forEach { b ->
-                                        val label = b.name.removePrefix((liveFile?.name ?: "") + ".bak").trimStart('-', ' ')
-                                            .ifEmpty { "previous" }
-                                        TextButton(
-                                            onClick = { restoreTarget = b; showBackups = false },
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
-                                            Text(
-                                                "$label · ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT).format(b.lastModified())}",
-                                                style = MaterialTheme.typography.bodySmall
-                                            )
+                                            TextButton(
+                                                onClick = { restoreTarget = b; showBackups = false },
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text(
+                                                    "${b.name} · ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT).format(b.lastModified())}",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                            IconButton(onClick = {
+                                                if (b.delete()) toggleVersion++
+                                            }) {
+                                                Icon(
+                                                    Icons.Filled.Delete,
+                                                    contentDescription = "Delete backup",
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            }
                                         }
                                     }
                                 }

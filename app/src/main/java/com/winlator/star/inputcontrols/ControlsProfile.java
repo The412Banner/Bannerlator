@@ -454,7 +454,14 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public boolean isTemplate() {
-        return name.toLowerCase(Locale.ENGLISH).contains("template");
+        // Bundled starter profiles are name-tagged "Template ..." and hidden from the in-game
+        // per-controller/profile pickers (getProfiles(ignoreTemplates=true)). But a USER DUPLICATE of a
+        // template keeps that name with a " (N)" suffix (InputControlsManager.duplicateProfile appends
+        // " ("+i+")") and IS a real, assignable profile — so it must NOT be filtered out. #345: without
+        // this, duplicating "Template (12 buttons)" produced "Template (12 buttons) (1)" that stayed
+        // invisible in the in-game Profile dropdown, so a bound template copy could never be assigned.
+        String n = name.toLowerCase(Locale.ENGLISH).trim();
+        return n.contains("template") && !n.matches(".*\\(\\d+\\)$");
     }
 
     public ArrayList<ExternalController> loadControllers() {

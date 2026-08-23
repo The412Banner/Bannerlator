@@ -6216,3 +6216,9 @@ On SAME branch `feat/controller-345-fa-spine`. Unblocks TEST②/③ (F-A shipped
 - XServerDisplayActivity.java: populate profileIds at both setInputProfiles sites; `pushControllerProfileAssignments()` on refresh paths (refreshInGamePlayerSlotList + refreshPlayerSlots). applyControllerProfiles/persist/callbacks untouched.
 - XServerDrawer.kt: per-physical-controller "Profile" dropdown in PlayerSlotRowItem (gated isGameController && !isOnScreen), "-- Default --"(-1)+profiles, passes real ControlsProfile.id via onControllerProfileChanged, reflects live assignment. OSC unchanged (Touch-tab selector).
 - Confidence: inspection-clean; CI = compile gate. NEXT after green: re-stage, TEST② (assign profile → applies at launch) + TEST③ (motion via hidden-focused view).
+
+### 2026-08-23 — 🐞 fix(#345): user-duplicated template profiles now assignable in-game
+Device-testing F-D found: in-game profile picker (getProfiles(ignoreTemplates=true)) filters via ControlsProfile.isTemplate(), which was a NAME check (name contains "template"). Bundled controls-2.icp has NO template flag, so the check is name-based — and a Duplicate keeps "Template" in the name → user copies were wrongly hidden, so a bound template copy could never be assigned to a controller.
+- Fix (ControlsProfile.isTemplate): a name ending with a " (N)" duplicate suffix (duplicateProfile appends " ("+i+")") is NOT a template. Keeps bundled "Template (12 buttons)" hidden (ends "(12 buttons)", not pure digits) but shows "Template (12 buttons) (1)".
+- Unblocks TEST③ (visible remap): duplicate a template (keeps bindings) → now selectable in-game Profile dropdown → assign → hosted bindings apply.
+- Confidence: inspection-clean; CI = compile gate. vc frozen 73.

@@ -217,6 +217,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // wouldn't appear/disappear in the list until one of those fired. Via a method (not an inline
         // field ref) so the field initializer doesn't forward-reference winHandler.
         refreshInGamePlayerSlotList();
+        // #345 FIX-4: a pad that just connected gets its assigned controls profile's bindings re-seeded
+        // (settled on this debounced tick, so its runtime controller instance now exists).
+        applyControllerProfiles();
     };
     private TouchpadView touchpadView;
     private XEnvironment environment;
@@ -2240,6 +2243,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         Runnable runnable = () -> {
             setupUI();
+            // #345 F1: load the per-device slot overrides (pins/ignores) on the MAIN thread BEFORE the
+            // smart-default OSD decision below. simulateConfirmInputControlsDialog() ->
+            // hasConnectedGameController() must be able to see an "Ignore" on an always-present built-in
+            // pad; otherwise it counts the ignored pad as a connected controller and suppresses the
+            // on-screen overlay on handhelds (#345). preAssignConnectedControllers() (background thread,
+            // in the launch worker below) re-reads the SAME map, reached through the Executor.execute
+            // happens-before edge, so this earlier load is memory-safe and the later load is redundant.
+            winHandler.setManualSlotOverrides(parseSlotOverrides(resolvedControllerSlotOverridesJson()));
             if (controlsProfile.isEmpty()) {
                 // No profile defined, run the simulated dialog confirmation for input controls
                 simulateConfirmInputControlsDialog();
@@ -4772,11 +4783,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
              // Cleanup moved to onCreate
         }
 
-        // Manual per-device slot overrides (in-game Players sub-tab), per-container — pushed BEFORE
-        // pre-assignment so launch-time slotting honors the user's pins/ignores first (a pinned pad
-        // claims its exact player slot; an ignored device never takes one). Resolve shortcut-override
-        // -else-container, the same owner discipline as the vibration/gyro tuning.
-        winHandler.setManualSlotOverrides(parseSlotOverrides(resolvedControllerSlotOverridesJson()));
+        // #345 F1: the manual per-device slot overrides (in-game Players sub-tab) are now loaded on the
+        // MAIN thread in the launch runnable, BEFORE simulateConfirmInputControlsDialog's smart-default
+        // decision (so an "Ignore" on a built-in pad is visible to hasConnectedGameController). The
+        // Executor.execute happens-before edge publishes that write to this worker, so pre-assignment
+        // below already honors the same pins/ignores without re-loading them here.
 
         // Pre-assign any controllers that are already connected, BEFORE Wine boots. This opens
         // their slot rings up front so the guest sees them from its first device enumeration
@@ -4785,6 +4796,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // startEnvironmentComponents below, so this must sit here — after the path is known and
         // before the guest starts reading the rings.
         winHandler.preAssignConnectedControllers();
+
+        // #345 FIX-4: a pad present at LAUNCH is only seated here, on this background thread — AFTER
+        // simulateConfirmInputControlsDialog() already ran applyControllerProfiles() on the main thread
+        // (when getDeviceIdForDescriptor still returned 0, so its per-controller assignment no-op'd). Now
+        // that the pad holds a slot (deviceToDescriptor is populated), re-run applyControllerProfiles on
+        // the MAIN thread so its assigned controls profile is established + its bindings hosted. Must be
+        // runOnUiThread: applyControllerProfiles mutates the UI-thread InputControlsView. The post also
+        // gives the happens-before edge that publishes preAssign's slot-map writes to the main thread.
+        runOnUiThread(this::applyControllerProfiles);
 
         // Pre-launch: pull the freshest GOG cloud saves INTO the prefix before the guest boots, so the
         // game reads current progress (Galaxy-parity download-on-launch). We're on the launch worker
@@ -4835,6 +4855,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
         xServerView = new XServerView(this, xServer);
+        // #345 FIX-4: resolve the per-controller controls-profile assignments once (App -> container ->
+        // shortcut) now that container/shortcut are assigned, so the launch apply paths can host them.
+        loadControllerProfileMap();
         String rendererType = container != null ? resolvedRenderer() : "vulkan";
         // Native Rendering now routes to the hardened SurfaceFlinger (ASR) renderer instead of the
         // leaner inline Vulkan FLIP scanout. ASR carries the full GN #1582/#1620 hardening the FLIP
@@ -5770,6 +5793,37 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 showControllerStatusToast("reset", null);
                 // #333: pipeline reset re-seats slots → re-evaluate auto-hide against the fresh state.
                 updateAutoHideForControllers();
+                // #345 FIX-4: Reset Input is the user's recovery button. resetInputPipeline clears the
+                // controller maps and re-enumerates the present devices ASYNCHRONOUSLY (the re-registered
+                // input listener re-fires onInputDeviceAdded on the looper), which re-seeds each device's
+                // controller AFTER this handler returns — clobbering a synchronous re-apply. So re-apply
+                // the per-controller profiles on a DELAYED tick, once the re-enumeration has settled, so
+                // an assigned pad keeps its bindings through a reset.
+                controllerToastHandler.postDelayed(this::applyControllerProfiles, 500);
+            };
+            // #345 FIX-4: assign a controls profile to one device from the Players tab. Update the map,
+            // persist (per shortcut/container), re-seed that device's live bindings, refresh the rows.
+            ds.onControllerProfileChanged = (descriptor, profileId) -> {
+                if (profileId < 0) controllerProfileMap.remove(descriptor);
+                else controllerProfileMap.put(descriptor, profileId);
+                persistControllerProfileMap();
+                applyControllerProfiles();
+                refreshPlayerSlots.run();
+            };
+            // #345 FIX-4: the On-screen-controls row sets the ACTIVE/overlay profile (the one the OSD draws
+            // and "same as on-screen" controllers inherit). -1 = Disabled (hide the overlay).
+            ds.onActiveProfileChanged = (profileId) -> {
+                if (profileId < 0) {
+                    hideInputControls();
+                } else {
+                    ControlsProfile p = inputControlsManager.getProfile(profileId);
+                    if (p != null) {
+                        inputControlsView.setShowTouchscreenControls(true);
+                        showInputControls(p);
+                    }
+                }
+                applyControllerProfiles(); // re-apply per-controller overrides on top of the new active profile
+                refreshPlayerSlots.run();
             };
 
             // Hot-plug (add/remove/progressive-change) → status toast. WinHandler fires a plain callback
@@ -6213,6 +6267,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             touchpadView.setOnTouchListener(null); // Disable the timeout listener if not needed
         }
 
+        // #345 FIX-4: apply any per-controller profile assignments now that the active profile owns the
+        // runtime controllers (re-seeds each assigned device's bindings from its chosen profile). At
+        // launch no pad holds a slot yet (pre-assign runs later on the worker), so this is typically a
+        // no-op here and the real establish happens on the post-preAssign runOnUiThread re-apply.
+        applyControllerProfiles();
+
         Log.d("XServerDisplayActivity", "Input controls simulated confirmation executed.");
 
         // #333: apply auto-hide at launch — a pad connected before/at launch should already have the
@@ -6283,6 +6343,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         inputControlsView.invalidate();
         winHandler.sendGamepadState();
+
+        // #345 FIX-1/2: keep the in-game profile selector in sync with the ACTIVE profile. The drawer
+        // computes its selected index ONCE at setup (initInlineTabStates), which runs BEFORE the
+        // smart-default seeds a profile — so getProfile() was null there and the index stuck at 0. That
+        // left the selector reading "-- Disabled --" while a real overlay (Virtual Gamepad) was live and
+        // driving user 0. Recompute the index against the same list the dialog shows (getProfiles(true))
+        // whenever a profile becomes active, so the dropdown reflects reality.
+        try {
+            java.util.ArrayList<ControlsProfile> list = inputControlsManager.getProfiles(true);
+            int pos = 0;
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i) != null && list.get(i).id == profile.id) { pos = i + 1; break; }
+            }
+            XServerDialogState.INSTANCE.setSelectedProfileIdx(pos);
+        } catch (Throwable ignored) {}
     }
 
     private void hideInputControls() {
@@ -6296,6 +6371,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         inputControlsView.invalidate();
         winHandler.sendGamepadState();
+
+        // #345 FIX-1/2: no active profile → the selector should read "-- Disabled --" (index 0), the
+        // mirror of the sync in showInputControls().
+        try { XServerDialogState.INSTANCE.setSelectedProfileIdx(0); } catch (Throwable ignored) {}
     }
 
     // Reads the persisted extra_libs.tzst payload version. Missing or unparseable => -1, which
@@ -7696,6 +7775,121 @@ return true;
         }
     }
 
+    // #345 FIX-4: per-controller controls-profile assignments for this session, {descriptor -> profileId}.
+    // Populated by loadControllerProfileMap (App -> container -> shortcut), edited live via the Players
+    // sub-tab callback, and consumed by applyControllerProfiles. Empty = the whole spine is dormant.
+    private final java.util.HashMap<String, Integer> controllerProfileMap = new java.util.HashMap<>();
+
+    /** Load the {descriptor -> profileId} map from the App-global default, then the container, then the
+     *  shortcut (more-specific wins per device), mirroring the slot-overrides resolution. Call once at
+     *  setup, before the first applyControllerProfiles. */
+    private void loadControllerProfileMap() {
+        controllerProfileMap.clear();
+        mergeControllerProfilesJson(
+                com.winlator.star.ui.components.GlobalControllerPrefs.getControllerProfilesJson(this));
+        if (container != null) mergeControllerProfilesJson(container.getControllerProfiles());
+        if (shortcut != null) mergeControllerProfilesJson(shortcut.getExtra("controllerProfiles", "{}"));
+    }
+
+    private void mergeControllerProfilesJson(String json) {
+        if (json == null || json.isEmpty()) return;
+        try {
+            org.json.JSONObject o = new org.json.JSONObject(json);
+            java.util.Iterator<String> it = o.keys();
+            while (it.hasNext()) { String k = it.next(); controllerProfileMap.put(k, o.optInt(k, -1)); }
+        } catch (Exception ignored) {}
+    }
+
+    /** Persist the current map onto the shortcut (per-game) when launched from one, else the container. */
+    private void persistControllerProfileMap() {
+        org.json.JSONObject o = new org.json.JSONObject();
+        try {
+            for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet())
+                if (e.getValue() != null && e.getValue() >= 0) o.put(e.getKey(), (int) e.getValue());
+        } catch (Exception ignored) {}
+        String json = o.toString();
+        if (shortcut != null) { shortcut.putExtra("controllerProfiles", json); shortcut.saveData(); }
+        else if (container != null) { container.setControllerProfiles(json); container.saveData(); }
+    }
+
+    /** Re-seed each ASSIGNED device's runtime bindings from its chosen profile. Safe to call repeatedly
+     *  (idempotent) — after showInputControls (active profile owns the runtime controllers), when a pad
+     *  connects, and on an in-game assignment change. Devices set to Default (-1) keep the active
+     *  profile's bindings (a live switch back to Default fully restores only on relaunch). No-op when no
+     *  per-controller assignments exist, so a user who never touched this feature is unaffected. */
+    private void applyControllerProfiles() {
+        if (inputControlsView == null) return; // view not built yet (pre-setup) — nothing to apply
+        if (controllerProfileMap.isEmpty()) {
+            Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: no per-controller profile assignments; nothing to apply.");
+            return;
+        }
+        com.winlator.star.inputcontrols.ControlsProfile active = inputControlsView.getProfile();
+        Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: map=" + controllerProfileMap
+                + ", activeProfile=" + (active != null ? String.valueOf(active.id) : "none"));
+        if (active == null) {
+            // No active profile — a controller present at launch suppresses the smart-default OSC, so
+            // InputControlsView has nothing to remap physical input through (its onGenericMotionEvent /
+            // onKeyEvent early-return when profile == null). Establish one from a CONNECTED assigned
+            // device so its bindings can drive the pad.
+            for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet()) {
+                Integer pid = e.getValue();
+                if (pid == null || pid < 0) continue;
+                if (winHandler.getDeviceIdForDescriptor(e.getKey()) == 0) continue; // not connected
+                com.winlator.star.inputcontrols.ControlsProfile p = inputControlsManager.getProfile(pid);
+                if (p != null) {
+                    // Activate the assigned profile so the pad drives the guest through it. showInputControls
+                    // makes the view VISIBLE + FOCUSED — joystick MOTION events (the pad's D-pad is an
+                    // AXIS_HAT_* motion, plus the analog sticks) are focus-routed by the framework and only
+                    // reach InputControlsView.onGenericMotionEvent when this view holds focus. But keep the
+                    // touch overlay OFF unconditionally, even when the assigned profile is a virtual gamepad:
+                    // a physical controller must not pop the on-screen controls. onDraw gates drawing on
+                    // showTouchscreenControls and sendGamepadState releases the OSC slot when it's off, so
+                    // the view stays visible+focused for motion delivery but draws nothing and claims no slot.
+                    inputControlsView.setShowTouchscreenControls(false);
+                    showInputControls(p);
+                    active = inputControlsView.getProfile();
+                    Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: established active profile "
+                            + p.id + " (virtualGamepad=" + p.isVirtualGamepad() + ") from device " + e.getKey());
+                    break;
+                }
+            }
+            if (active == null) {
+                Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: no connected assigned device to establish an active profile; pad stays raw XInput.");
+                return;
+            }
+        }
+        for (java.util.Map.Entry<String, Integer> e : controllerProfileMap.entrySet()) {
+            Integer pid = e.getValue();
+            if (pid == null || pid < 0) continue;
+            com.winlator.star.inputcontrols.ControlsProfile src = inputControlsManager.getProfile(pid);
+            if (src == null) continue;
+            com.winlator.star.inputcontrols.ExternalController srcC = src.getController(e.getKey());
+            if (srcC == null || srcC.getControllerBindingCount() == 0) continue;
+            // Only for a CURRENTLY-CONNECTED device (need its live deviceId to create the instance).
+            int deviceId = winHandler.getDeviceIdForDescriptor(e.getKey());
+            if (deviceId == 0) continue;
+            // Host the assigned bindings on the ACTIVE profile's controller instance for this device —
+            // that is the exact instance the input path resolves (onGenericMotionEvent ->
+            // profile.getController(deviceId)) and remaps on. getOrCreateController creates it even when
+            // the Default template is empty (a fresh profile), which getController(int)'s gated seed does not.
+            com.winlator.star.inputcontrols.ExternalController dstC = active.getOrCreateController(deviceId);
+            if (dstC == srcC) {
+                // The ACTIVE profile IS the assigned profile (the establish path above uses getProfile(pid),
+                // which returns the SAME cached instance) — so dstC and srcC are one controller object.
+                // copyBindingsFrom(self) clears then copies from the now-empty list, WIPING the bindings.
+                // They already drive the pad, so skip the self-copy.
+                Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: device " + e.getKey()
+                        + " (deviceId " + deviceId + ") already runs its assigned profile " + pid + " ("
+                        + srcC.getControllerBindingCount() + " binding(s)); no copy needed.");
+            } else if (dstC != null) {
+                dstC.copyBindingsFrom(srcC);
+                Log.d("XServerDisplayActivity", "#345 FIX-4 applyControllerProfiles: hosted "
+                        + srcC.getControllerBindingCount() + " binding(s) for device " + e.getKey()
+                        + " (deviceId " + deviceId + ") from profile " + pid);
+            }
+        }
+    }
+
     // #333 smart default: the bundled "Virtual Gamepad" touch layout (controls-3.icp), used as the
     // default overlay for a fresh user who hasn't picked a profile. Matched by name; null if absent.
     private ControlsProfile findVirtualGamepadProfile() {
@@ -7712,7 +7906,11 @@ return true;
     private boolean hasConnectedGameController() {
         if (winHandler == null) return false;
         for (WinHandler.PlayerSlotInfo s : winHandler.getPlayerSlotAssignments()) {
-            if (s.isGameController && !s.isOnScreen) return true;
+            // #345 F1: a pad the user set to "Ignore" (SLOT_IGNORE) is NOT a usable controller — it never
+            // takes a slot — so it must not suppress the smart-default on-screen overlay. Without this,
+            // an always-present built-in pad set to Ignore on a handheld leaves the player with neither
+            // the ignored pad nor the on-screen controls.
+            if (s.isGameController && !s.isOnScreen && s.override != WinHandler.SLOT_IGNORE) return true;
         }
         return false;
     }

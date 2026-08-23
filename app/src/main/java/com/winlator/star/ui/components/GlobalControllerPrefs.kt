@@ -33,6 +33,26 @@ object GlobalControllerPrefs {
             .apply()
     }
 
+    // #345 FIX-4: global (app-drawer) default per-controller controls-profile assignments, as a
+    // {descriptor -> profileId} JSON object ("{}" = none). Resolved App -> container -> shortcut in
+    // XServerDisplayActivity.loadControllerProfileMap. @JvmStatic so the Java call sites can reach it
+    // statically (the app-drawer defaults screen and the in-game apply path).
+    private const val KEY_CONTROLLER_PROFILES = "global_controller_profiles"
+
+    @JvmStatic
+    fun getControllerProfilesJson(context: Context): String {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        return prefs.getString(KEY_CONTROLLER_PROFILES, "{}") ?: "{}"
+    }
+
+    @JvmStatic
+    fun setControllerProfilesJson(context: Context, json: String) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString(KEY_CONTROLLER_PROFILES, if (json.isEmpty()) "{}" else json)
+            .apply()
+    }
+
     fun getOnScreenMode(context: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val m = prefs.getInt(KEY_ON_SCREEN_MODE, Container.ON_SCREEN_MODE_DEFAULT)

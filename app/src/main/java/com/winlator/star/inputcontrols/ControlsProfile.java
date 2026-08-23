@@ -165,6 +165,25 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         controllers.remove(controller);
     }
 
+    // #345 FIX-4: like getController(deviceId) but ALWAYS creates+adds the instance if the profile
+    // doesn't have one — unlike getController(int), whose auto-seed is gated on a non-empty Default
+    // template, so on a fresh profile it returns null and the input path (onGenericMotionEvent ->
+    // profile.getController(deviceId)) never handles the device. Used to host a per-controller assigned
+    // profile's bindings on the active profile so the remapper actually reads them.
+    public ExternalController getOrCreateController(int deviceId) {
+        ExternalController existing = getController(deviceId);
+        if (existing != null) return existing;
+        android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+        if (device == null || device.getDescriptor() == null) return null;
+        for (ExternalController c : controllers) if (device.getDescriptor().equals(c.getId())) return c;
+        ExternalController c = new ExternalController();
+        c.setId(device.getDescriptor());
+        c.setName(device.getName());
+        controllers.add(c);
+        controllersLoaded = true;
+        return c;
+    }
+
     public ExternalController getController(String id) {
         if (!controllersLoaded) loadControllers();
         for (ExternalController controller : controllers) if (controller.getId().equals(id)) return controller;

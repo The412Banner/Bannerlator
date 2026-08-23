@@ -6177,3 +6177,11 @@ Branch `feat/lsfg-detect-store-dll` (`5470ec36`) off fresh main `1ba5d2a4` (post
 - **New**: `findStoreLosslessDll()` walks `filesDir/imagefs/steam_games/**` (maxDepth 6, appId 993090) for `Lossless.dll`, newest wins; `detectLosslessDllFromStore()` copies → `filesDir/lsfg-vk/Lossless.dll`, toasts result.
 - **UX**: "Detect from Steam store" button + manual Import stays as override (never auto-clobbered → satisfies manual-overrides-store precedence). Provenance badge via persisted `lsfg_dll_source` pref (store|manual), survives restart; Remove clears it.
 - **Confidence**: compiles-clean by inspection; NOT CI-green, NOT device-proven. CI build dispatched off the branch. ⚠️ watch: if store nests DLL deeper than 6 dirs, bump maxDepth.
+
+### 2026-08-22 (session) — 🎮 #345 Phase F-A: coherent per-descriptor active-profile SPINE
+Branch `feat/controller-345-fa-spine` off main `a99705d4`. Clean feature-first reland (Phase 0 recon+delta-audit+deep-read done first; 3 worklist defects caught pre-code). 6 files, +304/-12, vc frozen 73.
+- Spine: `Container.get/setControllerProfiles`, `GlobalControllerPrefs.get/setControllerProfilesJson` (@JvmStatic), `ControlsProfile.getOrCreateController`, `WinHandler.getDeviceIdForDescriptor`, `XServerDialogState` inert callbacks, `applyControllerProfiles()`+load/merge/persist + 5 call sites. Self-copy guard + empty-map dormancy present.
+- F1 SPLIT: 6a hoist setManualSlotOverrides to main-thread pre-simulateConfirm; 6b `s.override != SLOT_IGNORE` in hasConnectedGameController (both required).
+- #5 selector index sync in show/hideInputControls. WinHandler decisions FILE-log (gated LOG_DECISIONS=false).
+- NOT ported: donor resolvedAutoHideControlsOnPad (main's toggle-path kept). Dropped donor selected_profile_id/smart_default_touch_optout pref writes (inert callback).
+- **Confidence: reviewed-by-inspection only; NOT compiled, NOT device-proven.** CI = compile gate (watch: refreshPlayerSlots scope in new callbacks). Device-observe: 6b handheld-Ignore, SHARE+establish corner, motion via hidden-focused view.

@@ -367,6 +367,16 @@ object XServerDialogState {
     /** Manual "Reset Input" recovery — rebuilds the fake-input transport in place (no relaunch). */
     @JvmField var onResetInput: Runnable? = null
 
+    // #345 FIX-4: per-controller controls-profile assignment (Players sub-tab). onControllerProfileChanged
+    // binds ONE device (by descriptor) to a controls profile (profileId, -1 = Default/none); the activity
+    // persists it and re-applies live. onActiveProfileChanged sets the ACTIVE/overlay profile the OSC row
+    // draws and "same as on-screen" controllers inherit (-1 = Disabled). The consuming selector UI is not
+    // wired in this phase — these are the inert callback fields the spine populates.
+    fun interface ControllerProfileCallback { fun invoke(descriptor: String, profileId: Int) }
+    @JvmField var onControllerProfileChanged: ControllerProfileCallback? = null
+    fun interface ActiveProfileCallback { fun invoke(profileId: Int) }
+    @JvmField var onActiveProfileChanged: ActiveProfileCallback? = null
+
     // -------------------------------------------------------------------------
     // Controller-status TOAST (P5b) — a small app-themed card that fades into the TOP-RIGHT of the
     // in-game screen (below the Fusion HUD), lists each detected input device (type icon + name +
@@ -878,6 +888,7 @@ object XServerDialogState {
         onVibrationSlotChanged = null
         onVibrationModeChanged = null; onVibrationIntensityChanged = null
         onPlayerSlotChanged = null; onPlayerSlotsRefresh = null; onResetInput = null
+        onControllerProfileChanged = null; onActiveProfileChanged = null
         onGyroEnabledChanged = null; onGyroTargetChanged = null
         onGyroSensitivityChanged = null; onGyroDeadzoneChanged = null; onGyroSmoothingChanged = null
         onGyroInvertXChanged = null; onGyroInvertYChanged = null; onGyroActivatorChanged = null

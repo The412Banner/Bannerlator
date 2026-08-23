@@ -161,6 +161,12 @@ public class WinHandler {
     private boolean[] vibrationEnabledSlots = new boolean[MAX_CONTROLLERS]; // per-slot vibration toggle
     private boolean vibrationMasterEnabled = true; // master switch — off = NO controller vibration at all
 
+    // #345 Phase 0 debuggability: append every slot-assignment DECISION to a file under the app files dir
+    // (the reporter's ROM blocks logcat). Static + default-OFF so it's zero-cost unless a build flips it;
+    // guarded so a write failure never affects assignment. Slot decisions fire on connect/assign only —
+    // NOT per input frame — so this is off the hot path. Toggle: WinHandler.LOG_DECISIONS = true.
+    public static boolean LOG_DECISIONS = false;
+
     // Per-container rumble tuning, pushed from XServerDisplayActivity.setupUI (once the Container is
     // resolved) and re-pushed live from the in-game drawer. Mirrors Container.getVibrationMode()/
     // getVibrationIntensity() — see those for the mode values (0=Off 1=Controller 2=Device 3=Both).
@@ -1284,7 +1290,7 @@ public class WinHandler {
             if (getController(deviceId) == null)
                 return false;
             int slot = joinSharedSlot(deviceId, descriptor, oscSlot);
-            Log.d("WinHandler", "On-screen SHARE: pad " + deviceId + " joined OSC slot " + slot);
+            logDecision("On-screen SHARE: pad " + deviceId + " joined OSC slot " + slot);
             return slot >= 0;
         }
 
@@ -1298,7 +1304,7 @@ public class WinHandler {
         releaseSlot(OSC_DEVICE_ID);         // softRelease: frees slot 0, OSC ring stays alive
         oscYieldSlot = free;                // session-only OSC preference honored by assignSlot(OSC)
         int newOscSlot = assignSlot(OSC_DEVICE_ID);
-        Log.d("WinHandler", "On-screen YIELD: OSC moved to slot " + newOscSlot
+        logDecision("On-screen YIELD: OSC moved to slot " + newOscSlot
                 + "; incoming pad " + deviceId + " will take Player 1");
         return false; // let assignConnectedDeviceIfPossible seat the pad on the now-free slot 0
     }
@@ -1969,7 +1975,7 @@ public class WinHandler {
         }
         ensureWriterForSlot(slot);
         recomputeSharedSlots();
-        Log.d("WinHandler", "Pinned device " + deviceId + " to slot " + slot
+        logDecision("Pinned device " + deviceId + " to slot " + slot
                 + (descriptor != null ? " (descriptor: " + descriptor + ")" : " (OSC)"));
         return slot;
     }
@@ -1998,7 +2004,7 @@ public class WinHandler {
         }
         ensureWriterForSlot(slot);
         recomputeSharedSlots();
-        Log.d("WinHandler", "Device " + deviceId + " SHARING slot " + slot
+        logDecision("Device " + deviceId + " SHARING slot " + slot
                 + (descriptor != null ? " (descriptor: " + descriptor + ")" : " (OSC)"));
         return slot;
     }
@@ -2016,7 +2022,7 @@ public class WinHandler {
                 }
                 ensureWriterForSlot(slot);
                 recomputeSharedSlots();
-                Log.d("WinHandler", "Assigned device " + deviceId + " to slot " + slot
+                logDecision("Assigned device " + deviceId + " to slot " + slot
                         + (descriptor != null ? " (descriptor: " + descriptor + ")" : ""));
                 return slot;
             }
@@ -2269,6 +2275,31 @@ public class WinHandler {
         return obj.toString();
     }
 
+    /** #345 Phase 0: log one slot-assignment decision to logcat AND (when LOG_DECISIONS is on) append it
+     *  to filesDir/controller-decisions.log with a timestamp. Cheap + best-effort — off the hot path
+     *  (connect/assign only) and any I/O failure is swallowed so it can never affect slotting. */
+    private void logDecision(String msg) {
+        Log.d("WinHandler", msg);
+        if (!LOG_DECISIONS) return;
+        try {
+            java.io.File f = new java.io.File(activity.getFilesDir(), "controller-decisions.log");
+            try (java.io.FileWriter w = new java.io.FileWriter(f, true)) {
+                w.append(String.valueOf(System.currentTimeMillis())).append(' ').append(msg).append('\n');
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    /** #345 FIX-4: reverse-lookup a live deviceId for a device descriptor (0 if not connected). Reads
+     *  the existing deviceToDescriptor map, so it only knows devices that currently hold (or held) a
+     *  slot — a descriptor with no live deviceId returns 0, which the profile-apply path treats as
+     *  "not connected, nothing to host". Main-thread only (same as the input/hotplug callbacks). */
+    public int getDeviceIdForDescriptor(String descriptor) {
+        if (descriptor == null) return 0;
+        for (java.util.Map.Entry<Integer, String> e : deviceToDescriptor.entrySet())
+            if (descriptor.equals(e.getValue())) return e.getKey();
+        return 0;
+    }
+
     /** Snapshot of every device the Players sub-tab should list: the OSC virtual pad (always), every
      *  connected game controller, and any device currently holding a slot (so a mis-slotted device can
      *  be freed). Sibling sub-devices are de-duplicated by descriptor. Main-thread only. */
@@ -2320,6 +2351,7 @@ public class WinHandler {
     public int setDeviceSlotAssignment(String descriptor, int desiredSlot) {
         if (descriptor == null)
             return -1;
+        logDecision("setDeviceSlotAssignment: descriptor=" + descriptor + " desiredSlot=" + desiredSlot);
 
         // Normalize + record the override up front (guards the input-event assign path too).
         int normalized;
@@ -2547,7 +2579,7 @@ public class WinHandler {
 
         int slot = assignSlot(deviceId);
         if (slot >= 0) {
-            Log.d("WinHandler", "Auto-assigned device " + deviceId + " to slot " + slot + " via " + source + ".");
+            logDecision("Auto-assigned device " + deviceId + " to slot " + slot + " via " + source + ".");
             return true;
         }
         return false;

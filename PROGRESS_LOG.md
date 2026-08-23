@@ -6209,3 +6209,10 @@ F-A CI-GREEN + staged, testing deferred to AM (user). Resume state:
 - AM checklist (priority): ① built-in-pad "Ignore" → on-screen controls appear (THE reported #345 bug, AYANEO Pocket FIT); ② assign keyboard profile → applies at launch + no overlay pop; ③ stick/d-pad motion via hidden-focused view + Share corner.
 - Decisions file-log ships OFF (LOG_DECISIONS=false) — AYANEO logcat works so fine for us; only matters for reporter's Redmagic. logcat: `logcat -G 16M; logcat -c` then `-d -s WinHandler:D`. Built-in pad connect toggle: xpad bind/unbind (reversible). NEVER pkill -9 logcat.
 - DO NOT MERGE (F-A of A→B→C→D). Next after F-A proven = Phase F-B (mostly verify — mode selector largely pre-landed on main). Full detail: memory [[project_bannerlator_controller_345_reimpl_plan]].
+
+### 2026-08-23 — 🎮 #345 thin F-D slice: in-game Players-tab per-controller Profile dropdown
+On SAME branch `feat/controller-345-fa-spine`. Unblocks TEST②/③ (F-A shipped engine+inert callback but no assignment UI). +86/-2 across 3 files, engine unchanged, vc 73.
+- XServerDialogState.kt: `inputProfileIds` (parallel real ids) + `controllerProfileAssignments` mirror; reset in dispose.
+- XServerDisplayActivity.java: populate profileIds at both setInputProfiles sites; `pushControllerProfileAssignments()` on refresh paths (refreshInGamePlayerSlotList + refreshPlayerSlots). applyControllerProfiles/persist/callbacks untouched.
+- XServerDrawer.kt: per-physical-controller "Profile" dropdown in PlayerSlotRowItem (gated isGameController && !isOnScreen), "-- Default --"(-1)+profiles, passes real ControlsProfile.id via onControllerProfileChanged, reflects live assignment. OSC unchanged (Touch-tab selector).
+- Confidence: inspection-clean; CI = compile gate. NEXT after green: re-stage, TEST② (assign profile → applies at launch) + TEST③ (motion via hidden-focused view).

@@ -3088,6 +3088,12 @@ private fun PlayersSection() {
 private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
     val accent = MaterialTheme.colorScheme.primary
 
+    // #345 F-D: per-controller controls-profile options + the live assignment mirror, for the Profile
+    // dropdown shown on physical-controller rows. inputProfileIds is the parallel real-id list.
+    val profileNames by XServerDialogState.inputProfiles.collectAsState()
+    val profileIds by XServerDialogState.inputProfileIds.collectAsState()
+    val profileAssignments by XServerDialogState.controllerProfileAssignments.collectAsState()
+
     // Selector option order: Auto, Player 1-4, Ignore. Value encodes the override the callback wants:
     // SLOT_AUTO / 0..3 / SLOT_IGNORE — the exact contract of onPlayerSlotChanged.
     val options = remember {
@@ -3147,6 +3153,47 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
                             XServerDialogState.onPlayerSlotChanged?.invoke(row.descriptor, value)
                         }
                     })
+                }
+            }
+        }
+
+        // #345 F-D: per-PHYSICAL-controller controls-profile selector. NOT shown for the on-screen (OSC)
+        // row — the on-screen pad keeps its profile selection in the Touch sub-tab. "-- Default --" means
+        // no per-controller override (profileId = -1, the pad inherits the active profile); any other
+        // entry binds this controller (by descriptor) to that ControlsProfile's real id via the F-A
+        // onControllerProfileChanged engine (persist + live re-apply already exist).
+        if (row.isGameController && !row.isOnScreen) {
+            val profileLabels = remember(profileNames) { listOf("-- Default --") + profileNames }
+            val assignedId = profileAssignments[row.descriptor] ?: -1
+            val selectedProfileIdx =
+                if (assignedId < 0) 0 else (profileIds.indexOf(assignedId).let { if (it >= 0) it + 1 else 0 })
+            var profileExpanded by remember(row.descriptor, assignedId) { mutableStateOf(false) }
+
+            Spacer(Modifier.height(6.dp))
+            ExposedDropdownMenuBox(expanded = profileExpanded, onExpandedChange = { profileExpanded = it }) {
+                OutlinedTextField(
+                    value = profileLabels.getOrElse(selectedProfileIdx) { "-- Default --" },
+                    onValueChange = {}, readOnly = true,
+                    label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    singleLine = true,
+                )
+                ExposedDropdownMenu(
+                    expanded = profileExpanded,
+                    onDismissRequest = { profileExpanded = false },
+                    modifier = Modifier.outlinedMenuCard()
+                ) {
+                    profileLabels.forEachIndexed { index, label ->
+                        if (index > 0) MenuItemDivider()
+                        DropdownMenuItem(text = { Text(label) }, onClick = {
+                            profileExpanded = false
+                            val newProfileId = if (index == 0) -1 else profileIds.getOrElse(index - 1) { -1 }
+                            if (newProfileId != assignedId) {
+                                XServerDialogState.onControllerProfileChanged?.invoke(row.descriptor, newProfileId)
+                            }
+                        })
+                    }
                 }
             }
         }

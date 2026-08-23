@@ -5671,14 +5671,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Previously the early return for non-GL renderers left the profile dropdown empty.)
         ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
         ArrayList<String> profileNames = new ArrayList<>();
+        ArrayList<Integer> profileIds = new ArrayList<>(); // #345 F-D: parallel real ids for the Players dropdown
         int selectedPosition = 0;
         for (int i = 0; i < profiles.size(); i++) {
             ControlsProfile profile = profiles.get(i);
             if (inputControlsView.getProfile() != null && profile.id == inputControlsView.getProfile().id)
                 selectedPosition = i + 1;
             profileNames.add(profile.getName());
+            profileIds.add(profile.id);
         }
         ds.setInputProfiles(profileNames);
+        ds.setInputProfileIds(profileIds);
         ds.setSelectedProfileIdx(selectedPosition);
         ds.setShowTouchscreen(inputControlsView.isShowTouchscreenControls());
         ds.setTimeoutEnabled(preferences.getBoolean("touchscreen_timeout_enabled", false));
@@ -5773,7 +5776,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // are torn down + re-seated so the guest sees the move; OSC softReleases and only its slot
             // index changes) and the FULL override map is persisted per-container (shortcut-override
             // -else-container, same owner as the vibration/gyro writes above), so it survives relaunch.
-            final Runnable refreshPlayerSlots = () -> ds.setPlayerSlots(buildPlayerSlotRows());
+            final Runnable refreshPlayerSlots = () -> {
+                ds.setPlayerSlots(buildPlayerSlotRows());
+                pushControllerProfileAssignments(); // #345 F-D: keep the Profile dropdown mirror current
+            };
             refreshPlayerSlots.run();
             ds.onPlayerSlotsRefresh = refreshPlayerSlots;
             ds.onPlayerSlotChanged = (descriptor, desiredSlot) -> {
@@ -6101,16 +6107,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void showInputControlsDialog() {
         ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
         ArrayList<String> profileNames = new ArrayList<>();
+        ArrayList<Integer> profileIds = new ArrayList<>(); // #345 F-D: parallel real ids for the Players dropdown
         int selectedPosition = 0;
         for (int i = 0; i < profiles.size(); i++) {
             ControlsProfile profile = profiles.get(i);
             if (inputControlsView.getProfile() != null && profile.id == inputControlsView.getProfile().id)
                 selectedPosition = i + 1;
             profileNames.add(profile.getName());
+            profileIds.add(profile.id);
         }
 
         XServerDialogState ds = XServerDialogState.INSTANCE;
         ds.setInputProfiles(profileNames);
+        ds.setInputProfileIds(profileIds);
         ds.setSelectedProfileIdx(selectedPosition);
         ds.setShowTouchscreen(inputControlsView.isShowTouchscreenControls());
         ds.setTimeoutEnabled(preferences.getBoolean("touchscreen_timeout_enabled", false));
@@ -7938,7 +7947,18 @@ return true;
     // #333: rebuild the in-game Players tab list from live slot state. In a method (not the
     // fireControllerToast field initializer) to avoid an illegal forward reference to winHandler.
     private void refreshInGamePlayerSlotList() {
-        if (winHandler != null) XServerDialogState.INSTANCE.setPlayerSlots(buildPlayerSlotRows());
+        if (winHandler != null) {
+            XServerDialogState.INSTANCE.setPlayerSlots(buildPlayerSlotRows());
+            pushControllerProfileAssignments();
+        }
+    }
+
+    // #345 F-D: mirror the current per-controller profile assignments into XServerDialogState so the
+    // Players-tab Profile dropdown can show each controller's live assignment. Cheap (a small copy);
+    // called on the same refresh paths as the player-slot rows.
+    private void pushControllerProfileAssignments() {
+        XServerDialogState.INSTANCE.setControllerProfileAssignments(
+                new java.util.HashMap<>(controllerProfileMap));
     }
 
     private void updateAutoHideForControllers() {

@@ -358,6 +358,13 @@ object XServerDialogState {
     val playerSlots: StateFlow<List<PlayerSlotRow>> = _playerSlots
     fun setPlayerSlots(rows: List<PlayerSlotRow>) { _playerSlots.value = rows }
 
+    // #345 F-D: current per-controller controls-profile assignments {descriptor -> profileId} (-1/absent =
+    // Default). Seeded by the activity alongside the Players-tab row refresh so the per-controller Profile
+    // dropdown reflects the live assignment. Read-only mirror of XServerDisplayActivity.controllerProfileMap.
+    private val _controllerProfileAssignments = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val controllerProfileAssignments: StateFlow<Map<String, Int>> = _controllerProfileAssignments
+    fun setControllerProfileAssignments(map: Map<String, Int>) { _controllerProfileAssignments.value = map }
+
     fun interface PlayerSlotCallback { fun invoke(descriptor: String, desiredSlot: Int) }
     /** Fired when the user changes a device's slot selection. desiredSlot = 0..3 pin, SLOT_IGNORE, or
      *  SLOT_AUTO. The activity applies it live and re-seeds the list afterwards. */
@@ -604,6 +611,13 @@ object XServerDialogState {
     private val _inputProfiles      = MutableStateFlow<List<String>>(emptyList())
     val inputProfiles: StateFlow<List<String>> = _inputProfiles
 
+    // #345 F-D: the real ControlsProfile.id for each entry of inputProfiles, in the SAME order (index i
+    // of inputProfileIds is the id of the profile named at inputProfiles[i]). Populated on the same code
+    // path as inputProfiles so the Players-tab per-controller Profile dropdown can map a selected row to
+    // its profile id (onControllerProfileChanged needs the id, not a list index).
+    private val _inputProfileIds    = MutableStateFlow<List<Int>>(emptyList())
+    val inputProfileIds: StateFlow<List<Int>> = _inputProfileIds
+
     private val _selectedProfileIdx = MutableStateFlow(0)  // 0 = Disabled
     val selectedProfileIdx: StateFlow<Int> = _selectedProfileIdx
 
@@ -617,6 +631,7 @@ object XServerDialogState {
     val hapticsEnabled: StateFlow<Boolean> = _hapticsEnabled
 
     fun setInputProfiles(profiles: List<String>) { _inputProfiles.value = profiles }
+    fun setInputProfileIds(ids: List<Int>) { _inputProfileIds.value = ids }
     fun setSelectedProfileIdx(v: Int)  { _selectedProfileIdx.value = v }
     fun setShowTouchscreen(v: Boolean) { _showTouchscreen.value = v }
     fun setTimeoutEnabled(v: Boolean)  { _timeoutEnabled.value = v }
@@ -841,6 +856,7 @@ object XServerDialogState {
         _vibrationMode.value   = 1
         _vibrationIntensity.value = 100
         _playerSlots.value     = emptyList()
+        _controllerProfileAssignments.value = emptyMap()
         _gyroSupported.value   = false
         _gyroOrientationSupported.value = false
         _gyroEnabled.value     = true
@@ -856,6 +872,7 @@ object XServerDialogState {
         _logLines.value        = emptyList()
         _logPaused.value       = false
         _inputProfiles.value   = emptyList()
+        _inputProfileIds.value = emptyList()
         _selectedProfileIdx.value = 0
         _showTouchscreen.value = false
         _timeoutEnabled.value  = false

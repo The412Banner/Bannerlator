@@ -6185,3 +6185,11 @@ Branch `feat/controller-345-fa-spine` off main `a99705d4`. Clean feature-first r
 - #5 selector index sync in show/hideInputControls. WinHandler decisions FILE-log (gated LOG_DECISIONS=false).
 - NOT ported: donor resolvedAutoHideControlsOnPad (main's toggle-path kept). Dropped donor selected_profile_id/smart_default_touch_optout pref writes (inert callback).
 - **Confidence: reviewed-by-inspection only; NOT compiled, NOT device-proven.** CI = compile gate (watch: refreshPlayerSlots scope in new callbacks). Device-observe: 6b handheld-Ignore, SHARE+establish corner, motion via hidden-focused view.
+
+### 2026-08-22 (session END) — 🎮 #345 Phase F-A staged; ⏰ DEVICE TEST IN THE MORNING
+F-A CI-GREEN + staged, testing deferred to AM (user). Resume state:
+- Branch `feat/controller-345-fa-spine` @ `eba42cbf` off main `a99705d4` (main untouched). CI run 32614141068 = success.
+- Staged pubg APK: `/sdcard/Download/Bannerlator-ctrl345-fa-pubg.apk` sha `851a1052…`. USER installs (pubg = VERIFY-only, no pm install).
+- AM checklist (priority): ① built-in-pad "Ignore" → on-screen controls appear (THE reported #345 bug, AYANEO Pocket FIT); ② assign keyboard profile → applies at launch + no overlay pop; ③ stick/d-pad motion via hidden-focused view + Share corner.
+- Decisions file-log ships OFF (LOG_DECISIONS=false) — AYANEO logcat works so fine for us; only matters for reporter's Redmagic. logcat: `logcat -G 16M; logcat -c` then `-d -s WinHandler:D`. Built-in pad connect toggle: xpad bind/unbind (reversible). NEVER pkill -9 logcat.
+- DO NOT MERGE (F-A of A→B→C→D). Next after F-A proven = Phase F-B (mostly verify — mode selector largely pre-landed on main). Full detail: memory [[project_bannerlator_controller_345_reimpl_plan]].

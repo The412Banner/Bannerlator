@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-08-23 — 🛒🐛 **Lossless Scaling ships STALE Lossless.dll — depot-dedup fix**
+> Diagnosed on device (pubg variant, 3.0.0-pre2): Bannerlator's Steam-store install of Lossless
+> Scaling (993090) landed a **5.18 MB** `Lossless.dll`, while GameNative's install of the SAME public
+> build landed **7.17 MB**. Δ = +1.99 MiB = exactly SteamDB build 19476814's "Modified Lossless.dll"
+> on depot 993091. ROOT CAUSE: 993090 ships two overlapping content depots (993091 maintained, 993092
+> stale twin); JavaSteam's DepotDownloader de-dupes files by path and the first-processed depot wins —
+> 993092 pre-empted 993091's newer DLL, so lsfg-vk ran an outdated frame-gen model. Our own
+> `SteamDepotDownloader` overlap comment even asserted "993091 ≈ 993092" (false for this file).
+> FIX (branch `fix/lossless-993090-stale-depot-dedup`, off main `a99705d4`): add
+> `STALE_DUPLICATE_DEPOTS` (appId→depots to drop) and fold it into the existing explicit-depot
+> selection so a public-branch download of 993090 excludes 993092 → pulls only 993091 (+redist),
+> matching GameNative. 993091 alone = complete 315 MB install.
+> CI-pending, NOT device-proven. VERIFY: download Lossless on device → `Lossless.dll` == 7,521,280 B.
+> NOTE: existing stale installs must uninstall + re-download (selection-time fix only). File:
+> `SteamDepotDownloader.kt`.
+
 ## 2026-08-22 (follow-up 2) — 🛒☁️ **GOG auto-upload: double-fire guard + visible shutdown indicator**
 > Device re-test (overlay-fix build `17c6da8a`): freeze gone (only a small stutter), BUT (1) no upload
 > indicator showed on the "Shutting down…" screen, and (2) the debug log showed the GOG upload firing

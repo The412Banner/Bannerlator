@@ -51,6 +51,24 @@ object SteamDepotDownloader {
      *  (as a resume) before the failure is surfaced to the user. Covers the ~1h CM-logoff case. */
     private const val MAX_SESSION_RETRIES = 2
 
+    /**
+     * Overlapping-depot fix. A few Steam apps ship two+ content depots that carry the SAME file
+     * PATHS but DIFFERENT content — one maintained, one a stale leftover. JavaSteam's DepotDownloader
+     * de-dupes files by path across an app's depots; the first-processed depot wins, so a stale twin
+     * can pre-empt the maintained file and land an OUTDATED copy on disk (the engine then reports
+     * "downloaded 0 files" for the maintained depot, hiding it).
+     *
+     * Map of appId → depotIds to DROP from the download, so only the maintained depot is pulled
+     * (mirrors what GameNative fetches). Verified case:
+     *   993090 Lossless Scaling → drop 993092: its Lossless.dll lags depot 993091 by a build
+     *   (993091 got the +1.99 MiB update in build 19476814 → 7.17 MiB; 993092 still ships the older
+     *   5.18 MiB DLL). Keeping 993092 makes lsfg-vk run an outdated frame-gen DLL. 993091 alone is a
+     *   complete install (315 MB), so dropping the twin loses nothing.
+     */
+    private val STALE_DUPLICATE_DEPOTS: Map<Int, Set<Int>> = mapOf(
+        993090 to setOf(993092),
+    )
+
     // -------------------------------------------------------------------------
     // Active download tracking — used by UI to detect stale DL_DOWNLOADING rows
     // -------------------------------------------------------------------------
@@ -748,18 +766,29 @@ object SteamDepotDownloader {
         // letting it auto-resolve — so the unchecked DLC simply isn't downloaded. Default (nothing
         // excluded) → empty lists → engine auto-resolves exactly as before.
         val excludedDlc = try { SteamPrefs.getExcludedDlc(appId) } catch (_: Throwable) { emptySet() }
+        // Also drop this app's known stale-duplicate depots (see STALE_DUPLICATE_DEPOTS) so the engine
+        // can't de-dupe a maintained file down to its outdated twin (e.g. Lossless Scaling's 993092).
+        val staleDupeDepots = STALE_DUPLICATE_DEPOTS[appId].orEmpty()
+        val dropDepots = excludedDlc + staleDupeDepots
         val explicitDepots: List<Int>
         val explicitManifests: List<Long>
         // The explicit manifest gids come from our PUBLIC-branch DB rows, so they only apply to the
         // public branch. For any other branch, hand the engine EMPTY lists so it resolves that
-        // branch's own manifests (given AppItem.branch/branchPassword). The DLC opt-out therefore
-        // only takes effect on the public branch — matching where its manifest data is valid.
-        if (excludedDlc.isNotEmpty() && selectedBranch == "public") {
-            val kept = try { db.getDepotManifests(appId).filter { it.depotId !in excludedDlc && it.manifestId != 0L } }
+        // branch's own manifests (given AppItem.branch/branchPassword). The DLC opt-out and the
+        // stale-duplicate drop therefore only take effect on the public branch — matching where this
+        // manifest data is valid (and the branch these overlapping depots occur on).
+        if (dropDepots.isNotEmpty() && selectedBranch == "public") {
+            val kept = try { db.getDepotManifests(appId).filter { it.depotId !in dropDepots && it.manifestId != 0L } }
                        catch (_: Throwable) { emptyList() }
             explicitDepots   = kept.map { it.depotId }
             explicitManifests = kept.map { it.manifestId }
-            dlog("DLC opt-out: excluding ${excludedDlc.joinToString(",")} → downloading ${explicitDepots.size} depot(s) explicitly")
+            if (staleDupeDepots.isNotEmpty()) {
+                dlog("Stale-duplicate depot drop for app $appId: excluding ${staleDupeDepots.joinToString(",")}" +
+                     (if (excludedDlc.isNotEmpty()) " + DLC ${excludedDlc.joinToString(",")}" else "") +
+                     " → downloading ${explicitDepots.size} depot(s) explicitly")
+            } else {
+                dlog("DLC opt-out: excluding ${excludedDlc.joinToString(",")} → downloading ${explicitDepots.size} depot(s) explicitly")
+            }
         } else {
             explicitDepots = emptyList()
             explicitManifests = emptyList()

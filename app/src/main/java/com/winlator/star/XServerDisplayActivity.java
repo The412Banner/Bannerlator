@@ -6506,34 +6506,34 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     // --- Environment Variable Setup ---
+    // 2.8.1 structure restored: WRAPPER_VK_VERSION = chosenMinor + probePatch,
+    // unconditionally. The clamp introduced between 2.9 and 2.9.1 (WinNative PR
+    // #669) compared the user's chosen minor against the app-process probe's —
+    // but on a wrapper graphics driver the probe measures the SYSTEM ICD, not
+    // the Turnip the guest actually wraps. On low-tier Adreno (e.g. 610) the
+    // system blob reports Vulkan 1.0/1.1, so min(chosen, probe) collapsed
+    // WRAPPER_VK_VERSION below every DXVK's floor ("Device does not support
+    // Vulkan 1.3" on DXVK 2.x; "Skipping Vulkan 1.0 adapter" on Sarek) even
+    // though the guest-side wrapper enumerated the inner Turnip fine. The
+    // probe supplies ONLY the patch digit here, as in 2.8.1.
+    // The safe split fallback is retained so a non-dotted probe result
+    // ("Unknown") degrades to patch "0" instead of crashing the launch.
     String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
-    if (vulkanVersion == null) vulkanVersion = "1.4";
+    if (vulkanVersion == null) vulkanVersion = "1.3";
     String driverVkVersion = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this);
-    // The probe can return a short or non-dotted string for a driver it can't describe; the old
-    // direct-ICD turnip used to be special-cased here. Fall back rather than crash the launch on
-    // split(".")[2] — 1.3's patch level is the safe floor and the clamp below still applies.
     String[] driverVkParts = (driverVkVersion != null && driverVkVersion.split("\\.").length >= 3)
         ? driverVkVersion.split("\\.")
         : new String[] { "1", "3", "0" };
     String vulkanVersionPatch = driverVkParts[2];
-    // Never advertise a Vulkan minor the driver does not implement. We append the DRIVER's patch
-    // level to the USER's chosen minor, so an unclamped "1.4" pick on a 1.3.289 driver would export
-    // WRAPPER_VK_VERSION=1.4.289 and lie to DXVK/VKD3D about what the ICD actually supports.
-    // Ported from WinNative PR #669.
-    try {
-        int driverMinor = Integer.parseInt(driverVkParts[1]);
-        int chosenMinor = Integer.parseInt(vulkanVersion.split("\\.")[1]);
-        if (driverMinor < chosenMinor) {
-            Log.i("XServerVulkan", "Clamping Vulkan " + vulkanVersion + " to driver-supported "
-                + driverVkParts[0] + "." + driverVkParts[1]);
-            vulkanVersion = driverVkParts[0] + "." + driverVkParts[1];
-        }
-    } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-        Log.w("XServerVulkan", "Vulkan version clamp skipped — unparseable driver='"
-            + driverVkVersion + "' chosen='" + vulkanVersion + "'");
-    }
     vulkanVersion = vulkanVersion + "." + vulkanVersionPatch;
+    Log.i("XServerVulkan", "WRAPPER_VK_VERSION=" + vulkanVersion
+        + " driverId=" + adrenoToolsDriverId + " graphicsDriver=" + graphicsDriver
+        + " driverVkVersion=" + driverVkVersion);
     envVars.put("WRAPPER_VK_VERSION", vulkanVersion);
+    if (wineDebugWriter != null) {
+        wineDebugWriter.println("XServerVulkan: WRAPPER_VK_VERSION=" + vulkanVersion
+            + " driverVkVersion=" + driverVkVersion + " driverId=" + adrenoToolsDriverId);
+    }
 
     String blacklistedExtensions = graphicsDriverConfig.get("blacklistedExtensions");
     envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions != null ? blacklistedExtensions : "");

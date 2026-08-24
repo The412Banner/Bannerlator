@@ -310,12 +310,20 @@ void VulkanRendererContext::createLogicalDevice() {
       for (auto& e:av) {
           if (strcmp(e.extensionName,"VK_EXT_filter_cubic")==0
            || strcmp(e.extensionName,"VK_IMG_filter_cubic")==0) cubicSupported=true;
+          // VK_EXT_queue_family_foreign lets us ACQUIRE an externally-written AHB
+          // (guest DXVK/vkd3d DRI3 buffer, incl. lsfg-vk's generated frames) with a
+          // real FOREIGN->graphics ownership transfer instead of the content-discarding
+          // UNDEFINED + VK_QUEUE_FAMILY_IGNORED transition (see the AHB barrier in
+          // recordCmdBuf). Opt-in: only used if the host driver advertises it.
+          if (strcmp(e.extensionName,VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME)==0)
+              queueFamilyForeignSupported=true;
       } }
     std::vector<const char*> extList = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME
     };
     if (cubicSupported) extList.push_back("VK_EXT_filter_cubic");
+    if (queueFamilyForeignSupported) extList.push_back(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME);
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
     ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
@@ -983,7 +991,23 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         if (d.isAHB && d.needsTransition) {
             VkImageMemoryBarrier b{}; b.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             b.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+            // This AHB was written by a foreign engine (guest DXVK/vkd3d via DRI3, which
+            // includes lsfg-vk's generated frames). Acquire it with a real FOREIGN->graphics
+            // queue-family ownership transfer so the driver imports the external contents,
+            // rather than assuming it already owned the image and discarding them: UNDEFINED
+            // oldLayout + VK_QUEUE_FAMILY_IGNORED tells the driver "same-queue image, contents
+            // don't matter", letting a tiled/compressed driver representation win over the
+            // just-written external linear data -> a black generated frame. oldLayout stays
+            // UNDEFINED (the AHB carries no Vulkan layout; the FOREIGN acquire is what makes
+            // the external write authoritative). Gated on VK_EXT_queue_family_foreign; if the
+            // host driver lacks it, fall back to exactly the previous IGNORED transition so
+            // nothing regresses on drivers without the extension.
+            if (queueFamilyForeignSupported) {
+                b.srcQueueFamilyIndex=VK_QUEUE_FAMILY_FOREIGN_EXT;
+                b.dstQueueFamilyIndex=graphicsQueueFamilyIndex;
+            } else {
+                b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+            }
             b.image=d.img; b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
             b.srcAccessMask=0; b.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
             ahbTransitions.push_back(b);

@@ -1,5 +1,34 @@
 # Star-Compose — Progress Log
 
+## 2026-08-24 — 🖥️🎞️ **LSFG black-frame flicker: foreign-queue AHB acquire (candidate 3)**
+> User report: enabling **LSFG (lsfg-vk frame-gen)** on 3.0.0 produces a **black on/off flicker**,
+> reproducing at **2× / 3× / 4×** (multiplier-independent). Diagnosed from the user's 40s 1080p screen
+> recording (DiRT-style rally title, Adreno 750): `ffmpeg blackdetect` found **27 single full-black frames
+> confined to exactly the LSFG-ON window (13.79s→27.43s), zero before/after** — a clean A/B proving LSFG
+> is the cause; ~2/sec avg, bursting 6/sec, motion-correlated; the perf-HUD overlay vanishes on the black
+> frame too → the **whole presented image** is black (the generated frame itself), not just the game layer.
+> ROOT-CAUSE TRACE (graphics-vulkan-engineer, read-only): the host Vulkan compositor consumes each guest
+> AHB with **no producer→consumer sync**. Two mechanisms could blank a generated frame — (2) a present
+> **timing race** (compositor samples before the interpolation compute retires) and (3) **content discard**
+> (`recordCmdBuf` AHB barrier used `oldLayout=UNDEFINED` + `srcQ=dstQ=VK_QUEUE_FAMILY_IGNORED`, telling the
+> driver "same-queue image, contents don't matter" → a tiled/compressed driver rep can win over the
+> just-written external linear data → black, fires on **first use of each fresh AHB**, which is exactly how
+> lsfg-vk delivers non-pool-cycled generated frames — see the 4-cap comment at `VulkanRendererContext.cpp:1776`).
+> **Candidate 2 = BLOCKED**: the guest (DXVK/vkd3d DRI3 present) exports no GPU-completion acquire sync-fd to
+> our pure-Java X server today; wiring it needs guest-side explicit sync + `VK_KHR_external_semaphore_fd` +
+> a hot-path unlock/relock lifecycle change (all games). Deferred.
+> **Candidate 3 = SHIPPED HERE**: `recordCmdBuf` now does a real **`VK_QUEUE_FAMILY_FOREIGN_EXT` → graphics**
+> ownership acquire on the fresh-AHB barrier so the driver imports the external contents (`oldLayout` stays
+> `UNDEFINED` — AHB carries no Vulkan layout; the FOREIGN src is what makes the external write authoritative).
+> Gated on **`VK_EXT_queue_family_foreign`** (detected + enabled in `createLogicalDevice()`; Adreno 750's
+> Qualcomm driver + adrenotools/Turnip expose it); host driver without it → **exact previous IGNORED path**,
+> so no regression on other drivers, and pooled non-FG DXVK buffers (acquired once then sampled) are unchanged.
+> 3 hunks: `VulkanRendererContext.{h,cpp}` only — no Java/JNI/ABI, no present-mode change (mailbox untouched;
+> the FIFO experiment stays parked). Branch `fix/lsfg-black-frame-acquire-fence` off `origin/main` (`c173acb2`).
+> **Confidence: fixes the content-DISCARD mechanism only — decisive on-device A/B needed** (same 40s toggle,
+> Adreno 750): flicker gone → discard bug, ship; reduced-not-gone → partly timing, justifies candidate 2;
+> no change → pure timing, go to candidate 2. CI build pending; NOT device-proven.
+
 ## 2026-08-24 — 🐛🎮 **Shortcut editor: WOWBox64 "download more" opened Box64 sheet (arm64ec)**
 > On an **arm64ec** container, the per-game shortcut editor's **Advanced** tab correctly labels the x86
 > layer **WOWBox64** (selector, version list, preset — `ShortcutsScreen.kt:5993-5996`, `:7549`), but the

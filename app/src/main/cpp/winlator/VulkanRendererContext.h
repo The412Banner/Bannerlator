@@ -293,6 +293,10 @@ private:
     bool swapRB = false;
     float maxAnisotropy           = 1.0f;
     bool  cubicSupported          = false;
+    // VK_EXT_queue_family_foreign present on the host device: enables a proper
+    // FOREIGN->graphics ownership acquire for externally-written AHB windows
+    // (guest DXVK/vkd3d/lsfg-vk frames) instead of a content-discarding transition.
+    bool  queueFamilyForeignSupported = false;
     VkPhysicalDeviceMemoryProperties memProperties{};
     VkPresentModeKHR requestedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
     uint32_t graphicsQueueFamilyIndex = 0;

@@ -843,6 +843,8 @@
     <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
     <string name="fg_performance_mode">Performance mode</string>
     <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>
+    <string name="fg_fp16">FP16</string>
+    <string name="fg_fp16_hint">Half-precision shaders — faster on most Adreno GPUs. Disable if you see artifacting. Also toggleable live from the in-game side menu.</string>
     <string name="lsfg_auto_enable">Auto-enable at launch</string>
     <string name="lsfg_auto_enable_hint">Starts frame generation live at your saved multiplier from launch, instead of off. Leave off to load the layer but enable it per session from the in-game side menu.</string>
     <string name="fps_limiter">FPS Limiter</string>

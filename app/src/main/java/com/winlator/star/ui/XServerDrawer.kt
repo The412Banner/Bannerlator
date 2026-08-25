@@ -1245,13 +1245,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
         }
 
         FgMultiplierButtons(fgMult, engine) { newMult ->
-            val wasOff = fgMult == 0
             fgMult = newMult; applyFg()
-            // Turning FG on: win-fg pulses a soft bg/fg reset so its optical flow starts clean, not
-            // artifacty. lsfg-vk instead does a FULL surface-teardown reset with a Resume prompt —
-            // driven by onBionicFgConfigChange in the activity (the device-proven fix for its
-            // black-frame flicker) — so it must NOT also fire the soft pulse here.
-            if (engine == "bionic" && wasOff && newMult >= 2) state.onFgResetPulse?.run()
+            // Both engines now do the SAME full surface-teardown reset on an Off/On change (real
+            // teardown + Resume overlay + VRR release→re-negotiate), driven by onBionicFgConfigChange ->
+            // maybeTriggerFgReset in the activity — win-fg over-queues the host compositor on a toggle
+            // exactly like lsfg-vk. Nothing to fire here: applyFg() wrote the conf and the activity
+            // handles the reset for both engines.
         }
 
         // Interpolation model, win-fg only. The layer rebuilds its framegen context when the
@@ -1272,7 +1271,10 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 )
                 FgModelButtons(fgModel) { newModel ->
                     fgModel = newModel; applyFg()
-                    // Model switch while FG is on -> same bg/fg reset pulse.
+                    // Model switch while FG is on -> full presentation reset. onFgResetPulse is now
+                    // repointed to the same triggerFgPresentationReset lsfg uses. A model switch keeps
+                    // the effective level, so maybeTriggerFgReset won't fire for it; this drives the
+                    // reset for the model case (so win-fg's optical flow restarts clean on the new model).
                     if (fgMult >= 2) state.onFgResetPulse?.run()
                 }
             }

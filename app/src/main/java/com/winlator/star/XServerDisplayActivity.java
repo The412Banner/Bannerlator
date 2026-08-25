@@ -1528,8 +1528,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // layer) and persist to the container. Only effective when the layer is loaded this session
         // (bionicFgActive). NOTE: initial drawer state is synced after `container` is loaded (below);
         // this callback is lazy so it safely captures the field.
-        // Auto bg/fg pulse to reset win-fg cleanly on an FG toggle-on / model change.
-        state.onFgResetPulse = () -> runOnUiThread(this::pulseFgReset);
+        // Win-fg model switch → the SAME full presentation reset lsfg uses (real surface teardown +
+        // Resume overlay + VRR release→re-negotiate), not the old soft pulse. On/Off is driven through
+        // maybeTriggerFgReset in onBionicFgConfigChange below; this callback covers the model change,
+        // which keeps the effective level (so maybeTriggerFgReset would not fire) but still needs a
+        // clean restart so win-fg's optical flow doesn't come up artifacty on the new model.
+        state.onFgResetPulse = () -> runOnUiThread(this::triggerFgPresentationReset);
         state.onBionicFgConfigChange = () -> {
             XServerDrawerState s = XServerDrawerState.INSTANCE;
             if (!s.getBionicFgActive().getValue()) return; // layer not loaded -> needs a relaunch
@@ -1581,6 +1585,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // Same present-mode override as lsfg: bionic-fg inserts extra presents too, so force
             // mailbox while multiplying (FIFO backpressure would strangle the generated frames).
             applyEffectivePresentMode();
+            // Win-fg Off/On change → the SAME full presentation reset as lsfg (real surface teardown +
+            // Resume overlay + VRR release→re-negotiate). win-fg over-queues the host compositor on a
+            // toggle exactly like lsfg (spurty FPS drops that only a genuine bg/fg cleared), so give it
+            // the identical deterministic reset. Fires once per effective-level change (0=off, 2=on);
+            // flow-scale edits keep the level, so they never reset. Model switches reset via
+            // onFgResetPulse (repointed to the same triggerFgPresentationReset) since they keep the level.
+            maybeTriggerFgReset(mult >= 2 ? mult : 0);
         };
         // Live Present Mode selector (Graphics tab). The user's pick is persisted (per-game shortcut
         // override if present, else the container) then applied live through the same choke point as the
@@ -3651,32 +3662,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (externalDisplayController != null) externalDisplayController.setPaused(paused);
     }
 
-    // Brief automatic "background + foreground" pulse used to reset frame generation on an FG
-    // toggle-on / model change. A bare SIGSTOP/SIGCONT is not enough — win-fg comes up artifacty
-    // because its optical flow starts on a moving frame pair. Replicating the FULL bg/fg cycle
-    // (pause the X server + render view, freeze the guest, then resume all of it ~0.5s later) makes
-    // the guest go fully still so win-fg restarts from a near-zero-motion pair. Does NOT flip
-    // isPaused (no pause UI, no user tap needed); debounced; bails if a real pause is active.
-    private boolean fgResetPulseInProgress = false;
-    private void pulseFgReset() {
-        if (fgResetPulseInProgress || isPaused || environment == null) return;
-        fgResetPulseInProgress = true;
-        // --- background half (mirrors the onPause path) ---
-        environment.onPause();
-        if (xServerView != null) xServerView.onPause();
-        ProcessHelper.pauseAllWineProcesses();
-        // --- resume half ~0.5s later (mirrors the onResume path) ---
-        handler.postDelayed(() -> {
-            if (!isPaused) {
-                if (xServerView != null) xServerView.onResume();
-                environment.onResume();
-                ProcessHelper.resumeAllWineProcesses();
-                reapplyVrr();
-            }
-            fgResetPulseInProgress = false;
-        }, 500);
-    }
-
     // === Frame-gen change → full presentation reset (LSFG black-frame flicker fix) ================
     // Device-proven: with lsfg-vk generating, a plain swapchain recreate on the SAME surface (which
     // the conf.toml rewrite already triggers) does NOT clear the black-frame flicker — only a real
@@ -4814,6 +4799,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             false,
                             0,
                             resolvedFrameGenModel());
+                    // Baseline the FG-reset tracker: win-fg launches Off (multiplier 0 above), so the
+                    // first in-game On fires the full presentation reset (mirrors the lsfg launch seed).
+                    lastCommittedFgLevel = 0;
                 }
             }
             } else if (!"off".equals(resolvedFrameGenEngine())) {

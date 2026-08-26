@@ -52,14 +52,34 @@ public final class WinFgCapture {
     public static final String PREF_CONSENT_VERSION = "winfg_capture_consent_version";
     /** Epoch-ms timestamp of that agreement. */
     public static final String PREF_CONSENT_TS      = "winfg_capture_consent_ts";
+    /** Capture resolution selection (default {@link #RES_MATCH}). */
+    public static final String PREF_CAPTURE_RES     = "winfg_capture_res";
 
     // ── win-fg layer contract (reconcile these with the capture .so) ───────────
     public static final String ENV_CAPTURE         = "WIN_FG_CAPTURE";          // "1" while recording
     public static final String ENV_CAPTURE_DIR     = "WIN_FG_CAPTURE_DIR";      // output directory
     public static final String ENV_CAPTURE_CONSENT = "WIN_FG_CAPTURE_CONSENT";  // compact consent record
+    public static final String ENV_CAPTURE_W       = "WIN_FG_CAPTURE_W";        // target box width  (px)
+    public static final String ENV_CAPTURE_H       = "WIN_FG_CAPTURE_H";        // target box height (px)
     /** conf.toml gate values (mirror the env). */
     public static final String CONF_CAPTURE_ON  = "on";
     public static final String CONF_CAPTURE_OFF = "off";
+    /** conf.toml resolution keys (mirror {@link #ENV_CAPTURE_W}/{@link #ENV_CAPTURE_H}). */
+    public static final String CONF_CAPTURE_WIDTH  = "capture_width";
+    public static final String CONF_CAPTURE_HEIGHT = "capture_height";
+
+    // ── Capture resolution options (global; how the layer sizes the recorded frame) ──
+    /** Record at the session's actual resolved render size — native, no downscale (DEFAULT). */
+    public static final String RES_MATCH = "match";
+    /** Force a 1280×720 target box. */
+    public static final String RES_720P  = "720p";
+    /** Force a 1920×1080 target box. */
+    public static final String RES_1080P = "1080p";
+    public static final String DEFAULT_CAPTURE_RES = RES_MATCH;
+    // Fixed target boxes for the preset options. The capture .so downscales aspect-preserving to the
+    // box and NEVER upscales, so a preset larger than the native frame is effectively native.
+    private static final int RES_720P_W  = 1280, RES_720P_H  = 720;
+    private static final int RES_1080P_W = 1920, RES_1080P_H = 1080;
 
     /**
      * The versioned consent terms identifier. Maps to {@code R.string.winfg_capture_consent_v1} — the
@@ -84,6 +104,38 @@ public final class WinFgCapture {
     /** Turn capture off. (Enabling goes through {@link #recordConsentAndEnable} — consent is mandatory.) */
     public static void disable(Context c) {
         prefs(c).edit().putBoolean(PREF_ENABLED, false).apply();
+    }
+
+    /** The persisted capture-resolution selection ({@link #RES_MATCH}/{@link #RES_720P}/{@link #RES_1080P}). */
+    public static String captureRes(Context c) {
+        String r = prefs(c).getString(PREF_CAPTURE_RES, DEFAULT_CAPTURE_RES);
+        return (r == null || r.isEmpty()) ? DEFAULT_CAPTURE_RES : r;
+    }
+
+    /** Persist the capture-resolution selection (global, like the toggle). */
+    public static void setCaptureRes(Context c, String res) {
+        prefs(c).edit().putString(PREF_CAPTURE_RES, res).apply();
+    }
+
+    /**
+     * Resolve the capture target box (width, height) for the current selection:
+     * <ul>
+     *   <li>{@link #RES_720P}  → 1280×720</li>
+     *   <li>{@link #RES_1080P} → 1920×1080</li>
+     *   <li>{@link #RES_MATCH} (default) → the session's actual resolved render size
+     *       ({@code gameW}×{@code gameH}) so capture is native (no downscale, best domain match);
+     *       falls back to 720p when the render size can't be resolved (either dim ≤ 0).</li>
+     * </ul>
+     * The capture .so downscales aspect-preserving to this box and never upscales, so passing the
+     * native size records at full source resolution.
+     */
+    public static int[] resolveCaptureSize(Context c, int gameW, int gameH) {
+        String res = captureRes(c);
+        if (RES_720P.equals(res))  return new int[]{ RES_720P_W,  RES_720P_H  };
+        if (RES_1080P.equals(res)) return new int[]{ RES_1080P_W, RES_1080P_H };
+        // RES_MATCH (default): native render size, or fall back to 720p if it can't be resolved.
+        if (gameW > 0 && gameH > 0) return new int[]{ gameW, gameH };
+        return new int[]{ RES_720P_W, RES_720P_H };
     }
 
     /** The stable random anonymous contribution id (no PII), created once per install and reused forever. */
@@ -181,14 +233,21 @@ public final class WinFgCapture {
      * actually being loaded ({@code WIN_FG_ENABLE=1}) — capture piggy-backs on that layer, so it only
      * makes sense with the win-fg frame-gen engine selected. No env is set (and nothing is written)
      * when the toggle is off, so an ordinary launch is untouched. Returns true when capture was armed.
+     *
+     * <p>{@code gameW}/{@code gameH} are the session's actual resolved render size (from the X server's
+     * screen info); they only matter for the {@link #RES_MATCH} selection — see
+     * {@link #resolveCaptureSize(Context, int, int)}.
      */
-    public static boolean applyLaunchEnv(Context c, EnvVars envVars) {
+    public static boolean applyLaunchEnv(Context c, EnvVars envVars, int gameW, int gameH) {
         if (!isEnabled(c)) return false;
         ensureCaptureDir();
         writeConsentJson(c); // refresh in case storage perm was granted / the dir was cleared since agreement
         envVars.put(ENV_CAPTURE, "1");
         envVars.put(ENV_CAPTURE_DIR, captureDir().getAbsolutePath());
         envVars.put(ENV_CAPTURE_CONSENT, consentEnvValue(c));
+        int[] wh = resolveCaptureSize(c, gameW, gameH);
+        envVars.put(ENV_CAPTURE_W, Integer.toString(wh[0]));
+        envVars.put(ENV_CAPTURE_H, Integer.toString(wh[1]));
         return true;
     }
 }

@@ -135,6 +135,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // win-fg training capture (global opt-in; consent-gated). Enabling opens the consent dialog.
     var captureEnabled by remember { mutableStateOf(WinFgCapture.isEnabled(context)) }
     var showCaptureConsent by remember { mutableStateOf(false) }
+    // Capture resolution selection (global, like the toggle) + the contributor help dialog.
+    var captureRes by remember { mutableStateOf(WinFgCapture.captureRes(context)) }
+    var showCaptureHelp by remember { mutableStateOf(false) }
 
     var winlatorPath by remember { mutableStateOf(
         run {
@@ -1015,6 +1018,11 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     }
                 )
                 Text("Contribute frame-gen training capture", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                // "?" — opens the contributor recording guide (covers the toggle + resolution below).
+                IconButton(onClick = { showCaptureHelp = true }) {
+                    Icon(Icons.Default.Help, "How to record good training data", tint = MaterialTheme.colorScheme.onSurface)
+                }
             }
             if (captureEnabled) {
                 Text(
@@ -1022,6 +1030,37 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     color = Color(0xFF4CAF50), fontSize = 12.sp, // intentional: green = active/success status
                     modifier = Modifier.padding(top = 4.dp)
                 )
+            }
+
+            // ── Capture resolution (global; how the layer sizes the recorded frame) ──
+            Spacer(Modifier.height(8.dp))
+            Text("Capture resolution", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(
+                "\"Match game\" records at your actual play resolution (native, no downscale — best data). " +
+                "720p / 1080p force a fixed size. A mix across contributors is ideal.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = captureRes == WinFgCapture.RES_MATCH,
+                    onClick = { captureRes = WinFgCapture.RES_MATCH; WinFgCapture.setCaptureRes(context, WinFgCapture.RES_MATCH) },
+                )
+                Text("Match game (native)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = captureRes == WinFgCapture.RES_720P,
+                    onClick = { captureRes = WinFgCapture.RES_720P; WinFgCapture.setCaptureRes(context, WinFgCapture.RES_720P) },
+                )
+                Text("720p (1280×720)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = captureRes == WinFgCapture.RES_1080P,
+                    onClick = { captureRes = WinFgCapture.RES_1080P; WinFgCapture.setCaptureRes(context, WinFgCapture.RES_1080P) },
+                )
+                Text("1080p (1920×1080)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
         }
 
@@ -1084,6 +1123,41 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             },
             dismissButton = {
                 TextButton(onClick = { showCaptureConsent = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // ── win-fg training-capture contributor guide ("?" help dialog) ──
+    if (showCaptureHelp) {
+        AlertDialog(
+            onDismissRequest = { showCaptureHelp = false },
+            title = { Text("How to record good training data") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    val onSurface = MaterialTheme.colorScheme.onSurface
+                    @Composable fun Bullet(lead: String, body: String) {
+                        Text("• $lead $body", color = onSurface, fontSize = 13.sp,
+                            modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    Bullet("What this does:", "records raw in-game frames while you play, to help train an " +
+                        "open, clean frame-generation model. Off by default; it lowers FPS while recording. " +
+                        "Files save to Download/win-fg for you to share.")
+                    Bullet("Best games to record:", "ones with smooth, CONTINUOUS motion — 3D games, racing, " +
+                        "action, anything with camera movement. These teach real interpolation.")
+                    Bullet("Games to avoid:", "menu-heavy screens, 2D games where sprites snap/teleport, and " +
+                        "heavy particle-storm / rapid-flashing effects (they're un-interpolatable noise).")
+                    Bullet("Cap your FPS", "to a stable value (e.g. 30 or 60) so frame timing is even — this " +
+                        "makes much cleaner training data.")
+                    Bullet("Resolution:", "\"Match game\" is best (records at your actual play resolution); pick " +
+                        "720p or 1080p to force one. A mix across contributors is ideal.")
+                    Bullet("Variety helps more than length", "— a few minutes each across several different " +
+                        "games beats a long session of one.")
+                    Bullet("Privacy:", "only the game's rendered frames are captured — NO HUD/overlay, NO " +
+                        "personal info, NO account data, NO audio. The record is anonymous.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCaptureHelp = false }) { Text("Close") }
             }
         )
     }

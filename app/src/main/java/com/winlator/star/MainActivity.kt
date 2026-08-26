@@ -72,6 +72,7 @@ import com.winlator.star.BuildConfig
 import com.winlator.star.core.ImageUtils
 import com.winlator.star.core.PreloaderDialog
 import com.winlator.star.core.WineThemeManager
+import com.winlator.star.core.WinFgDiag
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.store.AmazonMainActivity
 import com.winlator.star.store.EpicMainActivity
@@ -299,6 +300,13 @@ class MainActivity : AppCompatActivity() {
         validRouteOrNull(intent.getStringExtra(EXTRA_OPEN_SCREEN))?.let {
             pendingRoute.value = it
         }
+    }
+
+    override fun onDestroy() {
+        // Kill any armed win-fg diagnostic-log capture (logcat subprocess) so it can't outlive the app.
+        // The game (XServerDisplayActivity) shares this process, so a mid-play capture survives until here.
+        WinFgDiag.stopDiagLog(this)
+        super.onDestroy()
     }
 
     /** Only accepts known drawer routes so a bad extra can't crash navigation. */

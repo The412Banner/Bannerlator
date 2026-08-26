@@ -1291,4 +1291,14 @@ E.g. <b>META</b> for <i>META key</i>, \n
         buffer</b> rows below instead.<br /><br />
         Change those to adjust ALSA\'s delay. This slider is greyed out here because nothing reads it.
     ]]></string>
+
+    <!--
+        Versioned win-fg training-capture consent terms.
+        WinFgCapture.CONSENT_VERSION ("winfg-capture-consent-v1") maps to THIS exact wording. When the
+        terms change, add a new string (…_v2) AND bump the constant together, so any embedded
+        consent_version always resolves to known terms. Keep it plain text (rendered in a Compose
+        Text) — no HTML markup.
+    -->
+    <string name="winfg_capture_consent_title">Contribute frame-gen training capture</string>
+    <string name="winfg_capture_consent_v1">Turning this on records raw in-game frames while you play, to help train an open, clean frame-generation model. Please read this before enabling.\n\nWHAT IS CAPTURED\n• Only the game\'s raw rendered frames, straight from the game, while you play.\n\nWHAT IS NOT CAPTURED\n• NO personal information of any kind.\n• NO account, login, name, or email.\n• NO Android system data.\n• NO audio.\n• NO full-screen or system video — nothing outside the game\'s rendered image, and no HUD or overlay.\n\nANONYMOUS BY DESIGN\n• Each capture file carries a small consent record that is anonymous: only a random anonymous ID, the terms version, a timestamp, and the app version (and optionally your device model, for dataset-diversity stats only). It cannot identify you.\n\nWHERE IT IS SAVED\n• Files are written to the Download/win-fg folder on this device, for you to share with us.\n\nGOOD TO KNOW\n• Recording lowers your FPS while it runs.\n• You can turn this off at any time from Settings.\n\nBy ticking \"I understand\" below you agree that the captured game frames may be used to train the model, and you confirm this is willingly created and shared.</string>
 </resources>

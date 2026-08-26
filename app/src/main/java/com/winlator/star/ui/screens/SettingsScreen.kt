@@ -85,6 +85,7 @@ import com.winlator.star.core.AppUtils
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.PreloaderDialog
 import com.winlator.star.core.UpdateManager
+import com.winlator.star.core.WinFgCapture
 import com.winlator.star.fexcore.FEXCoreEditPresetDialog
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
@@ -131,6 +132,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     var openWithBrowser by remember { mutableStateOf(prefs.getBoolean("open_with_android_browser", false)) }
     var shareClipboard by remember { mutableStateOf(prefs.getBoolean("share_android_clipboard", false)) }
     var downloadableContentsURL by remember { mutableStateOf(prefs.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES) ?: ContentsManager.REMOTE_PROFILES) }
+    // win-fg training capture (global opt-in; consent-gated). Enabling opens the consent dialog.
+    var captureEnabled by remember { mutableStateOf(WinFgCapture.isEnabled(context)) }
+    var showCaptureConsent by remember { mutableStateOf(false) }
 
     var winlatorPath by remember { mutableStateOf(
         run {
@@ -979,6 +983,48 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
         }
 
+        // ── Developer: frame-gen training capture (crowdsourced win-fg dataset) ──
+        FieldSetLabel("Developer — Frame-gen training capture")
+        FieldSet {
+            Text(
+                "Help improve Bannerlator's open frame generation. When on, the win-fg frame-gen layer " +
+                "records raw in-game frames while you play and saves them to Download/win-fg for you to " +
+                "share with us. It records only the game's rendered image — no personal info, no " +
+                "account, no Android system data, no audio. It lowers FPS while recording.",
+                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Text(
+                "Only records when a game's Frame Generation engine is set to win-fg. It does not force " +
+                "frame generation on.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = captureEnabled,
+                    onCheckedChange = { want ->
+                        if (want) {
+                            // Consent is mandatory — never enable directly; open the consent dialog.
+                            showCaptureConsent = true
+                        } else {
+                            WinFgCapture.disable(context)
+                            captureEnabled = false
+                            AppUtils.showToast(context, "Frame-gen training capture off")
+                        }
+                    }
+                )
+                Text("Contribute frame-gen training capture", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            if (captureEnabled) {
+                Text(
+                    "Recording is ON — files saved to Download/win-fg.",
+                    color = Color(0xFF4CAF50), fontSize = 12.sp, // intentional: green = active/success status
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+
         // ── Performance (power-user toggles) ─────────────────────────────
         FieldSetLabel("Performance")
         FieldSet {
@@ -1006,6 +1052,40 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         ) {
             PerformanceSettingsScreen(onClose = { showPerformanceMenu = false })
         }
+    }
+
+    // ── win-fg training-capture consent (gates enabling; needs the "I understand" tick) ──
+    if (showCaptureConsent) {
+        var consentChecked by remember { mutableStateOf(false) }
+        val consentText = remember { context.getString(R.string.winfg_capture_consent_v1) }
+        AlertDialog(
+            onDismissRequest = { showCaptureConsent = false },
+            title = { Text(context.getString(R.string.winfg_capture_consent_title)) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(consentText, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = consentChecked, onCheckedChange = { consentChecked = it })
+                        Text("I understand", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = consentChecked, // Enable stays disabled until "I understand" is ticked.
+                    onClick = {
+                        WinFgCapture.recordConsentAndEnable(context)
+                        captureEnabled = true
+                        showCaptureConsent = false
+                        AppUtils.showToast(context, "Frame-gen training capture enabled")
+                    }
+                ) { Text("Enable") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCaptureConsent = false }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showLogManager) {

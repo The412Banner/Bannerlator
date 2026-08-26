@@ -192,6 +192,10 @@ internal object ExeShortcutImporter {
             append("StartupWMClass=explorer\n")
             append("\n")
             append("[Extra Data]\n")
+            // Tag user-added games (the "+" button and File Manager → Add as shortcut both funnel
+            // here) so the Games list can show a CUSTOM origin badge, mirroring how the store paths
+            // stamp storeSource=steam/epic. Store installs use their own writers, never this one.
+            append("storeSource=custom\n")
         }
         shortcutFile.writeText(content)
         Log.d(TAG, "Wrote EXE shortcut: ${shortcutFile.path} -> $winPath ($exeFile)")

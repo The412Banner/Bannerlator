@@ -4638,6 +4638,7 @@ private fun ShortcutItemLayoutL(
                     showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
                     showEos = rememberEosBadge(shortcut),
                     showGog = remember(shortcut) { isGogShortcut(shortcut) },
+                    showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
                     modifier = Modifier.padding(start = 6.dp),
                 )
             }
@@ -4896,6 +4897,7 @@ private fun ShortcutGridItem(
             showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
             showEos = rememberEosBadge(shortcut),
             showGog = remember(shortcut) { isGogShortcut(shortcut) },
+            showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(6.dp),
@@ -8022,6 +8024,28 @@ private fun SteamBadge(modifier: Modifier = Modifier) {
 }
 
 /**
+ * Marks a user-added game — imported via the "+" button or File Manager → Add as shortcut — as
+ * distinct from a store-library game. Teal pill, sized like the STEAM/EPIC/EOS/GOG pills. See
+ * [isCustomOriginShortcut] for the detection rule.
+ */
+@Composable
+private fun CustomBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF2A8C82))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "CUSTOM",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+/**
  * True when a shortcut is a GOG game. GOG shortcuts are UNTAGGED (StarLaunchBridge stamps no
  * `storeSource` for the legacy GOG overload), so the load-bearing signal is the exec path living
  * under `gog_games` (installs at `imagefs/gog_games/…` → `Z:\gog_games\…`); the `storeSource==gog`
@@ -8030,6 +8054,21 @@ private fun SteamBadge(modifier: Modifier = Modifier) {
 private fun isGogShortcut(shortcut: Shortcut): Boolean =
     shortcut.getExtra("storeSource") == "gog" ||
         (shortcut.path?.contains("gog_games", ignoreCase = true) == true)
+
+/**
+ * True for a user-added game (the "+" button or File Manager → Add as shortcut). New manual imports
+ * are tagged `storeSource=custom` (ExeShortcutImporter.writeExeShortcut); older untagged imports are
+ * inferred as custom when they match NO recognized store — no store tag, and not on the legacy
+ * `steam_games`/`gog_games` exec paths. Any shortcut carrying a non-custom store tag (steam/epic/gog/…)
+ * is excluded, so store-library games never show the CUSTOM badge.
+ */
+private fun isCustomOriginShortcut(shortcut: Shortcut): Boolean {
+    val src = shortcut.getExtra("storeSource", "")
+    if (src.isNotEmpty() && src != "custom") return false
+    if (isSteamOriginShortcut(shortcut)) return false
+    if (isGogShortcut(shortcut)) return false
+    return true
+}
 
 /**
  * EPIC + EOS + GOG pills clustered for the top-left corner of a shortcut's cover art. Caller aligns
@@ -8448,14 +8487,16 @@ private fun ShortcutBadgeOverlay(
     showEpic: Boolean,
     showEos: Boolean,
     showGog: Boolean,
+    showCustom: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    if (!showSteam && !showEpic && !showEos && !showGog) return
+    if (!showSteam && !showEpic && !showEos && !showGog && !showCustom) return
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (showSteam) SteamBadge()
         if (showEpic) EpicBadge()
         if (showEos) EosBadge()
         if (showGog) GogBadge()
+        if (showCustom) CustomBadge()
     }
 }
 

@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-08-26T15-41-07-15cc36",
+    "created": "2026-08-26T15:41:07.381Z",
+    "reporter": "vien",
+    "device": "realme 11 4g",
+    "gpu": "mali g57 mc2",
+    "game": "All of my games (Tomb Raider, Postal 1-2, Hotline Miami, Deadpool and others)",
+    "symptom": "Black screen (no image)",
+    "logs": 5
+  },
+  {
     "id": "2026-08-26T13-56-04-6736f1",
     "created": "2026-08-26T13:56:04.370Z",
     "reporter": "Quentin",

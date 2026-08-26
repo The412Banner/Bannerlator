@@ -1590,10 +1590,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // FPS limiter is no longer part of frame gen — it's a standalone host pacer
             // (onFpsLimitChange). bionic-fg conf carries frame gen only; pass the limiter off.
             int fgModel = s.getFrameGenModel().getValue();
-            writeWinFgConfig(mult, flow, false, 0, fgModel);
+            int fgPreset = s.getFrameGenPerfPreset().getValue();
+            writeWinFgConfig(mult, flow, false, 0, fgModel, fgPreset);
             if (fgOn) container.setFrameGenMultiplier(mult);
             container.setFrameGenFlowScale(flow);
             container.setFrameGenModel(fgModel);
+            container.setFrameGenPerfPreset(fgPreset);
             container.saveData();
             // Same present-mode override as lsfg: bionic-fg inserts extra presents too, so force
             // mailbox while multiplying (FIFO backpressure would strangle the generated frames).
@@ -1931,6 +1933,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         XServerDrawerState.INSTANCE.setFrameGenMultiplier(lsfgSeedMult);
         XServerDrawerState.INSTANCE.setFrameGenFlowScale(container.getFrameGenFlowScale());
         XServerDrawerState.INSTANCE.setFrameGenModel(resolvedFrameGenModel());
+        XServerDrawerState.INSTANCE.setFrameGenPerfPreset(resolvedFrameGenPerfPreset());
         XServerDrawerState.INSTANCE.setFrameGenEngine(fgEngine);
         XServerDrawerState.INSTANCE.setLsfgPerformanceMode(container.isLsfgPerformanceMode());
         XServerDrawerState.INSTANCE.setFpsLimiterEnabled(fpsLimOn);
@@ -2672,7 +2675,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // multiplier: 0 = frame gen off (Off in the menu / not yet enabled), else 2-4.
     // (win-fg is the clean-room replacement for the removed bionic-fg layer; the fpsLimiter args are
     //  retained for call-site compatibility — the host pacer owns limiting, not this layer.)
-    private void writeWinFgConfig(int multiplier, float flowScale, boolean fpsLimiterEnabled, int fpsLimitValue, int model) {
+    private void writeWinFgConfig(int multiplier, float flowScale, boolean fpsLimiterEnabled, int fpsLimitValue, int model, int perfPreset) {
         try {
             File configDir = new File(imageFs.home_path, ".config/win-fg");
             configDir.mkdirs();
@@ -2687,6 +2690,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     + "multiplier = " + Math.max(2, Math.min(4, on ? multiplier : 2)) + "\n"
                     + "flowScale = " + String.format(java.util.Locale.US, "%.2f", flowScale) + "\n"
                     + "model = " + Math.max(3, Math.min(4, model)) + "\n"
+                    // Performance preset (0 Quality / 1 Balanced (default) / 2 Performance). The layer
+                    // hot-reloads + self-rebuilds on this key — live-tunable from the in-game FG drawer.
+                    + "perf_preset = " + Math.max(0, Math.min(2, perfPreset)) + "\n"
                     + "capture = " + (captureOn ? WinFgCapture.CONF_CAPTURE_ON : WinFgCapture.CONF_CAPTURE_OFF) + "\n"
                     // Extra win-fg logging (global opt-in): verbose present-path logging for freeze debugging.
                     + WinFgDiag.confDebugLine(this);
@@ -5306,7 +5312,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             container.getFrameGenFlowScale(),
                             false,
                             0,
-                            resolvedFrameGenModel());
+                            resolvedFrameGenModel(),
+                            resolvedFrameGenPerfPreset());
                     // Crowdsourced training capture (global opt-in). Piggy-backs on the win-fg layer we
                     // just loaded: arms WIN_FG_CAPTURE + output dir (Download/win-fg) + the anonymous
                     // consent record + the capture-resolution target box (native "Match game" uses the
@@ -8589,6 +8596,20 @@ return true;
         try {
             int m = Integer.parseInt(shortcut.getExtra("frameGenModel", String.valueOf(fallback)));
             return (m < 0 || m > 4) ? fallback : m;
+        }
+        catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    // win-fg performance preset resolution — same read-only resolver discipline as
+    // resolvedFrameGenModel: per-game shortcut override wins, else the container's value.
+    private int resolvedFrameGenPerfPreset() {
+        int fallback = container.getFrameGenPerfPreset();
+        if (shortcut == null) return fallback;
+        try {
+            int p = Integer.parseInt(shortcut.getExtra("frameGenPerfPreset", String.valueOf(fallback)));
+            return (p < 0 || p > 2) ? fallback : p;
         }
         catch (NumberFormatException e) {
             return fallback;

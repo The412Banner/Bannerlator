@@ -424,6 +424,12 @@ public class Container {
     // UNSET default differs per engine (see getFrameGenFlowScale) — an explicit user value wins either way.
     public static final float LSFG_DEFAULT_FLOW_SCALE = 0.80f;
     public static final int FRAMEGEN_DEFAULT_MODEL = 3;   // win-fg model 3 = Optical flow (~2ms; device-proven best base-FPS retention)
+    // win-fg performance preset (conf.toml `perf_preset`): 0 = Quality, 1 = Balanced (default), 2 = Performance.
+    // The layer hot-reloads + self-rebuilds when this changes, so it's live-tunable from the in-game FG drawer.
+    public static final int FRAMEGEN_PERF_PRESET_QUALITY = 0;
+    public static final int FRAMEGEN_PERF_PRESET_BALANCED = 1;
+    public static final int FRAMEGEN_PERF_PRESET_PERFORMANCE = 2;
+    public static final int FRAMEGEN_DEFAULT_PERF_PRESET = FRAMEGEN_PERF_PRESET_BALANCED;
 
     public boolean isFrameGenEnabled() {
         return getExtra("frameGenEnabled", "0").equals("1");
@@ -512,6 +518,23 @@ public class Container {
 
     public void setFrameGenModel(int model) {
         putExtra("frameGenModel", String.valueOf(model));
+    }
+
+    // win-fg performance preset (conf.toml perf_preset, layer clamp 0-2): 0 = Quality, 1 = Balanced
+    // (default), 2 = Performance. Default Balanced keeps existing behavior unchanged. Live-tunable from
+    // the in-game FG drawer (the layer hot-reloads + self-rebuilds — no bg/fg pulse needed).
+    public int getFrameGenPerfPreset() {
+        try {
+            int p = Integer.parseInt(getExtra("frameGenPerfPreset", String.valueOf(FRAMEGEN_DEFAULT_PERF_PRESET)));
+            return (p < 0 || p > 2) ? FRAMEGEN_DEFAULT_PERF_PRESET : p;
+        }
+        catch (NumberFormatException e) {
+            return FRAMEGEN_DEFAULT_PERF_PRESET;
+        }
+    }
+
+    public void setFrameGenPerfPreset(int preset) {
+        putExtra("frameGenPerfPreset", String.valueOf(preset));
     }
 
     // lsfg-vk "performance mode" (conf.toml performance_mode): trades interpolation quality for FPS.

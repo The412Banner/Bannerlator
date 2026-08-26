@@ -1187,6 +1187,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val initFgMult by state.frameGenMultiplier.collectAsState()
     val initFgFlow by state.frameGenFlowScale.collectAsState()
     val initFgModel by state.frameGenModel.collectAsState()
+    val initFgPreset by state.frameGenPerfPreset.collectAsState()
     val engine by state.frameGenEngine.collectAsState()
     val layerActive by state.bionicFgActive.collectAsState()
     val initLsfgPerf by state.lsfgPerformanceMode.collectAsState()
@@ -1237,10 +1238,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
         var fgMult by remember(initFgMult) { mutableIntStateOf(initFgMult) }
         var fgFlow by remember(initFgFlow) { mutableFloatStateOf(initFgFlow) }
         var fgModel by remember(initFgModel) { mutableIntStateOf(initFgModel) }
+        var fgPreset by remember(initFgPreset) { mutableIntStateOf(initFgPreset) }
         fun applyFg() {
             state.setFrameGenMultiplier(fgMult)
             state.setFrameGenFlowScale(fgFlow)
             state.setFrameGenModel(fgModel)
+            state.setFrameGenPerfPreset(fgPreset)
             state.onBionicFgConfigChange?.run()
         }
 
@@ -1275,6 +1278,35 @@ private fun FrameGenSection(state: XServerDrawerState) {
                     // Model switch while FG is on -> same bg/fg reset pulse.
                     if (fgMult >= 2) state.onFgResetPulse?.run()
                 }
+            }
+        }
+
+        // Performance preset, win-fg only. Writes conf.toml `perf_preset` (0 Quality / 1 Balanced /
+        // 2 Performance). The layer hot-reloads + self-rebuilds on this key, so — unlike a model change
+        // — it does NOT need a bg/fg reset pulse; just apply. Hidden while frame gen is Off.
+        AnimatedVisibility(
+            visible = engine == "bionic" && fgMult > 0,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Performance preset",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                )
+                FgPerfPresetButtons(fgPreset) { newPreset ->
+                    fgPreset = newPreset; applyFg()
+                    // No onFgResetPulse here — the layer self-rebuilds on the perf_preset change.
+                }
+                Text(
+                    "Quality favors image fidelity; Performance favors FPS. Balanced is the default.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                )
             }
         }
 
@@ -1356,6 +1388,45 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
                         shape = RoundedCornerShape(8.dp)
                     )
                     .clickable { onSelect(model) }
+                    .padding(vertical = 9.dp)
+            ) {
+                Text(
+                    label,
+                    color = if (isSel) Color.Black else accent,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+// Quality / Balanced / Performance segmented button row (win-fg perf_preset 0/1/2). Same styling as
+// FgModelButtons; selected = filled accent. Balanced (1) is the default.
+@Composable
+private fun FgPerfPresetButtons(selected: Int, onSelect: (Int) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val accentDim = LocalAccentDim.current
+    val options = listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance")
+    val sel = selected.coerceIn(0, 2)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        options.forEach { (preset, label) ->
+            val isSel = sel == preset
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSel) accent else Color.Black)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSel) accent else accentDim,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onSelect(preset) }
                     .padding(vertical = 9.dp)
             ) {
                 Text(

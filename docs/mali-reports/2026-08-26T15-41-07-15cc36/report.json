@@ -1,0 +1,47 @@
+{
+  "id": "2026-08-26T15-41-07-15cc36",
+  "created": "2026-08-26T15:41:07.381Z",
+  "ip_hash": "Y1/a5DxY8x",
+  "fields": {
+    "reporter_name": "vien",
+    "device_model": "realme 11 4g",
+    "soc": "helio g99",
+    "gpu": "mali g57 mc2",
+    "android": "Android 15",
+    "ram": "8 GB + 8 GB",
+    "app_version": "lastest + 2.7",
+    "install_source": "GitHub release",
+    "game_name": "All of my games (Tomb Raider, Postal 1-2, Hotline Miami, Deadpool and others)",
+    "steam_appid": "",
+    "store": "Steam",
+    "exe": "tombraider.exe idk what that supposed to mean or inform i don't remember all of them but they are legit",
+    "symptom": "Black screen (no image)",
+    "when": "Never launches at all",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "DXVK 1.10.3-0",
+    "proton": "9.0 arm64ec",
+    "box64": "Box64",
+    "resolution": "854x480",
+    "framegen": "Yes",
+    "repro": "",
+    "tried": "Tried using many settings"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_2026-08-26-18-40-48-31_c5fe40f0a6c67afb4f531fb05dc34b90.jpg"
+    },
+    {
+      "name": "Screenshot_2026-08-26-18-40-45-09_c5fe40f0a6c67afb4f531fb05dc34b90.jpg"
+    },
+    {
+      "name": "Screenshot_2026-08-26-18-40-40-16_c5fe40f0a6c67afb4f531fb05dc34b90.jpg"
+    },
+    {
+      "name": "Screenshot_2026-08-26-18-40-37-42_c5fe40f0a6c67afb4f531fb05dc34b90.jpg"
+    },
+    {
+      "name": "Screenshot_2026-08-26-18-00-26-03_c5fe40f0a6c67afb4f531fb05dc34b90.jpg"
+    }
+  ]
+}

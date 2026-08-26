@@ -67,6 +67,14 @@ object GoldbergComponent {
     /** A file that only exists once the package is extracted — the install marker. */
     private const val MARKER_REL = "regular/x64/steam_api64.dll"
 
+    /**
+     * Records the catalog [Catalog.version] of the currently-extracted copy so a
+     * later catalog bump is seen by EXISTING installs (see [isOutdated]), not
+     * just brand-new ones. Written into the install dir only after a confirmed
+     * successful extract; absent for pre-versioning installs → treated as 0.
+     */
+    private const val VERSION_MARKER_REL = ".gbe_version"
+
     /** Delivered on the main thread as the download progresses (0..1). */
     fun interface ProgressCallback {
         fun onProgress(fraction: Float)
@@ -92,6 +100,26 @@ object GoldbergComponent {
     /** True once the package is downloaded + extracted. */
     fun isInstalled(context: Context): Boolean =
         File(installDir(context), MARKER_REL).isFile
+
+    /**
+     * The catalog version of the currently-installed copy, or 0 when unknown —
+     * absent marker (a pre-versioning install) or an unreadable one. Callers
+     * treat 0 as out-of-date against any real catalog version (>= 1).
+     */
+    fun installedVersion(context: Context): Int {
+        val marker = File(installDir(context), VERSION_MARKER_REL)
+        if (!marker.isFile) return 0
+        return runCatching { marker.readText().trim().toInt() }.getOrDefault(0)
+    }
+
+    /**
+     * True when the catalog offers a newer build than what's on disk. Kept
+     * SEPARATE from [isInstalled] (files present) so the patcher's install check
+     * is unaffected: an outdated copy is still "installed" (usable) until the
+     * user re-downloads — this only drives the popup's "Update" affordance.
+     */
+    fun isOutdated(context: Context, catalogVersion: Int): Boolean =
+        isInstalled(context) && catalogVersion > installedVersion(context)
 
     /** Fetch + parse goldberg.json (network only). Null on failure. */
     fun loadCatalog(): Catalog? {
@@ -169,10 +197,21 @@ object GoldbergComponent {
             if (!isInstalled(context)) {
                 return false to "Steam Emulator package was missing expected files."
             }
+            // Stamp the version we just installed AFTER the extract is confirmed
+            // present, so a catalog bump later reads as outdated (see isOutdated).
+            writeInstalledVersion(context, catalog.version)
             return true to "Steam Emulator installed. Pick a mode below."
         } finally {
             archive.delete()
         }
+    }
+
+    /** Best-effort write of the installed catalog version marker. Only called
+     *  after a confirmed extract (isInstalled == true); a failure just leaves
+     *  the copy looking like version 0 → offered as an update next time. */
+    private fun writeInstalledVersion(context: Context, version: Int) {
+        runCatching { File(installDir(context), VERSION_MARKER_REL).writeText(version.toString()) }
+            .onFailure { Log.w(TAG, "couldn't write goldberg version marker", it) }
     }
 
     private fun md5Upper(file: File): String {

@@ -196,6 +196,10 @@ private fun DrawerAccountHeader(account: AccountManager.Account?, onMyAccount: (
                 )
             }
         }
+        // Steam connection status next to the account name (self-gates to signed-in users; tap when
+        // offline to retry). Its own click consumes the tap, so it won't trigger the header's onMyAccount.
+        Spacer(Modifier.width(8.dp))
+        com.winlator.star.store.SteamConnectionPill()
     }
     HorizontalDivider(
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),

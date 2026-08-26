@@ -45,6 +45,24 @@ class AchievementWatcher {
         private val MASK =
             FileObserver.CLOSE_WRITE or FileObserver.MOVED_TO or FileObserver.CREATE or
                 FileObserver.DELETE or FileObserver.DELETE_SELF or FileObserver.MOVE_SELF
+
+        /**
+         * The primary GSE (gbe_fork) `achievements.json` for [appId] under [containerRootDir]'s Wine
+         * prefix:
+         *   `<container>/.wine/drive_c/users/<user>/AppData/Roaming/GSE Saves/<appId>/achievements.json`
+         *
+         * The single source of truth for this path, shared by [start] (what to WATCH) and the
+         * launch-time seeder ([SteamAchievementStore.seedGse], what to WRITE) so the watch target and
+         * the seed target can never drift apart.
+         */
+        @JvmStatic
+        fun gseAchievementsFile(containerRootDir: File, appId: Int): File {
+            val roaming = File(
+                containerRootDir,
+                ".wine/drive_c/users/${ImageFs.USER}/AppData/Roaming",
+            )
+            return File(roaming, "GSE Saves/$appId/$ACHIEVEMENTS_FILE")
+        }
     }
 
     private var appContext: Context? = null
@@ -78,7 +96,8 @@ class AchievementWatcher {
                 ".wine/drive_c/users/${ImageFs.USER}/AppData/Roaming",
             )
             candidates = listOf(
-                File(roaming, "GSE Saves/$appId/$ACHIEVEMENTS_FILE"),
+                // Primary path shared with the launch-time seeder (defined once in gseAchievementsFile).
+                gseAchievementsFile(containerRootDir, appId),
                 File(roaming, "Goldberg SteamEmu Saves/$appId/$ACHIEVEMENTS_FILE"),
             )
 

@@ -222,6 +222,11 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var goldbergDownloading by mutableStateOf(false)
     private var goldbergDownloadProgress by mutableFloatStateOf(0f)
     private var goldbergSizeLabel by mutableStateOf("")
+    // A catalog bump must reach EXISTING installs, not just new ones: we track the
+    // latest catalog version and whether the on-disk copy is behind it, so the
+    // popup can offer an "Update" (re-download) even when it's already installed.
+    private var goldbergCatalogVersion by mutableIntStateOf(0)
+    private var goldbergOutdated by mutableStateOf(false)
 
     private var steamStatus by mutableStateOf(SteamRepository.getInstance().status)
 
@@ -304,6 +309,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     goldbergDownloading = goldbergDownloading,
                     goldbergDownloadProgress = goldbergDownloadProgress,
                     goldbergSizeLabel = goldbergSizeLabel,
+                    goldbergOutdated = goldbergOutdated,
+                    goldbergCatalogVersion = goldbergCatalogVersion,
                     onGoldbergDownloadClick = { onGoldbergDownloadClicked() },
                     onGoldbergModeSelected = { onGoldbergModeSelected(it) },
                     cloudVisible = cloudVisible,
@@ -812,11 +819,17 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             if (cloudVisible) resolveCloudContainer(g)
             goldbergMode = SteamPrefs.getGoldbergMode(appId)
             goldbergInstalled = GoldbergComponent.isInstalled(this)
-            // If the global component isn't downloaded yet, fetch the catalog in
-            // the background so the download button can show its size.
-            if (!goldbergInstalled && goldbergSizeLabel.isEmpty()) {
+            // Fetch the catalog in the background whether or not it's installed:
+            // the size label feeds the Download/Update button, and the catalog
+            // version decides whether an EXISTING install is out-of-date (a
+            // catalog bump must reach it, not just brand-new installs).
+            if (goldbergCatalogVersion == 0) {
                 GoldbergComponent.loadCatalogAsync { cat ->
-                    goldbergSizeLabel = cat?.takeIf { it.fileSize > 0 }?.let { fmtSize(it.fileSize) } ?: ""
+                    if (cat != null) {
+                        if (cat.fileSize > 0) goldbergSizeLabel = fmtSize(cat.fileSize)
+                        goldbergCatalogVersion = cat.version
+                        goldbergOutdated = GoldbergComponent.isOutdated(this, cat.version)
+                    }
                 }
             }
         } else {
@@ -1099,7 +1112,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
      * every game's detail page shows the tier toggle ready — no re-download.
      */
     private fun onGoldbergDownloadClicked() {
-        if (goldbergDownloading || goldbergInstalled) return
+        // Allow a re-download when an update is available (installed but outdated);
+        // block only a redundant download of an already up-to-date copy.
+        if (goldbergDownloading) return
+        if (goldbergInstalled && !goldbergOutdated) return
         goldbergDownloading = true
         goldbergDownloadProgress = 0f
         GoldbergComponent.downloadAsync(
@@ -1108,6 +1124,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             done = { success, message ->
                 goldbergDownloading = false
                 goldbergInstalled = GoldbergComponent.isInstalled(this)
+                // Re-evaluate against the freshly-written version marker so the
+                // "Update" affordance clears once the new build is on disk.
+                goldbergOutdated = GoldbergComponent.isOutdated(this, goldbergCatalogVersion)
+                goldbergMode = SteamPrefs.getGoldbergMode(appId)
                 goldbergMessage = message
             },
         )
@@ -1235,6 +1255,8 @@ private fun SteamGameDetailScreen(
     goldbergDownloading: Boolean,
     goldbergDownloadProgress: Float,
     goldbergSizeLabel: String,
+    goldbergOutdated: Boolean,
+    goldbergCatalogVersion: Int,
     onGoldbergDownloadClick: () -> Unit,
     onGoldbergModeSelected: (GoldbergMode) -> Unit,
     cloudVisible: Boolean,
@@ -1848,6 +1870,8 @@ private fun SteamGameDetailScreen(
             downloading = goldbergDownloading,
             downloadProgress = goldbergDownloadProgress,
             sizeLabel = goldbergSizeLabel,
+            outdated = goldbergOutdated,
+            catalogVersion = goldbergCatalogVersion,
             mode = goldbergMode,
             busy = goldbergBusy,
             onDownloadClick = onGoldbergDownloadClick,
@@ -2390,6 +2414,8 @@ private fun GoldbergModeDialog(
     downloading: Boolean,
     downloadProgress: Float,
     sizeLabel: String,
+    outdated: Boolean,
+    catalogVersion: Int,
     mode: GoldbergMode,
     busy: Boolean,
     onDownloadClick: () -> Unit,
@@ -2411,6 +2437,8 @@ private fun GoldbergModeDialog(
                     downloading = downloading,
                     downloadProgress = downloadProgress,
                     sizeLabel = sizeLabel,
+                    outdated = outdated,
+                    catalogVersion = catalogVersion,
                     mode = mode,
                     busy = busy,
                     onDownloadClick = onDownloadClick,
@@ -2438,6 +2466,8 @@ private fun GoldbergSection(
     downloading: Boolean,
     downloadProgress: Float,
     sizeLabel: String,
+    outdated: Boolean,
+    catalogVersion: Int,
     mode: GoldbergMode,
     busy: Boolean,
     onDownloadClick: () -> Unit,
@@ -2472,8 +2502,10 @@ private fun GoldbergSection(
             color = MaterialTheme.colorScheme.error,
         )
 
-        if (!installed) {
-            // Component not downloaded yet — offer the one-time global download.
+        // Download when not installed yet; Update when an installed copy is behind
+        // the catalog (a bump must reach existing installs, not just new ones).
+        val showDownloadButton = !installed || outdated
+        if (showDownloadButton) {
             Spacer(Modifier.height(12.dp))
             if (downloading) {
                 LinearProgressIndicator(
@@ -2489,17 +2521,31 @@ private fun GoldbergSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
+                if (installed && outdated) {
+                    // A newer build is available — small hint above the Update button.
+                    Text(
+                        text = if (catalogVersion > 0) "Update available — gbe_fork v$catalogVersion"
+                            else "Update available",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
                 val sizeSuffix = if (sizeLabel.isNotEmpty()) " (~$sizeLabel)" else ""
+                val verb = if (installed) "Update" else "Download"
                 Button(
                     onClick = onDownloadClick,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                ) { Text("Download Steam Emulator$sizeSuffix", maxLines = 1) }
+                ) { Text("$verb Steam Emulator$sizeSuffix", maxLines = 1) }
             }
-            return@Column
         }
 
-        Spacer(Modifier.height(2.dp))
+        // No tier selector until the component is actually on disk. An outdated
+        // (but installed) copy still shows the picker below the Update button.
+        if (!installed) return@Column
+
+        Spacer(Modifier.height(if (showDownloadButton) 12.dp else 2.dp))
         Text(
             text = "Regular works for most games; try Experimental, then " +
                 "Cold Client Loader if a game still won't start.",

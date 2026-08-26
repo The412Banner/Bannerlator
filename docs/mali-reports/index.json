@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-08-26T09-40-21-8b9434",
+    "created": "2026-08-26T09:40:21.334Z",
+    "reporter": "Gta",
+    "device": "S20",
+    "gpu": "M.Y65",
+    "game": "Gta",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
     "id": "2026-08-25T05-19-20-e8f9f5",
     "created": "2026-08-25T05:19:20.584Z",
     "reporter": "sandz",

@@ -154,7 +154,7 @@ object GoldbergPatcher {
 
         // SHARED PREP is idempotent and needed for every non-OFF tier (and does
         // no harm before a restore).
-        sharedPrep(targets, appId)
+        sharedPrep(context, targets, appId)
 
         // GOLDEN RULE: always restore pristine dlls from .bak first, so switching
         // tiers never stacks Goldberg dlls on top of each other.
@@ -331,8 +331,11 @@ object GoldbergPatcher {
      *     them to `steam_settings/steam_interfaces.txt` (re-implements Goldberg's
      *     generate_interfaces without running a foreign binary).
      *  3. Write steam_settings/steam_appid.txt and a steam_appid.txt beside the dll.
+     *  4. Write steam_settings/achievements.json — the gbe_fork achievement DEFINITIONS
+     *     (schema). Without it gbe_fork doesn't know the game HAS achievements and shows
+     *     every one as not-earned, regardless of the earned state seeded into GSE Saves.
      */
-    private fun sharedPrep(targets: List<PatchTarget>, appId: Int) {
+    private fun sharedPrep(context: Context, targets: List<PatchTarget>, appId: Int) {
         for (t in targets) {
             // 1. Permanent pristine backup.
             if (!t.bakFile.exists()) FileUtils.copy(t.dll, t.bakFile)
@@ -349,6 +352,12 @@ object GoldbergPatcher {
             //    purely added — no backup, removed on restore.)
             File(settingsDir, "steam_appid.txt").writeText(appId.toString())
             File(t.dir, "steam_appid.txt").writeText(appId.toString())
+
+            // 4. Achievement DEFINITIONS (schema). gbe_fork reads these to know which
+            //    achievements exist; without it the in-game list is empty/all-zero even
+            //    though the earned state is seeded into GSE Saves separately. DEFS only;
+            //    fully self-guarded and a no-op when no achievement defs are cached.
+            SteamAchievementStore.writeGbeAchievementSchema(context, appId, settingsDir)
         }
     }
 

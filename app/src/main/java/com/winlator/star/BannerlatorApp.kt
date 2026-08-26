@@ -64,6 +64,31 @@ class BannerlatorApp : Application() {
             Log.w("BannerlatorApp", "update-cache prune not scheduled", t)
         }
 
+        // Steam: make the connection status live app-wide. Init the session prefs synchronously (cheap;
+        // the status pill in the top bar + drawer reads SteamPrefs.isLoggedIn on the first frame), then
+        // OFF the main thread build the repository and — if the user has ever signed in — auto-connect,
+        // so the pill is live at launch instead of only after the store is first opened (this is also
+        // why the game-launch screen used to report "not logged into Steam"). Best-effort: every step is
+        // wrapped so it can never block or crash startup.
+        try {
+            com.winlator.star.store.SteamPrefs.init(this)
+        } catch (t: Throwable) {
+            Log.w("BannerlatorApp", "steam prefs init failed", t)
+        }
+        try {
+            Thread {
+                try {
+                    val repo = com.winlator.star.store.SteamRepository.getInstance()
+                    repo.initialize(this)                 // sets appContext + prefs (idempotent, synchronized)
+                    if (com.winlator.star.store.SteamPrefs.isLoggedIn) repo.reconnectNow()
+                } catch (t: Throwable) {
+                    Log.w("BannerlatorApp", "steam auto-connect failed", t)
+                }
+            }.start()
+        } catch (t: Throwable) {
+            Log.w("BannerlatorApp", "steam auto-connect not scheduled", t)
+        }
+
         try {
             // Restore-if-dirty + root probe + crash/shutdown safety nets, BEFORE anything touches a node.
             RootManager.onAppStartup(this)

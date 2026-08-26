@@ -86,6 +86,7 @@ import com.winlator.star.core.FileUtils
 import com.winlator.star.core.PreloaderDialog
 import com.winlator.star.core.UpdateManager
 import com.winlator.star.core.WinFgCapture
+import com.winlator.star.core.WinFgDiag
 import com.winlator.star.fexcore.FEXCoreEditPresetDialog
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
@@ -138,6 +139,10 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // Capture resolution selection (global, like the toggle) + the contributor help dialog.
     var captureRes by remember { mutableStateOf(WinFgCapture.captureRes(context)) }
     var showCaptureHelp by remember { mutableStateOf(false) }
+    // win-fg freeze diagnostics (global; off by default). Extra logging flag + a logcat-to-disk capture.
+    var extraLogging by remember { mutableStateOf(WinFgDiag.isExtraLoggingEnabled(context)) }
+    var diagRecording by remember { mutableStateOf(WinFgDiag.isRecording()) }
+    var diagLogPath by remember { mutableStateOf(WinFgDiag.currentFile()?.absolutePath) }
 
     var winlatorPath by remember { mutableStateOf(
         run {
@@ -1061,6 +1066,76 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     onClick = { captureRes = WinFgCapture.RES_1080P; WinFgCapture.setCaptureRes(context, WinFgCapture.RES_1080P) },
                 )
                 Text("1080p (1920×1080)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+
+            // ── Debug a win-fg freeze (Extra logging + a logcat-to-disk capture) ──
+            Spacer(Modifier.height(12.dp))
+            Text("Debug a win-fg freeze", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(
+                "Debugging a win-fg freeze? Turn on Extra logging + Diagnostic log, reproduce the " +
+                "freeze, then share the saved log file.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
+            )
+            // Extra win-fg logging: sets WIN_FG_DEBUG=1 + conf.toml debug=on for a win-fg launch (global).
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = extraLogging,
+                    onCheckedChange = { on ->
+                        extraLogging = on
+                        WinFgDiag.setExtraLoggingEnabled(context, on)
+                        AppUtils.showToast(context, if (on) "Extra win-fg logging on" else "Extra win-fg logging off")
+                    }
+                )
+                Text("Extra win-fg logging (verbose)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            // Diagnostic log: streams this app's logcat (win-fg native + guest + app) to Download/win-fg-logs.
+            Text(
+                "Diagnostic log records this app's log to Download/win-fg-logs while you play. Start it, " +
+                "reproduce the freeze, then Stop and share the saved file. No root needed.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
+            )
+            Button(
+                onClick = {
+                    if (diagRecording) {
+                        WinFgDiag.stopDiagLog(context)
+                        diagRecording = false
+                        val p = diagLogPath
+                        AppUtils.showToast(
+                            context,
+                            if (p != null) "Diagnostic log saved: $p — share this file" else "Diagnostic log stopped"
+                        )
+                    } else {
+                        val f = WinFgDiag.startDiagLog(context)
+                        if (f != null) {
+                            diagRecording = true
+                            diagLogPath = f.absolutePath
+                            AppUtils.showToast(context, "Recording diagnostic log — reproduce the freeze, then Stop")
+                        } else {
+                            AppUtils.showToast(context, "Could not start diagnostic log (storage permission?)")
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) {
+                Text(
+                    if (diagRecording) "Stop diagnostic log" else "Start diagnostic log",
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+            if (diagRecording) {
+                Text(
+                    "Recording… reproduce the freeze, then tap Stop.",
+                    color = Color(0xFF4CAF50), fontSize = 12.sp, // intentional: green = active/recording status
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            } else if (diagLogPath != null) {
+                Text(
+                    "Saved to $diagLogPath — share this file with us.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
         }
 

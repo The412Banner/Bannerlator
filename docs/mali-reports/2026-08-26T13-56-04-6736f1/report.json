@@ -1,0 +1,41 @@
+{
+  "id": "2026-08-26T13-56-04-6736f1",
+  "created": "2026-08-26T13:56:04.370Z",
+  "ip_hash": "RBEdr0N2ab",
+  "fields": {
+    "reporter_name": "Quentin",
+    "device_model": "Huawei mate40pro",
+    "soc": "krin9000",
+    "gpu": "Mali-G78",
+    "android": "Andriod 12",
+    "ram": "8GB",
+    "app_version": "3.0.1",
+    "install_source": "GitHub release  GitHub 发布",
+    "game_name": "Bannerlator 3.0.1, I cannot launch any build of the Proton11-arm64 container",
+    "steam_appid": "Other",
+    "store": "Other  其他",
+    "exe": "Bannerlator 3.0.1, I cannot launch any build of the Proton11-arm64 container.",
+    "symptom": "Black screen (no image)黑屏（无图像）",
+    "when": "Fails at the publisher/loading logo在发行商/加载标志处失败",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.10.3",
+    "proton": "Proton11",
+    "box64": "Compatibility",
+    "resolution": "1280x720",
+    "framegen": "lsfg-VK",
+    "repro": "This is a rather strange issue. After updating Bannerlator 3.0.0 or 3.0.1, I cannot launch any build of the Proton11-arm64 container.\nBut，Bannerlator 2.9.6 to 2.9.9, selecting Bannerlator_gamenative_wrapper allows access to the Proton11-B5-arm64 container. Bannerlator 3.0.0 pre1 and Bannerlator 3.0.0 pre2 support launching all Proton11-arm64 container builds without issues.",
+    "tried": ""
+  },
+  "logs": [
+    {
+      "name": "AEE6A1E88FA38E878D49B0AB89B37BFC.jpg"
+    },
+    {
+      "name": "BD6298071AD58C936A0414FB8B58986F.jpg"
+    },
+    {
+      "name": "wine_debug.log"
+    }
+  ]
+}

@@ -41,6 +41,10 @@ fun AppTopBar(
     // PHASE 3 (optional accounts): when signed in WITH an avatar, the ☰ is swapped for the user's picture.
     // Tapping it still runs [onNavClick] (opens the drawer) exactly like the hamburger. Null = normal ☰.
     avatarUrl: String? = null,
+    // Optional slot rendered immediately to the RIGHT of the title text (left side of the bar), before
+    // the flexible gap that pushes [actions] to the far right. Used for the Steam connection pill on
+    // the Games screen. Null = title only.
+    titleTrailing: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -76,15 +80,27 @@ fun AppTopBar(
             }
         }
         Spacer(Modifier.width(2.dp))
-        Text(
-            text = title,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        // Title + optional trailing slot occupy the flexible middle (this inner Row takes weight 1f);
+        // the title shrinks/ellipsizes (weight, fill=false) to make room for the trailing content, which
+        // sits right after it (left-aligned). The inner Row filling the gap keeps [actions] at the far right.
+        Row(
             modifier = Modifier.weight(1f),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (titleTrailing != null) {
+                Spacer(Modifier.width(8.dp))
+                titleTrailing()
+            }
+        }
         actions()
     }
 }

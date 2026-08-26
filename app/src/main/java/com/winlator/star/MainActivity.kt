@@ -451,6 +451,11 @@ private fun AppShell(
                                 if (drawerState.isOpen) drawerState.close() else drawerState.open()
                             }
                         },
+                        // Steam connection status pill, right after the "Games" title (Games screen only).
+                        // Self-gates to signed-in users; tap when offline to retry. See SteamConnectionPill.
+                        titleTrailing = if (currentRoute == Screen.Games.route) {
+                            { com.winlator.star.store.SteamConnectionPill() }
+                        } else null,
                         actions = topBarActionsState.value,
                     )
                 }

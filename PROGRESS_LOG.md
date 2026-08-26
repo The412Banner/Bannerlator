@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-08-25 — 🏆🛒🔖 **CHECKPOINT: Steam Achievements + Tabbed Detail Page + Auto-Cloud — UI device-proven, in-game pills pending**
+> **Where we are (resume here):** branch `feat/steam-achievements-cloud` @ `01b8186b` (rebased on main `cb4ba764`, clean, force-pushed), CI run `32915101803` GREEN (all 3 flavors). STAGED `/sdcard/Download/Bannerlator-steam-achv-tabs-pubg.apk` sha `d14be86f54de275b73fd984aadedaf4a593df0c070b123f38695f75f50775aab` (installed+verified on device). NOT merged.
+>
+> **What's built (two features on this branch):** (1) **Steam auto-cloud parity** — download-from-cloud on launch (newest-wins) + upload-to-cloud on exit, gated by `hasCloudSupport` + Save-Manager toggles; keeps local auto-collect. (2) **Steam achievements** — detail-page grid, in-game stacking gold pills + `AchievementWatcher` FileObserver, local icon cache, profile sync-back (**DEFAULT-OFF**, bit-math unproven). Plus a full **detail-page rework**: tabbed layout (Details/Achievements/DLC/Cloud saves), single state-driven primary button (Install → Downloading… N% → Add to shortcuts) with 2-layer fill + info line underneath, ⚙ gear dropdown for the rest, Goldberg as a gear popup, long-press achievement help dialog, theme/accent-driven, gear menu outlined + dividers. `steamUserStats` bound; `SteamAchievementStore` facade via `getUserStats`/`getExpandedAchievements`; DB v8→9 `steam_achievements`. javasteam already the joshuatam fork (exposes `storeUserStats`) — zero dep change.
+>
+> **DEVICE-PROVEN this session (HL2 appId 220):** download→install (~10 GB, flat memory/no OOM, completion-guard accepted ≥90% — no false-fail), download↔Download-Manager badge sync, tabbed page, real cached achievement icons (colour/greyscale/lock), theme accent (orange), gear menu outline+dividers, Goldberg greyed-until-installed, single 2-layer progress button + info line (thin bar removed), Goldberg gear popup (Download-Steam-Emulator button → mode picker Off/Regular/Experimental/ColdClient), no inline Goldberg section.
+>
+> **STILL UNPROVEN (resume here):** in-game achievement **PILLS** = the Phase-0 GSE unknown — does gbe_fork write `<container>/.wine/drive_c/users/xuser/AppData/Roaming/GSE Saves/220/achievements.json` where `AchievementWatcher` watches. To test: Goldberg popup → Regular/Experimental → Add to shortcuts → launch HL2 → unlock → watch `BH_STEAM_ACHV` + that GSE path. Also unproven: 3-surface pause/resume sync; profile sync-back (default-OFF). Verify installed sha `d14be86f…` first.
+>
+> Full detail: memory `project_bannerlator_steam_achievements` + `project_bannerlator_steam_autocloud_parity`. Design mockup `/sdcard/Download/Bannerlator-Achievements-Tab-Mockup.html`; spec artifact `claude.ai/code/artifact/87e38bc9-179e-48f7-82f9-52008bbce66f`.
+
 ## 2026-08-25 — ⏸️🔖 **CHECKPOINT: LSFG black-frame flicker — paused for device test**
 > **Where we are (resume here):** branch `fix/lsfg-flicker-pacing` @ `6a63e35a`, CI `32795455567` GREEN (all 3 flavors),
 > STAGED `/sdcard/Download/Bannerlator-lsfg-fgreset-pubg.apk` sha `219fa4716886b0210a6d423d8d3a5817fad39f7f5faf0f3f2d4e299841b55f0d`.

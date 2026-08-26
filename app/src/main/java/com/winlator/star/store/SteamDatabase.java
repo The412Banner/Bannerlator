@@ -41,7 +41,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     // v8: additive steam_branches (beta-branch metadata parsed from depots/branches/*) +
     //     steam_unlocked_branches (per-app beta access passwords the user has verified). Both are
     //     new tables — NO existing library table is touched, so no re-sync required.
-    private static final int    DB_VERSION = 8;
+    // v9: additive steam_achievements (per-app achievement schema + earned state, from
+    //     SteamUserStats.getUserStats → getExpandedAchievements). NEW table only — no existing
+    //     library table is touched, so no re-sync required.
+    private static final int    DB_VERSION = 9;
 
     // -------------------------------------------------------------------------
     // DDL
@@ -135,6 +138,24 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  PRIMARY KEY (app_id, branch_name)" +
             ")";
 
+    // Per-app achievement schema + earned state (SteamUserStats.getUserStats → getExpandedAchievements).
+    // One row per achievement per app. icon/icon_gray store the raw CDN FILENAME (not the full URL) —
+    // SteamAchievementStore rebuilds the URL and resolves the on-disk cached path. Re-upserted on every
+    // fetch (SteamAchievementStore clears nothing; upsert refreshes each row's earned state in place).
+    private static final String SQL_ACHIEVEMENTS =
+            "CREATE TABLE IF NOT EXISTS steam_achievements (" +
+            "  app_id       INTEGER NOT NULL," +
+            "  api_name     TEXT    NOT NULL," +
+            "  display_name TEXT    NOT NULL DEFAULT ''," +
+            "  description  TEXT    NOT NULL DEFAULT ''," +
+            "  hidden       INTEGER NOT NULL DEFAULT 0," +
+            "  icon         TEXT    NOT NULL DEFAULT ''," +     // color-icon CDN filename
+            "  icon_gray    TEXT    NOT NULL DEFAULT ''," +     // locked/gray CDN filename
+            "  unlocked     INTEGER NOT NULL DEFAULT 0," +
+            "  unlock_time  INTEGER NOT NULL DEFAULT 0," +      // epoch seconds; 0 if locked
+            "  PRIMARY KEY (app_id, api_name)" +
+            ")";
+
     // -------------------------------------------------------------------------
     // Singleton
     // -------------------------------------------------------------------------
@@ -175,6 +196,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.execSQL(SQL_DEPOT_MANIFESTS);
         db.execSQL(SQL_BRANCHES);
         db.execSQL(SQL_UNLOCKED_BRANCHES);
+        db.execSQL(SQL_ACHIEVEMENTS);
         Log.i(TAG, "steam.db created (v" + DB_VERSION + ")");
     }
 
@@ -224,6 +246,11 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             db.execSQL(SQL_BRANCHES);
             db.execSQL(SQL_UNLOCKED_BRANCHES);
         }
+        // v8 → v9: ADDITIVE — one NEW table for per-app achievements. CREATE IF NOT EXISTS, no drop
+        // of any existing table (library data stays intact).
+        if (oldVersion < 9) {
+            db.execSQL(SQL_ACHIEVEMENTS);
+        }
     }
 
     /**
@@ -244,6 +271,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS steam_games");
         db.execSQL("DROP TABLE IF EXISTS steam_branches");
         db.execSQL("DROP TABLE IF EXISTS steam_unlocked_branches");
+        db.execSQL("DROP TABLE IF EXISTS steam_achievements");
         onCreate(db);
     }
 
@@ -326,6 +354,33 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             this.buildId     = buildId;
             this.timeUpdated = timeUpdated;
             this.description = description;
+        }
+    }
+
+    /** One achievement's persisted schema + earned state. icon/iconGray are raw CDN FILENAMES. */
+    public static final class AchievementRow {
+        public final int     appId;
+        public final String  apiName;
+        public final String  displayName;
+        public final String  description;
+        public final boolean hidden;
+        public final String  icon;         // color-icon CDN filename (not a URL)
+        public final String  iconGray;     // locked/gray CDN filename (not a URL)
+        public final boolean unlocked;
+        public final long    unlockTime;   // epoch seconds; 0 if locked
+
+        public AchievementRow(int appId, String apiName, String displayName, String description,
+                              boolean hidden, String icon, String iconGray,
+                              boolean unlocked, long unlockTime) {
+            this.appId       = appId;
+            this.apiName     = apiName;
+            this.displayName = displayName;
+            this.description = description;
+            this.hidden      = hidden;
+            this.icon        = icon;
+            this.iconGray    = iconGray;
+            this.unlocked    = unlocked;
+            this.unlockTime  = unlockTime;
         }
     }
 
@@ -742,6 +797,78 @@ public final class SteamDatabase extends SQLiteOpenHelper {
                 "SELECT password FROM steam_unlocked_branches WHERE app_id = ? AND branch_name = ?",
                 new String[]{String.valueOf(appId), branch != null ? branch : ""})) {
             if (c.moveToNext()) return c.getString(0);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    // =========================================================================
+    // steam_achievements
+    // =========================================================================
+
+    /** Insert or replace one achievement's schema + earned state (icon/iconGray are raw filenames). */
+    public void upsertAchievement(int appId, String apiName, String displayName, String description,
+                                  boolean hidden, String icon, String iconGray,
+                                  boolean unlocked, long unlockTime) {
+        ContentValues cv = new ContentValues();
+        cv.put("app_id",       appId);
+        cv.put("api_name",     apiName != null ? apiName : "");
+        cv.put("display_name", displayName != null ? displayName : "");
+        cv.put("description",  description != null ? description : "");
+        cv.put("hidden",       hidden ? 1 : 0);
+        cv.put("icon",         icon != null ? icon : "");
+        cv.put("icon_gray",    iconGray != null ? iconGray : "");
+        cv.put("unlocked",     unlocked ? 1 : 0);
+        cv.put("unlock_time",  unlockTime);
+        getWritableDatabase().insertWithOnConflict(
+                "steam_achievements", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    /** Batch upsert of an app's achievements in one transaction (called on every fetch). */
+    public void upsertAchievements(int appId, List<AchievementRow> rows) {
+        if (rows == null || rows.isEmpty()) return;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (AchievementRow r : rows) {
+                upsertAchievement(appId, r.apiName, r.displayName, r.description,
+                        r.hidden, r.icon, r.iconGray, r.unlocked, r.unlockTime);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /** All achievements for an app, unlocked-first then by display name. Empty = none cached yet. */
+    public List<AchievementRow> getAchievements(int appId) {
+        List<AchievementRow> rows = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT app_id,api_name,display_name,description,hidden,icon,icon_gray,unlocked,unlock_time" +
+                " FROM steam_achievements WHERE app_id = ?" +
+                " ORDER BY unlocked DESC, display_name COLLATE NOCASE",
+                new String[]{String.valueOf(appId)})) {
+            while (c.moveToNext()) {
+                rows.add(new AchievementRow(
+                        c.getInt(0), c.getString(1), c.getString(2), c.getString(3),
+                        c.getInt(4) != 0, c.getString(5), c.getString(6),
+                        c.getInt(7) != 0, c.getLong(8)));
+            }
+        } catch (Exception ignored) {}
+        return rows;
+    }
+
+    /** One achievement by api_name, or null if not cached. */
+    public AchievementRow getAchievement(int appId, String apiName) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT app_id,api_name,display_name,description,hidden,icon,icon_gray,unlocked,unlock_time" +
+                " FROM steam_achievements WHERE app_id = ? AND api_name = ?",
+                new String[]{String.valueOf(appId), apiName != null ? apiName : ""})) {
+            if (c.moveToNext()) {
+                return new AchievementRow(
+                        c.getInt(0), c.getString(1), c.getString(2), c.getString(3),
+                        c.getInt(4) != 0, c.getString(5), c.getString(6),
+                        c.getInt(7) != 0, c.getLong(8));
+            }
         } catch (Exception ignored) {}
         return null;
     }

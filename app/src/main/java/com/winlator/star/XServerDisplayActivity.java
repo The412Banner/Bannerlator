@@ -59,9 +59,11 @@ import com.winlator.star.container.Container;
 import com.winlator.star.container.ContainerManager;
 import com.winlator.star.container.Shortcut;
 import com.winlator.star.core.CustomSaveVault;
+import com.winlator.star.store.AchievementWatcher;
 import com.winlator.star.store.EpicOverlayManager;
 import com.winlator.star.store.GogCloudSaveManager;
 import com.winlator.star.store.GogCloudSavePaths;
+import com.winlator.star.store.SteamAchievementStore;
 import com.winlator.star.store.SteamCloudSaveManager;
 import com.winlator.star.store.SteamDatabase;
 import com.winlator.star.store.SteamRepository;
@@ -253,6 +255,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean userWantsControlsShown;
     private boolean controlsEditorOpen;
     private Shortcut shortcut;
+    // In-game Steam achievement watcher (Goldberg/GSE achievements.json → gold pills). Genuine-Steam
+    // shortcuts only; armed in setupUI, stopped in onDestroy. Null for non-Steam launches.
+    private AchievementWatcher achievementWatcher;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     // Which Vulkan driver the host compositor/present layer runs on ("system" = Android's own driver,
     // or an installed adrenotools Turnip). Separate from graphicsDriver (which the guest game renders
@@ -3867,6 +3872,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         SharedPreferences savePrefs = getSharedPreferences("save_manager_prefs", MODE_PRIVATE);
                         if (isGenuineSteamShortcut()) {
                             if (savePrefs.getBoolean("auto_collect_steam_on_exit", true)) autoCollectSteamSavesBlocking();
+                            // Additionally push to Steam Cloud (opt-in) — ONLY once the user has accepted
+                            // the third-party cloud disclaimer (steam_prefs). Absent flag → skip; we never
+                            // auto-upload to a real Steam Cloud without consent. The local Collect above
+                            // stays unconditional (independent of this cloud toggle).
+                            boolean cloudDisclaimerOk = getSharedPreferences("steam_prefs", MODE_PRIVATE)
+                                    .getBoolean("cloud_saves_disclaimer_accepted", false);
+                            if (cloudDisclaimerOk && savePrefs.getBoolean("auto_upload_steam_on_exit", true))
+                                autoUploadSteamSavesBlocking();
                         } else {
                             // GOG-library games (untagged, installed under gog_games/) push their saves to
                             // GOG cloud — the Galaxy-parity auto-trigger. Additive: they ALSO keep the local
@@ -3875,6 +3888,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             if (isGogShortcut() && savePrefs.getBoolean("auto_upload_gog_on_exit", true))
                                 autoUploadGogSavesBlocking();
                             if (savePrefs.getBoolean("auto_backup_custom_on_exit", true)) autoSnapshotCustomSavesBlocking();
+                        }
+                        // Flush any queued achievement unlocks back to the user's Steam profile. Safe
+                        // no-op unless the default-OFF "sync unlocks" toggle is on (guarded inside).
+                        try {
+                            SteamAchievementStore.flushPendingSyncBack(getApplicationContext());
+                        } catch (Throwable t) {
+                            Log.w("BH_STEAM_ACHV", "flushPendingSyncBack on exit errored", t);
                         }
                     } catch (Throwable t) {
                         Log.w("XServerDisplayActivity", "exit save-backup phase errored", t);
@@ -4061,6 +4081,193 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (segs[i].equalsIgnoreCase("steam_games") && segs[i + 1].equalsIgnoreCase(folder)) return true;
         }
         return false;
+    }
+
+    /** Resolved [appId, installDir] for a genuine Steam-library shortcut. */
+    private static final class SteamAppRef {
+        final int appId;
+        final String installDir;
+        SteamAppRef(int appId, String installDir) { this.appId = appId; this.installDir = installDir; }
+    }
+
+    /**
+     * Resolve the running shortcut's Steam appId + install dir, REUSING the exact derivation
+     * {@link #autoCollectSteamSavesBlocking()} uses: genuine-Steam gate (storeSource=steam OR exec under
+     * steam_games/), then the tagged {@code steamAppId} fast-path, else match the exec path's
+     * {@code steam_games/<folder>} against the installed-games DB. Returns null when not a genuine Steam
+     * game or the appId/installDir can't be resolved. MUST be called off the main thread (queries Room).
+     */
+    private SteamAppRef resolveSteamAppRef() {
+        final Shortcut sc = shortcut;
+        if (sc == null) return null;
+        String storeSource = sc.getExtra("storeSource", "");
+        String pathLower = sc.path != null ? sc.path.toLowerCase() : "";
+        boolean genuineSteam = "steam".equals(storeSource) || pathLower.contains("steam_games");
+        if (!genuineSteam) return null;
+
+        int tagged;
+        try {
+            tagged = Integer.parseInt(sc.getExtra("steamAppId", "0").trim());
+        } catch (Exception e) {
+            tagged = 0;
+        }
+
+        int appId = tagged;
+        String installDir = "";
+        try {
+            if (appId > 0) {
+                SteamDatabase.GameRow row = SteamRepository.getInstance().getDatabase().getGame(appId);
+                installDir = (row != null && row.installDir != null) ? row.installDir : "";
+            }
+            String folder = steamGamesFolderOf(sc.path);
+            if ((appId <= 0 || installDir.isEmpty()) && folder != null) {
+                List<SteamDatabase.GameRow> installed =
+                        SteamRepository.getInstance().getDatabase().getInstalledGames();
+                if (installed != null) {
+                    for (SteamDatabase.GameRow r : installed) {
+                        if (installDirMatchesFolder(r.installDir, folder)) {
+                            appId = r.appId;
+                            installDir = (r.installDir != null) ? r.installDir : "";
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.w("BH_SAVE_SYNC", "resolveSteamAppRef errored", t);
+        }
+        if (appId <= 0 || installDir.isEmpty()) return null;
+        return new SteamAppRef(appId, installDir);
+    }
+
+    /**
+     * On game exit, push a genuine Steam-library game's saves UP to Steam Cloud (local → cloud) — the
+     * Steam-parity mirror of {@link #autoUploadGogSavesBlocking()}. Additive to the unconditional local
+     * Collect above: this ONLY runs when the Save Manager toggle {@code auto_upload_steam_on_exit} is on
+     * AND the user has accepted the third-party cloud disclaimer (checked by the caller).
+     *
+     * Best-effort + fully guarded (logs to "BH_SAVE_SYNC"). The blocking cloud sync runs on its own
+     * worker thread and we bound-wait on a latch so a stalled network can never freeze game-exit, while
+     * the copy still finishes before {@link AppUtils#restartApplication}'s exit(0) aborts it. Safe by
+     * construction: {@link SteamCloudSaveManager#syncToCloudBlocking} only ADDS/REPLACES cloud files.
+     */
+    private void autoUploadSteamSavesBlocking() {
+        try {
+            final Context appCtx = getApplicationContext();
+            // We're on the exit worker thread ("BH-ExitSaveBackup") → Room query is safely off-main.
+            final SteamAppRef ref = resolveSteamAppRef();
+            if (ref == null) {
+                Log.i("BH_SAVE_SYNC", "auto-upload Steam: could not resolve appId — skip");
+                return;
+            }
+            try { if (preloaderDialog != null) preloaderDialog.hint(getString(R.string.saving_on_exit)); } catch (Throwable ignored) {}
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            new Thread(() -> {
+                try {
+                    // .INSTANCE. mirrors the existing SteamCloudSaveManager.INSTANCE.collectFromContainer
+                    // call in this file (a @JvmStatic method is still callable this way, so this is
+                    // robust whether or not the frozen method is annotated static).
+                    String summary = SteamCloudSaveManager.INSTANCE.syncToCloudBlocking(appCtx, ref.appId, ref.installDir);
+                    Log.i("BH_SAVE_SYNC", "auto-upload Steam on exit (appId " + ref.appId + "): " + summary);
+                    try { if (preloaderDialog != null) preloaderDialog.hint(summary); } catch (Throwable ignored) {}
+                } catch (Throwable t) {
+                    Log.w("BH_SAVE_SYNC", "auto-upload Steam on exit failed (appId " + ref.appId + ")", t);
+                } finally {
+                    latch.countDown();
+                }
+            }, "BH-SteamCloudAutoUpload").start();
+
+            // Network op — bounded so a stalled upload never hangs game-exit (Steam saves are small).
+            if (!latch.await(20, TimeUnit.SECONDS))
+                Log.w("BH_SAVE_SYNC", "auto-upload Steam on exit timed out (20s) — proceeding with exit");
+        } catch (Throwable t) {
+            Log.w("BH_SAVE_SYNC", "auto-upload Steam on exit wrapper errored", t);
+        }
+    }
+
+    /**
+     * Before the guest boots, pull a genuine Steam-library game's saves DOWN from Steam Cloud (cloud →
+     * local, newest-wins) — the Steam-parity mirror of {@link #autoDownloadGogSavesBlocking()}. Called
+     * from {@link #setupXEnvironment()} on the launch WORKER thread just before the guest starts, so
+     * blocking here is safe and naturally GATES the launch until the pull completes or its bound elapses.
+     *
+     * Best-effort + fully guarded: no-op for non-Steam games / when the toggle is off / when the appId
+     * can't be resolved. {@link SteamCloudSaveManager#syncFromCloudNewestWins} never overwrites a newer
+     * local save, so an offline save since the last upload is preserved.
+     */
+    private void autoDownloadSteamSavesBlocking() {
+        try {
+            final Shortcut sc = shortcut;
+            if (sc == null) return;
+            if (!isGenuineSteamShortcut()) return;
+
+            SharedPreferences savePrefs = getSharedPreferences("save_manager_prefs", MODE_PRIVATE);
+            if (!savePrefs.getBoolean("auto_download_steam_on_launch", true)) return;
+
+            final Context appCtx = getApplicationContext();
+            // We're on the launch worker thread → Room query is safely off-main.
+            final SteamAppRef ref = resolveSteamAppRef();
+            if (ref == null) {
+                Log.i("BH_SAVE_SYNC", "auto-download Steam: could not resolve appId for " + sc.path + " — skip");
+                return;
+            }
+
+            preloaderDialog.hint(getString(R.string.downloading_on_launch));
+            final CountDownLatch latch = new CountDownLatch(1);
+            new Thread(() -> {
+                try {
+                    String summary = SteamCloudSaveManager.INSTANCE.syncFromCloudNewestWins(appCtx, ref.appId, ref.installDir);
+                    Log.i("BH_SAVE_SYNC", "auto-download Steam on launch (appId " + ref.appId + "): " + summary);
+                    try { if (preloaderDialog != null) preloaderDialog.hint(summary); } catch (Throwable ignored) {}
+                } catch (Throwable t) {
+                    Log.w("BH_SAVE_SYNC", "auto-download Steam on launch failed (appId " + ref.appId + ")", t);
+                } finally {
+                    latch.countDown();
+                }
+            }, "BH-SteamCloudAutoDownload").start();
+
+            if (!latch.await(20, TimeUnit.SECONDS))
+                Log.w("BH_SAVE_SYNC", "auto-download Steam on launch timed out (20s) — launching with local saves");
+        } catch (Throwable t) {
+            Log.w("BH_SAVE_SYNC", "auto-download Steam on launch wrapper errored", t);
+        }
+    }
+
+    /**
+     * Start the in-game achievement watcher for a genuine Steam-library game (guarded like
+     * {@link #autoCollectSteamSavesBlocking()}). Resolves the appId off the main thread (Room), then
+     * arms {@link AchievementWatcher} on this container's Goldberg/GSE store. Best-effort — never blocks
+     * or crashes setup. No-op for non-Steam shortcuts.
+     */
+    private void maybeStartAchievementWatcher() {
+        try {
+            if (!isGenuineSteamShortcut() || container == null) return;
+            final java.io.File containerRoot = container.getRootDir();
+            final Context appCtx = getApplicationContext();
+            // Create the watcher on the main thread so the field is set before onDestroy can read it;
+            // start()/stop() are synchronized on the instance, so the worker start below and an onDestroy
+            // stop() can't race destructively.
+            if (achievementWatcher == null) achievementWatcher = new AchievementWatcher();
+            final AchievementWatcher watcher = achievementWatcher;
+            // appId resolution touches Room → off the main thread; arm the watcher once it's known.
+            new Thread(() -> {
+                try {
+                    SteamAppRef ref = resolveSteamAppRef();
+                    if (ref == null) {
+                        Log.i("BH_STEAM_ACHV", "achievement watcher: could not resolve appId — skip");
+                        return;
+                    }
+                    // Don't arm against a torn-down activity (destroy during the resolve).
+                    if (isFinishing() || isDestroyed()) return;
+                    watcher.start(appCtx, ref.appId, containerRoot);
+                } catch (Throwable t) {
+                    Log.w("BH_STEAM_ACHV", "achievement watcher start failed", t);
+                }
+            }, "BH-AchvWatchStart").start();
+        } catch (Throwable t) {
+            Log.w("BH_STEAM_ACHV", "maybeStartAchievementWatcher errored", t);
+        }
     }
 
     /**
@@ -4350,6 +4557,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // can't run against a tearing-down activity.
         if (winHandler != null) winHandler.setControllerAssignmentListener(null);
         controllerToastHandler.removeCallbacks(fireControllerToast);
+        // Stop the in-game achievement watcher (FileObserver + its scheduler) so a late file event
+        // can't run against a tearing-down activity.
+        if (achievementWatcher != null) {
+            try { achievementWatcher.stop(); } catch (Throwable ignored) {}
+            achievementWatcher = null;
+        }
         // Drop the failure-card callbacks so this activity isn't retained via the static holder.
         com.winlator.star.core.PreloaderState.setOnClose(null);
         com.winlator.star.core.PreloaderState.setOnOpenLog(null);
@@ -5010,6 +5223,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // overwritten by an older cloud copy (e.g. a save made offline since the last upload). No-op
         // for non-GOG games and when the download toggle is off.
         autoDownloadGogSavesBlocking();
+        // Steam-parity: pull the freshest Steam Cloud saves into the prefix before boot (newest-wins).
+        // Same launch-worker-thread gating + best-effort envelope as the GOG pull above; no-op for
+        // non-Steam games and when the download toggle is off.
+        autoDownloadSteamSavesBlocking();
 
         // Start all environment components (XServer, Audio, Wine, etc.)
         preloaderDialog.step(4, "Launching Windows…");
@@ -5558,6 +5775,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Epic Friends Overlay pill — added last so it sits above the HUD/controls (only for an Epic
         // shortcut with the overlay toggle on).
         attachEpicOverlayPill();
+
+        // In-game achievement pills — watch this Steam game's Goldberg/GSE store (container + shortcut
+        // are known here). Genuine-Steam shortcuts only; no-op otherwise.
+        maybeStartAchievementWatcher();
     }
 
     // Apply a fullscreen aspect-ratio mode (#71) live and remember it PER GAME: the per-game shortcut

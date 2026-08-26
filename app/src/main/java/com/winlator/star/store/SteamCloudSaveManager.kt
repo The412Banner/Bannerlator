@@ -20,10 +20,12 @@ import java.net.URL
 import java.security.MessageDigest
 import java.util.Date
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipInputStream
 
 /**
@@ -480,6 +482,115 @@ object SteamCloudSaveManager {
                 })
             }
         })
+    }
+
+    // ── Blocking / gated variants (Java-friendly, for game launch/exit hooks) ─────
+    // The async combos above report via a Callback on their own worker thread. The launch/exit paths
+    // want a single blocking call that returns a summary String. These drive the existing combos to
+    // completion with a CountDownLatch, bounded so a stalled CM/upload can't hang the game exit. Every
+    // one is non-throwing at the boundary — it returns an error/summary String instead.
+
+    /** Overall bound for a blocking cloud op (Collect+Upload / Download+Apply). Keeps game-exit snappy;
+     *  on timeout the underlying additive transfer keeps running in the background and simply isn't
+     *  awaited (a later sync reconciles — uploads are additive, downloads overwrite the Library). */
+    private const val BLOCKING_BOUND_MS = 15_000L
+
+    /** Result of a blocking drive of one [Callback]-based move. */
+    private data class BlockingResult(val ok: Boolean, val summary: String)
+
+    /** Start a [Callback]-based move and block up to [boundMs] for its terminal onDone/onError. */
+    private fun runBlockingMove(boundMs: Long, start: (Callback) -> Unit): BlockingResult {
+        val latch = CountDownLatch(1)
+        val holder = AtomicReference<BlockingResult>()
+        try {
+            start(object : Callback {
+                override fun onStatus(message: String) {}
+                override fun onDone(summary: String) {
+                    holder.compareAndSet(null, BlockingResult(true, summary)); latch.countDown()
+                }
+                override fun onError(message: String) {
+                    holder.compareAndSet(null, BlockingResult(false, message)); latch.countDown()
+                }
+            })
+        } catch (e: Exception) {
+            Log.w(TAG, "runBlockingMove start failed", e)
+            return BlockingResult(false, "Sync error: ${e.message ?: e.javaClass.simpleName}")
+        }
+        val done = try { latch.await(boundMs, TimeUnit.MILLISECONDS) } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt(); false
+        }
+        if (!done) return BlockingResult(false, "Still syncing in the background (didn't finish within ${boundMs / 1000}s)")
+        return holder.get() ?: BlockingResult(false, "No result")
+    }
+
+    /**
+     * [hasCloudSupport] wrapped with a persisted [SteamPrefs] cache so a launch/exit path doesn't hit
+     * PICS every time. Returns the persisted verdict if known; otherwise probes once and persists a
+     * DEFINITIVE result. `null` (unknown) is never cached — it can be retried later.
+     */
+    @JvmStatic
+    fun hasCloudSupportCached(ctx: Context, appId: Int): Boolean? {
+        SteamPrefs.getCloudSupportCached(ctx, appId)?.let { return it }
+        val resolved = hasCloudSupport(ctx, appId)
+        if (resolved != null) SteamPrefs.setCloudSupportCached(ctx, appId, resolved)
+        return resolved
+    }
+
+    /**
+     * Blocking Collect→Upload (additive). If [hasCloudSupportCached] is `false`, does the local Collect
+     * (Container→Library) ONLY and returns a "local only" summary — no cloud batch is opened. Never
+     * throws; returns an error/summary String.
+     */
+    @JvmStatic
+    fun syncToCloudBlocking(ctx: Context, appId: Int, installDir: String): String {
+        return try {
+            // No-cloud games: still preserve the save locally (Collect into the Library), just don't
+            // pretend to upload. Same honest posture as uploadSaves' NO_CLOUD path.
+            if (hasCloudSupportCached(ctx, appId) == false) {
+                val r = runBlockingMove(BLOCKING_BOUND_MS) { cb -> collectFromContainer(ctx, appId, installDir, cb) }
+                return "No Steam Cloud support — saved locally only (${r.summary})"
+            }
+            runBlockingMove(BLOCKING_BOUND_MS) { cb -> syncToCloud(ctx, appId, installDir, cb) }.summary
+        } catch (e: Exception) {
+            Log.e(TAG, "syncToCloudBlocking failed", e)
+            "Sync error: ${e.message ?: e.javaClass.simpleName}"
+        }
+    }
+
+    /**
+     * Blocking Download→Apply with NEWEST-WINS. Downloads the cloud saves into the Library first (that
+     * never touches the container), then compares the cloud copy's newest mtime (now reflected in the
+     * Library) against the container's newest save mtime via [staleness]. If the container copy is
+     * newer-or-equal, the Apply is SKIPPED (local kept) and that is reported. Never throws.
+     */
+    @JvmStatic
+    fun syncFromCloudNewestWins(ctx: Context, appId: Int, installDir: String): String {
+        return try {
+            if (SteamCloudSavePaths.resolveContainer(ctx, appId, installDir) == null) {
+                return "This game needs to be added to a container first."
+            }
+            // Phase 1: Download cloud → Library. Populates the Library with the cloud copy (mtimes
+            // preserved from the cloud timestamps), leaving the container untouched.
+            val dl = runBlockingMove(BLOCKING_BOUND_MS) { cb -> downloadToLibrary(ctx, appId, cb) }
+            if (!dl.ok) return dl.summary   // e.g. not signed in / download failed — nothing to apply
+
+            // Phase 2: newest-wins. libraryNewest now == the cloud copy's newest mtime; compare to the
+            // container's newest save. staleness() scopes the container side to THIS game's saves.
+            val st = staleness(ctx, appId, installDir)
+            if (st.libraryFileCount == 0) {
+                return "Nothing in the cloud to apply (${dl.summary})"
+            }
+            if (st.containerFileCount > 0 && st.containerNewestMtime >= st.libraryNewestMtime) {
+                return "Kept your local save — the container copy is newer than (or the same age as) " +
+                    "the cloud. Cloud copy downloaded to your Library (${dl.summary})."
+            }
+            // Cloud is newer (or the container has no save yet) → Apply Library → Container.
+            val ap = runBlockingMove(BLOCKING_BOUND_MS) { cb -> applyToContainer(ctx, appId, installDir, cb) }
+            "Synced from cloud (${dl.summary}; ${ap.summary})"
+        } catch (e: Exception) {
+            Log.e(TAG, "syncFromCloudNewestWins failed", e)
+            "Sync error: ${e.message ?: e.javaClass.simpleName}"
+        }
     }
 
     /**

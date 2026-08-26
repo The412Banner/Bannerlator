@@ -360,6 +360,11 @@ public final class SteamRepository {
         // + exposed via getSteamCloud() but never bound, so cloud saves could not work. Bind it here
         // so SteamCloudSaveManager (per-game cloud save up/download) has a live handle after login.
         steamCloud  = steamClient.getHandler(SteamCloud.class);
+        // Same story for SteamUserStats: declared + exposed via getSteamUserStats() but never bound.
+        // Bind it so SteamAchievementStore (per-game achievement fetch + optional sync-back) has a
+        // live handle after login. Core handler — no extra registerCallbacks() entry is required
+        // (getUserStats / storeUserStats use AsyncJobSingle futures, not manager.subscribe callbacks).
+        steamUserStats = steamClient.getHandler(SteamUserStats.class);
 
         registerCallbacks();
         Log.i(TAG, "SteamRepository initialised");

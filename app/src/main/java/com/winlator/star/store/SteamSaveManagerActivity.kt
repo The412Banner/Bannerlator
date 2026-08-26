@@ -523,9 +523,14 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("save_manager_prefs", Context.MODE_PRIVATE) }
     var steamOn by remember { mutableStateOf(prefs.getBoolean("auto_collect_steam_on_exit", true)) }
+    var steamUpOn by remember { mutableStateOf(prefs.getBoolean("auto_upload_steam_on_exit", true)) }
+    var steamDlOn by remember { mutableStateOf(prefs.getBoolean("auto_download_steam_on_launch", true)) }
     var gogOn by remember { mutableStateOf(prefs.getBoolean("auto_upload_gog_on_exit", true)) }
     var gogDlOn by remember { mutableStateOf(prefs.getBoolean("auto_download_gog_on_launch", true)) }
     var customOn by remember { mutableStateOf(prefs.getBoolean("auto_backup_custom_on_exit", true)) }
+    // Achievement sync-back is owned by SteamPrefs (NOT save_manager_prefs) and is default OFF — it
+    // writes unlocks to the user's REAL Steam account, so it's gated behind an ON warning below.
+    var achvSyncOn by remember { mutableStateOf(SteamPrefs.isAchievementSyncBackEnabled(context)) }
     // A pending toggle interaction rendered over the section (null = none).
     var pendingToggle by remember { mutableStateOf<TogglePrompt?>(null) }
 
@@ -536,6 +541,20 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
             checked = steamOn,
             // Don't flip/write here — route through the confirm (OFF) / info (ON) prompt.
             onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.STEAM, it) },
+        )
+        Spacer(Modifier.height(16.dp))
+        SettingsToggleRow(
+            title = "Steam games: auto-upload to cloud on exit",
+            subtitle = "Push Steam-library saves to Steam Cloud when a game exits (only after you accept the third-party cloud disclaimer; never deletes anything from the cloud).",
+            checked = steamUpOn,
+            onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.STEAM_UP, it) },
+        )
+        Spacer(Modifier.height(16.dp))
+        SettingsToggleRow(
+            title = "Steam games: auto-download from cloud on launch",
+            subtitle = "Pull the latest Steam Cloud saves into the game before it starts (newest-wins — never overwrites a newer local save).",
+            checked = steamDlOn,
+            onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.STEAM_DL, it) },
         )
         Spacer(Modifier.height(16.dp))
         SettingsToggleRow(
@@ -558,23 +577,84 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
             checked = customOn,
             onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.CUSTOM, it) },
         )
+        Spacer(Modifier.height(16.dp))
+        SettingsToggleRow(
+            title = "Steam achievements: sync unlocks to your Steam profile",
+            subtitle = "When ON, achievements you unlock in-game are written back to your REAL Steam account. Off by default — unlocks otherwise stay local to this device.",
+            checked = achvSyncOn,
+            onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.ACHV_SYNC, it) },
+        )
     }
 
     pendingToggle?.let { prompt ->
+            // Achievement sync-back lives in SteamPrefs (not save_manager_prefs) and has INVERTED
+            // polarity: default OFF, and turning it ON writes to the user's real Steam account — so ON
+            // is the guarded step here (OFF is a plain write + brief info). Handled up front so the
+            // generic save-toggle flow below stays purely about the save_manager_prefs booleans.
+            if (prompt.kind == ToggleKind.ACHV_SYNC) {
+                if (prompt.newValue) {
+                    OutlinedAlertDialog(
+                        onDismissRequest = { pendingToggle = null },
+                        title = { Text("Sync achievements to Steam?") },
+                        text = {
+                            Text(
+                                "Turning this ON writes achievements you unlock in-game back to your REAL " +
+                                    "Steam account and profile. This is a third-party sync — it can't be undone " +
+                                    "on Steam and may not match what official Steam would record. Leave it off " +
+                                    "to keep unlocks local to this device. Turn on anyway?",
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                SteamPrefs.setAchievementSyncBackEnabled(context, true)
+                                achvSyncOn = true
+                                pendingToggle = null
+                            }) { Text("Turn on") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { pendingToggle = null }) { Text("Cancel") }
+                        },
+                    )
+                } else {
+                    LaunchedEffect(prompt) {
+                        SteamPrefs.setAchievementSyncBackEnabled(context, false)
+                        achvSyncOn = false
+                    }
+                    OutlinedAlertDialog(
+                        onDismissRequest = { pendingToggle = null },
+                        title = { Text("Achievement sync off") },
+                        text = {
+                            Text(
+                                "In-game achievement unlocks will stay local to this device and won't be " +
+                                    "written to your Steam profile.",
+                            )
+                        },
+                        confirmButton = { TextButton(onClick = { pendingToggle = null }) { Text("OK") } },
+                    )
+                }
+                return@let
+            }
+
             val prefKey = when (prompt.kind) {
                 ToggleKind.STEAM -> "auto_collect_steam_on_exit"
+                ToggleKind.STEAM_UP -> "auto_upload_steam_on_exit"
+                ToggleKind.STEAM_DL -> "auto_download_steam_on_launch"
                 ToggleKind.GOG -> "auto_upload_gog_on_exit"
                 ToggleKind.GOG_DL -> "auto_download_gog_on_launch"
                 ToggleKind.CUSTOM -> "auto_backup_custom_on_exit"
+                ToggleKind.ACHV_SYNC -> "" // unreachable — handled above
             }
             // Commit a new value to both the pref and the controlling switch state.
             val commit = { value: Boolean ->
-                prefs.edit().putBoolean(prefKey, value).apply()
+                if (prefKey.isNotEmpty()) prefs.edit().putBoolean(prefKey, value).apply()
                 when (prompt.kind) {
                     ToggleKind.STEAM -> steamOn = value
+                    ToggleKind.STEAM_UP -> steamUpOn = value
+                    ToggleKind.STEAM_DL -> steamDlOn = value
                     ToggleKind.GOG -> gogOn = value
                     ToggleKind.GOG_DL -> gogDlOn = value
                     ToggleKind.CUSTOM -> customOn = value
+                    ToggleKind.ACHV_SYNC -> {} // unreachable — handled above
                 }
             }
 
@@ -590,6 +670,14 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
                                     "Automatic save backup on exit will be OFF for your Steam library games. " +
                                         "Their saves won't be captured when a game closes — you'll need to back " +
                                         "them up yourself via a container's backup option or the Save Manager. Continue?"
+                                ToggleKind.STEAM_UP ->
+                                    "Automatic cloud upload on exit will be OFF for your Steam library games. " +
+                                        "Their saves won't be pushed to Steam Cloud when a game closes — you'll need to " +
+                                        "upload them yourself from the game's detail page Cloud Saves section. Continue?"
+                                ToggleKind.STEAM_DL ->
+                                    "Automatic cloud download on launch will be OFF for your Steam library games. " +
+                                        "The latest cloud saves won't be pulled in before a game starts — you'll need to " +
+                                        "download them yourself from the game's detail page Cloud Saves section. Continue?"
                                 ToggleKind.GOG ->
                                     "Automatic cloud upload on exit will be OFF for your GOG library games. " +
                                         "Their saves won't be pushed to GOG cloud when a game closes — you'll need to " +
@@ -603,6 +691,7 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
                                         "Their saves won't be captured when a game closes — you'll need to back them " +
                                         "up yourself via a container's backup option or the game's ⋮ menu → " +
                                         "'Back up saves'. Continue?"
+                                ToggleKind.ACHV_SYNC -> "" // unreachable — handled above
                             },
                         )
                     },
@@ -624,12 +713,17 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
                             when (prompt.kind) {
                                 ToggleKind.STEAM ->
                                     "Automatic save backup on exit is ON for your Steam library games."
+                                ToggleKind.STEAM_UP ->
+                                    "Automatic cloud upload on exit is ON for your Steam library games."
+                                ToggleKind.STEAM_DL ->
+                                    "Automatic cloud download on launch is ON for your Steam library games."
                                 ToggleKind.GOG ->
                                     "Automatic cloud upload on exit is ON for your GOG library games."
                                 ToggleKind.GOG_DL ->
                                     "Automatic cloud download on launch is ON for your GOG library games."
                                 ToggleKind.CUSTOM ->
                                     "Automatic save backup on exit is ON for your custom-imported games."
+                                ToggleKind.ACHV_SYNC -> "" // unreachable — handled above
                             },
                         )
                     },
@@ -642,7 +736,7 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
 }
 
 /** Which auto-backup toggle a pending confirm/info prompt belongs to. */
-private enum class ToggleKind { STEAM, GOG, GOG_DL, CUSTOM }
+private enum class ToggleKind { STEAM, STEAM_UP, STEAM_DL, GOG, GOG_DL, CUSTOM, ACHV_SYNC }
 
 /** A pending toggle interaction: which toggle, and the value the user is trying to set it to. */
 private data class TogglePrompt(val kind: ToggleKind, val newValue: Boolean)

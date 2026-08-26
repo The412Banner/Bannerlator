@@ -499,6 +499,41 @@ object XServerDialogState {
     }
 
     // -------------------------------------------------------------------------
+    // Achievement PILL stack — a channel SEPARATE from the single controller-toast slot above. Each
+    // Steam achievement unlocked in-game (surfaced by AchievementWatcher from the Goldberg GSE
+    // achievements.json) appends a gold pill; AchievementPillStackOverlay renders the whole LIST
+    // stacked down the top-right and removes each by id once its own ~4.5s lifecycle finishes, so a
+    // burst STACKS instead of replacing. Distinct from _controllerToast so the two never collide.
+    // -------------------------------------------------------------------------
+    data class AchievementPill(
+        val id: Long,
+        val name: String,
+        val description: String?,
+        val iconPath: String?, // local file path to the (color) achievement icon; null → placeholder
+    )
+
+    private val _achievementPills = MutableStateFlow<List<AchievementPill>>(emptyList())
+    val achievementPills: StateFlow<List<AchievementPill>> = _achievementPills
+    private var _achievementPillId = 0L
+
+    /**
+     * Append an achievement pill to the stack. Fired by AchievementWatcher for each newly-earned
+     * achievement. Thread-safe (StateFlow) — callable off the FileObserver thread; from Java as
+     * XServerDialogState.INSTANCE.showAchievementToast(...).
+     */
+    @JvmStatic
+    fun showAchievementToast(name: String, description: String?, iconPath: String?) {
+        _achievementPillId += 1
+        _achievementPills.value = _achievementPills.value +
+            AchievementPill(_achievementPillId, name, description, iconPath)
+    }
+
+    /** Remove a pill once its lifecycle finishes (called by the overlay on fade-out). */
+    fun removeAchievementPill(id: Long) {
+        _achievementPills.value = _achievementPills.value.filterNot { it.id == id }
+    }
+
+    // -------------------------------------------------------------------------
     // Gyro (motion aim) — Controls tab. WinHandler owns the values and persists them to
     // SharedPreferences, same round-trip as the vibration master switch: the activity seeds these
     // flows in setupUI and each drawer change fires the matching callback straight back into
@@ -839,6 +874,7 @@ object XServerDialogState {
         _reshadeLivePreview.value = false
         _paused.value          = false
         _controllerToast.value = null
+        _achievementPills.value = emptyList()
         _vibrationSlots.value  = emptyList()
         _vibrationMode.value   = 1
         _vibrationIntensity.value = 100

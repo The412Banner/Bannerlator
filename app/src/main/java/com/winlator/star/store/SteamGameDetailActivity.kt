@@ -9,8 +9,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,19 +29,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
+import com.winlator.star.ui.screens.outlinedMenuCard
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,6 +55,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,13 +65,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
@@ -71,6 +93,9 @@ import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import com.winlator.star.ui.theme.WinlatorTheme
+import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
 
@@ -234,6 +259,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         setContent {
             WinlatorTheme {
                 SteamGameDetailScreen(
+                    appId = appId,
+                    signedIn = SteamPrefs.isLoggedIn,
                     headerBitmap = headerBitmap,
                     steamStatus = steamStatus,
                     onReconnect = { SteamRepository.getInstance().reconnectNow() },
@@ -271,7 +298,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     downloadProgressValue = downloadProgressValue,
                     progressText = progressText,
                     progressTextVisible = progressTextVisible,
-                    goldbergVisible = gameStatus == GameStatus.INSTALLED,
                     goldbergMode = goldbergMode,
                     goldbergBusy = goldbergBusy,
                     goldbergInstalled = goldbergInstalled,
@@ -1117,11 +1143,55 @@ private data class ExePickerDataGame(
     val coverUrl: String,
 )
 
+/** The detail page's top-level tabs (styled like the action buttons). Order = strip order. */
+private enum class DetailTab(val label: String) {
+    DETAILS("Details"),
+    ACHIEVEMENTS("Achievements"),
+    DLC("DLC"),
+    CLOUD("Cloud saves"),
+}
+
+// ── Achievements/tab mockup palette ─────────────────────────────────────────────────────────────
+// The tab strip + achievements body follow an approved fixed-colour mockup, NOT MaterialTheme — so
+// these literal values match the spec 1:1 (alpha channels folded into the ARGB hex where the mockup
+// used rgba()). Everything else on the page keeps the app theme.
+// Non-gold roles now follow the user's theme (composable getters reading MaterialTheme.colorScheme),
+// so tabs / buttons / surfaces / lines recolor with the active preset instead of the mockup blue.
+private val AchvAccent: Color          @Composable get() = MaterialTheme.colorScheme.primary
+private val AchvTabActiveBg: Color     @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+private val AchvTabActiveText: Color   @Composable get() = MaterialTheme.colorScheme.primary
+private val AchvTabActiveBorder: Color @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+private val AchvTabActiveBadge: Color  @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+private val AchvInk: Color             @Composable get() = MaterialTheme.colorScheme.onSurface
+private val AchvInk2: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+private val AchvInk3: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+private val AchvCard: Color            @Composable get() = MaterialTheme.colorScheme.surface
+private val AchvCard2: Color           @Composable get() = MaterialTheme.colorScheme.surfaceContainer
+private val AchvLine: Color            @Composable get() = MaterialTheme.colorScheme.outline
+private val AchvLineSoft: Color        @Composable get() = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+private val AchvBadgeBg: Color         @Composable get() = MaterialTheme.colorScheme.surfaceContainerLowest
+private val AchvTrackBg: Color         @Composable get() = MaterialTheme.colorScheme.surfaceContainerLowest
+private val AchvTileUnlockedTop: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh
+private val AchvTileUnlockedBot: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainer
+private val AchvTileLockedTop: Color   @Composable get() = MaterialTheme.colorScheme.surfaceContainer
+private val AchvTileLockedBot: Color   @Composable get() = MaterialTheme.colorScheme.surfaceContainerLow
+
+// Achievement GOLD — the "earned" identity (Steam-like). Deliberately fixed (NOT themed): used ONLY
+// for the progress-bar fill, the unlocked tile ring + ✓ badge, the "Unlocked" pill, and the legend.
+private val AchvGold            = Color(0xFFE8B652)
+private val AchvGoldDim         = Color(0xFFCAA03E)
+private val AchvUnlockedBorder  = Color(0x8CE8B652) // rgba(232,182,82,.55)
+private val AchvChkGlyph        = Color(0xFF1A1204)
+private val AchvPillOnBg        = Color(0x21E8B652) // rgba(232,182,82,.13)
+private val AchvPillOnBorder    = Color(0x66E8B652) // rgba(232,182,82,.40)
+
 // --- Composable Screens ---
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun SteamGameDetailScreen(
+    appId: Int,
+    signedIn: Boolean,
     headerBitmap: Bitmap?,
     steamStatus: SteamRepository.SteamStatus,
     onReconnect: () -> Unit,
@@ -1159,7 +1229,6 @@ private fun SteamGameDetailScreen(
     downloadProgressValue: Int,
     progressText: String,
     progressTextVisible: Boolean,
-    goldbergVisible: Boolean,
     goldbergMode: GoldbergMode,
     goldbergBusy: Boolean,
     goldbergInstalled: Boolean,
@@ -1187,10 +1256,45 @@ private fun SteamGameDetailScreen(
     onPauseResumeClick: () -> Unit,
     onLaunchClick: () -> Unit,
 ) {
+    val context = LocalContext.current
+    var selectedTab by remember { mutableStateOf(DetailTab.DETAILS) }
+    // Anchored gear (⚙) dropdown beside the primary action button.
+    var gearMenuExpanded by remember { mutableStateOf(false) }
+    // Goldberg (Steam emulator) popup — opened from the gear menu (installed games only).
+    var goldbergDialogOpen by remember { mutableStateOf(false) }
+
+    // Achievements are loaded ONCE at the screen level so the tab count badge (done/total) and the
+    // Achievements tab body share a single source of truth. Same strategy as the old section: fetch
+    // on IO, fall back to the offline cache; not-signed-in short-circuits. Unlocked-first (stable).
+    var achLoading by remember { mutableStateOf(true) }
+    var achievements by remember { mutableStateOf<List<SteamAchievement>>(emptyList()) }
+    LaunchedEffect(appId, signedIn) {
+        if (!signedIn) { achievements = emptyList(); achLoading = false; return@LaunchedEffect }
+        achLoading = true
+        val list = withContext(Dispatchers.IO) {
+            val fetched = try { SteamAchievementStore.fetch(context, appId) } catch (_: Throwable) { emptyList() }
+            val base = if (fetched.isNotEmpty()) fetched
+                       else try { SteamAchievementStore.cached(context, appId) } catch (_: Throwable) { emptyList() }
+            base.sortedByDescending { it.unlocked }
+        }
+        achievements = list
+        achLoading = false
+    }
+    // The tile tapped in the icon-only grid → drives the caption bar. Reset when the game changes.
+    var selectedAch by remember(appId) { mutableStateOf<SteamAchievement?>(null) }
+
+    // The Achievements caption bar is pinned to the screen bottom (outside the page scroll) so it
+    // stays visible while the icon grid scrolls above it. We measure its height and reserve that much
+    // bottom padding in the scroll so the last grid rows aren't hidden behind it.
+    val density = LocalDensity.current
+    var captionHeightPx by remember { mutableIntStateOf(0) }
+    val showPinnedCaption =
+        selectedTab == DetailTab.ACHIEVEMENTS && signedIn && !achLoading && achievements.isNotEmpty()
+
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState()),
     ) {
         // Header bar
@@ -1249,8 +1353,9 @@ private fun SteamGameDetailScreen(
             )
         }
 
-        // Info section
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
+        // Game name — persistent header. Stays above the action row + tab strip (mirrors the
+        // mockup's fixed game header, which doesn't change as the tab body below it swaps).
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)) {
             Text(
                 text = nameText,
                 style = MaterialTheme.typography.headlineSmall,
@@ -1258,193 +1363,316 @@ private fun SteamGameDetailScreen(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                InfoChip(typeText)
-                Spacer(Modifier.width(8.dp))
-                InfoChip(sizeText)
-            }
-            // Labeled size breakdown: download (compressed), PICS estimate (Steam), free space.
-            if (sizeBreakdown.downloadLabel.isNotEmpty() ||
-                sizeBreakdown.picsLabel.isNotEmpty() ||
-                sizeBreakdown.freeLabel.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Column {
-                    if (sizeBreakdown.downloadLabel.isNotEmpty()) Text(
-                        text = sizeBreakdown.downloadLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (sizeBreakdown.picsLabel.isNotEmpty()) Text(
-                        text = sizeBreakdown.picsLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (sizeBreakdown.freeLabel.isNotEmpty()) Text(
-                        text = sizeBreakdown.freeLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (sizeBreakdown.fits) MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-            // Owned DLC that downloads alongside the game — with a clear button to choose which.
-            if (includedDlcText.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = includedDlcText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                OutlinedButton(
-                    onClick = onDlcLineClick,
-                    modifier = Modifier.padding(top = 6.dp),
-                ) {
-                    Text("Choose DLC")
-                }
-            }
-            // Beta-branch selector — only when the app actually exposes a non-public branch. Switching
-            // branches downloads/installs that branch's build on the next install or update.
-            if (branches.any { it.name != "public" }) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "Branch: " + if (selectedBranch == "public") "public (default)" else selectedBranch,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                OutlinedButton(
-                    onClick = onBranchLineClick,
-                    modifier = Modifier.padding(top = 6.dp),
-                ) {
-                    Text("Change branch")
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = statusText,
-                style = MaterialTheme.typography.bodySmall,
-                color = when (gameStatus) {
-                    GameStatus.INSTALLED -> Color(0xFF4CAF50) // semantic installed-green
-                    GameStatus.FAILED    -> MaterialTheme.colorScheme.error
-                    else                 -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
         }
 
-        // Progress — overlapping dual bar. A lighter "download" (network) fill leads a
-        // solid "install" (on-disk) fill; they move nearly together, download slightly ahead.
-        if (progressVisible) {
-            val installFrac  = (progressValue / 100f).coerceIn(0f, 1f)
-            val downloadFrac = (downloadProgressValue / 100f).coerceIn(0f, 1f)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-            ) {
-                // Download (network) fill — wider, lighter, underneath.
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(downloadFrac)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                )
-                // Install (on-disk) fill — narrower, solid, on top.
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(installFrac)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(MaterialTheme.colorScheme.primary),
-                )
-            }
-        }
-        if (progressTextVisible) {
-            Text(
-                text = progressText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-        }
+        // (Download progress is shown ON the large primary button below — 2-layer fill + an info
+        // line beneath it — so there's a single progress indicator, not a separate under-title bar.)
 
-        // Buttons
+        // Primary action + gear menu — a single state-driven button (per the mockup) replacing the
+        // old Install/Pause/Launch trio. EVERY former action stays reachable: the button drives
+        // install / retry / add-to-shortcuts (and shows download progress read-only), while the gear
+        // dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg. The underlying
+        // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
+        val downloading = progressVisible   // installAction == CANCEL (active or paused download)
+        val primaryShape = RoundedCornerShape(10.dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(
-                onClick = onInstallClick,
-                enabled = installBtnEnabled,
-                colors = when (installAction) {
-                    InstallAction.CANCEL, InstallAction.UNINSTALL -> ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
+            // ── Primary button ──────────────────────────────────────────────────────────────────
+            if (downloading) {
+                // Read-only download button: the SINGLE progress indicator. Same 2-layer fill the old
+                // under-title bar used — lighter back layer = bytes fetched (downloadProgressValue),
+                // solid front layer = bytes on disk (progressValue) — now on the primary button, in
+                // theme primary. Pause/cancel live in the gear, so the button itself is non-actionable.
+                val installFrac  = (progressValue / 100f).coerceIn(0f, 1f)
+                val downloadFrac = (downloadProgressValue / 100f).coerceIn(0f, 1f)
+                val label = if (pauseAction == PauseAction.RESUME) "Paused — $progressValue%"
+                            else "Downloading… $progressValue%"
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                        .clip(primaryShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .border(1.dp, AchvLine, primaryShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // Download (network) fill — lighter, underneath.
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .fillMaxHeight()
+                            .fillMaxWidth(downloadFrac)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                     )
-                    else -> ButtonDefaults.buttonColors()
-                },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp),
-            ) { Text(installBtnText, maxLines = 1) }
-
-            Button(
-                onClick = onPauseResumeClick,
-                enabled = pauseBtnEnabled,
-                colors = when (pauseAction) {
-                    PauseAction.PAUSE -> ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    // Install (on-disk) fill — solid, on top.
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .fillMaxHeight()
+                            .fillMaxWidth(installFrac)
+                            .background(MaterialTheme.colorScheme.primary),
                     )
-                    PauseAction.RESUME -> ButtonDefaults.buttonColors()
-                },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp),
-            ) { Text(pauseBtnText, maxLines = 1) }
+                    Text(
+                        text = label,
+                        color = AchvInk,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            } else {
+                // Accent action button: Add to shortcuts (installed) / Retry / Install.
+                val (label, enabled, onPrimary) = when (installAction) {
+                    InstallAction.UNINSTALL -> Triple("Add to shortcuts", launchBtnEnabled, onLaunchClick)
+                    else                    -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                        .clip(primaryShape)
+                        .background(if (enabled) AchvAccent else AchvAccent.copy(alpha = 0.4f))
+                        .clickable(enabled = enabled) { onPrimary() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
 
-            Button(
-                onClick = onLaunchClick,
-                enabled = launchBtnEnabled,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp),
-            ) { Text("Launch", maxLines = 1) }
+            // ── Gear (⚙) dropdown ───────────────────────────────────────────────────────────────
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(primaryShape)
+                        .background(AchvCard)
+                        .border(1.dp, AchvLine, primaryShape)
+                        .clickable { gearMenuExpanded = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("⚙", fontSize = 18.sp, color = AchvAccent)
+                }
+                DropdownMenu(
+                    expanded = gearMenuExpanded,
+                    onDismissRequest = { gearMenuExpanded = false },
+                    modifier = Modifier.outlinedMenuCard(),
+                ) {
+                    // Downloading → pause/resume + cancel lead, then the common items; a divider sits
+                    // between every option (matching the app's other outlined menus).
+                    if (downloading) {
+                        val pauseEmoji = if (pauseAction == PauseAction.RESUME) "▶️" else "⏸️"
+                        GearMenuItem(pauseEmoji, pauseBtnText, enabled = pauseBtnEnabled,
+                            onClick = { gearMenuExpanded = false; onPauseResumeClick() })
+                        MenuItemDivider()
+                        GearMenuItem("✕", "Cancel download", danger = true, // installAction == CANCEL
+                            onClick = { gearMenuExpanded = false; onInstallClick() })
+                        MenuItemDivider()
+                    }
+                    GearMenuItem("🌿", "Choose branch",
+                        onClick = { gearMenuExpanded = false; onBranchLineClick() })
+                    MenuItemDivider()
+                    GearMenuItem("🧩", "Manage DLC", enabled = dlcEntries.isNotEmpty(),
+                        onClick = { gearMenuExpanded = false; onDlcLineClick() })
+                    MenuItemDivider()
+                    // Goldberg patches installed game files, so it's only meaningful once installed;
+                    // opens the Goldberg popup.
+                    GearMenuItem("🛡️", "Goldberg mode", enabled = installAction == InstallAction.UNINSTALL,
+                        onClick = { gearMenuExpanded = false; goldbergDialogOpen = true })
+                    // Installed → Uninstall at the bottom.
+                    if (installAction == InstallAction.UNINSTALL) {
+                        MenuItemDivider()
+                        GearMenuItem("🗑️", "Uninstall", danger = true, // installAction == UNINSTALL
+                            onClick = { gearMenuExpanded = false; onInstallClick() })
+                    }
+                }
+            }
         }
 
-        if (goldbergVisible) {
-            GoldbergSection(
-                installed = goldbergInstalled,
-                downloading = goldbergDownloading,
-                downloadProgress = goldbergDownloadProgress,
-                sizeLabel = goldbergSizeLabel,
-                mode = goldbergMode,
-                busy = goldbergBusy,
-                onDownloadClick = onGoldbergDownloadClick,
-                onModeSelected = onGoldbergModeSelected,
+        // Download info line — moved out from under the (removed) small bar to directly under the
+        // large button: "…% (done / total) · speed · ETA". Same content/format + gate as before.
+        if (downloading && progressTextVisible) {
+            Text(
+                text = progressText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
             )
         }
 
-        if (cloudVisible) {
-            CloudSavesSection(
-                busy = cloudBusy,
-                status = cloudStatus,
-                resolved = cloudResolved,
-                containerReady = cloudContainerReady,
-                containerLabel = cloudContainerLabel,
-                libraryPath = cloudLibraryPath,
-                onSyncFromCloud = onCloudSyncFrom,
-                onSyncToCloud = onCloudSyncTo,
-                onDownload = onCloudDownload,
-                onApply = onCloudApply,
-                onCollect = onCloudCollect,
-                onUpload = onCloudUpload,
-                onSetUp = onCloudSetUp,
+        // Tab strip — Details · Achievements (done/total) · DLC · Cloud saves. Styled like the
+        // action buttons and horizontally scrollable, per the mockup.
+        SteamDetailTabs(
+            selected = selectedTab,
+            achDone = achievements.count { it.unlocked },
+            achTotal = achievements.size,
+            onSelect = { selectedTab = it },
+        )
+
+        // Tab body — every old section routed into its tab; behaviour unchanged, only the layout
+        // moved (sections became tab bodies).
+        when (selectedTab) {
+            // Details = the former info block: type/size chips, size breakdown, branch selector and
+            // install status. (Goldberg moved to a popup opened from the gear menu.)
+            DetailTab.DETAILS -> Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        InfoChip(typeText)
+                        Spacer(Modifier.width(8.dp))
+                        InfoChip(sizeText)
+                    }
+                    // Labeled size breakdown: download (compressed), PICS estimate (Steam), free space.
+                    if (sizeBreakdown.downloadLabel.isNotEmpty() ||
+                        sizeBreakdown.picsLabel.isNotEmpty() ||
+                        sizeBreakdown.freeLabel.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Column {
+                            if (sizeBreakdown.downloadLabel.isNotEmpty()) Text(
+                                text = sizeBreakdown.downloadLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (sizeBreakdown.picsLabel.isNotEmpty()) Text(
+                                text = sizeBreakdown.picsLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (sizeBreakdown.freeLabel.isNotEmpty()) Text(
+                                text = sizeBreakdown.freeLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (sizeBreakdown.fits) MaterialTheme.colorScheme.onSurfaceVariant
+                                        else MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    // Beta-branch selector — only when the app actually exposes a non-public branch.
+                    // Switching branches installs that branch's build on the next install or update.
+                    if (branches.any { it.name != "public" }) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Branch: " + if (selectedBranch == "public") "public (default)" else selectedBranch,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        OutlinedButton(
+                            onClick = onBranchLineClick,
+                            modifier = Modifier.padding(top = 6.dp),
+                        ) {
+                            Text("Change branch")
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (gameStatus) {
+                            GameStatus.INSTALLED -> Color(0xFF4CAF50) // semantic installed-green
+                            GameStatus.FAILED    -> MaterialTheme.colorScheme.error
+                            else                 -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+
+            // Achievements = the new icon-only mockup view (progress + grid + caption + legend).
+            DetailTab.ACHIEVEMENTS -> AchievementsTabBody(
+                signedIn = signedIn,
+                loading = achLoading,
+                achievements = achievements,
+                selected = selectedAch,
+                onSelect = { selectedAch = it },
             )
+
+            // DLC = the owned-DLC summary + the existing (bottom-sheet) picker.
+            DetailTab.DLC -> Column(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 16.dp),
+            ) {
+                if (dlcEntries.isEmpty()) {
+                    Text(
+                        text = "No DLC available for this game.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        text = includedDlcText.ifEmpty { "Choose which owned DLC download with this game." },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    OutlinedButton(
+                        onClick = onDlcLineClick,
+                        modifier = Modifier.padding(top = 10.dp),
+                    ) { Text("Choose DLC") }
+                }
+            }
+
+            // Cloud saves = the existing three-tier manager when it's available (installed + a live
+            // Steam session); otherwise a compact status line explaining what's needed.
+            DetailTab.CLOUD -> {
+                if (cloudVisible) {
+                    CloudSavesSection(
+                        busy = cloudBusy,
+                        status = cloudStatus,
+                        resolved = cloudResolved,
+                        containerReady = cloudContainerReady,
+                        containerLabel = cloudContainerLabel,
+                        libraryPath = cloudLibraryPath,
+                        onSyncFromCloud = onCloudSyncFrom,
+                        onSyncToCloud = onCloudSyncTo,
+                        onDownload = onCloudDownload,
+                        onApply = onCloudApply,
+                        onCollect = onCloudCollect,
+                        onUpload = onCloudUpload,
+                        onSetUp = onCloudSetUp,
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 16.dp),
+                    ) {
+                        Text(
+                            text = "Steam Cloud Saves",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = if (!signedIn) "Sign in to Steam to sync this game's cloud saves."
+                                   else "Install this game to sync its cloud saves with your Steam Cloud.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
+
+        // Reserve scroll space equal to the pinned caption's height (Achievements tab only), so the
+        // last grid rows can scroll clear of the pinned bar below.
+        if (showPinnedCaption) {
+            Spacer(Modifier.height(with(density) { captionHeightPx.toDp() }))
+        }
+    }
+
+    // Pinned achievements caption — lifted OUT of the page scroll, kept at the screen bottom while
+    // the icon grid scrolls above it. Only for the Achievements tab's grid state.
+    if (showPinnedCaption) {
+        AchievementCaptionBar(
+            selected = selectedAch,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .onSizeChanged { captionHeightPx = it.height },
+        )
+    }
     }
 
     // DLC picker sheet — choose which owned DLC download with the game (opt-out).
@@ -1612,6 +1840,588 @@ private fun SteamGameDetailScreen(
             }
         }
     }
+
+    // Goldberg (Steam emulator) popup — the former inline Details section, now a gear-menu dialog.
+    if (goldbergDialogOpen) {
+        GoldbergModeDialog(
+            installed = goldbergInstalled,
+            downloading = goldbergDownloading,
+            downloadProgress = goldbergDownloadProgress,
+            sizeLabel = goldbergSizeLabel,
+            mode = goldbergMode,
+            busy = goldbergBusy,
+            onDownloadClick = onGoldbergDownloadClick,
+            onModeSelected = onGoldbergModeSelected,
+            onDismiss = { goldbergDialogOpen = false },
+        )
+    }
+}
+
+/** One row of the gear (⚙) dropdown: a leading emoji + a label. `danger` recolors destructive
+ *  items (Cancel / Uninstall). Caller's `onClick` dismisses the menu then runs the real handler. */
+@Composable
+private fun GearMenuItem(
+    emoji: String,
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    danger: Boolean = false,
+) {
+    val base = if (danger) MaterialTheme.colorScheme.error else AchvInk
+    DropdownMenuItem(
+        text = {
+            Text(
+                text = text,
+                color = if (enabled) base else base.copy(alpha = 0.4f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        leadingIcon = { Text(emoji, fontSize = 14.sp) },
+        enabled = enabled,
+        onClick = onClick,
+    )
+}
+
+/**
+ * The detail page's tab strip — pill tabs styled like the action buttons (fixed mockup palette, not
+ * MaterialTheme). Horizontally scrollable. The Achievements tab carries a `done/total` count badge
+ * once its list has loaded (hidden while empty / not signed in).
+ */
+@Composable
+private fun SteamDetailTabs(
+    selected: DetailTab,
+    achDone: Int,
+    achTotal: Int,
+    onSelect: (DetailTab) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        DetailTab.values().forEach { tab ->
+            val isSel = tab == selected
+            val badge = if (tab == DetailTab.ACHIEVEMENTS && achTotal > 0) "$achDone/$achTotal" else null
+            val shape = RoundedCornerShape(9.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                modifier = Modifier
+                    .clip(shape)
+                    .background(if (isSel) AchvTabActiveBg else AchvCard)
+                    .border(1.dp, if (isSel) AchvTabActiveBorder else AchvLineSoft, shape)
+                    .clickable { onSelect(tab) }
+                    .padding(horizontal = 15.dp, vertical = 9.dp),
+            ) {
+                Text(
+                    text = tab.label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSel) AchvTabActiveText else AchvInk2,
+                    maxLines = 1,
+                )
+                if (badge != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isSel) AchvTabActiveBadge else AchvBadgeBg)
+                            .padding(horizontal = 7.dp, vertical = 1.dp),
+                    ) {
+                        Text(
+                            text = badge,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSel) AchvTabActiveText else AchvInk3,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Achievements tab body — the approved icon-only mockup: a progress block (label + gold fraction +
+ * gold gradient bar + "N% complete"), a 5-column square-icon grid (colour = unlocked with a gold
+ * border + ✓ badge, greyscaled = locked, a lock glyph + badge for hidden-and-locked), and a caption
+ * bar that names the tapped tile (status pill + description + unlock date) with a legend. The list is
+ * loaded by the caller (shared with the tab count badge); this renders the not-signed-in / loading /
+ * empty / grid states. The 5-col grid is a chunked weighted-Row grid so it nests in the page's
+ * verticalScroll (a LazyVerticalGrid can't).
+ */
+@Composable
+private fun AchievementsTabBody(
+    signedIn: Boolean,
+    loading: Boolean,
+    achievements: List<SteamAchievement>,
+    selected: SteamAchievement?,
+    onSelect: (SteamAchievement) -> Unit,
+) {
+    // Long-press on a tile opens the app's "?" help popup for that achievement (additive to the
+    // tap→caption behaviour). Scoped to this tab body; switching tabs drops it back to null.
+    var dialogAchv by remember { mutableStateOf<SteamAchievement?>(null) }
+
+    when {
+        !signedIn -> Text(
+            text = "Sign in to Steam to view achievements.",
+            fontSize = 13.sp,
+            color = AchvInk2,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+        loading -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                color = AchvAccent,
+                strokeWidth = 2.dp,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Loading achievements…", fontSize = 13.sp, color = AchvInk2)
+        }
+        achievements.isEmpty() -> Text(
+            text = "This game has no achievements.",
+            fontSize = 13.sp,
+            color = AchvInk2,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+        else -> {
+            val total = achievements.size
+            val done = achievements.count { it.unlocked }
+            val pct = SteamAchievementStore.percentUnlocked(achievements)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Progress block (padded to match the rest of the page content).
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    AchievementProgressBlock(done = done, total = total, pct = pct)
+                }
+                // Icon grid — rows of 5 evenly-weighted square tiles; last row left-aligned.
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    achievements.chunked(5).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
+                            horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        ) {
+                            for (a in rowItems) {
+                                AchievementTile(
+                                    a = a,
+                                    selected = a == selected,
+                                    onClick = { onSelect(a) },
+                                    onLongClick = { dialogAchv = a },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            repeat(5 - rowItems.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+                // NOTE: the caption/legend bar is rendered by the SCREEN, pinned to the bottom of
+                // the page (outside this scroll) so it stays visible while the grid scrolls.
+            }
+        }
+    }
+
+    // Long-press help popup — rendered whenever a tile has been long-pressed.
+    dialogAchv?.let { achv -> AchievementHelpDialog(achv, onDismiss = { dialogAchv = null }) }
+}
+
+/** Progress block: "Achievements" label + gold `done` in the fraction + gold-gradient bar + "N%". */
+@Composable
+private fun AchievementProgressBlock(done: Int, total: Int, pct: Int) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Achievements", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AchvInk)
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = AchvGold, fontWeight = FontWeight.Bold)) { append("$done") }
+                    append(" / $total unlocked")
+                },
+                fontSize = 13.sp,
+                color = AchvInk2,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        val frac = (pct / 100f).coerceIn(0f, 1f)
+        val trackShape = RoundedCornerShape(20.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(trackShape)
+                .background(AchvTrackBg)
+                .border(1.dp, AchvLineSoft, trackShape),
+        ) {
+            if (frac > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(frac)
+                        .clip(trackShape)
+                        .background(Brush.horizontalGradient(listOf(AchvGoldDim, AchvGold))),
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "$pct% complete",
+            fontSize = 11.sp,
+            color = AchvInk3,
+            modifier = Modifier.align(Alignment.End),
+        )
+    }
+}
+
+/**
+ * One square icon tile. Unlocked → colour icon + gold border/glow + ✓ badge. Locked (not hidden) →
+ * the SAME colour icon greyscaled (saturation-0 ColorMatrix) at ~0.5 alpha, more reliable than the
+ * CDN gray asset. Hidden-and-locked → a lock glyph instead of the art + a small lock badge. A tapped
+ * tile takes an accent border. Kept square via aspectRatio(1f) so it nests in a vertical scroll.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AchievementTile(
+    a: SteamAchievement,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val hiddenLocked = a.hidden && !a.unlocked
+    val shape = RoundedCornerShape(11.dp)
+    val bg = if (a.unlocked) Brush.linearGradient(listOf(AchvTileUnlockedTop, AchvTileUnlockedBot))
+             else Brush.linearGradient(listOf(AchvTileLockedTop, AchvTileLockedBot))
+    val borderColor = when {
+        selected   -> AchvAccent
+        a.unlocked -> AchvUnlockedBorder
+        else       -> AchvLineSoft
+    }
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(shape)
+            .background(bg)
+            .border(1.dp, borderColor, shape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (hiddenLocked) {
+            Text("🔒", fontSize = 22.sp)
+        } else {
+            // Colour icon for both states; grey it for locked (prefer local file, fall back to URL).
+            val model: Any? = a.localIconPath?.takeIf { it.isNotEmpty() }?.let { File(it) }
+                ?: a.iconUrl.takeIf { it.isNotEmpty() }
+            if (model != null) {
+                AsyncImage(
+                    model = model,
+                    contentDescription = a.displayName.ifEmpty { a.apiName },
+                    contentScale = ContentScale.Crop,
+                    alpha = if (a.unlocked) 1f else 0.5f,
+                    colorFilter = if (a.unlocked) null
+                                  else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
+                    modifier = Modifier.fillMaxSize().clip(shape),
+                )
+            }
+        }
+        if (a.unlocked) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(AchvGold),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("✓", fontSize = 10.sp, fontWeight = FontWeight.Black, color = AchvChkGlyph)
+            }
+        } else if (hiddenLocked) {
+            Text(
+                text = "🔒",
+                fontSize = 10.sp,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Long-press help popup for a tile — rendered through the app's standard [OutlinedAlertDialog] (the
+ * same rounded/outlined "?" look, with a "Got it" confirm) so it matches every other help dialog.
+ * The body mirrors the mockup's `.dlg` block: a centered column of the achievement's full art
+ * (78dp, gold-bordered + tinted when unlocked, greyscaled when locked, a lock glyph when hidden and
+ * locked), its name, a status pill (gold "Unlocked · <date>" / muted "Locked" / "Hidden"), and the
+ * description (a generic hint for a blank hidden-and-locked one).
+ */
+@Composable
+private fun AchievementHelpDialog(a: SteamAchievement, onDismiss: () -> Unit) {
+    val hiddenLocked = a.hidden && !a.unlocked
+    val iconShape = RoundedCornerShape(16.dp)
+    val pillShape = RoundedCornerShape(20.dp)
+    val statusLabel = when {
+        a.unlocked && a.unlockTimeSec > 0L -> "Unlocked · ${formatUnlockDate(a.unlockTimeSec)}"
+        a.unlocked                         -> "Unlocked"
+        hiddenLocked                       -> "Hidden"
+        else                               -> "Locked"
+    }
+    val desc = when {
+        a.description.isNotEmpty() -> a.description
+        hiddenLocked               -> "Keep playing to reveal this one."
+        else                       -> ""
+    }
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Icon — 78dp, 16dp corner. The dimmed (locked) look is applied to the whole box.
+                Box(
+                    modifier = Modifier
+                        .size(78.dp)
+                        .alpha(if (a.unlocked) 1f else 0.55f)
+                        .clip(iconShape)
+                        .background(Brush.linearGradient(listOf(AchvTileUnlockedTop, AchvTileUnlockedBot)))
+                        .border(1.dp, if (a.unlocked) AchvUnlockedBorder else AchvLineSoft, iconShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (hiddenLocked) {
+                        Text("🔒", fontSize = 40.sp)
+                    } else {
+                        val model: Any? = a.localIconPath?.takeIf { it.isNotEmpty() }?.let { File(it) }
+                            ?: a.iconUrl.takeIf { it.isNotEmpty() }
+                        if (model != null) {
+                            AsyncImage(
+                                model = model,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                colorFilter = if (a.unlocked) null
+                                              else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
+                                modifier = Modifier.fillMaxSize().clip(iconShape),
+                            )
+                        } else {
+                            Text("🏆", fontSize = 40.sp)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = if (hiddenLocked) "Hidden achievement" else a.displayName.ifEmpty { a.apiName },
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AchvInk,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(9.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(pillShape)
+                        .background(if (a.unlocked) AchvPillOnBg else AchvBadgeBg)
+                        .border(1.dp, if (a.unlocked) AchvPillOnBorder else AchvLineSoft, pillShape)
+                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        text = statusLabel,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (a.unlocked) AchvGold else AchvInk3,
+                    )
+                }
+                if (desc.isNotEmpty()) {
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = desc,
+                        fontSize = 13.sp,
+                        color = AchvInk2,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 19.sp,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Got it") }
+        },
+    )
+}
+
+/**
+ * The caption bar under the icon-only grid (edge-to-edge, top border + card-2 bg). With nothing
+ * selected it shows the default hint; a tapped tile shows its name + status pill + description (and
+ * unlock date when unlocked). Always ends with the Unlocked / Locked / Hidden legend.
+ */
+@Composable
+private fun AchievementCaptionBar(selected: SteamAchievement?, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(AchvLineSoft))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(AchvCard2)
+                .padding(start = 16.dp, end = 16.dp, top = 11.dp, bottom = 14.dp),
+        ) {
+            if (selected == null) {
+                Text("Tap an icon to see details", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AchvInk)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "The grid shows icons only — completed ones in full colour, locked ones greyed out.",
+                    fontSize = 12.sp,
+                    color = AchvInk2,
+                    lineHeight = 17.sp,
+                )
+            } else {
+                val hiddenLocked = selected.hidden && !selected.unlocked
+                val name = if (hiddenLocked) "Hidden achievement" else selected.displayName.ifEmpty { selected.apiName }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AchvInk,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    AchvStatusPill(unlocked = selected.unlocked)
+                }
+                Spacer(Modifier.height(4.dp))
+                val desc = when {
+                    hiddenLocked                      -> "Keep playing to reveal this one."
+                    selected.description.isNotEmpty() -> selected.description
+                    selected.unlocked                 -> "Unlocked."
+                    else                              -> "Locked — not yet earned."
+                }
+                Text(desc, fontSize = 12.sp, color = AchvInk2, lineHeight = 17.sp)
+                if (selected.unlocked && selected.unlockTimeSec > 0L) {
+                    Spacer(Modifier.height(3.dp))
+                    Text("Unlocked ${formatUnlockDate(selected.unlockTimeSec)}", fontSize = 11.sp, color = AchvGold)
+                }
+            }
+            Spacer(Modifier.height(9.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AchvLegendItem(swatch = { AchvLegendSwatch(unlocked = true) }, label = "Unlocked")
+                AchvLegendItem(swatch = { AchvLegendSwatch(unlocked = false) }, label = "Locked")
+                AchvLegendItem(swatch = { Text("🔒", fontSize = 11.sp) }, label = "Hidden")
+            }
+        }
+    }
+}
+
+/** Status pill for the caption bar: gold "Unlocked" vs muted "Locked". */
+@Composable
+private fun AchvStatusPill(unlocked: Boolean) {
+    val shape = RoundedCornerShape(20.dp)
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .background(if (unlocked) AchvPillOnBg else AchvBadgeBg)
+            .border(1.dp, if (unlocked) AchvPillOnBorder else AchvLineSoft, shape)
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = if (unlocked) "Unlocked" else "Locked",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (unlocked) AchvGold else AchvInk3,
+        )
+    }
+}
+
+/** One legend entry: a swatch (or glyph) + a caption in ink-3. */
+@Composable
+private fun AchvLegendItem(swatch: @Composable () -> Unit, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        swatch()
+        Text(label, fontSize = 11.sp, color = AchvInk3)
+    }
+}
+
+/** A 12dp legend swatch: unlocked (gold-bordered bright gradient) vs locked (dim greyed gradient). */
+@Composable
+private fun AchvLegendSwatch(unlocked: Boolean) {
+    val shape = RoundedCornerShape(4.dp)
+    Box(
+        modifier = Modifier
+            .size(12.dp)
+            .clip(shape)
+            .background(
+                if (unlocked) Brush.linearGradient(listOf(AchvTileUnlockedTop, AchvTileUnlockedBot))
+                else Brush.linearGradient(listOf(AchvTileLockedTop, AchvTileLockedBot)),
+                alpha = if (unlocked) 1f else 0.5f,
+            )
+            .border(1.dp, if (unlocked) AchvUnlockedBorder else AchvLine, shape),
+    )
+}
+
+/** Format an achievement unlock time (epoch seconds) as a readable date; "" when unknown. */
+private fun formatUnlockDate(epochSeconds: Long): String {
+    if (epochSeconds <= 0L) return ""
+    return try {
+        java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date(epochSeconds * 1000L))
+    } catch (_: Throwable) { "" }
+}
+
+/**
+ * Goldberg popup — opened from the gear menu (installed games only). Wraps the [GoldbergSection]
+ * content (title + description + at-your-own-risk note + the component download button when it isn't
+ * installed yet + the Off/Regular/Experimental/ColdClient mode picker) in the app's standard
+ * [OutlinedAlertDialog], with a "Done" confirm. All Goldberg behaviour is unchanged — just relocated
+ * from the inline Details section into this dialog.
+ */
+@Composable
+private fun GoldbergModeDialog(
+    installed: Boolean,
+    downloading: Boolean,
+    downloadProgress: Float,
+    sizeLabel: String,
+    mode: GoldbergMode,
+    busy: Boolean,
+    onDownloadClick: () -> Unit,
+    onModeSelected: (GoldbergMode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        text = {
+            // Bound + scroll the body so the picker + download button always fit (short landscape too).
+            val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
+            Column(
+                modifier = Modifier
+                    .heightIn(max = maxHeight)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                GoldbergSection(
+                    installed = installed,
+                    downloading = downloading,
+                    downloadProgress = downloadProgress,
+                    sizeLabel = sizeLabel,
+                    mode = mode,
+                    busy = busy,
+                    onDownloadClick = onDownloadClick,
+                    onModeSelected = onModeSelected,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+    )
 }
 
 /**
@@ -1620,7 +2430,7 @@ private fun SteamGameDetailScreen(
  * Emulator" button (with progress + MD5-verified extract); once installed it
  * shows the tier selector. Tiers are escalating fallbacks. The helper text is
  * deliberately honest: Goldberg only lets a game *start* without Steam — it
- * can't reach a publisher's own online servers.
+ * can't reach a publisher's own online servers. Rendered inside [GoldbergModeDialog].
  */
 @Composable
 private fun GoldbergSection(
@@ -1639,15 +2449,9 @@ private fun GoldbergSection(
         GoldbergMode.EXPERIMENTAL to "Experimental",
         GoldbergMode.COLDCLIENT to "Cold Client Loader",
     )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(16.dp),
-    ) {
+    // Rendered inside the Goldberg popup (OutlinedAlertDialog provides the card), so this is a plain
+    // content column with no card wrapper of its own.
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "Steam Emulator (Goldberg)",
             style = MaterialTheme.typography.titleSmall,

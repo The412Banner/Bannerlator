@@ -129,6 +129,50 @@ object SteamPrefs {
         prefs.edit().putString(K_SELECTED_BRANCH_PREFIX + appId, value).apply()
     }
 
+    // ── Achievement sync-back (SAFETY GATE, default OFF) ─────────────────────
+    // When OFF (the default) the achievement pipeline is READ-ONLY: we fetch/cache/display the real
+    // profile's achievements and record locally-earned unlocks to a pending queue, but NEVER write
+    // them to the user's real Steam profile. Enabling this flips SteamAchievementStore.flushPendingSyncBack
+    // to actually push queued unlocks via storeUserStats. Kept default-FALSE so test builds can never
+    // mutate a live profile without an explicit, deliberate opt-in.
+
+    private const val K_ACHV_SYNCBACK = "achievement_syncback_enabled"
+
+    /** True if the user has explicitly opted into pushing locally-earned achievements back to their
+     *  real Steam profile. DEFAULT FALSE — the pipeline is read-only until this is turned on. */
+    fun isAchievementSyncBackEnabled(ctx: Context): Boolean {
+        init(ctx)
+        return prefs.getBoolean(K_ACHV_SYNCBACK, false)
+    }
+
+    /** Enable/disable achievement sync-back (writing locally-earned unlocks to the real profile). */
+    fun setAchievementSyncBackEnabled(ctx: Context, v: Boolean) {
+        init(ctx)
+        prefs.edit().putBoolean(K_ACHV_SYNCBACK, v).apply()
+    }
+
+    // ── Steam Cloud support cache (per-app UFS verdict) ───────────────────────
+    // SteamCloudSaveManager.hasCloudSupport() hits PICS to learn whether an app has a UFS cloud store.
+    // That verdict is stable per app, so cache the DEFINITIVE true/false here (survives process death)
+    // to avoid a PICS round-trip on every launch/exit. "Unknown" (never resolved) is represented by the
+    // absence of the key — we NEVER persist an unknown, so it can always be retried later.
+
+    private const val K_CLOUD_SUPPORT_PREFIX = "cloud_support_"
+
+    /** Cached Steam-Cloud-support verdict for [appId]: true/false if resolved before, null if never. */
+    fun getCloudSupportCached(ctx: Context, appId: Int): Boolean? {
+        init(ctx)
+        val key = K_CLOUD_SUPPORT_PREFIX + appId
+        if (!prefs.contains(key)) return null
+        return prefs.getBoolean(key, false)
+    }
+
+    /** Persist a DEFINITIVE Steam-Cloud-support verdict for [appId]. Only call with a known true/false. */
+    fun setCloudSupportCached(ctx: Context, appId: Int, v: Boolean) {
+        init(ctx)
+        prefs.edit().putBoolean(K_CLOUD_SUPPORT_PREFIX + appId, v).apply()
+    }
+
     /** Wipe all Steam credentials and session state. */
     fun clear() {
         prefs.edit()

@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-08-26 — 🛒🏷️🟢🔖 **CHECKPOINT: Steam store badge + connection pill + auto-connect — built, CI/device PENDING**
+> **Where we are (resume here):** branch **`feat/steam-badge-connection`** off `origin/main` `bf58b509`, isolated worktree `/home/claude-user/bl-wt-steam-badge`. 2 commits: `302cf545` (badge) + `283348de` (pill+auto-connect). NOT pushed/built at this line; NOT merged.
+>
+> **What's built (3 user asks, 2026-08-26):**
+> - **A. STEAM store badge** on game tiles + list rows — new `SteamBadge` (dark-navy `#1B2838`) added to the existing `ShortcutBadgeOverlay` beside EPIC/EOS/GOG; both call sites pass `showSteam = isSteamOriginShortcut(shortcut)` (matches untagged legacy HL2/Legacy via `steam_games` path). *(Corrected a wrong first-pass "no existing tile badge" call — the overlay already existed.)*
+> - **B. Top-bar connection chip** — reusable `SteamConnectionPill()` (self-wired to `SteamRepository` status bus, gated `SteamPrefs.isLoggedIn`, tap→`reconnectNow()`) placed right after the "Games" title via a new `AppTopBar.titleTrailing` slot (Games route only). User chose Top-bar chip + this placement.
+> - **C. Drawer header pill** — same `SteamConnectionPill()` next to the account name in `DrawerAccountHeader`.
+> - **Auto-connect on launch** — `BannerlatorApp.onCreate` inits `SteamPrefs` (sync) + `SteamRepository.initialize` and `reconnectNow()` (off-thread) if ever signed in. User chose **Foreground-solid** (no persistent foreground service). Also cures the "not logged into Steam at game-launch screen" symptom.
+>
+> **NEXT:** push → `build-artifacts.yml` → stage **pubg** → device-test: STEAM badge on HL2/Legacy (grid+list); `● Online` chip after "Games"; drawer pill by username; green-on-launch auto-connect; tap-retry when offline. Then merge. Full detail: memory `project_bannerlator_steam_connection_ui`.
+
 ## 2026-08-26 — 🛒🏆✅ **Steam achievement seeding + schema + Goldberg update + DB-init root-cause — MERGED to main `2de2bfc9`**
 > **Merged to `main` @ `2de2bfc9`** (no-ff, from `feat/gse-achievement-seeding` @ `1db18255`; revert `git revert -m 1 2de2bfc9`). Builds linearly on the first achievement merge `dd7f96ae`; 6 files +648/−53. This is the follow-up that made in-game achievements actually populate.
 >

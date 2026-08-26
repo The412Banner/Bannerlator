@@ -1600,6 +1600,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // Same present-mode override as lsfg: bionic-fg inserts extra presents too, so force
             // mailbox while multiplying (FIFO backpressure would strangle the generated frames).
             applyEffectivePresentMode();
+            // win-fg: mirror lsfg's full presentation reset (pause guest + real surface teardown +
+            // on-screen Resume prompt + VRR release/re-vote) on a frame-gen LEVEL (Off/On/2×/3×/4×),
+            // interpolation MODEL, or PERFORMANCE-PRESET change — each restarts the layer's optical-
+            // flow/present state and otherwise needs a manual bg/fg to settle. Flow Scale keeps all
+            // three keys, so it stays live (no reset). Replaces win-fg's old soft pulseFgReset.
+            maybeTriggerWinFgReset(mult >= 2 ? mult : 0, fgModel, fgPreset);
         };
         // Live Present Mode selector (Graphics tab). The user's pick is persisted (per-game shortcut
         // override if present, else the container) then applied live through the same choke point as the
@@ -3748,6 +3754,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
         triggerFgPresentationReset();
     }
 
+    // win-fg equivalent of maybeTriggerFgReset. win-fg restarts its optical-flow / present state on a
+    // frame-gen LEVEL (Off/On/2×/3×/4×), interpolation MODEL, or PERFORMANCE-PRESET change, so — like
+    // lsfg on a level change — each fires the SAME deterministic pause + surface-teardown + Resume
+    // reset (triggerFgPresentationReset) instead of the old soft bg/fg pulse. Flow-scale edits keep
+    // all three keys, so they never reset (live-tunable). Tracks all three regardless so a change that
+    // lands while a reset is already up is still remembered.
+    private int lastCommittedWinFgLevel = -1;
+    private int lastCommittedWinFgModel = -1;
+    private int lastCommittedWinFgPreset = -1;
+    private void maybeTriggerWinFgReset(int level, int model, int preset) {
+        boolean changed = (level != lastCommittedWinFgLevel)
+                       || (model != lastCommittedWinFgModel)
+                       || (preset != lastCommittedWinFgPreset);
+        lastCommittedWinFgLevel = level;
+        lastCommittedWinFgModel = model;
+        lastCommittedWinFgPreset = preset;
+        if (!changed) return;
+        triggerFgPresentationReset();
+    }
+
     // Background half: freeze the guest (SIGSTOP via the same path onPause() / a manual Pause use),
     // release the renderer, then tear the Android render surface FULLY down (SurfaceView → GONE →
     // surfaceDestroyed → nativeDetachSurface), and raise the Resume overlay. Does NOT flip isPaused —
@@ -5314,6 +5340,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             0,
                             resolvedFrameGenModel(),
                             resolvedFrameGenPerfPreset());
+                    // Baseline the win-fg reset trackers to the launch state (frame gen starts Off,
+                    // multiplier 0) so the first in-game level/model/preset change fires the reset.
+                    lastCommittedWinFgLevel = 0;
+                    lastCommittedWinFgModel = resolvedFrameGenModel();
+                    lastCommittedWinFgPreset = resolvedFrameGenPerfPreset();
                     // Crowdsourced training capture (global opt-in). Piggy-backs on the win-fg layer we
                     // just loaded: arms WIN_FG_CAPTURE + output dir (Download/win-fg) + the anonymous
                     // consent record + the capture-resolution target box (native "Match game" uses the

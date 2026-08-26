@@ -83,6 +83,7 @@ import com.winlator.star.core.DefaultVersion;
 import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.WinFgCapture;
+import com.winlator.star.core.WinFgDiag;
 import com.winlator.star.core.GPUInformation;
 import com.winlator.star.core.GyroCalibrator;
 import com.winlator.star.core.KeyValueSet;
@@ -2686,7 +2687,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     + "multiplier = " + Math.max(2, Math.min(4, on ? multiplier : 2)) + "\n"
                     + "flowScale = " + String.format(java.util.Locale.US, "%.2f", flowScale) + "\n"
                     + "model = " + Math.max(3, Math.min(4, model)) + "\n"
-                    + "capture = " + (captureOn ? WinFgCapture.CONF_CAPTURE_ON : WinFgCapture.CONF_CAPTURE_OFF) + "\n";
+                    + "capture = " + (captureOn ? WinFgCapture.CONF_CAPTURE_ON : WinFgCapture.CONF_CAPTURE_OFF) + "\n"
+                    // Extra win-fg logging (global opt-in): verbose present-path logging for freeze debugging.
+                    + WinFgDiag.confDebugLine(this);
             // Only stamp the capture target box while capture is armed; a normal (capture-off) rewrite
             // leaves these keys out. "Match game" resolves to the session's actual render size (from the
             // X server screen info), else the fixed 720p/1080p box; falls back to 720p if unresolved.
@@ -5294,6 +5297,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 boolean fgOn = resolvedFrameGenEngine().equals("bionic");
                 if (fgOn) {
                     envVars.put("WIN_FG_ENABLE", "1");
+                    // Extra win-fg logging (global opt-in): verbose present-path logging for debugging
+                    // win-fg freezes/crashes. Sets WIN_FG_DEBUG=1; writeWinFgConfig stamps debug=on/off.
+                    // No-op when off, so a normal launch is untouched.
+                    WinFgDiag.applyLaunchEnv(this, envVars);
                     writeWinFgConfig(
                             0,
                             container.getFrameGenFlowScale(),

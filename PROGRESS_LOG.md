@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-08-26 — 🏷️➕ **CUSTOM origin badge for user-added games — built, part of the same branch**
+> Follows the checkpoint below (same branch `feat/steam-badge-connection`). User asked to "wrap up that labeling": games added via the **`+` button** or **File Manager → Add as shortcut** now get tagged `storeSource=custom` and wear a **CUSTOM** teal badge, mirroring STEAM/EPIC/GOG. Commit `2b04df99`.
+> - `ExeShortcutImporter.writeExeShortcut` stamps `storeSource=custom` — it's the SOLE writer for both manual paths (3 callers: FileManagerScreen + ShortcutsViewModel `importExe`/`importScannedGames`); no store install uses it, so store games are never mislabeled.
+> - `CustomBadge` (`#2A8C82` teal) + `showCustom` in `ShortcutBadgeOverlay` + `isCustomOriginShortcut` (custom unless a recognized store by tag or legacy `steam_games`/`gog_games` path). Existing untagged manual games (e.g. The Crew 2) are inferred as custom → badge without re-import. Both grid + list.
+> - ⏳ Rebuild + device-test (CUSTOM on The Crew 2 + a fresh `+`/File-Manager add) alongside the Steam features, then merge the whole labeling set.
+
 ## 2026-08-26 — 🛒🏷️🟢🔖 **CHECKPOINT: Steam store badge + connection pill + auto-connect — built, CI/device PENDING**
 > **Where we are (resume here):** branch **`feat/steam-badge-connection`** off `origin/main` `bf58b509`, isolated worktree `/home/claude-user/bl-wt-steam-badge`. 2 commits: `302cf545` (badge) + `283348de` (pill+auto-connect). NOT pushed/built at this line; NOT merged.
 >

@@ -4634,6 +4634,7 @@ private fun ShortcutItemLayoutL(
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 ShortcutBadgeOverlay(
+                    showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
                     showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
                     showEos = rememberEosBadge(shortcut),
                     showGog = remember(shortcut) { isGogShortcut(shortcut) },
@@ -4891,6 +4892,7 @@ private fun ShortcutGridItem(
         // Store badges overlaid top-left on the cover: EPIC (storeSource==epic) then EOS, then GOG
         // (storeSource==gog or gog_games exec path).
         ShortcutBadgeOverlay(
+            showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
             showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
             showEos = rememberEosBadge(shortcut),
             showGog = remember(shortcut) { isGogShortcut(shortcut) },
@@ -7998,6 +8000,28 @@ private fun GogBadge(modifier: Modifier = Modifier) {
 }
 
 /**
+ * Marks a shortcut whose store source is Steam (storeSource=steam, or — for untagged legacy Steam
+ * installs — an exec path under `steam_games`; see [isSteamOriginShortcut]). Steam-brand dark navy
+ * pill, sized identically to the EPIC/EOS/GOG pills.
+ */
+@Composable
+private fun SteamBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF1B2838))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "STEAM",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+/**
  * True when a shortcut is a GOG game. GOG shortcuts are UNTAGGED (StarLaunchBridge stamps no
  * `storeSource` for the legacy GOG overload), so the load-bearing signal is the exec path living
  * under `gog_games` (installs at `imagefs/gog_games/…` → `Z:\gog_games\…`); the `storeSource==gog`
@@ -8420,13 +8444,15 @@ private fun ChangeExecutableCoordinator(
 
 @Composable
 private fun ShortcutBadgeOverlay(
+    showSteam: Boolean = false,
     showEpic: Boolean,
     showEos: Boolean,
     showGog: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    if (!showEpic && !showEos && !showGog) return
+    if (!showSteam && !showEpic && !showEos && !showGog) return
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (showSteam) SteamBadge()
         if (showEpic) EpicBadge()
         if (showEos) EosBadge()
         if (showGog) GogBadge()

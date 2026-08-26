@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-08-26T13-56-04-6736f1",
+    "created": "2026-08-26T13:56:04.370Z",
+    "reporter": "Quentin",
+    "device": "Huawei mate40pro",
+    "gpu": "Mali-G78",
+    "game": "Bannerlator 3.0.1, I cannot launch any build of the Proton11-arm64 container",
+    "symptom": "Black screen (no image)黑屏（无图像）",
+    "logs": 3
+  },
+  {
     "id": "2026-08-26T09-40-21-8b9434",
     "created": "2026-08-26T09:40:21.334Z",
     "reporter": "Gta",

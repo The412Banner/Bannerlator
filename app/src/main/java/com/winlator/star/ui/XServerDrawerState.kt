@@ -94,6 +94,11 @@ object XServerDrawerState {
     private val _frameGenModel = MutableStateFlow(0)
     val frameGenModel: StateFlow<Int> = _frameGenModel
 
+    // win-fg performance preset (0 = Quality, 1 = Balanced (default), 2 = Performance). Switchable
+    // live: the layer hot-reloads conf.toml and self-rebuilds on a perf_preset change (no bg/fg pulse).
+    private val _frameGenPerfPreset = MutableStateFlow(1)
+    val frameGenPerfPreset: StateFlow<Int> = _frameGenPerfPreset
+
     // Which FG engine the container runs: "off" / "bionic" / "lsfg". Shown as a label above the
     // in-game multiplier/flow controls so the user knows which engine they're tuning.
     private val _frameGenEngine = MutableStateFlow("off")
@@ -425,6 +430,7 @@ object XServerDrawerState {
     fun setFrameGenMultiplier(v: Int)      { _frameGenMultiplier.value = v }
     fun setFrameGenFlowScale(v: Float)     { _frameGenFlowScale.value = v }
     fun setFrameGenModel(v: Int)           { _frameGenModel.value = v.coerceIn(0, 4) }
+    fun setFrameGenPerfPreset(v: Int)      { _frameGenPerfPreset.value = v.coerceIn(0, 2) }
     fun setFrameGenEngine(v: String)       { _frameGenEngine.value = v }
     fun setLsfgPerformanceMode(v: Boolean) { _lsfgPerformanceMode.value = v }
     fun setFpsLimiterEnabled(v: Boolean)   { _fpsLimiterEnabled.value = v }
@@ -536,6 +542,7 @@ object XServerDrawerState {
         _frameGenMultiplier.value = 2
         _frameGenFlowScale.value = 0.6f
         _frameGenModel.value = 0
+        _frameGenPerfPreset.value = 1
         _frameGenEngine.value = "off"
         _presentMode.value = "fifo"
         _presentModeLocked.value = false

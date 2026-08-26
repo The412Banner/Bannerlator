@@ -85,6 +85,7 @@ import com.winlator.star.core.AppUtils
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.PreloaderDialog
 import com.winlator.star.core.UpdateManager
+import com.winlator.star.core.WinFgCapture
 import com.winlator.star.fexcore.FEXCoreEditPresetDialog
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
@@ -131,6 +132,12 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     var openWithBrowser by remember { mutableStateOf(prefs.getBoolean("open_with_android_browser", false)) }
     var shareClipboard by remember { mutableStateOf(prefs.getBoolean("share_android_clipboard", false)) }
     var downloadableContentsURL by remember { mutableStateOf(prefs.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES) ?: ContentsManager.REMOTE_PROFILES) }
+    // win-fg training capture (global opt-in; consent-gated). Enabling opens the consent dialog.
+    var captureEnabled by remember { mutableStateOf(WinFgCapture.isEnabled(context)) }
+    var showCaptureConsent by remember { mutableStateOf(false) }
+    // Capture resolution selection (global, like the toggle) + the contributor help dialog.
+    var captureRes by remember { mutableStateOf(WinFgCapture.captureRes(context)) }
+    var showCaptureHelp by remember { mutableStateOf(false) }
 
     var winlatorPath by remember { mutableStateOf(
         run {
@@ -979,6 +986,84 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
         }
 
+        // ── Developer: frame-gen training capture (crowdsourced win-fg dataset) ──
+        FieldSetLabel("Developer — Frame-gen training capture")
+        FieldSet {
+            Text(
+                "Help improve Bannerlator's open frame generation. When on, the win-fg frame-gen layer " +
+                "records raw in-game frames while you play and saves them to Download/win-fg for you to " +
+                "share with us. It records only the game's rendered image — no personal info, no " +
+                "account, no Android system data, no audio. It lowers FPS while recording.",
+                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Text(
+                "Only records when a game's Frame Generation engine is set to win-fg. It does not force " +
+                "frame generation on.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = captureEnabled,
+                    onCheckedChange = { want ->
+                        if (want) {
+                            // Consent is mandatory — never enable directly; open the consent dialog.
+                            showCaptureConsent = true
+                        } else {
+                            WinFgCapture.disable(context)
+                            captureEnabled = false
+                            AppUtils.showToast(context, "Frame-gen training capture off")
+                        }
+                    }
+                )
+                Text("Contribute frame-gen training capture", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                // "?" — opens the contributor recording guide (covers the toggle + resolution below).
+                IconButton(onClick = { showCaptureHelp = true }) {
+                    Icon(Icons.Default.Help, "How to record good training data", tint = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            if (captureEnabled) {
+                Text(
+                    "Recording is ON — files saved to Download/win-fg.",
+                    color = Color(0xFF4CAF50), fontSize = 12.sp, // intentional: green = active/success status
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // ── Capture resolution (global; how the layer sizes the recorded frame) ──
+            Spacer(Modifier.height(8.dp))
+            Text("Capture resolution", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(
+                "\"Match game\" records at your actual play resolution (native, no downscale — best data). " +
+                "720p / 1080p force a fixed size. A mix across contributors is ideal.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = captureRes == WinFgCapture.RES_MATCH,
+                    onClick = { captureRes = WinFgCapture.RES_MATCH; WinFgCapture.setCaptureRes(context, WinFgCapture.RES_MATCH) },
+                )
+                Text("Match game (native)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = captureRes == WinFgCapture.RES_720P,
+                    onClick = { captureRes = WinFgCapture.RES_720P; WinFgCapture.setCaptureRes(context, WinFgCapture.RES_720P) },
+                )
+                Text("720p (1280×720)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = captureRes == WinFgCapture.RES_1080P,
+                    onClick = { captureRes = WinFgCapture.RES_1080P; WinFgCapture.setCaptureRes(context, WinFgCapture.RES_1080P) },
+                )
+                Text("1080p (1920×1080)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+        }
+
         // ── Performance (power-user toggles) ─────────────────────────────
         FieldSetLabel("Performance")
         FieldSet {
@@ -1006,6 +1091,75 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         ) {
             PerformanceSettingsScreen(onClose = { showPerformanceMenu = false })
         }
+    }
+
+    // ── win-fg training-capture consent (gates enabling; needs the "I understand" tick) ──
+    if (showCaptureConsent) {
+        var consentChecked by remember { mutableStateOf(false) }
+        val consentText = remember { context.getString(R.string.winfg_capture_consent_v1) }
+        AlertDialog(
+            onDismissRequest = { showCaptureConsent = false },
+            title = { Text(context.getString(R.string.winfg_capture_consent_title)) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(consentText, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = consentChecked, onCheckedChange = { consentChecked = it })
+                        Text("I understand", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = consentChecked, // Enable stays disabled until "I understand" is ticked.
+                    onClick = {
+                        WinFgCapture.recordConsentAndEnable(context)
+                        captureEnabled = true
+                        showCaptureConsent = false
+                        AppUtils.showToast(context, "Frame-gen training capture enabled")
+                    }
+                ) { Text("Enable") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCaptureConsent = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // ── win-fg training-capture contributor guide ("?" help dialog) ──
+    if (showCaptureHelp) {
+        AlertDialog(
+            onDismissRequest = { showCaptureHelp = false },
+            title = { Text("How to record good training data") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    val onSurface = MaterialTheme.colorScheme.onSurface
+                    @Composable fun Bullet(lead: String, body: String) {
+                        Text("• $lead $body", color = onSurface, fontSize = 13.sp,
+                            modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    Bullet("What this does:", "records raw in-game frames while you play, to help train an " +
+                        "open, clean frame-generation model. Off by default; it lowers FPS while recording. " +
+                        "Files save to Download/win-fg for you to share.")
+                    Bullet("Best games to record:", "ones with smooth, CONTINUOUS motion — 3D games, racing, " +
+                        "action, anything with camera movement. These teach real interpolation.")
+                    Bullet("Games to avoid:", "menu-heavy screens, 2D games where sprites snap/teleport, and " +
+                        "heavy particle-storm / rapid-flashing effects (they're un-interpolatable noise).")
+                    Bullet("Cap your FPS", "to a stable value (e.g. 30 or 60) so frame timing is even — this " +
+                        "makes much cleaner training data.")
+                    Bullet("Resolution:", "\"Match game\" is best (records at your actual play resolution); pick " +
+                        "720p or 1080p to force one. A mix across contributors is ideal.")
+                    Bullet("Variety helps more than length", "— a few minutes each across several different " +
+                        "games beats a long session of one.")
+                    Bullet("Privacy:", "only the game's rendered frames are captured — NO HUD/overlay, NO " +
+                        "personal info, NO account data, NO audio. The record is anonymous.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCaptureHelp = false }) { Text("Close") }
+            }
+        )
     }
 
     if (showLogManager) {

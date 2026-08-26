@@ -82,6 +82,7 @@ import com.winlator.star.core.AppUtils;
 import com.winlator.star.core.DefaultVersion;
 import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
+import com.winlator.star.core.WinFgCapture;
 import com.winlator.star.core.GPUInformation;
 import com.winlator.star.core.GyroCalibrator;
 import com.winlator.star.core.KeyValueSet;
@@ -2676,11 +2677,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
             configDir.mkdirs();
             File confFile = new File(configDir, "conf.toml");
             boolean on = multiplier >= 2;
+            // Training capture is a GLOBAL opt-in (WinFgCapture), independent of the per-container FG
+            // multiplier — so it's re-stamped on every conf.toml rewrite (launch + live in-game edits)
+            // and stays in sync when the in-game FG menu rewrites this file.
+            boolean captureOn = WinFgCapture.isEnabled(this);
             String toml = "# Written by Bannerlator (per-container frame generation)\n"
                     + "enabled = " + (on ? "1" : "0") + "\n"
                     + "multiplier = " + Math.max(2, Math.min(4, on ? multiplier : 2)) + "\n"
                     + "flowScale = " + String.format(java.util.Locale.US, "%.2f", flowScale) + "\n"
-                    + "model = " + Math.max(3, Math.min(4, model)) + "\n";
+                    + "model = " + Math.max(3, Math.min(4, model)) + "\n"
+                    + "capture = " + (captureOn ? WinFgCapture.CONF_CAPTURE_ON : WinFgCapture.CONF_CAPTURE_OFF) + "\n";
+            // Only stamp the capture target box while capture is armed; a normal (capture-off) rewrite
+            // leaves these keys out. "Match game" resolves to the session's actual render size (from the
+            // X server screen info), else the fixed 720p/1080p box; falls back to 720p if unresolved.
+            if (captureOn) {
+                int gw = (xServer != null) ? xServer.screenInfo.width : 0;
+                int gh = (xServer != null) ? xServer.screenInfo.height : 0;
+                int[] wh = WinFgCapture.resolveCaptureSize(this, gw, gh);
+                toml += WinFgCapture.CONF_CAPTURE_WIDTH + " = " + wh[0] + "\n"
+                        + WinFgCapture.CONF_CAPTURE_HEIGHT + " = " + wh[1] + "\n";
+            }
             FileUtils.writeString(confFile, toml);
         }
         catch (Exception e) {
@@ -5284,6 +5300,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             false,
                             0,
                             resolvedFrameGenModel());
+                    // Crowdsourced training capture (global opt-in). Piggy-backs on the win-fg layer we
+                    // just loaded: arms WIN_FG_CAPTURE + output dir (Download/win-fg) + the anonymous
+                    // consent record + the capture-resolution target box (native "Match game" uses the
+                    // resolved render size below). writeWinFgConfig above already stamped capture=on/off
+                    // (and capture_width/height) into conf.toml. No-op when the toggle is off, so a
+                    // normal launch is untouched.
+                    if (WinFgCapture.applyLaunchEnv(this, envVars, xServer.screenInfo.width, xServer.screenInfo.height)) {
+                        // Subtle in-session indicator so the volunteer knows recording is live.
+                        AppUtils.showToast(this, "Frame-gen training capture is recording to Download/win-fg (lowers FPS)");
+                    }
                 }
             }
             } else if (!"off".equals(resolvedFrameGenEngine())) {

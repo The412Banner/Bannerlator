@@ -58,7 +58,7 @@ SOFTWARE.
 | Component | Author | License | Used for |
 |---|---|---|---|
 | [GameNative](https://github.com/utkarshdalal/GameNative) | **utkarshdalal** | **GPL-3.0** ✔ | Proton bionic translation; the `AHardwareBuffer` present path (GPUImage buffer locking + EGLImage sampling, DRI3 direct-scanout, Present FLIP/COPY branches, Native-Rendering scanout); the standalone **FPS limiter** (present-pacing `IdleNotify` throttle); Steam **session-hardening** patterns; the `DownloadSpeedConfig` cores×ratio model |
-| [lsfg-vk](https://github.com/PancakeTAS/lsfg-vk) | **PancakeTAS** | **GPL-3.0** ✔ | Vulkan frame-generation engine (second, user-selectable FG option) |
+| [lsfg-vk](https://github.com/PancakeTAS/lsfg-vk) → [GameNative/lsfg-vk-android](https://github.com/GameNative/lsfg-vk-android) | **PancakeTAS** (upstream); Android port by **FrankBarretta** / **GameNative** | **GPL-3.0** ✔ | Vulkan frame-generation engine (second, user-selectable FG option). The bundled `liblsfg-vk.so` is the compiled layer from the GameNative Android fork, tag **v1.0.4-android** — a GPL-3.0 branch of PancakeTAS lsfg-vk (adds the Adreno gen8 mipmaps-replacement compute shader that fixes frame-gen producing no frames on Turnip a8xx) |
 | [gbe_fork](https://github.com/Detanup01/gbe_fork) / [Goldberg Steam Emu](https://mr_goldberg.gitlab.io/goldberg_emulator/) | **Detanup01** / **Mr_Goldberg** | **LGPL-3.0** ✔ | The **Goldberg auto-patch** (Regular / Experimental / ColdClient tiers) for offline/emulated play |
 | [Pluvia](https://github.com/oxters168/Pluvia) | **oxters168** | **GPL-3.0** ✔ | Referenced (alongside GameNative) for Steam login/session patterns |
 
@@ -68,7 +68,6 @@ SOFTWARE.
 
 | Component | Author | License | Used for |
 |---|---|---|---|
-| [lsfg-vk-android](https://github.com/FrankBarretta/lsfg-vk-android) | **FrankBarretta** | **MIT** ✔ | Android/bionic port of lsfg-vk (AHardwareBuffer path + pipeline-barrier shim) |
 | [bcn_layer](https://github.com/leegao/bcn_layer) + ASTC/ETC compute encoders | **leegao** | **MIT** ✔ | BCn texture-decompression Vulkan layer (Mali GPU compatibility) + real-time transcoders |
 | [JavaSteam](https://github.com/Longi94/JavaSteam) + `javasteam-depotdownloader` | **Longi94** / **joshuatam** | **MIT** ✔ | Steam connection-manager client and the depot-download engine behind the Steam store |
 | [vkBasalt](https://github.com/DadSchoorse/vkBasalt) | **DadSchoorse** | **Zlib** ✔ | The Vulkan post-processing layer (embeds the ReShade FX compiler) behind the **ReShade** feature; patched here for live on-device toggle/slider control |

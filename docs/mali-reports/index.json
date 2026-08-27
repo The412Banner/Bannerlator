@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-08-27T05-46-51-583137",
+    "created": "2026-08-27T05:46:51.511Z",
+    "reporter": "Han",
+    "device": "Infinix gt 10 pro",
+    "gpu": "Mali g77",
+    "game": "Pes 2013",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 1
+  },
+  {
     "id": "2026-08-26T15-41-07-15cc36",
     "created": "2026-08-26T15:41:07.381Z",
     "reporter": "vien",

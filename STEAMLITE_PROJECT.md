@@ -1,0 +1,74 @@
+# SteamLite — Real Steam Online Multiplayer (VAC) for Bannerlator
+
+**Canonical project document.** Branch `feat/steam-vac-phase0` (off main `68b528d9`). Last updated 2026-08-27.
+Detailed backing docs live in `re/` (see §9). This file is the single source of truth for goal, design, and state.
+
+---
+
+## 1. Goal
+Give Bannerlator **real Steam online multiplayer on VAC-secured servers** (TF2 / CS:S / L4D2-class titles) by launching the game with the **genuine Valve Steam client** driven by a lightweight headless agent ("SteamLite") — the same method GameHub uses — built into Bannerlator, legally.
+**Hard ceiling:** VAC-only. Never kernel anti-cheat (BattlEye / EAC / Vanguard) — no Android-Wine path exists.
+
+## 2. The one VAC-capable architecture (confirmed by 3-way RE)
+Reverse-engineering of WinNative, GameNative, and GameHub (today's code) all converge on ONE approach — there is no clever alternative:
+
+> A **headless `steam.exe` replacement inside Wine ("SteamLite")** loads the **GENUINE Valve `steamclient64.dll`** (NOT an emulator) via `CreateInterface("CLIENTENGINE_INTERFACE_VERSION005")` → `IClientEngine`/`IClientUser`, **logs in the user's REAL Steam session** with a refresh token (Bannerlator's JavaSteam already mints these), installs `steamservice`, seeds the registry + env, and the **game keeps its OWN genuine `steam_api64.dll`** (NOT Goldberg) → `GetAuthSessionTicket()` returns a real Valve-signed ticket with a real gameconnect token → **a VAC server accepts it at the auth layer.**
+
+- "SteamLite" is GameHub's own internal name for its agent (found in the PE: PDB `D:\a\SteamLite\SteamLite\...\SteamAgent.pdb`). It's lightweight because it strips real Steam.exe's heavy CEF UI / auto-updater / store — just the client-driving core.
+- **The Goldberg-injection shortcut is DEAD:** Goldberg is an emulator; its `ticket=` is the encrypted *app* (DRM) ticket, it fabricates the session ticket, and it cannot satisfy VAC. Not the path.
+
+## 3. Design of record
+
+### 3a. Launch-method hierarchy (per Steam game)
+1. **SteamLite** — *Real Steam, online* → **PRIMARY / default.** Real client, VAC-capable. What we're building.
+2. **Goldberg** — *offline / alternative* → **FALLBACK.** Already shipped + working (keeps its Regular/Experimental/ColdClient sub-modes). Auto-engaged when SteamLite fails (no network / login fail / uncooperative title).
+3. **Raw** — third option (no Steam layer).
+
+Auto-fall-back: try SteamLite → drop to Goldberg-offline on failure. **We keep the entire existing Goldberg path — just demote it from default to fallback.**
+
+### 3b. UI home
+The **Steam game detail page** (`SteamGameDetailActivity`) already hosts the Goldberg setup (gear → Goldberg Mode dialog). We add a **Launch method** picker there: SteamLite (default) / Goldberg (fallback, existing sub-modes nested) / Raw. Per-shortcut, stored on the shortcut, read at launch.
+
+### 3c. Launch wiring
+Rides on the tagging + hook Bannerlator already has:
+- Steam shortcuts are tagged `storeSource=steam` + `steamAppId` (`StarLaunchBridge`), resolved at launch in `XServerDisplayActivity` (`resolveSteamIdentity()`), where `SteamDatabase` init + Goldberg patching already happen (the achievements/Goldberg hook `maybeSeedAndStartAchievementWatcher` ~:4478 is the reference branch point).
+- **This is the exact same shape as Bannerlator's existing Epic online-launch hook** (`XServerDisplayActivity.java:8069-8078` appends `-EpicPortal` + a real minted auth triple, gated `storeSource=epic && epicEos!=0` — "NOT an emulator"). SteamLite is the Steam twin of that pattern: per-shortcut, launch-time, store-tagged, real online auth.
+- New `launchMode=RealSteam` branch: stage genuine client → start SteamLite agent (log in w/ user token) → set env block → launch game on its genuine `steam_api64.dll` → teardown on exit.
+
+## 4. What we fork / build / source (the legal posture)
+- **Fork GameHub's SteamLite agent + launch orchestration** — the user has GameHub/GameSir devs' permission to use their files and fork their app/features. This simplifies the build from "write our own agent from scratch" to "fork theirs + wire to Bannerlator."
+- **Reference WinNative's GPL code** (`wn-steam-launcher/src/main.cpp` `SetLoginToken`+`LogOn` on the private vtable) for the clean-room parts; OpenSteamworks headers cover the `IClientEngine v005` vtable.
+- **Our JavaSteam** already mints the user's refresh token — the login credential the agent needs.
+- **Valve's Windows DLLs** (`steamclient64.dll`/`steamservice.exe`/etc.): the ONE thing GameHub's permission doesn't cover (GameHub can't license Valve's IP). Steam is free to download but **not open source** — it's Valve's proprietary code. Clean sourcing = **download from Valve at runtime** (GameNative's model), or the user's own install. *The user also states Valve devs verbally said Steam's files are "fine to use" — if obtained in writing, that would additionally permit bundling; get written confirmation before relying on it for shipping.* For the by-hand test / local dev it's a non-issue.
+- **Never** ship the leaked GameSir dev token; borrowed GPL code keeps attribution.
+
+## 5. The one unproven risk (de-risk this)
+**"VAC-capable by construction" ≠ "VAC-proven on ARM."** No artifact anywhere proves an end-to-end VAC match completes on Android/ARM: GameHub's logs show games dying in **5–9 s** (`launch_failed 3005`), zero `vac`/`secure` hits; WinNative has no VAC code. **The unknown: does the x86 VAC anti-cheat module load + pass under FEX/box64 translation on ARM?** Everything else (real login, real ticket) is reproducible; this is not. The chosen approach (build the real launch into Bannerlator and try L4D2 online) tests launch + multiplayer + this risk together.
+
+## 6. Current state
+- ✅ 3-way RE complete (WinNative `2bcd0a3`, GameNative `1ad70ae5` + steam branches, GameHub 6.2.1 + SteamAgent PE teardown). Reports in `re/`.
+- ✅ Architecture + design of record settled (this doc).
+- ✅ Device facts: GameHub (`com.xiaoji.egggame`) is logged into the **user's own account** (not the leaked dev acct); genuine V6 client at `/storage/emulated/0/Download/steamagent/steam_client_0403`, CLIENTENGINE pin = **v005**; L4D2 owned + **added to a Bannerlator container**.
+- 🔄 **IN PROGRESS:** extracting GameHub's exact no-Goldberg real-launch orchestration (agent argv/env, token hand-off, client staging, game env block) → `re/GAMEHUB_REAL_LAUNCH_ORCHESTRATION.md` = the fork recipe.
+- ⛔ **Environment note:** the only Bannerlator install on device is `com.tencent.ig` (pubg-staged, normally verify-only) — no separate `com.winlator.banner`. L4D2's container is there.
+
+## 7. Open questions / decisions
+- **[USER] Container:** prototype/build in the `com.tencent.ig` staged install (where L4D2 is), or set up a fresh/dedicated one? (Blocks any device mutation.)
+- **[TECH] Token hand-off:** exactly how the SteamLite agent receives the user's login (CLI `--token` / env / written vdf) — the #1 recipe unknown, being resolved by the in-progress dig.
+- **[TECH] V6 agent interface pin** vs the v005 client bundle (v005 confirmed on the client; confirm the agent that drives it matches).
+
+## 8. Plan
+1. **[in progress]** Extract GameHub's no-Goldberg launch recipe (the fork spec).
+2. Prototype the real-Steam launch in a Bannerlator container (fork GameHub's SteamLite agent + genuine client), launch L4D2 → join a VAC-Secured server. **Pass = sustained secure gameplay past ~5–9 s. Fail = "VAC authentication error / unable to verify your game session".**
+3. If it passes: build the `launchMode=RealSteam` branch + the detail-page Launch-method picker + runtime Valve-client sourcing + `lsteamclient` bridge (recipe open on our `proton-wine *_add_steam`) + auto-fall-back to Goldberg.
+4. Prove: TF2 / CS:S / L4D2 on VAC servers, real players, full match.
+
+## 9. Backing docs (in `re/`)
+- `SYNTHESIS_OWN_STEAM_AGENT_PLAN.md` — the 3-way convergence + build plan.
+- `WINNATIVE_VAC_RE.md` / `GAMENATIVE_VAC_RE.md` / `GAMEHUB_STEAMAGENT_RE.md` — per-app deep dives.
+- `PHASE1A_VAC_TEST_AND_WIRING.md` — the by-hand test + launch-wiring spec (L4D2 + GameHub-client config).
+- `PHASE0_VAC_SCOPING.md` — original scoping (Goldberg-injection ruled out).
+- `GAMEHUB_REAL_LAUNCH_ORCHESTRATION.md` — *(in progress)* the no-Goldberg launch recipe to fork.
+
+## 10. Guardrails
+VAC-only, never kernel AC · never bundle Valve DLLs without written Valve permission (source at runtime) · never ship the leaked GameSir token · GPL attribution for WinNative/GameNative code · redact the owner's Steam email/SteamID from any committed artifact or external output.

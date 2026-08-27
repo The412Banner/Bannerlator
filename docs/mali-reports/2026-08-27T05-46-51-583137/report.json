@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-27T05-46-51-583137",
+  "created": "2026-08-27T05:46:51.511Z",
+  "ip_hash": "EZ6BXz12za",
+  "fields": {
+    "reporter_name": "Han",
+    "device_model": "Infinix gt 10 pro",
+    "soc": "Dimensity 8050",
+    "gpu": "Mali g77",
+    "android": "14",
+    "ram": "8",
+    "app_version": "3.0.1",
+    "install_source": "GitHub release",
+    "game_name": "Pes 2013",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.10.3",
+    "proton": "Proton 10",
+    "box64": "Performa",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "Missing face texture",
+    "tried": ""
+  },
+  "logs": [
+    {
+      "name": "Screenshot_20260827-094338.jpg"
+    }
+  ]
+}

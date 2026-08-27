@@ -1248,13 +1248,11 @@ private fun FrameGenSection(state: XServerDrawerState) {
         }
 
         FgMultiplierButtons(fgMult, engine) { newMult ->
-            val wasOff = fgMult == 0
             fgMult = newMult; applyFg()
-            // Turning FG on: win-fg pulses a soft bg/fg reset so its optical flow starts clean, not
-            // artifacty. lsfg-vk instead does a FULL surface-teardown reset with a Resume prompt —
-            // driven by onBionicFgConfigChange in the activity (the device-proven fix for its
-            // black-frame flicker) — so it must NOT also fire the soft pulse here.
-            if (engine == "bionic" && wasOff && newMult >= 2) state.onFgResetPulse?.run()
+            // Both engines now do the FULL surface-teardown reset with a Resume prompt, driven from
+            // onBionicFgConfigChange in the activity (win-fg on an On/Off/multiplier/model/preset
+            // change, lsfg on a level change). The old soft pulseFgReset for win-fg is retired, so
+            // nothing extra fires here.
         }
 
         // Interpolation model, win-fg only. The layer rebuilds its framegen context when the
@@ -1275,15 +1273,16 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 )
                 FgModelButtons(fgModel) { newModel ->
                     fgModel = newModel; applyFg()
-                    // Model switch while FG is on -> same bg/fg reset pulse.
-                    if (fgMult >= 2) state.onFgResetPulse?.run()
+                    // Model switch → full presentation reset, fired from onBionicFgConfigChange.
                 }
             }
         }
 
         // Performance preset, win-fg only. Writes conf.toml `perf_preset` (0 Quality / 1 Balanced /
-        // 2 Performance). The layer hot-reloads + self-rebuilds on this key, so — unlike a model change
-        // — it does NOT need a bg/fg reset pulse; just apply. Hidden while frame gen is Off.
+        // 2 Performance). The layer self-rebuilds hot on this key (flow images at the new resolution),
+        // so — unlike a model change — it does NOT fire the app surface-teardown reset: stacking the
+        // teardown on top of the layer's own rebuild collides and wedges the present path (Fold-8
+        // screen-freeze). Just apply. Hidden while frame gen is Off.
         AnimatedVisibility(
             visible = engine == "bionic" && fgMult > 0,
             enter = expandVertically() + fadeIn(),
@@ -1299,7 +1298,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 )
                 FgPerfPresetButtons(fgPreset) { newPreset ->
                     fgPreset = newPreset; applyFg()
-                    // No onFgResetPulse here — the layer self-rebuilds on the perf_preset change.
+                    // Preset change → layer self-rebuilds hot (no app teardown; it would collide).
                 }
                 Text(
                     "Quality favors image fidelity; Performance favors FPS. Balanced is the default.",

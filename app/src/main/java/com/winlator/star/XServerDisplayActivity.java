@@ -3838,35 +3838,62 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }, 48L);
     }
 
-    // True when the device's Vulkan ICD advertises VK_KHR_present_wait (the Adreno 840 does; the 750
-    // does not). Primary signal = the device-extension probe (enumerateDeviceExtensionProperties, the
-    // same native path getVulkanVersion uses at setup); fallback = an Adreno 8-series model match, for
-    // the case where a CUSTOM adrenotools driver returns an empty extension probe. All native calls are
-    // guarded; a failed/empty probe degrades to false = keep the existing full teardown (never worse
-    // than today). Called ONCE from extractGraphicsDriverFiles, off the UI thread.
+    // True when the device advertises VK_KHR_present_wait (the Adreno 840 does; the 750 does not).
+    //
+    // Two signals, OR'd, both logged so the next Fold-8 log shows exactly why:
+    //   (1) MODEL, from the SYSTEM Vulkan ICD (getRenderer(null)) — this is reliable even when the
+    //       container runs a CUSTOM adrenotools driver, which we skip-probe (returns empty) to avoid an
+    //       a6xx SIGSEGV. Adreno 8-series (a840) advertises present_wait as a class, so treat it as a
+    //       present_wait device (device-proven: "presentWait : 1" on the Fold-8/a840). This is the fix
+    //       for the earlier false-negative: the old code probed getRenderer(driverId) with the custom
+    //       driver id, which returns empty just like enumerateExtensions did, so BOTH failed.
+    //   (2) EXTENSION probe on the container's driver — authoritative when it returns a non-empty list
+    //       (catches present_wait parts that AREN'T Adreno 8-series); empty for custom drivers.
+    // Safe default false = keep the existing full teardown. Non-present_wait parts (a750) never match
+    // signal (1) and don't advertise present_wait in signal (2), so they stay on the full teardown.
+    // Called ONCE from extractGraphicsDriverFiles, off the UI thread.
     private boolean probePresentWaitDevice(String driverId) {
+        String sysRenderer = null, model = null;
+        boolean adreno8 = false;
+        try {
+            sysRenderer = GPUInformation.getRenderer(null, this);   // system ICD — driver-agnostic
+            model = GPUInformation.extractModelName(sysRenderer);
+            adreno8 = isAdreno8Series(sysRenderer) || isAdreno8Series(model);
+        }
+        catch (Throwable ignored) {}
+
+        int extCount = -1;
+        boolean extHasPresentWait = false;
         try {
             String[] exts = GPUInformation.enumerateExtensions(driverId, this);
-            // A real (non-empty) extension list is authoritative: present_wait is either in it (a840)
-            // or genuinely absent (a750) — trust it and don't second-guess with a model heuristic.
-            if (exts != null && exts.length > 0) {
+            if (exts != null) {
+                extCount = exts.length;
                 for (String e : exts) {
-                    if ("VK_KHR_present_wait".equalsIgnoreCase(e)) return true;
+                    if ("VK_KHR_present_wait".equalsIgnoreCase(e)) { extHasPresentWait = true; break; }
                 }
-                return false;
             }
         }
         catch (Throwable ignored) {}
-        // Only reached when the extension probe was empty / faulted (a CUSTOM adrenotools driver we
-        // skip-probe to avoid an a6xx SIGSEGV). Fall back to the model: Adreno 8-series advertises
-        // present_wait as a class, and this is exactly the win-fg present-id freeze split (a840 vs a750).
-        try {
-            String model = GPUInformation.extractModelName(GPUInformation.getRenderer(driverId, this));
-            if (model != null && java.util.regex.Pattern.compile("(?i)Adreno\\s*8\\d\\d").matcher(model).find())
-                return true;
-        }
-        catch (Throwable ignored) {}
-        return false;
+
+        boolean result = adreno8 || extHasPresentWait;
+        Log.i("XServerVulkan", "probePresentWaitDevice: driverId=" + driverId
+                + " sysRenderer=" + sysRenderer + " model=" + model + " adreno8=" + adreno8
+                + " extCount=" + extCount + " extHasPresentWait=" + extHasPresentWait
+                + " -> presentWaitDevice=" + result + " (by "
+                + (adreno8 ? "model" : extHasPresentWait ? "extension-probe" : "neither/default-false") + ")");
+        return result;
+    }
+
+    // Adreno 8-series match, tolerant of the several forms the model/renderer string can take across
+    // the system ICD, Turnip and adrenotools: "Adreno (TM) 840" / "Adreno 8xx", the bare "A840" form,
+    // and Turnip's "gen8"/"a8xx" architecture naming. Deliberately does NOT match "Snapdragon 8 Gen N"
+    // marketing strings (those are "gen 3" etc., not "gen8"/8xx).
+    private static boolean isAdreno8Series(String s) {
+        if (s == null) return false;
+        String t = s.toLowerCase();
+        return java.util.regex.Pattern.compile("adreno\\s*8\\d\\d").matcher(t).find()
+            || java.util.regex.Pattern.compile("\\ba8\\d\\d\\b").matcher(t).find()
+            || t.contains("gen8") || t.contains("a8xx");
     }
 
     // win-fg equivalent of maybeTriggerFgReset. win-fg restarts its optical-flow / present state on a
@@ -5407,6 +5434,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // doesn't run FG (no broken layer). Conservative: a SurfaceFlinger config that would fall
             // back to Vulkan (ASR unsupported) also skips FG — safe, and the editor prevents that combo.
             boolean fgRendererVulkan = "vulkan".equalsIgnoreCase(resolvedRenderer());
+            // PRIORITY diagnostic (a840 "lsfg never armed"): one always-emitted line that says
+            // definitively WHY frame gen did or didn't arm this launch — the selected engine, the
+            // resolved host renderer, whether that renderer is Vulkan (FG requires it), whether the
+            // user-imported Lossless.dll exists, and the cached present_wait verdict. Log.i so the
+            // in-app diagnostic log capture (WinFgDiag) records it.
+            {
+                File lsfgDllProbe = new File(getFilesDir(), "lsfg-vk/Lossless.dll");
+                Log.i("XServerDisplayActivity", "FG launch arming: engine=" + resolvedFrameGenEngine()
+                        + " renderer=" + resolvedRenderer() + " fgRendererVulkan=" + fgRendererVulkan
+                        + " Lossless.dll=" + (lsfgDllProbe.isFile() ? "present" : "MISSING")
+                        + " presentWaitDevice=" + presentWaitDevice);
+            }
             if (fgRendererVulkan) {
             if (resolvedFrameGenEngine().equals("lsfg")) {
                 // lsfg-vk engine (mutually exclusive with bionic-fg). Opt-in via ENABLE_LSFG so the
@@ -5439,7 +5478,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     // fires the presentation reset. Auto-enable containers already generate from frame
                     // one (lsfgLaunchMult >= 2), so a passthrough launch is level 0.
                     lastCommittedFgLevel = (lsfgLaunchMult >= 2) ? lsfgLaunchMult : 0;
+                    Log.i("XServerDisplayActivity", "lsfg ARMED: ENABLE_LSFG=1 mult=" + lsfgLaunchMult
+                            + " conf=" + lsfgConf.getAbsolutePath() + " dll=" + losslessDll.getAbsolutePath());
                 } else {
+                    Log.i("XServerDisplayActivity", "lsfg NOT armed: Lossless.dll missing at "
+                            + losslessDll.getAbsolutePath() + " (import one in Settings)");
                     Log.w("XServerDisplayActivity", "lsfg-vk selected but no Lossless.dll imported (Settings) — leaving frame gen off");
                 }
             } else {
@@ -5447,8 +5490,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // FPS limiter is handled separately (host pacer), so it no longer forces this layer
                 // to load. multiplier=0 -> frame gen starts Off in-game (layer loaded, enable live).
                 boolean fgOn = resolvedFrameGenEngine().equals("bionic");
+                if (!fgOn) {
+                    // engine is neither lsfg nor bionic (i.e. "off") — no layer arms this launch.
+                    Log.i("XServerDisplayActivity", "frame-gen: engine=" + resolvedFrameGenEngine()
+                            + " — not arming (no FG layer loaded)");
+                }
                 if (fgOn) {
                     envVars.put("WIN_FG_ENABLE", "1");
+                    Log.i("XServerDisplayActivity", "win-fg ARMED: WIN_FG_ENABLE=1 model="
+                            + resolvedFrameGenModel() + " preset=" + resolvedFrameGenPerfPreset());
                     // Extra win-fg logging (global opt-in): verbose present-path logging for debugging
                     // win-fg freezes/crashes. Sets WIN_FG_DEBUG=1; writeWinFgConfig stamps debug=on/off.
                     // No-op when off, so a normal launch is untouched.
@@ -5479,6 +5529,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
             } else if (!"off".equals(resolvedFrameGenEngine())) {
                 // Stale config: FG selected on a non-Vulkan renderer — skip the layer (see note above).
+                Log.i("XServerDisplayActivity", "frame-gen: engine=" + resolvedFrameGenEngine()
+                        + " — not arming (host renderer is " + resolvedRenderer() + ", Vulkan required)");
                 Log.w("XServerDisplayActivity", "Frame gen (" + resolvedFrameGenEngine()
                         + ") requested but host renderer is " + resolvedRenderer()
                         + " — skipping FG layer (Vulkan required).");

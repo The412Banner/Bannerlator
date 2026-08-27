@@ -175,6 +175,14 @@ android {
             // lib7zz.so ships a bundled libc++_shared.so next to it; pickFirst in case the native
             // build (or another prebuilt) ever emits its own copy, so packaging never fails on a dup.
             pickFirsts += ['**/libc++_shared.so']
+            // NEVER ship the old lsfg-vk stub layer in the APK's lib/arm64-v8a. CI's build-lsfg-android.sh
+            // drops libVkLayer_LSFGVK_frame_generation.so into jniLibs, but that named-VkLayer_* .so is
+            // auto-discovered by Android's Vulkan loader as an IMPLICIT layer in the HOST process, where
+            // it fails to load ("missing some instance enumeration functions" / libc++_shared not found).
+            // The layer we actually use is the prebuilt GameNative-fork liblsfg-vk.so (assets/lsfg-vk/),
+            // installed into the GUEST imagefs lib dir by ImageFsInstaller — NOT via jniLibs. Exclude the
+            // dead host-side copy so it can never enter the APK (belt-and-braces to the CI cleanup).
+            excludes += ['**/libVkLayer_LSFGVK_frame_generation.so']
         }
     }
 }

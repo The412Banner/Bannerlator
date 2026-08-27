@@ -218,16 +218,13 @@ jobs:
         path: app/src/main/assets/imagefs.tar.zst
         key: imagefs-${{ steps.imagefs-pin.outputs.sha }}
 
-    - name: Cache LSFG native library
-      id: cache-lsfg
-      uses: actions/cache@v4
-      with:
-        path: app/src/main/jniLibs/arm64-v8a/libVkLayer_LSFGVK_frame_generation.so
-        key: lsfg-${{ hashFiles('app/src/main/cpp/lsfg-vk/**', 'build-lsfg-android.sh') }}
-
-    - name: Build LSFG native library (only if not cached)
-      if: steps.cache-lsfg.outputs.cache-hit != 'true'
-      run: ./build-lsfg-android.sh
+    # NOTE: the old "Cache/Build LSFG native library" steps that produced
+    # app/src/main/jniLibs/arm64-v8a/libVkLayer_LSFGVK_frame_generation.so were REMOVED. That .so was
+    # a dead lsfg-vk stub which Android auto-loaded as an implicit Vulkan layer in the HOST process and
+    # failed there ("missing some instance enumeration functions"). The frame-gen layer we actually
+    # ship is the prebuilt GameNative-fork liblsfg-vk.so (app/src/main/assets/lsfg-vk/), installed into
+    # the guest imagefs by ImageFsInstaller — it does NOT come from jniLibs. app/build.gradle also
+    # excludes the stub from packaging as belt-and-braces.
 
     - name: Restore Galaxy Performance SDK jar (optional, from secret)
       # Decodes the proprietary Samsung jar from the encrypted secret into the git-ignored

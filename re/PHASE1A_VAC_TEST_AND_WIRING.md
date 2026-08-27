@@ -40,16 +40,118 @@ are GONE from `/sdcard`.** What still exists, verified via the root bridge:
 | ↳ `bin/steamservice.exe` (2,952,856) · `bin/steamservice.dll` · `bin/x64launcher.exe` | PRESENT | `…/Steam/bin/` |
 | **Genuine V6 SteamAgent** (`SteamAgent.exe`, 2,340,864 B, packed) | PRESENT | `/data/data/com.xiaoji.egggame/files/usr/home/components/SteamAgent2/SteamAgent.exe` |
 | Loose SteamAgent PE variants (V5/V5.1/V6) | PRESENT | `/sdcard/SteamAgent-{old,newer,60}.exe`, `/sdcard/SteamAgent_unpacked.exe` |
+| **Readable `/sdcard` copy of the whole bundle** (client + both agent forms) — the intended staging source | PRESENT | `/storage/emulated/0/Download/steamagent/{steam_client_0403/, SteamAgent2/SteamAgent.exe, SteamAgent.exe}` |
 | `steam_9866233/startSteam.bat` (carried the **leaked GameSir dev token**) | **GONE with its folder** | — (moot now, but still forbidden — §Legal) |
 
 **Two consequences for the test design:**
-1. The on-device V6 bundle **has no `steam.exe`** (V6 boots the runtime through SteamAgent, not `steam.exe`).
+1. The on-device V6 bundle **has no `steam.exe`** (V6 boots the runtime through SteamAgent, not `steam.exe`;
+   it ships `bin/x64launcher.exe` + `SteamUI.dll`, which are the loader/UI, not a driveable `steam.exe`).
    So the "launch `steam.exe` in a Wine desktop and log in through the UI" path **cannot** use the on-device
-   folder — it needs a `steam.exe` from the **user's own PC install**.
-2. The on-device genuine DLLs are usable for a manual proof, but they are **V6 build 10520955** paired with a
-   **V6 SteamAgent whose `CLIENTENGINE` interface pin is unknown** (likely `v006` — the V5 `v005` won't match
-   10520955). That pairing risk is another reason the recommended path below uses the user's own PC Steam
-   (self-consistent `steam.exe` + `steamclient64.dll` of the same build).
+   folder as-is — driving it needs the paired SteamAgent (or our own headless agent).
+2. **CLIENTENGINE pin is confirmed `v005`** (not v006). `strings` on the genuine `steamclient64.dll` in BOTH
+   the app-private copy and the readable `/sdcard` copy returns exactly `CLIENTENGINE_INTERFACE_VERSION005`.
+   So build 10520955's client is driven through the **v005** `IClientEngine` contract — a **v005** driver
+   (the V5-family SteamAgent, or our own Phase-1b agent written to v005) matches it. The bundle also carries
+   **no baked user session** (`userdata/` empty, `config.vdf` is default-only with no `ConnectCache` token,
+   `SteamAgentData/` holds only a macOS `.DS_Store` — confirming the Mac packaging origin) — i.e. **no leaked
+   session token travels with these DLLs**; whoever runs it logs in with a token supplied at runtime.
+
+---
+
+# ★ CHOSEN CONFIG — L4D2 (550) on GameHub's genuine V6 client
+
+**The user picked the config: test title = Left 4 Dead 2 (appid 550); genuine-client source = GameHub's
+on-device V6 client bundle (NOT the user's PC Steam).** This section is the runnable procedure for THAT config
+and **supersedes** the generic §D1-2/5-b steps below (those remain the reference for the PC-Steam variant). All
+recon below is **read-only, verified 2026-08-27**; nothing was launched, installed, or mutated.
+
+## Recon result — device state (the two gating facts + the rest)
+
+| Fact | Verified state |
+|---|---|
+| **GameHub logged-in account** | **The user's OWN account** — GameHub's steamkit store holds exactly one session, at `/data/data/com.xiaoji.egggame/files/steam_data/steamkit/accounts/<owner-steamid>/`. It matches the device owner (David Roethlein), and is **NOT** the leaked GameSir dev account `76561198287233535` / `gy939543405`. ✅ **Gate clear.** |
+| **L4D2 (550) installed in GameHub?** | **NO.** GameHub's library (`/data/data/com.xiaoji.egggame/files/Steam/steamapps/`) holds only `appmanifest_12900.acf` (Audiosurf) + `appmanifest_228980.acf`; `common/` = `Audiosurf`, `Steamworks Shared`. **No `appmanifest_550.acf`.** No L4D2 backup in `/sdcard/Gamehub Game Backups/` either. ⛔ **Blocker — must install L4D2 in GameHub first.** |
+| **L4D2 (550) installed in Bannerlator?** | **YES**, fully — `/data/data/com.tencent.ig/files/imagefs/steam_games/Left 4 Dead 2/left4dead2.exe` (+ `left4dead2_dlc1/2/3`, `bin/`, `platform/`, `update/`). BUT this is the **pubg-staged, VERIFY-ONLY** install (`com.tencent.ig`) — **do not mutate it**, and it has no `.desktop` launcher shortcut. |
+| **Genuine client CLIENTENGINE pin** | **v005** — `strings … steamclient64.dll → CLIENTENGINE_INTERFACE_VERSION005` on both the app-private and readable `/sdcard` copies. |
+| **Genuine client bundle** | Complete genuine V6 client (build 10520955): `steamclient64.dll` (25.7 MB), `steamclient.dll`, `tier0_s64.dll`, `vstdlib_s64.dll`, `Steam.dll`/`Steam2.dll`/`SteamUI.dll`, `steamwebrtc64.dll`, FFmpeg, overlay DLLs, `bin/steamservice.exe`+`.dll`, `bin/x64launcher.exe`. **No `steam.exe`.** No baked session. Readable copy: `/storage/emulated/0/Download/steamagent/steam_client_0403/`. Paired agent (V6, 2,340,864 B): `…/steamagent/SteamAgent2/SteamAgent.exe`. |
+| **GameHub translation stack** (so Route A really exercises this device's ARM path) | `Fex_20260509`, `box64`, `dxvk-2.3.1-async`, `turnip_v26.1.0_R4`, `vkd3d-proton-3.0.1` (its `components/`). Same device, same FEX/box64-class x86→ARM64 translation the VAC module would run under. |
+
+## Route decision
+
+**➡️ Run Route A FIRST.** It is the fastest path to a *trustworthy* VAC verdict on this exact device, because
+GameHub already wires the genuine `steam_client_0403` client + `SteamAgent2` together correctly and is already
+logged into the **user's own account**. It removes every "did we assemble it right?" doubt and answers the one
+question — *does the x86 VAC module load and pass under this device's FEX/box64 translation?* — directly.
+
+**Route B is the follow-up, not the first test.** L4D2 is already installed in Bannerlator, but: (1) the bundle
+has **no `steam.exe`**, so driving it needs either the **proprietary SteamAgent2** (CLI/token/socket must be
+reverse-driven by hand) or **our own headless agent — not built (that's Phase 1b)**; and (2) the only on-device
+Bannerlator is the **verify-only pubg-staged** install, which must not be mutated (Route B needs a fresh,
+writable container). More assembly, later.
+
+## ⛔ Blocker the user must clear before Route A
+
+**L4D2 is not installed in GameHub.** The user owns it (the logged-in account is theirs), so: **in GameHub,
+install Left 4 Dead 2 (550)** — a normal download (~13 GB; no local backup to restore from). *Optional
+accelerator (advanced, skip if unsure):* seed it from the existing Bannerlator copy by staging
+`/data/data/com.tencent.ig/files/imagefs/steam_games/Left 4 Dead 2/` into GameHub's
+`files/Steam/steamapps/common/Left 4 Dead 2/` + writing an `appmanifest_550.acf`, so GameHub sees it installed
+without re-downloading — but GameHub may re-validate/repair depots, so the clean install is the reliable path.
+
+## ROUTE A — exact sequence (user drives GameHub UI; I capture logs via bridge)
+
+**Pre-flight:** in GameHub → Settings/account, confirm the logged-in account is the **user's own** (the owner),
+not `gy939543405`. Confirm L4D2 shows **Installed** (after clearing the blocker above). *(Optional — enable the
+Steam overlay so we get an extra "the real client is driving this" signal: it's already staged in the bundle;
+GameHub's overlay toggle or the §D1-4 implicit-layer `.reg` registers `VK_LAYER_VALVE_steam_overlay`.)*
+
+1. **In GameHub, launch Left 4 Dead 2.** (GameHub auto-brings-up `SteamAgent2` → genuine `steamclient64.dll`
+   v005 → real login on the user's session → `steamservice` → launches `left4dead2.exe`.)
+2. **In L4D2:** main menu → **Play → (Versus/Campaign) → Official/Best Dedicated**, or **Steam server browser →
+   Internet → filter to "Secure" (VAC) servers**, sort by players.
+3. **Join a populated VAC-Secured server** (real humans, not a bots-only local game).
+4. **Stay in the match** and watch the ONE signal (below). Give it several minutes of actual gameplay —
+   well past the ~5-9 s GameHub's prior launches died at.
+
+**Log capture — run these `bridge` commands during/after the attempt** (adjust the dated filename to today):
+```
+# GameHub app + engine logs (SteamAgent RPC events, launch lifecycle) — actively written, dated
+bridge 'ls -t /sdcard/Android/data/com.xiaoji.egggame/files/logs/ | head'
+bridge "grep -inE 'vac|secure|VAC_|BeginAuthSession|AuthenticateUserTicket|steamservice|login_success|app_launch|game_terminated|launch_failed' /sdcard/Android/data/com.xiaoji.egggame/files/logs/log_main_$(date +%Y_%m_%d)_0.txt"
+bridge "grep -inE 'vac|secure|steamclient|steamservice|reject|kick|CClientVAC' /sdcard/Android/data/com.xiaoji.egggame/files/logs/log_pcengine_$(date +%Y_%m_%d)_0.txt"
+
+# Live logcat during the attempt (this is how the 267 MB ground-truth log was captured)
+bridge 'logcat -d' | grep -iE 'vac|secure|SteamStatus|SteamRPC|steamservice|BeginAuthSession|launch_failed|game_terminated'
+
+# Genuine Steam CLIENT logs inside GameHub's ACTIVE prefix (container 0) — connection/VAC/overlay
+#   active prefix root = /data/data/com.xiaoji.egggame/files/usr/home/containers/0/
+bridge 'ls -t /data/data/com.xiaoji.egggame/files/usr/home/containers/0/**/Steam/logs/ 2>/dev/null'   # connection_log.txt, content_log.txt, bootstrap_log.txt
+bridge 'find /data/data/com.xiaoji.egggame/files/usr/home/containers/0 -maxdepth 6 -iname "GameOverlayRenderer.log" 2>/dev/null'  # overlay-injected-into-game proof: GameID = 550, OverlayGameID = 550 + "Hooking SetCursorPos…"
+
+# Game console (launch L4D2 with -condebug if GameHub allows launch args): left4dead2/console.log in GameHub's install
+bridge 'find /data/data/com.xiaoji.egggame/files/Steam/steamapps/common -maxdepth 3 -iname "console.log" 2>/dev/null'
+```
+**Decisive greps:** `vac`, `secure`, `VAC_`, `BeginAuthSession`, `AuthenticateUserTicket`, `steamservice`,
+`Loaded layer VK_LAYER_VALVE_steam_overlay`.
+
+## ⭐ The ONE pass/fail signal
+
+- **PASS** — you **spawn and keep playing on a VAC-Secured server with real players, sustained past the ~5-9 s
+  mark** (give it minutes). The x86 VAC module loaded and reported clean under this device's translation →
+  **green light to build Phase 1b.**
+- **FAIL** — a disconnect reading **"VAC authentication error"** / **"unable to verify your game session"**
+  (or an immediate VAC kick, or the `game_terminated` / `launch_failed 3005` early-death pattern). Capture the
+  **verbatim** disconnect string.
+
+## After Route A (regardless of outcome)
+
+- **PULL-BACK:** foreground the terminal (`bridge 'am start -n com.termux/.app.TermuxActivity'`) before
+  presenting results.
+- **PII:** the captured logs carry the owner's Steam email + SteamID — **redact before any commit/output.**
+- If Route A **passes**, Route B (staging these v005 DLLs into a fresh, writable Bannerlator container +
+  our-own-agent, or the reverse-driven SteamAgent2) becomes the "prove it in *our* app" step, and the
+  Deliverable-2 wiring gets built. If Route A **fails**, VAC-under-ARM is the wall for this title/device and no
+  amount of Bannerlator wiring changes it — stop before Phase 1b.
 
 ---
 
@@ -101,9 +203,11 @@ through the normal UI (no token-handoff scripting, no interface-pin guessing) �
 **Source B — the on-device GameHub genuine V6 client (fallback, MANUAL-TEST-ONLY).**
 `/data/data/com.xiaoji.egggame/files/usr/home/components/steam_client_0403/drive_c/Program Files (x86)/Steam/`
 has genuine `steamclient64.dll` + `tier0_s64.dll` + `vstdlib_s64.dll` + overlay + `bin/steamservice.*`, and a
-paired genuine V6 SteamAgent at `…/components/SteamAgent2/SteamAgent.exe`. Usable to save the PC copy, **but**:
-no `steam.exe` (must drive via SteamAgent, which needs `--token` and whose interface pin is unverified), and it
-is GameSir-proprietary re-hosted Valve code. Fine for a throwaway proof; **never** shippable.
+paired genuine V6 SteamAgent at `…/components/SteamAgent2/SteamAgent.exe` (readable copy of the whole set at
+`/storage/emulated/0/Download/steamagent/`). **This is the chosen source — see the L4D2 chosen-config section
+below.** Caveats: no `steam.exe` (drive via SteamAgent with `--token`, or launch through GameHub itself which
+already wires it), the client is **v005**-pinned (confirmed), and it is GameSir-proprietary re-hosted Valve
+code. Fine for a throwaway proof; **never** shippable.
 
 > **Not shippable either way.** A shipped Bannerlator must **never bundle or re-host** Valve's Windows DLLs.
 > The product sources them at runtime from **Valve's official Windows bootstrapper/CDN** or from the **user's
@@ -194,8 +298,9 @@ wine reg add "HKLM\SOFTWARE\WOW6432Node\Khronos\Vulkan\ImplicitLayers" /v "C:\Pr
 `steam_prefs.xml`, or re-mint via a fresh Bannerlator Steam login). SteamAgent CLI (PE strings):
 `--token <refresh_token> --launchoption … [--offline] [--disablecloud]`. It installs `steamservice`, seeds the
 registry/env above itself, and streams `{type,event,appid,details,timestamp,username}` on `STEAMAGENT_PORT`.
-Downsides for a **by-hand** test: you must script the token handoff + a socket listener, and the V6 agent's
-interface pin (`v006?`) must match the V6 client. **Not the simplest.**
+Downsides for a **by-hand** test: you must script the token handoff + a socket listener. (Interface pin is a
+non-issue — the client is confirmed **v005**.) **Not the simplest by hand — but note GameHub already automates
+exactly this pairing, which is why the chosen-config test below launches through GameHub instead.**
 ⛔ **Never** use `steam_9866233/startSteam.bat`'s hard-coded `--username gy939543405 --token …` (a leaked GameSir
 dev account, SteamID `76561198287233535`). The user logs in with **their** account only. (That file is gone
 from this device anyway, but the rule stands.)

@@ -1279,9 +1279,10 @@ private fun FrameGenSection(state: XServerDrawerState) {
         }
 
         // Performance preset, win-fg only. Writes conf.toml `perf_preset` (0 Quality / 1 Balanced /
-        // 2 Performance). Like a model change, this restarts the layer's flow pipeline, so it fires the
-        // full presentation reset from onBionicFgConfigChange (keyed on level/model/preset). Hidden
-        // while frame gen is Off.
+        // 2 Performance). The layer self-rebuilds hot on this key (flow images at the new resolution),
+        // so — unlike a model change — it does NOT fire the app surface-teardown reset: stacking the
+        // teardown on top of the layer's own rebuild collides and wedges the present path (Fold-8
+        // screen-freeze). Just apply. Hidden while frame gen is Off.
         AnimatedVisibility(
             visible = engine == "bionic" && fgMult > 0,
             enter = expandVertically() + fadeIn(),
@@ -1297,7 +1298,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 )
                 FgPerfPresetButtons(fgPreset) { newPreset ->
                     fgPreset = newPreset; applyFg()
-                    // Preset change → full presentation reset, fired from onBionicFgConfigChange.
+                    // Preset change → layer self-rebuilds hot (no app teardown; it would collide).
                 }
                 Text(
                     "Quality favors image fidelity; Performance favors FPS. Balanced is the default.",

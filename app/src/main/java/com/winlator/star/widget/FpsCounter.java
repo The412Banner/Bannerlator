@@ -38,6 +38,17 @@ public class FpsCounter {
     private int frameCount = 0;
     private volatile float lastFPS = 0;
 
+    // ---- Frame-gen layer measured-FPS override --------------------------------------------------
+    // When a frame-gen layer (lsfg-vk) is multiplying, the LAYER counts its own doubled output and
+    // writes it to stats.txt; our host present counter only sees the guest's real presents (before
+    // doubling), so it cannot show the generated rate. The activity reads stats.txt while lsfg is
+    // generating and pushes the value here; getCurrentFPS() then returns it verbatim. -1 = unset.
+    private volatile float measuredFpsOverride = -1f;
+
+    /** Push the frame-gen layer's own measured FPS (from stats.txt), or a negative value to clear and
+     *  fall back to the host present counter. Lock-free. */
+    public void setMeasuredFpsOverride(float fps) { this.measuredFpsOverride = fps; }
+
     // ---- Frametime ring buffer for percentile lows (1% / 0.1% / 0.01%) -----
     // One entry per presented frame = the inter-present interval in ms. Bounded so the 0.01% low has
     // data to work with (needs ~10k frames to be meaningful) without unbounded growth. tick() only
@@ -103,6 +114,11 @@ public class FpsCounter {
      *  the bound window stopped rendering, so the last value is stale and must not sit frozen on the
      *  HUD (idle menu, paused game, or a present path not ticking this window). Lock-free. */
     public float getCurrentFPS() {
+        // A frame-gen layer's own measured (doubled) rate wins when set — our host counter can't see
+        // the generated frames. The activity only sets it while lsfg is generating + stats.txt is
+        // fresh, and clears it (negative) otherwise, so this transparently falls back to the counter.
+        float mo = measuredFpsOverride;
+        if (mo >= 0f) return mo;
         long last = lastFrameTime;
         if (last != 0L && SystemClock.elapsedRealtime() - last > STALE_FPS_MS) return 0f;
         return lastFPS;
@@ -207,6 +223,7 @@ public class FpsCounter {
         lastTime = 0;
         frameCount = 0;
         lastFPS = 0;
+        measuredFpsOverride = -1f;
         sessionStartTime = 0;
         readingCount = 0;
         maxFPS = 0;

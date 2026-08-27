@@ -2791,12 +2791,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         }
                     } catch (Exception ignored) {}
                     final long periodNs = (long) (1_000_000_000.0 / refreshRate);
+                    // Piggyback the lsfg measured-FPS read on this same 1 Hz clock (it only runs while
+                    // lsfg is generating). The host present counter can't see the layer's doubled
+                    // output, so surface the layer's own stats.txt rate on the HUD while it governs FPS.
+                    final boolean lsfgGov = lsfgGovernsFps();
                     vsyncWriteExecutor.execute(() -> {
                         try {
                             File parent = vsyncFile.getParentFile();
                             if (parent != null) parent.mkdirs();
                             FileUtils.writeString(vsyncFile, "vsync_ns=" + frameTimeNanos + "\nperiod_ns=" + periodNs + "\n");
                         } catch (Exception ignored) {}
+                        fpsCounter.setMeasuredFpsOverride(lsfgGov ? readLsfgMeasuredFps() : -1f);
                     });
                 });
                 h.postDelayed(this, 1000);
@@ -2810,6 +2815,29 @@ public class XServerDisplayActivity extends AppCompatActivity {
             vsyncClockHandler.removeCallbacksAndMessages(null);
             vsyncClockHandler = null;
         }
+        // lsfg no longer generating -> drop the HUD's measured-FPS override back to the host counter.
+        fpsCounter.setMeasuredFpsOverride(-1f);
+    }
+
+    // Read the lsfg-vk layer's own measured output FPS from stats.txt (the layer counts its doubled
+    // presents, which our host present counter cannot). Returns a negative value if the file is
+    // absent, stale (older than LSFG_STATS_FRESHNESS_MS), or unparseable — so the HUD falls back to
+    // the host counter. Mirrors GameNative's LsfgVkManager.readMeasuredFps. Runs off the main thread.
+    private static final long LSFG_STATS_FRESHNESS_MS = 2000;
+    private float readLsfgMeasuredFps() {
+        try {
+            if (imageFs == null) return -1f;
+            File stats = new File(imageFs.home_path, ".config/lsfg-vk/stats.txt");
+            if (!stats.isFile()) return -1f;
+            if (System.currentTimeMillis() - stats.lastModified() > LSFG_STATS_FRESHNESS_MS) return -1f;
+            for (String line : FileUtils.readLines(stats)) {
+                if (line != null && line.startsWith("fps=")) {
+                    try { return Float.parseFloat(line.substring(4).trim()); }
+                    catch (NumberFormatException e) { return -1f; }
+                }
+            }
+        } catch (Exception ignored) {}
+        return -1f;
     }
 
     // === ReShade (vkBasalt) per-game effect config =============================================

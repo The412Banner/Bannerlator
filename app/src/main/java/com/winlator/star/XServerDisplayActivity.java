@@ -2746,11 +2746,55 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     + "performance_mode = " + performanceMode + "\n"
                     + "hdr_mode = false\n"
                     + "experimental_present_mode = " + (generating ? "\"mailbox\"" : "\"fifo\"") + "\n";
+            // Diagnostic (Settings → "Frame-gen debug dump"): tell the layer to dump a bounded number of
+            // generated frames to <config dir>/dump/ as PPM so we can PROVE it's actually generating on
+            // this device (Adreno 840 "engages but no FPS"). 8 presents is enough proof and self-limits.
+            // lsfg-only, opt-in; a normal (toggle-off) launch omits the key entirely.
+            if (preferences != null && preferences.getBoolean("lsfg_debug_dump", false)) {
+                toml += "debug_dump = 8\n";
+            }
             FileUtils.writeString(confFile, toml);
         }
         catch (Exception e) {
             Log.e("lsfg-vk", "Failed to write lsfg-vk conf.toml", e);
         }
+    }
+
+    // Copy the lsfg-vk layer's debug frame dump (<guest home>/.config/lsfg-vk/dump/) out to public
+    // Download/lsfg-dump so it's reachable on a NON-rooted device, then toast a plain-language count of
+    // GENERATED frames (out_*) vs source frames (frame_*) — the non-root proof of whether lsfg really
+    // generated this session. Only runs when the Settings "Frame-gen debug dump" toggle is on. All IO
+    // guarded; missing dirs / a torn-down activity never crash. Runs off the main thread (game exit).
+    private void maybeExportLsfgDebugDump() {
+        try {
+            if (preferences == null || !preferences.getBoolean("lsfg_debug_dump", false)) return;
+            if (imageFs == null) return;
+            final File dumpDir = new File(imageFs.home_path, ".config/lsfg-vk/dump");
+            if (!dumpDir.isDirectory()) return;
+            final File[] files = dumpDir.listFiles();
+            if (files == null || files.length == 0) return;
+            new Thread(() -> {
+                int outCount = 0, frameCount = 0;
+                try {
+                    File dest = new File(android.os.Environment.getExternalStoragePublicDirectory(
+                            android.os.Environment.DIRECTORY_DOWNLOADS), "lsfg-dump");
+                    dest.mkdirs();
+                    for (File f : files) {
+                        if (f == null || !f.isFile()) continue;
+                        String n = f.getName();
+                        if (n.startsWith("out_")) outCount++;
+                        else if (n.startsWith("frame_")) frameCount++;
+                        try { FileUtils.copy(f, new File(dest, n)); } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {}
+                final int gen = outCount;
+                final int src = frameCount;
+                final String msg = "lsfg dump: " + gen + " generated frame" + (gen == 1 ? "" : "s")
+                        + (gen == 0 ? " (passthrough)" : " (" + src + " source)") + " → Download/lsfg-dump";
+                runOnUiThread(() -> AppUtils.showToast(getApplicationContext(), msg));
+            }, "lsfg-dump-export").start();
+        }
+        catch (Throwable ignored) {}
     }
 
     // === lsfg-vk vsync clock ===================================================================
@@ -3743,6 +3787,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // user "Resume" tap so the surface is guaranteed rebuilt before input returns to the game.
     private boolean fgResetInProgress = false;   // a reset is showing / the surface is torn down
     private int lastCommittedFgLevel = -1;       // effective FG level last committed: 0 = off, else 2/3/4
+    // N1 (a840 lsfg fix): does this device advertise VK_KHR_present_wait? Computed ONCE at setup (see
+    // probePresentWaitDevice / extractGraphicsDriverFiles). Present_wait parts (Adreno 840) recreate the
+    // lsfg-vk swapchain themselves on a conf.toml change and DEADLOCK against our surface teardown (same
+    // device split as the win-fg present-id freeze); the a750 does not advertise it and still needs the
+    // full teardown to clear its flicker. Safe default false = keep the existing full teardown.
+    private boolean presentWaitDevice = false;
 
     // Called from onBionicFgConfigChange (lsfg branch) after each committed change. Fires the reset
     // ONLY when the effective FG level actually changes (Off/On/2×/3×/4×) — flow-scale / performance-
@@ -3753,7 +3803,70 @@ public class XServerDisplayActivity extends AppCompatActivity {
         boolean changed = (newLevel != lastCommittedFgLevel);
         lastCommittedFgLevel = newLevel;
         if (!changed) return;
-        triggerFgPresentationReset();
+        // N1 (a840 fix): the caller already rewrote conf.toml, and the lsfg-vk layer recreates its OWN
+        // swapchain off that mtime bump. On present_wait parts our full surface teardown collides with
+        // that re-creation (guest AcquireNextImage / vkWaitForPresent wedges — the win-fg present-id
+        // freeze class). GameNative does NOT tear down; it just rewrites conf and lets the layer
+        // self-recreate. So skip the heavyweight teardown/SIGSTOP/Resume overlay here and do ONLY the
+        // lightweight VRR release→re-vote (the part that actually unsticks the Qualcomm SmoMo
+        // over-queue). Non-present_wait devices (a750) KEEP the full teardown — that's what fixes the
+        // 750 flicker and we must not regress it.
+        if (presentWaitDevice) {
+            triggerFgVrrRenegotiate();
+        } else {
+            triggerFgPresentationReset();
+        }
+    }
+
+    // Lightweight lsfg reset for present_wait devices (a840): re-negotiate the panel VRR vote WITHOUT
+    // the surface teardown / guest SIGSTOP / Resume overlay that triggerFgPresentationReset() performs.
+    // The lsfg-vk layer already recreated its swapchain off the conf.toml rewrite; all that's still
+    // wanted is to drop + re-assert the panel refresh-rate vote (that release→re-negotiate is what
+    // unsticks the Qualcomm SmoMo over-queue — device-proven in the LSFG flicker fix) and re-apply the
+    // (mailbox) present mode. The re-vote is posted a couple frames later so the release actually lands
+    // before re-negotiation (a synchronous drop-then-revote would collapse to a no-op). Main-thread.
+    private void triggerFgVrrRenegotiate() {
+        if (xServerView == null) return;
+        xServerView.setDisplayFrameRate(0f, VRR_FRAME_RATE_COMPATIBILITY);
+        unregisterVrrDisplayListener();
+        xServerView.postDelayed(() -> {
+            if (isFinishing() || xServerView == null) return;
+            applyEffectivePresentMode();
+            reapplyVrr();
+            registerVrrDisplayListener();
+            updateCurrentRefreshRate();
+        }, 48L);
+    }
+
+    // True when the device's Vulkan ICD advertises VK_KHR_present_wait (the Adreno 840 does; the 750
+    // does not). Primary signal = the device-extension probe (enumerateDeviceExtensionProperties, the
+    // same native path getVulkanVersion uses at setup); fallback = an Adreno 8-series model match, for
+    // the case where a CUSTOM adrenotools driver returns an empty extension probe. All native calls are
+    // guarded; a failed/empty probe degrades to false = keep the existing full teardown (never worse
+    // than today). Called ONCE from extractGraphicsDriverFiles, off the UI thread.
+    private boolean probePresentWaitDevice(String driverId) {
+        try {
+            String[] exts = GPUInformation.enumerateExtensions(driverId, this);
+            // A real (non-empty) extension list is authoritative: present_wait is either in it (a840)
+            // or genuinely absent (a750) — trust it and don't second-guess with a model heuristic.
+            if (exts != null && exts.length > 0) {
+                for (String e : exts) {
+                    if ("VK_KHR_present_wait".equalsIgnoreCase(e)) return true;
+                }
+                return false;
+            }
+        }
+        catch (Throwable ignored) {}
+        // Only reached when the extension probe was empty / faulted (a CUSTOM adrenotools driver we
+        // skip-probe to avoid an a6xx SIGSEGV). Fall back to the model: Adreno 8-series advertises
+        // present_wait as a class, and this is exactly the win-fg present-id freeze split (a840 vs a750).
+        try {
+            String model = GPUInformation.extractModelName(GPUInformation.getRenderer(driverId, this));
+            if (model != null && java.util.regex.Pattern.compile("(?i)Adreno\\s*8\\d\\d").matcher(model).find())
+                return true;
+        }
+        catch (Throwable ignored) {}
+        return false;
     }
 
     // win-fg equivalent of maybeTriggerFgReset. win-fg restarts its optical-flow / present state on a
@@ -4877,6 +4990,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             vsyncWriteExecutor.shutdownNow();
             vsyncWriteExecutor = null;
         }
+        // Diagnostic: if the "Frame-gen debug dump" toggle is on and the layer dumped frames this
+        // session, copy them out to public Download and toast the generated-vs-passthrough count.
+        maybeExportLsfgDebugDump();
         // Clear the FG-reset overlay state (XServerDialogState is a singleton — a torn-down reset must
         // not survive into the next game's launch).
         fgResetInProgress = false;
@@ -7338,6 +7454,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             + " driverVkVersion=" + driverVkVersion + " driverId=" + adrenoToolsDriverId);
     }
 
+    // N1 (a840 lsfg fix): probe ONCE, here on the setup thread (piggybacking the same native Vulkan
+    // path getVulkanVersion above already used), whether this device advertises VK_KHR_present_wait.
+    // maybeTriggerFgReset reads the cached result live to pick the lightweight VRR re-negotiate (a840)
+    // vs the full surface teardown (a750). See probePresentWaitDevice.
+    presentWaitDevice = probePresentWaitDevice(adrenoToolsDriverId);
+    Log.i("XServerVulkan", "presentWaitDevice=" + presentWaitDevice + " (lsfg reset path: "
+        + (presentWaitDevice ? "lightweight VRR re-negotiate" : "full surface teardown") + ")");
+
     String blacklistedExtensions = graphicsDriverConfig.get("blacklistedExtensions");
     envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions != null ? blacklistedExtensions : "");
 
@@ -8223,16 +8347,21 @@ return true;
             && s.getFrameGenMultiplier().getValue() >= 2;
     }
 
-    // Host present mode — the user's chosen mode is always honored (mailbox lock removed:
-    // frame gen no longer forces mailbox, so FIFO/etc. can be used with FG on).
+    // Host present mode. While a frame-gen engine is actively multiplying we FORCE mailbox (N2): the
+    // guest layer inserts extra presents and host FIFO backpressure strangles them (device-verified —
+    // FIFO makes FG read as "fps drops", mailbox makes it base×N). This is the lock the drawer already
+    // advertises + the onPresentModeChange guard already enforces; apply it here for real. Off /
+    // passthrough returns the user's chosen mode (fifo = power-efficient, no wasted presents).
     private String effectivePresentMode() {
+        if (frameGenGenerating()) return "mailbox";
         return resolvedRendererPresentMode();
     }
 
     // (Re)apply the host present mode to the live Vulkan renderer — called at launch and whenever
-    // frame gen toggles / the multiplier changes. Mailbox lock removed: the user's chosen present
-    // mode is honored regardless of FG, and the drawer selector stays unlocked so it can be changed
-    // live with FG on. No-op on non-Vulkan renderers / before setup.
+    // frame gen toggles / the multiplier changes. effectivePresentMode() forces mailbox while FG is
+    // multiplying (N2) and returns the user's chosen mode otherwise, so this mirrors that effective
+    // mode into the drawer selector. The selector itself stays unlocked (the onPresentModeChange guard
+    // already no-ops taps during FG). No-op on non-Vulkan renderers / before setup.
     private void applyEffectivePresentMode() {
         if (xServerView == null) return;
         HostRenderer r = xServerView.getRenderer();
@@ -8240,7 +8369,7 @@ return true;
             String pm = effectivePresentMode();
             int pmInt = "immediate".equals(pm) ? 0 : "mailbox".equals(pm) ? 1 : 2; // VkPresentModeKHR
             ((com.winlator.star.renderer.vulkan.VulkanRenderer) r).setVkPresentMode(pmInt);
-            // Mirror the mode into the drawer selector; never lock it (mailbox lock removed).
+            // Mirror the effective mode into the drawer selector (shows the forced Mailbox during FG).
             XServerDrawerState.INSTANCE.setPresentMode(pm);
             XServerDrawerState.INSTANCE.setPresentModeLocked(false);
         }

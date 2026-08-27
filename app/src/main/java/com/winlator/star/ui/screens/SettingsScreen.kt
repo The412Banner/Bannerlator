@@ -51,6 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.window.Dialog
@@ -345,6 +346,10 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
     }
     var lsfgDllStatus by remember { mutableStateOf(lsfgDllStatusText()) }
+    // lsfg-vk diagnostic: dump a few generated frames so we can prove the layer is REALLY generating
+    // on this device (Adreno 840 "engages but no FPS"). Plain boolean in the same default-prefs store
+    // the Lossless.dll source above uses; read on the Java side (writeLsfgConfig + the on-exit copy).
+    var lsfgDebugDump by remember { mutableStateOf(prefs.getBoolean("lsfg_debug_dump", false)) }
     fun importLosslessDllFromUri(uri: Uri) {
         try {
             lsfgDllFile.parentFile?.mkdirs()
@@ -988,6 +993,26 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                 ) { Text("Remove", color = Color.White) } // intentional: high-contrast label on error/destructive fill
+            }
+
+            // ── Diagnostic: prove lsfg-vk is actually generating frames (Adreno 840) ──
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text("Frame-gen debug dump (diagnostic)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Text(
+                        "Dumps a few generated frames to Download/lsfg-dump to verify lsfg is actually " +
+                        "generating. Slows the game briefly; leave off normally.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                    )
+                }
+                Switch(
+                    checked = lsfgDebugDump,
+                    onCheckedChange = { on ->
+                        lsfgDebugDump = on
+                        prefs.edit().putBoolean("lsfg_debug_dump", on).apply()
+                    },
+                )
             }
         }
 

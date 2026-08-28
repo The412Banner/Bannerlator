@@ -898,6 +898,21 @@ int main(int argc, char** argv) {
     const char* token    = getenv("WN_STEAM_TOKEN");
     uint64_t    steamId  = env_u64("WN_STEAM_STEAMID");
     const char* gameExe  = (argc > 1) ? argv[1] : NULL;
+    static char gameExeBuf[1024];
+    if (!gameExe) {
+        const char* gef = getenv("WN_STEAM_GAMEEXE_FILE");  // path in a file to avoid CLI escaping
+        if (gef) {
+            FILE* gf = fopen(gef, "r");
+            if (gf) {
+                if (fgets(gameExeBuf, sizeof(gameExeBuf), gf)) {
+                    size_t n = strlen(gameExeBuf);
+                    while (n && (gameExeBuf[n-1] == '\n' || gameExeBuf[n-1] == '\r')) gameExeBuf[--n] = 0;
+                    if (gameExeBuf[0]) gameExe = gameExeBuf;
+                }
+                fclose(gf);
+            }
+        }
+    }
     uint32_t    appId    = appIdStr ? (uint32_t) strtoul(appIdStr, NULL, 10) : 0;
 
     log_line("[wn-launcher] env appId=%u steamId=%llu user=%s exe=%s",
@@ -915,7 +930,7 @@ int main(int argc, char** argv) {
     } else {
         log_line("[wn-launcher] token missing");
     }
-    bool loginOnly = (argc <= 1 || !gameExe || !*gameExe);
+    bool loginOnly = (!gameExe || !*gameExe);  // gameExe may come from argv[1] OR WN_STEAM_GAMEEXE_FILE
     if (loginOnly) {
         log_line("[wn-launcher] M0 login-only mode (no argv[1] game exe) - will log in then exit");
     }
@@ -1199,8 +1214,30 @@ int main(int argc, char** argv) {
     }
 
     if (loginOnly) {
-        log_line("[wn-launcher] M0 login-only: DONE (loggedOn=%d sawConnected=%d sawConnFail=%d) - exiting %d",
-                 loggedOn ? 1 : 0, sawConnected ? 1 : 0, sawConnFail ? 1 : 0, loggedOn ? 0 : 6);
+        // M1: decoupled resident client. Do NOT launch a game and do NOT exit after
+        // login — park here, keeping the Steam pipe/user alive and callbacks pumped,
+        // so a separately-launched game can attach to this live session. Exits on a
+        // C:\\wn-launcher.stop sentinel (clean teardown) or when the process is killed.
+        log_line("[wn-launcher] M1: login done (loggedOn=%d) - PARKING as resident client (pipe=%d user=%d)",
+                 loggedOn ? 1 : 0, pipe, hUser);
+        int tick = 0;
+        char cbBuf[64] = {0};
+        while (true) {
+            if (bGetCallback && freeLastCallback) {
+                while (bGetCallback(pipe, cbBuf)) freeLastCallback(pipe);
+            }
+            if ((tick % 20) == 0) {
+                bool on = bLoggedOn ? bLoggedOn(pipe, hUser) : false;
+                log_line("[wn-launcher] M1: resident tick=%d BLoggedOn=%d", tick, on ? 1 : 0);
+            }
+            if (GetFileAttributesA("C:\\wn-launcher.stop") != INVALID_FILE_ATTRIBUTES) {
+                log_line("[wn-launcher] M1: stop sentinel found - leaving resident loop");
+                break;
+            }
+            Sleep(500);
+            ++tick;
+        }
+        log_line("[wn-launcher] M1: resident client exiting");
         return loggedOn ? 0 : 6;
     }
 

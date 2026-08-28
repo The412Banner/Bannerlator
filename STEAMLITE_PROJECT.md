@@ -20,6 +20,13 @@ Detailed backing docs live in `re/` (see §9). This file is the single source of
 
 **Port = replicate this recipe in Bannerlator:** symlink our agent as `steam.exe` → feed the full args+env → generate `cmlist.json` (our JavaSteam can mint the CM list, or copy GameHub's) → stand up a `SteamAgentServer` on `STEAMAGENT_PORT` → resolve `steamuser` vs `xuser` + the `libvfs`/`libsandboxfs` preload. **✅ Emulator settled: GameHub ran L4D2 on Proton arm64ec (user-confirmed + `PROTON_DISABLE_LSTEAMCLIENT` is a Proton var + ran as plain `wine`) — our Bannerlator Proton `11.0-2-arm64ec-1` is the correct environment; box64 is NOT needed.** This supersedes the "one unproven risk" in §5 — it's proven.
 
+### 🏆 UPDATE (2026-08-27) — OUR OWN AGENT PROVEN END-TO-END (M0→M2)
+We built our own clean-room agent (`agent-src/`, WinNative GPL base + our patches, compiled to a 1.13MB x86_64 PE via fakeroot-installed MinGW) and proved the full chain on-device with it — **no DRM, no GameHub binary/runtime:**
+- **M0** — loads genuine `steamclient64.dll` → `IClientEngine v005` → `LogOn` → `SteamServersConnected` + `Steam_BLoggedOn=true`.
+- **M1** — parks as a resident client, session stays alive (resident ticks, `BLoggedOn=1`).
+- **M2** — registers L4D2 in `steamapps\common\` (symlink) so `LaunchApp(550)` returns `EAppUpdateError=0` and launches **`left4dead2.exe -steam` (SECURE)** — L4D2 runs to its menu, online, **VAC-capable** (no `-insecure` warning). Screenshot-proven.
+Repro + device state: `agent-src/test-scripts/REPRODUCE.md`. **Left: the user joins a VAC server (M2-finish); then M3 = build `launchMode=RealSteam` into Bannerlator** (auto steamapps-register + JavaSteam token via env + runtime-sourced Valve DLLs + agent at the launch hook).
+
 ---
 
 ## 1. Goal

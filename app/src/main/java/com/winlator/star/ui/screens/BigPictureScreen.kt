@@ -67,6 +67,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -80,6 +81,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -139,6 +141,12 @@ import com.winlator.star.communityconfigs.WorkerConfigEntry
 import com.winlator.star.ui.screens.adrenodownload.AdrenoDriverDownloadSheet
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.DownloadManagerActivity
+import com.winlator.star.store.GoldbergComponent
+import com.winlator.star.store.GoldbergMode
+import com.winlator.star.store.GoldbergPatcher
+import com.winlator.star.store.SteamDatabase
+import com.winlator.star.store.SteamLiteComponent
+import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.ui.Screen
 import com.winlator.star.ui.findActivity
@@ -192,6 +200,12 @@ fun BigPictureScreen(navController: NavController) {
     var lastCommunityPick by remember { mutableStateOf<CommunityPick?>(null) }
     var bpInstallFor by remember { mutableStateOf<CommunityConfigApply.MissingComponent?>(null) }
     var bpDriverFor by remember { mutableStateOf<CommunityConfigApply.MissingDriver?>(null) }
+    // Steam launch-method popup (M3), couch UI: the Steam-origin game whose SteamLite-vs-Goldberg
+    // chooser is open, plus the download-on-launch progress overlay (shared for both components).
+    var launchChoiceFor by remember { mutableStateOf<Shortcut?>(null) }
+    var componentDownloadFor by remember { mutableStateOf<Shortcut?>(null) }
+    var componentDownloadLabel by remember { mutableStateOf("") }
+    var componentDownloadProgress by remember { mutableFloatStateOf(0f) }
 
     // Decoded covers keyed by shortcut name; guarded by a plain in-flight set so we never re-fetch.
     val coverCache = remember { mutableStateMapOf<String, ImageBitmap>() }
@@ -283,8 +297,11 @@ fun BigPictureScreen(navController: NavController) {
     // Seed the root focus once so key events route to us from the first frame.
     LaunchedEffect(Unit) { grabFocus() }
 
-    // Re-grab focus after a sheet / dialog closes so D-pad keeps working.
-    LaunchedEffect(activeSheet, editShortcut) { if (activeSheet == null && !editShortcut) grabFocus() }
+    // Re-grab focus after a sheet / dialog closes so D-pad keeps working (the launch-method popup and
+    // its download overlay are their own windows too, so wait until they're gone before re-grabbing).
+    LaunchedEffect(activeSheet, editShortcut, launchChoiceFor, componentDownloadFor) {
+        if (activeSheet == null && !editShortcut && launchChoiceFor == null && componentDownloadFor == null) grabFocus()
+    }
 
     // Preload the selected cover so the hero + blurred background are ready.
     LaunchedEffect(selectedIndex, shortcuts) {
@@ -304,7 +321,16 @@ fun BigPictureScreen(navController: NavController) {
     val selected = shortcuts.getOrNull(selectedIndex)
     val heroCover = selected?.let { coverCache[it.name] }
 
-    val onLaunch: () -> Unit = { selected?.let { launchShortcut(activity, it) } }
+    // Steam-origin games open the launch-method popup first (unless a remembered choice already exists);
+    // everything else launches straight away. Mirrors the phone UI's requestLaunch (ShortcutsScreen).
+    val onLaunch: () -> Unit = {
+        selected?.let { sc ->
+            val remembered = sc.getExtra("launchMode", "").isNotEmpty() &&
+                sc.getExtra("launchModeRemembered", "") == "1"
+            if (isSteamOriginShortcut(sc) && !remembered) launchChoiceFor = sc
+            else launchShortcut(activity, sc)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -810,6 +836,105 @@ fun BigPictureScreen(navController: NavController) {
                 bpDriverFor = null
                 lastCommunityPick?.let { applyCommunityPick(it) }
             },
+        )
+    }
+
+    // ── Steam launch-method popup (M3), couch UI: SteamLite (real Steam / VAC) vs Goldberg (offline) ─
+    launchChoiceFor?.let { s ->
+        val appId = steamAppIdOf(s)
+        LaunchMethodSheet(
+            shortcut = s,
+            onDismiss = { launchChoiceFor = null },
+            onLaunch = { mode, goldbergMode, remember ->
+                // Persist the choice on the shortcut (contract literals: launchMode ∈ RealSteam/Goldberg/Raw,
+                // launchModeRemembered="1"), then stage the picked component and launch.
+                s.putExtra("launchMode", mode)
+                s.putExtra("launchModeRemembered", if (remember) "1" else "0")
+                s.saveData()
+                launchChoiceFor = null
+                when (mode) {
+                    "Goldberg" -> {
+                        val gm = goldbergMode ?: GoldbergMode.REGULAR
+                        SteamPrefs.init(context)
+                        SteamPrefs.setGoldbergMode(appId, gm)
+                        val applyThenLaunch = {
+                            Thread({
+                                val installDir = runCatching {
+                                    SteamDatabase.getInstance(context).getGame(appId)?.installDir
+                                }.getOrNull().orEmpty()
+                                activity.runOnUiThread {
+                                    if (installDir.isEmpty()) {
+                                        launchShortcut(activity, s)
+                                    } else {
+                                        GoldbergPatcher.applyModeAsync(context, appId, installDir, s.name, gm) { _, _ ->
+                                            launchShortcut(activity, s)
+                                        }
+                                    }
+                                }
+                            }, "goldberg-apply-launch").start()
+                        }
+                        if (!GoldbergComponent.isInstalled(context)) {
+                            componentDownloadFor = s
+                            componentDownloadLabel = "Steam Emulator (Goldberg)"
+                            componentDownloadProgress = 0f
+                            GoldbergComponent.downloadAsync(
+                                context,
+                                { f -> componentDownloadProgress = f },
+                                { ok, msg ->
+                                    componentDownloadFor = null
+                                    if (ok) applyThenLaunch()
+                                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                },
+                            )
+                        } else applyThenLaunch()
+                    }
+                    else -> {
+                        // RealSteam (SteamLite): download the package on demand if missing, then launch.
+                        if (!SteamLiteComponent.isInstalled(context)) {
+                            componentDownloadFor = s
+                            componentDownloadLabel = "SteamLite (Real Steam / VAC)"
+                            componentDownloadProgress = 0f
+                            SteamLiteComponent.downloadAsync(
+                                context,
+                                { f -> componentDownloadProgress = f },
+                                { ok, msg ->
+                                    componentDownloadFor = null
+                                    if (ok) launchShortcut(activity, s)
+                                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                },
+                            )
+                        } else {
+                            launchShortcut(activity, s)
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    // Blocking progress dialog while the picked component downloads before launch.
+    componentDownloadFor?.let {
+        OutlinedAlertDialog(
+            onDismissRequest = { /* keep up until the download finishes */ },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Downloading $componentDownloadLabel", color = MaterialTheme.colorScheme.onSurface) },
+            text = {
+                Column {
+                    LinearProgressIndicator(
+                        progress = { componentDownloadProgress.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surface,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "${(componentDownloadProgress.coerceIn(0f, 1f) * 100).toInt()}% — the game launches when this finishes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {},
         )
     }
 }

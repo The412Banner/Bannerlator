@@ -1505,11 +1505,8 @@ private fun SteamGameDetailScreen(
                     MenuItemDivider()
                     GearMenuItem("🧩", "Manage DLC", enabled = dlcEntries.isNotEmpty(),
                         onClick = { gearMenuExpanded = false; onDlcLineClick() })
-                    MenuItemDivider()
-                    // Goldberg patches installed game files, so it's only meaningful once installed;
-                    // opens the Goldberg popup.
-                    GearMenuItem("🛡️", "Goldberg mode", enabled = installAction == InstallAction.UNINSTALL,
-                        onClick = { gearMenuExpanded = false; goldbergDialogOpen = true })
+                    // Goldberg mode moved to the pre-launch launch-method popup (SteamLite vs Goldberg,
+                    // see LaunchMethodSheet) — no longer a gear item here.
                     // Installed → Uninstall at the bottom.
                     if (installAction == InstallAction.UNINSTALL) {
                         MenuItemDivider()

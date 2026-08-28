@@ -70,6 +70,8 @@ import com.winlator.star.store.SteamPrefs;
 import com.winlator.star.store.SteamCloudSaveManager;
 import com.winlator.star.store.SteamDatabase;
 import com.winlator.star.store.SteamRepository;
+import com.winlator.star.store.RealSteamLauncher;
+import com.winlator.star.store.SteamLiteComponent;
 import com.winlator.star.contentdialog.ContentDialog;
 import com.winlator.star.contentdialog.DXVKConfigDialog;
 import com.winlator.star.contentdialog.GraphicsDriverConfigDialog;
@@ -269,6 +271,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // the hook is ever re-entered, it re-runs the (idempotent) seed but never re-arms/double-arms the
     // FileObserver. Reset on teardown so a later launch in the same activity instance re-arms cleanly.
     private boolean achievementWatcherArmed = false;
+    // Real-Steam (VAC) launch plan (feature M3). Non-null ONLY when this is a genuine-Steam shortcut with
+    // launchMode=RealSteam AND all prerequisites resolved (token/appId/install dir/SteamLite package):
+    // built on the launch WORKER thread in setupXEnvironment (staging + env), then read by
+    // getWineStartCommand() to rewrite the launch target to run our agent (steam.exe) with the per-game
+    // spec. Null ⇒ every non-RealSteam (or failed-prep) launch is byte-for-byte unchanged.
+    private RealSteamLauncher.Plan realSteamPlan;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     // Which Vulkan driver the host compositor/present layer runs on ("system" = Android's own driver,
     // or an installed adrenotools Turnip). Separate from graphicsDriver (which the guest game renders
@@ -4168,6 +4176,65 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /**
+     * Real-Steam (VAC) launch (feature M3): if this is a genuine-Steam shortcut explicitly set to
+     * {@code launchMode=RealSteam}, stage the SteamLite client + our clean-room agent into this
+     * container's prefix, register the game under {@code steamapps\common\<canonical>} (so genuine Steam's
+     * {@code LaunchApp} is SECURE — {@code -steam}, VAC-capable), write the per-game spec, and store the
+     * resulting {@link RealSteamLauncher.Plan} in {@link #realSteamPlan}. Delegates all the file work +
+     * env assembly to {@link RealSteamLauncher#prepare}; this method only resolves the identity and the
+     * container's {@code drive_c}, then hands off.
+     *
+     * <p>MUST run on the launch worker thread BEFORE {@link #getWineStartCommand()} (which reads
+     * {@code realSteamPlan} to rewrite the launch target) — {@code setupXEnvironment} calls it exactly
+     * there. Fully guarded: any missing prerequisite (not RealSteam / not genuine-Steam / no appId / no
+     * token / install dir absent / SteamLite not downloaded) or failure leaves {@code realSteamPlan} null,
+     * so {@code getWineStartCommand()} keeps the NORMAL launch and a non-RealSteam launch is byte-for-byte
+     * unchanged. Never throws; never logs the refresh token (it lives only inside the plan's env map).
+     */
+    private void maybeStageRealSteam() {
+        try {
+            if (shortcut == null || container == null) return;
+            if (!"RealSteam".equals(shortcut.getExtra("launchMode"))) return;
+            if (!isGenuineSteamShortcut()) return;
+
+            // C:\ (the guest's drive_c) = the launching container's own <rootDir>/.wine/drive_c — exactly
+            // where WINEPREFIX/drive_c resolves via the xuser symlink (cf. Container.getDesktopDir() and
+            // copyDllsToPrefix, which both key off the container root). Derived from the container's own
+            // root dir — never a hardcoded /data/data path.
+            File realSteamDriveC = new File(container.getRootDir(), ".wine/drive_c");
+
+            SteamAppRef ref = resolveSteamAppRef();   // Room lookup — off-main OK on this worker thread
+            if (ref == null) {
+                Log.w("BH_REALSTEAM", "RealSteam requested but appId/installDir unresolved — "
+                        + "falling back to normal launch");
+                return;
+            }
+            SteamDatabase.GameRow row = SteamRepository.getInstance().getDatabase().getGame(ref.appId);
+            String displayName = (row != null && row.name != null) ? row.name : shortcut.name;
+
+            realSteamPlan = RealSteamLauncher.prepare(
+                    this,
+                    realSteamDriveC,
+                    SteamLiteComponent.INSTANCE.installDir(this),
+                    shortcut,
+                    ref.appId,
+                    displayName,
+                    ref.installDir);
+
+            if (realSteamPlan != null) {
+                Log.i("BH_REALSTEAM", "RealSteam launch armed (appId=" + realSteamPlan.appId
+                        + ", steamapps\\common\\" + realSteamPlan.canonicalName + ")");
+            } else {
+                Log.w("BH_REALSTEAM", "RealSteam prep incomplete — falling back to normal launch");
+            }
+        } catch (Throwable t) {
+            // Never let a RealSteam setup failure abort the launch — fall through to the normal path.
+            realSteamPlan = null;
+            Log.w("BH_REALSTEAM", "RealSteam setup errored — falling back to normal launch", t);
+        }
+    }
+
+    /**
      * Resolve a Steam appId + install dir from raw identity signals (exec path / storeSource / tagged
      * appId) rather than requiring the live {@link #shortcut}. Extracted from {@link #resolveSteamAppRef()}
      * (which now just feeds it the shortcut's signals — behaviour is byte-identical for that caller) so the
@@ -5273,6 +5340,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
             guestProgramLauncherComponent.setContainer(this.container);
             guestProgramLauncherComponent.setWineInfo(this.wineInfo);
 
+            // Real-Steam (VAC) launch (feature M3) — STAGE + build the plan BEFORE getWineStartCommand()
+            // below reads realSteamPlan to rewrite the launch target. ONLY for a genuine-Steam shortcut
+            // explicitly set to launchMode=RealSteam: stage the SteamLite client + our agent into this
+            // container's prefix, register the game under steamapps\common\<canonical> (secure LaunchApp),
+            // and write the per-game spec. We're on the launch WORKER thread, so the file staging + Room
+            // lookup (resolveSteamAppRef) can block safely. The env it produces is merged AFTER the
+            // container/shortcut env below (so RealSteam wins); the plan is read by getWineStartCommand().
+            // On any missing prerequisite (no token / appId / install dir / SteamLite not downloaded)
+            // prepare() returns null and realSteamPlan stays null → the NORMAL launch is byte-for-byte
+            // unchanged. The refresh token lives ONLY inside the returned env map; nothing here logs it.
+            maybeStageRealSteam();
+
             String guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " + getWineStartCommand();
 
             guestProgramLauncherComponent.setGuestExecutable(guestExecutable);
@@ -5379,6 +5458,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (shortcut != null) {
                 com.winlator.star.store.EpicGameFixes.applyEnv(this, shortcut, envVars);
                 com.winlator.star.store.EpicGameFixes.applyPreLaunch(this, shortcut);
+            }
+
+            // Real-Steam (VAC) launch (feature M3) — ENV injection. The staging + plan was built above by
+            // maybeStageRealSteam() (before getWineStartCommand()). Merge the plan's WN_STEAM_* +
+            // PROTON_DISABLE_LSTEAMCLIENT env HERE — after the container (5288) and shortcut/Epic env merges
+            // — so the RealSteam env always wins. No-op (realSteamPlan == null) for every non-RealSteam or
+            // failed-prep launch. The refresh token lives ONLY inside plan.env; nothing here logs it.
+            if (realSteamPlan != null) {
+                for (Map.Entry<String, String> e : realSteamPlan.env.entrySet())
+                    envVars.put(e.getKey(), e.getValue());
             }
 
             if (!envVars.has("WINEESYNC")) {
@@ -8036,6 +8125,18 @@ return true;
 
         // Define default arguments
         String args = "";
+
+        // Real-Steam (VAC) launch (feature M3): when setupXEnvironment armed a RealSteam plan, run our
+        // agent as the Steam client's steam.exe with the per-game spec as its argument, instead of the
+        // game exe directly — the agent logs into genuine Steam then LaunchApp's the game securely (-steam).
+        // Peer to the Epic arg-append block below; still wrapped in winhandler.exe like every other launch.
+        // realSteamPlan is null for every non-RealSteam (or failed-prep) launch, so this branch is inert
+        // there and the normal command path below is untouched.
+        if (realSteamPlan != null) {
+            String steamArgs = "/dir " + StringUtils.escapeDOSPath(realSteamPlan.steamExeDirWin)
+                    + " \"" + realSteamPlan.steamExeName + "\" " + realSteamPlan.specArgWin;
+            return "winhandler.exe " + steamArgs;
+        }
 
         if (shortcut != null) {
             String execArgs = shortcut.getExtra("execArgs");

@@ -185,7 +185,8 @@ public abstract class ProcessHelper {
     }
 
     public static int exec(String command, String[] envp, File workingDir, Callback<Integer> terminationCallback) {
-        Log.d("ProcessHelper", "env: " + Arrays.toString(envp) + "\ncmd: " + command);
+        // Redact secrets (Steam refresh token / steamID / email) before this env dump hits raw logcat.
+        Log.d("ProcessHelper", com.winlator.star.store.SteamLogRedactor.redact("env: " + Arrays.toString(envp) + "\ncmd: " + command));
 
         // Store env vars for future use
         EnvironmentManager.setEnvVars(envp);

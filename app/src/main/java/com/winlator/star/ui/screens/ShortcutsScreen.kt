@@ -151,6 +151,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -247,6 +248,12 @@ import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.InputControlsManager
 import com.winlator.star.midi.MidiManager
+import com.winlator.star.store.GoldbergComponent
+import com.winlator.star.store.GoldbergMode
+import com.winlator.star.store.GoldbergPatcher
+import com.winlator.star.store.SteamDatabase
+import com.winlator.star.store.SteamLiteComponent
+import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.store.SteamSaveManagerActivity
 import com.winlator.star.store.SteamStoreSearch
@@ -320,6 +327,25 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var gameDetailsShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var propertiesShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var logsShortcut by remember { mutableStateOf<Shortcut?>(null) }
+    // Steam launch-method popup (feature M3): the Steam-origin shortcut whose SteamLite-vs-Goldberg
+    // chooser is open (null = closed). A Steam game routes through this before launching UNLESS it
+    // already has a remembered choice (launchMode set + launchModeRemembered=="1").
+    var launchChoiceFor by remember { mutableStateOf<Shortcut?>(null) }
+    // Download-on-launch progress overlay: the game we're about to launch once its picked component
+    // (SteamLite for RealSteam, or Goldberg) finishes downloading, plus a label + 0..1 fraction.
+    // null target = nothing downloading.
+    var componentDownloadFor by remember { mutableStateOf<Shortcut?>(null) }
+    var componentDownloadLabel by remember { mutableStateOf("") }
+    var componentDownloadProgress by remember { mutableFloatStateOf(0f) }
+    // The single launch choke point for the game grid/list. A Steam-origin game opens the launch-method
+    // popup first (unless the user already picked a method AND ticked "Remember" for it); everything else
+    // launches straight away via launchShortcutNow.
+    fun requestLaunch(shortcut: Shortcut) {
+        val remembered = shortcut.getExtra("launchMode", "").isNotEmpty() &&
+            shortcut.getExtra("launchModeRemembered", "") == "1"
+        if (isSteamOriginShortcut(shortcut) && !remembered) launchChoiceFor = shortcut
+        else launchShortcutNow(activity, shortcut)
+    }
     var showSortMenu by remember { mutableStateOf(false) }
     var showImportContainerPicker by remember { mutableStateOf(false) }
     var pendingImportContainerIndex by remember { mutableStateOf(-1) }
@@ -855,7 +881,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     selected = shortcut.file.path in selectedPaths,
                                     onRun = {
                                         if (selectionMode) selectedPaths = selectedPaths.toggle(shortcut.file.path)
-                                        else runShortcut(activity, shortcut)
+                                        else requestLaunch(shortcut)
                                     },
                                     onSettings = { settingsShortcut = shortcut },
                                     onRemove = { confirmRemove = shortcut },
@@ -883,7 +909,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             items(shortcuts, key = { it.file.path }) { shortcut ->
                                 val itemRun = {
                                     if (selectionMode) selectedPaths = selectedPaths.toggle(shortcut.file.path)
-                                    else runShortcut(activity, shortcut)
+                                    else requestLaunch(shortcut)
                                 }
                                 val itemSettings = { settingsShortcut = shortcut }
                                 val itemRemove = { confirmRemove = shortcut }
@@ -2633,6 +2659,109 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             shortcut = s,
             onDismiss = { gameDetailsShortcut = null },
             onSaved = { vm.refresh() },
+        )
+    }
+
+    // ── Steam launch-method popup (M3): SteamLite (real Steam / VAC) vs Goldberg (offline) ──────────
+    launchChoiceFor?.let { s ->
+        val appId = steamAppIdOf(s)
+        LaunchMethodSheet(
+            shortcut = s,
+            onDismiss = { launchChoiceFor = null },
+            onLaunch = { mode, goldbergMode, remember ->
+                // Persist the choice on the shortcut's [Extra Data] so a remembered pick skips the popup
+                // next time (contract literals: launchMode ∈ RealSteam/Goldberg/Raw, launchModeRemembered="1").
+                s.putExtra("launchMode", mode)
+                s.putExtra("launchModeRemembered", if (remember) "1" else "0")
+                s.saveData()
+                launchChoiceFor = null
+                when (mode) {
+                    "Goldberg" -> {
+                        val gm = goldbergMode ?: GoldbergMode.REGULAR
+                        SteamPrefs.init(context)
+                        SteamPrefs.setGoldbergMode(appId, gm)
+                        // Resolve the on-disk install dir (Room steam_games row) off the main thread, then
+                        // patch the tier and launch. Mirrors SteamGameDetailActivity.onGoldbergModeSelected.
+                        val applyThenLaunch = {
+                            Thread({
+                                val installDir = runCatching {
+                                    SteamDatabase.getInstance(context).getGame(appId)?.installDir
+                                }.getOrNull().orEmpty()
+                                activity.runOnUiThread {
+                                    if (installDir.isEmpty()) {
+                                        // Nothing to patch (unresolved install dir) — launch as-is.
+                                        launchShortcutNow(activity, s)
+                                    } else {
+                                        GoldbergPatcher.applyModeAsync(context, appId, installDir, s.name, gm) { _, _ ->
+                                            launchShortcutNow(activity, s)
+                                        }
+                                    }
+                                }
+                            }, "goldberg-apply-launch").start()
+                        }
+                        if (!GoldbergComponent.isInstalled(context)) {
+                            componentDownloadFor = s
+                            componentDownloadLabel = "Steam Emulator (Goldberg)"
+                            componentDownloadProgress = 0f
+                            GoldbergComponent.downloadAsync(
+                                context,
+                                { f -> componentDownloadProgress = f },
+                                { ok, msg ->
+                                    componentDownloadFor = null
+                                    if (ok) applyThenLaunch()
+                                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                },
+                            )
+                        } else applyThenLaunch()
+                    }
+                    else -> {
+                        // RealSteam (SteamLite): download the package on demand if it isn't installed yet,
+                        // then launch; otherwise launch straight away.
+                        if (!SteamLiteComponent.isInstalled(context)) {
+                            componentDownloadFor = s
+                            componentDownloadLabel = "SteamLite (Real Steam / VAC)"
+                            componentDownloadProgress = 0f
+                            SteamLiteComponent.downloadAsync(
+                                context,
+                                { f -> componentDownloadProgress = f },
+                                { ok, msg ->
+                                    componentDownloadFor = null
+                                    if (ok) launchShortcutNow(activity, s)
+                                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                },
+                            )
+                        } else {
+                            launchShortcutNow(activity, s)
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    // Blocking progress dialog while the picked component downloads before launch (SteamLite / Goldberg).
+    componentDownloadFor?.let {
+        OutlinedAlertDialog(
+            onDismissRequest = { /* keep up until the download finishes */ },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Downloading $componentDownloadLabel", color = MaterialTheme.colorScheme.onSurface) },
+            text = {
+                Column {
+                    LinearProgressIndicator(
+                        progress = { componentDownloadProgress.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surface,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "${(componentDownloadProgress.coerceIn(0f, 1f) * 100).toInt()}% — the game launches when this finishes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {},
         )
     }
 }
@@ -4507,12 +4636,14 @@ private fun CommunityConfigDetailDialog(
 // Steam Save Manager entry point (Games-tab ⋮ menu). A shortcut is "Steam-origin" when it was
 // tagged at creation (storeSource=steam) or, for pre-tagging shortcuts, when its exec path lives
 // under the steam_games install root. The linked appId reuses the existing `steamAppId` extra.
-private fun isSteamOriginShortcut(shortcut: Shortcut): Boolean {
+// `internal` (not `private`) so the couch UI (BigPictureScreen) shares the exact same Steam-origin gate
+// and appId reader as the phone UI — the launch-method popup fires on the same set of games on both.
+internal fun isSteamOriginShortcut(shortcut: Shortcut): Boolean {
     if (shortcut.getExtra("storeSource") == "steam") return true
     return shortcut.path.contains("steam_games", ignoreCase = true)
 }
 
-private fun steamAppIdOf(shortcut: Shortcut): Int =
+internal fun steamAppIdOf(shortcut: Shortcut): Int =
     shortcut.getExtra("steamAppId", "").toIntOrNull() ?: 0
 
 // A shortcut is "custom" (exe/folder import) when it is NOT a genuine Steam-library game. Steam games
@@ -7845,7 +7976,10 @@ private fun renameShortcut(shortcut: Shortcut, newName: String) {
 private fun Set<String>.toggle(path: String): Set<String> =
     if (path in this) this - path else this + path
 
-private fun runShortcut(activity: Activity, shortcut: Shortcut) {
+// The real launch — builds the XServerDisplayActivity intent (or the XR path) for a shortcut. Steam-
+// origin games funnel through the launch-method popup (see requestLaunch) BEFORE reaching here; every
+// other game comes straight in.
+private fun launchShortcutNow(activity: Activity, shortcut: Shortcut) {
     if (!XrActivity.isEnabled(activity)) {
         val intent = Intent(activity, XServerDisplayActivity::class.java).apply {
             putExtra("container_id", shortcut.container.id)

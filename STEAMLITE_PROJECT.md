@@ -1,7 +1,33 @@
 # SteamLite — Real Steam Online Multiplayer (VAC) for Bannerlator
 
-**Canonical project document.** Branch `feat/steam-vac-phase0` (off main `68b528d9`). Last updated 2026-08-27.
+**Canonical project document.** Branch `feat/steam-vac-phase0` (off main `68b528d9`). Last updated **2026-08-28**.
 Detailed backing docs live in `re/` (see §9). This file is the single source of truth for goal, design, and state.
+
+---
+
+## ✅ CURRENT STATUS (2026-08-28) — read this first
+
+**We built our own clean-room Steam agent (`agent-src/`) and proved the full launch chain on-device — no DRM, no GameHub binary/runtime.** Latest commit `69ecb412` on `feat/steam-vac-phase0`.
+
+### What WORKS now (device-proven, screenshot-confirmed)
+1. **VAC works on this device** — earlier proven directly (L4D2 on a VAC server via GameHub, Adreno-750 / Proton arm64ec).
+2. **Our own agent logs into real Steam (M0)** — `agent-src/main.cpp` (WinNative GPL base + our patches), compiled to a 1.13 MB x86_64 PE via MinGW. Loads the genuine `steamclient64.dll` → `CreateInterface(CLIENTENGINE_INTERFACE_VERSION005)` → `LogOn` → `SteamServersConnected` + `Steam_BLoggedOn=true`.
+3. **Our agent stays resident (M1)** — parks after login, keeps the Steam session alive (resident ticks, `BLoggedOn=1` for minutes, process held).
+4. **Our agent launches L4D2 SECURELY (M2)** — after registering L4D2 in `steamapps\common\` (symlink, no copy) so the agent writes `appmanifest_550.acf`, `LaunchApp(550)` returns `EAppUpdateError=0 (NoError)` and launches **`left4dead2.exe -steam`** (the *secure* Steam path). L4D2 boots to its main menu at 24–60 fps, online, with NO `-insecure` warning.
+5. **🏆 VAC ONLINE MULTIPLAYER CONFIRMED (2026-08-28 04:15)** — the user **joined and played on a VAC-secured L4D2 server**, with the game launched by **OUR OWN AGENT** (log: `LaunchApp(550)=EAppUpdateError=0` → `left4dead2.exe -steam` running → `game exited` when the user left the server). **The whole project goal — achieved and proven end-to-end with our own clean-room binary. No DRM, no GameHub runtime.**
+
+### What's LEFT
+1. **[BUILD] M3 — make it a real Bannerlator feature** — `launchMode=RealSteam` (per-game picker on `SteamGameDetailActivity`): auto-register the game in `steamapps\common\`, mint the token via our JavaSteam and pass it by env, source the genuine Valve DLLs from Valve at runtime (never bundle), stage + launch our agent at the `XServerDisplayActivity` launch hook. Then **M4** — prove on TF2 / CS:S / L4D2.
+3. **[HOUSEKEEPING]** the by-hand prototype lives in the staged `com.tencent.ig` container; the refresh token is on-disk in `.container` envVars for testing → restore from backup `/sdcard/Download/steamlite-proto-backup/20260827/` to clear. The test uses WinNative's genuine client + GameHub's on-device files — a shippable build sources Valve DLLs at runtime.
+
+### Key artifacts
+- **Agent source:** `agent-src/` (`main.cpp`, `clean_shutdown.cpp/.h`, `NOTICE.md` GPL attribution).
+- **Reproduction + one-command relaunch:** `agent-src/test-scripts/REPRODUCE.md` (+ `m0/m2/m2b_setup.py`).
+- **How it was decided/derived:** `re/OWN_AGENT_BUILD_PLAN.md`, `re/SYNTHESIS_OWN_STEAM_AGENT_PLAN.md`, the three per-app RE docs, `re/STEAM_WINE_LAYER_GAP.md`.
+
+### The two make-or-break facts we learned
+- `PROTON_DISABLE_LSTEAMCLIENT=1` is required so the genuine PE `steamclient64.dll` loads (not Proton's lsteamclient shim).
+- A **secure** (VAC-eligible) launch needs the game under `steamapps\common\` + a manifest so `LaunchApp` (not CreateProcess) launches it with `-steam`.
 
 ---
 

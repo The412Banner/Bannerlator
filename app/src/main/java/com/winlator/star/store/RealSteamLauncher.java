@@ -184,6 +184,12 @@ public final class RealSteamLauncher {
             // ── 3c. Per-game spec: line1 = full Windows exe path UNDER steamapps\common (so the agent's
             //        stage_app_manifest sees the \steamapps\common\ marker), line2 = appId. ──────────
             String relExe = exeRelativeToInstall(shortcut.path);      // e.g. "left4dead2.exe" or "bin\\x64\\g.exe"
+            // The agent watches the process Steam's LaunchApp actually SPAWNS — the game's LAUNCHER exe
+            // (<game>.exe), which internally hands off to the arch-specific <game>_win64.exe. If the
+            // shortcut named the 64-bit exe, the agent would watch a process Steam never starts, miss
+            // the secure launch, and fall back INSECURE (device-proven with CS:S: cstrike_win64.exe →
+            // insecure, cstrike.exe → VAC-secure). So prefer the base launcher when it exists on disk.
+            relExe = preferLauncherExe(relExe, hostInstallDir);
             String specExeWin = STEAM_DIR_WIN + "\\steamapps\\common\\" + canonicalName + "\\" + relExe;
             if (!FileUtils.writeString(spec, specExeWin + "\n" + appId + "\n")) {
                 Log.w(TAG, "prepare: failed to write spec file — fallback");
@@ -312,6 +318,40 @@ public final class RealSteamLauncher {
             rel = (slash >= 0) ? norm.substring(slash + 1) : norm;
         }
         return rel.replace('/', '\\');
+    }
+
+    /**
+     * For a RealSteam launch, map an arch-specific game exe to its LAUNCHER exe when one exists on disk.
+     * Steam's {@code LaunchApp} spawns the launcher {@code <game>.exe} (which internally hands off to the
+     * arch child {@code <game>_win64.exe}); the agent must watch the launcher, or it never sees the
+     * secure process and falls back insecure. So if {@code relExe}'s basename ends in a known arch tag
+     * and {@code <base>.exe} exists in {@code hostInstallDir}, return that instead. Otherwise unchanged.
+     */
+    static String preferLauncherExe(String relExe, String hostInstallDir) {
+        try {
+            if (relExe == null || hostInstallDir == null || hostInstallDir.isEmpty()) return relExe;
+            int slash = relExe.lastIndexOf('\\');
+            String dir  = slash >= 0 ? relExe.substring(0, slash + 1) : "";
+            String base = slash >= 0 ? relExe.substring(slash + 1) : relExe;
+            if (!base.toLowerCase().endsWith(".exe")) return relExe;
+            String stem = base.substring(0, base.length() - 4);            // "cstrike_win64"
+            String[] archTags = { "_win64", "_win32", "_x64", "_x86", "_64", "_32" };
+            for (String arch : archTags) {
+                if (stem.toLowerCase().endsWith(arch)) {
+                    String launcher = stem.substring(0, stem.length() - arch.length()) + ".exe"; // "cstrike.exe"
+                    String hostRel  = (dir + launcher).replace('\\', File.separatorChar);
+                    if (new File(hostInstallDir, hostRel).isFile()) {
+                        Log.i(TAG, "prepare: RealSteam watch exe \"" + base + "\" -> launcher \""
+                                + launcher + "\" (Steam spawns the launcher; \"" + base + "\" is its arch child)");
+                        return dir + launcher;
+                    }
+                    break;  // matched an arch tag but the launcher isn't on disk — keep the original
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "preferLauncherExe failed: " + t.getMessage());
+        }
+        return relExe;
     }
 
     /** Strip Windows-illegal folder chars, collapse whitespace, trim. Removes (not underscores) so a

@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <cmath>
 #include <dlfcn.h>
+#include <sys/stat.h>
 #include "window_vert.h"
 #include "window_frag.h"
 #include "upscale_vert.h"
@@ -24,6 +25,11 @@
 #include "ntsc_frag.h"
 #include "crt_frag.h"
 #include "deband_frag.h"
+#include "lsfg/lsfg_host_bridge.h"
+
+#define LSFG_HOST_TAG "LSFG-HOST"
+#define LSFG_LOGI(...) __android_log_print(ANDROID_LOG_INFO, LSFG_HOST_TAG, __VA_ARGS__)
+#define LSFG_LOGW(...) __android_log_print(ANDROID_LOG_WARN, LSFG_HOST_TAG, __VA_ARGS__)
 
 // Internal sentinel for upFrame.mode: high-quality supersampling downscale.
 // (Not a user-selectable upscalerMode; gated by the hqDownscale flag.)
@@ -100,6 +106,8 @@ VulkanRendererContext::~VulkanRendererContext() {
         if (wt.stg  != VK_NULL_HANDLE) { vk_.DestroyBuffer(device, wt.stg, nullptr); vk_.FreeMemory(device, wt.stgMem, nullptr); }
     }
     deleteQueue.clear();
+    destroyLsfgHost();
+    destroyLsfgSemaphores();
     cleanupSwapchain(); cleanupCursorTex();
 
     // upscaler resources (DS freed back to winTexPool while it is still alive)
@@ -319,6 +327,20 @@ void VulkanRendererContext::createLogicalDevice() {
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
     ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
+
+    // [LSFG-HOST] Probe the compositor's own physical device for the features the
+    // translated LSFG shaders need and, if all present, enable them here. These
+    // structs must outlive the CreateDevice call, so they live in this scope. When
+    // unsupported nothing is chained -> device creation is byte-identical to before,
+    // so normal (non-lsfg) rendering never regresses.
+    VkPhysicalDeviceFeatures2 lsfgFeatures2{};
+    VkPhysicalDeviceVulkanMemoryModelFeatures lsfgMemModel{};
+    bool lsfgFeaturesOk = probeLsfgFeatures(lsfgFeatures2, lsfgMemModel);
+    if (lsfgFeaturesOk) {
+        lsfgFeatures2.pNext = ci.pNext;   // preserve any existing chain (currently none)
+        ci.pNext = &lsfgFeatures2;        // pEnabledFeatures stays NULL -> spec-compliant
+    }
+
     if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
     vk_.GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)gipa(instance, "vkGetDeviceProcAddr");
     loadDeviceDispatch();
@@ -329,6 +351,81 @@ void VulkanRendererContext::createLogicalDevice() {
     VkPhysicalDeviceProperties props{};
     vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
     maxAnisotropy = props.limits.maxSamplerAnisotropy;
+
+    // Populate the chain's private dispatch table from our own loader + instance
+    // (works with a directly-dlopen'd adrenotools driver). Only mark the device
+    // ready for frame gen when the features actually got enabled.
+    if (lsfgFeaturesOk) {
+        lsfgDeviceReady = LsfgHostInitDispatch(gipa, instance);
+        LSFG_LOGI("device: features enabled=YES dispatch=%s (%s)",
+                  lsfgDeviceReady ? "ready" : "FAILED", props.deviceName);
+    } else {
+        LSFG_LOGI("device: features enabled=NO -> host frame gen unavailable (%s)",
+                  props.deviceName);
+    }
+}
+
+// Query the physical device for the LSFG requirements; fill feature structs to
+// enable on success. Logs each requirement PASS/FAIL. Never throws.
+bool VulkanRendererContext::probeLsfgFeatures(
+        VkPhysicalDeviceFeatures2& features2,
+        VkPhysicalDeviceVulkanMemoryModelFeatures& memModel) {
+    features2 = VkPhysicalDeviceFeatures2{};
+    features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    memModel = VkPhysicalDeviceVulkanMemoryModelFeatures{};
+    memModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+
+    auto getFeatures2 = (PFN_vkGetPhysicalDeviceFeatures2)gipa(instance, "vkGetPhysicalDeviceFeatures2");
+    auto getFormatProps = (PFN_vkGetPhysicalDeviceFormatProperties)
+        gipa(instance, "vkGetPhysicalDeviceFormatProperties");
+    if (!getFeatures2) { LSFG_LOGW("device: vkGetPhysicalDeviceFeatures2 unavailable"); return false; }
+
+    VkPhysicalDeviceProperties props{};
+    vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
+    bool vk13 = props.apiVersion >= VK_API_VERSION_1_3;
+
+    // compute-capable queue family?
+    bool computeQ = false;
+    {
+        uint32_t n = 0; vk_.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, &n, nullptr);
+        std::vector<VkQueueFamilyProperties> qp(n);
+        vk_.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, &n, qp.data());
+        for (auto& q : qp) if (q.queueCount > 0 && (q.queueFlags & VK_QUEUE_COMPUTE_BIT)) { computeQ = true; break; }
+    }
+
+    // storage-writable target format (generated frames are storage-written)?
+    bool storageFmt = false;
+    if (getFormatProps) {
+        VkFormatProperties fp{};
+        getFormatProps(physicalDevice, VK_FORMAT_R8G8B8A8_UNORM, &fp);
+        storageFmt = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) != 0;
+    }
+
+    VkPhysicalDeviceFeatures2 query{};
+    query.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    VkPhysicalDeviceVulkanMemoryModelFeatures mm{};
+    mm.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+    query.pNext = &mm;
+    getFeatures2(physicalDevice, &query);
+
+    bool memoryModel  = mm.vulkanMemoryModel != VK_FALSE;
+    bool storeWWF     = query.features.shaderStorageImageWriteWithoutFormat != VK_FALSE;
+    bool extFmts      = query.features.shaderStorageImageExtendedFormats != VK_FALSE;
+
+    bool ok = vk13 && computeQ && storageFmt && memoryModel && storeWWF && extFmts;
+    LSFG_LOGI("device probe: vk1.3=%s computeQ=%s storageFmt=%s memModel=%s storeWWF=%s extFmt=%s -> %s (%s vk=%u.%u)",
+              vk13?"PASS":"FAIL", computeQ?"PASS":"FAIL", storageFmt?"PASS":"FAIL",
+              memoryModel?"PASS":"FAIL", storeWWF?"PASS":"FAIL", extFmts?"PASS":"FAIL",
+              ok?"SUPPORTED":"UNSUPPORTED", props.deviceName,
+              VK_API_VERSION_MAJOR(props.apiVersion), VK_API_VERSION_MINOR(props.apiVersion));
+    if (!ok) return false;
+
+    // Enable exactly the three required features (additive; all default-off).
+    memModel.vulkanMemoryModel = VK_TRUE;
+    features2.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+    features2.features.shaderStorageImageExtendedFormats = VK_TRUE;
+    features2.pNext = &memModel;
+    return true;
 }
 
 void VulkanRendererContext::createSwapchain() {
@@ -338,8 +435,17 @@ void VulkanRendererContext::createSwapchain() {
     uint32_t fmtN=0; vk_.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,&fmtN,nullptr);
     std::vector<VkSurfaceFormatKHR> fmts(fmtN); vk_.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,&fmtN,fmts.data());
     swapchainFmt = VK_FORMAT_R8G8B8A8_UNORM;
-    uint32_t imgCount=caps.minImageCount+1;
-    if (caps.maxImageCount>0&&imgCount>caps.maxImageCount) imgCount=caps.maxImageCount;
+    // When host LSFG is armed, the swapchain images become copy targets: the real
+    // frame is read back into the flow chain (TRANSFER_SRC) and generated frames
+    // are copied in (TRANSFER_DST). Also request extra images so multiple can be
+    // acquired per real frame (one per generated frame). Both gated on lsfg so the
+    // normal path keeps its exact single-image COLOR_ATTACHMENT swapchain.
+    bool lsfgSwap = lsfgRequested && lsfgDeviceReady;
+    uint32_t imgCount = lsfgSwap ? (caps.minImageCount + 1 + LSFG_HOST_MAX_GEN)
+                                 : (caps.minImageCount + 1);
+    uint32_t imgCap = (caps.maxImageCount > 0) ? caps.maxImageCount : 8u;
+    if (imgCap > 8u) imgCap = 8u;
+    if (imgCount > imgCap) imgCount = imgCap;
 
     uint32_t pmCount=0;
     vk_.GetPhysicalDeviceSurfacePresentModesKHR(physicalDevice,surface,&pmCount,nullptr);
@@ -366,7 +472,9 @@ void VulkanRendererContext::createSwapchain() {
     VkSwapchainCreateInfoKHR ci{}; ci.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     ci.surface=surface; ci.minImageCount=imgCount; ci.imageFormat=swapchainFmt;
     ci.imageColorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; ci.imageExtent=swapchainExt;
-    ci.imageArrayLayers=1; ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    ci.imageArrayLayers=1;
+    ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (lsfgSwap) ci.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE; ci.preTransform=pre;
     ci.compositeAlpha=compositeAlpha; ci.presentMode=presentMode; ci.clipped=VK_TRUE;
     ci.oldSwapchain=oldSwapchain;
@@ -724,6 +832,7 @@ void VulkanRendererContext::createSyncObjects() {
 }
 
 void VulkanRendererContext::cleanupSwapchain() {
+    destroyLsfgGenTargets();   // extent-sized; rebuilt lazily when lsfg runs again
     for (auto fb:swapchainFBs) vk_.DestroyFramebuffer(device,fb,nullptr); swapchainFBs.clear();
     for (auto iv:swapchainViews) vk_.DestroyImageView(device,iv,nullptr); swapchainViews.clear();
     if (!cmdBufs.empty()){vk_.FreeCommandBuffers(device,cmdPool,(uint32_t)cmdBufs.size(),cmdBufs.data());cmdBufs.clear();}
@@ -965,7 +1074,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     VkBuffer cursorUpload, bool hasCursorUpload,
     float ox, float oy, float sx, float sy, float cw, float ch,
     short ptrX, short ptrY, short curHotX, short curHotY,
-    short curW, short curH, bool curVis)
+    short curW, short curH, bool curVis, bool endBuffer)
 {
     VkCommandBufferBeginInfo bi{}; bi.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     if (vk_.BeginCommandBuffer(cb,&bi)!=VK_SUCCESS) throw std::runtime_error("begin cb");
@@ -1101,6 +1210,8 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     }
     vk_.CmdEndRenderPass(cb);
     } // end !upFrame.active
+
+    if (!endBuffer) return;   // LSFG path appends its own commands then ends the buffer
 
     VkResult endStatus = vk_.EndCommandBuffer(cb);
     if (endStatus!=VK_SUCCESS) {
@@ -1635,32 +1746,296 @@ ok=true;}catch(...){}
         memcpy(cursorStgP, cursorPixels.data(), cursorUploadSize);
 
     bool effectiveCurVis = curVis && !scanoutActive.load();
+    // [LSFG-HOST] Decide whether host frame generation runs this frame. Requires
+    // the generator + device features + extra swapchain images. Skipped during
+    // scanout. When false, the block below is the exact original render path.
+    ensureLsfgCreated();
+    bool lsfgThisFrame = lsfgActiveNow() && !scanoutActive.load()
+                       && swapchainImages.size() >= 3;
+    if (lsfgThisFrame) {
+        if (!ensureLsfgGenTargets((int)swapchainExt.width, (int)swapchainExt.height)) {
+            lsfgThisFrame = false; lsfgUnavailable = true;
+            LSFG_LOGW("gen targets unavailable -> host frame gen disabled");
+        } else {
+            ensureLsfgSemaphores();
+            LsfgHostSetGuestExtent(lsfg, (uint32_t)containerWidth, (uint32_t)containerHeight);
+            int mhz = lsfgRefreshMhz.load(std::memory_order_relaxed);
+            LsfgHostSetRefreshRate(lsfg, mhz > 0 ? (float)mhz / 1000.f : 0.f);
+            if (LsfgHostNeedsRebuild(lsfg, swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+                vk_.DeviceWaitIdle(device);   // chain images may be referenced by prior frames
+                LsfgHostForgetTargets(lsfg);
+                if (!LsfgHostPrepare(lsfg, swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+                    lsfgThisFrame = false; lsfgUnavailable = true;
+                    LSFG_LOGW("chain prepare failed at %ux%u -> host frame gen disabled",
+                              swapchainExt.width, swapchainExt.height);
+                }
+            }
+        }
+    }
+
     planUpscaleFrame();   // decide/prepare spatial-upscaler passes for this frame
     recordCmdBuf(cmdBufs[currentFrame],imgIdx,frameDraws,
         frameAhbTransitions,framePreUpload,framePostUpload,
         curUpload,hasCurUpload,
-        ox,oy,sx,sy,cw,ch,ptrX,ptrY,curHotX,curHotY,curW,curH,effectiveCurVis);
+        ox,oy,sx,sy,cw,ch,ptrX,ptrY,curHotX,curHotY,curW,curH,effectiveCurVis,
+        /*endBuffer=*/ !lsfgThisFrame);
 
-    VkSemaphore wSem[]={imgAvailSems[currentFrame]}, sSem[]={renderDoneSems[currentFrame]};
-    VkPipelineStageFlags wStage[]={VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
-    si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];
-    si.signalSemaphoreCount=1; si.pSignalSemaphores=sSem;
+    if (!lsfgThisFrame) {
+        VkSemaphore wSem[]={imgAvailSems[currentFrame]}, sSem[]={renderDoneSems[currentFrame]};
+        VkPipelineStageFlags wStage[]={VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
+        si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];
+        si.signalSemaphoreCount=1; si.pSignalSemaphores=sSem;
 
-    vk_.ResetFences(device,1,&inFlightFences[currentFrame]);
-    if (vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame])!=VK_SUCCESS) {
-        vk_.DestroyFence(device,inFlightFences[currentFrame],nullptr);
-        VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags=VK_FENCE_CREATE_SIGNALED_BIT;
-        vk_.CreateFence(device,&fi,nullptr,&inFlightFences[currentFrame]);
+        vk_.ResetFences(device,1,&inFlightFences[currentFrame]);
+        if (vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame])!=VK_SUCCESS) {
+            vk_.DestroyFence(device,inFlightFences[currentFrame],nullptr);
+            VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags=VK_FENCE_CREATE_SIGNALED_BIT;
+            vk_.CreateFence(device,&fi,nullptr,&inFlightFences[currentFrame]);
+            return;
+        }
+        VkSwapchainKHR scs[]={swapchain};
+        VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
+        res=vk_.QueuePresentKHR(graphicsQueue,&pi);
+        if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
+        currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
         return;
     }
-    VkSwapchainKHR scs[]={swapchain};
-    VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
-    res=vk_.QueuePresentKHR(graphicsQueue,&pi);
-    if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
-    currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
+
+    // ---- LSFG-HOST present path: real frame N already composited into
+    // swapchainImages[imgIdx]; interpolate and emit generated frames before it. ----
+    VkCommandBuffer cb = cmdBufs[currentFrame];
+    uint32_t capacity = (uint32_t)swapchainImages.size() - 2;
+    if (capacity > LSFG_HOST_MAX_GEN) capacity = LSFG_HOST_MAX_GEN;
+    uint32_t planned = LsfgHostPlan(lsfg, capacity, lsfgSourceFrames++);
+
+    uint32_t genIdx[LSFG_HOST_MAX_GEN] = {0};
+    uint32_t genCount = 0;
+    uint32_t semBase = currentFrame * LSFG_HOST_MAX_GEN;
+    for (uint32_t g = 0; g < planned; g++) {
+        uint32_t gi = 0;
+        VkResult ga = vk_.AcquireNextImageKHR(device, swapchain, 8000000ULL,
+                                              lsfgGenImgAvailSems[semBase + g], VK_NULL_HANDLE, &gi);
+        if (ga != VK_SUCCESS && ga != VK_SUBOPTIMAL_KHR) break;
+        genIdx[genCount++] = gi;
+    }
+
+    // Real frame N (PRESENT_SRC after the render pass) -> GENERAL so the chain can
+    // read it as the interpolation source.
+    transition(cb, swapchainImages[imgIdx],
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    LsfgHostProcess(lsfg, cb, swapchainImages[imgIdx],
+                    swapchainExt.width, swapchainExt.height, genCount);
+
+    for (uint32_t g = 0; g < genCount; g++) {
+        LsfgGenTarget& gt = lsfgGenTargets[g];
+        LsfgHostGenerateInto(lsfg, cb, g, g, gt.img, gt.view,
+                             swapchainExt.width, swapchainExt.height);
+        // gt is left in GENERAL by the chain; copy it into its swapchain image
+        // (gen target and swapchain share extent+format, so a plain copy suffices).
+        transition(cb, swapchainImages[genIdx[g]],
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        VkImageCopy region{};
+        region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        region.extent = {swapchainExt.width, swapchainExt.height, 1};
+        vk_.CmdCopyImage(cb, gt.img, VK_IMAGE_LAYOUT_GENERAL,
+                         swapchainImages[genIdx[g]], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        transition(cb, swapchainImages[genIdx[g]],
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    }
+
+    // Real frame back to PRESENT_SRC.
+    transition(cb, swapchainImages[imgIdx],
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT, 0,
+        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+    if (vk_.EndCommandBuffer(cb) != VK_SUCCESS) {
+        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        return;
+    }
+
+    VkSemaphore waits[1 + LSFG_HOST_MAX_GEN];
+    VkPipelineStageFlags wstages[1 + LSFG_HOST_MAX_GEN];
+    VkSemaphore signals[1 + LSFG_HOST_MAX_GEN];
+    uint32_t wc = 0, sc = 0;
+    waits[wc] = imgAvailSems[currentFrame];
+    wstages[wc] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+    wc++;
+    signals[sc++] = renderDoneSems[currentFrame];
+    for (uint32_t g = 0; g < genCount; g++) {
+        waits[wc] = lsfgGenImgAvailSems[semBase + g];
+        wstages[wc] = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        wc++;
+        signals[sc++] = lsfgGenRenderDoneSems[semBase + g];
+    }
+    VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.waitSemaphoreCount = wc; si.pWaitSemaphores = waits; si.pWaitDstStageMask = wstages;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    si.signalSemaphoreCount = sc; si.pSignalSemaphores = signals;
+
+    vk_.ResetFences(device, 1, &inFlightFences[currentFrame]);
+    if (vk_.QueueSubmit(graphicsQueue, 1, &si, inFlightFences[currentFrame]) != VK_SUCCESS) {
+        vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
+        VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]);
+        return;
+    }
+
+    VkSwapchainKHR scs[] = {swapchain};
+    // Generated frames first (they belong between N-1 and N), then the real frame.
+    for (uint32_t g = 0; g < genCount; g++) {
+        VkPresentInfoKHR gpi{}; gpi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        gpi.waitSemaphoreCount = 1; gpi.pWaitSemaphores = &lsfgGenRenderDoneSems[semBase + g];
+        gpi.swapchainCount = 1; gpi.pSwapchains = scs; gpi.pImageIndices = &genIdx[g];
+        vk_.QueuePresentKHR(graphicsQueue, &gpi);
+    }
+    VkPresentInfoKHR pi{}; pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    pi.waitSemaphoreCount = 1; pi.pWaitSemaphores = &renderDoneSems[currentFrame];
+    pi.swapchainCount = 1; pi.pSwapchains = scs; pi.pImageIndices = &imgIdx;
+    res = vk_.QueuePresentKHR(graphicsQueue, &pi);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
+
+    static uint64_t lsfgFrameLog = 0;
+    if ((++lsfgFrameLog % 120) == 0) {
+        LSFG_LOGI("framegen: planned=%u generated=%u swapImages=%zu (real+gen presented)",
+                  planned, genCount, swapchainImages.size());
+    }
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+// ===================== Host-side LSFG frame generation ======================
+
+void VulkanRendererContext::ensureLsfgCreated() {
+    if (lsfg || !lsfgRequested || lsfgUnavailable) return;
+    if (!lsfgDeviceReady) return;               // features/dispatch not available
+    if (lsfgCachePath.empty()) return;          // Java hasn't handed us a cache yet
+    // The shader cache is built asynchronously at launch; wait (retry each frame)
+    // until it exists rather than permanently giving up on an early first frame.
+    struct stat st;
+    if (stat(lsfgCachePath.c_str(), &st) != 0 || st.st_size <= 0) return;
+    lsfg = (VkrLsfg*)LsfgHostCreate(device, physicalDevice, lsfgCachePath.c_str());
+    if (!lsfg) {
+        lsfgUnavailable = true;
+        LSFG_LOGW("generator create failed (cache=%s) -> host frame gen off",
+                  lsfgCachePath.c_str());
+        return;
+    }
+    int mhz = lsfgRefreshMhz.load(std::memory_order_relaxed);
+    LsfgHostConfigure(lsfg, lsfgMultiplier, 0, lsfgFlowScale, mhz > 0 ? (float)mhz / 1000.f : 0.f);
+    LSFG_LOGI("host frame generator created (mult=%u flow=%.2f cache=%s)", lsfgMultiplier,
+              (double)lsfgFlowScale, lsfgCachePath.c_str());
+}
+
+void VulkanRendererContext::destroyLsfgHost() {
+    if (lsfg) { LsfgHostDestroy(lsfg); lsfg = nullptr; }
+    destroyLsfgGenTargets();
+}
+
+bool VulkanRendererContext::ensureLsfgGenTargets(int w, int h) {
+    if (!lsfgGenTargets.empty() && lsfgGenTargets[0].w == w && lsfgGenTargets[0].h == h &&
+        lsfgGenTargets[0].img != VK_NULL_HANDLE) {
+        return true;
+    }
+    destroyLsfgGenTargets();
+    lsfgGenTargets.resize(LSFG_HOST_MAX_GEN);
+    for (auto& gt : lsfgGenTargets) {
+        VkImageCreateInfo ic{}; ic.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        ic.imageType = VK_IMAGE_TYPE_2D; ic.format = swapchainFmt;
+        ic.extent = {(uint32_t)w, (uint32_t)h, 1}; ic.mipLevels = 1; ic.arrayLayers = 1;
+        ic.samples = VK_SAMPLE_COUNT_1_BIT; ic.tiling = VK_IMAGE_TILING_OPTIMAL;
+        ic.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                   VK_IMAGE_USAGE_SAMPLED_BIT;
+        ic.sharingMode = VK_SHARING_MODE_EXCLUSIVE; ic.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        if (vk_.CreateImage(device, &ic, nullptr, &gt.img) != VK_SUCCESS) {
+            RLOG_E("LSFG: gen target CreateImage failed"); destroyLsfgGenTargets(); return false;
+        }
+        VkMemoryRequirements mr{}; vk_.GetImageMemoryRequirements(device, gt.img, &mr);
+        VkMemoryAllocateInfo ai{}; ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        ai.allocationSize = mr.size;
+        ai.memoryTypeIndex = findMemType(mr.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (vk_.AllocateMemory(device, &ai, nullptr, &gt.mem) != VK_SUCCESS) {
+            destroyLsfgGenTargets(); return false;
+        }
+        vk_.BindImageMemory(device, gt.img, gt.mem, 0);
+        VkImageViewCreateInfo vi{}; vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        vi.image = gt.img; vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = swapchainFmt;
+        vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        if (vk_.CreateImageView(device, &vi, nullptr, &gt.view) != VK_SUCCESS) {
+            destroyLsfgGenTargets(); return false;
+        }
+        gt.w = w; gt.h = h;
+    }
+    return true;
+}
+
+void VulkanRendererContext::destroyLsfgGenTargets() {
+    for (auto& gt : lsfgGenTargets) {
+        if (gt.view != VK_NULL_HANDLE) vk_.DestroyImageView(device, gt.view, nullptr);
+        if (gt.img  != VK_NULL_HANDLE) vk_.DestroyImage(device, gt.img, nullptr);
+        if (gt.mem  != VK_NULL_HANDLE) vk_.FreeMemory(device, gt.mem, nullptr);
+    }
+    lsfgGenTargets.clear();
+}
+
+void VulkanRendererContext::ensureLsfgSemaphores() {
+    if (lsfgSemsBuilt) return;
+    const uint32_t n = MAX_FRAMES_IN_FLIGHT * LSFG_HOST_MAX_GEN;
+    lsfgGenImgAvailSems.resize(n); lsfgGenRenderDoneSems.resize(n);
+    VkSemaphoreCreateInfo si{}; si.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    for (uint32_t i = 0; i < n; i++) {
+        vk_.CreateSemaphore(device, &si, nullptr, &lsfgGenImgAvailSems[i]);
+        vk_.CreateSemaphore(device, &si, nullptr, &lsfgGenRenderDoneSems[i]);
+    }
+    lsfgSemsBuilt = true;
+}
+
+void VulkanRendererContext::destroyLsfgSemaphores() {
+    for (auto s : lsfgGenImgAvailSems)   if (s != VK_NULL_HANDLE) vk_.DestroySemaphore(device, s, nullptr);
+    for (auto s : lsfgGenRenderDoneSems) if (s != VK_NULL_HANDLE) vk_.DestroySemaphore(device, s, nullptr);
+    lsfgGenImgAvailSems.clear(); lsfgGenRenderDoneSems.clear();
+    lsfgSemsBuilt = false;
+}
+
+void VulkanRendererContext::setLsfgHost(bool enable, const char* cachePath, int multiplier,
+                                        float flowScale) {
+    if (cachePath && *cachePath) lsfgCachePath = cachePath;
+    if (multiplier >= 1) lsfgMultiplier = (uint32_t)multiplier;
+    if (flowScale > 0.f) lsfgFlowScale = flowScale;
+
+    if (!enable) {
+        lsfgRequested = false;   // lsfgActiveNow() -> false; render path reverts to normal
+        LSFG_LOGI("host frame gen disabled by request");
+        return;
+    }
+    lsfgRequested = true;
+    lsfgUnavailable = false;
+    LSFG_LOGI("host frame gen requested (mult=%u flow=%.2f deviceReady=%d cache=%s)",
+              lsfgMultiplier, (double)lsfgFlowScale, (int)lsfgDeviceReady, lsfgCachePath.c_str());
+    if (lsfg) LsfgHostConfigure(lsfg, lsfgMultiplier, 0, lsfgFlowScale,
+                                lsfgRefreshMhz.load(std::memory_order_relaxed) > 0
+                                    ? (float)lsfgRefreshMhz.load() / 1000.f : 0.f);
+    // The swapchain needs TRANSFER_SRC/DST + extra images before generation can
+    // run; force a recreate so createSwapchain picks up the lsfg usage flags.
+    if (lsfgDeviceReady && swapchain != VK_NULL_HANDLE) fbResized.store(true);
+}
+
+void VulkanRendererContext::setLsfgRefreshRate(float hz) {
+    lsfgRefreshMhz.store(hz > 0.f ? (int)(hz * 1000.f) : 0, std::memory_order_relaxed);
+    if (lsfg) LsfgHostSetRefreshRate(lsfg, hz);
 }
 
 void VulkanRendererContext::onSurfaceResized(int w, int h) {

@@ -262,6 +262,13 @@ public:
     void setPresentMode(VkPresentModeKHR mode);
     std::vector<int> getSupportedPresentModes() const;
 
+    // Host-side LSFG frame generation (ported WinNative PR #697). Driven from
+    // Java when the "lsfg" frame-gen engine is selected; runs entirely on the
+    // compositor's own VkDevice (no guest lsfg-vk layer). enable=false is a
+    // zero-cost bypass — the normal render path is byte-identical.
+    void setLsfgHost(bool enable, const char* cachePath, int multiplier, float flowScale);
+    void setLsfgRefreshRate(float hz);
+
 private:
     struct WinTex {
         VkImage              img            = VK_NULL_HANDLE;
@@ -507,6 +514,34 @@ private:
     std::vector<VkFence>     imgInFlight;
     uint32_t                 currentFrame = 0;
 
+    // ---- Host-side LSFG frame generation ----
+    // Max frames generated per real frame (matches VKR_LSFG_MAX_GENERATIONS).
+    static constexpr uint32_t LSFG_HOST_MAX_GEN = 3;
+    struct VkrLsfg* lsfg = nullptr;                 // opaque frame generator (nullptr = off)
+    bool             lsfgRequested   = false;       // "lsfg" engine selected for this session
+    bool             lsfgDeviceReady = false;       // vkd populated + required features enabled
+    bool             lsfgUnavailable = false;       // create/prepare failed once — stay off, no retry
+    std::string      lsfgCachePath;
+    uint32_t         lsfgMultiplier  = 2;
+    float            lsfgFlowScale   = 0.7f;
+    std::atomic<int> lsfgRefreshMhz{0};
+    uint64_t         lsfgSourceFrames = 0;
+    VkExtent2D       lsfgBuiltExtent{0, 0};
+    // Generation-output targets (storage images at swapchain extent/format). The
+    // real frame is composited straight into the swapchain image as usual; only
+    // generated frames need an off-swapchain storage target to be written into.
+    struct LsfgGenTarget {
+        VkImage        img  = VK_NULL_HANDLE;
+        VkDeviceMemory mem  = VK_NULL_HANDLE;
+        VkImageView    view = VK_NULL_HANDLE;
+        int            w = 0, h = 0;
+    };
+    std::vector<LsfgGenTarget> lsfgGenTargets;      // sized LSFG_HOST_MAX_GEN when active
+    // Extra per-frame semaphores for the multi-acquire / multi-present path.
+    std::vector<VkSemaphore>   lsfgGenImgAvailSems;   // MAX_FRAMES_IN_FLIGHT * LSFG_HOST_MAX_GEN
+    std::vector<VkSemaphore>   lsfgGenRenderDoneSems; // MAX_FRAMES_IN_FLIGHT * LSFG_HOST_MAX_GEN
+    bool                       lsfgSemsBuilt = false;
+
     VkSampler        sampler    = VK_NULL_HANDLE;
     VkDescriptorPool winTexPool = VK_NULL_HANDLE;
 
@@ -573,9 +608,26 @@ private:
         VkBuffer cursorUpload, bool hasCursorUpload,
         float ox, float oy, float sx, float sy, float cw, float ch,
         short ptrX, short ptrY, short curHotX, short curHotY,
-        short curW, short curH, bool curVis);
+        short curW, short curH, bool curVis, bool endBuffer = true);
     void renderLoop();
     void renderFrame();
+
+    // ---- Host-side LSFG helpers ----
+    // Query the compositor's own physical device for the LSFG requirements and,
+    // if all present, enable them on the created device. Called from
+    // createLogicalDevice. Logs each PASS/FAIL under "LSFG-HOST". Fills the
+    // feature structs it chains into VkDeviceCreateInfo (they must outlive the
+    // create call, so the caller owns them).
+    bool probeLsfgFeatures(VkPhysicalDeviceFeatures2& features2,
+                           VkPhysicalDeviceVulkanMemoryModelFeatures& memModel);
+    bool lsfgActiveNow() const { return lsfgRequested && lsfg && !lsfgUnavailable; }
+    void ensureLsfgCreated();
+    void destroyLsfgHost();
+    bool ensureLsfgGenTargets(int w, int h);
+    void destroyLsfgGenTargets();
+    void ensureLsfgSemaphores();
+    void destroyLsfgSemaphores();
+    void renderFrameLsfg();
 
     uint32_t        findMemType(uint32_t filter, VkMemoryPropertyFlags props);
     void            createBuffer(VkDeviceSize sz, VkBufferUsageFlags usage,

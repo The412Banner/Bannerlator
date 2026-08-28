@@ -84,6 +84,7 @@ import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.WinFgCapture;
 import com.winlator.star.core.WinFgDiag;
+import com.winlator.star.core.LsfgHostDiag;
 import com.winlator.star.core.GPUInformation;
 import com.winlator.star.core.GyroCalibrator;
 import com.winlator.star.core.KeyValueSet;
@@ -1556,19 +1557,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // Route the single in-game multiplier/flow control to whichever engine is running this
             // session (honors a per-game engine override, else the container's engine).
             if (resolvedFrameGenEngine().equals("lsfg")) {
-                // lsfg-vk: rewrite its conf.toml — the fork layer watches the file mtime and reloads
-                // live (swapchain recreate). Passthrough = multiplier 1 (layer treats <=1 as off).
-                File dll = new File(getFilesDir(), "lsfg-vk/Lossless.dll");
-                // Live performance_mode: seeded from the container at launch (below), toggled live from
-                // the FG drawer. Rewriting conf.toml with it bumps the mtime so the layer re-reads.
+                // Host-side LSFG (WinNative PR #697 port): drive the compositor's native
+                // frame generator live — NO guest conf.toml / vsync clock / presentation
+                // reset. mult<2 (Off) disables generation (zero-cost bypass); mult>=2
+                // turns it on. The compositor reconfigures the pacer without a relaunch.
                 boolean perfMode = s.getLsfgPerformanceMode().getValue();
-                // mult is already 0 when the in-game toggle is Off (or FG disabled). lsfg-vk treats
-                // multiplier <= 1 as passthrough, so map anything below 2 to 1 — NOT max(2,mult),
-                // which would force 2x on Off.
-                writeLsfgConfig(mult >= 2 ? mult : 1, flow, dll.getAbsolutePath(), perfMode);
-                // Keep the vsync clock running only while frame-gen is actually generating (mult>=2),
-                // so the layer has a grid to phase-lock to; stop it in passthrough.
-                if (mult >= 2) startVsyncClock(); else stopVsyncClock();
+                HostRenderer r0 = xServerView.getRenderer();
+                if (r0 instanceof com.winlator.star.renderer.vulkan.VulkanRenderer) {
+                    com.winlator.star.renderer.vulkan.VulkanRenderer vkr =
+                        (com.winlator.star.renderer.vulkan.VulkanRenderer) r0;
+                    boolean genOn = mult >= 2;
+                    String cachePath = LsfgHostDiag.cacheFile(getFilesDir()).getAbsolutePath();
+                    vkr.setLsfgHost(genOn, cachePath, genOn ? mult : 2, flow);
+                }
                 if (fgOn) container.setFrameGenMultiplier(mult);
                 container.setFrameGenFlowScale(flow);
                 container.setLsfgPerformanceMode(perfMode);
@@ -1579,12 +1580,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // ... and re-apply the host present mode: mailbox while multiplying (so the generated
                 // frames aren't strangled by FIFO backpressure), back to the user's mode when off.
                 applyEffectivePresentMode();
-                // Frame-gen change (Off/On/2×/3×/4×) → full presentation reset. lsfg-vk restarts on the
-                // conf.toml rewrite above, but a swapchain-only recreate leaves it over-queued → generated
-                // frames present BLACK until a background/foreground cycle. Deterministically replicate
-                // that cycle: pause the guest, tear the surface fully down, and prompt Resume. Fires once
-                // per effective-level change (flow/perf-mode edits keep the level, so they don't reset).
-                maybeTriggerFgReset(mult >= 2 ? mult : 0);
                 return;
             }
             // FPS limiter is no longer part of frame gen — it's a standalone host pacer
@@ -5293,39 +5288,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean fgRendererVulkan = "vulkan".equalsIgnoreCase(resolvedRenderer());
             if (fgRendererVulkan) {
             if (resolvedFrameGenEngine().equals("lsfg")) {
-                // lsfg-vk engine (mutually exclusive with bionic-fg). Opt-in via ENABLE_LSFG so the
-                // staged layer stays inert elsewhere. Driven by conf.toml (NOT the LSFG_LEGACY env):
-                // the GameNative-fork layer watches the conf.toml mtime in its present hook and forces
-                // a swapchain recreate on change, so rewriting the file re-applies multiplier/flow LIVE
-                // in-game. It HARD-EXITS if it can't read the Lossless.dll, so only enable when the
-                // user-imported copy exists. LSFG_PROCESS must match the conf.toml [[game]].exe (under
-                // Wine /proc/self/exe is the loader, so the real exe name is unusable).
+                // Host-side LSFG (WinNative PR #697 port): frame generation now runs
+                // NATIVELY in the compositor's own Vulkan device — the escape from the
+                // guest lsfg-vk Vulkan layer, which won't load inside Wine on some SoCs
+                // (Adreno 840). We therefore do NOT set ENABLE_LSFG / LSFG_CONFIG /
+                // LSFG_PROCESS here and do NOT publish the guest vsync clock: the guest
+                // layer stays completely inert. The shader cache is built and the
+                // renderer is armed once the Vulkan renderer exists (see the useVulkan
+                // block below), which also logs the LSFG-HOST probe/translate verdict.
                 File losslessDll = new File(getFilesDir(), "lsfg-vk/Lossless.dll");
                 if (losslessDll.isFile()) {
-                    // Start in passthrough (multiplier 1 = frame gen off). ENABLE_LSFG still loads the
-                    // layer, so the FG drawer can enable it live in-session (the conf.toml mtime watch
-                    // re-applies the user's multiplier without a relaunch). Container value untouched.
-                    // EXCEPTION: a container that opted into auto-enable starts LIVE at its saved
-                    // multiplier from frame one (GameNative-style), matching the drawer seed above.
-                    int lsfgSavedMult = container.getFrameGenMultiplier();
-                    int lsfgLaunchMult = (container.isLsfgAutoEnable() && lsfgSavedMult >= 2) ? lsfgSavedMult : 1;
-                    writeLsfgConfig(lsfgLaunchMult, container.getFrameGenFlowScale(), losslessDll.getAbsolutePath(), container.isLsfgPerformanceMode());
-                    File lsfgConf = new File(imageFs.home_path, ".config/lsfg-vk/conf.toml");
-                    envVars.put("ENABLE_LSFG", "1");
-                    envVars.put("LSFG_CONFIG", lsfgConf.getAbsolutePath());
-                    envVars.put("LSFG_PROCESS", "bannerlator-lsfg");
-                    // Publish the display vsync clock so the layer phase-locks its pacing instead of
-                    // free-running and over-queuing the host compositor (the black-frame flicker root
-                    // cause). Runs from launch so it's live the instant FG is toggled on in-game; the
-                    // toggle path stops/restarts it, and onDestroy stops it.
-                    startVsyncClock();
-                    // Baseline the FG-reset tracker to the launch level so the first in-game change
-                    // fires the presentation reset. Auto-enable containers already generate from frame
-                    // one (lsfgLaunchMult >= 2), so a passthrough launch is level 0.
-                    lastCommittedFgLevel = (lsfgLaunchMult >= 2) ? lsfgLaunchMult : 0;
+                    Log.i("LSFG-HOST", "lsfg engine selected -> host-native path (guest lsfg-vk layer NOT armed)");
                 } else {
-                    Log.w("XServerDisplayActivity", "lsfg-vk selected but no Lossless.dll imported (Settings) — leaving frame gen off");
+                    Log.w("LSFG-HOST", "lsfg selected but no Lossless.dll imported (Settings) — host frame gen off");
                 }
+                lastCommittedFgLevel = 0;
             } else {
                 // bionic-fg layer: load it only when frame generation is the selected engine. The
                 // FPS limiter is handled separately (host pacer), so it no longer forces this layer
@@ -5730,6 +5707,27 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // drives it). driveHudFrameTick gates on the FPS window (self-healing onto the real
             // presenting window for GL/Zink) so we only count game frames.
             vkRenderer.setHudFrameTick(this::driveHudFrameTick);
+
+            // Host-side LSFG frame generation (WinNative PR #697 port). When the "lsfg"
+            // frame-gen engine is selected, build the DXBC->SPIR-V shader cache from the
+            // user's Lossless.dll (async; logs the LSFG-HOST probe/translate verdict into
+            // the WinFgDiag capture) and arm host frame gen on the compositor. No guest
+            // lsfg-vk layer is involved. If the probe/translate/chain fails, the native
+            // side disables gracefully and logs — the game still renders normally.
+            if (resolvedFrameGenEngine().equals("lsfg")) {
+                File losslessDll = new File(getFilesDir(), "lsfg-vk/Lossless.dll");
+                if (losslessDll.isFile()) {
+                    LsfgHostDiag.runAsync(losslessDll, getFilesDir());
+                    int savedMult = container.getFrameGenMultiplier();
+                    int lsfgMult = savedMult >= 2 ? savedMult : 2;   // default 2x
+                    float lsfgFlow = container.getFrameGenFlowScale();
+                    String cachePath = LsfgHostDiag.cacheFile(getFilesDir()).getAbsolutePath();
+                    vkRenderer.setLsfgHost(true, cachePath, lsfgMult, lsfgFlow);
+                    Log.i("LSFG-HOST", "host frame gen armed (mult=" + lsfgMult + " flow=" + lsfgFlow + ")");
+                } else {
+                    Log.w("LSFG-HOST", "lsfg selected but Lossless.dll missing — host frame gen off");
+                }
+            }
         }
 
         // GL renderer: apply the container's filter mode to the window/content sampler. The Vulkan

@@ -359,3 +359,21 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeReattachSurface(JNIE
     }
     return (jboolean)ok;
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetLsfgHost(
+    JNIEnv* env, jobject, jlong handle, jboolean enable, jstring cachePath,
+    jint multiplier, jfloat flowScale) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return;
+    const char* cache = cachePath ? env->GetStringUTFChars(cachePath, nullptr) : nullptr;
+    r->setLsfgHost(enable == JNI_TRUE, cache, multiplier, flowScale);
+    if (cache) env->ReleaseStringUTFChars(cachePath, cache);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetLsfgRefreshRate(
+    JNIEnv*, jobject, jlong handle, jfloat hz) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setLsfgRefreshRate(hz);
+}

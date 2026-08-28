@@ -127,6 +127,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetSwapRB(long handle, boolean enabled);
     private native void nativeSetPresentMode(long handle, int mode);
     private native int[] nativeGetSupportedPresentModes(long handle);
+    // Host-side LSFG frame generation (WinNative PR #697 port). enable=false is a
+    // zero-cost bypass. cachePath = the DXBC->SPIR-V shader cache built from the
+    // user's Lossless.dll; multiplier 2..4; flowScale 0.25..1.0.
+    private native void nativeSetLsfgHost(long handle, boolean enable, String cachePath, int multiplier, float flowScale);
+    private native void nativeSetLsfgRefreshRate(long handle, float hz);
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -171,6 +176,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetNtsc(nativeHandle, pendingNtscEnabled);
                     nativeSetColorGrade(nativeHandle, pendingColorBrightness, pendingColorContrast, pendingColorGamma);
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
+                    if (pendingLsfgEnable && pendingLsfgCache != null) {
+                        nativeSetLsfgHost(nativeHandle, true, pendingLsfgCache, pendingLsfgMultiplier, pendingLsfgFlowScale);
+                    }
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
                     if (nativeMode) {
@@ -859,6 +867,26 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     public void setSwapRB(boolean enabled) {
         pendingSwapRB = enabled;
         synchronized (lock) { if (nativeHandle != 0) nativeSetSwapRB(nativeHandle, enabled); }
+    }
+
+    // Host-side LSFG frame generation. Called when the "lsfg" frame-gen engine is
+    // selected; the cache is built (Java side) from the user's Lossless.dll first.
+    // enable=false reverts to the normal render path with zero cost.
+    private String pendingLsfgCache = null;
+    private boolean pendingLsfgEnable = false;
+    private int pendingLsfgMultiplier = 2;
+    private float pendingLsfgFlowScale = 0.7f;
+    public void setLsfgHost(boolean enable, String cachePath, int multiplier, float flowScale) {
+        pendingLsfgEnable = enable;
+        pendingLsfgCache = cachePath;
+        pendingLsfgMultiplier = multiplier;
+        pendingLsfgFlowScale = flowScale;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetLsfgHost(nativeHandle, enable, cachePath, multiplier, flowScale);
+        }
+    }
+    public void setLsfgRefreshRate(float hz) {
+        synchronized (lock) { if (nativeHandle != 0) nativeSetLsfgRefreshRate(nativeHandle, hz); }
     }
 
     public void setVkPresentMode(int mode) {

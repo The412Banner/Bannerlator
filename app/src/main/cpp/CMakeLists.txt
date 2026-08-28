@@ -74,10 +74,53 @@ target_link_libraries(fakeinput
         dl
 )
 
+# DXVK's DXBC->SPIR-V translator subset (zlib licence), vendored under
+# thirdparty/dxbc from the same subset lsfg-vk uses. Builds a static `dxbc`
+# lib; only arm64-v8a is built so its x86 intrinsics paths are never taken.
+add_subdirectory(thirdparty/dxbc)
+
+# Host-side Lossless Scaling frame generation (ported from WinNative PR #697,
+# GPL-3.0-or-later; dual eden/lsfg-vk copyright headers preserved on the chain
+# files). Self-contained: the whole optical-flow compute chain sits behind the
+# `vkr_lsfg` C API and a private `vkd` dispatch table populated from the
+# compositor's own driver handle. Uses VK_NO_PROTOTYPES internally, so it links
+# no Vulkan library — every call goes through function pointers. Built as its
+# own static lib so the C sources are not forced onto the C++17 renderer flags.
+add_library(lsfg_host STATIC
+        winlator/lsfg/vk_dispatch.c
+        winlator/lsfg/lsfg_dll.c
+        winlator/lsfg/lsfg_probe.c
+        winlator/lsfg/lsfg_dxbc.cpp
+        winlator/lsfg/lsfg_common.cpp
+        winlator/lsfg/lsfg_shaders.cpp
+        winlator/lsfg/lsfg_mipmaps.cpp
+        winlator/lsfg/lsfg_alpha.cpp
+        winlator/lsfg/lsfg_beta.cpp
+        winlator/lsfg/lsfg_gamma.cpp
+        winlator/lsfg/lsfg_delta.cpp
+        winlator/lsfg/lsfg_generate.cpp
+        winlator/lsfg/lsfg_chain.cpp
+        winlator/lsfg/lsfg_pacer.cpp
+        winlator/lsfg/vkr_lsfg.cpp
+        winlator/lsfg/lsfg_host_bridge.cpp
+)
+
+set_target_properties(lsfg_host PROPERTIES
+        C_STANDARD 11
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        POSITION_INDEPENDENT_CODE ON)
+
+target_include_directories(lsfg_host PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/winlator/lsfg)
+
+target_link_libraries(lsfg_host PUBLIC dxbc log android dl)
+
 add_library(vulkan_renderer SHARED
         winlator/vulkan_jni.cpp
         winlator/VulkanRendererContext.cpp
         winlator/VulkanRendererScanout.cpp
+        winlator/lsfg/lsfg_host_jni.cpp
         scanout/ScanoutContext.cpp
 )
 
@@ -92,6 +135,7 @@ target_link_libraries(vulkan_renderer
         adrenotools
         dl
         atomic
+        lsfg_host
 )
 
 # SurfaceFlinger (ASurfaceRenderer / ASR) host renderer — ported from

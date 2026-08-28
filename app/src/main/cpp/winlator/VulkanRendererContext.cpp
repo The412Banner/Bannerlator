@@ -340,7 +340,8 @@ void VulkanRendererContext::createLogicalDevice() {
         // probeLsfgFeatures already chained lsfgMemModel into lsfgFeatures2.pNext;
         // append any pre-existing device chain after the memory-model struct so we
         // don't clobber it (ci.pNext is currently null, so this is a no-op today).
-        lsfgMemModel.pNext = ci.pNext;
+        // VkDeviceCreateInfo::pNext is const void*; the feature struct's is void*.
+        lsfgMemModel.pNext = const_cast<void*>(ci.pNext);
         ci.pNext = &lsfgFeatures2;        // pEnabledFeatures stays NULL -> spec-compliant
     }
 

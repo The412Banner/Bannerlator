@@ -725,6 +725,14 @@ object SteamDepotDownloader {
                 // Both bars reach 100% before switching to installed state.
                 emitProgress(iTotal, iTotal, dTotal, dTotal)
                 db.markInstalled(appId, installDir.absolutePath, if (finalInstall > 0L) finalInstall else iTotal)
+                // Stamp the build we just installed so the RealSteam update-on-launch gate
+                // (SteamGameUpdater) can cheaply detect this game is current next time — it compares
+                // this marker against the live steam_branches build id. Resolved independently of the
+                // download's selectedBranch (declared later in runInstall, out of this listener's scope).
+                try {
+                    val stampBranch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+                    SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, stampBranch)
+                } catch (_: Throwable) {}
                 repo.emit("DownloadComplete:$appId")
                 // Terminal success → INSTALLED. The registry persists INSTALLED rows to the
                 // durable library, so this game survives process death in the Library section.

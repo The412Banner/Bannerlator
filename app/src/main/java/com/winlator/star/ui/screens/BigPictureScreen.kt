@@ -142,6 +142,7 @@ import com.winlator.star.ui.screens.adrenodownload.AdrenoDriverDownloadSheet
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.DownloadManagerActivity
 import com.winlator.star.store.GoldbergComponent
+import com.winlator.star.store.SteamGameUpdater
 import com.winlator.star.store.GoldbergMode
 import com.winlator.star.store.GoldbergPatcher
 import com.winlator.star.store.SteamDatabase
@@ -206,6 +207,36 @@ fun BigPictureScreen(navController: NavController) {
     var componentDownloadFor by remember { mutableStateOf<Shortcut?>(null) }
     var componentDownloadLabel by remember { mutableStateOf("") }
     var componentDownloadProgress by remember { mutableFloatStateOf(0f) }
+    // RealSteam update-on-launch (current-build gate), couch UI: the game whose pre-launch update
+    // check/patch is running, its progress (<0 = indeterminate "checking", 0..1 while updating), a label,
+    // the cancel handle, and a "couldn't verify — launch anyway?" fallback prompt. Mirrors ShortcutsScreen.
+    var steamUpdateFor by remember { mutableStateOf<Shortcut?>(null) }
+    var steamUpdateProgress by remember { mutableFloatStateOf(-1f) }
+    var steamUpdateLabel by remember { mutableStateOf("") }
+    var steamUpdateHandle by remember { mutableStateOf<SteamGameUpdater.UpdateHandle?>(null) }
+    var steamStalePrompt by remember { mutableStateOf<Pair<Shortcut, String>?>(null) }
+    // RealSteam (SteamLite) launch: verify + patch the game to the current public build before launching,
+    // so latest-only online titles aren't run stale. Fast no-op when already current. Only RealSteam.
+    fun realSteamUpdateThenLaunch(s: Shortcut) {
+        val appId = steamAppIdOf(s)
+        steamUpdateLabel = "Checking ${s.name} for updates…"
+        steamUpdateProgress = -1f
+        steamUpdateFor = s
+        steamUpdateHandle = SteamGameUpdater.ensureCurrentBuild(
+            context, appId,
+            { frac, label -> steamUpdateProgress = frac; steamUpdateLabel = label },
+            { result, msg ->
+                steamUpdateFor = null
+                steamUpdateHandle = null
+                when (result) {
+                    SteamGameUpdater.Result.CURRENT,
+                    SteamGameUpdater.Result.UPDATED -> launchShortcut(activity, s)
+                    SteamGameUpdater.Result.CANCELLED -> { /* user aborted — stay in the library */ }
+                    else -> steamStalePrompt = s to msg
+                }
+            },
+        )
+    }
 
     // Decoded covers keyed by shortcut name; guarded by a plain in-flight set so we never re-fetch.
     val coverCache = remember { mutableStateMapOf<String, ImageBitmap>() }
@@ -322,13 +353,18 @@ fun BigPictureScreen(navController: NavController) {
     val heroCover = selected?.let { coverCache[it.name] }
 
     // Steam-origin games open the launch-method popup first (unless a remembered choice already exists);
-    // everything else launches straight away. Mirrors the phone UI's requestLaunch (ShortcutsScreen).
+    // everything else launches straight away. Mirrors the phone UI's requestLaunch (ShortcutsScreen). A
+    // remembered RealSteam pick still runs the current-build check first; Goldberg/Raw are untouched.
     val onLaunch: () -> Unit = {
         selected?.let { sc ->
             val remembered = sc.getExtra("launchMode", "").isNotEmpty() &&
                 sc.getExtra("launchModeRemembered", "") == "1"
-            if (isSteamOriginShortcut(sc) && !remembered) launchChoiceFor = sc
-            else launchShortcut(activity, sc)
+            when {
+                isSteamOriginShortcut(sc) && !remembered -> launchChoiceFor = sc
+                remembered && isSteamOriginShortcut(sc) &&
+                    sc.getExtra("launchMode", "") == "RealSteam" -> realSteamUpdateThenLaunch(sc)
+                else -> launchShortcut(activity, sc)
+            }
         }
     }
 
@@ -889,7 +925,9 @@ fun BigPictureScreen(navController: NavController) {
                         } else applyThenLaunch()
                     }
                     else -> {
-                        // RealSteam (SteamLite): download the package on demand if missing, then launch.
+                        // RealSteam (SteamLite): ensure the SteamLite package is present (download on
+                        // demand if missing), THEN make sure the game is on the current public build
+                        // before launching — a stale build fails latest-only online titles.
                         if (!SteamLiteComponent.isInstalled(context)) {
                             componentDownloadFor = s
                             componentDownloadLabel = "SteamLite (Real Steam / VAC)"
@@ -899,12 +937,12 @@ fun BigPictureScreen(navController: NavController) {
                                 { f -> componentDownloadProgress = f },
                                 { ok, msg ->
                                     componentDownloadFor = null
-                                    if (ok) launchShortcut(activity, s)
+                                    if (ok) realSteamUpdateThenLaunch(s)
                                     else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                                 },
                             )
                         } else {
-                            launchShortcut(activity, s)
+                            realSteamUpdateThenLaunch(s)
                         }
                     }
                 }
@@ -935,6 +973,72 @@ fun BigPictureScreen(navController: NavController) {
                 }
             },
             confirmButton = {},
+        )
+    }
+
+    // RealSteam update-on-launch: progress while we verify + (if needed) patch the game to the current
+    // build. Cancellable — cancelling aborts the update and stays in the library (does NOT launch).
+    steamUpdateFor?.let {
+        OutlinedAlertDialog(
+            onDismissRequest = { /* modal until it finishes or is cancelled */ },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Preparing to launch", color = MaterialTheme.colorScheme.onSurface) },
+            text = {
+                Column {
+                    if (steamUpdateProgress < 0f) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surface,
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            progress = { steamUpdateProgress.coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surface,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        steamUpdateLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { steamUpdateHandle?.cancel() }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+        )
+    }
+
+    // Fallback when the latest build couldn't be verified (Steam offline / no data) or the update failed:
+    // don't hard-block — offer to launch the (possibly stale) copy anyway, or abort.
+    steamStalePrompt?.let { (s, reason) ->
+        OutlinedAlertDialog(
+            onDismissRequest = { steamStalePrompt = null },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = { Text("Couldn't check for updates", color = MaterialTheme.colorScheme.onSurface) },
+            text = {
+                Text(
+                    "$reason\n\nLaunch anyway? If the game is out of date, online play may be blocked until it updates.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    steamStalePrompt = null
+                    launchShortcut(activity, s)
+                }) { Text("Launch anyway", color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { steamStalePrompt = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
         )
     }
 }

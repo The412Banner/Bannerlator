@@ -979,6 +979,30 @@ public final class SteamRepository {
         // → the completion guard falsely fails the whole, complete, OWNED game). See appId 313830
         // "See No Evil": depot 320210 = its "Official Soundtrack" DLC the user didn't own.
         java.util.Set<Integer> licensedApps = new java.util.HashSet<>(db.getLicensedAppIds());
+        int count = processAppsCore(apps, db, licensedApps);
+        // Batch bookkeeping: this callback carried ONE batch (≤ APP_SYNC_BATCH apps). Add it to the
+        // running total and emit progress as processed/total so the UI can show "Fetching N/372".
+        appSyncProcessed += count;
+        pendingApps.clear();
+        emit("LibraryProgress:2:" + appSyncProcessed + ":" + appSyncTotal);
+        Log.i(TAG, "PICS app batch parsed: +" + count + " (" + appSyncProcessed + "/" + appSyncTotal
+                + " processed, " + remainingAppIds.size() + " queued)");
+        // Drive the next batch — or finish when the queue is drained (finishAppSync emits
+        // LibrarySynced). If a download became active meanwhile, this parks the sync instead of
+        // issuing more CM traffic; setDownloadActive(false) later resumes it.
+        requestNextAppBatch();
+    }
+
+    /**
+     * WORKER THREAD: parse + store a batch of app PICS product infos (type filter + depot-selection
+     * filter + beta branches). Extracted verbatim from {@link #processApps} so the single-app RealSteam
+     * update refresh ({@link #refreshAppProductInfo}) resolves the LIVE manifest ids + branch build ids
+     * through the EXACT same parse the library sync uses. Returns how many apps were stored. Carries NO
+     * batch bookkeeping (progress / queue / sync-time) — the caller owns that, so a one-off refresh
+     * never emits a spurious LibrarySynced or advances the periodic-sync clock.
+     */
+    private int processAppsCore(List<PICSProductInfo> apps, SteamDatabase db,
+                                java.util.Set<Integer> licensedApps) {
         int count = 0;
         for (PICSProductInfo app : apps) {
                     try {
@@ -1191,17 +1215,7 @@ public final class SteamRepository {
                         Log.w(TAG, "Skipping app " + app.getId() + ": " + e.getMessage());
                     }
         }
-        // Batch bookkeeping: this callback carried ONE batch (≤ APP_SYNC_BATCH apps). Add it to the
-        // running total and emit progress as processed/total so the UI can show "Fetching N/372".
-        appSyncProcessed += count;
-        pendingApps.clear();
-        emit("LibraryProgress:2:" + appSyncProcessed + ":" + appSyncTotal);
-        Log.i(TAG, "PICS app batch parsed: +" + count + " (" + appSyncProcessed + "/" + appSyncTotal
-                + " processed, " + remainingAppIds.size() + " queued)");
-        // Drive the next batch — or finish when the queue is drained (finishAppSync emits
-        // LibrarySynced). If a download became active meanwhile, this parks the sync instead of
-        // issuing more CM traffic; setDownloadActive(false) later resumes it.
-        requestNextAppBatch();
+        return count;
     }
 
     /** Handle depot decryption key callback. Stores key in memory for SteamDepotDownloader. */
@@ -1230,6 +1244,56 @@ public final class SteamRepository {
         // picsGetProductInfo() does network I/O and must run off the main thread; route it to the
         // library worker (never the pump — the ensuing PICS parse + DB work would block callbacks).
         runOnLibraryWorker(() -> syncPackages(copy));
+    }
+
+    /**
+     * Force a FRESH single-app PICS product-info fetch and reparse it into the DB — refreshing this
+     * app's {@code depot_manifests} (manifest ids + sizes), {@code steam_branches} (branch build ids)
+     * and {@code steam_games} row through the EXACT same parse the library sync runs (processAppsCore).
+     *
+     * Used by the RealSteam update-on-launch path ({@code SteamGameUpdater}) so an update/verify pass
+     * resolves the LIVE manifest ids + current branch build id BEFORE the download — matching what
+     * GameNative's {@code isUpdateOrVerify} does. Without it, the update pass would compare/stamp
+     * against whatever stale build the DB last synced.
+     *
+     * BLOCKS the CALLING thread (the update worker — never the pump) up to {@code timeoutMs}. Issues no
+     * batch bookkeeping, so it never emits a spurious LibrarySynced or advances the periodic-sync clock.
+     * Best-effort: returns false (caller proceeds — the downloader still resolves live manifests itself)
+     * when not signed in, the PICS query fails/times out, or the app returns metadata-only product info.
+     *
+     * @return true if the app's product info was fetched and stored.
+     */
+    public boolean refreshAppProductInfo(int appId, long timeoutMs) {
+        SteamApps sa = steamApps;
+        if (sa == null || !loggedIn) {
+            Log.i(TAG, "refreshAppProductInfo(" + appId + "): skipped (not signed in)");
+            return false;
+        }
+        try {
+            in.dragonbra.javasteam.types.AsyncJobMultiple.ResultSet<PICSProductInfoCallback> rs =
+                    sa.picsGetProductInfo(new PICSRequest(appId))
+                            .toFuture().get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+            PICSProductInfo info = null;
+            for (PICSProductInfoCallback cb : rs.getResults()) {
+                PICSProductInfo p = cb.getApps().get(appId);
+                if (p != null) { info = p; break; }
+            }
+            // Metadata-only / missing-token response → no depot data to reparse. Leave the DB as-is.
+            if (info == null || info.getKeyValues() == null
+                    || info.getKeyValues().getChildren() == null
+                    || info.getKeyValues().getChildren().isEmpty()) {
+                Log.w(TAG, "refreshAppProductInfo(" + appId + "): no populated product info");
+                return false;
+            }
+            SteamDatabase db = SteamDatabase.getInstance();
+            int stored = processAppsCore(Collections.singletonList(info),
+                    db, new java.util.HashSet<>(db.getLicensedAppIds()));
+            Log.i(TAG, "refreshAppProductInfo(" + appId + "): refreshed product info (stored=" + stored + ")");
+            return stored > 0;
+        } catch (Exception e) {
+            Log.w(TAG, "refreshAppProductInfo(" + appId + ") failed: " + e.getMessage());
+            return false;
+        }
     }
 
     // -------------------------------------------------------------------------

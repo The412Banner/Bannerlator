@@ -55,6 +55,14 @@ object SteamGameUpdater {
     /** How long to wait for a token re-logon when the session isn't live before the update pass. */
     private const val SESSION_WAIT_MS = 10_000L
 
+    /** How long to wait for the pre-download PICS product-info refresh (live manifest/branch resolve). */
+    private const val PICS_REFRESH_MS = 15_000L
+
+    /** JavaSteam DepotDownloader's on-disk resume state dir (installed-manifest ids + staging), under
+     *  the game's install dir. Cleared before a corrupt-install verify so the engine re-validates every
+     *  file against the live manifest instead of trusting a stale "already at this manifest" record. */
+    private const val DEPOT_CONFIG_DIR = ".DepotDownloader"
+
     /** Terminal outcome of an [ensureCurrentBuild] check. */
     enum class Result {
         /** Already on the live build (or nothing to check) — launch immediately. */
@@ -190,10 +198,23 @@ object SteamGameUpdater {
     }
 
     /**
-     * Run [SteamDepotDownloader.installApp] as an in-place delta update to the current build, listening
-     * on the [SteamRepository] event stream for its terminal event. `installApp` re-resolves the branch's
-     * current manifests from the CM and pulls only the changed/missing chunks against the existing install
-     * dir, so an already-current game completes fast and a behind game downloads just the delta.
+     * Run [SteamDepotDownloader.installApp] as an in-place update/verify to the current build, listening
+     * on the [SteamRepository] event stream for its terminal event.
+     *
+     * Two things make this a real update rather than a no-op against stale state:
+     *  1. FRESH PRODUCT INFO — before downloading we force a single-app PICS refresh
+     *     ([SteamRepository.refreshAppProductInfo]) so the DB's live manifest ids + branch build id are
+     *     current (mirrors GameNative's `isUpdateOrVerify`). `installApp` itself also re-resolves the
+     *     branch's manifests from the CM, so it pulls only the changed/missing chunks against the
+     *     existing install dir.
+     *  2. CORRUPT-INSTALL VERIFY — a previously-interrupted download can leave the game's files empty
+     *     while the engine's on-disk resume state ([DEPOT_CONFIG_DIR]/depot.config) already records the
+     *     depot at the live manifest. Its manifest-diff then sees "no changed files", fetches 0 bytes,
+     *     and the completion guard correctly rejects the still-broken install ("incomplete … emptyFiles").
+     *     A plain retry keeps trusting that state. On that specific failure we clear the resume state
+     *     ONCE and re-run: with no recorded installed-manifest the engine re-validates EVERY on-disk
+     *     file against the live manifest and re-downloads the empty/mismatched content (keeping the good
+     *     files). This is the least-destructive re-fetch; the false-complete guard is left intact.
      */
     private fun runUpdatePass(
         ctx: Context,
@@ -207,7 +228,24 @@ object SteamGameUpdater {
     ) {
         val repo = SteamRepository.getInstance()
         val finished = AtomicBoolean(false)
+        // True once we've triggered the one-shot corrupt-install verify (clear resume state + re-run),
+        // so a second failure surfaces to the user instead of looping.
+        val verifyStarted = AtomicBoolean(false)
         val listenerRef = AtomicReference<SteamRepository.SteamEventListener?>(null)
+
+        // (1) Resolve the LIVE manifest ids + current branch build id before downloading. Best-effort:
+        // on failure the depot downloader still resolves live manifests from the CM itself — this also
+        // refreshes the DB (depot_manifests / steam_branches) that the completion guard + build-id marker
+        // read, so the stamped build after a successful update is the real current one. Runs on this
+        // update worker thread (never the pump), before any download owns the CM connection.
+        postProgress(-1f, "Checking latest version…")
+        try {
+            val refreshed = repo.refreshAppProductInfo(appId, PICS_REFRESH_MS)
+            Log.i(TAG, "app $appId product-info refresh before update → $refreshed")
+        } catch (t: Throwable) {
+            Log.w(TAG, "app $appId product-info refresh failed: ${t.message}")
+        }
+        if (handle.isCancelled) { postDone(Result.CANCELLED, "Cancelled"); return }
 
         postProgress(0f, "Updating $gameName…")
 
@@ -219,7 +257,8 @@ object SteamGameUpdater {
                         val iDone = parts.getOrNull(2)?.toLongOrNull() ?: 0L
                         val iTotal = parts.getOrNull(3)?.toLongOrNull() ?: 1L
                         val frac = if (iTotal > 0L) (iDone.toDouble() / iTotal).toFloat().coerceIn(0f, 1f) else 0f
-                        postProgress(frac, "Updating $gameName… ${(frac * 100).toInt()}%")
+                        val verb = if (verifyStarted.get()) "Verifying" else "Updating"
+                        postProgress(frac, "$verb $gameName… ${(frac * 100).toInt()}%")
                     }
                 } else if (event.startsWith("DownloadComplete:")) {
                     if (event.substringAfter("DownloadComplete:").toIntOrNull() == appId &&
@@ -230,10 +269,26 @@ object SteamGameUpdater {
                     }
                 } else if (event.startsWith("DownloadFailed:")) {
                     val parts = event.split(":")
-                    if (parts.getOrNull(1)?.toIntOrNull() == appId &&
-                        finished.compareAndSet(false, true)) {
-                        listenerRef.get()?.let { repo.removeListener(it) }
-                        postDone(Result.FAILED, parts.drop(2).joinToString(":").ifBlank { "Update failed" })
+                    if (parts.getOrNull(1)?.toIntOrNull() == appId) {
+                        val reason = parts.drop(2).joinToString(":").ifBlank { "Update failed" }
+                        // Corrupt/incomplete install → clear the engine's resume state and re-run as a
+                        // full verify (once). See the method doc. Keep the listener attached so the
+                        // verify pass's terminal event is handled; do NOT set `finished`.
+                        if (!handle.isCancelled && !verifyStarted.get() &&
+                            isCorruptIncomplete(reason, installDir) &&
+                            verifyStarted.compareAndSet(false, true)) {
+                            Log.i(TAG, "app $appId update incomplete ($reason) — clearing resume state and verifying")
+                            clearDepotResumeState(installDir)
+                            postProgress(0f, "Verifying $gameName…")
+                            if (!startInstallPass(ctx, appId, handle, verify = true) &&
+                                finished.compareAndSet(false, true)) {
+                                listenerRef.get()?.let { repo.removeListener(it) }
+                                postDone(Result.FAILED, "Couldn't start the verify pass")
+                            }
+                        } else if (finished.compareAndSet(false, true)) {
+                            listenerRef.get()?.let { repo.removeListener(it) }
+                            postDone(Result.FAILED, reason)
+                        }
                     }
                 } else if (event.startsWith("DownloadCancelled:")) {
                     if (event.substringAfter("DownloadCancelled:").toIntOrNull() == appId &&
@@ -247,7 +302,7 @@ object SteamGameUpdater {
         listenerRef.set(listener)
         repo.addListener(listener)
 
-        // Honour a cancel that arrived during the session-check window before we start the download.
+        // Honour a cancel that arrived during the session-check / refresh window before we start.
         if (handle.isCancelled) {
             if (finished.compareAndSet(false, true)) {
                 repo.removeListener(listener); postDone(Result.CANCELLED, "Cancelled")
@@ -255,19 +310,70 @@ object SteamGameUpdater {
             return
         }
 
-        val control = try {
-            SteamDepotDownloader.installApp(appId, ctx, DownloadSpeedConfig.DEFAULT_TIER, false)
-        } catch (t: Throwable) {
-            if (finished.compareAndSet(false, true)) {
-                repo.removeListener(listener)
-                postDone(Result.FAILED, t.message ?: "Couldn't start the update")
-            }
-            return
+        // First pass: an in-place delta update. installApp re-resolves the live manifests from the CM.
+        if (!startInstallPass(ctx, appId, handle, verify = false) &&
+            finished.compareAndSet(false, true)) {
+            repo.removeListener(listener)
+            postDone(Result.FAILED, "Couldn't start the update")
         }
-        handle.controlRef.set(control)
-        // A cancel racing the installApp call: propagate to the freshly-created download.
-        if (handle.isCancelled) { try { control.cancel.run() } catch (_: Throwable) {} }
     }
+
+    /**
+     * Launch one [SteamDepotDownloader.installApp] pass and wire its cancel/pause control to [handle].
+     * Returns false only if starting the download threw. [verify] is for logging only — the resume
+     * state is cleared by the caller before a verify pass. The shared event [listener] (registered in
+     * [runUpdatePass]) handles the pass's terminal event, so this deliberately does not add its own.
+     */
+    private fun startInstallPass(ctx: Context, appId: Int, handle: UpdateHandle, verify: Boolean): Boolean {
+        return try {
+            val control = SteamDepotDownloader.installApp(appId, ctx, DownloadSpeedConfig.DEFAULT_TIER, false)
+            handle.controlRef.set(control)
+            // A cancel racing the installApp call: propagate to the freshly-created download.
+            if (handle.isCancelled) { try { control.cancel.run() } catch (_: Throwable) {} }
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "app $appId ${if (verify) "verify" else "update"} pass failed to start: ${t.message}")
+            false
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Corrupt-install detection + resume-state reset
+    // -------------------------------------------------------------------------
+
+    /**
+     * True when a download failure looks like a corrupt/incomplete install a full verify can fix: the
+     * completion guard's "incomplete" message, or zero-length files still on disk (the fingerprint of
+     * missing depot content the engine skipped because its resume state claimed the depot was complete).
+     * The message check catches the reported case cheaply; the on-disk walk is the fallback.
+     */
+    private fun isCorruptIncomplete(reason: String, installDir: File): Boolean {
+        if (reason.contains("incomplete", ignoreCase = true)) return true
+        return hasZeroByteFile(installDir)
+    }
+
+    /**
+     * Delete the JavaSteam DepotDownloader resume state ([DEPOT_CONFIG_DIR], under [installDir]) so the
+     * next pass records NO installed manifest and re-validates every file against the freshly-resolved
+     * live manifest — re-downloading empty/mismatched content while keeping the good files. The engine
+     * recreates the dir at the start of the pass. Best-effort; the game's own files are untouched.
+     */
+    private fun clearDepotResumeState(installDir: File) {
+        try {
+            val cfg = File(installDir, DEPOT_CONFIG_DIR)
+            if (cfg.exists()) {
+                val ok = cfg.deleteRecursively()
+                Log.i(TAG, "cleared depot resume state at ${cfg.absolutePath} (ok=$ok)")
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "clearDepotResumeState($installDir) failed: ${t.message}")
+        }
+    }
+
+    /** True if any regular file under [root] is zero-length — the fingerprint of a skipped/truncated
+     *  depot (a pre-allocated but never-filled file); mirrors the downloader's own emptyFiles check. */
+    private fun hasZeroByteFile(root: File): Boolean =
+        try { root.walkTopDown().any { it.isFile && it.length() == 0L } } catch (_: Throwable) { false }
 
     // -------------------------------------------------------------------------
     // Build-id marker + live-build accessor

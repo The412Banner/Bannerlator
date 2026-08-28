@@ -199,6 +199,15 @@ public final class RealSteamLauncher {
             env.put("WN_STEAM_APPID", String.valueOf(appId));
             // Absolute, drive-qualified path so the agent's fopen resolves it regardless of cwd.
             env.put("WN_STEAM_GAMEEXE_FILE", "C:\\" + appId + ".spec");
+            // Cap the pre-launch app-info wait. The agent blocks up to this long for the CM's
+            // AppInfoUpdateComplete before launching; for a game whose access tokens the CM denies
+            // (strict live-service titles that aren't part of the VAC path) that update never lands,
+            // so the default 30s was spent as a black screen every launch. 4s keeps the wait a
+            // no-op for owned games (their app-info lands in ~1-2s) while capping the doomed case.
+            // Note: WN_STEAM_SKIP_APPINFO=1 (supported by the agent) would drop it to zero, but is
+            // left off by default so the proven VAC launch path (which relies on the refresh) is
+            // unchanged until it's re-verified online with the skip on.
+            env.put("WN_STEAM_APPINFO_WAIT_MS", "4000");
 
             String specArgWin = "C:\\" + appId + ".spec";
             Log.i(TAG, "prepare: staged appId=" + appId + " canonical=\"" + canonicalName

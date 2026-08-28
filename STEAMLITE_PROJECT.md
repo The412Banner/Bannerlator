@@ -5,6 +5,23 @@ Detailed backing docs live in `re/` (see §9). This file is the single source of
 
 ---
 
+## 🏆 0. BREAKTHROUGH — VAC PROVEN ON DEVICE + EXACT RECIPE CAPTURED (2026-08-27)
+
+**The core viability question is ANSWERED: VAC multiplayer works on this device (Adreno-750/ARM).** L4D2 (appId 550) was launched in GameHub, logged into the real Steam session, ran `left4dead2.exe -steam`, and reached a **VAC server** — proving the genuine-client method clears VAC on this hardware. Captured live from GameHub's running processes/env:
+
+- **The agent binary is the one we already have.** GameHub's `c:\Program Files (x86)\Steam\steam.exe` is a **symlink → `components/SteamAgent2/SteamAgent.exe`**, md5 `538f9a8a7261aca067fc47a2a282a082`, 2,340,864 B — **byte-identical to our staged `/sdcard/Download/steamagent/SteamAgent.exe`.** It's GameHub's stripped "SteamLite," just symlinked and run *as* `steam.exe`. Nothing new to source.
+- **Exact working invocation:**
+  `wine c:\Program Files (x86)\Steam\steam.exe --username <acct> --token <rt> --rememberme --launchoption 0 --disablesteaminput --skip-appinfo-refresh --language english --cmaccel --cmlist "c:\Program Files (x86)\Steam\cmlist.json" --applaunch 550 --launchparameters -lv -novid -heapsize 900000`
+  → it self-launches `left4dead2.exe -steam …` + `steamservice.exe /RunAsService`.
+- **Exact env:** `STEAMAGENT_PORT=39367` (GameHub's SteamAgentServer assigns+listens — the port/server IS required), `SteamGameId=550`, `PROTON_DISABLE_LSTEAMCLIENT=1` (our fix, confirmed), `WINEUSERNAME=steamuser`/`USER=steamuser` (we use `xuser`), `WINEDEBUG=-all`, `LD_PRELOAD=…/pcengine/lib/arm64-v8a/libvfs.so:…/usr/lib/libsandboxfs.so`, `WINEPREFIX=…/virtual_containers/117886` (overlay on `containers/1`).
+- **`cmlist.json`** (pre-seeded by GameHub's `libsteamkit_core`) = `{"datacenter":"lhr1","cm_list":[{"endpoint":"cmp2-lhr1.steamserver.net:27019"…}]}` — real Steam CM endpoints that `--cmlist`/`--cmaccel` consume.
+
+**Why our by-hand attempts failed (SAME binary!):** we were missing the rich args (esp. `--cmlist`/`--cmaccel`/`--skip-appinfo-refresh`), the `cmlist.json`, a listening `SteamAgentServer` on `STEAMAGENT_PORT`, the `steamuser` prefix user, and the `libvfs`/`libsandboxfs` preload. The binary and `PROTON_DISABLE_LSTEAMCLIENT=1` were already correct.
+
+**Port = replicate this recipe in Bannerlator:** symlink our agent as `steam.exe` → feed the full args+env → generate `cmlist.json` (our JavaSteam can mint the CM list, or copy GameHub's) → stand up a `SteamAgentServer` on `STEAMAGENT_PORT` → resolve `steamuser` vs `xuser` + the `libvfs`/`libsandboxfs` preload. **✅ Emulator settled: GameHub ran L4D2 on Proton arm64ec (user-confirmed + `PROTON_DISABLE_LSTEAMCLIENT` is a Proton var + ran as plain `wine`) — our Bannerlator Proton `11.0-2-arm64ec-1` is the correct environment; box64 is NOT needed.** This supersedes the "one unproven risk" in §5 — it's proven.
+
+---
+
 ## 1. Goal
 Give Bannerlator **real Steam online multiplayer on VAC-secured servers** (TF2 / CS:S / L4D2-class titles) by launching the game with the **genuine Valve Steam client** driven by a lightweight headless agent ("SteamLite") — the same method GameHub uses — built into Bannerlator, legally.
 **Hard ceiling:** VAC-only. Never kernel anti-cheat (BattlEye / EAC / Vanguard) — no Android-Wine path exists.

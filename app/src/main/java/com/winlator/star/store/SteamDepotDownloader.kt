@@ -687,16 +687,27 @@ object SteamDepotDownloader {
                         val hasEmpty = hasZeroByteFile(installDir)
                         val overlapComplete = !hasEmpty && largestKept > 0L &&
                                 onDisk >= (largestKept * 90L / 100L)
-                        if (!overlapComplete) {
+                        // (c) VERIFY / RE-CHECK OF AN ALREADY-COMPLETE INSTALL — the game's files are all
+                        //     on disk, so the engine validates them and downloads 0 bytes this pass.
+                        //     finalInstall (bytes THIS pass) is then a false shortfall; the authoritative
+                        //     signal is the on-disk footprint already meeting the SUMMED manifest-true
+                        //     expected size. That proves every depot's content is present, so trust
+                        //     completion even past the hasEmpty gate (a complete game legitimately ships
+                        //     zero-byte placeholder files — e.g. CS:S — which must not read as corruption
+                        //     once the full footprint is on disk). A genuine dominant-depot skip leaves
+                        //     on-disk far below this, so it still fails.
+                        val onDiskComplete = onDisk >= (realExpected * 90L / 100L)
+                        if (!overlapComplete && !onDiskComplete) {
                             dlog("INCOMPLETE: ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} manifest-true " +
                                     "(<90%); on-disk ${fmtSize(onDisk)} vs largest depot ${fmtSize(largestKept)}, " +
                                     "emptyFiles=$hasEmpty — depot content missing, refusing to mark installed")
                             emitFailed(appId, "Download incomplete (${fmtSize(finalInstall)}/${fmtSize(realExpected)}) — please retry")
                             return
                         }
-                        dlog("Complete: ${fmtSize(finalInstall)} < 90% of summed manifest-true ${fmtSize(realExpected)}, " +
-                                "but on-disk ${fmtSize(onDisk)} ≥ 90% of largest depot ${fmtSize(largestKept)} with no empty " +
-                                "files — overlapping/de-duplicated depots, trusting completion")
+                        dlog("Complete: ${fmtSize(finalInstall)} downloaded this pass < 90% of summed manifest-true " +
+                                "${fmtSize(realExpected)}, but on-disk ${fmtSize(onDisk)} already covers it " +
+                                "(${if (onDiskComplete) "full footprint present — verify/re-check of a complete install" else "≥90% of largest depot ${fmtSize(largestKept)}, overlapping/de-duplicated depots"}), " +
+                                "trusting completion")
                     } else {
                         dlog("Complete: ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} manifest-true (≥90%)")
                     }

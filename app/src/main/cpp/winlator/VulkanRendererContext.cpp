@@ -337,7 +337,10 @@ void VulkanRendererContext::createLogicalDevice() {
     VkPhysicalDeviceVulkanMemoryModelFeatures lsfgMemModel{};
     bool lsfgFeaturesOk = probeLsfgFeatures(lsfgFeatures2, lsfgMemModel);
     if (lsfgFeaturesOk) {
-        lsfgFeatures2.pNext = ci.pNext;   // preserve any existing chain (currently none)
+        // probeLsfgFeatures already chained lsfgMemModel into lsfgFeatures2.pNext;
+        // append any pre-existing device chain after the memory-model struct so we
+        // don't clobber it (ci.pNext is currently null, so this is a no-op today).
+        lsfgMemModel.pNext = ci.pNext;
         ci.pNext = &lsfgFeatures2;        // pEnabledFeatures stays NULL -> spec-compliant
     }
 
@@ -440,7 +443,8 @@ void VulkanRendererContext::createSwapchain() {
     // are copied in (TRANSFER_DST). Also request extra images so multiple can be
     // acquired per real frame (one per generated frame). Both gated on lsfg so the
     // normal path keeps its exact single-image COLOR_ATTACHMENT swapchain.
-    bool lsfgSwap = lsfgRequested && lsfgDeviceReady;
+    bool lsfgSwap = lsfgRequested.load(std::memory_order_relaxed) && lsfgDeviceReady;
+    lsfgSwapchainExtras = lsfgSwap;
     uint32_t imgCount = lsfgSwap ? (caps.minImageCount + 1 + LSFG_HOST_MAX_GEN)
                                  : (caps.minImageCount + 1);
     uint32_t imgCap = (caps.maxImageCount > 0) ? caps.maxImageCount : 8u;
@@ -1751,13 +1755,20 @@ ok=true;}catch(...){}
     // scanout. When false, the block below is the exact original render path.
     ensureLsfgCreated();
     bool lsfgThisFrame = lsfgActiveNow() && !scanoutActive.load()
-                       && swapchainImages.size() >= 3;
+                       && lsfgSwapchainExtras && swapchainImages.size() >= 3;
     if (lsfgThisFrame) {
         if (!ensureLsfgGenTargets((int)swapchainExt.width, (int)swapchainExt.height)) {
             lsfgThisFrame = false; lsfgUnavailable = true;
             LSFG_LOGW("gen targets unavailable -> host frame gen disabled");
         } else {
             ensureLsfgSemaphores();
+            // Apply any pending multiplier/flow config (set from the app thread) here,
+            // on the render thread, where the generator is only ever touched.
+            if (lsfgConfigDirty.exchange(false, std::memory_order_relaxed)) {
+                int cmhz = lsfgRefreshMhz.load(std::memory_order_relaxed);
+                LsfgHostConfigure(lsfg, lsfgMultiplier, 0, lsfgFlowScale,
+                                  cmhz > 0 ? (float)cmhz / 1000.f : 0.f);
+            }
             LsfgHostSetGuestExtent(lsfg, (uint32_t)containerWidth, (uint32_t)containerHeight);
             int mhz = lsfgRefreshMhz.load(std::memory_order_relaxed);
             LsfgHostSetRefreshRate(lsfg, mhz > 0 ? (float)mhz / 1000.f : 0.f);
@@ -1920,7 +1931,7 @@ ok=true;}catch(...){}
 // ===================== Host-side LSFG frame generation ======================
 
 void VulkanRendererContext::ensureLsfgCreated() {
-    if (lsfg || !lsfgRequested || lsfgUnavailable) return;
+    if (lsfg || !lsfgRequested.load(std::memory_order_relaxed) || lsfgUnavailable) return;
     if (!lsfgDeviceReady) return;               // features/dispatch not available
     if (lsfgCachePath.empty()) return;          // Java hasn't handed us a cache yet
     // The shader cache is built asynchronously at launch; wait (retry each frame)
@@ -1936,6 +1947,7 @@ void VulkanRendererContext::ensureLsfgCreated() {
     }
     int mhz = lsfgRefreshMhz.load(std::memory_order_relaxed);
     LsfgHostConfigure(lsfg, lsfgMultiplier, 0, lsfgFlowScale, mhz > 0 ? (float)mhz / 1000.f : 0.f);
+    lsfgConfigDirty.store(false, std::memory_order_relaxed);
     LSFG_LOGI("host frame generator created (mult=%u flow=%.2f cache=%s)", lsfgMultiplier,
               (double)lsfgFlowScale, lsfgCachePath.c_str());
 }
@@ -2012,30 +2024,31 @@ void VulkanRendererContext::destroyLsfgSemaphores() {
 
 void VulkanRendererContext::setLsfgHost(bool enable, const char* cachePath, int multiplier,
                                         float flowScale) {
-    if (cachePath && *cachePath) lsfgCachePath = cachePath;
+    // Called from the app/UI thread. Only touch atomics + POD config here; all
+    // vkr_lsfg calls happen on the render thread (it is not thread-safe). The cache
+    // path is set once and then read-only, so the render thread never sees it change.
+    if (cachePath && *cachePath && lsfgCachePath.empty()) lsfgCachePath = cachePath;
     if (multiplier >= 1) lsfgMultiplier = (uint32_t)multiplier;
     if (flowScale > 0.f) lsfgFlowScale = flowScale;
+    lsfgConfigDirty.store(true, std::memory_order_relaxed);
 
     if (!enable) {
-        lsfgRequested = false;   // lsfgActiveNow() -> false; render path reverts to normal
+        lsfgRequested.store(false, std::memory_order_relaxed);  // render path reverts to normal
         LSFG_LOGI("host frame gen disabled by request");
         return;
     }
-    lsfgRequested = true;
+    lsfgRequested.store(true, std::memory_order_relaxed);
     lsfgUnavailable = false;
-    LSFG_LOGI("host frame gen requested (mult=%u flow=%.2f deviceReady=%d cache=%s)",
-              lsfgMultiplier, (double)lsfgFlowScale, (int)lsfgDeviceReady, lsfgCachePath.c_str());
-    if (lsfg) LsfgHostConfigure(lsfg, lsfgMultiplier, 0, lsfgFlowScale,
-                                lsfgRefreshMhz.load(std::memory_order_relaxed) > 0
-                                    ? (float)lsfgRefreshMhz.load() / 1000.f : 0.f);
+    LSFG_LOGI("host frame gen requested (mult=%u flow=%.2f deviceReady=%d)",
+              lsfgMultiplier, (double)lsfgFlowScale, (int)lsfgDeviceReady);
     // The swapchain needs TRANSFER_SRC/DST + extra images before generation can
     // run; force a recreate so createSwapchain picks up the lsfg usage flags.
     if (lsfgDeviceReady && swapchain != VK_NULL_HANDLE) fbResized.store(true);
 }
 
 void VulkanRendererContext::setLsfgRefreshRate(float hz) {
+    // App thread: store only. renderFrame applies it to the generator each frame.
     lsfgRefreshMhz.store(hz > 0.f ? (int)(hz * 1000.f) : 0, std::memory_order_relaxed);
-    if (lsfg) LsfgHostSetRefreshRate(lsfg, hz);
 }
 
 void VulkanRendererContext::onSurfaceResized(int w, int h) {

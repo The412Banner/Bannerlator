@@ -111,6 +111,11 @@ set_target_properties(lsfg_host PROPERTIES
         CXX_STANDARD_REQUIRED ON
         POSITION_INDEPENDENT_CODE ON)
 
+# The dispatch table declares Android-specific PFN types (AndroidSurfaceKHR,
+# AHardwareBuffer props), so every lsfg_host TU needs the Android platform types
+# from <vulkan/vulkan.h>.
+target_compile_definitions(lsfg_host PRIVATE VK_USE_PLATFORM_ANDROID_KHR=1)
+
 target_include_directories(lsfg_host PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/winlator/lsfg)
 

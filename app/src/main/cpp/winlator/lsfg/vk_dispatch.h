@@ -11,6 +11,11 @@
 #ifndef VK_NO_PROTOTYPES
 #define VK_NO_PROTOTYPES
 #endif
+// The dispatch table below names Android-only PFN types; make sure the platform
+// types are pulled in even if this header is the first to include vulkan.h.
+#ifndef VK_USE_PLATFORM_ANDROID_KHR
+#define VK_USE_PLATFORM_ANDROID_KHR
+#endif
 #include <stdbool.h>
 #include <vulkan/vulkan.h>
 

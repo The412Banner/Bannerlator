@@ -517,12 +517,14 @@ private:
     // ---- Host-side LSFG frame generation ----
     // Max frames generated per real frame (matches VKR_LSFG_MAX_GENERATIONS).
     static constexpr uint32_t LSFG_HOST_MAX_GEN = 3;
-    struct VkrLsfg* lsfg = nullptr;                 // opaque frame generator (nullptr = off)
-    bool             lsfgRequested   = false;       // "lsfg" engine selected for this session
+    struct VkrLsfg* lsfg = nullptr;                 // opaque frame generator (render thread only)
+    std::atomic<bool> lsfgRequested{false};         // "lsfg" engine selected (set from app thread)
+    std::atomic<bool> lsfgConfigDirty{false};       // pending multiplier/flow config to apply
     bool             lsfgDeviceReady = false;       // vkd populated + required features enabled
     bool             lsfgUnavailable = false;       // create/prepare failed once — stay off, no retry
-    std::string      lsfgCachePath;
-    uint32_t         lsfgMultiplier  = 2;
+    bool             lsfgSwapchainExtras = false;    // current swapchain has TRANSFER_SRC/DST + spare images
+    std::string      lsfgCachePath;                 // set once (first setLsfgHost), then read-only
+    uint32_t         lsfgMultiplier  = 2;           // desired; applied on the render thread
     float            lsfgFlowScale   = 0.7f;
     std::atomic<int> lsfgRefreshMhz{0};
     uint64_t         lsfgSourceFrames = 0;
@@ -620,7 +622,9 @@ private:
     // create call, so the caller owns them).
     bool probeLsfgFeatures(VkPhysicalDeviceFeatures2& features2,
                            VkPhysicalDeviceVulkanMemoryModelFeatures& memModel);
-    bool lsfgActiveNow() const { return lsfgRequested && lsfg && !lsfgUnavailable; }
+    bool lsfgActiveNow() const {
+        return lsfgRequested.load(std::memory_order_relaxed) && lsfg && !lsfgUnavailable;
+    }
     void ensureLsfgCreated();
     void destroyLsfgHost();
     bool ensureLsfgGenTargets(int w, int h);

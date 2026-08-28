@@ -49,13 +49,14 @@ Rides on the tagging + hook Bannerlator already has:
 - ✅ 3-way RE complete (WinNative `2bcd0a3`, GameNative `1ad70ae5` + steam branches, GameHub 6.2.1 + SteamAgent PE teardown). Reports in `re/`.
 - ✅ Architecture + design of record settled (this doc).
 - ✅ Device facts: GameHub (`com.xiaoji.egggame`) is logged into the **user's own account** (not the leaked dev acct); genuine V6 client at `/storage/emulated/0/Download/steamagent/steam_client_0403`, CLIENTENGINE pin = **v005**; L4D2 owned + **added to a Bannerlator container**.
-- 🔄 **IN PROGRESS:** extracting GameHub's exact no-Goldberg real-launch orchestration (agent argv/env, token hand-off, client staging, game env block) → `re/GAMEHUB_REAL_LAUNCH_ORCHESTRATION.md` = the fork recipe.
+- ✅ **Launch recipe extracted** (`re/GAMEHUB_REAL_LAUNCH_ORCHESTRATION.md`, `bec62a65`): **token hand-off = agent CLI `--username <acct> --token <refresh_token> --applaunch <appId>`** (our JavaSteam mints the token — same shape it already uses); interface pin **v005 confirmed** (client build 10520955 exports only `CLIENTENGINE_INTERFACE_VERSION005`); game keeps its OWN genuine `steam_api64.dll` (no dll swap, no `WINESTEAMCLIENTPATH`); the game's `SteamAppId`/`SteamGameId`/`SteamClientLaunch` env is set by GameHub's native `WinEmuModule` (NOT the agent) → Bannerlator sets these explicitly in `GuestProgramLauncherComponent`.
 - ⛔ **Environment note:** the only Bannerlator install on device is `com.tencent.ig` (pubg-staged, normally verify-only) — no separate `com.winlator.banner`. L4D2's container is there.
 
 ## 7. Open questions / decisions
-- **[USER] Container:** prototype/build in the `com.tencent.ig` staged install (where L4D2 is), or set up a fresh/dedicated one? (Blocks any device mutation.)
-- **[TECH] Token hand-off:** exactly how the SteamLite agent receives the user's login (CLI `--token` / env / written vdf) — the #1 recipe unknown, being resolved by the in-progress dig.
-- **[TECH] V6 agent interface pin** vs the v005 client bundle (v005 confirmed on the client; confirm the agent that drives it matches).
+- **[USER] Container:** prototype/build in the `com.tencent.ig` staged install (where L4D2 is), or set up a fresh/dedicated one? (Blocks any device mutation.) — STILL OPEN.
+- ~~[TECH] Token hand-off~~ ✅ RESOLVED: agent CLI `--username <acct> --token <refresh_token> --applaunch <appId>`; our JavaSteam mints the token.
+- ~~[TECH] agent interface pin~~ ✅ RESOLVED: v005.
+- **[DECISION] Agent binary:** run GameHub's forked SteamLite binary as-is (permitted, fastest) vs reimplement our own v005 driver (WinNative GPL ref) — see Fork spec §8.5.
 
 ## 8. Plan
 1. **[in progress]** Extract GameHub's no-Goldberg launch recipe (the fork spec).
@@ -63,12 +64,39 @@ Rides on the tagging + hook Bannerlator already has:
 3. If it passes: build the `launchMode=RealSteam` branch + the detail-page Launch-method picker + runtime Valve-client sourcing + `lsteamclient` bridge (recipe open on our `proton-wine *_add_steam`) + auto-fall-back to Goldberg.
 4. Prove: TF2 / CS:S / L4D2 on VAC servers, real players, full match.
 
+## 8.5 FORK SPEC — Bannerlator `launchMode=RealSteam`
+
+### Components
+| Piece | Action | Source / where |
+|---|---|---|
+| **SteamLite agent** (headless steam.exe replacement, drives genuine client via IClientEngine v005) | **FORK GameHub's binary** as-is (permitted, fastest to first-working) — OR reimplement our own v005 driver later (WinNative GPL `wn-steam-launcher/main.cpp` ref) | GameHub's `SteamAgent2` |
+| **Genuine Valve client DLLs** (`steamclient64.dll`, `steamservice.exe`, `tier0_s64`, `vstdlib_s64`) | **SOURCE AT RUNTIME — never bundle** (download from Valve / user install). By-hand test uses the on-device copy | `/sdcard/Download/steamagent/steam_client_0403` (test only) |
+| **Refresh token** (the login) | **REUSE** — Bannerlator's JavaSteam already mints the user's own refresh token | existing `SteamRepository` |
+| **Shortcut tagging + launch hook + container/prefix + Goldberg (→fallback)** | **REUSE** existing | `StarLaunchBridge`, `XServerDisplayActivity`, `GoldbergPatcher` |
+| **`launchMode=RealSteam` branch + orchestration + env + picker UI + auto-fallback** | **BUILD (new)** | see below |
+
+### Ordered launch orchestration (mapped to Bannerlator hooks)
+1. **Branch on mode** — `XServerDisplayActivity.maybeSeedAndStartAchievementWatcher()` (:4478, peer to `GoldbergPatcher`; gates `isSteamShortcut` :3993, resolves appId :4180): if shortcut `launchMode==RealSteam` → RealSteam branch (else Goldberg / Raw).
+2. **Un-Goldberg** — ensure the game's OWN genuine `steam_api64.dll` is in place (NO gbe_fork swap) — the inverse of `GoldbergPatcher`.
+3. **Stage genuine client** into the prefix `C:\Program Files (x86)\Steam\` (from runtime-sourced DLLs; test = `steam_client_0403`).
+4. **Seed registry** `HKLM\Software\Valve\Steam`: `SteamExe`=agent, `SteamPath`, `SteamClientDll64`, `InstallPath`, `SteamPID`.
+5. **Start SteamLite agent** — argv `--username <acct> --token <refresh_token> --applaunch <appId>`, env `STEAMAGENT_PORT=<loopback>`; agent installs `steamservice.exe`, logs in, drives the genuine client via `CLIENTENGINE_INTERFACE_VERSION005`. Token comes from JavaSteam.
+6. **Block until `login_success`** over the agent's RPC socket (`STEAMAGENT_PORT`).
+7. **Launch the game** (`<game>.exe -steam`) on its OWN genuine `steam_api64.dll`. Env: `SteamPath` + `ValvePlatformMutex`, and — set explicitly by Bannerlator in **`GuestProgramLauncherComponent`** — `SteamAppId` / `SteamGameId` / `SteamClientLaunch`. lsteamclient DISABLED; **no `WINESTEAMCLIENTPATH`**; no dll swap.
+8. **Teardown** the agent on `game_terminated` / `app_exit`; **auto-fall-back to Goldberg-offline** if step 5/6 fails.
+
+### UI
+Launch-method picker on `SteamGameDetailActivity` (beside the existing Goldberg gear): **SteamLite (default) / Goldberg (fallback, existing sub-modes) / Raw**. Stored per-shortcut, read at the :4478 hook.
+
+### Legal
+Fork the agent (permitted) · source Valve DLLs at runtime, never bundle (unless written Valve permission) · never ship the leaked GameSir token · redact owner PII.
+
 ## 9. Backing docs (in `re/`)
 - `SYNTHESIS_OWN_STEAM_AGENT_PLAN.md` — the 3-way convergence + build plan.
 - `WINNATIVE_VAC_RE.md` / `GAMENATIVE_VAC_RE.md` / `GAMEHUB_STEAMAGENT_RE.md` — per-app deep dives.
 - `PHASE1A_VAC_TEST_AND_WIRING.md` — the by-hand test + launch-wiring spec (L4D2 + GameHub-client config).
 - `PHASE0_VAC_SCOPING.md` — original scoping (Goldberg-injection ruled out).
-- `GAMEHUB_REAL_LAUNCH_ORCHESTRATION.md` — *(in progress)* the no-Goldberg launch recipe to fork.
+- `GAMEHUB_REAL_LAUNCH_ORCHESTRATION.md` — ✅ the no-Goldberg launch recipe (token via `--token`, v005, ordered steps) — basis for Fork spec §8.5.
 
 ## 10. Guardrails
 VAC-only, never kernel AC · never bundle Valve DLLs without written Valve permission (source at runtime) · never ship the leaked GameSir token · GPL attribution for WinNative/GameNative code · redact the owner's Steam email/SteamID from any committed artifact or external output.

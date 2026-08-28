@@ -26,14 +26,17 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -41,6 +44,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
@@ -48,6 +52,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.GoldbergComponent
 import com.winlator.star.store.GoldbergMode
+import com.winlator.star.store.SteamGameUpdater
 import com.winlator.star.store.SteamLiteComponent
 import com.winlator.star.store.SteamPrefs
 
@@ -97,6 +103,11 @@ fun LaunchMethodSheet(
     shortcut: Shortcut,
     onDismiss: () -> Unit,
     onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean) -> Unit,
+    // Manual maintenance for the RealSteam / SteamLite path (real-Steam "Verify integrity" + "Update").
+    // Nullable so callers that don't wire them (or non-Steam contexts) still compile; the maintenance row
+    // only shows for an installed SteamLite pick with a resolvable appId.
+    onVerifyFiles: (() -> Unit)? = null,
+    onUpdateFiles: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
@@ -238,6 +249,27 @@ fun LaunchMethodSheet(
             }
 
             Spacer(Modifier.height(14.dp))
+
+            // ── SteamLite maintenance: update indicator + manual Verify / Update buttons ──────────
+            // Real Steam's "right-click → Verify integrity of game files" + an update indicator, moved off
+            // the old auto-update-on-launch. Only for an installed SteamLite (RealSteam) pick with a
+            // resolvable appId; Goldberg / no-appId shortcuts never show it.
+            if (steamLiteSelected && steamLiteInstalled && appId > 0) {
+                var updateStatus by remember(appId) { mutableStateOf<SteamGameUpdater.UpdateStatus?>(null) }
+                // Cheap, non-downloading probe of the recorded-vs-live build (no PICS refresh) — just a hint;
+                // the Update / Verify passes do the authoritative refresh.
+                LaunchedEffect(appId) {
+                    updateStatus = null
+                    SteamGameUpdater.checkForUpdate(context, appId) { updateStatus = it }
+                }
+                SteamUpdateMaintenance(
+                    status = updateStatus,
+                    accent = cs.primary,
+                    onVerify = onVerifyFiles,
+                    onUpdate = onUpdateFiles,
+                )
+                Spacer(Modifier.height(14.dp))
+            }
 
             // ── Primary launch button (label + icon reflect the pick + whether a download is due) ─
             val needsDownload =
@@ -529,6 +561,105 @@ private fun StatusRow(
             color = accent,
             fontWeight = FontWeight.SemiBold,
         )
+    }
+}
+
+// ── SteamLite maintenance row (update indicator + Verify / Update) ─────────────────────────────────
+
+/**
+ * The RealSteam / SteamLite maintenance block on the launch popup — real Steam's per-game "Verify
+ * integrity of game files" + an update indicator. A non-blocking status line reflects the cheap
+ * [SteamGameUpdater.checkForUpdate] probe ([status] == null while it's still running), and the two
+ * buttons hand off to the caller's [onVerify] / [onUpdate] (wired to [SteamGameUpdater.verifyFiles] /
+ * [SteamGameUpdater.updateNow]). Verify is always available; Update is shown only when a delta is (or
+ * might be) due — it's hidden once the build is confirmed current. Matches the sheet's accent + the
+ * StatusRow bordered-container idiom rather than inventing a new palette.
+ */
+@Composable
+private fun SteamUpdateMaintenance(
+    status: SteamGameUpdater.UpdateStatus?,
+    accent: Color,
+    onVerify: (() -> Unit)?,
+    onUpdate: (() -> Unit)?,
+) {
+    val cs = MaterialTheme.colorScheme
+    val state = status?.state
+    val showUpdate =
+        state == SteamGameUpdater.State.UPDATE_AVAILABLE || state == SteamGameUpdater.State.UNKNOWN
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(11.dp))
+            .background(cs.surfaceContainer)
+            .border(1.dp, cs.outline, RoundedCornerShape(11.dp))
+            .padding(12.dp),
+    ) {
+        // ── Status line: spinner while checking, else an icon + a plain-English state ──
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (status == null) {
+                CircularProgressIndicator(modifier = Modifier.size(15.dp), strokeWidth = 2.dp, color = accent)
+            } else {
+                val (icon, tint) = when (status.state) {
+                    SteamGameUpdater.State.UP_TO_DATE -> Icons.Filled.CheckCircle to OnlineGreen
+                    SteamGameUpdater.State.UPDATE_AVAILABLE -> Icons.Filled.CloudDownload to accent
+                    SteamGameUpdater.State.UNKNOWN -> Icons.Filled.CloudOff to cs.onSurfaceVariant
+                    SteamGameUpdater.State.NOT_INSTALLED -> Icons.Filled.CloudDownload to cs.onSurfaceVariant
+                }
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.width(9.dp))
+            Text(
+                text = if (status == null) "Checking for updates…" else when (status.state) {
+                    SteamGameUpdater.State.UP_TO_DATE -> "Up to date"
+                    SteamGameUpdater.State.UPDATE_AVAILABLE ->
+                        if (status.installedBuild > 0L && status.liveBuild > 0L)
+                            "Update available — build ${status.installedBuild} → ${status.liveBuild}"
+                        else "Update available"
+                    SteamGameUpdater.State.UNKNOWN -> "Version unknown (offline)"
+                    SteamGameUpdater.State.NOT_INSTALLED -> "Not installed"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = if (status == null) cs.onSurfaceVariant else when (status.state) {
+                    SteamGameUpdater.State.UP_TO_DATE -> OnlineGreen
+                    SteamGameUpdater.State.UPDATE_AVAILABLE -> accent
+                    else -> cs.onSurfaceVariant
+                },
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Spacer(Modifier.height(11.dp))
+
+        // ── Verify (always) + Update (only when a delta is / might be due) ──
+        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            OutlinedButton(
+                onClick = { onVerify?.invoke() },
+                enabled = onVerify != null,
+                modifier = Modifier.weight(1f).height(42.dp),
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, cs.outline),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.onSurface),
+            ) {
+                Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(7.dp))
+                Text("Verify files", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            }
+            if (showUpdate) {
+                Button(
+                    onClick = { onUpdate?.invoke() },
+                    enabled = onUpdate != null,
+                    modifier = Modifier.weight(1f).height(42.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
+                ) {
+                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("Update", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
     }
 }
 

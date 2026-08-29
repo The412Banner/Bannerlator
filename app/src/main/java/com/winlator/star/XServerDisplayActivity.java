@@ -60,6 +60,7 @@ import com.winlator.star.container.ContainerManager;
 import com.winlator.star.container.Shortcut;
 import com.winlator.star.core.CustomSaveVault;
 import com.winlator.star.store.AchievementWatcher;
+import com.winlator.star.store.SteamLiteAchievementWatcher;
 import com.winlator.star.store.EpicOverlayManager;
 import com.winlator.star.store.GogCloudSaveManager;
 import com.winlator.star.store.GogCloudSavePaths;
@@ -271,6 +272,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // the hook is ever re-entered, it re-runs the (idempotent) seed but never re-arms/double-arms the
     // FileObserver. Reset on teardown so a later launch in the same activity instance re-arms cleanly.
     private boolean achievementWatcherArmed = false;
+    // In-game achievement pill producer for SteamLite / RealSteam mode: our headless Steam agent writes
+    // each real-server unlock into C:\wn-achievement-events\ and this FileObserver watches them, popping
+    // the SAME gold pill the Goldberg path does. Armed only when a RealSteam launch is actually staged
+    // (realSteamPlan != null), alongside the Goldberg watcher; stopped in the same teardown. Null for
+    // every other launch. Armed once (its own guard flag), like achievementWatcher above.
+    private SteamLiteAchievementWatcher steamLiteAchievementWatcher;
+    private boolean steamLiteAchievementWatcherArmed = false;
     // Real-Steam (VAC) launch plan (feature M3). Non-null ONLY when this is a genuine-Steam shortcut with
     // launchMode=RealSteam AND all prerequisites resolved (token/appId/install dir/SteamLite package):
     // built on the launch WORKER thread in setupXEnvironment (staging + env), then read by
@@ -4576,6 +4584,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
             final int appId = ref.appId;
 
+            // SteamLite / RealSteam mode (genuine Steam via our headless agent): the agent writes each
+            // real-server unlock into C:\wn-achievement-events\ — watch that folder and pop the SAME gold
+            // pill the Goldberg path pops. Gated inside on the RealSteam plan being armed
+            // (realSteamPlan != null, set by maybeStageRealSteam() earlier in setupXEnvironment) — the only
+            // launch where the agent actually runs and emits those files. Independent of the Goldberg
+            // seed/watch below (which no-ops for a Goldberg-OFF RealSteam launch).
+            maybeStartSteamLiteAchievementWatcher(appCtx, appId, containerRoot);
+
             // (1) Seed — only for Goldberg-on games (an OFF game runs genuine Steam, no GSE store to
             // seed). Uses the SAME GSE path the watcher watches (shared helper). Best-effort/no-op on
             // no-real-state; never wipes local unlocks.
@@ -4629,6 +4645,39 @@ public class XServerDisplayActivity extends AppCompatActivity {
             achievementWatcherArmed = true;
         } catch (Throwable t) {
             Log.w("BH_STEAM_ACHV", "maybeSeedAndStartAchievementWatcher errored", t);
+        }
+    }
+
+    /**
+     * For a genuine-Steam game launched in SteamLite / RealSteam mode (our headless Steam agent drives a
+     * real Steam client, so unlocks hit the REAL server — there is no local achievements.json to diff),
+     * arm {@link SteamLiteAchievementWatcher} on the agent's event folder ({@code C:\wn-achievement-events\})
+     * so a real-server unlock still pops the in-game gold pill.
+     *
+     * Gated on {@link #realSteamPlan} being non-null — the definitive "the agent is running and will emit
+     * event files" signal (set by {@link #maybeStageRealSteam()} earlier in {@code setupXEnvironment}); a
+     * no-op for every other launch, so an ordinary or Goldberg launch is unaffected. Best-effort + fully
+     * guarded — a failure here must never block/crash the launch — and idempotent: re-entry never
+     * double-arms the FileObserver. Mirrors {@link #maybeSeedAndStartAchievementWatcher()}'s envelope.
+     */
+    private void maybeStartSteamLiteAchievementWatcher(Context appCtx, int appId, java.io.File containerRoot) {
+        try {
+            if (realSteamPlan == null) return; // not a RealSteam launch → the agent emits no event files
+            if (appCtx == null || containerRoot == null || appId <= 0) return;
+            if (steamLiteAchievementWatcherArmed) {
+                Log.i("BH_STEAM_ACHV", "steamlite watch: already armed (appId=" + appId + ") — skip");
+                return;
+            }
+            if (steamLiteAchievementWatcher == null)
+                steamLiteAchievementWatcher = new SteamLiteAchievementWatcher();
+            final SteamLiteAchievementWatcher watcher = steamLiteAchievementWatcher;
+            if (isFinishing() || isDestroyed()) { watcher.stop(); return; }
+            watcher.start(appCtx, appId, containerRoot);
+            if (isFinishing() || isDestroyed()) { watcher.stop(); return; }
+            steamLiteAchievementWatcherArmed = true;
+            Log.i("BH_STEAM_ACHV", "steamlite watch: armed (appId=" + appId + ")");
+        } catch (Throwable t) {
+            Log.w("BH_STEAM_ACHV", "maybeStartSteamLiteAchievementWatcher errored", t);
         }
     }
 
@@ -4926,6 +4975,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             achievementWatcher = null;
         }
         achievementWatcherArmed = false;
+        // Stop the SteamLite event-folder watcher (FileObserver + its executor) for the same reason.
+        if (steamLiteAchievementWatcher != null) {
+            try { steamLiteAchievementWatcher.stop(); } catch (Throwable ignored) {}
+            steamLiteAchievementWatcher = null;
+        }
+        steamLiteAchievementWatcherArmed = false;
         // Drop the failure-card callbacks so this activity isn't retained via the static holder.
         com.winlator.star.core.PreloaderState.setOnClose(null);
         com.winlator.star.core.PreloaderState.setOnOpenLog(null);

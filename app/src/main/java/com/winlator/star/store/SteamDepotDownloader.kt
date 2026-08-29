@@ -51,6 +51,26 @@ object SteamDepotDownloader {
      *  (as a resume) before the failure is surfaced to the user. Covers the ~1h CM-logoff case. */
     private const val MAX_SESSION_RETRIES = 2
 
+    // -------------------------------------------------------------------------
+    // Per-depot completion / auto-resume tuning (Layer 1 + Layer 2)
+    // -------------------------------------------------------------------------
+    /** Auto-resume cap for a genuinely-SHORT selected depot — one that the per-depot manifest verify
+     *  found incomplete even though the engine reported "download complete" (Dead Cells' 588651 stopping
+     *  at ~50%). Distinct from MAX_SESSION_RETRIES (that recovers a lost CM session; this re-fetches
+     *  missing depot chunks). Bounded + backoff + no-progress fail-fast below so it can never loop. */
+    private const val MAX_DEPOT_RESUME_ATTEMPTS = 3
+    /** Backoff before each short-depot auto-resume (ms), indexed by attempt; the last value repeats. */
+    private val DEPOT_RESUME_BACKOFF_MS = longArrayOf(2_000L, 5_000L, 10_000L)
+    /** A short-depot resume that grows the on-disk footprint by less than this made no forward progress
+     *  → the depot is genuinely unavailable (no key / dead CDN, like an unowned DLC depot) → fail fast. */
+    private const val MIN_RESUME_PROGRESS_BYTES = 1_048_576L
+    /** Engine manifest-relative depot completion (sizeDownloaded/completeDownloadSize, from
+     *  onChunkCompleted) at/above which a depot's needed file set is considered fully delivered. */
+    private const val DEPOT_PCT_COMPLETE = 0.999f
+    /** On-disk-footprint vs manifest-true-size threshold (percent) for the verify/re-check and
+     *  overlapping-depot completeness paths (matches the prior guard's 90%). */
+    private const val COMPLETE_PCT = 90L
+
     /**
      * Overlapping-depot fix. A few Steam apps ship two+ content depots that carry the SAME file
      * PATHS but DIFFERENT content — one maintained, one a stale leftover. JavaSteam's DepotDownloader
@@ -295,6 +315,12 @@ object SteamDepotDownloader {
         isResume: Boolean = false,
         attempt: Int = 0,
         control: DownloadControl? = null,
+        // Layer 1 short-depot auto-resume state (separate failure domain from `attempt`/session-recovery):
+        //   resumeAttempt   — how many short-depot resumes have already run for this install.
+        //   resumeFloorBytes — on-disk footprint captured at the START of the previous resume, so the
+        //                      tail can require forward progress and fail-fast on a stalled (dead) depot.
+        resumeAttempt: Int = 0,
+        resumeFloorBytes: Long = 0L,
     ) {
         // One gate for all verbose diagnostics: on in debug builds, or when the user ticked
         // "Log debug session" for this download. Off ⇒ steam_debug.txt is never created (no 4 MB
@@ -303,7 +329,10 @@ object SteamDepotDownloader {
         val verbose = BuildConfig.DEBUG || debugLog
         activeDownloads[appId] = Unit
         if (verbose) {
-            initDebugLog(ctx, truncate = attempt == 0)
+            // Truncate only on the very first attempt of a fresh install — a session-recovery retry
+            // (attempt>0) OR a short-depot auto-resume (resumeAttempt>0) appends so the failure +
+            // recovery/resume narrative survives in steam_debug.txt instead of being wiped.
+            initDebugLog(ctx, truncate = attempt == 0 && resumeAttempt == 0)
             wireJavaSteamLog()   // surface JavaSteam CM/CDN internals into steam_debug.txt
         }
         dlog("=== Starting install: appId=$appId (verbose=$verbose) ===")
@@ -408,6 +437,12 @@ object SteamDepotDownloader {
         // single depot and stalls partway. installByDepot=uncompressed, downloadByDepot=compressed.
         val installByDepot  = java.util.concurrent.ConcurrentHashMap<Int, Long>()
         val downloadByDepot = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+        // Highest engine-reported manifest-relative completion per depot (depotPercentComplete =
+        // sizeDownloaded/completeDownloadSize). 1.0 == that depot's needed file set finished THIS
+        // session. Kept as a running max (chunk callbacks can arrive out of order across worker
+        // threads). Absent key ⇒ the depot transferred nothing this session (already on disk /
+        // de-duped / skipped). Drives the per-depot completion verdict in onDownloadCompleted.
+        val lastDepotPct = java.util.concurrent.ConcurrentHashMap<Int, Float>()
 
         // Resume seeding: the DB persists only install bytes. Seed both bars so neither
         // restarts at 0. The download (compressed) seed is derived from the install fraction
@@ -504,6 +539,14 @@ object SteamDepotDownloader {
         // so the retry must force a genuinely FRESH session (reconnectAndRelogin) rather than a
         // plain ensureLoggedIn that would short-circuit true on the same dead session.
         val gotDepotKeyOrChunk = AtomicBoolean(false)
+        // Layer 1 signal: set by onDownloadCompleted when the per-depot manifest verify finds a SELECTED
+        // depot short (the engine reported "complete" but a depot's content is missing/truncated). The
+        // tail (outside the try/finally) then decides bounded auto-resume vs fail — mirroring the
+        // session-recovery retryAsResume path. onDiskAtCompletion carries the footprint at that verdict
+        // so the tail's forward-progress check needs no extra directory walk.
+        val depotResumeNeeded  = AtomicBoolean(false)
+        val depotShortSummary  = AtomicReference("")
+        val onDiskAtCompletion = AtomicLong(0L)
         // Throttle FGS notification updates to whole-percent changes (chunks fire far too often).
         val lastNotifiedPct = AtomicInteger(-1)
 
@@ -542,6 +585,11 @@ object SteamDepotDownloader {
                 // depot, then SUM across depots so multi-depot games climb to the true total.
                 if (uncompressedBytes > (installByDepot[depotId] ?: 0L)) installByDepot[depotId] = uncompressedBytes
                 if (compressedBytes   > (downloadByDepot[depotId] ?: 0L)) downloadByDepot[depotId] = compressedBytes
+                // Track the engine's manifest-relative completion for this depot (running max — callbacks
+                // can arrive out of order). This is the primary per-depot completeness signal in the
+                // false-complete verdict; it needs no separate manifest resolve and is never inflated by
+                // a shared/redist depot's PICS size.
+                lastDepotPct.merge(depotId, depotPercentComplete) { a, b -> maxOf(a, b) }
 
                 // maxOf(base, sessionSum): fresh downloads use the sum directly (base=0);
                 // resumes never drop below the persisted floor.
@@ -619,13 +667,18 @@ object SteamDepotDownloader {
             }
 
             override fun onDepotCompleted(depotId: Int, compressedBytes: Long, uncompressedBytes: Long) {
-                // The engine's per-depot byte args here UNDER-report (observed: a ~575 MB depot logged
-                // as 47.5 MB). Prefer our own cumulative per-depot tracking from onChunkCompleted, which
-                // is accurate (it drives the progress bar + DB); fall back to the engine arg only if we
-                // tracked nothing for this depot.
-                val u = maxOf(uncompressedBytes, installByDepot[depotId] ?: 0L)
-                val c = maxOf(compressedBytes,   downloadByDepot[depotId] ?: 0L)
-                dlog("Depot $depotId complete: ${fmtSize(u)} uncompressed / ${fmtSize(c)} compressed")
+                // The engine's per-depot args here are SESSION DELTAS and under-report: a depot already
+                // on disk (resume/verify) or de-duped against a twin fires here with 0 bytes even though
+                // its content is fully present. So this callback is NOT authoritative completion — the
+                // old "Depot N complete: 0 KB" line was a desynced running-tally artefact. The real
+                // per-depot verdict is computed in onDownloadCompleted from installByDepot +
+                // depotPercentComplete + the on-disk manifest-true footprint. Log only a breadcrumb of
+                // what THIS session actually delivered for the depot (from our accurate tracking).
+                val delivered = maxOf(uncompressedBytes, installByDepot[depotId] ?: 0L)
+                val pct = lastDepotPct[depotId]
+                dlog("Depot $depotId processed: delivered ${fmtSize(delivered)} this session" +
+                        (if (pct != null) " (engine ${"%.1f".format(pct * 100)}%)"
+                         else " (no chunk activity — already on disk / de-duped / skipped)"))
             }
 
             override fun onDownloadCompleted(item: DownloadItem) {
@@ -637,100 +690,117 @@ object SteamDepotDownloader {
                 dlog("Total downloaded: ${fmtSize(finalInstall)} uncompressed / " +
                         "${fmtSize(downloadByDepot.values.sum())} compressed across ${installByDepot.size} depot(s)")
 
-                // FALSE-COMPLETE GUARD: after an interrupted/polluted install, DepotDownloader can
-                // declare "complete" having written almost nothing — leftover partial files + stale
-                // .DepotDownloader state make it skip the main depot (proven: HL2 marked Installed at
-                // 405MB of 8.4GB). If <90% of the EXPECTED size landed on disk, this is NOT a genuine
-                // completion: refuse to markInstalled and surface a retryable failure.
+                // ============================================================================
+                // PER-DEPOT MANIFEST COMPLETION VERDICT  (Layer 2 — replaces the whole-app PICS gate)
                 //
-                // EXPECTED SIZE = the sum of the SELECTED depots' MANIFEST-declared uncompressed sizes
-                // (DepotSizeResolver), NOT the PICS estimate. PICS both over-reports (appId 313830:
-                // 181 MB PICS vs 130 MB real content → a complete install was wrongly rejected as
-                // "incomplete") and under-reports. cached() is a pure DB read (no CM traffic here). We
-                // fall back to the PICS estimate only when the real size is UNRESOLVED — and even then
-                // we relax, never tighten: if every selected depot delivered bytes (no skipped depot),
-                // trust the engine's completion rather than reject on the unreliable PICS number.
-                // Honour DLC opt-outs: judge completion against ONLY the depots this download actually
-                // pulled. Excluded DLC depots aren't fetched, so they must not count toward the expected
-                // size or the "every depot delivered" check — otherwise opting out of DLC would falsely
-                // fail an otherwise-complete install (self-inflicted version of the See No Evil bug).
+                // The old guard compared bytes-on-disk against the SUMMED whole-app size. That over-counts
+                // SHARED/redist depots a game only partly pulls — e.g. Risk of Rain 2's Steamworks Common
+                // Redistributables depot 228988 (from app 228980) declares GBs but RoR2 needs only ~57 MB,
+                // inflating the whole-app estimate to ~5.6 GB — so a genuinely-complete 3.0 GB install was
+                // rejected as "incomplete". A summed check also can't tell a truncated depot (Dead Cells'
+                // 588651 stopping at ~50%) from a mere PICS over-report.
+                //
+                // Instead judge EACH selected depot against ITS OWN manifest, from three signals:
+                //   1. depotPercentComplete (lastDepotPct) — the ENGINE's manifest-relative completion for
+                //      the depot (sizeDownloaded/completeDownloadSize). ≥DEPOT_PCT_COMPLETE ⇒ that depot's
+                //      needed file set finished THIS session. Primary, always available for any depot that
+                //      transferred bytes; needs no separate resolve and is NEVER inflated by shared PICS.
+                //      A depot the engine actively downloaded but left below 1.0 is genuinely SHORT.
+                //   2. manifest-true uncompressed sizes (DepotSizeResolver → realSizeBytes) summed over the
+                //      KEPT depots that resolved, vs the on-disk footprint — the authoritative "the whole
+                //      install is already present" check for a verify/re-check pass (engine transfers
+                //      nothing, so signal 1 is silent). Manifest-true, so NOT inflated by shared depots.
+                //   3. overlapping-depot de-dup: two depots with identical files → the engine writes each
+                //      unique file once, so a de-duped twin transfers 0 bytes yet the install is complete
+                //      (on disk it reaches ~the largest single kept depot, with no zero-byte skip files).
+                //
+                // INSTALLED iff EVERY kept depot is complete — regardless of the inflated whole-app PICS
+                // estimate. Any short depot ⇒ defer to bounded auto-resume (Layer 1) in the tail; never
+                // mark installed while a selected depot is genuinely short. DLC opt-outs are honoured
+                // (judge only the depots this download actually pulled).
+                // ============================================================================
                 val excluded = try { SteamPrefs.getExcludedDlc(appId) } catch (_: Throwable) { emptySet() }
                 val keptRows = try { db.getDepotManifests(appId).filter { it.depotId !in excluded } }
                                catch (_: Throwable) { emptyList() }
-                // Manifest-true expected = sum of KEPT depots' real sizes, only when every kept depot
-                // resolved. (Replaces DepotSizeResolver.cached() which sums ALL selected depots.)
-                val realExpected: Long? =
-                    if (keptRows.isNotEmpty() && keptRows.all { it.realSizeBytes > 0L })
-                        keptRows.sumOf { it.realSizeBytes }.takeIf { it > 0L }
-                    else null
+                val onDisk      = dirSizeBytes(installDir)
+                onDiskAtCompletion.set(onDisk)
+                val hasEmpty    = hasZeroByteFile(installDir)
+                // Manifest-true footprint yardstick — sum ONLY the kept depots that actually resolved.
+                // Shared/redist depots that never resolve are simply excluded from the sum (their bytes
+                // still count on disk), so this can never be inflated the way the whole-app PICS sum is.
+                val manifestSum = keptRows.filter { it.realSizeBytes > 0L }.sumOf { it.realSizeBytes }
+                // A complete install's on-disk file bytes ≈ the manifest uncompressed total. A complete
+                // game may legitimately ship zero-byte files (e.g. CS:S), so this does NOT gate on hasEmpty.
+                val onDiskCoversManifest = manifestSum > 0L && onDisk >= (manifestSum * COMPLETE_PCT / 100L)
+                // Overlapping-depot yardstick: the largest single kept depot (real size if resolved, else
+                // PICS). De-duped twins collapse to ~one copy on disk ≈ this value.
+                val largestKept = keptRows.maxOfOrNull { maxOf(it.realSizeBytes, it.sizeBytes) } ?: 0L
 
-                if (realExpected != null) {
-                    // True size known → authoritative 90% check. 313830 → 130/130 passes; a real skip
-                    // (HL2 405 MB of 10.66 GB) still fails.
-                    if (finalInstall < (realExpected * 90L / 100L)) {
-                        // Shortfall vs the SUMMED manifest-true size. Two very different causes:
-                        //   (a) genuine truncation — a dominant depot was skipped (stale .DepotDownloader
-                        //       state), its files never landing on disk (HL2: 405 MB of an 8.4 GB depot).
-                        //   (b) OVERLAPPING DEPOTS — the app ships two+ depots with identical files, so
-                        //       the engine de-dupes and downloads each unique file ONCE (Lossless Scaling
-                        //       993090: depots 993091 ≈ 993092, so 993091 downloads 0 files / fires no
-                        //       onFileCompleted). sum(realSize) then DOUBLE-COUNTS the shared content and
-                        //       a fully complete install can never reach 90% of that inflated total (also
-                        //       why its progress bar caps ~87%).
-                        // Size totals alone can't tell (a) from (b). Decide on the ACTUAL on-disk
-                        // footprint: overlapping depots collapse to ~one copy on disk, so the install
-                        // still reaches ~the LARGEST single kept depot; a dominant-depot skip leaves it
-                        // far below even that. Require no zero-byte files too — a pre-allocated-but-
-                        // unfilled file is the fingerprint of a real skip, never of clean de-duplication.
-                        val onDisk = dirSizeBytes(installDir)
-                        val largestKept = keptRows.maxOfOrNull { it.realSizeBytes } ?: 0L
-                        val hasEmpty = hasZeroByteFile(installDir)
-                        val overlapComplete = !hasEmpty && largestKept > 0L &&
-                                onDisk >= (largestKept * 90L / 100L)
-                        // (c) VERIFY / RE-CHECK OF AN ALREADY-COMPLETE INSTALL — the game's files are all
-                        //     on disk, so the engine validates them and downloads 0 bytes this pass.
-                        //     finalInstall (bytes THIS pass) is then a false shortfall; the authoritative
-                        //     signal is the on-disk footprint already meeting the SUMMED manifest-true
-                        //     expected size. That proves every depot's content is present, so trust
-                        //     completion even past the hasEmpty gate (a complete game legitimately ships
-                        //     zero-byte placeholder files — e.g. CS:S — which must not read as corruption
-                        //     once the full footprint is on disk). A genuine dominant-depot skip leaves
-                        //     on-disk far below this, so it still fails.
-                        val onDiskComplete = onDisk >= (realExpected * 90L / 100L)
-                        if (!overlapComplete && !onDiskComplete) {
-                            dlog("INCOMPLETE: ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} manifest-true " +
-                                    "(<90%); on-disk ${fmtSize(onDisk)} vs largest depot ${fmtSize(largestKept)}, " +
-                                    "emptyFiles=$hasEmpty — depot content missing, refusing to mark installed")
-                            emitFailed(appId, "Download incomplete (${fmtSize(finalInstall)}/${fmtSize(realExpected)}) — please retry")
-                            return
+                // Verdict for one depot → (complete, note). Order matters: engine-truth first, then the
+                // footprint escape for verify/resume/de-dup passes, then genuine-short, then last-resort.
+                fun verifyDepot(row: SteamDatabase.DepotManifestRow): Pair<Boolean, String> {
+                    val d         = row.depotId
+                    val pct       = lastDepotPct[d]                 // engine manifest %, or null (no transfer)
+                    val delivered = installByDepot[d] ?: 0L         // uncompressed, THIS session
+                    val expected  = row.realSizeBytes               // manifest-true uncompressed, 0=unresolved
+                    val exp = if (expected > 0L) fmtSize(expected) else "?"
+                    return when {
+                        // 1. Engine says this depot's needed file set finished this session.
+                        pct != null && pct >= DEPOT_PCT_COMPLETE ->
+                            true to "engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp"
+                        // 2. Whole install footprint already covers the manifest-true total (verify pass,
+                        //    a finished resume, or de-dup) → every present depot's content is on disk.
+                        onDiskCoversManifest ->
+                            true to "no/partial transfer but on-disk ${fmtSize(onDisk)} covers manifest-true ${fmtSize(manifestSum)}"
+                        // 3. Engine actively transferred this depot but left it below 1.0 → genuinely SHORT
+                        //    (the Dead Cells case: 588651 stalled at ~50% of its own manifest).
+                        pct != null -> {
+                            val by = if (expected > 0L) " (short by ~${fmtSize((expected - delivered).coerceAtLeast(0L))})" else ""
+                            false to "SHORT engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp$by"
                         }
-                        dlog("Complete: ${fmtSize(finalInstall)} downloaded this pass < 90% of summed manifest-true " +
-                                "${fmtSize(realExpected)}, but on-disk ${fmtSize(onDisk)} already covers it " +
-                                "(${if (onDiskComplete) "full footprint present — verify/re-check of a complete install" else "≥90% of largest depot ${fmtSize(largestKept)}, overlapping/de-duplicated depots"}), " +
-                                "trusting completion")
-                    } else {
-                        dlog("Complete: ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} manifest-true (≥90%)")
+                        // 4. No transfer this session AND footprint short of the manifest total:
+                        //    (a) overlapping/de-duplicated twin — on disk ≈ largest single depot, no empties.
+                        !hasEmpty && largestKept > 0L && onDisk >= (largestKept * COMPLETE_PCT / 100L) ->
+                            true to "no transfer; on-disk ${fmtSize(onDisk)} ≥ largest depot ${fmtSize(largestKept)} — overlapping/de-duped"
+                        //    (b) we have a manifest total for this depot but the footprint doesn't cover it
+                        //        → content missing (a short sibling depot also drags the footprint down).
+                        expected > 0L ->
+                            false to "SHORT no transfer · on-disk ${fmtSize(onDisk)} < manifest-true ${fmtSize(manifestSum)} (depot expected $exp)"
+                        //    (c) no manifest truth at all for this depot → engine-trust: only fail if it
+                        //        delivered nothing (a hard skip); otherwise accept (never false-fail on the
+                        //        unreliable PICS number, matching the prior relaxed behaviour).
+                        delivered > 0L ->
+                            true to "delivered ${fmtSize(delivered)} (no manifest total — trusting engine)"
+                        else ->
+                            false to "SHORT nothing delivered and no manifest total"
                     }
+                }
+
+                if (keptRows.isEmpty()) {
+                    // No depot metadata (unresolved library row) — nothing to verify against. Preserve the
+                    // prior lenient behaviour: trust the engine's completion rather than block the install.
+                    dlog("Per-depot verify: no depot rows for appId=$appId — trusting engine completion " +
+                            "(on-disk ${fmtSize(onDisk)})")
                 } else {
-                    // Real size unresolved → PICS guard, RELAXED (never stricter): a genuine truncation
-                    // skips a whole depot, showing up as a KEPT depot with zero bytes delivered. If every
-                    // kept depot delivered something, the shortfall vs the PICS estimate is a PICS
-                    // over-report, not a skip — trust the engine's completion. Expected uses KEPT depots'
-                    // PICS sizes (exclusion-aware), falling back to the running total if unavailable.
-                    val picsExpected = keptRows.sumOf { it.sizeBytes }.takeIf { it > 0L } ?: iTotal
-                    if (picsExpected > 0L && finalInstall < (picsExpected * 90L / 100L)) {
-                        val selectedDepots: List<Int> = keptRows.map { it.depotId }
-                        val everyDepotDelivered = selectedDepots.isNotEmpty() &&
-                                selectedDepots.all { (installByDepot[it] ?: 0L) > 0L }
-                        if (!everyDepotDelivered) {
-                            dlog("INCOMPLETE: only ${fmtSize(finalInstall)} of ${fmtSize(picsExpected)} PICS-est on disk " +
-                                    "(<90%) and a selected depot delivered nothing — refusing to mark installed")
-                            emitFailed(appId, "Download incomplete (${fmtSize(finalInstall)}/${fmtSize(picsExpected)}) — please retry")
-                            return
-                        }
-                        dlog("Complete: ${fmtSize(finalInstall)} < 90% of PICS-est ${fmtSize(picsExpected)} but all " +
-                                "${selectedDepots.size} kept depot(s) delivered — trusting completion (PICS over-report)")
+                    val checks = keptRows.map { it.depotId to verifyDepot(it) }
+                    // Layer 3 — per-depot diagnosis line for every selected depot.
+                    checks.forEach { (id, cn) ->
+                        dlog("Depot $id: ${if (cn.first) "COMPLETE" else "SHORT"} — ${cn.second}")
                     }
+                    val shorts = checks.filter { !it.second.first }
+                    if (shorts.isNotEmpty()) {
+                        val summary = shorts.joinToString("; ") { "depot ${it.first} [${it.second.second}]" }
+                        depotShortSummary.set(summary)
+                        depotResumeNeeded.set(true)
+                        dlog("INCOMPLETE (per-depot manifest verify): ${shorts.size}/${checks.size} selected " +
+                                "depot(s) short — on-disk ${fmtSize(onDisk)}, manifest-true ${fmtSize(manifestSum)}. " +
+                                "SHORT: $summary")
+                        dlog("Deferring to bounded auto-resume (Layer 1) — NOT marking installed this pass.")
+                        return   // do NOT markInstalled; the tail decides resume-vs-fail (bounded + backoff)
+                    }
+                    dlog("Per-depot verify PASS: all ${checks.size} selected depot(s) COMPLETE — on-disk " +
+                            "${fmtSize(onDisk)}, manifest-true ${fmtSize(manifestSum)} → INSTALLED " +
+                            "(whole-app PICS estimate ${fmtSize(iTotal)} ignored — it over-counts shared/redist depots)")
                 }
 
                 // Both bars reach 100% before switching to installed state.
@@ -944,11 +1014,60 @@ object SteamDepotDownloader {
         }
 
         // Outside the try/finally so the failed attempt is fully torn down first. Bounded by
-        // MAX_SESSION_RETRIES; re-enters as a resume so already-downloaded files are reused.
+        // MAX_SESSION_RETRIES; re-enters as a resume so already-downloaded files are reused. The
+        // short-depot resume counters ride through unchanged (this is a session-recovery retry, a
+        // different failure domain).
         if (retryAsResume) {
             dlog("Retrying install for appId=$appId (attempt ${attempt + 1} → ${attempt + 2}) as resume")
             runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog,
-                    isResume = true, attempt = attempt + 1, control = control)
+                    isResume = true, attempt = attempt + 1, control = control,
+                    resumeAttempt = resumeAttempt, resumeFloorBytes = resumeFloorBytes)
+            return
+        }
+
+        // Layer 1 — AUTO-RESUME a genuinely-short selected depot. The engine reported "download
+        // complete" but the per-depot manifest verify (onDownloadCompleted) found a kept depot short
+        // (Dead Cells' 588651 stopping at ~50%). Re-enter as a RESUME so the engine re-verifies files
+        // already on disk and re-fetches only the missing chunks (over CDN HTTP). Bounded by
+        // MAX_DEPOT_RESUME_ATTEMPTS, with backoff and a no-forward-progress fail-fast so an
+        // unavailable depot (no key / dead CDN — e.g. an unowned depot) can never loop. Session
+        // recovery (retryAsResume) takes precedence and already returned above.
+        if (depotResumeNeeded.get() && !cancelled.get() && !paused.get()) {
+            val curOnDisk  = onDiskAtCompletion.get().takeIf { it > 0L } ?: dirSizeBytes(installDir)
+            val summary    = depotShortSummary.get()
+            val progressed = curOnDisk > resumeFloorBytes + MIN_RESUME_PROGRESS_BYTES
+            when {
+                resumeAttempt >= MAX_DEPOT_RESUME_ATTEMPTS -> {
+                    dlog("Auto-resume exhausted after $MAX_DEPOT_RESUME_ATTEMPTS attempt(s) — still SHORT: $summary")
+                    emitFailed(appId, "Download incomplete after $MAX_DEPOT_RESUME_ATTEMPTS resume attempts — please retry")
+                }
+                resumeAttempt > 0 && !progressed -> {
+                    // A resume that added no data means the short depot's chunks are unreachable (no key /
+                    // CDN failure). Fail fast rather than burn the remaining attempts on a dead depot.
+                    dlog("Auto-resume made NO forward progress (on-disk ${fmtSize(curOnDisk)} ≤ floor " +
+                            "${fmtSize(resumeFloorBytes)} + ${fmtSize(MIN_RESUME_PROGRESS_BYTES)}) — a selected " +
+                            "depot is unavailable (no key / dead CDN). Failing fast. SHORT: $summary")
+                    emitFailed(appId, "Download stalled — a depot delivered no new data on resume; please retry")
+                }
+                else -> {
+                    val backoff = DEPOT_RESUME_BACKOFF_MS[resumeAttempt.coerceAtMost(DEPOT_RESUME_BACKOFF_MS.size - 1)]
+                    dlog("Auto-resume attempt ${resumeAttempt + 1}/$MAX_DEPOT_RESUME_ATTEMPTS in ${backoff}ms " +
+                            "(on-disk floor ${fmtSize(curOnDisk)}) — re-fetching missing chunks for SHORT: $summary")
+                    // Return the DB/registry to a resumable/downloading state — the engine flipped nothing
+                    // (we returned before markInstalled), so just re-enter as a resume. Re-mark this appId
+                    // active BEFORE the backoff sleep so the UI's stale-row detector (isDownloading) doesn't
+                    // flag the row during the pause; the re-entered runInstall re-marks it anyway.
+                    activeDownloads[appId] = Unit
+                    try { db.markDownloadResuming(appId) } catch (_: Throwable) {}
+                    DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.DOWNLOADING) }
+                    try { Thread.sleep(backoff) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+                    // attempt=0: a short-depot resume gets a fresh session-recovery budget. resumeFloorBytes
+                    // = the footprint we just measured, so the next pass can prove forward progress.
+                    runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog,
+                            isResume = true, attempt = 0, control = control,
+                            resumeAttempt = resumeAttempt + 1, resumeFloorBytes = curOnDisk)
+                }
+            }
         }
     }
 

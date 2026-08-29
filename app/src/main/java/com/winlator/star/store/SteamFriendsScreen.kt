@@ -3,9 +3,10 @@ package com.winlator.star.store
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import com.winlator.star.util.InAppFilePicker
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -521,18 +522,18 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
     val isTyping = (typingMap[friend.steamId] ?: 0L) > nowMs
     val self by SteamFriendsStore.self.collectAsState()
 
-    // Android photo picker (no runtime permission needed). The returned content Uri is read + uploaded
-    // off the main thread; SteamFriendsStore.sendImage handles the token mint + community-host upload.
+    // App's built-in File Manager in pick mode (InAppFilePicker/FilePickerActivity), filtered to images.
+    // The picked path's bytes are read + uploaded off the main thread; SteamFriendsStore.sendImage
+    // handles the token mint + community-host upload.
     val ctx = LocalContext.current
-    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            val name = displayNameFromUri(ctx, uri)
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val path = if (result.resultCode == Activity.RESULT_OK) InAppFilePicker.pickedPath(result.data) else null
+        if (path != null) {
+            val name = path.substringAfterLast('/')
             Thread {
                 try {
-                    val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                    if (bytes != null && bytes.isNotEmpty()) {
-                        SteamFriendsStore.sendImage(friend.steamId, bytes, name)
-                    }
+                    val bytes = java.io.File(path).readBytes()
+                    if (bytes.isNotEmpty()) SteamFriendsStore.sendImage(friend.steamId, bytes, name)
                 } catch (_: Throwable) {
                 }
             }.start()
@@ -656,7 +657,7 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
                 IconButton(
                     onClick = {
                         pickImage.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                            InAppFilePicker.buildIntent(ctx, InAppFilePicker.IMAGES, "Send an image"),
                         )
                     },
                 ) {

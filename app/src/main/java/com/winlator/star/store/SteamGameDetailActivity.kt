@@ -140,6 +140,24 @@ private data class BranchDisplay(
     val unlocked: Boolean,     // selectable now (public, or a verified password on file)
 )
 
+/** One entry in the DLC tab's full owned-DLC list. `tag` is the human delivery label derived from
+ *  the DB `kind` ("Installs with game" for depot/app, "Owned — no separate download" for
+ *  entitlement, "Owned" while unresolved, "Not owned" for unowned). DISPLAY-ONLY. */
+private data class DlcTabEntry(
+    val appId: Int,
+    val name: String,
+    val owned: Boolean,
+    val tag: String,
+)
+
+/** Map the steam_dlc `kind` + ownership to the tab's delivery label. */
+private fun dlcKindTag(kind: String, owned: Boolean): String = when {
+    !owned                                 -> "Not owned"
+    kind == "depot" || kind == "app"       -> "Installs with game"
+    kind == "entitlement"                  -> "Owned — no separate download"
+    else                                   -> "Owned"   // owned but not yet resolved
+}
+
 /** Format a branch's build timestamp (epoch seconds) as a readable date; "" when unknown. */
 private fun formatBranchUpdated(epochSeconds: Long): String {
     if (epochSeconds <= 0L) return ""
@@ -1302,6 +1320,38 @@ private fun SteamGameDetailScreen(
         achievements = list
         achLoading = false
     }
+
+    // DLC tab — the FULL owned-DLC catalogue (broader than the depot-bundled `dlcEntries` picker set:
+    // it also lists DLC that are owned but ship no separate download, e.g. Risk of Rain 2's DLC). Loaded
+    // like achievements: paint from the cached steam_dlc rows, kick a best-effort PICS resolve for
+    // names/kinds off the UI thread, then re-read. `dlcHasAny` distinguishes "no DLC" from "not resolved
+    // yet". This never touches the depot-bundled picker/size path (still driven by `dlcEntries`).
+    var dlcTabRows by remember(appId) { mutableStateOf<List<DlcTabEntry>>(emptyList()) }
+    var dlcHasAny by remember(appId) { mutableStateOf(false) }
+    var dlcTabLoading by remember(appId) { mutableStateOf(true) }
+    LaunchedEffect(appId, signedIn) {
+        dlcTabLoading = true
+        val repo = SteamRepository.getInstance()
+        fun readRows(): Pair<List<DlcTabEntry>, Boolean> = try {
+            val db = repo.database
+            val rows = db.getDlcRows(appId).map {
+                DlcTabEntry(it.dlcAppId, it.name, it.owned, dlcKindTag(it.kind, it.owned))
+            }
+            rows to db.hasAnyDlc(appId)
+        } catch (_: Throwable) { emptyList<DlcTabEntry>() to false }
+
+        // Instant paint from cache.
+        val (cached, cachedHas) = withContext(Dispatchers.IO) { readRows() }
+        dlcTabRows = cached; dlcHasAny = cachedHas
+        // Best-effort resolve (self-heal + names/kinds), then re-read. No-op when signed out.
+        withContext(Dispatchers.IO) {
+            try { repo.resolveOwnedDlc(appId, 15_000L) } catch (_: Throwable) {}
+        }
+        val (fresh, freshHas) = withContext(Dispatchers.IO) { readRows() }
+        dlcTabRows = fresh; dlcHasAny = freshHas
+        dlcTabLoading = false
+    }
+
     // The tile tapped in the icon-only grid → drives the caption bar. Reset when the game changes.
     var selectedAch by remember(appId) { mutableStateOf<SteamAchievement?>(null) }
 
@@ -1611,26 +1661,88 @@ private fun SteamGameDetailScreen(
                 onSelect = { selectedAch = it },
             )
 
-            // DLC = the owned-DLC summary + the existing (bottom-sheet) picker.
+            // DLC = the FULL owned-DLC list (each tagged by how its content is delivered) + the existing
+            // depot-bundled picker. `dlcTabRows` broadens what the tab DISPLAYS to every owned DLC;
+            // `dlcEntries` (depot-bundled subset) still drives the "Choose DLC" download picker/size.
             DetailTab.DLC -> Column(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 16.dp),
             ) {
-                if (dlcEntries.isEmpty()) {
-                    Text(
+                val ownedDlc = dlcTabRows.filter { it.owned }
+                val unownedDlc = dlcTabRows.filter { !it.owned }
+                when {
+                    // Still resolving and nothing cached yet — brief, only on a never-resolved game.
+                    dlcTabLoading && dlcTabRows.isEmpty() && !dlcHasAny -> Text(
+                        text = "Loading DLC…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    // Resolved and the game genuinely lists no DLC.
+                    !dlcHasAny -> Text(
                         text = "No DLC available for this game.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                } else {
-                    Text(
-                        text = includedDlcText.ifEmpty { "Choose which owned DLC download with this game." },
+                    // Has DLC, but the user owns none of it.
+                    ownedDlc.isEmpty() -> Text(
+                        text = "You don't own any DLC for this game.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OutlinedButton(
-                        onClick = onDlcLineClick,
-                        modifier = Modifier.padding(top = 10.dp),
-                    ) { Text("Choose DLC") }
+                    else -> {
+                        Text(
+                            text = "Your DLC",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        ownedDlc.forEach { entry ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            ) {
+                                Text(
+                                    text = entry.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                InfoChip(entry.tag)
+                            }
+                        }
+                        // Depot-bundled owned DLC can be opted out of the download — keep the existing
+                        // picker (gated on the depot-bundled subset; entitlement DLC have nothing to toggle).
+                        if (dlcEntries.isNotEmpty()) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = includedDlcText.ifEmpty { "Choose which owned DLC download with this game." },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            OutlinedButton(
+                                onClick = onDlcLineClick,
+                                modifier = Modifier.padding(top = 8.dp),
+                            ) { Text("Choose DLC") }
+                        }
+                    }
+                }
+                // Optional: DLC the game has but the user doesn't own, greyed, for context.
+                if (unownedDlc.isNotEmpty()) {
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = "Not owned",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    unownedDlc.forEach { entry ->
+                        Text(
+                            text = entry.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        )
+                    }
                 }
             }
 

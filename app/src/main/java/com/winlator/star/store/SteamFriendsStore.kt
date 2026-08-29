@@ -263,7 +263,21 @@ object SteamFriendsStore {
                     if (relationshipOf(sf, sid) != EFriendRelationship.Friend) continue
                     val id = sid.convertToUInt64()
                     friendIds.add(id)
-                    friendMap[id] = buildFromHandler(sf, sid)
+                    val fresh = buildFromHandler(sf, sid)
+                    val prev = friendMap[id]
+                    // A re-scan can momentarily read Offline for friends who are actually online — the
+                    // handler's persona cache resets after we re-announce our own state and Steam doesn't
+                    // re-push right away. Don't downgrade a friend we already know is online/away/in-game to
+                    // Offline here (that wiped everyone to Offline on re-entry); real offline transitions
+                    // still arrive via onPersonaState. Adopt any freshly-resolved name/avatar though.
+                    friendMap[id] = if (prev != null && fresh.presence == Presence.OFFLINE && prev.presence != Presence.OFFLINE) {
+                        prev.copy(
+                            personaName = fresh.personaName.ifBlank { prev.personaName },
+                            avatarHash = fresh.avatarHash ?: prev.avatarHash,
+                        )
+                    } else {
+                        fresh
+                    }
                 }
                 publish()
                 // Our own persona (name + avatar) for our own chat bubbles.

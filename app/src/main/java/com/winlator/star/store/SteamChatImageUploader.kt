@@ -106,8 +106,10 @@ object SteamChatImageUploader {
                 resp.code to (resp.body?.string() ?: "")
             }
             if (beginCode != 200) {
-                lastError = "begin $beginCode"
-                Log.w(TAG, "begin http $beginCode")
+                // Include a snippet of Steam's response body — it carries the actual reason for a 400.
+                val why = beginBody.trim().replace('\n', ' ').take(300)
+                lastError = "begin $beginCode" + if (why.isNotEmpty()) ": $why" else ""
+                Log.w(TAG, "begin http $beginCode: $beginBody")
                 return null
             }
             val beginJson = JSONObject(beginBody)

@@ -84,7 +84,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
@@ -1298,6 +1298,10 @@ fun ChatScreen(
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val chatScope = rememberCoroutineScope()
+    // Re-pin to the newest message whenever the message area SHRINKS (keyboard opening via adjustResize +
+    // imePadding) so the latest chat stays visible above the keyboard. Height-based, because IME insets
+    // aren't exposed to Compose under this Activity's config (adjustResize, non-edge-to-edge).
+    var lastListHeight by remember { mutableStateOf(0) }
     // Open at the first unread message (captured before openChat clears the count), else the bottom.
     // New messages arriving while viewing animate to the bottom.
     val unreadAtOpen = remember(friend.steamId) { SteamFriendsStore.unread.value[friend.steamId] ?: 0 }
@@ -1373,7 +1377,15 @@ fun ChatScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onSizeChanged { sz ->
+                            // Message area shrank (keyboard opened) → pin to the newest message.
+                            if (sz.height < lastListHeight && messages.isNotEmpty()) {
+                                chatScope.launch { listState.animateScrollToItem(messages.size - 1) }
+                            }
+                            lastListHeight = sz.height
+                        },
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         horizontal = 12.dp, vertical = 8.dp,
                     ),
@@ -1467,15 +1479,7 @@ fun ChatScreen(
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it; if (it.isNotEmpty()) SteamFriendsStore.sendTyping(friend.steamId) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .onFocusChanged { fs ->
-                            // When the field gains focus (keyboard opening), pin to the newest message
-                            // once the imePadding/resize settles, so the latest chat stays readable.
-                            if (fs.isFocused && messages.isNotEmpty()) {
-                                chatScope.launch { delay(220); listState.animateScrollToItem(messages.size - 1) }
-                            }
-                        },
+                    modifier = Modifier.weight(1f),
                     placeholder = { Text("Message") },
                     maxLines = 4,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),

@@ -134,6 +134,10 @@ object SteamFriendsStore {
         ),
     )
 
+    // True once we've announced online + fetched all statuses for the current live session. Re-doing
+    // that on every screen open churned presence to Offline; a fresh session re-arms it (listener below).
+    @Volatile private var syncedThisSession = false
+
     /** Presence sections the user has collapsed/hidden — persisted so it's remembered across opens. */
     private val _collapsedSections = MutableStateFlow<Set<Presence>>(emptySet())
     val collapsedSections: StateFlow<Set<Presence>> = _collapsedSections.asStateFlow()
@@ -149,6 +153,13 @@ object SteamFriendsStore {
                 // Only a full sign-out / account switch wipes cached chat; a transient SessionExpired
                 // (e.g. app backgrounded) keeps the conversation so it's still there on foreground.
                 if (ev == "LoggedOut") reset()
+                // Any session drop/change re-arms the one-time online sync so presence re-fetches once the
+                // session is live again. A plain screen re-open must NOT re-sync (that churned presence).
+                if (ev == "LoggedOut" || ev == "SessionExpired" ||
+                    ev.startsWith("SteamStatus:CONNECTING") || ev.startsWith("SteamStatus:OFFLINE")
+                ) {
+                    syncedThisSession = false
+                }
             })
         } catch (t: Throwable) {
             Log.w(TAG, "listener registration failed", t)
@@ -172,6 +183,7 @@ object SteamFriendsStore {
         // shown; live changes still arrive via onPersonaState. Only session/chat state is cleared here.
         histories.clear()       // privacy: don't let a different account read cached chat from memory
         loadedForAccount = 0L
+        syncedThisSession = false
         activeChatId = 0L
         _self.value = null
         _chat.value = ChatSession(0L, emptyList())
@@ -280,21 +292,10 @@ object SteamFriendsStore {
                     if (relationshipOf(sf, sid) != EFriendRelationship.Friend) continue
                     val id = sid.convertToUInt64()
                     friendIds.add(id)
-                    val fresh = buildFromHandler(sf, sid)
-                    val prev = friendMap[id]
-                    // A re-scan can momentarily read Offline for friends who are actually online — the
-                    // handler's persona cache resets after we re-announce our own state and Steam doesn't
-                    // re-push right away. Don't downgrade a friend we already know is online/away/in-game to
-                    // Offline here (that wiped everyone to Offline on re-entry); real offline transitions
-                    // still arrive via onPersonaState. Adopt any freshly-resolved name/avatar though.
-                    friendMap[id] = if (prev != null && fresh.presence == Presence.OFFLINE && prev.presence != Presence.OFFLINE) {
-                        prev.copy(
-                            personaName = fresh.personaName.ifBlank { prev.personaName },
-                            avatarHash = fresh.avatarHash ?: prev.avatarHash,
-                        )
-                    } else {
-                        fresh
-                    }
+                    // Only build friends we don't already have — existing presence is owned by the live
+                    // onPersonaState callbacks. Rebuilding the whole map on every open is what wiped
+                    // everyone to Offline (the handler's persona cache reads Offline on a re-scan).
+                    if (friendMap[id] == null) friendMap[id] = buildFromHandler(sf, sid)
                 }
                 publish()
                 // Our own persona (name + avatar) for our own chat bubbles.
@@ -310,8 +311,14 @@ object SteamFriendsStore {
                 }
                 // Appear online so Steam pushes live friend PersonaStateCallbacks, then pull a fresh
                 // snapshot for everyone (fills persona name / avatar / rich game state).
-                try { sf.setPersonaState(EPersonaState.Online) } catch (_: Throwable) {}
-                if (ids.isNotEmpty()) try { sf.requestFriendInfo(ids, PERSONA_INFO_FLAGS) } catch (_: Throwable) {}
+                // Announce online + fetch everyone's status ONCE per live session. Doing this on every
+                // screen open churned presence (it resets the persona cache + triggers an Offline burst);
+                // plain navigation now just shows the retained roster. A fresh session re-arms it.
+                if (!syncedThisSession) {
+                    syncedThisSession = true
+                    try { sf.setPersonaState(EPersonaState.Online) } catch (_: Throwable) {}
+                    if (ids.isNotEmpty()) try { sf.requestFriendInfo(ids, PERSONA_INFO_FLAGS) } catch (_: Throwable) {}
+                }
             } catch (t: Throwable) {
                 Log.w(TAG, "refresh failed", t)
             }

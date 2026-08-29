@@ -1,7 +1,11 @@
 package com.winlator.star.store
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +58,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,6 +106,8 @@ fun FriendsListScreen(
 ) {
     val friends by SteamFriendsStore.friends.collectAsState()
     var showAdd by remember { mutableStateOf(false) }
+    var menuFriend by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
+    val ctx = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -151,6 +158,30 @@ fun FriendsListScreen(
                 onAdd = { SteamFriendsStore.addFriend(it); showAdd = false },
             )
         }
+        menuFriend?.let { f ->
+            FriendActionsDialog(
+                friend = f,
+                onDismiss = { menuFriend = null },
+                onMessage = { menuFriend = null; onOpenChat(f) },
+                onJoin = {
+                    menuFriend = null
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(ctx, SteamGameDetailActivity::class.java)
+                                .putExtra(SteamGameDetailActivity.EXTRA_APP_ID, f.gameAppId),
+                        )
+                    }
+                },
+                onProfile = {
+                    menuFriend = null
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/profiles/${f.steamId}")),
+                        )
+                    }
+                },
+            )
+        }
 
         when {
             !available -> ConnectState()
@@ -187,6 +218,7 @@ fun FriendsListScreen(
                                     friend = friend,
                                     unread = unread[friend.steamId] ?: 0,
                                     onClick = { onOpenChat(friend) },
+                                    onLongClick = { menuFriend = friend },
                                 )
                                 if (index < group.lastIndex) FriendDivider()
                             }
@@ -196,6 +228,31 @@ fun FriendsListScreen(
             }
         }
     }
+}
+
+@Composable
+private fun FriendActionsDialog(
+    friend: SteamFriendsStore.SteamFriend,
+    onDismiss: () -> Unit,
+    onMessage: () -> Unit,
+    onJoin: () -> Unit,
+    onProfile: () -> Unit,
+) {
+    val inGame = friend.presence == SteamFriendsStore.Presence.IN_GAME && friend.gameAppId != 0
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(friend.displayName) },
+        text = {
+            Column {
+                TextButton(onClick = onMessage) { Text("Message") }
+                if (inGame) {
+                    TextButton(onClick = onJoin) { Text("Join ${friend.gameName ?: "game"}") }
+                }
+                TextButton(onClick = onProfile) { Text("View Steam profile") }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }
 
 @Composable
@@ -345,11 +402,17 @@ private fun UnreadBadge(count: Int) {
 }
 
 @Composable
-private fun FriendRow(friend: SteamFriendsStore.SteamFriend, unread: Int, onClick: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun FriendRow(
+    friend: SteamFriendsStore.SteamFriend,
+    unread: Int,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

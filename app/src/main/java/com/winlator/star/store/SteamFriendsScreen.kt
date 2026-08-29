@@ -9,7 +9,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.winlator.star.util.InAppFilePicker
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,6 +100,7 @@ private val DotOffline = Color(0xFF6D7883)
 // List chrome — thin gray lines, pop-up-menu style, read as subtle grays on the dark surface.
 private val RowDivider = Color(0x1AFFFFFF)      // between friends within a section
 private val SectionDivider = Color(0x2EFFFFFF)  // between sections (In game / Online / Offline)
+private val MenuOutline = Color(0x40FFFFFF)     // pop-up menu / dialog outline stroke
 private val UnreadBg = Color(0xFFE53935)        // unread-count badge fill
 
 private fun dotColor(p: SteamFriendsStore.Presence): Color = when (p) {
@@ -287,28 +292,59 @@ private fun FriendActionsDialog(
 ) {
     val inGame = friend.presence == SteamFriendsStore.Presence.IN_GAME && friend.gameAppId != 0
     var confirmRemove by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(friend.displayName) },
-        text = {
+    // Compact, outlined pop-up menu that hugs its options with a divider between each.
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MenuOutline),
+            tonalElevation = 6.dp,
+            modifier = Modifier.width(280.dp),
+        ) {
             Column {
-                TextButton(onClick = onMessage) { Text("Message") }
+                Text(
+                    text = friend.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                )
+                HorizontalDivider(thickness = 1.dp, color = SectionDivider)
+                MenuActionRow("Message", onClick = onMessage)
                 if (inGame) {
-                    TextButton(onClick = onJoin) { Text("Join ${friend.gameName ?: "game"}") }
+                    HorizontalDivider(thickness = 1.dp, color = RowDivider)
+                    MenuActionRow("Join ${friend.gameName ?: "game"}", onClick = onJoin)
                 }
-                TextButton(onClick = onProfile) { Text("View Steam profile") }
+                HorizontalDivider(thickness = 1.dp, color = RowDivider)
+                MenuActionRow("View Steam profile", onClick = onProfile)
+                HorizontalDivider(thickness = 1.dp, color = RowDivider)
                 if (!confirmRemove) {
-                    TextButton(onClick = { confirmRemove = true }) {
-                        Text("Remove friend", color = MaterialTheme.colorScheme.error)
-                    }
+                    MenuActionRow("Remove friend", tint = MaterialTheme.colorScheme.error) { confirmRemove = true }
                 } else {
-                    TextButton(onClick = onRemove) {
-                        Text("Tap again to confirm removal", color = MaterialTheme.colorScheme.error)
-                    }
+                    MenuActionRow("Tap again to confirm removal", tint = MaterialTheme.colorScheme.error, onClick = onRemove)
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        }
+    }
+}
+
+/** A single full-width, compact, tappable row inside a pop-up menu. */
+@Composable
+private fun MenuActionRow(
+    label: String,
+    tint: Color = Color.Unspecified,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        color = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurface else tint,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
     )
 }
 
@@ -443,6 +479,8 @@ private fun AddFriendDialog(onDismiss: () -> Unit) {
     }
 
     AlertDialog(
+        modifier = Modifier.border(1.dp, MenuOutline, RoundedCornerShape(28.dp)),
+        shape = RoundedCornerShape(28.dp),
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {

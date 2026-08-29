@@ -259,6 +259,22 @@ object SteamFriendsStore {
         }
     }
 
+    /** Send a friend request. [input] is a SteamID64 (numeric) or an account name / vanity. */
+    fun addFriend(input: String) {
+        val q = input.trim()
+        if (q.isEmpty()) return
+        io.execute {
+            try {
+                val sf = repo.steamFriends ?: return@execute
+                val id64 = q.toLongOrNull()
+                if (id64 != null && id64 > 76561197960265728L) sf.addFriend(SteamID(id64))
+                else sf.addFriend(q)
+            } catch (t: Throwable) {
+                Log.w(TAG, "addFriend failed", t)
+            }
+        }
+    }
+
     /** FriendsListCallback: full or incremental roster. Populates [friendIds] + placeholder entries. */
     fun onFriendsList(cb: FriendsListCallback) {
         try {

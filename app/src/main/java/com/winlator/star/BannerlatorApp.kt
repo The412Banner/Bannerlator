@@ -9,6 +9,8 @@ import com.winlator.star.perf.PerfRevertRegistry
 import com.winlator.star.perf.PerformanceSettings
 import com.winlator.star.perf.RootManager
 import com.winlator.star.perf.TempWatchdog
+import com.winlator.star.store.SteamPrefs
+import com.winlator.star.store.SteamRepository
 
 /**
  * The app's Application. Its sole current job is standing up the power-user performance safety core
@@ -100,6 +102,21 @@ class BannerlatorApp : Application() {
             // App-level background => revert privileged writes (a single game Activity stopping is
             // handled in XServerDisplayActivity; this catches process-wide backgrounding).
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    // Reconnect Steam the moment the app returns to the foreground if the session dropped
+                    // while backgrounded (auto-reconnect gives up after a few tries, so friends/chat would
+                    // otherwise sit disconnected until something else pokes it). Guarded to OFFLINE only, so
+                    // a SteamLite game holding the session (SIGNED_IN_ELSEWHERE) is never tugged.
+                    try {
+                        if (SteamPrefs.isLoggedIn) {
+                            val repo = SteamRepository.getInstance()
+                            if (repo.status == SteamRepository.SteamStatus.OFFLINE) repo.reconnectNow()
+                        }
+                    } catch (t: Throwable) {
+                        Log.w("BannerlatorApp", "foreground reconnect failed", t)
+                    }
+                }
+
                 override fun onStop(owner: LifecycleOwner) {
                     try { PerfRevertRegistry.revertAll() } catch (t: Throwable) {
                         Log.w("BannerlatorApp", "background revert failed", t)

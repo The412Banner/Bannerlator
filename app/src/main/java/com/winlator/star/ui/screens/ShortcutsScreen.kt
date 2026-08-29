@@ -372,17 +372,16 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             if (verify) SteamGameUpdater.verifyFiles(context, appId, progress, done)
             else SteamGameUpdater.updateNow(context, appId, progress, done)
     }
-    // The single launch choke point for the game grid/list. A Steam-origin game opens the launch-method
-    // popup first (unless the user already picked a method AND ticked "Remember" for it); everything else
-    // launches straight away via launchShortcutNow. A REMEMBERED RealSteam pick now launches DIRECTLY —
-    // update/verify are manual (the popup's buttons), no longer an auto-gate before launch. Goldberg/Raw
-    // and non-Steam shortcuts are untouched.
+    // The single launch choke point for the game grid/list. Every game opens the source-adaptive
+    // launch-method popup first (Steam → SteamLite/Goldberg/Raw; Epic/GOG/Custom → Raw-only), UNLESS the
+    // user already picked a method AND ticked "Remember" for it — a remembered pick launches DIRECTLY via
+    // launchShortcutNow (the launchMode extra is honored by the launch pipeline; "Raw" is a plain launch).
     fun requestLaunch(shortcut: Shortcut) {
         val remembered = shortcut.getExtra("launchMode", "").isNotEmpty() &&
             shortcut.getExtra("launchModeRemembered", "") == "1"
         when {
-            isSteamOriginShortcut(shortcut) && !remembered -> launchChoiceFor = shortcut
-            else -> launchShortcutNow(activity, shortcut)
+            remembered -> launchShortcutNow(activity, shortcut)
+            else -> launchChoiceFor = shortcut
         }
     }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -2758,6 +2757,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                 },
                             )
                         } else applyThenLaunch()
+                    }
+                    "Raw" -> {
+                        // Raw: run the game's .exe directly with no Steam layer (Epic/GOG/Custom, or a
+                        // Steam game the user chose to run raw). The launchMode="Raw" extra is inert to the
+                        // launch pipeline (only "RealSteam" stages the agent), so this is a plain launch.
+                        launchShortcutNow(activity, s)
                     }
                     else -> {
                         // RealSteam (SteamLite): ensure the SteamLite package is present (download on

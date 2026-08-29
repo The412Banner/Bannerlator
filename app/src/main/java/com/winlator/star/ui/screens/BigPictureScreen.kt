@@ -354,17 +354,17 @@ fun BigPictureScreen(navController: NavController) {
     val selected = shortcuts.getOrNull(selectedIndex)
     val heroCover = selected?.let { coverCache[it.name] }
 
-    // Steam-origin games open the launch-method popup first (unless a remembered choice already exists);
-    // everything else launches straight away. Mirrors the phone UI's requestLaunch (ShortcutsScreen). A
-    // remembered RealSteam pick now launches DIRECTLY — update/verify are the popup's manual buttons, no
-    // longer an auto-gate before launch. Goldberg/Raw are untouched.
+    // Every game opens the source-adaptive launch-method popup first (Steam → SteamLite/Goldberg/Raw;
+    // Epic/GOG/Custom → Raw-only), unless a remembered choice already exists. Mirrors the phone UI's
+    // requestLaunch (ShortcutsScreen): a remembered pick launches DIRECTLY (the launchMode extra is honored
+    // by the launch pipeline; "Raw" is a plain launch).
     val onLaunch: () -> Unit = {
         selected?.let { sc ->
             val remembered = sc.getExtra("launchMode", "").isNotEmpty() &&
                 sc.getExtra("launchModeRemembered", "") == "1"
             when {
-                isSteamOriginShortcut(sc) && !remembered -> launchChoiceFor = sc
-                else -> launchShortcut(activity, sc)
+                remembered -> launchShortcut(activity, sc)
+                else -> launchChoiceFor = sc
             }
         }
     }
@@ -886,11 +886,13 @@ fun BigPictureScreen(navController: NavController) {
             // shared progress modal (so the dialog isn't layered behind the ModalBottomSheet's window).
             onUpdateFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = false) },
             onVerifyFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = true) },
-            onLaunch = { mode, goldbergMode, remember ->
+            onLaunch = { mode, goldbergMode, remember, controllerPassthrough ->
                 // Persist the choice on the shortcut (contract literals: launchMode ∈ RealSteam/Goldberg/Raw,
                 // launchModeRemembered="1"), then stage the picked component and launch.
                 s.putExtra("launchMode", mode)
                 s.putExtra("launchModeRemembered", if (remember) "1" else "0")
+                // Per-game "Controller passthrough" (read only on RealSteam launches; inert otherwise).
+                s.putExtra("controllerPassthrough", if (controllerPassthrough) "1" else "0")
                 s.saveData()
                 launchChoiceFor = null
                 when (mode) {
@@ -928,6 +930,12 @@ fun BigPictureScreen(navController: NavController) {
                                 },
                             )
                         } else applyThenLaunch()
+                    }
+                    "Raw" -> {
+                        // Raw: run the game's .exe directly, no Steam layer (Epic/GOG/Custom, or a Steam
+                        // game the user chose to run raw). launchMode="Raw" is inert to the launch pipeline
+                        // (only "RealSteam" stages the agent), so this is a plain launch.
+                        launchShortcut(activity, s)
                     }
                     else -> {
                         // RealSteam (SteamLite): ensure the SteamLite package is present (download on

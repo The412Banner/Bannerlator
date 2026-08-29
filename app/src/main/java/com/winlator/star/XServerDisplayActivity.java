@@ -2082,7 +2082,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             screenSize = shortcut.getExtra("screenSize", container.getScreenSize());
             lc_all = shortcut.getExtra("lc_all", container.getLC_ALL());
             String inputType = shortcut.getExtra("inputType");
-            if (!inputType.isEmpty()) winHandler.setInputType(Byte.parseByte(inputType));
+            if (isControllerPassthroughLaunch()) {
+                // Controller passthrough (lever 3): force DInput-only so a classic game reads the pad
+                // directly. Overrides the shortcut's own inputType only for this RealSteam launch.
+                winHandler.setInputType(WinHandler.FLAG_INPUT_TYPE_DINPUT);
+            } else if (!inputType.isEmpty()) {
+                winHandler.setInputType(Byte.parseByte(inputType));
+            }
             String xinputDisabledString = shortcut.getExtra("disableXinput", "false");
             xinputDisabledFromShortcut = parseBoolean(xinputDisabledString);
             // Pass the value to WinHandler
@@ -4012,6 +4018,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /**
+     * Whether this launch is a RealSteam (SteamLite) launch with the per-game "Controller passthrough"
+     * toggle ON — the device-proven fix for classic DInput games (Half-Life 2, CS:S) that read the pad
+     * directly and get nothing while the genuine client holds it as Steam Input. Gates ALL passthrough
+     * behaviour: the prefix levers (in {@link RealSteamLauncher#prepare}) and the DInput input-type
+     * override below. False (byte-unchanged) for Goldberg / Raw / normal launches and for a toggle-OFF
+     * RealSteam launch.
+     */
+    private boolean isControllerPassthroughLaunch() {
+        return shortcut != null
+                && "RealSteam".equals(shortcut.getExtra("launchMode"))
+                && "1".equals(shortcut.getExtra("controllerPassthrough"))
+                && isGenuineSteamShortcut();
+    }
+
+    /**
      * Whether this shortcut is a GOG-library game: GOG shortcuts are UNTAGGED (StarLaunchBridge only
      * stamps steam/epic), so the only signal is the exec path living under the {@code gog_games} install
      * root ({@link GogInstallPath}). Used to fire GOG cloud auto-upload on exit.
@@ -4227,7 +4248,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     shortcut,
                     ref.appId,
                     displayName,
-                    ref.installDir);
+                    ref.installDir,
+                    isControllerPassthroughLaunch());
 
             if (realSteamPlan != null) {
                 Log.i("BH_REALSTEAM", "RealSteam launch armed (appId=" + realSteamPlan.appId
@@ -5194,6 +5216,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (!shortcutInputType.isEmpty()) {
                 inputType = Byte.parseByte(shortcutInputType);
             }
+        }
+        if (isControllerPassthroughLaunch()) {
+            // Controller passthrough (lever 3): force DInput-only so setJoystickRegistryKeys enables the
+            // DInput joystick path for this RealSteam launch, regardless of the container/shortcut value.
+            inputType = WinHandler.FLAG_INPUT_TYPE_DINPUT;
         }
         boolean dinputEnabled = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
         

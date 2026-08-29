@@ -93,6 +93,12 @@ public final class RealSteamLauncher {
      * @param appId               resolved Steam appId (from {@code resolveSteamAppRef})
      * @param displayName         the game's library display name (basis for the canonical folder name)
      * @param hostInstallDir      the game's real install dir on the host FS (from {@code SteamAppRef.installDir})
+     * @param controllerPassthrough  per-game "Controller passthrough" toggle: when {@code true}, make the
+     *                            genuine client get out of the pad's way for classic DInput games (levers
+     *                            1 &amp; 2 below — Steam Input off in localconfig + overlay-renderer DLLs
+     *                            removed). Lever 3 (force DInput on the launch) is applied by the caller
+     *                            ({@link com.winlator.star.XServerDisplayActivity}). Fully gated: when
+     *                            {@code false} the RealSteam launch is unchanged.
      */
     public static Plan prepare(Context ctx,
                                File driveC,
@@ -100,7 +106,8 @@ public final class RealSteamLauncher {
                                Shortcut shortcut,
                                int appId,
                                String displayName,
-                               String hostInstallDir) {
+                               String hostInstallDir,
+                               boolean controllerPassthrough) {
         try {
             // ── 0. Validate prerequisites ────────────────────────────────────────────────────────
             if (driveC == null) { Log.w(TAG, "prepare: null driveC — fallback"); return null; }
@@ -155,6 +162,18 @@ public final class RealSteamLauncher {
             if (!stageSteamLite(steamLiteInstallDir, steamDir, commonFilesSteamDir)) {
                 Log.w(TAG, "prepare: SteamLite staging failed — fallback");
                 return null;
+            }
+
+            // ── 3a-bis. Controller passthrough (per-game toggle; device-proven fix for classic
+            //    DInput games — HL2 / CS:S — that read the pad directly and get nothing while the
+            //    genuine client holds it as Steam Input). Make the client step aside: (1) disable
+            //    Steam Input's controller grabbing in this account's localconfig.vdf, and (2) drop
+            //    the overlay-renderer DLLs whose FEX HID hook breaks DirectInput. Lever 3 (force
+            //    DInput on the launch) is applied by the caller. Best-effort: any failure here is
+            //    logged and swallowed so passthrough can never block a launch. Runs AFTER staging so
+            //    a re-staged overlay DLL is removed again. No-op (byte-unchanged) when the toggle is off.
+            if (controllerPassthrough) {
+                applyControllerPassthrough(steamDir, repo);
             }
 
             // ── 3b. Register the game so LaunchApp is SECURE: symlink under the canonical name
@@ -263,6 +282,219 @@ public final class RealSteamLauncher {
             return false;
         }
         return ok;
+    }
+
+    // ── Controller passthrough (per-game toggle) ──────────────────────────────────────────────────
+
+    /** Steam Input controller-support keys we set to "0" in localconfig.vdf so the client stops
+     *  reserving XInput slots and hands the pad to the game (device-proven for HL2 / CS:S). */
+    private static final String[] STEAM_INPUT_KEYS = {
+            "SteamController_XBoxSupport",
+            "SteamController_GenericGamepadSupport",
+            "SteamController_PSSupport",
+            "SteamController_SwitchSupport",
+    };
+
+    /** Overlay renderer DLLs whose FEX HID hook breaks DirectInput — removed from the staged prefix Steam
+     *  dir for a passthrough launch. The base package doesn't ship them, so normally there's nothing to do. */
+    private static final String[] OVERLAY_DLLS = {
+            "GameOverlayRenderer.dll",
+            "GameOverlayRenderer64.dll",
+    };
+
+    /**
+     * Apply passthrough levers 1 &amp; 2 on the staged prefix Steam dir. Wholly best-effort: every failure is
+     * logged and swallowed — passthrough is a convenience that must never block a launch. Runs on the launch
+     * worker thread (via {@link #prepare}); the blocking VDF write is therefore off the main thread.
+     */
+    private static void applyControllerPassthrough(File steamDir, SteamRepository repo) {
+        try {
+            // Lever 2 — remove the overlay renderer DLLs (only present if a stale prefix / package left them).
+            for (String dll : OVERLAY_DLLS) {
+                File f = new File(steamDir, dll);
+                if (f.isFile() && f.delete()) Log.i(TAG, "passthrough: removed " + dll);
+            }
+            // Lever 1 — stop Steam Input reserving controller slots (per-account localconfig.vdf).
+            File localConfig = resolveLocalConfig(steamDir, repo);
+            if (localConfig != null) disableSteamControllerSupport(localConfig);
+            else Log.w(TAG, "passthrough: no localconfig.vdf resolvable — Steam Input keys skipped");
+        } catch (Throwable t) {
+            Log.w(TAG, "passthrough: apply failed (non-fatal): " + t.getMessage());
+        }
+    }
+
+    /**
+     * The per-account localconfig.vdf under the staged prefix:
+     * {@code Program Files (x86)\Steam\userdata\<accountid>\config\localconfig.vdf}. The 32-bit account id
+     * (SteamID3) comes from {@link SteamRepository#getAccountId()}; when it can't be resolved (0), fall back
+     * to the first existing {@code userdata/<id>/config/localconfig.vdf} on disk. Returns the account-id path
+     * even when the file doesn't exist yet ({@link #disableSteamControllerSupport} creates it), or {@code null}
+     * only when the id is unknown and no existing file can be found.
+     */
+    private static File resolveLocalConfig(File steamDir, SteamRepository repo) {
+        File userdata = new File(steamDir, "userdata");
+        int accountId = (repo != null) ? repo.getAccountId() : 0;
+        if (accountId > 0) return new File(userdata, accountId + "/config/localconfig.vdf");
+        File[] users = userdata.listFiles();
+        if (users != null) {
+            for (File u : users) {
+                File cfg = new File(u, "config/localconfig.vdf");
+                if (cfg.isFile()) {
+                    Log.i(TAG, "passthrough: accountId unresolved — using globbed " + u.getName());
+                    return cfg;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Idempotently set the four {@link #STEAM_INPUT_KEYS} to "0" inside {@code localconfig.vdf}'s top-level
+     * {@code UserLocalConfigStore > system} block. Creates the file (with just the system block) when absent,
+     * creates the system block when missing, rewrites an existing key's value in place, and never duplicates a
+     * key. It's a Valve KeyValues/VDF text file; the editor preserves every other key, the file's indentation,
+     * and its line endings, and leaves the file untouched (returning without a write) if the root block isn't
+     * the expected {@code UserLocalConfigStore}.
+     */
+    private static void disableSteamControllerSupport(File localConfig) {
+        try {
+            File dir = localConfig.getParentFile();
+            if (dir != null && !dir.exists() && !dir.mkdirs()) {
+                Log.w(TAG, "passthrough: could not create localconfig dir — Steam Input keys skipped");
+                return;
+            }
+            String content = localConfig.isFile() ? FileUtils.readString(localConfig) : null;
+            String updated = (content == null || content.trim().isEmpty())
+                    ? freshLocalConfig()
+                    : injectSteamInputKeys(content);
+            if (updated == null) {
+                Log.w(TAG, "passthrough: localconfig.vdf shape unexpected — Steam Input keys left as-is");
+                return;
+            }
+            if (!updated.equals(content)) {
+                if (FileUtils.writeString(localConfig, updated))
+                    Log.i(TAG, "passthrough: Steam Input controller support disabled in localconfig.vdf");
+                else
+                    Log.w(TAG, "passthrough: failed writing localconfig.vdf");
+            } else {
+                Log.i(TAG, "passthrough: Steam Input already disabled (localconfig.vdf unchanged)");
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "passthrough: localconfig.vdf edit failed (non-fatal): " + t.getMessage());
+        }
+    }
+
+    /** A minimal but valid localconfig.vdf carrying just the disabled Steam-Input keys (fresh prefix). */
+    private static String freshLocalConfig() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\"UserLocalConfigStore\"\n{\n\t\"system\"\n\t{\n");
+        for (String k : STEAM_INPUT_KEYS) sb.append("\t\t\"").append(k).append("\"\t\t\"0\"\n");
+        sb.append("\t}\n}\n");
+        return sb.toString();
+    }
+
+    /**
+     * Return {@code content} with the four Steam-Input keys forced to "0" inside {@code UserLocalConfigStore >
+     * system} — rewriting a present key in place and inserting any missing one before the block's close brace,
+     * synthesizing the {@code system} block when absent. Returns {@code null} (caller skips the write) when the
+     * root isn't {@code UserLocalConfigStore}. A brace-depth + block-name walk over the tab-indented KeyValues;
+     * unit-tested for idempotency, in-place flips, block synthesis, CRLF preservation, and foreign-root safety.
+     */
+    static String injectSteamInputKeys(String content) {
+        String nl = content.contains("\r\n") ? "\r\n" : "\n";
+        java.util.List<String> lines =
+                new java.util.ArrayList<>(java.util.Arrays.asList(content.split("\r\n|\r|\n", -1)));
+
+        int rootOpen = -1, rootClose = -1, sysOpen = -1, sysClose = -1;
+        java.util.Deque<String> stack = new java.util.ArrayDeque<>();
+        String pendingKey = null;
+        int depth = 0;
+        for (int i = 0; i < lines.size(); i++) {
+            String t = lines.get(i).trim();
+            if (t.isEmpty()) continue;
+            if (t.equals("{")) {
+                String parent = stack.peek();
+                depth++;
+                String name = (pendingKey != null) ? pendingKey : "";
+                stack.push(name);
+                pendingKey = null;
+                if (depth == 1 && "UserLocalConfigStore".equalsIgnoreCase(name)) rootOpen = i;
+                if (depth == 2 && "system".equalsIgnoreCase(name)
+                        && "UserLocalConfigStore".equalsIgnoreCase(parent)) sysOpen = i;
+                continue;
+            }
+            if (t.equals("}")) {
+                String name = stack.isEmpty() ? "" : stack.pop();
+                if ("system".equalsIgnoreCase(name) && sysOpen >= 0 && sysClose < 0) sysClose = i;
+                if ("UserLocalConfigStore".equalsIgnoreCase(name) && rootOpen >= 0 && rootClose < 0) rootClose = i;
+                depth--;
+                pendingKey = null;
+                continue;
+            }
+            String key = firstQuoted(t);
+            if (key == null) { pendingKey = null; continue; }
+            pendingKey = hasSecondQuoted(t) ? null : key;   // a lone quoted token is a block header
+        }
+
+        if (rootOpen < 0 || rootClose < 0) return null;     // not a localconfig shape — skip safely
+
+        java.util.Set<String> targets = new java.util.LinkedHashSet<>(java.util.Arrays.asList(STEAM_INPUT_KEYS));
+        if (sysOpen >= 0 && sysClose >= 0 && sysClose > sysOpen) {
+            String leafIndent = null;
+            java.util.Set<String> present = new java.util.HashSet<>();
+            for (int i = sysOpen + 1; i < sysClose; i++) {
+                String line = lines.get(i);
+                if (line.trim().isEmpty()) continue;
+                if (leafIndent == null) leafIndent = leadingWhitespace(line);
+                String key = firstQuoted(line.trim());
+                if (key != null && targets.contains(key)) {
+                    lines.set(i, leadingWhitespace(line) + "\"" + key + "\"\t\t\"0\"");
+                    present.add(key);
+                }
+            }
+            if (leafIndent == null) leafIndent = leadingWhitespace(lines.get(sysOpen)) + "\t";
+            java.util.List<String> insert = new java.util.ArrayList<>();
+            for (String k : targets) if (!present.contains(k)) insert.add(leafIndent + "\"" + k + "\"\t\t\"0\"");
+            lines.addAll(sysClose, insert);
+        } else {
+            String childIndent = null;
+            for (int i = rootOpen + 1; i < rootClose; i++) {
+                if (!lines.get(i).trim().isEmpty()) { childIndent = leadingWhitespace(lines.get(i)); break; }
+            }
+            if (childIndent == null) childIndent = leadingWhitespace(lines.get(rootOpen)) + "\t";
+            String keyIndent = childIndent + "\t";
+            java.util.List<String> block = new java.util.ArrayList<>();
+            block.add(childIndent + "\"system\"");
+            block.add(childIndent + "{");
+            for (String k : targets) block.add(keyIndent + "\"" + k + "\"\t\t\"0\"");
+            block.add(childIndent + "}");
+            lines.addAll(rootClose, block);
+        }
+        return String.join(nl, lines);
+    }
+
+    private static String firstQuoted(String s) {
+        int a = s.indexOf('"');
+        if (a < 0) return null;
+        int b = s.indexOf('"', a + 1);
+        if (b < 0) return null;
+        return s.substring(a + 1, b);
+    }
+
+    private static boolean hasSecondQuoted(String s) {
+        int a = s.indexOf('"');
+        if (a < 0) return false;
+        int b = s.indexOf('"', a + 1);
+        if (b < 0) return false;
+        int c = s.indexOf('"', b + 1);
+        if (c < 0) return false;
+        return s.indexOf('"', c + 1) >= 0;
+    }
+
+    private static String leadingWhitespace(String s) {
+        int i = 0;
+        while (i < s.length() && (s.charAt(i) == ' ' || s.charAt(i) == '\t')) i++;
+        return s.substring(0, i);
     }
 
     /**

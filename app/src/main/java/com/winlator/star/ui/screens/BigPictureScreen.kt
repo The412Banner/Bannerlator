@@ -886,11 +886,13 @@ fun BigPictureScreen(navController: NavController) {
             // shared progress modal (so the dialog isn't layered behind the ModalBottomSheet's window).
             onUpdateFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = false) },
             onVerifyFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = true) },
-            onLaunch = { mode, goldbergMode, remember ->
+            onLaunch = { mode, goldbergMode, remember, controllerPassthrough ->
                 // Persist the choice on the shortcut (contract literals: launchMode ∈ RealSteam/Goldberg/Raw,
                 // launchModeRemembered="1"), then stage the picked component and launch.
                 s.putExtra("launchMode", mode)
                 s.putExtra("launchModeRemembered", if (remember) "1" else "0")
+                // Per-game "Controller passthrough" (read only on RealSteam launches; inert otherwise).
+                s.putExtra("controllerPassthrough", if (controllerPassthrough) "1" else "0")
                 s.saveData()
                 launchChoiceFor = null
                 when (mode) {

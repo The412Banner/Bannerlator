@@ -102,7 +102,7 @@ private val OnlineGreen = Color(0xFF3FB950)
 fun LaunchMethodSheet(
     shortcut: Shortcut,
     onDismiss: () -> Unit,
-    onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean) -> Unit,
+    onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean, controllerPassthrough: Boolean) -> Unit,
     // Manual maintenance for the RealSteam / SteamLite path (real-Steam "Verify integrity" + "Update").
     // Nullable so callers that don't wire them (or non-Steam contexts) still compile; the maintenance row
     // only shows for an installed SteamLite pick with a resolvable appId.
@@ -128,6 +128,9 @@ fun LaunchMethodSheet(
     var rememberChoice by remember(shortcut) { mutableStateOf(shortcut.getExtra("launchModeRemembered", "") == "1") }
     var liteHelpOpen by remember(shortcut) { mutableStateOf(false) }
     var goldHelpOpen by remember(shortcut) { mutableStateOf(false) }
+    // Per-game "Controller passthrough" (RealSteam only) — seed from the shortcut, default OFF.
+    var controllerPassthrough by remember(shortcut) { mutableStateOf(shortcut.getExtra("controllerPassthrough", "") == "1") }
+    var passthroughHelpOpen by remember(shortcut) { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -192,6 +195,14 @@ fun LaunchMethodSheet(
                     icon = if (steamLiteInstalled) Icons.Filled.CheckCircle else Icons.Filled.CloudDownload,
                     text = "SteamLite package · agent + Steam client · 18 MB",
                     state = if (steamLiteInstalled) "Installed" else "Downloads on launch",
+                )
+                Spacer(Modifier.height(10.dp))
+                ControllerPassthroughRow(
+                    checked = controllerPassthrough,
+                    onCheckedChange = { controllerPassthrough = it },
+                    accent = cs.primary,
+                    helpOpen = passthroughHelpOpen,
+                    onHelpToggle = { passthroughHelpOpen = !passthroughHelpOpen },
                 )
             }
 
@@ -287,6 +298,7 @@ fun LaunchMethodSheet(
                         if (steamLiteSelected) "RealSteam" else "Goldberg",
                         if (steamLiteSelected) null else goldbergMode,
                         rememberChoice,
+                        controllerPassthrough,
                     )
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -561,6 +573,57 @@ private fun StatusRow(
             color = accent,
             fontWeight = FontWeight.SemiBold,
         )
+    }
+}
+
+// ── Controller passthrough (per-game, RealSteam only) ─────────────────────────────────────────────
+
+/**
+ * The per-game "Controller passthrough" toggle inside the SteamLite (RealSteam) card. Off by default; the
+ * inline "?" expands a plain-English explanation. When ON, the launch hands the pad straight to the game
+ * (Steam Input stepped aside) so classic DirectInput titles like Half-Life 2 / CS:S see the controller.
+ */
+@Composable
+private fun ControllerPassthroughRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    accent: Color,
+    helpOpen: Boolean,
+    onHelpToggle: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Controller passthrough",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.width(8.dp))
+                HelpDot(selected = true, accent = accent, onClick = onHelpToggle)
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = accent,
+                ),
+            )
+        }
+        AnimatedVisibility(visible = helpOpen) {
+            Column {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "For classic games (Half-Life 2, CS:S) that don't work with a controller in " +
+                        "Real-Steam mode — hands the pad straight to the game. Leave off for modern games.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

@@ -1,7 +1,11 @@
 package com.winlator.star.store
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,7 +48,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,6 +105,8 @@ fun FriendsListScreen(
 ) {
     val friends by SteamFriendsStore.friends.collectAsState()
     var showAdd by remember { mutableStateOf(false) }
+    var menuFriend by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
+    val ctx = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -151,6 +157,30 @@ fun FriendsListScreen(
                 onAdd = { SteamFriendsStore.addFriend(it); showAdd = false },
             )
         }
+        menuFriend?.let { f ->
+            FriendActionsDialog(
+                friend = f,
+                onDismiss = { menuFriend = null },
+                onMessage = { menuFriend = null; onOpenChat(f) },
+                onJoin = {
+                    menuFriend = null
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(ctx, SteamGameDetailActivity::class.java)
+                                .putExtra(SteamGameDetailActivity.EXTRA_APP_ID, f.gameAppId),
+                        )
+                    }
+                },
+                onProfile = {
+                    menuFriend = null
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/profiles/${f.steamId}")),
+                        )
+                    }
+                },
+            )
+        }
 
         when {
             !available -> ConnectState()
@@ -158,9 +188,8 @@ fun FriendsListScreen(
             else -> {
                 val grouped = friends.groupBy { it.presence }
                 val unread by SteamFriendsStore.unread.collectAsState()
-                // Per-section collapse (the arrow on a section divider folds that group away — Offline is
-                // the obvious one to hide, but any section can collapse). Default: all expanded.
-                val collapsed = remember { mutableStateMapOf<SteamFriendsStore.Presence, Boolean>() }
+                // Per-section collapse (arrow folds a group away); persisted so it's remembered.
+                val collapsedSections by SteamFriendsStore.collapsedSections.collectAsState()
                 val listState = rememberLazyListState()
                 // A freshly opened list always starts at the top.
                 LaunchedEffect(Unit) { listState.scrollToItem(0) }
@@ -169,7 +198,7 @@ fun FriendsListScreen(
                     for ((presence, label) in PRESENCE_ORDER) {
                         val group = grouped[presence].orEmpty()
                         if (group.isEmpty()) continue
-                        val isCollapsed = collapsed[presence] == true
+                        val isCollapsed = presence in collapsedSections
                         val showTop = !firstSection
                         firstSection = false
                         item(key = "hdr_$presence") {
@@ -178,7 +207,7 @@ fun FriendsListScreen(
                                 count = group.size,
                                 collapsed = isCollapsed,
                                 showTopDivider = showTop,
-                                onToggle = { collapsed[presence] = !isCollapsed },
+                                onToggle = { SteamFriendsStore.setSectionCollapsed(presence, !isCollapsed) },
                             )
                         }
                         if (!isCollapsed) {
@@ -187,6 +216,7 @@ fun FriendsListScreen(
                                     friend = friend,
                                     unread = unread[friend.steamId] ?: 0,
                                     onClick = { onOpenChat(friend) },
+                                    onLongClick = { menuFriend = friend },
                                 )
                                 if (index < group.lastIndex) FriendDivider()
                             }
@@ -196,6 +226,31 @@ fun FriendsListScreen(
             }
         }
     }
+}
+
+@Composable
+private fun FriendActionsDialog(
+    friend: SteamFriendsStore.SteamFriend,
+    onDismiss: () -> Unit,
+    onMessage: () -> Unit,
+    onJoin: () -> Unit,
+    onProfile: () -> Unit,
+) {
+    val inGame = friend.presence == SteamFriendsStore.Presence.IN_GAME && friend.gameAppId != 0
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(friend.displayName) },
+        text = {
+            Column {
+                TextButton(onClick = onMessage) { Text("Message") }
+                if (inGame) {
+                    TextButton(onClick = onJoin) { Text("Join ${friend.gameName ?: "game"}") }
+                }
+                TextButton(onClick = onProfile) { Text("View Steam profile") }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }
 
 @Composable
@@ -345,11 +400,17 @@ private fun UnreadBadge(count: Int) {
 }
 
 @Composable
-private fun FriendRow(friend: SteamFriendsStore.SteamFriend, unread: Int, onClick: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun FriendRow(
+    friend: SteamFriendsStore.SteamFriend,
+    unread: Int,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -457,8 +518,19 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
 
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    // Open at the first unread message (captured before openChat clears the count), else the bottom.
+    // New messages arriving while viewing animate to the bottom.
+    val unreadAtOpen = remember(friend.steamId) { SteamFriendsStore.unread.value[friend.steamId] ?: 0 }
+    var didInitialScroll by remember(friend.steamId) { mutableStateOf(false) }
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+        if (messages.isEmpty()) return@LaunchedEffect
+        if (!didInitialScroll) {
+            val target = if (unreadAtOpen in 1..messages.size) messages.size - unreadAtOpen else messages.size - 1
+            listState.scrollToItem(target.coerceIn(0, messages.size - 1))
+            didInitialScroll = true
+        } else {
+            listState.animateScrollToItem(messages.size - 1)
+        }
     }
 
     Column(

@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ContentCut
@@ -195,6 +196,91 @@ private fun isWithin(child: File, ancestor: File): Boolean {
     val c = runCatching { child.canonicalPath }.getOrDefault(child.absolutePath)
     val a = runCatching { ancestor.canonicalPath }.getOrDefault(ancestor.absolutePath)
     return c == a || c.startsWith(a + File.separator)
+}
+
+// ── DOS file attributes (Read-only / Hidden) ──
+// The in-container file manager (wfm.exe) exposes these in its Properties dialog; this mirrors the
+// same two toggles for files browsed from the app side. No root — we only touch permission bits the
+// app owns (container files) and the Wine DOS-attribute xattr.
+
+// FILE_ATTRIBUTE_HIDDEN, as Wine encodes it in the user.DOSATTRIB extended attribute.
+private const val FILE_ATTRIBUTE_HIDDEN = 0x2
+private const val DOSATTRIB_XATTR = "user.DOSATTRIB"
+
+// Snapshot of a file's two toggleable attributes. hiddenSupported is false when the underlying
+// filesystem can't store the DOSATTRIB xattr (the FUSE /storage volumes) — the Hidden toggle is then
+// disabled while Read-only keeps working.
+private data class FileAttrState(
+    val readOnly: Boolean,
+    val hidden: Boolean,
+    val hiddenSupported: Boolean,
+)
+
+// Wine (and Samba) store user.DOSATTRIB as an ASCII hex string ("0x22"), sometimes with trailing
+// Samba fields after a separator. We only need the leading DOS-attribute hex, so read from the "0x"
+// prefix and stop at the first non-hex character.
+private fun parseDosAttrib(raw: ByteArray): Int {
+    val s = String(raw, Charsets.US_ASCII).trim()
+    val hex = if (s.startsWith("0x") || s.startsWith("0X")) s.substring(2) else s
+    val digits = hex.takeWhile { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+    return digits.toIntOrNull(16) ?: 0
+}
+
+// Read the current read-only + Wine-hidden state. Never throws: an xattr-unsupported filesystem
+// comes back hiddenSupported=false (Hidden toggle disabled), Read-only always resolves.
+private fun readFileAttrs(file: File): FileAttrState {
+    val path = file.absolutePath
+    // Read-only reflects the OWNER write bit — that's what Wine maps to FILE_ATTRIBUTE_READONLY.
+    val readOnly = runCatching {
+        (android.system.Os.stat(path).st_mode and android.system.OsConstants.S_IWUSR) == 0
+    }.getOrDefault(!file.canWrite())
+
+    var hidden = false
+    var supported = true
+    try {
+        hidden = (parseDosAttrib(android.system.Os.getxattr(path, DOSATTRIB_XATTR)) and FILE_ATTRIBUTE_HIDDEN) != 0
+    } catch (e: android.system.ErrnoException) {
+        // ENODATA: xattr namespace works, the attribute just isn't set yet -> still toggleable.
+        // ENOTSUP/EOPNOTSUPP/anything else: the fs can't store it -> disable the Hidden toggle.
+        supported = e.errno == android.system.OsConstants.ENODATA
+    } catch (e: Exception) {
+        supported = false
+    }
+    return FileAttrState(readOnly, hidden, supported)
+}
+
+// Toggle read-only by flipping the write bits, preserving every other permission bit. Setting
+// read-only clears owner/group/other write (so Wine sees FILE_ATTRIBUTE_READONLY regardless of which
+// write bit it checks); clearing it restores owner write. Falls back to File.setWritable if chmod is
+// somehow refused. Returns true on success.
+private fun setReadOnly(file: File, readOnly: Boolean): Boolean = runCatching {
+    val path = file.absolutePath
+    val mode = android.system.Os.stat(path).st_mode
+    val writeBits = android.system.OsConstants.S_IWUSR or
+        android.system.OsConstants.S_IWGRP or android.system.OsConstants.S_IWOTH
+    val newMode = if (readOnly) mode and writeBits.inv()
+        else mode or android.system.OsConstants.S_IWUSR
+    android.system.Os.chmod(path, newMode)
+    true
+}.getOrElse { file.setWritable(!readOnly, true) }
+
+// Flip Wine's DOS hidden bit in user.DOSATTRIB, preserving the other DOS-attribute bits
+// (archive/system/read-only) already encoded there, and synthesizing a minimal value when absent.
+// Writes Wine's own "0x%x" format, which Wine reads back natively. Returns false when the fs can't
+// store the xattr, so the caller can disable just the Hidden toggle.
+private fun setHidden(file: File, hidden: Boolean): Boolean = try {
+    val path = file.absolutePath
+    var attr = try {
+        parseDosAttrib(android.system.Os.getxattr(path, DOSATTRIB_XATTR))
+    } catch (e: android.system.ErrnoException) {
+        if (e.errno == android.system.OsConstants.ENODATA) 0 else throw e
+    }
+    attr = if (hidden) attr or FILE_ATTRIBUTE_HIDDEN else attr and FILE_ATTRIBUTE_HIDDEN.inv()
+    val value = "0x%x".format(attr).toByteArray(Charsets.US_ASCII)
+    android.system.Os.setxattr(path, DOSATTRIB_XATTR, value, 0)
+    true
+} catch (e: Exception) {
+    false
 }
 
 // ── Favorites: origin resolution ──
@@ -368,6 +454,8 @@ fun FileManagerScreen(
     var compactRows by remember { mutableStateOf(browsePrefs.getBoolean("fmCompactRows", false)) }
     var showNewFolderDialog by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<File?>(null) }
+    // Properties sheet (basic info + Read-only / Hidden toggles) target; null when closed.
+    var propertiesTarget by remember { mutableStateOf<File?>(null) }
     var pendingRun by remember { mutableStateOf<File?>(null) }
     var pendingAddShortcut by remember { mutableStateOf<File?>(null) }
     var isOperationRunning by remember { mutableStateOf(false) }
@@ -774,6 +862,16 @@ fun FileManagerScreen(
                 }) { Text("Rename") }
             },
             dismissButton = { TextButton(onClick = { renameTarget = null }) { Text("Cancel") } },
+        )
+    }
+
+    propertiesTarget?.let { file ->
+        FilePropertiesDialog(
+            file = file,
+            onDismiss = { propertiesTarget = null },
+            // Attribute changes affect Hidden/read-only which the listing filters/sorts on, so refresh
+            // in place (keeping scroll) after any toggle applies.
+            onChanged = { loadDirectory(currentDir, resetScroll = false) },
         )
     }
 
@@ -1550,6 +1648,7 @@ fun FileManagerScreen(
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             },
+                            onProperties = { propertiesTarget = file; showMenuFor = null },
                         )
                     }
                 }
@@ -1632,6 +1731,7 @@ fun FileManagerScreen(
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             },
+                            onProperties = { propertiesTarget = file; showMenuFor = null },
                         )
                     }
                 }
@@ -1670,6 +1770,7 @@ private fun FileContextMenuItems(
     onCut: () -> Unit,
     onDelete: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onProperties: () -> Unit,
     onDismissMenu: () -> Unit,
 ) {
     val isDir = file.isDirectory
@@ -1679,6 +1780,14 @@ private fun FileContextMenuItems(
         text = { Text("Select") },
         leadingIcon = { Icon(Icons.Filled.Checklist, null, tint = MaterialTheme.colorScheme.primary) },
         onClick = { onDismissMenu(); onSelect() },
+    )
+    MenuItemDivider()
+    // Properties: basic info + Read-only / Hidden toggles, for ANY file or folder (handy for config
+    // files like .txt/.cfg/.ini). Kept near the top since it's a common reason to open this menu.
+    DropdownMenuItem(
+        text = { Text("Properties") },
+        leadingIcon = { Icon(Icons.Filled.Info, null, tint = MaterialTheme.colorScheme.primary) },
+        onClick = { onDismissMenu(); onProperties() },
     )
     MenuItemDivider()
     // Favorites are directories — only folders get the pin toggle.
@@ -1792,6 +1901,7 @@ private fun FileItemRow(
     onFastExtract: () -> Unit = {},
     isFavorite: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    onProperties: () -> Unit = {},
 ) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val isDir = file.isDirectory
@@ -1915,6 +2025,7 @@ private fun FileItemRow(
                         onCut = onCut,
                         onDelete = onDelete,
                         onToggleFavorite = onToggleFavorite,
+                        onProperties = onProperties,
                         onDismissMenu = onDismissMenu,
                     )
                 }
@@ -2138,6 +2249,7 @@ private fun FileGridTile(
     onCut: () -> Unit = {},
     onDelete: () -> Unit = {},
     onToggleFavorite: () -> Unit = {},
+    onProperties: () -> Unit = {},
 ) {
     val isDir = file.isDirectory
     val isImage = !isDir && file.extension.lowercase() in IMAGE_THUMB_EXTS
@@ -2230,8 +2342,171 @@ private fun FileGridTile(
                 onCut = onCut,
                 onDelete = onDelete,
                 onToggleFavorite = onToggleFavorite,
+                onProperties = onProperties,
                 onDismissMenu = onDismissMenu,
             )
         }
+    }
+}
+
+/**
+ * Properties sheet for a single file or folder: basic info plus the two Windows/Wine file attributes
+ * the in-container file manager (wfm.exe) also exposes — Read-only and Hidden. Each toggle applies
+ * immediately (off the main thread) and refreshes the listing via [onChanged].
+ *
+ * State is keyed on the file so it always reflects the entry it was opened for. On a filesystem that
+ * can't store Wine's DOSATTRIB xattr (the FUSE /storage volumes) only the Hidden toggle is disabled;
+ * Read-only keeps working everywhere.
+ */
+@Composable
+private fun FilePropertiesDialog(
+    file: File,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    var attrs by remember(file.absolutePath) { mutableStateOf<FileAttrState?>(null) }
+    // Guards against a second toggle landing while the first is still being applied off-thread.
+    var busy by remember(file.absolutePath) { mutableStateOf(false) }
+    LaunchedEffect(file.absolutePath) {
+        attrs = withContext(Dispatchers.IO) { readFileAttrs(file) }
+    }
+
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Properties") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // ── Basic info ──
+                Text(
+                    text = file.name,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(6.dp))
+                PropertyLine("Location", file.parent ?: "—")
+                PropertyLine(
+                    "Type",
+                    if (file.isDirectory) "Folder"
+                    else file.extension.uppercase().let { if (it.isBlank()) "File" else "$it file" },
+                )
+                if (!file.isDirectory) PropertyLine("Size", StringUtils.formatBytes(file.length()))
+                PropertyLine("Modified", dateFormat.format(Date(file.lastModified())))
+
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                Spacer(Modifier.height(6.dp))
+
+                val state = attrs
+                // ── Read-only ── checked when the owner can't write (Wine's FILE_ATTRIBUTE_READONLY).
+                AttributeToggleRow(
+                    label = "Read-only",
+                    description = "Stops games (and Wine) from overwriting or deleting this file.",
+                    checked = state?.readOnly == true,
+                    enabled = state != null && !busy,
+                    onToggle = { want ->
+                        busy = true
+                        scope.launch {
+                            val ok = withContext(Dispatchers.IO) { setReadOnly(file, want) }
+                            busy = false
+                            if (ok) {
+                                attrs = attrs?.copy(readOnly = want)
+                                onChanged()
+                            } else {
+                                Toast.makeText(context, "Couldn't change Read-only", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                )
+                Spacer(Modifier.height(2.dp))
+                // ── Hidden ── Wine's DOS hidden bit in the user.DOSATTRIB xattr.
+                val hiddenSupported = state?.hiddenSupported == true
+                AttributeToggleRow(
+                    label = "Hidden",
+                    description = if (state != null && !hiddenSupported)
+                        "This storage can't store the hidden flag."
+                    else "Marks the file hidden in Windows (Wine's hidden attribute).",
+                    checked = state?.hidden == true,
+                    enabled = state != null && hiddenSupported && !busy,
+                    onToggle = { want ->
+                        busy = true
+                        scope.launch {
+                            val ok = withContext(Dispatchers.IO) { setHidden(file, want) }
+                            busy = false
+                            if (ok) {
+                                attrs = attrs?.copy(hidden = want)
+                                onChanged()
+                            } else {
+                                // The write failed after all — disable the toggle rather than lie.
+                                attrs = attrs?.copy(hiddenSupported = false)
+                                Toast.makeText(context, "Couldn't change Hidden on this storage", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+
+// One "label: value" line in the Properties info block.
+@Composable
+private fun PropertyLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+            modifier = Modifier.width(76.dp),
+        )
+        Text(
+            text = value,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 12.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+// A labelled attribute switch with a one-line description, used by the Properties sheet.
+@Composable
+private fun AttributeToggleRow(
+    label: String,
+    description: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = description,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        androidx.compose.material3.Switch(
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onToggle,
+        )
     }
 }

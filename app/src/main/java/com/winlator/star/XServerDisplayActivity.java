@@ -5208,7 +5208,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         WineStartMenuCreator.create(this, container);
         WineUtils.createDosdevicesSymlinks(container);
-        
+
+        // Ship the current in-container file manager (wfm.exe) from the APK into this container's
+        // drive_c\windows on every launch, so an app update delivers a new wfm.exe to EVERY existing
+        // container without an imagefs reinstall or a new container. Version-gated + best-effort.
+        stageBundledFileManager();
+
         // Configure Wine joystick registry keys based on DInput setting
         int inputType = container.getInputType();
         if (shortcut != null) {
@@ -5274,6 +5279,64 @@ public class XServerDisplayActivity extends AppCompatActivity {
             containerDataChanged = true;
         }
         if (containerDataChanged) container.saveData();
+    }
+
+    // Version of the bundled wfm.exe carried in app/src/main/assets/wfm.exe. Bump this whenever the
+    // asset is replaced so a fresh APK restages the file into every container on next launch.
+    private static final String BUNDLED_WFM_VERSION = "1.2.1";
+
+    // Stage the APK-bundled wfm.exe (the in-container file manager) into this container's
+    // drive_c\windows, overwriting whatever the imagefs shipped. Previously wfm.exe lived only in the
+    // imagefs, so updating it needed an imagefs reinstall; carrying it in the APK and copying it here
+    // means an app update reaches every EXISTING container on its next launch — no reinstall, no new
+    // container. A tiny ".wfm_version" marker beside the exe records the staged version; we only rewrite
+    // when it's missing or doesn't match, so the steady-state launch does no work. Best-effort: any
+    // failure is logged and the launch continues on whatever wfm.exe the container already had. Runs on
+    // the background launch worker (setupWineSystemFiles), so the copy is off the UI thread.
+    private void stageBundledFileManager() {
+        try {
+            // The launching container's own drive_c\windows — /home/xuser resolves here through the
+            // xuser symlink at launch, so this is exactly the C:\windows the guest reads wfm.exe from.
+            File windowsDir = new File(container.getRootDir(), ".wine/drive_c/windows");
+            if (!windowsDir.isDirectory() && !windowsDir.mkdirs()) {
+                Log.w("XServerDisplayActivity", "stageBundledFileManager: windows dir unavailable: " + windowsDir);
+                return;
+            }
+            File wfmFile = new File(windowsDir, "wfm.exe");
+            File marker = new File(windowsDir, ".wfm_version");
+
+            boolean upToDate = wfmFile.isFile() && marker.isFile()
+                    && BUNDLED_WFM_VERSION.equals(FileUtils.readString(marker).trim());
+            if (upToDate) return;
+
+            // Copy to a temp sibling then rename, so a crash mid-copy can't leave a truncated wfm.exe
+            // that the guest would then try to run.
+            File tmp = new File(windowsDir, "wfm.exe.tmp");
+            try (java.io.InputStream in = getAssets().open("wfm.exe");
+                 java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+                byte[] buf = new byte[65536];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            }
+            if (!tmp.isFile() || tmp.length() == 0) {
+                Log.w("XServerDisplayActivity", "stageBundledFileManager: staged wfm.exe empty, skipping");
+                tmp.delete();
+                return;
+            }
+            // renameTo won't overwrite on some Android fs layers — clear the old exe first.
+            if (wfmFile.exists()) wfmFile.delete();
+            if (!tmp.renameTo(wfmFile)) {
+                Log.w("XServerDisplayActivity", "stageBundledFileManager: rename into place failed");
+                tmp.delete();
+                return;
+            }
+            wfmFile.setReadable(true, false);
+            wfmFile.setExecutable(true, false);
+            FileUtils.writeString(marker, BUNDLED_WFM_VERSION);
+            Log.i("XServerDisplayActivity", "Staged bundled wfm.exe " + BUNDLED_WFM_VERSION + " -> " + wfmFile);
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity", "stageBundledFileManager failed (continuing launch)", e);
+        }
     }
 
     private void setupXEnvironment() throws PackageManager.NameNotFoundException {

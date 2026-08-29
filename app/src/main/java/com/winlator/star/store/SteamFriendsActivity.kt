@@ -142,7 +142,9 @@ fun SteamFriendsAction(tint: Color = Color.White) {
     }
     if (!loggedIn) return
     val unread by SteamFriendsStore.unread.collectAsState()
-    val total = unread.values.sum()
+    val incoming by SteamFriendsStore.incomingRequests.collectAsState()
+    // The badge covers both unread chats and pending incoming friend requests.
+    val total = unread.values.sum() + incoming.size
     Box {
         IconButton(onClick = {
             runCatching { ctx.startActivity(Intent(ctx, SteamFriendsActivity::class.java)) }

@@ -97,6 +97,14 @@ object SteamFriendsStore {
     /** Membership: which steamIds are actually mutual friends (relationship == Friend). */
     private val friendIds: MutableSet<Long> = Collections.newSetFromMap(ConcurrentHashMap<Long, Boolean>())
 
+    /** Pending friend-request invites: incoming (they requested us) and outgoing (we requested them). */
+    private val incomingIds: MutableSet<Long> = Collections.newSetFromMap(ConcurrentHashMap<Long, Boolean>())
+    private val outgoingIds: MutableSet<Long> = Collections.newSetFromMap(ConcurrentHashMap<Long, Boolean>())
+    private val _incomingRequests = MutableStateFlow<List<SteamFriend>>(emptyList())
+    val incomingRequests: StateFlow<List<SteamFriend>> = _incomingRequests.asStateFlow()
+    private val _outgoingRequests = MutableStateFlow<List<SteamFriend>>(emptyList())
+    val outgoingRequests: StateFlow<List<SteamFriend>> = _outgoingRequests.asStateFlow()
+
     /** steamId -> local nickname (from NicknameListCallback). */
     private val nicknames = ConcurrentHashMap<Long, String>()
 
@@ -111,6 +119,11 @@ object SteamFriendsStore {
     /** The local user's own persona (name + avatar) — used to render our own chat bubbles. */
     private val _self = MutableStateFlow<SteamFriend?>(null)
     val self: StateFlow<SteamFriend?> = _self.asStateFlow()
+
+    // One-shot user feedback for the Add-a-friend flow (snackbar text); UI clears it after showing.
+    private val _addFeedback = MutableStateFlow<String?>(null)
+    val addFeedback: StateFlow<String?> = _addFeedback.asStateFlow()
+    fun clearAddFeedback() { _addFeedback.value = null }
 
     private val _chat = MutableStateFlow(ChatSession(0L, emptyList()))
     val chat: StateFlow<ChatSession> = _chat.asStateFlow()
@@ -155,6 +168,11 @@ object SteamFriendsStore {
     @Volatile private var cachedWebToken: String? = null
     @Volatile private var cachedWebTokenAt: Long = 0L
     @Volatile private var cachedWebTokenAccount: Long = 0L
+
+    // De-dupes a double-delivered image pick (signature -> last-send epoch millis). See sendImage.
+    private val imageSendGuard = HashMap<String, Long>()
+
+    private const val STEAMID64_BASE = 76561197960265728L
 
     init {
         // Clear cross-account state on sign-out / session end so a different login never inherits the
@@ -303,13 +321,24 @@ object SteamFriendsStore {
                 if (!repo.isLoggedIn) return@execute
                 val ids: List<SteamID> = try { sf.friendsList } catch (t: Throwable) { emptyList() }
                 for (sid in ids) {
-                    if (relationshipOf(sf, sid) != EFriendRelationship.Friend) continue
                     val id = sid.convertToUInt64()
-                    friendIds.add(id)
-                    // Only build friends we don't already have — existing presence is owned by the live
-                    // onPersonaState callbacks. Rebuilding the whole map on every open is what wiped
-                    // everyone to Offline (the handler's persona cache reads Offline on a re-scan).
-                    if (friendMap[id] == null) friendMap[id] = buildFromHandler(sf, sid)
+                    // Bucket by relationship: friends vs incoming/outgoing pending requests. Only build a
+                    // persona we don't already have (existing presence is owned by onPersonaState).
+                    when (relationshipOf(sf, sid)) {
+                        EFriendRelationship.Friend -> {
+                            friendIds.add(id)
+                            if (friendMap[id] == null) friendMap[id] = buildFromHandler(sf, sid)
+                        }
+                        EFriendRelationship.RequestRecipient -> {
+                            incomingIds.add(id)
+                            if (friendMap[id] == null) friendMap[id] = buildFromHandler(sf, sid)
+                        }
+                        EFriendRelationship.RequestInitiator -> {
+                            outgoingIds.add(id)
+                            if (friendMap[id] == null) friendMap[id] = buildFromHandler(sf, sid)
+                        }
+                        else -> {}
+                    }
                 }
                 publish()
                 // Our own persona (name + avatar) for our own chat bubbles.
@@ -345,39 +374,111 @@ object SteamFriendsStore {
         if (q.isEmpty()) return
         io.execute {
             try {
-                val sf = repo.steamFriends ?: return@execute
+                val sf = repo.steamFriends ?: run { _addFeedback.value = "Not connected to Steam"; return@execute }
                 val id64 = q.toLongOrNull()
-                if (id64 != null && id64 > 76561197960265728L) sf.addFriend(SteamID(id64))
-                else sf.addFriend(q)
+                if (id64 != null && id64 > STEAMID64_BASE) {
+                    sf.addFriend(SteamID(id64)); _addFeedback.value = "Friend request sent"
+                } else {
+                    sf.addFriend(q); _addFeedback.value = "Looking up “$q”…"
+                }
             } catch (t: Throwable) {
                 Log.w(TAG, "addFriend failed", t)
+                _addFeedback.value = "Couldn't send request"
             }
         }
+    }
+
+    /** Add/invite a friend by their numeric Steam Friend Code (the account-ID number). */
+    fun addByFriendCode(code: String) {
+        val accountId = code.filter { it.isDigit() }.toLongOrNull()
+        if (accountId == null || accountId <= 0L) { _addFeedback.value = "Enter a valid Friend Code"; return }
+        addFriendById(STEAMID64_BASE + accountId)
+    }
+
+    /** Send a friend request straight to a resolved SteamID64 (friend code / user-search result). */
+    fun addFriendById(id64: Long) {
+        if (id64 <= STEAMID64_BASE) return
+        io.execute {
+            try {
+                repo.steamFriends?.addFriend(SteamID(id64)) ?: run { _addFeedback.value = "Not connected to Steam"; return@execute }
+                _addFeedback.value = "Friend request sent"
+            } catch (t: Throwable) {
+                Log.w(TAG, "addFriendById failed", t)
+                _addFeedback.value = "Couldn't send request"
+            }
+        }
+    }
+
+    /** This account's Steam Friend Code (the SteamID account number), or null if unknown. */
+    fun selfFriendCode(): String? {
+        val id = try { repo.steamId64 } catch (_: Throwable) { 0L }
+        return if (id > STEAMID64_BASE) (id - STEAMID64_BASE).toString() else null
+    }
+
+    /** Internal accessors for the community user-search helper (SteamUserSearch). */
+    internal fun selfSteamId64(): Long = try { repo.steamId64 } catch (_: Throwable) { 0L }
+    internal fun webAuthToken(): String? = mintWebToken()
+
+    /** Accept an incoming friend request (adds them as a friend). */
+    fun acceptRequest(id: Long) {
+        incomingIds.remove(id) // optimistic; the FriendsListCallback confirms + moves to Friends
+        publish()
+        io.execute { try { repo.steamFriends?.addFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "acceptRequest failed", t) } }
+    }
+
+    /** Decline an incoming friend request. */
+    fun declineRequest(id: Long) {
+        incomingIds.remove(id)
+        publish()
+        io.execute { try { repo.steamFriends?.ignoreFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "declineRequest failed", t) } }
+    }
+
+    /** Cancel an outgoing (pending) friend request we sent. */
+    fun cancelRequest(id: Long) {
+        outgoingIds.remove(id)
+        publish()
+        io.execute { try { repo.steamFriends?.removeFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "cancelRequest failed", t) } }
+    }
+
+    /** Remove an existing friend. */
+    fun removeFriend(id: Long) {
+        friendIds.remove(id); friendMap.remove(id)
+        publish()
+        io.execute { try { repo.steamFriends?.removeFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "removeFriend failed", t) } }
     }
 
     /** FriendsListCallback: full or incremental roster. Populates [friendIds] + placeholder entries. */
     fun onFriendsList(cb: FriendsListCallback) {
         try {
             val sf = repo.steamFriends
-            if (!cb.isIncremental) friendIds.clear()
+            if (!cb.isIncremental) { friendIds.clear(); incomingIds.clear(); outgoingIds.clear() }
             val newlyKnown = ArrayList<SteamID>()
             for (f in cb.friendList.orEmpty()) {
                 val sid = f.steamID ?: continue
                 val id = sid.convertToUInt64()
                 when (f.relationship) {
                     EFriendRelationship.Friend -> {
-                        friendIds.add(id)
+                        friendIds.add(id); incomingIds.remove(id); outgoingIds.remove(id)
                         if (friendMap[id] == null) {
                             friendMap[id] = if (sf != null) buildFromHandler(sf, sid)
                             else placeholder(id)
                         }
                         newlyKnown.add(sid)
                     }
-                    EFriendRelationship.None -> { // unfriended / removed
-                        friendIds.remove(id)
+                    EFriendRelationship.RequestRecipient -> { // they sent US a friend request
+                        incomingIds.add(id); outgoingIds.remove(id); friendIds.remove(id)
+                        if (friendMap[id] == null) friendMap[id] = if (sf != null) buildFromHandler(sf, sid) else placeholder(id)
+                        newlyKnown.add(sid)
+                    }
+                    EFriendRelationship.RequestInitiator -> { // WE requested them (pending)
+                        outgoingIds.add(id); incomingIds.remove(id); friendIds.remove(id)
+                        if (friendMap[id] == null) friendMap[id] = if (sf != null) buildFromHandler(sf, sid) else placeholder(id)
+                        newlyKnown.add(sid)
+                    }
+                    else -> { // None / Blocked / Ignored — drop from every bucket
+                        friendIds.remove(id); incomingIds.remove(id); outgoingIds.remove(id)
                         friendMap.remove(id)
                     }
-                    else -> { /* pending in/out request — not shown in v1 */ }
                 }
             }
             publish()
@@ -394,9 +495,9 @@ object SteamFriendsStore {
         try {
             val sid = cb.friendId ?: return
             val id = sid.convertToUInt64()
-            if (id !in friendIds) {
+            if (id !in friendIds && id !in incomingIds && id !in outgoingIds) {
                 // Admit it only if it really is a friend (persona updates also arrive for group
-                // members, lobby peers, and self).
+                // members, lobby peers, and self). Request users are already in their own buckets.
                 if (relationshipOf(repo.steamFriends, sid) != EFriendRelationship.Friend) return
                 friendIds.add(id)
             }
@@ -507,6 +608,16 @@ object SteamFriendsStore {
      */
     fun sendImage(steamId: Long, bytes: ByteArray, fileName: String) {
         if (bytes.isEmpty()) return
+        // Guard against a double-delivered pick (the file-picker result arriving twice would otherwise
+        // upload + send the same image twice). Ignore an identical image to the same friend within a
+        // short window.
+        val sig = "$steamId:${bytes.size}:$fileName"
+        val now = System.currentTimeMillis()
+        synchronized(imageSendGuard) {
+            val last = imageSendGuard[sig] ?: 0L
+            if (now - last < 3000L) return
+            imageSendGuard[sig] = now
+        }
         val placeholder = ChatMessage(true, "📷 Sending image…", nowSec())
         appendMessage(steamId, placeholder)
         io.execute {
@@ -710,6 +821,10 @@ object SteamFriendsStore {
             friendMap[id]?.copy(nickname = nicknames[id])
         }.sortedWith(compareBy({ it.presence.ordinal }, { it.displayName.lowercase() }))
         _friends.value = list
+        _incomingRequests.value = incomingIds.mapNotNull { friendMap[it]?.copy(nickname = nicknames[it]) }
+            .sortedBy { it.displayName.lowercase() }
+        _outgoingRequests.value = outgoingIds.mapNotNull { friendMap[it]?.copy(nickname = nicknames[it]) }
+            .sortedBy { it.displayName.lowercase() }
     }
 
     private fun buildFromHandler(sf: SteamFriends, sid: SteamID): SteamFriend {

@@ -14,6 +14,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,7 +40,9 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,10 +67,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -110,9 +122,20 @@ fun FriendsListScreen(
     onOpenChat: (SteamFriendsStore.SteamFriend) -> Unit,
 ) {
     val friends by SteamFriendsStore.friends.collectAsState()
+    val incomingReq by SteamFriendsStore.incomingRequests.collectAsState()
+    val outgoingReq by SteamFriendsStore.outgoingRequests.collectAsState()
     var showAdd by remember { mutableStateOf(false) }
     var menuFriend by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
     val ctx = LocalContext.current
+
+    // One-shot Add-a-friend feedback (request sent / lookup / errors) as a toast.
+    val addFeedback by SteamFriendsStore.addFeedback.collectAsState()
+    LaunchedEffect(addFeedback) {
+        addFeedback?.let {
+            Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show()
+            SteamFriendsStore.clearAddFeedback()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -160,7 +183,6 @@ fun FriendsListScreen(
         if (showAdd) {
             AddFriendDialog(
                 onDismiss = { showAdd = false },
-                onAdd = { SteamFriendsStore.addFriend(it); showAdd = false },
             )
         }
         menuFriend?.let { f ->
@@ -185,12 +207,16 @@ fun FriendsListScreen(
                         )
                     }
                 },
+                onRemove = {
+                    menuFriend = null
+                    SteamFriendsStore.removeFriend(f.steamId)
+                },
             )
         }
 
         when {
             !available -> ConnectState()
-            friends.isEmpty() -> LoadingState()
+            friends.isEmpty() && incomingReq.isEmpty() && outgoingReq.isEmpty() -> LoadingState()
             else -> {
                 val grouped = friends.groupBy { it.presence }
                 val unread by SteamFriendsStore.unread.collectAsState()
@@ -200,7 +226,23 @@ fun FriendsListScreen(
                 // A freshly opened list always starts at the top.
                 LaunchedEffect(Unit) { listState.scrollToItem(0) }
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    var firstSection = true
+                    // Pending friend-request invites, pinned at the very top.
+                    if (incomingReq.isNotEmpty() || outgoingReq.isNotEmpty()) {
+                        item(key = "req_hdr") { RequestsHeader(incomingReq.size + outgoingReq.size) }
+                        items(incomingReq, key = { "in_${it.steamId}" }) { f ->
+                            IncomingRequestRow(
+                                friend = f,
+                                onAccept = { SteamFriendsStore.acceptRequest(f.steamId) },
+                                onDecline = { SteamFriendsStore.declineRequest(f.steamId) },
+                            )
+                            FriendDivider()
+                        }
+                        items(outgoingReq, key = { "out_${it.steamId}" }) { f ->
+                            OutgoingRequestRow(friend = f, onCancel = { SteamFriendsStore.cancelRequest(f.steamId) })
+                            FriendDivider()
+                        }
+                    }
+                    var firstSection = incomingReq.isEmpty() && outgoingReq.isEmpty()
                     for ((presence, label) in PRESENCE_ORDER) {
                         val group = grouped[presence].orEmpty()
                         if (group.isEmpty()) continue
@@ -241,8 +283,10 @@ private fun FriendActionsDialog(
     onMessage: () -> Unit,
     onJoin: () -> Unit,
     onProfile: () -> Unit,
+    onRemove: () -> Unit,
 ) {
     val inGame = friend.presence == SteamFriendsStore.Presence.IN_GAME && friend.gameAppId != 0
+    var confirmRemove by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(friend.displayName) },
@@ -253,41 +297,402 @@ private fun FriendActionsDialog(
                     TextButton(onClick = onJoin) { Text("Join ${friend.gameName ?: "game"}") }
                 }
                 TextButton(onClick = onProfile) { Text("View Steam profile") }
+                if (!confirmRemove) {
+                    TextButton(onClick = { confirmRemove = true }) {
+                        Text("Remove friend", color = MaterialTheme.colorScheme.error)
+                    }
+                } else {
+                    TextButton(onClick = onRemove) {
+                        Text("Tap again to confirm removal", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
 }
 
+/** Pinned header for the pending friend-requests block at the top of the list. */
 @Composable
-private fun AddFriendDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
-    var text by remember { mutableStateOf("") }
+private fun RequestsHeader(count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 12.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Friend requests — $count",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+/** An incoming friend request: someone wants to add you. Accept adds them; Decline ignores it. */
+@Composable
+private fun IncomingRequestRow(
+    friend: SteamFriendsStore.SteamFriend,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FriendAvatar(friend = friend, size = 44.dp)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = friend.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Wants to add you",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Button(onClick = onAccept, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)) {
+            Text("Accept")
+        }
+        TextButton(onClick = onDecline, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+            Text("Decline")
+        }
+    }
+}
+
+/** An outgoing (pending) friend request we've sent. Cancel withdraws it. */
+@Composable
+private fun OutgoingRequestRow(
+    friend: SteamFriendsStore.SteamFriend,
+    onCancel: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FriendAvatar(friend = friend, size = 44.dp)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = friend.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Pending — request sent",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        TextButton(onClick = onCancel, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+            Text("Cancel")
+        }
+    }
+}
+
+/**
+ * Steam's own Add-a-friend methods, mirrored: your Friend Code (copyable), add by a friend's code,
+ * a live community search by name (avatar + Add per result), and — where the session supports it — a
+ * shareable Quick Invite link.
+ */
+@Composable
+private fun AddFriendDialog(onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val myCode = remember { SteamFriendsStore.selfFriendCode() }
+
+    var codeInput by remember { mutableStateOf("") }
+
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<SteamUserSearch.Result>>(emptyList()) }
+    var searching by remember { mutableStateOf(false) }
+    val outgoing by SteamFriendsStore.outgoingRequests.collectAsState()
+    val friends by SteamFriendsStore.friends.collectAsState()
+    val outgoingIds = remember(outgoing) { outgoing.map { it.steamId }.toHashSet() }
+    val friendIds = remember(friends) { friends.map { it.steamId }.toHashSet() }
+    var justRequested by remember { mutableStateOf(setOf<Long>()) }
+
+    // Debounced community search.
+    LaunchedEffect(query) {
+        val q = query.trim()
+        if (q.length < 2) { results = emptyList(); searching = false; return@LaunchedEffect }
+        searching = true
+        delay(350)
+        val r = withContext(Dispatchers.IO) { SteamUserSearch.search(q) }
+        results = r
+        searching = false
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add a Steam friend") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(10.dp))
+                Text("Add a friend")
+            }
+        },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+
+                // ── Your Friend Code ──────────────────────────────────────────
+                Text("Your Friend Code", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = myCode ?: "—",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Button(
+                        onClick = {
+                            myCode?.let {
+                                clipboard.setText(AnnotatedString(it))
+                                Toast.makeText(ctx, "Friend code copied", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = myCode != null,
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    ) { Text("Copy") }
+                }
                 Text(
-                    text = "Enter a SteamID64 or an account name.",
+                    "Share this so friends can add you — it's your Steam account number.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
+
+                SectionGap()
+
+                // ── Add by Friend Code ────────────────────────────────────────
+                Text("Add by Friend Code", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = codeInput,
+                        onValueChange = { codeInput = it },
+                        singleLine = true,
+                        placeholder = { Text("Enter a Friend Code") },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = { SteamFriendsStore.addByFriendCode(codeInput); codeInput = "" },
+                        enabled = codeInput.isNotBlank(),
+                    ) { Text("Add") }
+                }
+                Text(
+                    "Enter a friend's code to send a request. A full SteamID64 works too.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+
+                SectionGap()
+
+                // ── Search Steam by name ──────────────────────────────────────
+                Text("Search Steam by name", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
+                    value = query,
+                    onValueChange = { query = it },
                     singleLine = true,
-                    placeholder = { Text("SteamID64 or name") },
+                    placeholder = { Text("Search for a player…") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = { if (searching) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (results.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)),
+                    ) {
+                        results.forEachIndexed { i, r ->
+                            if (i > 0) FriendDivider()
+                            SearchResultRow(
+                                result = r,
+                                state = when {
+                                    r.steamId64 in friendIds -> ResultState.FRIEND
+                                    r.steamId64 in outgoingIds || r.steamId64 in justRequested -> ResultState.PENDING
+                                    else -> ResultState.ADD
+                                },
+                                onAdd = {
+                                    SteamFriendsStore.addFriendById(r.steamId64)
+                                    justRequested = justRequested + r.steamId64
+                                },
+                            )
+                        }
+                    }
+                } else if (query.trim().length >= 2 && !searching) {
+                    Text(
+                        "No players found.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                Text(
+                    "Tap Add next to the right person — avatars & names help you pick the correct account.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+
+                SectionGap()
+
+                // ── Or send a Quick Invite ────────────────────────────────────
+                val scope = rememberCoroutineScope()
+                var inviteLink by remember { mutableStateOf<String?>(null) }
+                var generating by remember { mutableStateOf(false) }
+                fun generateInvite() {
+                    if (generating) return
+                    generating = true
+                    scope.launch {
+                        val link = withContext(Dispatchers.IO) { SteamQuickInvite.create() }
+                        inviteLink = link
+                        generating = false
+                        if (link == null) Toast.makeText(ctx, "Couldn't create an invite link", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                Text("Or send a Quick Invite", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                val link = inviteLink
+                if (link == null) {
+                    Button(onClick = { generateInvite() }, enabled = !generating) {
+                        Text(if (generating) "Generating…" else "Generate invite link")
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(12.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = link,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    clipboard.setText(AnnotatedString(link))
+                                    Toast.makeText(ctx, "Invite link copied", Toast.LENGTH_SHORT).show()
+                                },
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                            ) { Text("Copy") }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = { generateInvite() }, enabled = !generating) {
+                            Text(if (generating) "Generating…" else "Generate new link")
+                        }
+                    }
+                }
+                Text(
+                    "A one-time link to share by message. Your friend is added instantly when they open it. Expires after 30 days.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
             }
         },
-        confirmButton = {
-            TextButton(onClick = { onAdd(text.trim()) }, enabled = text.isNotBlank()) {
-                Text("Add")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
     )
+}
+
+private enum class ResultState { ADD, PENDING, FRIEND }
+
+@Composable
+private fun SearchResultRow(result: SteamUserSearch.Result, state: ResultState, onAdd: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (result.avatarUrl != null) {
+                AsyncImage(
+                    model = result.avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(Icons.Filled.People, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = result.personaName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val sub = when (state) {
+                ResultState.FRIEND -> "Already your friend"
+                ResultState.PENDING -> "Request pending"
+                ResultState.ADD -> "Steam profile"
+            }
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+        Spacer(Modifier.width(8.dp))
+        when (state) {
+            ResultState.ADD -> Button(onClick = onAdd, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) { Text("Add") }
+            ResultState.PENDING -> TextButton(onClick = {}, enabled = false) { Text("Pending") }
+            ResultState.FRIEND -> TextButton(onClick = {}, enabled = false) { Text("Friend") }
+        }
+    }
+}
+
+@Composable
+private fun SectionGap() {
+    Spacer(Modifier.height(14.dp))
+    HorizontalDivider(thickness = 1.dp, color = SectionDivider)
+    Spacer(Modifier.height(14.dp))
 }
 
 @Composable

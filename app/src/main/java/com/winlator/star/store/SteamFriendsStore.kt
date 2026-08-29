@@ -628,18 +628,31 @@ object SteamFriendsStore {
                     return@execute
                 }
                 val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
-                val url = SteamChatImageUploader.upload(token, selfId, steamId, bytes, fileName)
+                var url = SteamChatImageUploader.upload(token, selfId, steamId, bytes, fileName)
+                // A cached web token can go stale (community 401/403) even while it's non-null. Force a
+                // fresh mint and retry once before giving up — the most common cause of a sudden
+                // "worked before, fails now" upload failure.
+                if (url == null) {
+                    val err = SteamChatImageUploader.lastError ?: ""
+                    if (err.contains("401") || err.contains("403")) {
+                        invalidateWebToken()
+                        val fresh = mintWebToken()
+                        if (fresh != null) url = SteamChatImageUploader.upload(fresh, selfId, steamId, bytes, fileName)
+                    }
+                }
                 if (url != null) {
                     // Drop the placeholder, then send the URL through the normal path (optimistic append
                     // + sendChatMessage) so it renders as an image bubble on both ends.
                     removeMessage(steamId, placeholder)
                     sendMessage(steamId, url)
                 } else {
-                    replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image")
+                    // Release APKs strip logs — surface the failing step/code so it's diagnosable on-screen.
+                    val why = SteamChatImageUploader.lastError?.let { " ($it)" } ?: ""
+                    replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image$why")
                 }
             } catch (t: Throwable) {
                 Log.w(TAG, "sendImage failed", t)
-                replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image")
+                replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image (${t.javaClass.simpleName})")
             }
         }
     }
@@ -651,6 +664,12 @@ object SteamFriendsStore {
      * chat upload). Cached ~[WEB_TOKEN_TTL_MS] per account. BLOCKING — call on the [io] executor only.
      * Returns null when not logged in / no token / the RPC fails; never throws.
      */
+    /** Drop the cached web token so the next [mintWebToken] re-mints (used after a community 401/403). */
+    private fun invalidateWebToken() {
+        cachedWebToken = null
+        cachedWebTokenAt = 0L
+    }
+
     private fun mintWebToken(): String? {
         val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
         if (selfId == 0L) return null

@@ -31,6 +31,14 @@ object SteamChatImageUploader {
 
     private const val TAG = "BH_STEAM_IMGUP"
 
+    /**
+     * Reason for the most recent [upload] failure (release APKs strip Log.*, so the on-screen bubble is
+     * our only telemetry). Set at every failure return; cleared to null on success. Also lets the caller
+     * detect an auth failure (contains "401"/"403") and retry with a fresh token.
+     */
+    @Volatile var lastError: String? = null
+        private set
+
     private const val COMMUNITY = "https://steamcommunity.com"
     private const val UGC_URL_BASE = "https://images.steamusercontent.com/ugc"
     private const val USER_AGENT = "Mozilla/5.0"
@@ -56,10 +64,12 @@ object SteamChatImageUploader {
         fileName: String,
     ): String? {
         if (bytes.isEmpty()) {
+            lastError = "empty image"
             Log.w(TAG, "upload: empty image")
             return null
         }
         if (webToken.isBlank() || selfId == 0L) {
+            lastError = "not signed in"
             Log.w(TAG, "upload: missing token/selfId")
             return null
         }
@@ -96,6 +106,7 @@ object SteamChatImageUploader {
                 resp.code to (resp.body?.string() ?: "")
             }
             if (beginCode != 200) {
+                lastError = "begin $beginCode"
                 Log.w(TAG, "begin http $beginCode")
                 return null
             }
@@ -109,6 +120,7 @@ object SteamChatImageUploader {
             val hmac = jsonStr(beginJson, "hmac").ifEmpty { jsonStr(payload, "hmac") }
             val timestamp = jsonStr(beginJson, "timestamp").ifEmpty { jsonStr(payload, "timestamp") }
             if (ugcid.isEmpty() || urlHost.isEmpty()) {
+                lastError = "begin: no ugcid/host"
                 Log.w(TAG, "begin missing ugcid/url_host")
                 return null
             }
@@ -138,6 +150,7 @@ object SteamChatImageUploader {
                 resp.code to resp.isSuccessful
             }
             if (!putOk) {
+                lastError = "put $putCode"
                 Log.w(TAG, "ugc put http $putCode")
                 return null
             }
@@ -172,6 +185,7 @@ object SteamChatImageUploader {
                 resp.code to (resp.body?.string() ?: "")
             }
             if (commitCode != 200) {
+                lastError = "commit $commitCode"
                 Log.w(TAG, "commit http $commitCode")
                 return null
             }
@@ -180,8 +194,10 @@ object SteamChatImageUploader {
             val fileSha = jsonStr(details, "file_sha")
             val shaUpper = if (fileSha.isEmpty()) sha.uppercase() else fileSha.uppercase()
 
+            lastError = null
             "$UGC_URL_BASE/$ugcid/$shaUpper/"
         } catch (t: Throwable) {
+            lastError = t.javaClass.simpleName + (t.message?.let { ": $it" } ?: "")
             Log.w(TAG, "upload failed", t)
             null
         }

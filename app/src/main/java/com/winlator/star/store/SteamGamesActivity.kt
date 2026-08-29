@@ -379,6 +379,7 @@ private fun SteamGamesScreen(
             )
             Spacer(Modifier.weight(1f))
             SteamStatusPill(status = steamStatus, onReconnect = onReconnect)
+            SteamFriendsAction(tint = MaterialTheme.colorScheme.primary)
         }
 
         // Second row: the action icons on their own line, right-aligned and compact.

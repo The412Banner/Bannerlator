@@ -39,6 +39,13 @@ import in.dragonbra.javasteam.steam.handlers.steamapps.callback.DepotKeyCallback
 import in.dragonbra.javasteam.steam.handlers.steamapps.callback.LicenseListCallback;
 import in.dragonbra.javasteam.steam.handlers.steamapps.callback.PICSProductInfoCallback;
 import in.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends;
+import in.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendAddedCallback;
+import in.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendMsgCallback;
+import in.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendMsgEchoCallback;
+import in.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendMsgHistoryCallback;
+import in.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendsListCallback;
+import in.dragonbra.javasteam.steam.handlers.steamfriends.callback.NicknameListCallback;
+import in.dragonbra.javasteam.steam.handlers.steamfriends.callback.PersonaStateCallback;
 import in.dragonbra.javasteam.types.KeyValue;
 import in.dragonbra.javasteam.steam.handlers.steamuser.LogOnDetails;
 import in.dragonbra.javasteam.steam.handlers.steamuser.SteamUser;
@@ -165,6 +172,7 @@ public final class SteamRepository {
     private SteamApps      steamApps     = null;
     private SteamCloud     steamCloud    = null;
     private SteamUserStats steamUserStats = null;
+    private SteamFriends   steamFriends  = null;
 
     private HandlerThread     pumpThread  = null;
     private Handler           pumpHandler = null;
@@ -248,6 +256,7 @@ public final class SteamRepository {
 
     public SteamCloud     getSteamCloud()     { return steamCloud; }
     public SteamUserStats getSteamUserStats() { return steamUserStats; }
+    public SteamFriends   getSteamFriends()   { return steamFriends; }
     public CallbackManager getCallbackManager() { return manager; }
 
     // -------------------------------------------------------------------------
@@ -365,6 +374,11 @@ public final class SteamRepository {
         // live handle after login. Core handler — no extra registerCallbacks() entry is required
         // (getUserStats / storeUserStats use AsyncJobSingle futures, not manager.subscribe callbacks).
         steamUserStats = steamClient.getHandler(SteamUserStats.class);
+        // SteamFriends is a core JavaSteam handler (auto-registered by SteamClient). Bind it here so
+        // SteamFriendsStore (friends list + 1:1 chat) has a live handle after login. Its callbacks are
+        // subscribed on the shared CallbackManager below and forwarded to that facade — READ/SEND only;
+        // no change to the session/login/store paths.
+        steamFriends = steamClient.getHandler(SteamFriends.class);
 
         registerCallbacks();
         Log.i(TAG, "SteamRepository initialised");
@@ -378,6 +392,15 @@ public final class SteamRepository {
         manager.subscribe(LicenseListCallback.class,     this::onLicenseList);
         manager.subscribe(PICSProductInfoCallback.class, this::onPICSProductInfo);
         manager.subscribe(DepotKeyCallback.class,        this::onDepotKey);
+        // Friends list + 1:1 chat — forwarded to the SteamFriendsStore facade (Kotlin object). Purely
+        // additive: presence + message callbacks, no effect on the existing session/download paths.
+        manager.subscribe(FriendsListCallback.class,      SteamFriendsStore.INSTANCE::onFriendsList);
+        manager.subscribe(PersonaStateCallback.class,     SteamFriendsStore.INSTANCE::onPersonaState);
+        manager.subscribe(NicknameListCallback.class,     SteamFriendsStore.INSTANCE::onNicknameList);
+        manager.subscribe(FriendAddedCallback.class,      SteamFriendsStore.INSTANCE::onFriendAdded);
+        manager.subscribe(FriendMsgCallback.class,        SteamFriendsStore.INSTANCE::onFriendMsg);
+        manager.subscribe(FriendMsgEchoCallback.class,    SteamFriendsStore.INSTANCE::onFriendMsgEcho);
+        manager.subscribe(FriendMsgHistoryCallback.class, SteamFriendsStore.INSTANCE::onFriendMsgHistory);
         // CDN auth callbacks registered once correct class names are confirmed from JAR
         // manager.subscribe(ManifestRequestCodeCallback.class, this::onManifestRequestCode);
         // manager.subscribe(CDNAuthTokenCallback.class,        this::onCdnAuthToken);

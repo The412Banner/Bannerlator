@@ -89,6 +89,7 @@ import com.winlator.star.XServerDisplayActivity
 import com.winlator.star.XrActivity
 import com.winlator.star.container.Container
 import com.winlator.star.container.Shortcut
+import com.winlator.star.store.SteamFriendsAction
 import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GameSaveBackup
@@ -176,6 +177,8 @@ fun ContainersScreen(
     // clear would steamroll it on first navigation to this screen.
     LaunchedEffect(Unit) {
         topBarActions.value = {
+            // Steam friends + chat — only renders when signed in to Steam (login-gated internally).
+            SteamFriendsAction()
             // New Container Defaults — opens the SAME container editor in "defaults mode" (the ✓ saves
             // the field state as the seed for future new containers) via the EDIT_DEFAULTS_ID sentinel.
             // Containers screen only. Sits next to the import action.

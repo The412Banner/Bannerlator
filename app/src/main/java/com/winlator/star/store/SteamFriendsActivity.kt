@@ -46,6 +46,7 @@ class SteamFriendsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
+        SteamFriendsStore.init(this)
         setContent {
             WinlatorTheme {
                 SteamFriendsRoot(onClose = { finish() })

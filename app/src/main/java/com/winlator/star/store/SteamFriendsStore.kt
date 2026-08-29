@@ -102,6 +102,10 @@ object SteamFriendsStore {
     private val _friends = MutableStateFlow<List<SteamFriend>>(emptyList())
     val friends: StateFlow<List<SteamFriend>> = _friends.asStateFlow()
 
+    /** The local user's own persona (name + avatar) — used to render our own chat bubbles. */
+    private val _self = MutableStateFlow<SteamFriend?>(null)
+    val self: StateFlow<SteamFriend?> = _self.asStateFlow()
+
     private val _chat = MutableStateFlow(ChatSession(0L, emptyList()))
     val chat: StateFlow<ChatSession> = _chat.asStateFlow()
 
@@ -109,12 +113,22 @@ object SteamFriendsStore {
     private val _unread = MutableStateFlow<Map<Long, Int>>(emptyMap())
     val unread: StateFlow<Map<Long, Int>> = _unread.asStateFlow()
 
+    /** steamId -> epoch-ms at which the friend's "typing" state expires (typing while now < value). */
+    private val _typing = MutableStateFlow<Map<Long, Long>>(emptyMap())
+    val typing: StateFlow<Map<Long, Long>> = _typing.asStateFlow()
+    private val lastTypingSent = ConcurrentHashMap<Long, Long>()
+
+    @Volatile private var appContext: android.content.Context? = null
+    @Volatile private var loadedForAccount: Long = 0L
+
     init {
         // Clear cross-account state on sign-out / session end so a different login never inherits the
         // previous user's friends. Rides the existing repository event bus (no new plumbing).
         try {
             repo.addListener(SteamRepository.SteamEventListener { ev ->
-                if (ev == "LoggedOut" || ev == "SessionExpired") reset()
+                // Only a full sign-out / account switch wipes cached chat; a transient SessionExpired
+                // (e.g. app backgrounded) keeps the conversation so it's still there on foreground.
+                if (ev == "LoggedOut") reset()
             })
         } catch (t: Throwable) {
             Log.w(TAG, "listener registration failed", t)
@@ -138,8 +152,70 @@ object SteamFriendsStore {
         histories.clear()
         activeChatId = 0L
         _friends.value = emptyList()
+        _self.value = null
         _chat.value = ChatSession(0L, emptyList())
         _unread.value = emptyMap()
+        _typing.value = emptyMap()
+        lastTypingSent.clear()
+    }
+
+    // ── Persistence (chat history survives backgrounding / process death) ────────────
+
+    /** Wire an application context so chat history can be saved to disk. Idempotent. */
+    fun init(context: android.content.Context) {
+        if (appContext == null) appContext = context.applicationContext
+    }
+
+    /** Load this account's saved conversations into memory (once per account). */
+    private fun loadHistoriesFor(selfId: Long) {
+        if (selfId == 0L || loadedForAccount == selfId) return
+        loadedForAccount = selfId
+        val json = try {
+            appContext?.getSharedPreferences("steam_chat_history", android.content.Context.MODE_PRIVATE)
+                ?.getString("h_$selfId", null)
+        } catch (_: Throwable) { null } ?: return
+        try {
+            val convos = org.json.JSONObject(json).optJSONObject("c") ?: return
+            val keys = convos.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val id = key.toLongOrNull() ?: continue
+                val arr = convos.optJSONArray(key) ?: continue
+                val list = ArrayList<ChatMessage>(arr.length())
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    list.add(ChatMessage(o.optBoolean("s"), o.optString("t"), o.optLong("ts")))
+                }
+                if (list.isNotEmpty()) histories[id] = list
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "loadHistories failed", t)
+        }
+    }
+
+    /** Write all conversations for the current account to disk (call on the io executor). */
+    private fun persistHistories() {
+        val ctx = appContext ?: return
+        val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+        if (selfId == 0L) return
+        try {
+            val convos = org.json.JSONObject()
+            for ((id, list) in histories) {
+                val snapshot = synchronized(list) { list.toList() }
+                if (snapshot.isEmpty()) continue
+                val trimmed = if (snapshot.size > 200) snapshot.subList(snapshot.size - 200, snapshot.size) else snapshot
+                val arr = org.json.JSONArray()
+                for (m in trimmed) {
+                    arr.put(org.json.JSONObject().put("s", m.fromSelf).put("t", m.text).put("ts", m.timestampSec))
+                }
+                convos.put(id.toString(), arr)
+            }
+            val root = org.json.JSONObject().put("c", convos)
+            ctx.getSharedPreferences("steam_chat_history", android.content.Context.MODE_PRIVATE)
+                .edit().putString("h_$selfId", root.toString()).apply()
+        } catch (t: Throwable) {
+            Log.w(TAG, "persistHistories failed", t)
+        }
     }
 
     // ── Friends list ──────────────────────────────────────────────────────────────
@@ -162,6 +238,17 @@ object SteamFriendsStore {
                     friendMap[id] = buildFromHandler(sf, sid)
                 }
                 publish()
+                // Our own persona (name + avatar) for our own chat bubbles.
+                val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+                loadHistoriesFor(selfId) // restore this account's saved conversations
+                if (selfId != 0L) {
+                    val selfName = try { sf.getPersonaName() } catch (_: Throwable) { null }
+                    val selfHash = try { hex(sf.getFriendAvatar(SteamID(selfId))) } catch (_: Throwable) { null }
+                    _self.value = SteamFriend(
+                        selfId, selfName?.takeIf { it.isNotBlank() } ?: "You", null,
+                        Presence.ONLINE, "", 0, null, selfHash,
+                    )
+                }
                 // Appear online so Steam pushes live friend PersonaStateCallbacks, then pull a fresh
                 // snapshot for everyone (fills persona name / avatar / rich game state).
                 try { sf.setPersonaState(EPersonaState.Online) } catch (_: Throwable) {}
@@ -283,6 +370,7 @@ object SteamFriendsStore {
     fun openChat(steamId: Long): StateFlow<ChatSession> {
         activeChatId = steamId
         clearUnread(steamId) // opening the chat marks it read
+        loadHistoriesFor(try { repo.steamId64 } catch (_: Throwable) { 0L }) // restore saved history first
         val existing = histories[steamId]?.let { synchronized(it) { it.toList() } } ?: emptyList()
         _chat.value = ChatSession(steamId, existing)
         io.execute {
@@ -314,15 +402,21 @@ object SteamFriendsStore {
         }
     }
 
-    /** FriendMsgCallback: an incoming message from a friend. */
+    /** FriendMsgCallback: an incoming chat message OR a typing notification from a friend. */
     fun onFriendMsg(cb: FriendMsgCallback) {
         try {
-            if (cb.entryType != EChatEntryType.ChatMsg) return // ignore Typing / etc.
             val id = cb.sender?.convertToUInt64() ?: return
-            val body = cb.message ?: return
-            if (body.isEmpty()) return
-            appendMessage(id, ChatMessage(false, body, nowSec()))
-            if (id != activeChatId) bumpUnread(id) // count it unread unless its chat is open
+            when (cb.entryType) {
+                EChatEntryType.Typing -> markTyping(id)
+                EChatEntryType.ChatMsg -> {
+                    val body = cb.message ?: return
+                    if (body.isEmpty()) return
+                    clearTyping(id) // a real message ends the "typing" state
+                    appendMessage(id, ChatMessage(false, body, nowSec()))
+                    if (id != activeChatId) bumpUnread(id) // unread unless its chat is open
+                }
+                else -> {} // ignore Entered / LeftConversation / etc.
+            }
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendMsg failed", t)
         }
@@ -361,12 +455,18 @@ object SteamFriendsStore {
                 // Keep any just-sent optimistic message newer than the newest server row so a send
                 // made before history lands isn't dropped when we adopt the authoritative list.
                 val maxServerTs = server.maxOfOrNull { it.timestampSec } ?: 0L
-                val keepLocal = list.filter { it.fromSelf && it.timestampSec > maxServerTs }
+                val serverSelfTexts = server.filter { it.fromSelf }.map { it.text }.toHashSet()
+                // Keep an optimistic self-message only if it's newer than everything on the server AND
+                // the server doesn't already have that text (stops the just-sent line from doubling).
+                val keepLocal = list.filter {
+                    it.fromSelf && it.timestampSec > maxServerTs && it.text !in serverSelfTexts
+                }
                 list.clear()
                 list.addAll(server)
                 list.addAll(keepLocal)
             }
             if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+            io.execute { persistHistories() }
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendMsgHistory failed", t)
         }
@@ -378,6 +478,7 @@ object SteamFriendsStore {
         val list = histories.getOrPut(id) { mutableListOf() }
         synchronized(list) { list.add(msg) }
         if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+        io.execute { persistHistories() }
     }
 
     private fun bumpUnread(id: Long) {
@@ -387,6 +488,29 @@ object SteamFriendsStore {
     private fun clearUnread(id: Long) {
         if (_unread.value.containsKey(id)) {
             _unread.value = _unread.value.toMutableMap().apply { remove(id) }
+        }
+    }
+
+    private fun markTyping(id: Long) {
+        _typing.value = _typing.value.toMutableMap().apply { this[id] = System.currentTimeMillis() + 10_000L }
+    }
+
+    private fun clearTyping(id: Long) {
+        if (_typing.value.containsKey(id)) {
+            _typing.value = _typing.value.toMutableMap().apply { remove(id) }
+        }
+    }
+
+    /** Send a throttled "typing" notification to [steamId] (at most once per ~4s while the user types). */
+    fun sendTyping(steamId: Long) {
+        val now = System.currentTimeMillis()
+        if (now - (lastTypingSent[steamId] ?: 0L) < 4000L) return
+        lastTypingSent[steamId] = now
+        io.execute {
+            try {
+                repo.steamFriends?.sendChatMessage(SteamID(steamId), EChatEntryType.Typing, "")
+            } catch (_: Throwable) {
+            }
         }
     }
 

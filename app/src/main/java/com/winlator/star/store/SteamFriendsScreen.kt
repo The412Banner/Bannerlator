@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -59,6 +60,7 @@ import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 // Status-dot colours — recognisable Steam-ish presence palette, held explicitly so both themes match.
 private val DotInGame = Color(0xFF90BA3C)
@@ -397,6 +399,13 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
 
     LaunchedEffect(friend.steamId) { SteamFriendsStore.openChat(friend.steamId) }
 
+    // Typing indicator: a friend is "typing" until their expiry passes; a 1s ticker re-evaluates.
+    val typingMap by SteamFriendsStore.typing.collectAsState()
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { nowMs = System.currentTimeMillis(); delay(1000) } }
+    val isTyping = (typingMap[friend.steamId] ?: 0L) > nowMs
+    val self by SteamFriendsStore.self.collectAsState()
+
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     LaunchedEffect(messages.size) {
@@ -433,10 +442,13 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = friend.statusText,
+                    text = if (isTyping) "typing…" else friend.statusText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (friend.presence == SteamFriendsStore.Presence.IN_GAME) DotInGame
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = when {
+                        isTyping -> MaterialTheme.colorScheme.primary
+                        friend.presence == SteamFriendsStore.Presence.IN_GAME -> DotInGame
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -461,7 +473,7 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    items(messages) { msg -> MessageBubble(msg, friend) }
+                    items(messages) { msg -> MessageBubble(msg, friend, self) }
                 }
             }
         }
@@ -499,7 +511,7 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
                 }
                 OutlinedTextField(
                     value = draft,
-                    onValueChange = { draft = it },
+                    onValueChange = { draft = it; if (it.isNotEmpty()) SteamFriendsStore.sendTyping(friend.steamId) },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Message") },
                     maxLines = 4,
@@ -544,7 +556,11 @@ private val EMOJIS = listOf(
 )
 
 @Composable
-private fun MessageBubble(msg: SteamFriendsStore.ChatMessage, friend: SteamFriendsStore.SteamFriend) {
+private fun MessageBubble(
+    msg: SteamFriendsStore.ChatMessage,
+    friend: SteamFriendsStore.SteamFriend,
+    self: SteamFriendsStore.SteamFriend?,
+) {
     val mine = msg.fromSelf
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -559,7 +575,7 @@ private fun MessageBubble(msg: SteamFriendsStore.ChatMessage, friend: SteamFrien
         Column(horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
             // Sender name heading above each bubble ("You" for our own messages).
             Text(
-                text = if (mine) "You" else friend.displayName,
+                text = if (mine) (self?.displayName ?: "You") else friend.displayName,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -577,12 +593,25 @@ private fun MessageBubble(msg: SteamFriendsStore.ChatMessage, friend: SteamFrien
                     )
                     .padding(horizontal = 12.dp, vertical = 7.dp),
             ) {
-                Text(
-                    text = msg.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (mine) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurface,
-                )
+                val imageUrl = remember(msg.text) { imageUrlOrNull(msg.text) }
+                if (imageUrl != null) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Image",
+                        modifier = Modifier
+                            .widthIn(max = 240.dp)
+                            .heightIn(max = 240.dp)
+                            .clip(RoundedCornerShape(10.dp)),
+                        contentScale = ContentScale.Fit,
+                    )
+                } else {
+                    Text(
+                        text = msg.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (mine) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
                 if (msg.timestampSec > 0) {
                     Text(
                         text = timeLabel(msg.timestampSec),
@@ -596,8 +625,27 @@ private fun MessageBubble(msg: SteamFriendsStore.ChatMessage, friend: SteamFrien
                 }
             }
         }
+        // Sent: our own avatar on the right, mirroring the friend's on the left.
+        if (mine && self != null) {
+            Spacer(Modifier.width(8.dp))
+            FriendAvatar(friend = self, size = 30.dp)
+        }
     }
 }
 
 private val TIME_FMT = SimpleDateFormat("HH:mm", Locale.getDefault())
 private fun timeLabel(sec: Long): String = TIME_FMT.format(Date(sec * 1000L))
+
+private val URL_RE = Regex("""https?://\S+""")
+
+/** If the whole message is essentially one image URL, return it (render as an image); else null. */
+private fun imageUrlOrNull(text: String): String? {
+    val t = text.trim()
+    val url = URL_RE.find(t)?.value ?: return null
+    if (t != url) return null // mixed text + link stays text
+    val bare = url.substringBefore('?').lowercase()
+    val isImgExt = bare.endsWith(".jpg") || bare.endsWith(".jpeg") || bare.endsWith(".png") ||
+        bare.endsWith(".gif") || bare.endsWith(".webp")
+    val isSteamImg = url.contains("steamusercontent.com") || url.contains("steamcdn") || url.contains("/ugc/")
+    return if (isImgExt || isSteamImg) url else null
+}

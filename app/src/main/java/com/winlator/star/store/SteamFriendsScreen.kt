@@ -27,8 +27,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -37,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -97,6 +100,7 @@ fun FriendsListScreen(
     onOpenChat: (SteamFriendsStore.SteamFriend) -> Unit,
 ) {
     val friends by SteamFriendsStore.friends.collectAsState()
+    var showAdd by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -125,6 +129,13 @@ fun FriendsListScreen(
             )
             Spacer(Modifier.weight(1f))
             SteamConnectionPill()
+            IconButton(onClick = { showAdd = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add friend",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
             IconButton(onClick = { SteamFriendsStore.refresh() }) {
                 Icon(
                     imageVector = Icons.Filled.Refresh,
@@ -132,6 +143,13 @@ fun FriendsListScreen(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
+        }
+
+        if (showAdd) {
+            AddFriendDialog(
+                onDismiss = { showAdd = false },
+                onAdd = { SteamFriendsStore.addFriend(it); showAdd = false },
+            )
         }
 
         when {
@@ -178,6 +196,37 @@ fun FriendsListScreen(
             }
         }
     }
+}
+
+@Composable
+private fun AddFriendDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add a Steam friend") },
+        text = {
+            Column {
+                Text(
+                    text = "Enter a SteamID64 or an account name.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    placeholder = { Text("SteamID64 or name") },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onAdd(text.trim()) }, enabled = text.isNotBlank()) {
+                Text("Add")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

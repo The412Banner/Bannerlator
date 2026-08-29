@@ -105,6 +105,10 @@ object SteamFriendsStore {
     private val _chat = MutableStateFlow(ChatSession(0L, emptyList()))
     val chat: StateFlow<ChatSession> = _chat.asStateFlow()
 
+    /** steamId -> count of unread incoming messages; cleared when that friend's chat is opened. */
+    private val _unread = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    val unread: StateFlow<Map<Long, Int>> = _unread.asStateFlow()
+
     init {
         // Clear cross-account state on sign-out / session end so a different login never inherits the
         // previous user's friends. Rides the existing repository event bus (no new plumbing).
@@ -135,6 +139,7 @@ object SteamFriendsStore {
         activeChatId = 0L
         _friends.value = emptyList()
         _chat.value = ChatSession(0L, emptyList())
+        _unread.value = emptyMap()
     }
 
     // ── Friends list ──────────────────────────────────────────────────────────────
@@ -277,6 +282,7 @@ object SteamFriendsStore {
      */
     fun openChat(steamId: Long): StateFlow<ChatSession> {
         activeChatId = steamId
+        clearUnread(steamId) // opening the chat marks it read
         val existing = histories[steamId]?.let { synchronized(it) { it.toList() } } ?: emptyList()
         _chat.value = ChatSession(steamId, existing)
         io.execute {
@@ -316,6 +322,7 @@ object SteamFriendsStore {
             val body = cb.message ?: return
             if (body.isEmpty()) return
             appendMessage(id, ChatMessage(false, body, nowSec()))
+            if (id != activeChatId) bumpUnread(id) // count it unread unless its chat is open
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendMsg failed", t)
         }
@@ -371,6 +378,16 @@ object SteamFriendsStore {
         val list = histories.getOrPut(id) { mutableListOf() }
         synchronized(list) { list.add(msg) }
         if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+    }
+
+    private fun bumpUnread(id: Long) {
+        _unread.value = _unread.value.toMutableMap().apply { this[id] = (this[id] ?: 0) + 1 }
+    }
+
+    private fun clearUnread(id: Long) {
+        if (_unread.value.containsKey(id)) {
+            _unread.value = _unread.value.toMutableMap().apply { remove(id) }
+        }
     }
 
     /** Rebuild + push the sorted, nickname-injected friends list. */

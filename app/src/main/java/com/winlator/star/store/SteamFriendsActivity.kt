@@ -16,8 +16,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.winlator.star.ui.theme.WinlatorTheme
 
 /**
@@ -126,13 +140,37 @@ fun SteamFriendsAction(tint: Color = Color.White) {
         onDispose { repo.removeListener(l) }
     }
     if (!loggedIn) return
-    IconButton(onClick = {
-        runCatching { ctx.startActivity(Intent(ctx, SteamFriendsActivity::class.java)) }
-    }) {
-        Icon(
-            imageVector = Icons.Filled.People,
-            contentDescription = "Steam friends",
-            tint = tint,
-        )
+    val unread by SteamFriendsStore.unread.collectAsState()
+    val total = unread.values.sum()
+    Box {
+        IconButton(onClick = {
+            runCatching { ctx.startActivity(Intent(ctx, SteamFriendsActivity::class.java)) }
+        }) {
+            Icon(
+                imageVector = Icons.Filled.People,
+                contentDescription = "Steam friends",
+                tint = tint,
+            )
+        }
+        if (total > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 2.dp)
+                    .widthIn(min = 16.dp)
+                    .height(16.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE53935))
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = if (total > 9) "9+" else total.toString(),
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }

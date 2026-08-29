@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,9 +26,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,12 +40,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +65,11 @@ private val DotInGame = Color(0xFF90BA3C)
 private val DotOnline = Color(0xFF57CBDE)
 private val DotAway = Color(0xFFE0A82E)
 private val DotOffline = Color(0xFF6D7883)
+
+// List chrome — thin gray lines, pop-up-menu style, read as subtle grays on the dark surface.
+private val RowDivider = Color(0x1AFFFFFF)      // between friends within a section
+private val SectionDivider = Color(0x2EFFFFFF)  // between sections (In game / Online / Offline)
+private val UnreadBg = Color(0xFFE53935)        // unread-count badge fill
 
 private fun dotColor(p: SteamFriendsStore.Presence): Color = when (p) {
     SteamFriendsStore.Presence.IN_GAME -> DotInGame
@@ -126,15 +137,39 @@ fun FriendsListScreen(
             friends.isEmpty() -> LoadingState()
             else -> {
                 val grouped = friends.groupBy { it.presence }
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                val unread by SteamFriendsStore.unread.collectAsState()
+                // Per-section collapse (the arrow on a section divider folds that group away — Offline is
+                // the obvious one to hide, but any section can collapse). Default: all expanded.
+                val collapsed = remember { mutableStateMapOf<SteamFriendsStore.Presence, Boolean>() }
+                val listState = rememberLazyListState()
+                // A freshly opened list always starts at the top.
+                LaunchedEffect(Unit) { listState.scrollToItem(0) }
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                    var firstSection = true
                     for ((presence, label) in PRESENCE_ORDER) {
                         val group = grouped[presence].orEmpty()
                         if (group.isEmpty()) continue
+                        val isCollapsed = collapsed[presence] == true
+                        val showTop = !firstSection
+                        firstSection = false
                         item(key = "hdr_$presence") {
-                            SectionHeader(label = label, count = group.size)
+                            SectionHeader(
+                                label = label,
+                                count = group.size,
+                                collapsed = isCollapsed,
+                                showTopDivider = showTop,
+                                onToggle = { collapsed[presence] = !isCollapsed },
+                            )
                         }
-                        items(group, key = { it.steamId }) { friend ->
-                            FriendRow(friend = friend, onClick = { onOpenChat(friend) })
+                        if (!isCollapsed) {
+                            itemsIndexed(group, key = { _, f -> f.steamId }) { index, friend ->
+                                FriendRow(
+                                    friend = friend,
+                                    unread = unread[friend.steamId] ?: 0,
+                                    onClick = { onOpenChat(friend) },
+                                )
+                                if (index < group.lastIndex) FriendDivider()
+                            }
                         }
                     }
                 }
@@ -190,20 +225,76 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun SectionHeader(label: String, count: Int) {
-    Text(
-        text = "$label — $count",
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 6.dp),
+private fun SectionHeader(
+    label: String,
+    count: Int,
+    collapsed: Boolean,
+    showTopDivider: Boolean,
+    onToggle: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (showTopDivider) {
+            HorizontalDivider(thickness = 1.dp, color = SectionDivider)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() }
+                .padding(horizontal = 16.dp)
+                .padding(top = 12.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "$label — $count",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowDown,
+                contentDescription = if (collapsed) "Expand $label" else "Collapse $label",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(20.dp)
+                    .rotate(if (collapsed) 180f else 0f),
+            )
+        }
+    }
+}
+
+/** Thin gray line between friends within a section (pop-up-menu style, inset from the edges). */
+@Composable
+private fun FriendDivider() {
+    HorizontalDivider(
+        thickness = 0.7.dp,
+        color = RowDivider,
+        modifier = Modifier.padding(horizontal = 16.dp),
     )
 }
 
+/** Unread-count pill (e.g. a friend has sent messages you haven't opened). */
 @Composable
-private fun FriendRow(friend: SteamFriendsStore.SteamFriend, onClick: () -> Unit) {
+private fun UnreadBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .widthIn(min = 20.dp)
+            .height(20.dp)
+            .clip(CircleShape)
+            .background(UnreadBg)
+            .padding(horizontal = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = if (count > 99) "99+" else count.toString(),
+            color = Color.White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun FriendRow(friend: SteamFriendsStore.SteamFriend, unread: Int, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -218,6 +309,7 @@ private fun FriendRow(friend: SteamFriendsStore.SteamFriend, onClick: () -> Unit
                 text = friend.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (unread > 0) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -229,6 +321,10 @@ private fun FriendRow(friend: SteamFriendsStore.SteamFriend, onClick: () -> Unit
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (unread > 0) {
+            Spacer(Modifier.width(8.dp))
+            UnreadBadge(unread)
         }
     }
 }
@@ -365,88 +461,139 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    items(messages) { msg -> MessageBubble(msg) }
+                    items(messages) { msg -> MessageBubble(msg, friend) }
                 }
             }
         }
 
-        // Composer.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = draft,
-                onValueChange = { draft = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Message") },
-                maxLines = 4,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = {
-                    val body = draft.trim()
-                    if (body.isNotEmpty()) {
-                        SteamFriendsStore.sendMessage(friend.steamId, body)
-                        draft = ""
+        // Composer (emoji quick-picker + input + send).
+        var showEmoji by remember { mutableStateOf(false) }
+        Column {
+            if (showEmoji) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    items(EMOJIS) { e ->
+                        Text(
+                            text = e,
+                            fontSize = 22.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { draft += e }
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                        )
                     }
-                }),
-            )
-            Spacer(Modifier.width(6.dp))
-            IconButton(
-                onClick = {
-                    val body = draft.trim()
-                    if (body.isNotEmpty()) {
-                        SteamFriendsStore.sendMessage(friend.steamId, body)
-                        draft = ""
-                    }
-                },
-                enabled = draft.isNotBlank(),
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
-                    tint = if (draft.isNotBlank()) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                IconButton(onClick = { showEmoji = !showEmoji }) {
+                    Text("😊", fontSize = 20.sp)
+                }
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Message") },
+                    maxLines = 4,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = {
+                        val body = draft.trim()
+                        if (body.isNotEmpty()) {
+                            SteamFriendsStore.sendMessage(friend.steamId, body)
+                            draft = ""
+                        }
+                    }),
                 )
+                Spacer(Modifier.width(6.dp))
+                IconButton(
+                    onClick = {
+                        val body = draft.trim()
+                        if (body.isNotEmpty()) {
+                            SteamFriendsStore.sendMessage(friend.steamId, body)
+                            draft = ""
+                        }
+                    },
+                    enabled = draft.isNotBlank(),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send",
+                        tint = if (draft.isNotBlank()) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
 }
 
+// A small, dependency-free set of common emojis for the composer quick-picker (the system keyboard's
+// full emoji set still works too — this is just a fast tap-to-insert strip).
+private val EMOJIS = listOf(
+    "😀", "😂", "😁", "😊", "😍", "😎", "🤔", "😅", "😭", "😡",
+    "👍", "👎", "👌", "🙏", "👏", "💪", "🔥", "🎉", "❤️", "💯",
+    "🎮", "🕹️", "😴", "🤝", "👀", "✅", "❌", "⭐", "😢", "🤣",
+)
+
 @Composable
-private fun MessageBubble(msg: SteamFriendsStore.ChatMessage) {
+private fun MessageBubble(msg: SteamFriendsStore.ChatMessage, friend: SteamFriendsStore.SteamFriend) {
     val mine = msg.fromSelf
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Top,
     ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = 300.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(
-                    if (mine) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceVariant,
-                )
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-        ) {
+        // Received: friend's avatar on the left, next to the bubble.
+        if (!mine) {
+            FriendAvatar(friend = friend, size = 30.dp)
+            Spacer(Modifier.width(8.dp))
+        }
+        Column(horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+            // Sender name heading above each bubble ("You" for our own messages).
             Text(
-                text = msg.text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (mine) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.onSurface,
+                text = if (mine) "You" else friend.displayName,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
             )
-            if (msg.timestampSec > 0) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (mine) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+            ) {
                 Text(
-                    text = timeLabel(msg.timestampSec),
-                    fontSize = 10.sp,
-                    color = (if (mine) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .padding(top = 2.dp)
-                        .align(if (mine) Alignment.End else Alignment.Start),
+                    text = msg.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (mine) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurface,
                 )
+                if (msg.timestampSec > 0) {
+                    Text(
+                        text = timeLabel(msg.timestampSec),
+                        fontSize = 10.sp,
+                        color = (if (mine) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .align(if (mine) Alignment.End else Alignment.Start),
+                    )
+                }
             }
         }
     }

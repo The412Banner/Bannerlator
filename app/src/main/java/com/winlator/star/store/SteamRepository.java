@@ -1233,6 +1233,32 @@ public final class SteamRepository {
                             dlcCsv.append(id);
                         }
                         db.setIncludedDlc(app.getId(), dlcCsv.toString());
+                        // Broadened DLC CATALOGUE for the detail-page DLC TAB: EVERY DLC the game
+                        // lists in extended/listofdlc, split owned/unowned. included_dlc above stays
+                        // the depot-bundled owned subset that drives the download picker/size — this
+                        // is DISPLAY-ONLY and never changes what downloads. A DLC that's owned but has
+                        // NO base-game depot (its content is in shared base depots or under its own
+                        // app — e.g. Risk of Rain 2's Survivors of the Void / Seekers of the Storm)
+                        // was invisible before; it's recorded here so the tab can show it. Its precise
+                        // name + app-vs-entitlement kind are filled lazily by resolveOwnedDlc() on open
+                        // (a DLC's real name lives in ITS OWN app PICS, not the base game's).
+                        java.util.List<SteamDatabase.DlcRow> dlcRows = new java.util.ArrayList<>();
+                        for (int dlcId : dlcSet) {
+                            boolean owned = licensedApps.contains(dlcId);
+                            String kind;
+                            if (!owned)                              kind = "unowned";
+                            else if (includedDlcIds.contains(dlcId)) kind = "depot"; // installs w/ game
+                            else                                     kind = "";      // app|entitlement TBD
+                            // Best-effort name from the DLC's own already-synced library row; music-type
+                            // DLC are skipped by the type filter above → left blank for the PICS resolve.
+                            String nm = "";
+                            try {
+                                SteamDatabase.GameRow gr = db.getGame(dlcId);
+                                if (gr != null && gr.name != null) nm = gr.name;
+                            } catch (Exception ignored) {}
+                            dlcRows.add(new SteamDatabase.DlcRow(app.getId(), dlcId, nm, owned, kind));
+                        }
+                        db.replaceDlcSet(app.getId(), dlcRows);
                         count++;
                     } catch (Exception e) {
                         Log.w(TAG, "Skipping app " + app.getId() + ": " + e.getMessage());
@@ -1317,6 +1343,131 @@ public final class SteamRepository {
             Log.w(TAG, "refreshAppProductInfo(" + appId + ") failed: " + e.getMessage());
             return false;
         }
+    }
+
+    /** Parse a base game's extended/listofdlc KeyValue into a set of DLC appIds. */
+    private static java.util.Set<Integer> parseListOfDlc(KeyValue root) {
+        java.util.Set<Integer> set = new java.util.HashSet<>();
+        String s = kvStr(root.get("extended").get("listofdlc"));
+        if (!s.isEmpty()) {
+            for (String part : s.split(",")) {
+                try { set.add(Integer.parseInt(part.trim())); } catch (NumberFormatException ignored) {}
+            }
+        }
+        return set;
+    }
+
+    /** Numeric depot ids under an app's "depots" section that carry a public manifest — i.e. the app
+     *  ships downloadable content. Used to classify a DLC as "installs with game" (has content depots)
+     *  vs entitlement-only. Ignores non-depot children ("branches", "baselanguages", …). */
+    private static java.util.Set<Integer> collectPublicDepotIds(KeyValue root) {
+        java.util.Set<Integer> set = new java.util.HashSet<>();
+        List<KeyValue> children = root.get("depots").getChildren();
+        if (children != null) {
+            for (KeyValue d : children) {
+                int depotId;
+                try { depotId = Integer.parseInt(d.getName()); }
+                catch (NumberFormatException ignored) { continue; }
+                String gid = kvStr(d.get("manifests").get("public").get("gid"));
+                if (gid.isEmpty()) gid = kvStr(d.get("manifest"));   // older format
+                if (!gid.isEmpty()) set.add(depotId);
+            }
+        }
+        return set;
+    }
+
+    /**
+     * Best-effort resolve of the detail-page DLC TAB for a base game — DISPLAY-ONLY: it populates the
+     * steam_dlc catalogue and never touches steam_games.included_dlc, so the download picker/size and
+     * the "Includes DLC:" line keep working exactly as before.
+     *
+     * (1) SELF-HEAL: if the base's DLC set was never resolved (e.g. right after the v10 schema bump,
+     *     before a full library re-sync), fetch the base game's PICS once to populate its
+     *     extended/listofdlc set + per-DLC ownership + depot-bundled flag.
+     * (2) NAME/KIND: for owned DLC still missing a cached display name or a resolved kind, batch a PICS
+     *     product-info request for those appIds — a DLC's real name is in ITS OWN app common/name, and
+     *     its own app's depots section tells us whether it ships downloadable content ("Installs with
+     *     game", kind=app) or is entitlement-only ("Owned — no separate download", kind=entitlement).
+     *     Results are cached, so a repeat open does no network.
+     *
+     * BLOCKS the calling thread on PICS futures up to {@code timeoutMs} — call from a worker/IO thread,
+     * NEVER the pump (the pump keeps dispatching callbacks so the futures resolve). Fully wrapped: any
+     * failure leaves the DB as-is. Returns true if anything was (re)resolved.
+     */
+    public boolean resolveOwnedDlc(int baseAppId, long timeoutMs) {
+        SteamApps sa = steamApps;
+        SteamDatabase db = SteamDatabase.getInstance();
+        boolean changed = false;
+        try {
+            java.util.Set<Integer> licensedApps = new java.util.HashSet<>(db.getLicensedAppIds());
+
+            // (1) Self-heal an unresolved base from a fresh single-app PICS fetch.
+            if (!db.isDlcResolved(baseAppId) && sa != null && loggedIn) {
+                try {
+                    in.dragonbra.javasteam.types.AsyncJobMultiple.ResultSet<PICSProductInfoCallback> rs =
+                            sa.picsGetProductInfo(new PICSRequest(baseAppId))
+                                    .toFuture().get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                    PICSProductInfo info = null;
+                    for (PICSProductInfoCallback cb : rs.getResults()) {
+                        PICSProductInfo p = cb.getApps().get(baseAppId);
+                        if (p != null) { info = p; break; }
+                    }
+                    if (info != null && info.getKeyValues() != null) {
+                        KeyValue root = info.getKeyValues();
+                        java.util.Set<Integer> dlcSet   = parseListOfDlc(root);
+                        java.util.Set<Integer> pubDepots = collectPublicDepotIds(root);
+                        java.util.List<SteamDatabase.DlcRow> rows = new java.util.ArrayList<>();
+                        for (int dlcId : dlcSet) {
+                            boolean owned = licensedApps.contains(dlcId);
+                            String kind;
+                            if (!owned)                       kind = "unowned";
+                            else if (pubDepots.contains(dlcId)) kind = "depot"; // base depot id==dlc appid
+                            else                              kind = "";        // app|entitlement TBD below
+                            rows.add(new SteamDatabase.DlcRow(baseAppId, dlcId, "", owned, kind));
+                        }
+                        db.replaceDlcSet(baseAppId, rows);   // empty set → writes resolved-empty sentinel
+                        changed = true;
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "resolveOwnedDlc self-heal(" + baseAppId + ") failed: " + e.getMessage());
+                }
+            }
+
+            // (2) Fill display name + app/entitlement kind for owned DLC that still need it.
+            java.util.List<SteamDatabase.DlcRow> need = db.getOwnedDlcNeedingResolve(baseAppId);
+            if (!need.isEmpty() && sa != null && loggedIn) {
+                List<PICSRequest> reqs = new ArrayList<>();
+                for (SteamDatabase.DlcRow r : need) reqs.add(new PICSRequest(r.dlcAppId));
+                try {
+                    in.dragonbra.javasteam.types.AsyncJobMultiple.ResultSet<PICSProductInfoCallback> rs =
+                            sa.picsGetProductInfo(reqs, Collections.emptyList())
+                                    .toFuture().get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                    Map<Integer, PICSProductInfo> got = new java.util.HashMap<>();
+                    for (PICSProductInfoCallback cb : rs.getResults()) got.putAll(cb.getApps());
+                    for (SteamDatabase.DlcRow r : need) {
+                        PICSProductInfo p = got.get(r.dlcAppId);
+                        String name = "";
+                        String kind = null;   // null → updateDlcResolved leaves the stored kind as-is
+                        if (p != null && p.getKeyValues() != null) {
+                            KeyValue root = p.getKeyValues();
+                            name = kvStr(root.get("common").get("name"));
+                            // Only classify app vs entitlement when the kind isn't already final
+                            // ('depot' is set from the base game's depots and must not be overwritten).
+                            if (r.kind == null || r.kind.isEmpty()) {
+                                kind = collectPublicDepotIds(root).isEmpty() ? "entitlement" : "app";
+                            }
+                        }
+                        db.updateDlcResolved(baseAppId, r.dlcAppId, name, kind);
+                    }
+                    changed = true;
+                } catch (Exception e) {
+                    Log.w(TAG, "resolveOwnedDlc names(" + baseAppId + ") failed: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "resolveOwnedDlc(" + baseAppId + ") error: " + e.getMessage());
+        }
+        return changed;
     }
 
     // -------------------------------------------------------------------------

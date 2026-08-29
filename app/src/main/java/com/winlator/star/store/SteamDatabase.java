@@ -44,7 +44,12 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     // v9: additive steam_achievements (per-app achievement schema + earned state, from
     //     SteamUserStats.getUserStats → getExpandedAchievements). NEW table only — no existing
     //     library table is touched, so no re-sync required.
-    private static final int    DB_VERSION = 9;
+    // v10: additive steam_dlc — the FULL per-base extended/listofdlc catalogue (owned + unowned,
+    //     cached name + delivery kind) that feeds the detail-page DLC TAB. Distinct from and
+    //     independent of steam_games.included_dlc (the depot-bundled owned subset that drives the
+    //     download picker/size): steam_dlc is DISPLAY-ONLY. NEW table only — no existing library
+    //     table is touched. It is (re)populated on library sync; empty until the next sync/open.
+    private static final int    DB_VERSION = 10;
 
     // -------------------------------------------------------------------------
     // DDL
@@ -156,6 +161,30 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  PRIMARY KEY (app_id, api_name)" +
             ")";
 
+    // Per-base-game DLC catalogue for the detail-page DLC TAB — the FULL extended/listofdlc set the
+    // game lists, split owned/unowned, each with a cached display name and a delivery "kind". This is
+    // DISPLAY-ONLY and is deliberately SEPARATE from steam_games.included_dlc (the depot-bundled owned
+    // subset that drives the download picker + size): broadening what the TAB shows must never change
+    // what actually downloads. One row per (base, dlc). dlc_app_id = 0 is a resolved-empty SENTINEL —
+    // it marks a base whose DLC set was resolved but is empty (the game genuinely has no DLC), so the
+    // tab can tell "no DLC" apart from "not resolved yet" without re-fetching. kind is one of:
+    //   depot        — DLC content is a base-game depot bundled with the install ("Installs with game")
+    //   app          — the DLC's OWN app has public content depots            ("Installs with game")
+    //   entitlement  — owned, content is in shared base depots / ownership-unlocked (no separate DL)
+    //   unowned      — the user is not licensed for this DLC
+    //   '' (blank)   — owned but not yet resolved (app vs entitlement pending a PICS name/kind fetch)
+    // Re-derived on every library sync; names/kinds for owned DLC are filled lazily by
+    // SteamRepository.resolveOwnedDlc() when a detail page opens (a DLC's real name lives in its own app).
+    private static final String SQL_DLC =
+            "CREATE TABLE IF NOT EXISTS steam_dlc (" +
+            "  base_app_id INTEGER NOT NULL," +
+            "  dlc_app_id  INTEGER NOT NULL," +   // 0 = resolved-empty sentinel
+            "  name        TEXT    NOT NULL DEFAULT ''," +
+            "  owned       INTEGER NOT NULL DEFAULT 0," +   // 1 = user is licensed for this DLC
+            "  kind        TEXT    NOT NULL DEFAULT ''," +   // depot|app|entitlement|unowned|'' (unresolved)
+            "  PRIMARY KEY (base_app_id, dlc_app_id)" +
+            ")";
+
     // -------------------------------------------------------------------------
     // Singleton
     // -------------------------------------------------------------------------
@@ -197,6 +226,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.execSQL(SQL_BRANCHES);
         db.execSQL(SQL_UNLOCKED_BRANCHES);
         db.execSQL(SQL_ACHIEVEMENTS);
+        db.execSQL(SQL_DLC);
         Log.i(TAG, "steam.db created (v" + DB_VERSION + ")");
     }
 
@@ -251,6 +281,13 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         if (oldVersion < 9) {
             db.execSQL(SQL_ACHIEVEMENTS);
         }
+        // v9 → v10: ADDITIVE — one NEW table for the per-base DLC catalogue (detail-page DLC tab).
+        // CREATE IF NOT EXISTS, no drop of any existing table. Empty until the next library sync (or
+        // a detail-page open) repopulates it — steam_games.included_dlc is untouched, so the download
+        // picker/size keep working immediately.
+        if (oldVersion < 10) {
+            db.execSQL(SQL_DLC);
+        }
     }
 
     /**
@@ -272,6 +309,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS steam_branches");
         db.execSQL("DROP TABLE IF EXISTS steam_unlocked_branches");
         db.execSQL("DROP TABLE IF EXISTS steam_achievements");
+        db.execSQL("DROP TABLE IF EXISTS steam_dlc");
         onCreate(db);
     }
 
@@ -384,6 +422,26 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         }
     }
 
+    /** One DLC entry from a base game's extended/listofdlc (detail-page DLC tab). name is
+     *  display-ready (falls back to the DLC's own library-row name, then "DLC <id>"); kind is
+     *  depot|app|entitlement|unowned|'' as documented on SQL_DLC. DISPLAY-ONLY — never affects
+     *  what downloads (that stays driven by steam_games.included_dlc). */
+    public static final class DlcRow {
+        public final int     baseAppId;
+        public final int     dlcAppId;
+        public final String  name;
+        public final boolean owned;
+        public final String  kind;
+
+        public DlcRow(int baseAppId, int dlcAppId, String name, boolean owned, String kind) {
+            this.baseAppId = baseAppId;
+            this.dlcAppId  = dlcAppId;
+            this.name      = name != null ? name : "";
+            this.owned     = owned;
+            this.kind      = kind != null ? kind : "";
+        }
+    }
+
     // =========================================================================
     // steam_games
     // =========================================================================
@@ -462,6 +520,141 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     /** Display names of the owned DLC bundled with this game. Empty list = none. */
     public List<String> getIncludedDlcNames(int appId) {
         return new ArrayList<>(getIncludedDlcEntries(appId).values());
+    }
+
+    // =========================================================================
+    // steam_dlc — full per-base DLC catalogue (detail-page DLC tab, DISPLAY-ONLY)
+    // =========================================================================
+
+    /** steam_games.name for an appId, or "" if the app isn't in the library. */
+    private String lookupGameName(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT name FROM steam_games WHERE app_id = ?", new String[]{String.valueOf(appId)})) {
+            if (c.moveToNext()) { String n = c.getString(0); return n != null ? n : ""; }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    /**
+     * Replace the FULL DLC catalogue for a base game (from extended/listofdlc). Preserves any
+     * previously cached name / lazily-resolved kind for DLC still present, updates ownership, and
+     * prunes DLC no longer listed. An EMPTY set writes ONLY the resolved-empty sentinel
+     * (dlc_app_id = 0) so the tab can distinguish "no DLC" from "not resolved yet". DISPLAY-ONLY —
+     * never touches steam_games.included_dlc, so the download picker/size are unaffected.
+     */
+    public void replaceDlcSet(int baseAppId, List<DlcRow> entries) {
+        SQLiteDatabase db = getWritableDatabase();
+        // Snapshot existing name/kind so a re-sync doesn't wipe lazily-resolved values.
+        java.util.HashMap<Integer, String[]> prev = new java.util.HashMap<>();
+        try (Cursor c = db.rawQuery("SELECT dlc_app_id,name,kind FROM steam_dlc WHERE base_app_id = ?",
+                new String[]{String.valueOf(baseAppId)})) {
+            while (c.moveToNext()) prev.put(c.getInt(0), new String[]{c.getString(1), c.getString(2)});
+        } catch (Exception ignored) {}
+        db.beginTransaction();
+        try {
+            db.delete("steam_dlc", "base_app_id = ?", new String[]{String.valueOf(baseAppId)});
+            if (entries == null || entries.isEmpty()) {
+                ContentValues cv = new ContentValues();
+                cv.put("base_app_id", baseAppId);
+                cv.put("dlc_app_id",  0);
+                cv.put("name",        "");
+                cv.put("owned",       0);
+                cv.put("kind",        "none");   // resolved-empty sentinel
+                db.insertWithOnConflict("steam_dlc", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+            } else {
+                for (DlcRow e : entries) {
+                    if (e.dlcAppId == 0) continue;   // never let a real set write the sentinel id
+                    String[] p = prev.get(e.dlcAppId);
+                    // Carry a cached name forward when the fresh parse has none (music-type DLC).
+                    String name = !e.name.isEmpty() ? e.name : (p != null && p[0] != null ? p[0] : "");
+                    // 'depot' from the parse is authoritative; otherwise keep a previously resolved
+                    // app/entitlement kind so we don't re-fetch it every sync.
+                    String kind = e.kind;
+                    if (!"depot".equals(kind) && p != null && p[1] != null
+                            && ("app".equals(p[1]) || "entitlement".equals(p[1]))) {
+                        kind = p[1];
+                    }
+                    ContentValues cv = new ContentValues();
+                    cv.put("base_app_id", baseAppId);
+                    cv.put("dlc_app_id",  e.dlcAppId);
+                    cv.put("name",        name != null ? name : "");
+                    cv.put("owned",       e.owned ? 1 : 0);
+                    cv.put("kind",        kind != null ? kind : "");
+                    db.insertWithOnConflict("steam_dlc", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                }
+            }
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            Log.w(TAG, "replaceDlcSet(" + baseAppId + ") failed: " + e.getMessage());
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /** True once a base's DLC set has been resolved at least once (any row, incl. the sentinel). */
+    public boolean isDlcResolved(int baseAppId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT 1 FROM steam_dlc WHERE base_app_id = ? LIMIT 1",
+                new String[]{String.valueOf(baseAppId)})) {
+            return c.moveToNext();
+        } catch (Exception e) { return false; }
+    }
+
+    /** True if this base genuinely lists DLC (a real, non-sentinel row exists). */
+    public boolean hasAnyDlc(int baseAppId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT 1 FROM steam_dlc WHERE base_app_id = ? AND dlc_app_id <> 0 LIMIT 1",
+                new String[]{String.valueOf(baseAppId)})) {
+            return c.moveToNext();
+        } catch (Exception e) { return false; }
+    }
+
+    /** The full DLC catalogue for a base, owned-first then by appId, with display-ready names
+     *  (cached → DLC's own library name → "DLC <id>"). Excludes the sentinel. Empty = not resolved
+     *  or genuinely no DLC (callers use hasAnyDlc to tell them apart). */
+    public List<DlcRow> getDlcRows(int baseAppId) {
+        List<DlcRow> out = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT dlc_app_id,name,owned,kind FROM steam_dlc " +
+                "WHERE base_app_id = ? AND dlc_app_id <> 0 ORDER BY owned DESC, dlc_app_id ASC",
+                new String[]{String.valueOf(baseAppId)})) {
+            while (c.moveToNext()) {
+                int dlcAppId = c.getInt(0);
+                String name  = c.getString(1);
+                if (name == null || name.isEmpty()) {
+                    name = lookupGameName(dlcAppId);
+                    if (name.isEmpty()) name = "DLC " + dlcAppId;
+                }
+                out.add(new DlcRow(baseAppId, dlcAppId, name, c.getInt(2) != 0, c.getString(3)));
+            }
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    /** Owned DLC rows that still need a PICS resolve — missing a cached name OR an unresolved kind
+     *  ('' blank; 'depot' is already final). Feeds the lazy DLC-name/kind fetch. Sentinel excluded. */
+    public List<DlcRow> getOwnedDlcNeedingResolve(int baseAppId) {
+        List<DlcRow> out = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT dlc_app_id,name,owned,kind FROM steam_dlc " +
+                "WHERE base_app_id = ? AND dlc_app_id <> 0 AND owned = 1 AND (name = '' OR kind = '')",
+                new String[]{String.valueOf(baseAppId)})) {
+            while (c.moveToNext()) {
+                out.add(new DlcRow(baseAppId, c.getInt(0), c.getString(1), c.getInt(2) != 0, c.getString(3)));
+            }
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    /** Persist a DLC's resolved display name + delivery kind after a PICS fetch. Empty name/kind
+     *  args leave that column untouched (so we never clobber a good cached value, e.g. keep 'depot'). */
+    public void updateDlcResolved(int baseAppId, int dlcAppId, String name, String kind) {
+        ContentValues cv = new ContentValues();
+        if (name != null && !name.isEmpty()) cv.put("name", name);
+        if (kind != null && !kind.isEmpty()) cv.put("kind", kind);
+        if (cv.size() == 0) return;
+        getWritableDatabase().update("steam_dlc", cv, "base_app_id = ? AND dlc_app_id = ?",
+                new String[]{String.valueOf(baseAppId), String.valueOf(dlcAppId)});
     }
 
     /** Mark a game as installed at the given path. */

@@ -166,12 +166,13 @@ object SteamFriendsStore {
 
     /** Wipe all cached friend/chat state (sign-out / account switch). */
     fun reset() {
-        friendMap.clear()
-        friendIds.clear()
-        nicknames.clear()
-        histories.clear()
+        // Keep the friend roster + presence across transient logoffs/reconnects so re-entering the
+        // friends screen (or a brief session bump) never wipes everyone to Offline — that was the bug.
+        // A different account's full FriendsListCallback rebuilds friendIds, so a stale roster is never
+        // shown; live changes still arrive via onPersonaState. Only session/chat state is cleared here.
+        histories.clear()       // privacy: don't let a different account read cached chat from memory
+        loadedForAccount = 0L
         activeChatId = 0L
-        _friends.value = emptyList()
         _self.value = null
         _chat.value = ChatSession(0L, emptyList())
         _unread.value = emptyMap()

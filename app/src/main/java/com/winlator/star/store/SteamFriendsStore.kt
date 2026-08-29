@@ -297,6 +297,7 @@ object SteamFriendsStore {
     fun init(context: android.content.Context) {
         if (appContext == null) {
             appContext = context.applicationContext
+            SteamChatDebug.init(context)
             loadCollapsedSections()
             _socialEnabled.value = try { SteamPrefs.isSocialEnabled(context) } catch (_: Throwable) { false }
         }
@@ -697,6 +698,7 @@ object SteamFriendsStore {
     fun sendMessage(steamId: Long, text: String) {
         val body = text.trim()
         if (body.isEmpty()) return
+        SteamChatDebug.log("SEND $steamId \"${SteamChatDebug.snip(body)}\" -> optimistic append")
         appendMessage(steamId, ChatMessage(true, body, nowSec()))
         io.execute {
             try {
@@ -754,11 +756,13 @@ object SteamFriendsStore {
                 if (url != null) {
                     // Drop the placeholder, then send the URL through the normal path (optimistic append
                     // + sendChatMessage) so it renders as an image bubble on both ends.
+                    SteamChatDebug.log("IMAGE $steamId uploaded OK -> ${SteamChatDebug.snip(url)} (now sends as a message)")
                     removeMessage(steamId, placeholder)
                     sendMessage(steamId, url)
                 } else {
                     // Release APKs strip logs — surface the failing step/code so it's diagnosable on-screen.
                     val why = SteamChatImageUploader.lastError?.let { " ($it)" } ?: ""
+                    SteamChatDebug.log("IMAGE $steamId FAILED: ${SteamChatImageUploader.lastError}")
                     replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image$why")
                 }
             } catch (t: Throwable) {
@@ -824,6 +828,7 @@ object SteamFriendsStore {
                     val body = cb.message ?: return
                     if (body.isEmpty()) return
                     clearTyping(id) // a real message ends the "typing" state
+                    SteamChatDebug.log("RECV $id \"${SteamChatDebug.snip(body)}\" (activeChat=$activeChatId)")
                     appendMessage(id, ChatMessage(false, body, nowSec()))
                     if (id != activeChatId) {
                         bumpUnread(id)   // unread unless its chat is open
@@ -856,8 +861,9 @@ object SteamFriendsStore {
                 val dup = synchronized(existing) {
                     existing.any { it.fromSelf && it.text == body && kotlin.math.abs(it.timestampSec - ts) < 300 }
                 }
-                if (dup) return
+                if (dup) { SteamChatDebug.log("ECHO $id \"${SteamChatDebug.snip(body)}\" -> DUP, skip (matched optimistic)"); return }
             }
+            SteamChatDebug.log("ECHO $id \"${SteamChatDebug.snip(body)}\" ts=$ts -> APPEND (no local match — this becomes a 2nd copy if it shouldn't)")
             appendMessage(id, ChatMessage(true, body, ts))
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendMsgEcho failed", t)
@@ -882,18 +888,23 @@ object SteamFriendsStore {
             // fuller local/cached conversation. UNION the server rows into the existing list (dedup by
             // sender+text+~timestamp), keep chronological. An empty server response leaves local intact.
             // (This clear-and-replace was the history-wipe: a 2-message server reply wiped older history.)
-            if (server.isEmpty()) return
+            if (server.isEmpty()) { SteamChatDebug.log("HISTORY $id: empty server reply -> local kept"); return }
             val list = histories.getOrPut(id) { mutableListOf() }
+            var added = 0
             synchronized(list) {
                 for (sm in server) {
                     val dup = list.any {
                         it.fromSelf == sm.fromSelf && it.text == sm.text &&
-                            kotlin.math.abs(it.timestampSec - sm.timestampSec) < 5
+                            // Image URLs are globally unique → same URL = same message even if Steam's
+                            // stored timestamp differs from our optimistic send time by more than a few
+                            // seconds; plain text needs a wider time window than exact-tick matching.
+                            (isImageBody(sm.text) || kotlin.math.abs(it.timestampSec - sm.timestampSec) < 120)
                     }
-                    if (!dup) list.add(sm)
+                    if (!dup) { list.add(sm); added++ }
                 }
                 list.sortBy { it.timestampSec }
             }
+            SteamChatDebug.log("HISTORY $id: ${server.size} server rows, +$added new, ${server.size - added} dup; total=${synchronized(list) { list.size }}")
             if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
             io.execute { persistHistories() }
         } catch (t: Throwable) {

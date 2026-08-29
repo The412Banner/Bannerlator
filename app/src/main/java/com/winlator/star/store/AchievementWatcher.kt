@@ -211,11 +211,9 @@ class AchievementWatcher {
             for (api in fresh) {
                 earned.add(api) // record first so a duplicate write never double-toasts
                 try {
-                    val a = SteamAchievementStore.lookup(ctx, id, api)
-                    val name = a?.displayName?.takeIf { it.isNotBlank() } ?: api
-                    val desc = a?.description?.takeIf { it.isNotBlank() }
-                    val icon = a?.localIconPath?.takeIf { it.isNotBlank() }
-                    XServerDialogState.showAchievementToast(name, desc, icon)
+                    // Shared resolve+toast so the Goldberg and SteamLite pill paths can't drift; the
+                    // queueUnlock below is the Goldberg path's own record hook (unchanged).
+                    val name = SteamAchievementStore.surfaceUnlockPill(ctx, id, api)
                     SteamAchievementStore.queueUnlock(ctx, id, api)
                     Log.i(TAG, "unlocked: $api ($name)")
                 } catch (t: Throwable) {

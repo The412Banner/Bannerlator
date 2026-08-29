@@ -2,6 +2,7 @@ package com.winlator.star.store
 
 import android.content.Context
 import android.util.Log
+import com.winlator.star.ui.XServerDialogState
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.Stats
 import `in`.dragonbra.javasteam.types.SteamID
@@ -156,6 +157,39 @@ object SteamAchievementStore {
             Log.w(TAG, "lookup($appId, $apiName) failed", e)
             null
         }
+    }
+
+    /**
+     * Resolve [apiName]'s display name / description / cached color icon for [appId] from the offline
+     * [lookup] cache and append the in-game gold unlock pill — the SAME pill both achievement
+     * producers pop ([XServerDialogState.showAchievementToast]). When the achievement isn't cached
+     * (or its icon isn't on disk yet) it degrades gracefully to the raw [apiName] and a null icon so
+     * a pill still shows. Returns the resolved display name for the caller's log line.
+     *
+     * The single home for name/icon resolution + toast, shared by the Goldberg [AchievementWatcher]
+     * (GSE achievements.json diff) and the SteamLite [SteamLiteAchievementWatcher] (real-Steam agent
+     * event files) so the two paths can't drift. Non-throwing; safe to call off the main thread (the
+     * toast StateFlow is thread-safe). Does NOT record/queue the unlock — that stays the caller's
+     * concern: the Goldberg path also calls [queueUnlock]; the SteamLite path leaves the record to a
+     * deliberate later phase.
+     */
+    @JvmStatic
+    fun surfaceUnlockPill(ctx: Context, appId: Int, apiName: String): String {
+        val a = try {
+            lookup(ctx, appId, apiName)
+        } catch (t: Throwable) {
+            Log.w(TAG, "surfaceUnlockPill lookup failed for $apiName (appId=$appId)", t)
+            null
+        }
+        val name = a?.displayName?.takeIf { it.isNotBlank() } ?: apiName
+        val desc = a?.description?.takeIf { it.isNotBlank() }
+        val icon = a?.localIconPath?.takeIf { it.isNotBlank() }
+        try {
+            XServerDialogState.showAchievementToast(name, desc, icon)
+        } catch (t: Throwable) {
+            Log.w(TAG, "surfaceUnlockPill toast failed for $apiName (appId=$appId)", t)
+        }
+        return name
     }
 
     /** Percentage (0-100, rounded) of [list] that is unlocked. 0 for an empty list. */

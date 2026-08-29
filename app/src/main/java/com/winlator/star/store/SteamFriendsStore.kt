@@ -2,6 +2,7 @@ package com.winlator.star.store
 
 import android.util.Log
 import `in`.dragonbra.javasteam.enums.EChatEntryType
+import `in`.dragonbra.javasteam.enums.EClientPersonaStateFlag
 import `in`.dragonbra.javasteam.enums.EFriendRelationship
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.Collections
+import java.util.EnumSet
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -117,6 +119,20 @@ object SteamFriendsStore {
     private val _typing = MutableStateFlow<Map<Long, Long>>(emptyMap())
     val typing: StateFlow<Map<Long, Long>> = _typing.asStateFlow()
     private val lastTypingSent = ConcurrentHashMap<Long, Long>()
+
+    // Persona fields to (re)request so status/game/rich-presence repopulate immediately on refresh.
+    // The default requestFriendInfo doesn't force Steam to re-send status, so presence sat empty
+    // ("everyone offline") after a reconnect / friends-screen re-open until it slowly trickled in.
+    private val PERSONA_INFO_FLAGS = EClientPersonaStateFlag.code(
+        EnumSet.of(
+            EClientPersonaStateFlag.Status,
+            EClientPersonaStateFlag.PlayerName,
+            EClientPersonaStateFlag.Presence,
+            EClientPersonaStateFlag.GameExtraInfo,
+            EClientPersonaStateFlag.GameDataBlob,
+            EClientPersonaStateFlag.RichPresence,
+        ),
+    )
 
     /** Presence sections the user has collapsed/hidden — persisted so it's remembered across opens. */
     private val _collapsedSections = MutableStateFlow<Set<Presence>>(emptySet())
@@ -294,7 +310,7 @@ object SteamFriendsStore {
                 // Appear online so Steam pushes live friend PersonaStateCallbacks, then pull a fresh
                 // snapshot for everyone (fills persona name / avatar / rich game state).
                 try { sf.setPersonaState(EPersonaState.Online) } catch (_: Throwable) {}
-                if (ids.isNotEmpty()) try { sf.requestFriendInfo(ids) } catch (_: Throwable) {}
+                if (ids.isNotEmpty()) try { sf.requestFriendInfo(ids, PERSONA_INFO_FLAGS) } catch (_: Throwable) {}
             } catch (t: Throwable) {
                 Log.w(TAG, "refresh failed", t)
             }
@@ -344,7 +360,7 @@ object SteamFriendsStore {
             }
             publish()
             if (sf != null && newlyKnown.isNotEmpty()) {
-                io.execute { try { sf.requestFriendInfo(newlyKnown) } catch (_: Throwable) {} }
+                io.execute { try { sf.requestFriendInfo(newlyKnown, PERSONA_INFO_FLAGS) } catch (_: Throwable) {} }
             }
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendsList failed", t)
@@ -412,7 +428,7 @@ object SteamFriendsStore {
             }
             publish()
             val sf = repo.steamFriends ?: return
-            io.execute { try { sf.requestFriendInfo(sid) } catch (_: Throwable) {} }
+            io.execute { try { sf.requestFriendInfo(sid, PERSONA_INFO_FLAGS) } catch (_: Throwable) {} }
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendAdded failed", t)
         }

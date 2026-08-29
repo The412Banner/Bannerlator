@@ -42,16 +42,38 @@ import com.winlator.star.ui.theme.WinlatorTheme
  */
 class SteamFriendsActivity : ComponentActivity() {
 
+    companion object {
+        /** Intent extra (SteamID64 Long): open straight into this friend's chat. 0 / absent = list. */
+        const val EXTRA_OPEN_FRIEND = "open_friend_steam_id"
+    }
+
+    // The friend to deep-link into, as Compose state so a chat-notification tap that re-delivers via
+    // onNewIntent (this Activity is reused, not recreated) re-navigates the running composition.
+    private val openFriendId = mutableStateOf(0L)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
         SteamFriendsStore.init(this)
+        openFriendId.value = intent?.getLongExtra(EXTRA_OPEN_FRIEND, 0L) ?: 0L
         setContent {
             WinlatorTheme {
-                SteamFriendsRoot(onClose = { finish() })
+                SteamFriendsRoot(
+                    onClose = { finish() },
+                    openFriendId = openFriendId.value,
+                    onFriendOpened = { openFriendId.value = 0L },
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val id = intent.getLongExtra(EXTRA_OPEN_FRIEND, 0L)
+        if (id != 0L) openFriendId.value = id
+        SteamFriendsStore.refresh()
     }
 
     override fun onStart() {
@@ -68,12 +90,27 @@ class SteamFriendsActivity : ComponentActivity() {
  * local state so there is no navigation dependency to thread through the host Activity.
  */
 @Composable
-fun SteamFriendsRoot(onClose: () -> Unit) {
+fun SteamFriendsRoot(
+    onClose: () -> Unit,
+    openFriendId: Long = 0L,
+    onFriendOpened: () -> Unit = {},
+) {
     var openChat by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
     val available = rememberFriendsAvailable()
 
     // When the session becomes live (e.g. the user tapped reconnect), pull a fresh roster.
     LaunchedEffect(available) { if (available) SteamFriendsStore.refresh() }
+
+    // Deep-link: a chat-notification tap arrives as a SteamID; open that friend's chat directly. This
+    // runs the existing openChat → clearUnread → SteamChatNotifier.cancel path, so the tapped
+    // notification auto-clears. Resolve once per id (friendById falls back to a placeholder if the
+    // roster hasn't published yet); onFriendOpened resets the id so back-navigation isn't hijacked.
+    LaunchedEffect(openFriendId) {
+        if (openFriendId != 0L) {
+            openChat = SteamFriendsStore.friendById(openFriendId)
+            onFriendOpened()
+        }
+    }
 
     val friend = openChat
     if (friend == null) {

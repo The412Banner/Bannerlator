@@ -174,6 +174,9 @@ object SteamFriendsStore {
 
     private const val STEAMID64_BASE = 76561197960265728L
 
+    /** Matches a leading http(s) URL — used to detect an image-only message for the notification text. */
+    private val IMG_URL_RE = Regex("""https?://\S+""")
+
     init {
         // Clear cross-account state on sign-out / session end so a different login never inherits the
         // previous user's friends. Rides the existing repository event bus (no new plumbing).
@@ -211,6 +214,8 @@ object SteamFriendsStore {
         // A different account's full FriendsListCallback rebuilds friendIds, so a stale roster is never
         // shown; live changes still arrive via onPersonaState. Only session/chat state is cleared here.
         histories.clear()       // privacy: don't let a different account read cached chat from memory
+        // Privacy: pull down any friend-chat notifications so a signed-out shade shows no one's messages.
+        try { appContext?.let { SteamChatNotifier.cancelAll(it) } } catch (_: Throwable) {}
         loadedForAccount = 0L
         cachedWebToken = null    // a different account must not reuse the previous user's upload token
         cachedWebTokenAt = 0L
@@ -567,6 +572,9 @@ object SteamFriendsStore {
     fun openChat(steamId: Long): StateFlow<ChatSession> {
         activeChatId = steamId
         clearUnread(steamId) // opening the chat marks it read
+        // Same code path as the badge: dismiss this conversation's shade notification so the two clear
+        // together. Best-effort; never let a notifier hiccup break opening the chat.
+        try { appContext?.let { SteamChatNotifier.cancel(it, steamId) } } catch (_: Throwable) {}
         loadHistoriesFor(try { repo.steamId64 } catch (_: Throwable) { 0L }) // restore saved history first
         val existing = histories[steamId]?.let { synchronized(it) { it.toList() } } ?: emptyList()
         _chat.value = ChatSession(steamId, existing)
@@ -581,6 +589,14 @@ object SteamFriendsStore {
         activeChatId = 0L
         _chat.value = ChatSession(0L, emptyList())
     }
+
+    /**
+     * Best-effort snapshot of a friend by id — used to open a chat directly from a notification tap
+     * ([SteamFriendsActivity]'s deep-link) before the roster flow has necessarily published. Returns a
+     * minimal offline placeholder when the friend isn't cached yet; the roster then fills in.
+     */
+    fun friendById(id: Long): SteamFriend =
+        friendMap[id]?.copy(nickname = nicknames[id]) ?: placeholder(id)
 
     /**
      * Send [text] to [steamId] and optimistically append it (the sender's own device receives no
@@ -714,7 +730,10 @@ object SteamFriendsStore {
                     if (body.isEmpty()) return
                     clearTyping(id) // a real message ends the "typing" state
                     appendMessage(id, ChatMessage(false, body, nowSec()))
-                    if (id != activeChatId) bumpUnread(id) // unread unless its chat is open
+                    if (id != activeChatId) {
+                        bumpUnread(id)   // unread unless its chat is open
+                        maybeNotify(id, body) // mirror the badge in the Android shade
+                    }
                 }
                 else -> {} // ignore Entered / LeftConversation / etc.
             }
@@ -803,6 +822,37 @@ object SteamFriendsStore {
 
     private fun bumpUnread(id: Long) {
         _unread.value = _unread.value.toMutableMap().apply { this[id] = (this[id] ?: 0) + 1 }
+    }
+
+    /**
+     * Post an Android notification for an incoming message from [id], gated on the user's toggle AND on
+     * being signed in. Best-effort and fully swallowed — the message-receive path must never crash on
+     * anything notification-related. Sender/avatar come from the cached persona; an image URL body is
+     * shown as "📷 Photo" (matching the in-app image bubble).
+     */
+    private fun maybeNotify(id: Long, body: String) {
+        try {
+            val ctx = appContext ?: return
+            if (!SteamPrefs.isChatNotificationsEnabled(ctx)) return
+            if (!isAvailable()) return // only while signed in
+            val friend = friendMap[id]?.copy(nickname = nicknames[id])
+            val name = friend?.displayName ?: "Steam friend"
+            val text = if (isImageBody(body)) "📷 Photo" else body
+            SteamChatNotifier.notify(ctx, id, name, friend?.avatarUrl, text)
+        } catch (t: Throwable) {
+            Log.w(TAG, "maybeNotify failed", t)
+        }
+    }
+
+    /** True when [text] is a single image URL (Steam UGC / image extension) — same rule as the chat UI. */
+    private fun isImageBody(text: String): Boolean {
+        val t = text.trim()
+        val url = IMG_URL_RE.find(t)?.value ?: return false
+        if (t != url) return false // mixed text + link stays text
+        val bare = url.substringBefore('?').lowercase()
+        return bare.endsWith(".jpg") || bare.endsWith(".jpeg") || bare.endsWith(".png") ||
+            bare.endsWith(".gif") || bare.endsWith(".webp") ||
+            url.contains("steamusercontent.com") || url.contains("steamcdn") || url.contains("/ugc/")
     }
 
     private fun clearUnread(id: Long) {

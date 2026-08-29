@@ -91,6 +91,7 @@ import com.winlator.star.fexcore.FEXCoreEditPresetDialog
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.midi.MidiManager
+import com.winlator.star.store.SteamPrefs
 import com.winlator.star.xenvironment.ImageFsInstaller
 import com.winlator.star.MainActivity
 import java.io.File
@@ -126,6 +127,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     var checkingUpdate by remember { mutableStateOf(false) }
     var notifyUpdates by remember { mutableStateOf(UpdateManager.isNotifyEnabled(context)) }
     var includePrereleases by remember { mutableStateOf(UpdateManager.isIncludePrereleases(context)) }
+    // Steam friend-chat notifications (default ON). Immediate-write like the update toggles — the store
+    // reads SteamPrefs directly, so this isn't part of the Save-FAB snapshot.
+    var steamChatNotifs by remember { mutableStateOf(SteamPrefs.isChatNotificationsEnabled(context)) }
     LaunchedEffect(Unit) {
         UpdateManager.check(context) { info -> activity?.runOnUiThread { updateInfo = info } }
     }
@@ -540,6 +544,23 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 })
                 Text("Include pre-releases (beta builds)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
+        }
+
+        // ── Steam ─────────────────────────────────────────────────────
+        FieldSetLabel("Steam")
+        FieldSet {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = steamChatNotifs, onCheckedChange = {
+                    steamChatNotifs = it
+                    SteamPrefs.setChatNotificationsEnabled(context, it)
+                })
+                Text("Steam chat notifications", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Text(
+                "Show a notification when a Steam friend messages you while their chat isn't open.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(start = 12.dp),
+            )
         }
 
         // ── Box64 Preset ─────────────────────────────────────────────

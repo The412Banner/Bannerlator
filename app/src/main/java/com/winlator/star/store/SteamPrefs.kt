@@ -151,6 +151,26 @@ object SteamPrefs {
         prefs.edit().putBoolean(K_ACHV_SYNCBACK, v).apply()
     }
 
+    // ── Friend-chat notifications (default ON) ───────────────────────────────
+    // Gates whether an incoming friend message (while its chat isn't open) is posted to the Android
+    // shade by SteamChatNotifier. On by default — it's the expected behaviour for a chat feature; the
+    // user can turn it off in the app settings. Self-inits like the sync-back gate so the store hook
+    // can read it from the CM pump without a prior init call. Not a credential, so clear() leaves it.
+
+    private const val K_CHAT_NOTIFICATIONS = "steam_chat_notifications"
+
+    /** True (default) if incoming friend messages should raise an Android notification. */
+    fun isChatNotificationsEnabled(ctx: Context): Boolean {
+        init(ctx)
+        return prefs.getBoolean(K_CHAT_NOTIFICATIONS, true)
+    }
+
+    /** Enable/disable friend-chat notifications in the system shade. */
+    fun setChatNotificationsEnabled(ctx: Context, v: Boolean) {
+        init(ctx)
+        prefs.edit().putBoolean(K_CHAT_NOTIFICATIONS, v).apply()
+    }
+
     // ── Steam Cloud support cache (per-app UFS verdict) ───────────────────────
     // SteamCloudSaveManager.hasCloudSupport() hits PICS to learn whether an app has a UFS cloud store.
     // That verdict is stable per app, so cache the DEFINITIVE true/false here (survives process death)

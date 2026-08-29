@@ -2,6 +2,9 @@ package com.winlator.star.store;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -499,9 +502,13 @@ public final class SteamRepository {
             return t;
         });
         schedulePump();
+        // Arm the background network-availability self-heal now that the pump (and appContext) are up.
+        registerNetworkCallback();
     }
 
     private void stopPump() {
+        // Detach the network callback first so it can't fire a reconnect while we tear the pump down.
+        unregisterNetworkCallback();
         pumping.set(false);
         if (pumpThread != null) { pumpThread.quitSafely(); pumpThread = null; }
         pumpHandler = null;
@@ -553,6 +560,21 @@ public final class SteamRepository {
 
     private volatile int reconnectAttempts = 0;
     private static final int MAX_RECONNECT_ATTEMPTS = 5;
+
+    // --- Background network-availability self-heal (ConnectivityManager) --------------------------
+    // If the network stays down longer than the ~30s auto-reconnect budget (MAX_RECONNECT_ATTEMPTS)
+    // while the app is backgrounded (Doze, a tunnel, a wifi flap), onDisconnected exhausts its
+    // attempts and we strand OFFLINE until the user reopens the app (ProcessLifecycle ON_START ->
+    // reconnectNow()). A default-network callback closes that gap: the instant connectivity returns
+    // we reset the attempt cap and re-drive the SAME reconnect entry point the status pill uses.
+    // Guarded so it only acts when it makes sense (logged in per prefs, pump up, not already healthy,
+    // no logon/connect in flight, not a deliberate sign-out) and debounced so a burst of
+    // onAvailable/onCapabilitiesChanged callbacks kicks at most one reconnect.
+    private ConnectivityManager networkCm = null;
+    private ConnectivityManager.NetworkCallback networkCallback = null;
+    private final Object networkCallbackLock = new Object();
+    private volatile long lastNetworkReconnectAt = 0L;
+    private static final long NETWORK_RECONNECT_DEBOUNCE_MS = 5_000L;
 
     /** Set by logout() so a user-initiated sign-out is not treated as an involuntary logoff to recover from. */
     private volatile boolean loggingOut = false;
@@ -665,6 +687,93 @@ public final class SteamRepository {
             connect();                                              // onConnected auto-logs-in
         } else if (!loggedIn) {
             loginWithToken(pGet("username", ""), pGet("refresh_token", ""));
+        }
+    }
+
+    /**
+     * Register a default-network availability callback so the CM session self-heals in the background
+     * the moment connectivity returns (see the field block near reconnectAttempts). Idempotent — a
+     * no-op if already registered — and fully wrapped so any ConnectivityManager quirk can never crash
+     * startup or the pump. Called from startPump() (primary) and re-armed from loginWithToken() so a
+     * re-login after a logout that unregistered it (while the pump kept running) re-attaches it.
+     */
+    private void registerNetworkCallback() {
+        if (appContext == null) return;
+        synchronized (networkCallbackLock) {
+            if (networkCallback != null) return;   // already registered — idempotent
+            try {
+                ConnectivityManager cm =
+                        (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+                if (cm == null) return;
+                ConnectivityManager.NetworkCallback cb = new ConnectivityManager.NetworkCallback() {
+                    @Override public void onAvailable(Network network) {
+                        onNetworkAvailable("onAvailable");
+                    }
+                    @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {
+                        if (caps != null
+                                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                            onNetworkAvailable("validated");
+                        }
+                    }
+                };
+                cm.registerDefaultNetworkCallback(cb);   // minSdk 26 >= API 24 requirement
+                networkCm = cm;
+                networkCallback = cb;
+                Log.i(TAG, "Network availability callback registered (background self-heal)");
+            } catch (Throwable t) {
+                Log.w(TAG, "registerNetworkCallback failed — background self-heal disabled", t);
+                networkCallback = null;
+                networkCm = null;
+            }
+        }
+    }
+
+    /** Unregister the network-availability callback. Idempotent; safe from any thread. */
+    private void unregisterNetworkCallback() {
+        synchronized (networkCallbackLock) {
+            ConnectivityManager cm = networkCm;
+            ConnectivityManager.NetworkCallback cb = networkCallback;
+            networkCallback = null;
+            networkCm = null;
+            if (cm != null && cb != null) {
+                try { cm.unregisterNetworkCallback(cb); }
+                catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    /**
+     * Network became available while we may be stranded — self-heal the Steam session by re-driving
+     * the exact recovery reconnectNow() performs. Runs on a ConnectivityManager callback thread; both
+     * connect() and loginWithToken() post their network I/O to the pump, so calling reconnectNow()
+     * from here is safe (same as the main-thread pill tap).
+     *
+     * Acts ONLY when it makes sense, and is idempotent / race-safe with the single-flight logon
+     * guards:
+     *   - pump running (pumping) and NOT a deliberate sign-out (loggingOut)
+     *   - a saved session exists (isLoggedInPrefs) — otherwise the user must sign in interactively
+     *   - not already healthy (connected && loggedIn)
+     *   - no connect() in flight (connecting) and no logon in flight (loggingOn within its stall window)
+     *   - debounced: ignore a duplicate within NETWORK_RECONNECT_DEBOUNCE_MS of the last kick
+     * Resets reconnectAttempts so the 5-attempt cap can never permanently strand us.
+     */
+    private void onNetworkAvailable(String source) {
+        try {
+            if (!pumping.get()) return;                 // pump down (disconnected/stopped) — nothing to heal
+            if (loggingOut) return;                     // respect a deliberate sign-out
+            if (!isLoggedInPrefs()) return;             // no saved token — user must sign in
+            if (connected && loggedIn) return;          // already healthy
+            if (connecting.get()) return;               // a connect() is already in flight
+            long now = System.currentTimeMillis();
+            if (loggingOn.get() && (now - logonStartedAt) < LOGON_STALL_MS) return;    // logon in flight
+            if ((now - lastNetworkReconnectAt) < NETWORK_RECONNECT_DEBOUNCE_MS) return; // debounce burst
+            lastNetworkReconnectAt = now;
+            Log.i(TAG, "Network available (" + source + ") — self-healing Steam session");
+            reconnectAttempts = 0;   // clear the auto-reconnect cap so it can't permanently strand us
+            reconnectNow();          // reuse the existing recovery entry point (resets caps + connect()/relogin)
+        } catch (Throwable t) {
+            Log.w(TAG, "onNetworkAvailable handler failed", t);
         }
     }
 
@@ -1326,6 +1435,9 @@ public final class SteamRepository {
     /** Auto-login using a stored refresh token. Must not be called on the main thread. */
     public void loginWithToken(String username, String refreshToken) {
         if (steamUser == null) return;
+        // Re-arm the background self-heal on any login attempt (idempotent) so a re-login after a
+        // logout — which unregistered it while the pump kept running — re-attaches the callback.
+        registerNetworkCallback();
         SteamLogRedactor.registerSecret(username);
         SteamLogRedactor.registerSecret(refreshToken);
         // Single-flight: a redundant logon while already logged in — or a second concurrent logon
@@ -1463,6 +1575,10 @@ public final class SteamRepository {
     public void logout() {
         loggingOut = true;            // suppress involuntary-logoff recovery for this intentional sign-out
         logoffRecoveryAttempts = 0;
+        // Detach the background self-heal so it can't fight this deliberate sign-out. (A later
+        // re-login re-arms it via loginWithToken(); the isLoggedInPrefs()/loggingOut guards in
+        // onNetworkAvailable are a second line of defence in case it is still attached.)
+        unregisterNetworkCallback();
         if (steamUser != null) steamUser.logOff();
         if (prefs != null) {
             prefs.edit()

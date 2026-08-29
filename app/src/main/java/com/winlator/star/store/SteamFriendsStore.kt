@@ -118,6 +118,10 @@ object SteamFriendsStore {
     val typing: StateFlow<Map<Long, Long>> = _typing.asStateFlow()
     private val lastTypingSent = ConcurrentHashMap<Long, Long>()
 
+    /** Presence sections the user has collapsed/hidden — persisted so it's remembered across opens. */
+    private val _collapsedSections = MutableStateFlow<Set<Presence>>(emptySet())
+    val collapsedSections: StateFlow<Set<Presence>> = _collapsedSections.asStateFlow()
+
     @Volatile private var appContext: android.content.Context? = null
     @Volatile private var loadedForAccount: Long = 0L
 
@@ -163,7 +167,31 @@ object SteamFriendsStore {
 
     /** Wire an application context so chat history can be saved to disk. Idempotent. */
     fun init(context: android.content.Context) {
-        if (appContext == null) appContext = context.applicationContext
+        if (appContext == null) {
+            appContext = context.applicationContext
+            loadCollapsedSections()
+        }
+    }
+
+    /** Persist a section's collapsed/hidden state (remembered across app opens). */
+    fun setSectionCollapsed(p: Presence, collapsed: Boolean) {
+        val cur = _collapsedSections.value
+        val next = if (collapsed) cur + p else cur - p
+        if (next == cur) return
+        _collapsedSections.value = next
+        try {
+            appContext?.getSharedPreferences("steam_friends_ui", android.content.Context.MODE_PRIVATE)
+                ?.edit()?.putStringSet("collapsed_sections", next.map { it.name }.toSet())?.apply()
+        } catch (_: Throwable) {
+        }
+    }
+
+    private fun loadCollapsedSections() {
+        val saved = try {
+            appContext?.getSharedPreferences("steam_friends_ui", android.content.Context.MODE_PRIVATE)
+                ?.getStringSet("collapsed_sections", null)
+        } catch (_: Throwable) { null } ?: return
+        _collapsedSections.value = saved.mapNotNull { runCatching { Presence.valueOf(it) }.getOrNull() }.toSet()
     }
 
     /** Load this account's saved conversations into memory (once per account). */

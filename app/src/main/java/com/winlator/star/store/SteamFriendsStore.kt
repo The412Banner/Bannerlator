@@ -876,22 +876,23 @@ object SteamFriendsStore {
                     text = m.message ?: "",
                     timestampSec = (m.timestamp?.time ?: 0L) / 1000L,
                 )
-            }.sortedBy { it.timestampSec }
+            }.filter { it.text.isNotEmpty() }
 
+            // Steam's classic history call returns only a SHORT recent window — it must NEVER clobber a
+            // fuller local/cached conversation. UNION the server rows into the existing list (dedup by
+            // sender+text+~timestamp), keep chronological. An empty server response leaves local intact.
+            // (This clear-and-replace was the history-wipe: a 2-message server reply wiped older history.)
+            if (server.isEmpty()) return
             val list = histories.getOrPut(id) { mutableListOf() }
             synchronized(list) {
-                // Keep any just-sent optimistic message newer than the newest server row so a send
-                // made before history lands isn't dropped when we adopt the authoritative list.
-                val maxServerTs = server.maxOfOrNull { it.timestampSec } ?: 0L
-                val serverSelfTexts = server.filter { it.fromSelf }.map { it.text }.toHashSet()
-                // Keep an optimistic self-message only if it's newer than everything on the server AND
-                // the server doesn't already have that text (stops the just-sent line from doubling).
-                val keepLocal = list.filter {
-                    it.fromSelf && it.timestampSec > maxServerTs && it.text !in serverSelfTexts
+                for (sm in server) {
+                    val dup = list.any {
+                        it.fromSelf == sm.fromSelf && it.text == sm.text &&
+                            kotlin.math.abs(it.timestampSec - sm.timestampSec) < 5
+                    }
+                    if (!dup) list.add(sm)
                 }
-                list.clear()
-                list.addAll(server)
-                list.addAll(keepLocal)
+                list.sortBy { it.timestampSec }
             }
             if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
             io.execute { persistHistories() }

@@ -305,7 +305,7 @@ fun FriendsTwoPane(
  * actions are omitted here — there's nothing to add to or refresh while dormant.
  */
 @Composable
-private fun FriendsOffState(onBack: () -> Unit) {
+internal fun FriendsOffState(onBack: () -> Unit) {
     val ctx = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     Column(

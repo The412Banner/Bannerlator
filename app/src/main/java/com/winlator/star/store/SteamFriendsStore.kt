@@ -376,6 +376,10 @@ object SteamFriendsStore {
         val ctx = appContext ?: return
         val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
         if (selfId == 0L) return
+        // Never overwrite good on-disk history with an in-memory set that predates the disk load — that
+        // wipes older conversations (e.g. a message arrives, or friends is enabled, before
+        // loadHistoriesFor ran). Only persist once we've actually loaded this account's saved history.
+        if (loadedForAccount != selfId) return
         try {
             val convos = org.json.JSONObject()
             for ((id, list) in histories) {
@@ -738,7 +742,9 @@ object SteamFriendsStore {
                 // "worked before, fails now" upload failure.
                 if (url == null) {
                     val err = SteamChatImageUploader.lastError ?: ""
-                    if (err.contains("401") || err.contains("403")) {
+                    // Steam returns 400 (not just 401/403) for a stale/invalid web token on beginfileupload,
+                    // so treat a begin 4xx as an auth problem: drop the cached token, re-mint, retry once.
+                    if (err.contains("400") || err.contains("401") || err.contains("403")) {
                         invalidateWebToken()
                         val fresh = mintWebToken()
                         if (fresh != null) url = SteamChatImageUploader.upload(fresh, selfId, steamId, bytes, fileName)

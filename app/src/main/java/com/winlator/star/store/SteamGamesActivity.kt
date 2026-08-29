@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
@@ -109,6 +110,7 @@ class SteamGamesActivity : ComponentActivity(), SteamRepository.SteamEventListen
         super.onCreate(savedInstanceState)
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
+        SteamFriendsStore.init(this) // load the persisted social opt-in so the settings cog reflects it
 
         setContent {
             WinlatorTheme {
@@ -416,6 +418,20 @@ private fun SteamGamesScreen(
                 )
             }
             DownloadsButton()
+            // Friends & chat settings — opens the SAME sheet as the friends-screen cog, so the master
+            // opt-in stays mirrored between the two surfaces (both bind to SteamFriendsStore.socialEnabled).
+            // The store screen is already behind the Steam login gate, so this only ever shows post-login.
+            var showSocialSettings by remember { mutableStateOf(false) }
+            IconButton(onClick = { showSocialSettings = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Friends & chat settings",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (showSocialSettings) {
+                SteamSocialSettingsSheet(onDismiss = { showSocialSettings = false })
+            }
             IconButton(onClick = onLogout) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Logout,

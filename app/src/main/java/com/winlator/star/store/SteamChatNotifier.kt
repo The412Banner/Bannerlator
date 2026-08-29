@@ -34,8 +34,17 @@ object SteamChatNotifier {
 
     private const val TAG = "BH_STEAM_CHATNOTIF"
 
-    /** Dedicated "Steam Messages" channel — HIGH so a new message heads-up like a normal chat app. */
-    private const val CHANNEL_ID = "steam_chat_messages"
+    // Two dedicated "Steam Messages" channels, chosen per-notification by the user's sound preference.
+    // Android LOCKS a channel's importance/sound at creation, so the "sound on/off" toggle can't just
+    // reconfigure one channel — it must route to a different channel. These use BRAND-NEW ids (the old
+    // "steam_chat_messages" id is stuck at a silent importance on devices that already created it, which
+    // is why chat notifications currently show under "Silent"; the new ids get a clean importance).
+    // These are SEPARATE from the game-launch / foreground-service channels — sound here never affects
+    // their silence, and vice-versa.
+    /** Sound + heads-up channel (IMPORTANCE_HIGH, default sound) — used when the sound toggle is ON. */
+    private const val CHANNEL_ALERT = "steam_chat_alert"
+    /** Silent channel (IMPORTANCE_LOW, no sound) — used when the sound toggle is OFF. */
+    private const val CHANNEL_SILENT = "steam_chat_silent"
 
     /** Group + summary so several friends' notifications bundle instead of scattering the shade. */
     private const val GROUP_KEY = "steam_chat"
@@ -76,7 +85,10 @@ object SteamChatNotifier {
         val now = System.currentTimeMillis()
         worker.execute {
             try {
-                ensureChannel(app)
+                ensureChannels(app)
+                // Route to the sound or the silent channel by the user's preference (default: sound on).
+                val soundOn = try { SteamPrefs.isChatSoundEnabled(app) } catch (_: Throwable) { true }
+                val channelId = if (soundOn) CHANNEL_ALERT else CHANNEL_SILENT
 
                 val deque = convos.getOrPut(steamId) { ArrayDeque() }
                 synchronized(deque) {
@@ -96,7 +108,7 @@ object SteamChatNotifier {
                 for (l in snapshot) style.addMessage(l.text, l.timeMs, sender)
 
                 val notifId = notifIdFor(steamId)
-                val n = NotificationCompat.Builder(app, CHANNEL_ID)
+                val n = NotificationCompat.Builder(app, channelId)
                     .setSmallIcon(android.R.drawable.stat_notify_chat)
                     .setStyle(style)
                     .setContentIntent(contentIntent(app, steamId, notifId))
@@ -110,7 +122,7 @@ object SteamChatNotifier {
                 activeIds.add(notifId)
                 val nm = NotificationManagerCompat.from(app)
                 nm.notify(notifId, n)
-                nm.notify(SUMMARY_ID, buildSummary(app))
+                nm.notify(SUMMARY_ID, buildSummary(app, channelId))
             } catch (t: Throwable) {
                 Log.w(TAG, "notify failed", t)
             }
@@ -158,8 +170,9 @@ object SteamChatNotifier {
         )
     }
 
-    private fun buildSummary(context: Context): android.app.Notification =
-        NotificationCompat.Builder(context, CHANNEL_ID)
+    /** Summary rides the SAME channel as the conversation notifications it groups ([channelId]). */
+    private fun buildSummary(context: Context, channelId: String): android.app.Notification =
+        NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
             .setContentTitle("Steam messages")
             .setGroup(GROUP_KEY)
@@ -168,22 +181,38 @@ object SteamChatNotifier {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .build()
 
-    /** Create the channel once; idempotent (mirrors the FGS channel pattern). */
-    private fun ensureChannel(context: Context) {
+    /** Create both chat channels once; idempotent (mirrors the FGS channel pattern). A channel's
+     *  importance/sound is fixed at creation, so the sound preference switches between the two rather
+     *  than reconfiguring one. */
+    private fun ensureChannels(context: Context) {
         try {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (nm.getNotificationChannel(CHANNEL_ID) != null) return
-            val ch = NotificationChannel(
-                CHANNEL_ID,
-                "Steam Messages",
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = "Chat messages from your Steam friends"
-                setShowBadge(true)
+            if (nm.getNotificationChannel(CHANNEL_ALERT) == null) {
+                val alert = NotificationChannel(
+                    CHANNEL_ALERT,
+                    "Steam Messages",
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    description = "Chat messages from your Steam friends (sound + heads-up)"
+                    setShowBadge(true)
+                }
+                nm.createNotificationChannel(alert)
             }
-            nm.createNotificationChannel(ch)
+            if (nm.getNotificationChannel(CHANNEL_SILENT) == null) {
+                val silent = NotificationChannel(
+                    CHANNEL_SILENT,
+                    "Steam Messages (silent)",
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = "Chat messages from your Steam friends (no sound)"
+                    setShowBadge(true)
+                    setSound(null, null)
+                    enableVibration(false)
+                }
+                nm.createNotificationChannel(silent)
+            }
         } catch (t: Throwable) {
-            Log.w(TAG, "ensureChannel failed", t)
+            Log.w(TAG, "ensureChannels failed", t)
         }
     }
 

@@ -171,6 +171,46 @@ object SteamPrefs {
         prefs.edit().putBoolean(K_CHAT_NOTIFICATIONS, v).apply()
     }
 
+    // ── Friend-chat notification SOUND (default ON) ──────────────────────────
+    // Gates whether an incoming-message notification makes a sound / heads-up (routes it to the alert
+    // channel) vs. lands quietly (the silent channel). Only meaningful while chat notifications are on.
+    // Self-inits like the toggles above so SteamChatNotifier can read it from the CM pump. Preference,
+    // not a credential, so clear() leaves it.
+
+    private const val K_CHAT_SOUND = "steam_chat_sound"
+
+    /** True (default) if incoming-message notifications should play a sound / heads-up. */
+    fun isChatSoundEnabled(ctx: Context): Boolean {
+        init(ctx)
+        return prefs.getBoolean(K_CHAT_SOUND, true)
+    }
+
+    /** Enable/disable the sound on friend-chat notifications. */
+    fun setChatSoundEnabled(ctx: Context, v: Boolean) {
+        init(ctx)
+        prefs.edit().putBoolean(K_CHAT_SOUND, v).apply()
+    }
+
+    // ── Master opt-in for the whole friends/chat feature (default OFF) ────────
+    // The friends list, presence sharing and chat are OFF until the user opts in. Default FALSE so a
+    // brand-new sign-in shows the store working with the social side dormant (no online status shared)
+    // until the user turns it on. Mirrored by two cogs (Steam store + Friends screen) and the
+    // SteamFriendsStore.socialEnabled flow. A preference, not a credential — NOT cleared on logout.
+
+    private const val K_SOCIAL_ENABLED = "steam_social_enabled"
+
+    /** True if the user has opted into Steam friends & chat. DEFAULT FALSE — dormant until turned on. */
+    fun isSocialEnabled(ctx: Context): Boolean {
+        init(ctx)
+        return prefs.getBoolean(K_SOCIAL_ENABLED, false)
+    }
+
+    /** Enable/disable the whole Steam friends & chat feature. */
+    fun setSocialEnabled(ctx: Context, v: Boolean) {
+        init(ctx)
+        prefs.edit().putBoolean(K_SOCIAL_ENABLED, v).apply()
+    }
+
     // ── Steam Cloud support cache (per-app UFS verdict) ───────────────────────
     // SteamCloudSaveManager.hasCloudSupport() hits PICS to learn whether an app has a UFS cloud store.
     // That verdict is stable per app, so cache the DEFINITIVE true/false here (survives process death)

@@ -8,8 +8,12 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,8 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -104,6 +113,7 @@ fun SteamFriendsRoot(
     openFriendId: Long = 0L,
     onFriendOpened: () -> Unit = {},
 ) {
+    val socialEnabled by SteamFriendsStore.socialEnabled.collectAsState()
     var openChat by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
     val available = rememberFriendsAvailable()
 
@@ -111,19 +121,30 @@ fun SteamFriendsRoot(
     val landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
         configuration.screenWidthDp >= 600
 
-    // When the session becomes live (e.g. the user tapped reconnect), pull a fresh roster.
-    LaunchedEffect(available) { if (available) SteamFriendsStore.refresh() }
+    // When the session becomes live (e.g. the user tapped reconnect) AND the feature is on, pull a
+    // fresh roster. refresh() is a no-op while social is off, but keying on socialEnabled means a fresh
+    // roster loads the instant the user opts in.
+    LaunchedEffect(available, socialEnabled) { if (available && socialEnabled) SteamFriendsStore.refresh() }
 
     // Deep-link: a chat-notification tap arrives as a SteamID; open that friend's chat directly. This
     // runs the existing openChat → clearUnread → SteamChatNotifier.cancel path, so the tapped
     // notification auto-clears. Resolve once per id (friendById falls back to a placeholder if the
     // roster hasn't published yet); onFriendOpened resets the id so back-navigation isn't hijacked. In
-    // landscape this simply selects the friend into the right pane.
-    LaunchedEffect(openFriendId) {
-        if (openFriendId != 0L) {
+    // landscape this simply selects the friend into the right pane. Ignored while social is off (no
+    // notification can have been posted anyway).
+    LaunchedEffect(openFriendId, socialEnabled) {
+        if (openFriendId != 0L && socialEnabled) {
             openChat = SteamFriendsStore.friendById(openFriendId)
             onFriendOpened()
         }
+    }
+
+    // Feature is opt-in and currently OFF: show the clean off-state (message + Enable) with the top bar
+    // + cog still shown, in BOTH portrait and landscape, instead of the roster / two-pane. Back leaves.
+    if (!socialEnabled) {
+        BackHandler(enabled = true) { onClose() }
+        FriendsOffState(onBack = onClose)
+        return
     }
 
     if (landscape) {
@@ -207,8 +228,10 @@ fun SteamFriendsAction(tint: Color = Color.White) {
     if (!loggedIn) return
     val unread by SteamFriendsStore.unread.collectAsState()
     val incoming by SteamFriendsStore.incomingRequests.collectAsState()
-    // The badge covers both unread chats and pending incoming friend requests.
-    val total = unread.values.sum() + incoming.size
+    val socialEnabled by SteamFriendsStore.socialEnabled.collectAsState()
+    // The badge covers both unread chats and pending incoming friend requests — but only counts while
+    // the feature is enabled (a dormant feature shows no unread/request footprint).
+    val total = if (socialEnabled) unread.values.sum() + incoming.size else 0
     Box {
         IconButton(onClick = {
             runCatching { ctx.startActivity(Intent(ctx, SteamFriendsActivity::class.java)) }
@@ -239,5 +262,97 @@ fun SteamFriendsAction(tint: Color = Color.White) {
                 )
             }
         }
+    }
+}
+
+/**
+ * The ONE reusable "Steam friends & chat" settings sheet, opened by BOTH cogs — the Steam store header
+ * and the friends-screen top bar. Because both surfaces open this same sheet, and it binds to the
+ * shared [SteamFriendsStore.socialEnabled] flow + [SteamPrefs] gates, the two are inherently mirrored:
+ * a change made in one is live in the other (and in the friends screen's off-state) with no extra
+ * plumbing.
+ *
+ * - "Enable Steam friends & chat" → the master opt-in (default OFF), via [SteamFriendsStore.setSocialEnabled].
+ * - "Chat notifications" → shade notifications, greyed while the master is off.
+ * - "Notification sound" → sound / heads-up on those notifications, greyed while notifications are off.
+ */
+@Composable
+fun SteamSocialSettingsSheet(onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val socialEnabled by SteamFriendsStore.socialEnabled.collectAsState()
+    // The notification gates are plain SharedPreferences (not flows), so hold them as local state seeded
+    // from prefs and written straight through on toggle — this sheet is their only in-app editor.
+    var chatNotifs by remember {
+        mutableStateOf(runCatching { SteamPrefs.isChatNotificationsEnabled(ctx) }.getOrDefault(true))
+    }
+    var chatSound by remember {
+        mutableStateOf(runCatching { SteamPrefs.isChatSoundEnabled(ctx) }.getOrDefault(true))
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(10.dp))
+                Text("Steam friends & chat")
+            }
+        },
+        text = {
+            Column {
+                SocialSettingRow(
+                    title = "Enable Steam friends & chat",
+                    subtitle = "See your friends list, presence and chat. Off by default — no online status " +
+                        "is shared until you turn this on.",
+                    checked = socialEnabled,
+                    enabled = true,
+                    onCheckedChange = { SteamFriendsStore.setSocialEnabled(ctx, it) },
+                )
+                Spacer(Modifier.height(4.dp))
+                SocialSettingRow(
+                    title = "Chat notifications",
+                    subtitle = "Show a notification when a friend messages you.",
+                    checked = chatNotifs,
+                    enabled = socialEnabled,
+                    onCheckedChange = { chatNotifs = it; SteamPrefs.setChatNotificationsEnabled(ctx, it) },
+                )
+                Spacer(Modifier.height(4.dp))
+                SocialSettingRow(
+                    title = "Notification sound",
+                    subtitle = "Play a sound and pop a heads-up for new messages.",
+                    checked = chatSound,
+                    enabled = socialEnabled && chatNotifs,
+                    onCheckedChange = { chatSound = it; SteamPrefs.setChatSoundEnabled(ctx, it) },
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+
+/** One title + subtitle + trailing [Switch] row for [SteamSocialSettingsSheet]; dims when [enabled] is false. */
+@Composable
+private fun SocialSettingRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val titleColor = if (enabled) MaterialTheme.colorScheme.onSurface
+    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+    val subColor = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant
+    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
+            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = subColor)
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }

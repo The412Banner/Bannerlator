@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -129,13 +130,16 @@ private val PRESENCE_ORDER = listOf(
 
 // ── Friends list ────────────────────────────────────────────────────────────────
 
-/** The top app bar (back / title / connection pill / add / refresh) shared by the single-pane list
- *  and the landscape two-pane layout, where it spans the top above both panes. */
+/** The top app bar (back / title / connection pill / add / refresh / settings) shared by the single-pane
+ *  list, the landscape two-pane layout (where it spans the top above both panes), and the off-state.
+ *  [onAdd] / [onRefresh] are optional so the off-state can show a lean bar (back + pill + cog) — the
+ *  add / refresh actions only render when a handler is supplied. */
 @Composable
 private fun FriendsTopBar(
     onBack: () -> Unit,
-    onAdd: () -> Unit,
-    onRefresh: () -> Unit,
+    onSettings: () -> Unit,
+    onAdd: (() -> Unit)? = null,
+    onRefresh: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -158,17 +162,28 @@ private fun FriendsTopBar(
         )
         Spacer(Modifier.weight(1f))
         SteamConnectionPill()
-        IconButton(onClick = onAdd) {
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = "Add friend",
-                tint = MaterialTheme.colorScheme.primary,
-            )
+        if (onAdd != null) {
+            IconButton(onClick = onAdd) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add friend",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
-        IconButton(onClick = onRefresh) {
+        if (onRefresh != null) {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Refresh",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        IconButton(onClick = onSettings) {
             Icon(
-                imageVector = Icons.Filled.Refresh,
-                contentDescription = "Refresh",
+                imageVector = Icons.Filled.Settings,
+                contentDescription = "Friends & chat settings",
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
@@ -187,6 +202,7 @@ fun FriendsListScreen(
     onOpenChat: (SteamFriendsStore.SteamFriend) -> Unit,
 ) {
     var showAdd by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -194,11 +210,15 @@ fun FriendsListScreen(
     ) {
         FriendsTopBar(
             onBack = onBack,
+            onSettings = { showSettings = true },
             onAdd = { showAdd = true },
             onRefresh = { SteamFriendsStore.refresh() },
         )
         if (showAdd) {
             AddFriendDialog(onDismiss = { showAdd = false })
+        }
+        if (showSettings) {
+            SteamSocialSettingsSheet(onDismiss = { showSettings = false })
         }
         FriendsListBody(
             available = available,
@@ -224,6 +244,7 @@ fun FriendsTwoPane(
     onBack: () -> Unit,
 ) {
     var showAdd by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -231,11 +252,15 @@ fun FriendsTwoPane(
     ) {
         FriendsTopBar(
             onBack = onBack,
+            onSettings = { showSettings = true },
             onAdd = { showAdd = true },
             onRefresh = { SteamFriendsStore.refresh() },
         )
         if (showAdd) {
             AddFriendDialog(onDismiss = { showAdd = false })
+        }
+        if (showSettings) {
+            SteamSocialSettingsSheet(onDismiss = { showSettings = false })
         }
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             FriendsListBody(
@@ -259,6 +284,63 @@ fun FriendsTwoPane(
                 } else {
                     EmptyChatState()
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The friends/chat OFF-state — shown (in both portrait and landscape) when the feature is opted out
+ * [SteamFriendsStore.socialEnabled] == false. Keeps the top bar (back + connection pill + the settings
+ * cog) so the user isn't stranded, and centers a short explainer + an Enable button that flips the
+ * master opt-in on. Enabling flips [SteamFriendsStore.socialEnabled], which live-swaps this for the
+ * roster / two-pane; the mirrored store cog stays in sync through the same flow. The add / refresh
+ * actions are omitted here — there's nothing to add to or refresh while dormant.
+ */
+@Composable
+private fun FriendsOffState(onBack: () -> Unit) {
+    val ctx = LocalContext.current
+    var showSettings by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        FriendsTopBar(onBack = onBack, onSettings = { showSettings = true })
+        if (showSettings) {
+            SteamSocialSettingsSheet(onDismiss = { showSettings = false })
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.People,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Steam friends & chat is off",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Turn it on to see your friends list and their presence, and to send and receive chat " +
+                    "messages. While it's off, no online status is shared.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = { SteamFriendsStore.setSocialEnabled(ctx, true) }) {
+                Text("Enable")
             }
         }
     }

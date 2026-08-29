@@ -159,6 +159,15 @@ object SteamFriendsStore {
     private val _collapsedSections = MutableStateFlow<Set<Presence>>(emptySet())
     val collapsedSections: StateFlow<Set<Presence>> = _collapsedSections.asStateFlow()
 
+    /**
+     * Master opt-in for the whole friends/chat feature. DEFAULT FALSE — the feature is dormant (no
+     * online announce, no roster, no chat notifications) until the user turns it on. Loaded from
+     * [SteamPrefs.isSocialEnabled] in [init] and mirrored by both cogs (Steam store + Friends screen),
+     * so a toggle in one surface is live in the other.
+     */
+    private val _socialEnabled = MutableStateFlow(false)
+    val socialEnabled: StateFlow<Boolean> = _socialEnabled.asStateFlow()
+
     @Volatile private var appContext: android.content.Context? = null
     @Volatile private var loadedForAccount: Long = 0L
 
@@ -236,6 +245,28 @@ object SteamFriendsStore {
         if (appContext == null) {
             appContext = context.applicationContext
             loadCollapsedSections()
+            _socialEnabled.value = try { SteamPrefs.isSocialEnabled(context) } catch (_: Throwable) { false }
+        }
+    }
+
+    /**
+     * Flip the master friends/chat opt-in. Persists via [SteamPrefs] (survives logout — it's a
+     * preference), updates [socialEnabled] so every mirrored cog + the friends screen react live, and:
+     * turning ON comes online + pulls the roster ([refresh]); turning OFF goes dormant — re-arms the
+     * one-time online sync, best-effort announces Offline (stop sharing presence), and clears any
+     * chat notifications from the shade so an opted-out user has no visible social footprint. Best-
+     * effort / non-throwing like the rest of the store.
+     */
+    fun setSocialEnabled(context: android.content.Context, enabled: Boolean) {
+        try { SteamPrefs.setSocialEnabled(context, enabled) } catch (_: Throwable) {}
+        _socialEnabled.value = enabled
+        if (enabled) {
+            refresh() // come online + pull a fresh roster (refresh() now passes the socialEnabled gate)
+        } else {
+            // Re-arm the one-shot online sync so a later re-enable re-announces online, then go quiet.
+            syncedThisSession = false
+            io.execute { try { repo.steamFriends?.setPersonaState(EPersonaState.Offline) } catch (_: Throwable) {} }
+            try { SteamChatNotifier.cancelAll(context) } catch (_: Throwable) {}
         }
     }
 
@@ -322,6 +353,10 @@ object SteamFriendsStore {
     fun refresh() {
         io.execute {
             try {
+                // Dormant while the feature is off: no online announce, no requestFriendInfo, no roster
+                // build — "off" must leave no social footprint. Gated at the source (the friends screen
+                // shows its off-state instead of the roster when this is false).
+                if (!_socialEnabled.value) return@execute
                 val sf = repo.steamFriends ?: return@execute
                 if (!repo.isLoggedIn) return@execute
                 val ids: List<SteamID> = try { sf.friendsList } catch (t: Throwable) { emptyList() }
@@ -846,6 +881,7 @@ object SteamFriendsStore {
     private fun maybeNotify(id: Long, body: String) {
         try {
             val ctx = appContext ?: return
+            if (!_socialEnabled.value) return // dormant while the feature is off — no social footprint
             if (!SteamPrefs.isChatNotificationsEnabled(ctx)) return
             if (!isAvailable()) return // only while signed in
             val friend = friendMap[id]?.copy(nickname = nicknames[id])

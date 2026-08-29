@@ -83,6 +83,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
@@ -450,6 +452,10 @@ private fun FriendsListBody(
                 val unread by SteamFriendsStore.unread.collectAsState()
                 // Per-section collapse (arrow folds a group away); persisted so it's remembered.
                 val collapsedSections by SteamFriendsStore.collapsedSections.collectAsState()
+                // Live "typing…" on a friend's row — a 1s ticker expires it (same as the chat header).
+                val typingMap by SteamFriendsStore.typing.collectAsState()
+                var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+                LaunchedEffect(Unit) { while (true) { nowMs = System.currentTimeMillis(); delay(1000) } }
                 val listState = rememberLazyListState()
                 // A freshly opened list always starts at the top.
                 LaunchedEffect(Unit) { listState.scrollToItem(0) }
@@ -492,6 +498,7 @@ private fun FriendsListBody(
                                     friend = friend,
                                     unread = unread[friend.steamId] ?: 0,
                                     selected = friend.steamId == selectedFriendId,
+                                    typing = (typingMap[friend.steamId] ?: 0L) > nowMs,
                                     onClick = { onOpenChat(friend) },
                                     onLongClick = { menuFriend = friend },
                                 )
@@ -1144,6 +1151,7 @@ private fun FriendRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     selected: Boolean = false,
+    typing: Boolean = false,
 ) {
     // Selected (two-pane) rows get an orange left bar + a faint accent tint, matching the mockup.
     val accent = MaterialTheme.colorScheme.primary
@@ -1168,10 +1176,13 @@ private fun FriendRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = friend.statusText,
+                text = if (typing) "typing…" else friend.statusText,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (friend.presence == SteamFriendsStore.Presence.IN_GAME) DotInGame
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = when {
+                    typing -> MaterialTheme.colorScheme.primary
+                    friend.presence == SteamFriendsStore.Presence.IN_GAME -> DotInGame
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1282,6 +1293,7 @@ fun ChatScreen(
 
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val chatScope = rememberCoroutineScope()
     // Open at the first unread message (captured before openChat clears the count), else the bottom.
     // New messages arriving while viewing animate to the bottom.
     val unreadAtOpen = remember(friend.steamId) { SteamFriendsStore.unread.value[friend.steamId] ?: 0 }
@@ -1300,7 +1312,8 @@ fun ChatScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .imePadding(),   // keep the composer above the on-screen keyboard
     ) {
         // Header: back + avatar + name/status.
         Row(
@@ -1450,7 +1463,15 @@ fun ChatScreen(
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it; if (it.isNotEmpty()) SteamFriendsStore.sendTyping(friend.steamId) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { fs ->
+                            // When the field gains focus (keyboard opening), pin to the newest message
+                            // once the imePadding/resize settles, so the latest chat stays readable.
+                            if (fs.isFocused && messages.isNotEmpty()) {
+                                chatScope.launch { delay(220); listState.animateScrollToItem(messages.size - 1) }
+                            }
+                        },
                     placeholder = { Text("Message") },
                     maxLines = 4,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),

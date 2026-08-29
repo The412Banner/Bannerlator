@@ -742,9 +742,10 @@ object SteamFriendsStore {
                 // "worked before, fails now" upload failure.
                 if (url == null) {
                     val err = SteamChatImageUploader.lastError ?: ""
-                    // Steam returns 400 (not just 401/403) for a stale/invalid web token on beginfileupload,
-                    // so treat a begin 4xx as an auth problem: drop the cached token, re-mint, retry once.
-                    if (err.contains("400") || err.contains("401") || err.contains("403")) {
+                    // Only retry on a true auth failure (401/403). Do NOT retry a 400: re-sending begin with
+                    // the same file_sha makes Steam reply EResult 29 (DuplicateRequest), which masks the
+                    // real first error.
+                    if (err.contains("401") || err.contains("403")) {
                         invalidateWebToken()
                         val fresh = mintWebToken()
                         if (fresh != null) url = SteamChatImageUploader.upload(fresh, selfId, steamId, bytes, fileName)

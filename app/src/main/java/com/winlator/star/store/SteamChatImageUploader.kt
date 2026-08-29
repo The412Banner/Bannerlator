@@ -107,7 +107,7 @@ object SteamChatImageUploader {
             }
             if (beginCode != 200) {
                 // Include a snippet of Steam's response body — it carries the actual reason for a 400.
-                val why = beginBody.trim().replace('\n', ' ').take(90)
+                val why = beginBody.trim().replace('\n', ' ').take(300)
                 lastError = "begin $beginCode" + if (why.isNotEmpty()) ": $why" else ""
                 Log.w(TAG, "begin http $beginCode: $beginBody")
                 return null

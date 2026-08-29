@@ -43,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.People
@@ -1325,6 +1326,42 @@ fun ChatScreen(
                     Icon(
                         imageVector = Icons.Filled.Image,
                         contentDescription = "Send image",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                // Paste from the system clipboard: an image is sent as a chat image, text is inserted
+                // into the draft. Works around the composer field not accepting keyboard rich-content
+                // ("does not support image pasting here") on this Compose version.
+                IconButton(
+                    onClick = {
+                        try {
+                            val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
+                            val item = cm?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)
+                            val uri = item?.uri
+                            val mime = uri?.let { ctx.contentResolver.getType(it) }
+                            if (uri != null && mime?.startsWith("image/") == true) {
+                                val sid = friend.steamId
+                                Thread {
+                                    try {
+                                        val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                        if (bytes != null && bytes.isNotEmpty()) {
+                                            SteamFriendsStore.sendImage(sid, bytes, "pasted.${mime.substringAfter('/')}")
+                                        }
+                                    } catch (_: Throwable) {}
+                                }.start()
+                            } else {
+                                val text = item?.coerceToText(ctx)?.toString()
+                                if (!text.isNullOrEmpty()) draft += text
+                                else Toast.makeText(ctx, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (_: Throwable) {
+                            Toast.makeText(ctx, "Couldn't paste", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ContentPaste,
+                        contentDescription = "Paste from clipboard",
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }

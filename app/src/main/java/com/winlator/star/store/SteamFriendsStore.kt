@@ -750,6 +750,19 @@ object SteamFriendsStore {
             val body = cb.message ?: return
             if (body.isEmpty()) return
             val ts = cb.rTime32ServerTimestamp.toLong().let { if (it > 0) it else nowSec() }
+            // Steam echoes our OWN sent messages back to us. sendMessage()/sendImage() already appended
+            // the message optimistically, so a naive append here shows every sent text/image TWICE.
+            // Reconcile: if a recent (<5min) self-message with the same body already exists, this echo
+            // is that message coming back — drop it. (A genuine re-send of identical text keeps both,
+            // since each echo only cancels one optimistic copy; another device's send has no local
+            // optimistic within the window, so it still appends.)
+            val existing = histories[id]
+            if (existing != null) {
+                val dup = synchronized(existing) {
+                    existing.any { it.fromSelf && it.text == body && kotlin.math.abs(it.timestampSec - ts) < 300 }
+                }
+                if (dup) return
+            }
             appendMessage(id, ChatMessage(true, body, ts))
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendMsgEcho failed", t)

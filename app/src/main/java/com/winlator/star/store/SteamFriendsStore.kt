@@ -6,7 +6,10 @@ import `in`.dragonbra.javasteam.enums.EClientPersonaStateFlag
 import `in`.dragonbra.javasteam.enums.EFriendRelationship
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesAuthSteamclient
+import `in`.dragonbra.javasteam.rpc.service.Authentication
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends
+import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendAddedCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendMsgCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendMsgEchoCallback
@@ -22,6 +25,7 @@ import java.util.Collections
 import java.util.EnumSet
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Facade for the Steam friends list + 1:1 text chat, riding the live [SteamRepository] CM session —
@@ -145,6 +149,13 @@ object SteamFriendsStore {
     @Volatile private var appContext: android.content.Context? = null
     @Volatile private var loadedForAccount: Long = 0L
 
+    // Short-lived WEB-audience access token for the community image host (see sendImage). Steam issues
+    // these ~1h; we cache one per account and re-mint after the TTL. NOT the raw refresh token.
+    private const val WEB_TOKEN_TTL_MS = 50 * 60 * 1000L
+    @Volatile private var cachedWebToken: String? = null
+    @Volatile private var cachedWebTokenAt: Long = 0L
+    @Volatile private var cachedWebTokenAccount: Long = 0L
+
     init {
         // Clear cross-account state on sign-out / session end so a different login never inherits the
         // previous user's friends. Rides the existing repository event bus (no new plumbing).
@@ -183,6 +194,9 @@ object SteamFriendsStore {
         // shown; live changes still arrive via onPersonaState. Only session/chat state is cleared here.
         histories.clear()       // privacy: don't let a different account read cached chat from memory
         loadedForAccount = 0L
+        cachedWebToken = null    // a different account must not reuse the previous user's upload token
+        cachedWebTokenAt = 0L
+        cachedWebTokenAccount = 0L
         syncedThisSession = false
         activeChatId = 0L
         _self.value = null
@@ -484,6 +498,81 @@ object SteamFriendsStore {
         }
     }
 
+    /**
+     * Upload [bytes] to Steam's community image host and, on success, send the resulting image URL to
+     * [steamId] as a normal chat message — the receive side renders that URL inline. A placeholder
+     * "sending" bubble shows while the (blocking) upload runs on the [io] executor; it is removed on
+     * success (the real URL message replaces it via the normal send path) or turned into a short
+     * failure note. Non-throwing; a failure just logs. [fileName] is best-effort metadata for Steam.
+     */
+    fun sendImage(steamId: Long, bytes: ByteArray, fileName: String) {
+        if (bytes.isEmpty()) return
+        val placeholder = ChatMessage(true, "📷 Sending image…", nowSec())
+        appendMessage(steamId, placeholder)
+        io.execute {
+            try {
+                val token = mintWebToken()
+                if (token == null) {
+                    replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image (not signed in)")
+                    return@execute
+                }
+                val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+                val url = SteamChatImageUploader.upload(token, selfId, steamId, bytes, fileName)
+                if (url != null) {
+                    // Drop the placeholder, then send the URL through the normal path (optimistic append
+                    // + sendChatMessage) so it renders as an image bubble on both ends.
+                    removeMessage(steamId, placeholder)
+                    sendMessage(steamId, url)
+                } else {
+                    replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image")
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "sendImage failed", t)
+                replaceMessageText(steamId, placeholder, "⚠️ Couldn't send image")
+            }
+        }
+    }
+
+    /**
+     * Mint (or return a cached) WEB-audience access token for the community image host. Steam's
+     * `steamLoginSecure` cookie needs a web-audience JWT, not the raw refresh token, so we exchange the
+     * refresh token via the Authentication unified RPC (the same call the desktop client makes before a
+     * chat upload). Cached ~[WEB_TOKEN_TTL_MS] per account. BLOCKING — call on the [io] executor only.
+     * Returns null when not logged in / no token / the RPC fails; never throws.
+     */
+    private fun mintWebToken(): String? {
+        val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+        if (selfId == 0L) return null
+        val now = System.currentTimeMillis()
+        val cached = cachedWebToken
+        if (cached != null && cachedWebTokenAccount == selfId && now - cachedWebTokenAt < WEB_TOKEN_TTL_MS) {
+            return cached
+        }
+        return try {
+            if (!repo.ensureLoggedIn(8_000L)) return null
+            val client = repo.steamClient ?: return null
+            val refresh = try { repo.refreshToken } catch (_: Throwable) { null }
+            if (refresh.isNullOrEmpty()) return null
+            val unified = client.getHandler(SteamUnifiedMessages::class.java) ?: return null
+            val auth: Authentication = unified.createService(Authentication::class.java)
+            val req = SteammessagesAuthSteamclient.CAuthentication_AccessToken_GenerateForApp_Request
+                .newBuilder()
+                .setRefreshToken(refresh)
+                .setSteamid(selfId)
+                .build()
+            val resp = auth.generateAccessTokenForApp(req)
+                .toFuture().get(20L, TimeUnit.SECONDS) ?: return null
+            val token = resp.body?.accessToken?.takeIf { it.isNotBlank() } ?: return null
+            cachedWebToken = token
+            cachedWebTokenAt = now
+            cachedWebTokenAccount = selfId
+            token
+        } catch (t: Throwable) {
+            Log.w(TAG, "mintWebToken failed", t)
+            null
+        }
+    }
+
     /** FriendMsgCallback: an incoming chat message OR a typing notification from a friend. */
     fun onFriendMsg(cb: FriendMsgCallback) {
         try {
@@ -559,6 +648,25 @@ object SteamFriendsStore {
     private fun appendMessage(id: Long, msg: ChatMessage) {
         val list = histories.getOrPut(id) { mutableListOf() }
         synchronized(list) { list.add(msg) }
+        if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+        io.execute { persistHistories() }
+    }
+
+    /** Remove a previously-appended (optimistic) message by value — used by the image-send flow. */
+    private fun removeMessage(id: Long, msg: ChatMessage) {
+        val list = histories[id] ?: return
+        synchronized(list) { list.remove(msg) }
+        if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+        io.execute { persistHistories() }
+    }
+
+    /** Rewrite an existing (optimistic) message's text in place — used for the image-send status note. */
+    private fun replaceMessageText(id: Long, old: ChatMessage, newText: String) {
+        val list = histories[id] ?: return
+        synchronized(list) {
+            val i = list.indexOf(old)
+            if (i >= 0) list[i] = old.copy(text = newText)
+        }
         if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
         io.execute { persistHistories() }
     }

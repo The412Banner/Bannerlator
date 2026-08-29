@@ -2,6 +2,11 @@ package com.winlator.star.store
 
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.winlator.star.util.InAppFilePicker
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -516,6 +522,24 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
     val isTyping = (typingMap[friend.steamId] ?: 0L) > nowMs
     val self by SteamFriendsStore.self.collectAsState()
 
+    // App's built-in File Manager in pick mode (InAppFilePicker/FilePickerActivity), filtered to images.
+    // The picked path's bytes are read + uploaded off the main thread; SteamFriendsStore.sendImage
+    // handles the token mint + community-host upload.
+    val ctx = LocalContext.current
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val path = if (result.resultCode == Activity.RESULT_OK) InAppFilePicker.pickedPath(result.data) else null
+        if (path != null) {
+            val name = path.substringAfterLast('/')
+            Thread {
+                try {
+                    val bytes = java.io.File(path).readBytes()
+                    if (bytes.isNotEmpty()) SteamFriendsStore.sendImage(friend.steamId, bytes, name)
+                } catch (_: Throwable) {
+                }
+            }.start()
+        }
+    }
+
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     // Open at the first unread message (captured before openChat clears the count), else the bottom.
@@ -629,6 +653,19 @@ fun ChatScreen(friend: SteamFriendsStore.SteamFriend, onBack: () -> Unit) {
             ) {
                 IconButton(onClick = { showEmoji = !showEmoji }) {
                     Text("😊", fontSize = 20.sp)
+                }
+                IconButton(
+                    onClick = {
+                        pickImage.launch(
+                            InAppFilePicker.buildIntent(ctx, InAppFilePicker.IMAGES, "Send an image"),
+                        )
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Image,
+                        contentDescription = "Send image",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 OutlinedTextField(
                     value = draft,
@@ -756,6 +793,20 @@ private fun MessageBubble(
 
 private val TIME_FMT = SimpleDateFormat("HH:mm", Locale.getDefault())
 private fun timeLabel(sec: Long): String = TIME_FMT.format(Date(sec * 1000L))
+
+/** Best-effort display name for a picked image [uri] (only used as Steam upload metadata). */
+private fun displayNameFromUri(ctx: android.content.Context, uri: Uri): String {
+    return try {
+        ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0) c.getString(idx)?.takeIf { it.isNotBlank() } else null
+            } else null
+        } ?: uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() } ?: "image.jpg"
+    } catch (_: Throwable) {
+        "image.jpg"
+    }
+}
 
 private val URL_RE = Regex("""https?://\S+""")
 

@@ -234,6 +234,12 @@ dependencies {
     // reaches Sonatype at all; transitive deps still come from mavenCentral.
     implementation 'io.github.joshuatam:javasteam:1.8.0.1-26-20260801.180149-1'
     implementation 'io.github.joshuatam:javasteam-depotdownloader:1.8.0.1-26-20260801.180149-1'
+    // JavaSteam pulls protobuf-java only at runtime scope, so the generated proto supertypes
+    // (com.google.protobuf.GeneratedMessage / MessageOrBuilder) aren't on the COMPILE classpath.
+    // Building a proto request directly from Kotlin (the chat-image web-token mint) needs them
+    // visible at compile time. Promote the exact version JavaSteam already ships to compile+runtime
+    // (Gradle dedups to one 4.31.1 jar — the same classes already loaded for every CM message).
+    implementation 'com.google.protobuf:protobuf-java:4.31.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'androidx.recyclerview:recyclerview:1.2.0'

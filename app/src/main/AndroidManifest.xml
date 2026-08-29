@@ -253,6 +253,7 @@
         <activity android:name="com.winlator.star.store.SteamGameDetailActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <activity android:name="com.winlator.star.store.DownloadManagerActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <activity android:name="com.winlator.star.store.SteamSaveManagerActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"/>
+        <activity android:name="com.winlator.star.store.SteamFriendsActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme" android:windowSoftInputMode="adjustResize" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"/>
         <activity android:name="com.winlator.star.store.QrLoginActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <activity
             android:name="com.winlator.star.UnpackArchiveActivity"

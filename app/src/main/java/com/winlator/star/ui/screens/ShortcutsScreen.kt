@@ -128,6 +128,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import com.winlator.star.communityconfigs.AccountManager
+import com.winlator.star.store.SteamFriendsAction
 import com.winlator.star.communityconfigs.CanonicalDevice
 import com.winlator.star.communityconfigs.CanonicalGame
 import com.winlator.star.communityconfigs.CommunityConfigApply
@@ -799,6 +800,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // parent's clear when it fires post-commit.
     LaunchedEffect(viewMode, selectionMode, selectedPaths) {
         topBarActions.value = {
+            // Steam friends + chat — only renders when signed in to Steam (login-gated internally).
+            SteamFriendsAction()
             IconButton(onClick = { showCommunityBrowser = true }) {
                 Icon(
                     imageVector = Icons.Filled.Public,

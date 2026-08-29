@@ -2,7 +2,9 @@ package com.winlator.star.store
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -113,8 +115,13 @@ fun SteamFriendsRoot(
     openFriendId: Long = 0L,
     onFriendOpened: () -> Unit = {},
 ) {
+    val ctx = LocalContext.current
     val socialEnabled by SteamFriendsStore.socialEnabled.collectAsState()
     var openChat by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
+    // The friend whose in-app profile is open (null = none). A full route over BOTH orientations; back
+    // closes it, returning to the list / two-pane. Kept separate from [openChat] so opening a profile
+    // never disturbs the active chat / two-pane selection underneath it.
+    var profileFriend by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
     val available = rememberFriendsAvailable()
 
     val configuration = LocalConfiguration.current
@@ -147,6 +154,32 @@ fun SteamFriendsRoot(
         return
     }
 
+    // Profile route: takes over the whole screen (portrait AND landscape). Back closes it, dropping
+    // straight back to the list / two-pane exactly as it was (the underlying openChat state is
+    // untouched). Only this BackHandler is composed while it's open, so it can't clash with the others.
+    val pf = profileFriend
+    if (pf != null) {
+        BackHandler(enabled = true) { profileFriend = null }
+        FriendProfileScreen(
+            friend = pf,
+            onBack = { profileFriend = null },
+            // Message opens that friend's chat — portrait shows the full chat, landscape selects it
+            // into the right pane — by leaving the profile route with openChat set.
+            onMessage = { openChat = pf; profileFriend = null },
+            // Invite is a no-op stub for now (game/lobby invites aren't wired to the CM yet).
+            onInvite = { Toast.makeText(ctx, "Game invites are coming soon", Toast.LENGTH_SHORT).show() },
+            onRemove = { SteamFriendsStore.removeFriend(pf.steamId); profileFriend = null },
+            onViewOnSteam = {
+                runCatching {
+                    ctx.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/profiles/${pf.steamId}")),
+                    )
+                }
+            },
+        )
+        return
+    }
+
     if (landscape) {
         // Two-pane: the list is always on-screen, so back leaves the whole screen. Clear the active
         // chat on the way out (as the single-pane chat-exit does) so unread/notify stay live afterwards.
@@ -156,6 +189,7 @@ fun SteamFriendsRoot(
             available = available,
             selectedFriend = openChat,
             onSelectFriend = { openChat = it },
+            onOpenProfile = { profileFriend = it },
             onBack = exit,
         )
     } else {
@@ -166,6 +200,7 @@ fun SteamFriendsRoot(
                 available = available,
                 onBack = onClose,
                 onOpenChat = { openChat = it },
+                onOpenProfile = { profileFriend = it },
             )
         } else {
             BackHandler(enabled = true) {

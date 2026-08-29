@@ -7,7 +7,9 @@ import `in`.dragonbra.javasteam.enums.EFriendRelationship
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesAuthSteamclient
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesPlayerSteamclient
 import `in`.dragonbra.javasteam.rpc.service.Authentication
+import `in`.dragonbra.javasteam.rpc.service.Player
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends
 import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendAddedCallback
@@ -18,11 +20,15 @@ import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendsList
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.NicknameListCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.PersonaStateCallback
 import `in`.dragonbra.javasteam.types.SteamID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
 import java.util.Collections
 import java.util.EnumSet
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -89,6 +95,47 @@ object SteamFriendsStore {
     /** The currently-open conversation (steamId 0 == none open). */
     data class ChatSession(val steamId: Long, val messages: List<ChatMessage>)
 
+    /** One entry in the profile's recently-played strip. [hours] is total (playtime forever) hours. */
+    data class RecentGame(
+        val appId: Int,
+        val name: String,
+        val hours: Double,
+        /** Steam store header art for the app, or null. */
+        val coverUrl: String?,
+    )
+
+    /**
+     * A friend's public profile, enriched beyond the roster's [SteamFriend]. EVERYTHING nullable: Steam
+     * privacy hides fields (a private "game details" setting returns no owned-games; a limited profile
+     * returns no real name / summary / member-since), and this JavaSteam fork simply doesn't expose some
+     * RPCs (see [fetchProfile]). The screen hides any null/empty section the same way the Steam client
+     * does. [level], [badges] and [mutualFriends] are always null in this build — the per-friend RPCs
+     * for them (GetSteamLevel / GetBadges / a general GetMutualFriends) are not present in this fork.
+     */
+    data class FriendProfile(
+        val steamId: Long,
+        val personaName: String,
+        val realName: String?,
+        val avatarUrl: String?,
+        val level: Int?,
+        val country: String?,
+        val memberSince: String?,
+        val summary: String?,
+        val gamesCount: Int?,
+        val hoursTotal: Double?,
+        val recentGames: List<RecentGame>,
+        val badges: Int?,
+        val mutualFriends: Int?,
+        val currentGameAppId: Int,
+        val currentGameName: String?,
+    ) {
+        /** True when nothing beyond identity is visible (privacy-locked) — the screen shows a note. */
+        val isEssentiallyEmpty: Boolean
+            get() = realName.isNullOrBlank() && summary.isNullOrBlank() && memberSince == null &&
+                gamesCount == null && hoursTotal == null && recentGames.isEmpty() &&
+                level == null && badges == null && mutualFriends == null
+    }
+
     // ── State ─────────────────────────────────────────────────────────────────────
 
     /** Presence details per friend (personaName/state/game/avatar). Nickname is injected at publish. */
@@ -110,6 +157,11 @@ object SteamFriendsStore {
 
     /** steamId -> ordered message history for that conversation. */
     private val histories = ConcurrentHashMap<Long, MutableList<ChatMessage>>()
+
+    /** Briefly-cached fetched profiles so re-opening the profile screen is instant. */
+    private data class CachedProfile(val at: Long, val profile: FriendProfile)
+    private val profileCache = ConcurrentHashMap<Long, CachedProfile>()
+    private const val PROFILE_TTL_MS = 5 * 60 * 1000L
 
     @Volatile private var activeChatId = 0L
 
@@ -223,6 +275,7 @@ object SteamFriendsStore {
         // A different account's full FriendsListCallback rebuilds friendIds, so a stale roster is never
         // shown; live changes still arrive via onPersonaState. Only session/chat state is cleared here.
         histories.clear()       // privacy: don't let a different account read cached chat from memory
+        profileCache.clear()    // privacy: a different account must not read the previous user's profiles
         // Privacy: pull down any friend-chat notifications so a signed-out shade shows no one's messages.
         try { appContext?.let { SteamChatNotifier.cancelAll(it) } } catch (_: Throwable) {}
         loadedForAccount = 0L
@@ -837,6 +890,140 @@ object SteamFriendsStore {
             io.execute { persistHistories() }
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendMsgHistory failed", t)
+        }
+    }
+
+    // ── Profile ─────────────────────────────────────────────────────────────────────
+
+    private val PROFILE_YEAR_FMT by lazy { SimpleDateFormat("yyyy", Locale.getDefault()) }
+
+    /** Steam store header art for an app — same CDN the rest of the app uses (see SteamGame.headerUrl). */
+    private fun appHeaderUrl(appId: Int): String? =
+        if (appId > 0) "https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg" else null
+
+    /**
+     * Fetch a friend's enriched public [FriendProfile], best-effort and NEVER throwing. Blocking pieces
+     * (the CM RPCs) run on [Dispatchers.IO]; the UI calls this from a coroutine and stays non-blocking.
+     * Result is cached ~[PROFILE_TTL_MS] per steamId so re-opening the screen is instant.
+     *
+     * Data sources in THIS JavaSteam fork (io.github.joshuatam:javasteam 1.8.0.1-26):
+     *  - real name / country / summary / member-since ← [SteamFriends.requestProfileInfo] (a jobID-matched
+     *    [ProfileInfoCallback] future — awaited directly, the same unified-future pattern as [mintWebToken],
+     *    rather than a broadcast pump subscription that couldn't tell concurrent requests apart).
+     *  - games count / total hours / recently-played ← Player.GetOwnedGames (include_appinfo +
+     *    include_played_free_games). "Recently played" is derived from that response (sorted by
+     *    rtime_last_played) because Player.GetRecentlyPlayedGames is NOT present in this fork.
+     *  - level / featured badges / mutual friends are SKIPPED (left null): Player.GetSteamLevel,
+     *    Player.GetBadges and a general per-friend GetMutualFriends RPC are not exposed here
+     *    (GetGameBadgeLevels, the only level source present, is self-only — no steamid field).
+     *
+     * Returns null only when there is no live session at all; otherwise returns a profile that may be
+     * mostly-empty (privacy), seeded from the roster's identity ([friendMap]).
+     */
+    suspend fun fetchProfile(steamId: Long): FriendProfile? {
+        if (steamId <= 0L) return null
+        profileCache[steamId]?.let {
+            if (System.currentTimeMillis() - it.at < PROFILE_TTL_MS) return it.profile
+        }
+        return withContext(Dispatchers.IO) {
+            val base = friendMap[steamId]?.copy(nickname = nicknames[steamId])
+            try {
+                if (!repo.ensureLoggedIn(8_000L)) return@withContext profileCache[steamId]?.profile
+                val sid = SteamID(steamId)
+
+                // 1) Profile info (real name / country / summary / account age). jobID-matched future.
+                var realName: String? = null
+                var country: String? = null
+                var memberSince: String? = null
+                var summary: String? = null
+                try {
+                    val info = repo.steamFriends?.requestProfileInfo(sid)
+                        ?.toFuture()?.get(10L, TimeUnit.SECONDS)
+                    if (info != null && info.result == EResult.OK) {
+                        realName = info.realName?.takeIf { it.isNotBlank() }
+                        country = info.countryName?.takeIf { it.isNotBlank() }
+                        summary = info.summary?.takeIf { it.isNotBlank() }
+                        memberSince = info.timeCreated
+                            ?.takeIf { it.time > 0 }
+                            ?.let { runCatching { "Member since ${PROFILE_YEAR_FMT.format(it)}" }.getOrNull() }
+                    }
+                } catch (_: Throwable) {}
+
+                // 2) Owned games → count + total hours + recently-played substitute.
+                var gamesCount: Int? = null
+                var hoursTotal: Double? = null
+                var recent: List<RecentGame> = emptyList()
+                try {
+                    val client = repo.steamClient
+                    val unified = client?.getHandler(SteamUnifiedMessages::class.java)
+                    val player: Player? = unified?.createService(Player::class.java)
+                    if (player != null) {
+                        val req = SteammessagesPlayerSteamclient.CPlayer_GetOwnedGames_Request.newBuilder()
+                            .setSteamid(steamId)
+                            .setIncludeAppinfo(true)
+                            .setIncludePlayedFreeGames(true)
+                            .build()
+                        val resp = player.getOwnedGames(req).toFuture().get(12L, TimeUnit.SECONDS)
+                        val body = resp?.body
+                        val games = body?.gamesList.orEmpty()
+                        if (games.isNotEmpty()) {
+                            gamesCount = (body?.gameCount ?: 0).takeIf { it > 0 } ?: games.size
+                            hoursTotal = games.sumOf { it.playtimeForever.toLong() } / 60.0
+                            recent = games
+                                .sortedWith(
+                                    compareByDescending<SteammessagesPlayerSteamclient.CPlayer_GetOwnedGames_Response.Game> { it.rtimeLastPlayed }
+                                        .thenByDescending { it.playtimeForever },
+                                )
+                                .take(12)
+                                .map {
+                                    RecentGame(
+                                        appId = it.appid,
+                                        name = it.name?.takeIf { n -> n.isNotBlank() } ?: "App ${it.appid}",
+                                        hours = it.playtimeForever / 60.0,
+                                        coverUrl = appHeaderUrl(it.appid),
+                                    )
+                                }
+                        } else if ((body?.gameCount ?: 0) > 0) {
+                            // appinfo hidden but a public count is available.
+                            gamesCount = body?.gameCount
+                        }
+                    }
+                } catch (_: Throwable) {}
+
+                val profile = FriendProfile(
+                    steamId = steamId,
+                    personaName = base?.personaName?.takeIf { it.isNotBlank() }
+                        ?: base?.displayName ?: "Friend",
+                    realName = realName,
+                    avatarUrl = base?.avatarUrl,
+                    level = null, // no per-friend level RPC in this JavaSteam fork
+                    country = country,
+                    memberSince = memberSince,
+                    summary = summary,
+                    gamesCount = gamesCount,
+                    hoursTotal = hoursTotal,
+                    recentGames = recent,
+                    badges = null, // no per-friend GetBadges RPC in this fork
+                    mutualFriends = null, // no general GetMutualFriends RPC in this fork
+                    currentGameAppId = base?.gameAppId ?: 0,
+                    currentGameName = base?.gameName,
+                )
+                profileCache[steamId] = CachedProfile(System.currentTimeMillis(), profile)
+                profile
+            } catch (t: Throwable) {
+                Log.w(TAG, "fetchProfile failed", t)
+                // Fall back to a bare identity-only profile so the screen still renders the hero.
+                profileCache[steamId]?.profile ?: base?.let {
+                    FriendProfile(
+                        steamId = steamId,
+                        personaName = it.personaName.takeIf { n -> n.isNotBlank() } ?: it.displayName,
+                        realName = null, avatarUrl = it.avatarUrl, level = null, country = null,
+                        memberSince = null, summary = null, gamesCount = null, hoursTotal = null,
+                        recentGames = emptyList(), badges = null, mutualFriends = null,
+                        currentGameAppId = it.gameAppId, currentGameName = it.gameName,
+                    )
+                }
+            }
         }
     }
 

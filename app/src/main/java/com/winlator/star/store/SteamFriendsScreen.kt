@@ -104,10 +104,11 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 
 // Status-dot colours — recognisable Steam-ish presence palette, held explicitly so both themes match.
-private val DotInGame = Color(0xFF90BA3C)
-private val DotOnline = Color(0xFF57CBDE)
-private val DotAway = Color(0xFFE0A82E)
-private val DotOffline = Color(0xFF6D7883)
+// `internal` so the in-app friend-profile screen (SteamFriendProfileScreen.kt) reuses the exact palette.
+internal val DotInGame = Color(0xFF90BA3C)
+internal val DotOnline = Color(0xFF57CBDE)
+internal val DotAway = Color(0xFFE0A82E)
+internal val DotOffline = Color(0xFF6D7883)
 
 // List chrome — thin gray lines, pop-up-menu style, read as subtle grays on the dark surface.
 private val RowDivider = Color(0x1AFFFFFF)      // between friends within a section
@@ -115,7 +116,7 @@ private val SectionDivider = Color(0x2EFFFFFF)  // between sections (In game / O
 private val MenuOutline = Color(0x40FFFFFF)     // pop-up menu / dialog outline stroke
 private val UnreadBg = Color(0xFFE53935)        // unread-count badge fill
 
-private fun dotColor(p: SteamFriendsStore.Presence): Color = when (p) {
+internal fun dotColor(p: SteamFriendsStore.Presence): Color = when (p) {
     SteamFriendsStore.Presence.IN_GAME -> DotInGame
     SteamFriendsStore.Presence.ONLINE -> DotOnline
     SteamFriendsStore.Presence.AWAY -> DotAway
@@ -202,6 +203,7 @@ fun FriendsListScreen(
     available: Boolean,
     onBack: () -> Unit,
     onOpenChat: (SteamFriendsStore.SteamFriend) -> Unit,
+    onOpenProfile: (SteamFriendsStore.SteamFriend) -> Unit,
 ) {
     var showAdd by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -227,6 +229,7 @@ fun FriendsListScreen(
             selectedFriendId = null,
             showFilter = false,
             onOpenChat = onOpenChat,
+            onOpenProfile = onOpenProfile,
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -243,6 +246,7 @@ fun FriendsTwoPane(
     available: Boolean,
     selectedFriend: SteamFriendsStore.SteamFriend?,
     onSelectFriend: (SteamFriendsStore.SteamFriend) -> Unit,
+    onOpenProfile: (SteamFriendsStore.SteamFriend) -> Unit,
     onBack: () -> Unit,
 ) {
     var showAdd by remember { mutableStateOf(false) }
@@ -270,6 +274,7 @@ fun FriendsTwoPane(
                 selectedFriendId = selectedFriend?.steamId,
                 showFilter = true,
                 onOpenChat = onSelectFriend,
+                onOpenProfile = onOpenProfile,
                 modifier = Modifier
                     .weight(0.26f)
                     .fillMaxHeight(),
@@ -379,6 +384,7 @@ private fun FriendsListBody(
     selectedFriendId: Long?,
     showFilter: Boolean,
     onOpenChat: (SteamFriendsStore.SteamFriend) -> Unit,
+    onOpenProfile: (SteamFriendsStore.SteamFriend) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val friends by SteamFriendsStore.friends.collectAsState()
@@ -412,12 +418,10 @@ private fun FriendsListBody(
                 }
             },
             onProfile = {
+                // Open our own in-app profile screen instead of jumping to the browser. The browser
+                // option now lives on that screen's "View full profile on Steam" row / overflow.
                 menuFriend = null
-                runCatching {
-                    ctx.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/profiles/${f.steamId}")),
-                    )
-                }
+                onOpenProfile(f)
             },
             onRemove = {
                 menuFriend = null
@@ -1195,9 +1199,9 @@ private fun FriendRow(
 }
 
 /** Circular avatar: Steam CDN image over an initials chip (initials show if the image is absent/fails),
- *  with a presence dot in the lower-right corner. */
+ *  with a presence dot in the lower-right corner. `internal` so the friend-profile screen reuses it. */
 @Composable
-private fun FriendAvatar(friend: SteamFriendsStore.SteamFriend, size: androidx.compose.ui.unit.Dp) {
+internal fun FriendAvatar(friend: SteamFriendsStore.SteamFriend, size: androidx.compose.ui.unit.Dp) {
     Box(modifier = Modifier.size(size)) {
         Box(
             modifier = Modifier

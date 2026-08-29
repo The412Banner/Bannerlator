@@ -1,6 +1,7 @@
 package com.winlator.star.store
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -86,8 +88,15 @@ class SteamFriendsActivity : ComponentActivity() {
 }
 
 /**
- * Two-pane root: the friends list, or (when a friend is tapped) that friend's chat. Kept as simple
- * local state so there is no navigation dependency to thread through the host Activity.
+ * Responsive root for the friends UI.
+ *
+ * - PORTRAIT (phone default): a single pane that shows the friends list, or — when a friend is tapped
+ *   — that friend's full-screen chat, with back stepping list ↔ chat. Unchanged from before.
+ * - LANDSCAPE (wide screens, ≥600dp): a 26/75 master-detail — the list always on the left, the
+ *   selected friend's chat on the right ([FriendsTwoPane]). Back exits the screen (no close-chat step).
+ *
+ * The selected-friend state ([openChat]) is shared across both, so rotating keeps the open chat (the
+ * Activity handles orientation via configChanges, so this just recomposes with the new configuration).
  */
 @Composable
 fun SteamFriendsRoot(
@@ -98,13 +107,18 @@ fun SteamFriendsRoot(
     var openChat by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
     val available = rememberFriendsAvailable()
 
+    val configuration = LocalConfiguration.current
+    val landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
+        configuration.screenWidthDp >= 600
+
     // When the session becomes live (e.g. the user tapped reconnect), pull a fresh roster.
     LaunchedEffect(available) { if (available) SteamFriendsStore.refresh() }
 
     // Deep-link: a chat-notification tap arrives as a SteamID; open that friend's chat directly. This
     // runs the existing openChat → clearUnread → SteamChatNotifier.cancel path, so the tapped
     // notification auto-clears. Resolve once per id (friendById falls back to a placeholder if the
-    // roster hasn't published yet); onFriendOpened resets the id so back-navigation isn't hijacked.
+    // roster hasn't published yet); onFriendOpened resets the id so back-navigation isn't hijacked. In
+    // landscape this simply selects the friend into the right pane.
     LaunchedEffect(openFriendId) {
         if (openFriendId != 0L) {
             openChat = SteamFriendsStore.friendById(openFriendId)
@@ -112,26 +126,39 @@ fun SteamFriendsRoot(
         }
     }
 
-    val friend = openChat
-    if (friend == null) {
-        BackHandler(enabled = true) { onClose() }
-        FriendsListScreen(
+    if (landscape) {
+        // Two-pane: the list is always on-screen, so back leaves the whole screen. Clear the active
+        // chat on the way out (as the single-pane chat-exit does) so unread/notify stay live afterwards.
+        val exit = { SteamFriendsStore.closeChat(); onClose() }
+        BackHandler(enabled = true) { exit() }
+        FriendsTwoPane(
             available = available,
-            onBack = onClose,
-            onOpenChat = { openChat = it },
+            selectedFriend = openChat,
+            onSelectFriend = { openChat = it },
+            onBack = exit,
         )
     } else {
-        BackHandler(enabled = true) {
-            SteamFriendsStore.closeChat()
-            openChat = null
-        }
-        ChatScreen(
-            friend = friend,
-            onBack = {
+        val friend = openChat
+        if (friend == null) {
+            BackHandler(enabled = true) { onClose() }
+            FriendsListScreen(
+                available = available,
+                onBack = onClose,
+                onOpenChat = { openChat = it },
+            )
+        } else {
+            BackHandler(enabled = true) {
                 SteamFriendsStore.closeChat()
                 openChat = null
-            },
-        )
+            }
+            ChatScreen(
+                friend = friend,
+                onBack = {
+                    SteamFriendsStore.closeChat()
+                    openChat = null
+                },
+            )
+        }
     }
 }
 

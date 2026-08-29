@@ -325,7 +325,7 @@ public final class RealSteamLauncher {
 
     /**
      * The per-account localconfig.vdf under the staged prefix:
-     * {@code Program Files (x86)\Steam\userdata\<accountid>\config\localconfig.vdf}. The 32-bit account id
+     * {@code Program Files (x86)\Steam\\userdata\<accountid>\config\localconfig.vdf}. The 32-bit account id
      * (SteamID3) comes from {@link SteamRepository#getAccountId()}; when it can't be resolved (0), fall back
      * to the first existing {@code userdata/<id>/config/localconfig.vdf} on disk. Returns the account-id path
      * even when the file doesn't exist yet ({@link #disableSteamControllerSupport} creates it), or {@code null}

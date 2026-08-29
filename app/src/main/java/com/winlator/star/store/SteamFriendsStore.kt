@@ -213,11 +213,19 @@ object SteamFriendsStore {
                 friendIds.add(id)
             }
             val prev = friendMap[id]
-            val name = cb.name?.takeIf { it.isNotBlank() } ?: prev?.personaName ?: ""
+            val sf = repo.steamFriends
+            // This javasteam fork does not expose name/state/gameAppID on the callback in a way
+            // Kotlin can reference (neither as property nor getter). Read the friend's fresh persona
+            // from the handler cache instead — the same reliable accessors buildFromHandler() uses;
+            // the handler is already updated by the time this callback fires.
+            val name = (try { sf?.getFriendPersonaName(sid) } catch (_: Throwable) { null })
+                ?.takeIf { it.isNotBlank() } ?: prev?.personaName ?: ""
+            val state = (try { sf?.getFriendPersonaState(sid) } catch (_: Throwable) { null })
+                ?: EPersonaState.Offline
+            val gameAppId = try { sf?.getFriendGameAppId(sid) ?: 0 } catch (_: Throwable) { 0 }
             val avatar = hex(cb.avatarHash) ?: prev?.avatarHash
-            val gameAppId = cb.gameAppID
             val gameName = cb.gameName?.takeIf { it.isNotBlank() }
-            val (presence, statusText) = classify(cb.state, gameAppId, gameName)
+            val (presence, statusText) = classify(state, gameAppId, gameName)
             friendMap[id] = SteamFriend(id, name, null, presence, statusText, gameAppId, gameName, avatar)
             publish()
         } catch (t: Throwable) {

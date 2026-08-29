@@ -2,6 +2,7 @@ package com.winlator.star.store
 
 import android.util.Log
 import `in`.dragonbra.javasteam.enums.EChatEntryType
+import `in`.dragonbra.javasteam.enums.EClientPersonaStateFlag
 import `in`.dragonbra.javasteam.enums.EFriendRelationship
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.Collections
+import java.util.EnumSet
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -118,6 +120,24 @@ object SteamFriendsStore {
     val typing: StateFlow<Map<Long, Long>> = _typing.asStateFlow()
     private val lastTypingSent = ConcurrentHashMap<Long, Long>()
 
+    // Persona fields to (re)request so status/game/rich-presence repopulate immediately on refresh.
+    // The default requestFriendInfo doesn't force Steam to re-send status, so presence sat empty
+    // ("everyone offline") after a reconnect / friends-screen re-open until it slowly trickled in.
+    private val PERSONA_INFO_FLAGS = EClientPersonaStateFlag.code(
+        EnumSet.of(
+            EClientPersonaStateFlag.Status,
+            EClientPersonaStateFlag.PlayerName,
+            EClientPersonaStateFlag.Presence,
+            EClientPersonaStateFlag.GameExtraInfo,
+            EClientPersonaStateFlag.GameDataBlob,
+            EClientPersonaStateFlag.RichPresence,
+        ),
+    )
+
+    // True once we've announced online + fetched all statuses for the current live session. Re-doing
+    // that on every screen open churned presence to Offline; a fresh session re-arms it (listener below).
+    @Volatile private var syncedThisSession = false
+
     /** Presence sections the user has collapsed/hidden — persisted so it's remembered across opens. */
     private val _collapsedSections = MutableStateFlow<Set<Presence>>(emptySet())
     val collapsedSections: StateFlow<Set<Presence>> = _collapsedSections.asStateFlow()
@@ -133,6 +153,13 @@ object SteamFriendsStore {
                 // Only a full sign-out / account switch wipes cached chat; a transient SessionExpired
                 // (e.g. app backgrounded) keeps the conversation so it's still there on foreground.
                 if (ev == "LoggedOut") reset()
+                // Any session drop/change re-arms the one-time online sync so presence re-fetches once the
+                // session is live again. A plain screen re-open must NOT re-sync (that churned presence).
+                if (ev == "LoggedOut" || ev == "SessionExpired" ||
+                    ev.startsWith("SteamStatus:CONNECTING") || ev.startsWith("SteamStatus:OFFLINE")
+                ) {
+                    syncedThisSession = false
+                }
             })
         } catch (t: Throwable) {
             Log.w(TAG, "listener registration failed", t)
@@ -150,12 +177,14 @@ object SteamFriendsStore {
 
     /** Wipe all cached friend/chat state (sign-out / account switch). */
     fun reset() {
-        friendMap.clear()
-        friendIds.clear()
-        nicknames.clear()
-        histories.clear()
+        // Keep the friend roster + presence across transient logoffs/reconnects so re-entering the
+        // friends screen (or a brief session bump) never wipes everyone to Offline — that was the bug.
+        // A different account's full FriendsListCallback rebuilds friendIds, so a stale roster is never
+        // shown; live changes still arrive via onPersonaState. Only session/chat state is cleared here.
+        histories.clear()       // privacy: don't let a different account read cached chat from memory
+        loadedForAccount = 0L
+        syncedThisSession = false
         activeChatId = 0L
-        _friends.value = emptyList()
         _self.value = null
         _chat.value = ChatSession(0L, emptyList())
         _unread.value = emptyMap()
@@ -263,7 +292,10 @@ object SteamFriendsStore {
                     if (relationshipOf(sf, sid) != EFriendRelationship.Friend) continue
                     val id = sid.convertToUInt64()
                     friendIds.add(id)
-                    friendMap[id] = buildFromHandler(sf, sid)
+                    // Only build friends we don't already have — existing presence is owned by the live
+                    // onPersonaState callbacks. Rebuilding the whole map on every open is what wiped
+                    // everyone to Offline (the handler's persona cache reads Offline on a re-scan).
+                    if (friendMap[id] == null) friendMap[id] = buildFromHandler(sf, sid)
                 }
                 publish()
                 // Our own persona (name + avatar) for our own chat bubbles.
@@ -279,8 +311,14 @@ object SteamFriendsStore {
                 }
                 // Appear online so Steam pushes live friend PersonaStateCallbacks, then pull a fresh
                 // snapshot for everyone (fills persona name / avatar / rich game state).
-                try { sf.setPersonaState(EPersonaState.Online) } catch (_: Throwable) {}
-                if (ids.isNotEmpty()) try { sf.requestFriendInfo(ids) } catch (_: Throwable) {}
+                // Announce online + fetch everyone's status ONCE per live session. Doing this on every
+                // screen open churned presence (it resets the persona cache + triggers an Offline burst);
+                // plain navigation now just shows the retained roster. A fresh session re-arms it.
+                if (!syncedThisSession) {
+                    syncedThisSession = true
+                    try { sf.setPersonaState(EPersonaState.Online) } catch (_: Throwable) {}
+                    if (ids.isNotEmpty()) try { sf.requestFriendInfo(ids, PERSONA_INFO_FLAGS) } catch (_: Throwable) {}
+                }
             } catch (t: Throwable) {
                 Log.w(TAG, "refresh failed", t)
             }
@@ -330,7 +368,7 @@ object SteamFriendsStore {
             }
             publish()
             if (sf != null && newlyKnown.isNotEmpty()) {
-                io.execute { try { sf.requestFriendInfo(newlyKnown) } catch (_: Throwable) {} }
+                io.execute { try { sf.requestFriendInfo(newlyKnown, PERSONA_INFO_FLAGS) } catch (_: Throwable) {} }
             }
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendsList failed", t)
@@ -398,7 +436,7 @@ object SteamFriendsStore {
             }
             publish()
             val sf = repo.steamFriends ?: return
-            io.execute { try { sf.requestFriendInfo(sid) } catch (_: Throwable) {} }
+            io.execute { try { sf.requestFriendInfo(sid, PERSONA_INFO_FLAGS) } catch (_: Throwable) {} }
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendAdded failed", t)
         }

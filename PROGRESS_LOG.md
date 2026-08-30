@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-08-30 (cont.) — 🧩🗜️ **Component browse/download = content-packs only (drop bare .zip); GPU Drivers untouched — branch off main, CI test build**
+> User request: when browsing/downloading components (Contents hub AND container-settings "Download components"), show ONLY content packs across all repos/sources; leave GPU Drivers (turnip/adreno/qualcomm/mesa) exactly as-is. Chosen scope (asked): keep `.wcp/.tzst/.xz/.zst`, **drop bare `.zip`** for non-driver types.
+> - Single choke point: `RemoteSourceRepository` cache writer. New `keepPacksOnly(type, items)` + `isDriverType(type)`; `putToCache` now filters non-driver items whose artifact filename ends `.zip`. Added private `putRawToCache` (unfiltered) for GPU-driver buckets (also exempt inside the filter) and user-opted **release-tag "show all"** categories, so neither is touched. `fetchFromSource` returns the cached (filtered) list.
+> - Both entry points funnel through this repo (`ContentsHubViewModel.kt:175`, `ContentDownloadSheet.kt:175`) → one filter covers both. Rationale: a non-driver `.zip` can't install as a pack anyway (installer extracts XZ/ZSTD tar only, `ContentsInstaller.kt:285`), so this hides non-installable/driver-shaped noise, not working packs.
+> - Branch `feat/contents-packs-only-filter` off **main `c16eefc5`** (isolated worktree; the dirty `wincomp-main-build` checkout + its uncommitted CS2 log left untouched per user). versionCode NOT bumped (dev build). CI test build dispatched. **Compile-reasoned only — NOT CI-green, NOT device-proven.**
+
 ## 2026-08-30 (cont.) — 🖥️➡️ **Community-repos control moved from rail footer → top header (landscape)**
 > Device feedback on the b83f5490 build: user wants the community-repos source filter in the top header next to "WIN Components", not in the rail footer. Done: new `HeaderSourceControl` (Hub icon + label + Switch + scrollable source chips) placed in the landscape header row; `RailSourceFooter` removed and the 5 source params dropped from `ComponentRail` → the whole rail is categories only, version list keeps full pane height. Landscape only; portrait `SourceToggleBox` unchanged. Verified: no dangling refs, braces balanced, no padding-overload gotcha. Rebuilding on `wincomp-main-build`.
 

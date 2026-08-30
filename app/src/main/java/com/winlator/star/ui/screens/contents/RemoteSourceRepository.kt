@@ -26,8 +26,13 @@ class RemoteSourceRepository(private val context: Context) {
         fun hasCache(): Boolean = cache.isNotEmpty()
         fun getFromCache(sourceName: String, componentType: String): List<RemoteItem>? =
             cache["$sourceName::$componentType"]
-        fun putToCache(sourceName: String, componentType: String, items: List<RemoteItem>) {
+        /** Raw cache write, no pack filtering. For driver-exempt buckets and release-tag "show all" categories. */
+        private fun putRawToCache(sourceName: String, componentType: String, items: List<RemoteItem>) {
             cache["$sourceName::$componentType"] = items
+        }
+        /** Caches component browse items, dropping bare .zip for non-driver types (see [keepPacksOnly]). */
+        fun putToCache(sourceName: String, componentType: String, items: List<RemoteItem>) {
+            putRawToCache(sourceName, componentType, keepPacksOnly(componentType, items))
         }
 
         // In-memory set of downloaded file keys for fast indicator lookups
@@ -45,6 +50,27 @@ class RemoteSourceRepository(private val context: Context) {
 
         const val GPU_DRIVER_TYPE = "GPU Drivers"
         val GPU_DRIVER_KEYWORDS = listOf("turnip", "adreno", "qualcomm", "mesa")
+
+        /** True when [componentType] is the GPU-driver category or one of its keyword aliases. */
+        private fun isDriverType(componentType: String): Boolean =
+            componentType == GPU_DRIVER_TYPE ||
+            GPU_DRIVER_KEYWORDS.any { it.equals(componentType, ignoreCase = true) }
+
+        /**
+         * Component browse/download catalogs list installable content packs only. For a non-driver
+         * type a bare .zip is dropped — the pack installer extracts XZ/ZSTD tar
+         * (ContentsManager.extraContentFile), so a .zip filed under DXVK/VKD3D/Box64/… is a
+         * mis-packaged or driver-shaped asset that would fail to install as a pack anyway. Content
+         * packs shipped as .wcp/.tzst/.xz/.zst are kept. GPU-driver categories are exempt: they
+         * legitimately ship as .zip/.adpkg through adrenotools.
+         */
+        private fun keepPacksOnly(componentType: String, items: List<RemoteItem>): List<RemoteItem> {
+            if (isDriverType(componentType)) return items
+            return items.filterNot { item ->
+                item.downloadUrl.substringBefore('?').substringBefore('#')
+                    .substringAfterLast('/').endsWith(".zip", ignoreCase = true)
+            }
+        }
 
         /** Strip filesystem-unsafe characters from a folder name segment. */
         fun sanitizeFolderName(name: String): String =
@@ -487,8 +513,9 @@ class RemoteSourceRepository(private val context: Context) {
         getFromCache(source.name, componentType)?.let { return@withContext it }
         // If the type is a user-opted release tag, fetch all assets from that release directly
         if (componentType in source.releaseTags) {
+            // A user-opted release category shows ALL its assets regardless of extension — no pack filter.
             val result = fetchGithubReleaseByTag(source.url, componentType, source.name)
-            putToCache(source.name, componentType, result)
+            putRawToCache(source.name, componentType, result)
             return@withContext result
         }
         // Route to the extra endpoint that owns this type (if any), else use primary
@@ -510,7 +537,8 @@ class RemoteSourceRepository(private val context: Context) {
             SourceFormat.PACK_JSON -> fetchPackJson(activeUrl, componentType, source.name)
         }
         putToCache(source.name, componentType, result)
-        result
+        // Return the cached (pack-filtered) list so callers see the same items the browse UI shows.
+        getFromCache(source.name, componentType) ?: emptyList()
     }
 
     /**
@@ -610,10 +638,10 @@ class RemoteSourceRepository(private val context: Context) {
                                 else -> { /* GITHUB_REPO_CONTENTS not expected as extra endpoint */ }
                             }
                         }
-                        // Cache any user-opted release tag categories
+                        // Cache any user-opted release tag categories — "show all" assets, no pack filter.
                         source.releaseTags.forEach { tag ->
                             val items = fetchGithubReleaseByTag(source.url, tag, source.name)
-                            putToCache(source.name, tag, items)
+                            putRawToCache(source.name, tag, items)
                         }
                     } catch (_: Exception) { /* skip failed sources silently */ }
                 }

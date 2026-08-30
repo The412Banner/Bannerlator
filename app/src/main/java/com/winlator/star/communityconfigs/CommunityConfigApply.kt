@@ -211,6 +211,15 @@ object CommunityConfigApply {
                 if (key == "emulator" && value != "fexcore") setScalar(shortcut, key, value, changed, commit)
                 continue
             }
+            if (key == "envVars") {
+                // Scrub credentials/identity before writing a downloaded config's env into the shortcut —
+                // a leaked WN_STEAM_TOKEN/USERNAME/STEAMID (or a JWT/email/SteamID64-shaped value) must
+                // never land in the user's [Extra Data]. If nothing survives the scrub, skip the write so
+                // we don't clobber the user's own env with an empty string.
+                val cleaned = EnvVarScrub.scrub(value)
+                if (cleaned.isNotBlank()) setScalar(shortcut, key, cleaned, changed, commit)
+                continue
+            }
             setScalar(shortcut, key, value, changed, commit)
         }
 

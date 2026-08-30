@@ -134,6 +134,7 @@ import com.winlator.star.communityconfigs.CanonicalGame
 import com.winlator.star.communityconfigs.CommunityConfigApply
 import com.winlator.star.communityconfigs.CommunityConfigRef
 import com.winlator.star.communityconfigs.DeviceIdentity
+import com.winlator.star.communityconfigs.EnvVarScrub
 import com.winlator.star.communityconfigs.ShortcutExporter
 import com.winlator.star.communityconfigs.UploadedConfigsStore.UploadedConfig
 import com.winlator.star.communityconfigs.GameMatcher
@@ -4400,7 +4401,9 @@ private fun configSummaryLines(config: ShortcutConfig): List<Pair<String, String
     config.scalars["screenSize"]?.takeIf { it.isNotBlank() }?.let { out.add("Resolution" to it) }
     config.scalars["renderer"]?.takeIf { it.isNotBlank() }?.let { out.add("Renderer" to it) }
     config.scalars["execArgs"]?.takeIf { it.isNotBlank() }?.let { out.add("Launch args" to it) }
-    config.scalars["envVars"]?.takeIf { it.isNotBlank() }?.let { out.add("Env vars" to it) }
+    // Scrub credentials/identity out before displaying — a config uploaded before the export-side scrub
+    // existed can still carry a WN_STEAM_TOKEN/USERNAME/STEAMID, and the details view must not show it.
+    config.scalars["envVars"]?.let { EnvVarScrub.scrub(it) }?.takeIf { it.isNotBlank() }?.let { out.add("Env vars" to it) }
     return out
 }
 

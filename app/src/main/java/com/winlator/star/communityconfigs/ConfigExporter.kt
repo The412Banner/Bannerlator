@@ -142,7 +142,10 @@ object ConfigExporter {
             val v = it.toIntOrNull() ?: WinHandler.DEFAULT_INPUT_TYPE.toInt()
             settings.put("pc_ls_update_enable_xinput", (v and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0)
         }
-        effective["envVars"].nonBlank()?.let { settings.put("pc_ls_environment_variable", it) }
+        // Scrub credential/identity vars (WN_STEAM_TOKEN/USERNAME/STEAMID, JWTs, emails, SteamID64s, …)
+        // out of the env list BEFORE it leaves the device — the primary of the three scrub boundaries.
+        // A config whose env was entirely credentials scrubs to blank and emits no key (nonBlank gate).
+        EnvVarScrub.scrub(effective["envVars"]).nonBlank()?.let { settings.put("pc_ls_environment_variable", it) }
         effective["execArgs"].nonBlank()?.let { settings.put("pc_ls_boot_option", it) }
 
         // Additive namespaced overlay — the ~28 shortcut extras the pc_* format can't carry, stored raw

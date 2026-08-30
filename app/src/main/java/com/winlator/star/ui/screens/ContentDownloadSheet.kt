@@ -346,7 +346,27 @@ fun ContentDownloadSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("WIN Components", color = cs.onSurface, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                            style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.width(16.dp))
+                        // Component-source filter lives in the header (next to the title) in landscape, so the
+                        // whole rail is free for categories.
+                        HeaderSourceControl(
+                            modifier = Modifier.weight(1f),
+                            includeCommunity = includeCommunity,
+                            communityGroups = communityGroups,
+                            activeSources = activeSources,
+                            onToggle = { on ->
+                                includeCommunity = on
+                                srcPrefs.edit().putBoolean(COMMUNITY_KEY, on).apply()
+                                if (on) selectAllOnLoad = true else activeSources = setOf(OFFICIAL_KEY)
+                            },
+                            onChipToggle = { key ->
+                                activeSources = activeSources.toMutableSet().apply {
+                                    if (contains(key)) remove(key) else add(key)
+                                    if (isEmpty()) add(OFFICIAL_KEY)
+                                }
+                            },
+                        )
                         InstallFromFileButton(onBrowseFiles, onPickSystem, iconButtonModifier = Modifier.size(36.dp))
                     }
                     Divider(color = cs.outline)
@@ -361,21 +381,6 @@ fun ContentDownloadSheet(
                             gpuDriverCount = adrenoDriverCount,
                             onSelectType = { selectedType = it; gpuDriversSelected = false },
                             onSelectGpu = { gpuDriversSelected = true },
-                            // Source filter lives in the rail footer in landscape (moved out of the pane).
-                            includeCommunity = includeCommunity,
-                            communityGroups = communityGroups,
-                            activeSources = activeSources,
-                            onSourceToggle = { on ->
-                                includeCommunity = on
-                                srcPrefs.edit().putBoolean(COMMUNITY_KEY, on).apply()
-                                if (on) selectAllOnLoad = true else activeSources = setOf(OFFICIAL_KEY)
-                            },
-                            onSourceChipToggle = { key ->
-                                activeSources = activeSources.toMutableSet().apply {
-                                    if (contains(key)) remove(key) else add(key)
-                                    if (isEmpty()) add(OFFICIAL_KEY) // never let the user empty the list
-                                }
-                            },
                         )
                         Box(Modifier.width(1.dp).fillMaxHeight().background(cs.outline))
                         Column(Modifier.weight(1f).fillMaxHeight()) {
@@ -430,8 +435,8 @@ fun ContentDownloadSheet(
                                 }
                             }
 
-                            // Source control moved to the rail footer in landscape (see ComponentRail /
-                            // RailSourceFooter) so the version list gets the pane's full height.
+                            // Source control lives in the header in landscape (see HeaderSourceControl) so
+                            // the version list gets the pane's full height and the rail is all categories.
                             ComponentVersionSections(
                                 isLoadingRemote = isLoadingRemote,
                                 profiles = profiles,
@@ -1120,14 +1125,6 @@ private fun ComponentRail(
     gpuDriverCount: Int,
     onSelectType: (ContentProfile.ContentType) -> Unit,
     onSelectGpu: () -> Unit,
-    // Global component-source filter — landscape pins it COMPACT at the rail bottom (it applies to every
-    // category and the rail has the spare vertical room the cramped right pane doesn't). Portrait keeps the
-    // full SourceToggleBox in the sheet column instead (see the portrait branch).
-    includeCommunity: Boolean,
-    communityGroups: List<CommunityGroup>,
-    activeSources: Set<String>,
-    onSourceToggle: (Boolean) -> Unit,
-    onSourceChipToggle: (String) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Column(modifier.padding(horizontal = 10.dp, vertical = 12.dp)) {
@@ -1153,21 +1150,15 @@ private fun ComponentRail(
                 }
             }
         }
-        RailSourceFooter(
-            includeCommunity = includeCommunity,
-            communityGroups = communityGroups,
-            activeSources = activeSources,
-            onToggle = onSourceToggle,
-            onChipToggle = onSourceChipToggle,
-        )
     }
 }
 
-// Compact, rail-pinned version of the component-source control (landscape). One-line toggle (Hub icon +
-// short label + switch) with the active-source chips in a scrollable row beneath it — deliberately terser
-// than SourceToggleBox so it costs the rail little height. Same state/callbacks as the portrait toggle.
+// Header-pinned component-source control (landscape). Sits next to the "WIN Components" title: Hub icon +
+// short label + switch, with the active-source chips in a scrollable row to the right when enabled. Keeps the
+// whole rail free for categories. Same state/callbacks as the portrait SourceToggleBox.
 @Composable
-private fun RailSourceFooter(
+private fun HeaderSourceControl(
+    modifier: Modifier = Modifier,
     includeCommunity: Boolean,
     communityGroups: List<CommunityGroup>,
     activeSources: Set<String>,
@@ -1175,21 +1166,20 @@ private fun RailSourceFooter(
     onChipToggle: (String) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    Divider(color = cs.outline.copy(alpha = 0.5f), modifier = Modifier.padding(top = 8.dp))
-    Column(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.Hub, contentDescription = null, tint = cs.primary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Community repos", style = MaterialTheme.typography.labelMedium, color = cs.onSurface,
-                fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f))
-            Switch(checked = includeCommunity, onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = cs.primary))
-        }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Filled.Hub, contentDescription = null, tint = cs.primary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("Community repos", style = MaterialTheme.typography.labelMedium, color = cs.onSurface,
+            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.width(8.dp))
+        Switch(checked = includeCommunity, onCheckedChange = onToggle,
+            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = cs.primary))
         if (includeCommunity) {
+            Spacer(Modifier.width(10.dp))
             Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 2.dp, bottom = 2.dp),
+                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 SourceChip("Official", OfficialColor, OFFICIAL_KEY in activeSources) { onChipToggle(OFFICIAL_KEY) }
                 communityGroups.forEach { g ->

@@ -284,6 +284,7 @@ import com.winlator.star.winhandler.WinHandler
 import android.net.Uri
 import android.os.Build
 import androidx.documentfile.provider.DocumentFile
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -906,10 +907,15 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             } else {
                 AnimatedContent(targetState = viewMode, label = "layout") { mode ->
                     if (mode != ShortcutViewMode.LIST) {
+                        // Compact keeps a CONSTANT tile size across orientation: derive the column
+                        // count from the shortest screen edge so portrait resolves to exactly 4 and
+                        // landscape flows to more columns of the SAME width (was Fixed(4) → tiles
+                        // ballooned to giants in landscape). The original grid stays adaptive.
+                        val cfg = LocalConfiguration.current
+                        val compactCols = (cfg.screenWidthDp.toFloat() /
+                            (minOf(cfg.screenWidthDp, cfg.screenHeightDp) / 4f)).roundToInt().coerceAtLeast(4)
                         LazyVerticalGrid(
-                            // Compact fixes four columns; the original stays adaptive so it keeps
-                            // whatever column count each screen size was already giving.
-                            columns = if (mode == ShortcutViewMode.GRID_COMPACT) GridCells.Fixed(4)
+                            columns = if (mode == ShortcutViewMode.GRID_COMPACT) GridCells.Fixed(compactCols)
                                       else GridCells.Adaptive(minSize = 120.dp),
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(8.dp),

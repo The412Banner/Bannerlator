@@ -89,7 +89,9 @@ import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
 import com.winlator.star.store.compose.ContainerPickerDialog
 import com.winlator.star.store.compose.openShortcutsScreen
+import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
+import com.winlator.star.store.download.Store
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import com.winlator.star.ui.theme.WinlatorTheme
@@ -232,6 +234,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var showExePicker by mutableStateOf<ExePickerDataGame?>(null)
     private var addToShortcuts by mutableStateOf<AddToShortcutsRequest?>(null)
     private var addResult by mutableStateOf<AddShortcutResult?>(null)
+    // Destructive "Cancel & delete download" confirm — gates the guaranteed wipe+reset (gear item).
+    // The partial is only nuked once the user confirms; dismiss keeps the download exactly as-is.
+    private var showCancelDeleteConfirm by mutableStateOf(false)
 
     // Goldberg (Steam emulator) state — only meaningful once the game is installed.
     // The component is ONE global download shared by every game; the tier toggle
@@ -351,6 +356,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     onBack = { finish() },
                     onInstallClick = { onInstallClicked() },
                     onPauseResumeClick = { onPauseResumeClicked() },
+                    onCancelDeleteClick = { showCancelDeleteConfirm = true },
                     onLaunchClick = { onLaunchClicked() },
                 )
 
@@ -417,6 +423,35 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                             val installRoot = if (installToSd) sdTarget?.steamGamesBase?.absolutePath else null
                             downloadHandle = SteamDepotDownloader.installApp(
                                 appId, applicationContext, lastSpeedTier, debugLog, installRoot)
+                        },
+                    )
+                }
+
+                // Destructive confirm for the gear's "Cancel & delete download". Names the game and
+                // spells out that this stops the download, deletes every downloaded file and resets it
+                // for a fresh, full download. The wipe runs ONLY on confirm; dismiss keeps the partial.
+                if (showCancelDeleteConfirm) {
+                    val gName = game?.name?.takeIf { it.isNotBlank() } ?: "this game"
+                    OutlinedAlertDialog(
+                        onDismissRequest = { showCancelDeleteConfirm = false },
+                        title = { Text("Cancel & delete download?") },
+                        text = {
+                            Text(
+                                "This stops the download for \"$gName\", deletes every file already " +
+                                    "downloaded, and resets it so the next tap starts a fresh, full " +
+                                    "download from the beginning. This can't be undone."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showCancelDeleteConfirm = false
+                                performCancelDeleteReset()
+                            }) { Text("Delete & reset", color = MaterialTheme.colorScheme.error) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showCancelDeleteConfirm = false }) {
+                                Text("Keep download")
+                            }
                         },
                     )
                 }
@@ -558,14 +593,21 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             event.startsWith("DownloadCancelled:") -> {
                 val id = event.substringAfter("DownloadCancelled:").toIntOrNull() ?: return
                 if (id != appId) return
+                // Cancel now means "delete + fresh restart" (performCancelDeleteReset). This async
+                // engine event lands AFTER that reset for the live-download case, so settle on the same
+                // pristine NOT_INSTALLED state rather than overriding it with a lingering "cancelled".
                 downloadHandle = null
                 progressVisible = false
+                progressValue = 0
+                downloadProgressValue = 0
                 progressTextVisible = false
-                statusText = "Download cancelled"
-                gameStatus = GameStatus.CANCELLED
+                progressText = ""
+                statusText = "Not installed"
+                gameStatus = GameStatus.NOT_INSTALLED
                 installBtnEnabled = true
                 installBtnText = "Install"
                 installAction = InstallAction.INSTALL
+                launchBtnEnabled = false
                 resetPauseBtn()
             }
             event.startsWith("DownloadFailed:") -> {
@@ -885,40 +927,16 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private fun onInstallClicked() {
         val g = game ?: return
 
-        val handle = downloadHandle
-        if (handle != null) {
-            val db = SteamRepository.getInstance().database
-            val dir = db.getDownload(appId)?.installDir ?: ""
-            handle.cancel.run()
-            downloadHandle = null
-            if (dir.isNotEmpty()) Thread { File(dir).deleteRecursively() }.start()
-            progressVisible = false
-            progressTextVisible = false
-            statusText = "Download cancelled"
-            gameStatus = GameStatus.CANCELLED
-            installBtnText = "Install"
-            installAction = InstallAction.INSTALL
-            installBtnEnabled = true
-            resetPauseBtn()
-            return
-        }
-
+        // A live OR paused download → the destructive "Cancel & delete → fresh restart". BOTH branches
+        // now converge on the SAME confirm-gated guaranteed reset (performCancelDeleteReset), so the old
+        // divergence is gone: the active branch used to skip db.deleteDownload() (leaving a stale
+        // DL_DOWNLOADING row), and each deleted only the DB-row dir. In practice the gear's
+        // "Cancel & delete download" item calls the confirm directly; this keeps any other caller that
+        // reaches here in a cancel state on the same confirmed path (never an unconfirmed wipe).
+        if (downloadHandle != null) { showCancelDeleteConfirm = true; return }
         val db = SteamRepository.getInstance().database
         val dlRow = db.getDownload(appId)
-        if (dlRow != null && dlRow.status == SteamDatabase.DL_PAUSED) {
-            db.deleteDownload(appId)
-            val dir = dlRow.installDir
-            if (dir.isNotEmpty()) Thread { File(dir).deleteRecursively() }.start()
-            progressVisible = false
-            progressTextVisible = false
-            statusText = "Download cancelled"
-            gameStatus = GameStatus.CANCELLED
-            installBtnText = "Install"
-            installAction = InstallAction.INSTALL
-            installBtnEnabled = true
-            resetPauseBtn()
-            return
-        }
+        if (dlRow != null && dlRow.status == SteamDatabase.DL_PAUSED) { showCancelDeleteConfirm = true; return }
 
         if (g.isInstalled) {
             uninstallingName = g.name
@@ -966,6 +984,92 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 }
             }.apply { isDaemon = true; name = "SteamSdDetect" }.start()
         }
+    }
+
+    /**
+     * GUARANTEED "Cancel & delete → fresh restart" for a wedged/stuck/looping OR paused Steam download.
+     * Nukes every trace of the partial so the NEXT Install is a genuine fresh full download, never a
+     * resume onto dead chunks. Runs only after the destructive confirm (see showCancelDeleteConfirm).
+     *
+     * The sequence, in order:
+     *   1. cancel the live download handle if present — flips the engine's `cancelled` flag and closes
+     *      the downloader (async). Its own finally then ALSO deletes the DB row + drops the registry
+     *      row (all idempotent with the synchronous cleanup below); it does NOT delete files, so the
+     *      on-disk wipe here is the sole file-deleter.
+     *   2. ALWAYS delete the steam_downloads row NOW (don't wait on the async engine finally) — this is
+     *      the fix for the old active-branch bug that left a stale DL_DOWNLOADING row. The download row
+     *      (not the game row) is where a wedged download records its dir, so read it first.
+     *   3. clear the game row's installed flag / install_dir (defensive — a wedged DOWNLOAD never sets
+     *      these; a not-installed game is already blank — but a hard reset must leave nothing behind),
+     *      and drop the cross-store Download-Manager registry row.
+     *   4. delete every on-disk partial off the UI thread: the recorded DB-row dir AND the defensively
+     *      recomputed internal (imagefs/steam_games/<safeName>) and SD
+     *      (<sd>/bannerlator/steam_games/<safeName>) candidates — using the SAME safe-name the installer
+     *      derives, so paths match exactly and a stale/missing row still wipes the bytes. Deleting the
+     *      install dir also removes DepotDownloader's own <installDir>/.DepotDownloader/{depot.config,
+     *      staging} store (it lives INSIDE the install dir), so the engine can't skip already-fetched
+     *      chunks on the next run either. A short grace + second sweep defeats the race where the
+     *      still-closing engine flushes a few more chunks after the first delete.
+     *   5. reset the UI to pristine NOT_INSTALLED + InstallAction.INSTALL, exactly the not-installed
+     *      entry state, so the next tap routes to onInstallClicked's fresh installApp(isResume=false).
+     */
+    private fun performCancelDeleteReset() {
+        val db = SteamRepository.getInstance().database
+
+        // (2, read-first) Authoritative on-disk location for THIS download (internal or SD), captured
+        // BEFORE the row is deleted. The game row's install_dir stays blank until a successful
+        // markInstalled, so the steam_downloads row is the only record of a wedged download's dir.
+        val rowDir = db.getDownload(appId)?.installDir?.takeIf { it.isNotBlank() }
+
+        // (1) Cancel the live handle (async close; its finally re-deletes the row + drops the registry —
+        // all idempotent). No-op if the download is paused (no live handle).
+        downloadHandle?.let { try { it.cancel.run() } catch (_: Throwable) {} }
+        downloadHandle = null
+
+        // (2, 3) Drop the app's resume state synchronously: the DB download row, the game's installed
+        // flag/dir, and the Download-Manager registry row.
+        db.deleteDownload(appId)
+        db.markUninstalled(appId)   // is_installed=0, install_dir="" (idempotent; invalidates game cache)
+        try { DownloadRegistry.remove("${Store.STEAM}:$appId") } catch (_: Throwable) {}
+
+        // (4) Wipe every on-disk partial off the UI thread. Recompute internal + SD candidates with the
+        // SAME sanitisation SteamDepotDownloader uses (row.name → safeName) so the paths match exactly.
+        val gName = game?.name ?: ""
+        Thread {
+            val targets = LinkedHashSet<File>()
+            rowDir?.let { targets.add(File(it)) }
+            val safeName = gName.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
+            if (safeName.isNotEmpty()) {
+                // Internal default: imagefs/steam_games/<safeName>.
+                targets.add(File(File(filesDir, "imagefs/steam_games"), safeName))
+                // SD default: <sd>/bannerlator/steam_games/<safeName>. detect() does Binder + filesystem
+                // work, so it must run here (off the UI thread), not in the caller.
+                val sd = try { SteamSdInstall.detect(this) } catch (_: Throwable) { null }
+                sd?.let { targets.add(File(it.steamGamesBase, safeName)) }
+            }
+            fun sweep() = targets.forEach { d ->
+                try { if (d.exists()) d.deleteRecursively() } catch (_: Throwable) {}
+            }
+            sweep()
+            try { Thread.sleep(1500L) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+            sweep()   // second pass sweeps anything the closing engine re-wrote mid-cancel
+        }.apply { isDaemon = true; name = "SteamCancelDeleteWipe" }.start()
+
+        // (5) Pristine NOT_INSTALLED — mirrors refreshUI()'s not-installed branch, so the next tap is a
+        // fresh installApp(). (The async DownloadCancelled: event, if the engine emits one for the live
+        // case, lands on the same pristine state — see that handler.)
+        progressVisible = false
+        progressValue = 0
+        downloadProgressValue = 0
+        progressTextVisible = false
+        progressText = ""
+        statusText = "Not installed"
+        gameStatus = GameStatus.NOT_INSTALLED
+        installBtnText = "Install"
+        installAction = InstallAction.INSTALL
+        installBtnEnabled = true
+        launchBtnEnabled = false
+        resetPauseBtn()
     }
 
     private fun onPauseResumeClicked() {
@@ -1310,6 +1414,7 @@ private fun SteamGameDetailScreen(
     onBack: () -> Unit,
     onInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
+    onCancelDeleteClick: () -> Unit,
     onLaunchClick: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -1562,8 +1667,8 @@ private fun SteamGameDetailScreen(
                         GearMenuItem(pauseEmoji, pauseBtnText, enabled = pauseBtnEnabled,
                             onClick = { gearMenuExpanded = false; onPauseResumeClick() })
                         MenuItemDivider()
-                        GearMenuItem("✕", "Cancel download", danger = true, // installAction == CANCEL
-                            onClick = { gearMenuExpanded = false; onInstallClick() })
+                        GearMenuItem("🗑", "Cancel & delete download", danger = true, // hard delete + fresh-restart reset
+                            onClick = { gearMenuExpanded = false; onCancelDeleteClick() })
                         MenuItemDivider()
                     }
                     GearMenuItem("🌿", "Choose branch",

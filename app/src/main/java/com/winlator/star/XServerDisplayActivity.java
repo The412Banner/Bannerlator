@@ -2734,7 +2734,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 int gh = (xServer != null) ? xServer.screenInfo.height : 0;
                 int[] wh = WinFgCapture.resolveCaptureSize(this, gw, gh);
                 toml += WinFgCapture.CONF_CAPTURE_WIDTH + " = " + wh[0] + "\n"
-                        + WinFgCapture.CONF_CAPTURE_HEIGHT + " = " + wh[1] + "\n";
+                        + WinFgCapture.CONF_CAPTURE_HEIGHT + " = " + wh[1] + "\n"
+                        // Rolling-shard size cap (MiB): bounds per-.wfgcap file size so a session lands
+                        // as several manageable files, not multi-GB shards. Layer default is 1024; we
+                        // stamp the app's smaller default (256) here + as WIN_FG_CAPTURE_SHARD_MB env.
+                        + WinFgCapture.CONF_CAPTURE_SHARD_MB + " = " + WinFgCapture.captureShardMb(this) + "\n";
             }
             FileUtils.writeString(confFile, toml);
         }

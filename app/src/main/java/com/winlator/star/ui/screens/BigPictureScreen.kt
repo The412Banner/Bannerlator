@@ -216,6 +216,10 @@ fun BigPictureScreen(navController: NavController) {
     var steamUpdateLabel by remember { mutableStateOf("") }
     var steamUpdateTitle by remember { mutableStateOf("") }
     var steamUpdateHandle by remember { mutableStateOf<SteamGameUpdater.UpdateHandle?>(null) }
+    // "Check for updates" is check-THEN-offer (never auto-applies): the cheap probe runs first, and a found
+    // delta (or a can't-tell-offline result) parks the game + its status here so the couch confirm sheet
+    // below can offer to apply it. null = no offer pending. Mirrors ShortcutsScreen.
+    var steamUpdateOffer by remember { mutableStateOf<Pair<Shortcut, SteamGameUpdater.UpdateStatus>?>(null) }
     // Manual RealSteam maintenance: run a delta [update] or a full "verify integrity" [verify] pass,
     // reusing the shared progress modal. Standalone — it never launches the game; the outcome is a toast.
     // Cancellable via steamUpdateHandle.
@@ -238,6 +242,31 @@ fun BigPictureScreen(navController: NavController) {
         steamUpdateHandle =
             if (verify) SteamGameUpdater.verifyFiles(context, appId, progress, done)
             else SteamGameUpdater.updateNow(context, appId, progress, done)
+    }
+    // "Check for updates": a cheap, network-free probe (shown in the shared progress modal as the animated
+    // "Checking…" indeterminate phase), then BRANCH — never auto-apply. Up-to-date / not-installed inform
+    // via a toast; an available (or can't-tell-offline) result opens the couch confirm sheet, whose
+    // [Update now] / [Check online] hands off to runSteamMaintenance. onResult lands on the main thread.
+    fun checkForUpdatesThenOffer(s: Shortcut) {
+        val appId = steamAppIdOf(s)
+        steamUpdateTitle = "Checking for updates"
+        steamUpdateLabel = "Checking ${s.name}…"
+        steamUpdateProgress = -1f   // opens in the animated indeterminate state, never a static 0%.
+        steamUpdateFor = s
+        steamUpdateHandle = SteamGameUpdater.checkForUpdate(context, appId) { status ->
+            steamUpdateFor = null
+            steamUpdateHandle = null
+            when (status.state) {
+                SteamGameUpdater.State.UP_TO_DATE -> {
+                    val b = if (status.installedBuild > 0L) " (build ${status.installedBuild})" else ""
+                    Toast.makeText(context, "${s.name} is up to date$b", Toast.LENGTH_LONG).show()
+                }
+                SteamGameUpdater.State.NOT_INSTALLED ->
+                    Toast.makeText(context, "${s.name} isn't installed", Toast.LENGTH_LONG).show()
+                SteamGameUpdater.State.UPDATE_AVAILABLE, SteamGameUpdater.State.UNKNOWN ->
+                    steamUpdateOffer = s to status
+            }
+        }
     }
 
     // Decoded covers keyed by shortcut name; guarded by a plain in-flight set so we never re-fetch.
@@ -882,9 +911,10 @@ fun BigPictureScreen(navController: NavController) {
         LaunchMethodSheet(
             shortcut = s,
             onDismiss = { launchChoiceFor = null },
-            // Manual Update / Verify (SteamLite roadmap #3): dismiss the sheet, then run the pass in the
-            // shared progress modal (so the dialog isn't layered behind the ModalBottomSheet's window).
-            onUpdateFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = false) },
+            // Verify runs a full re-validate pass directly. "Check for updates" is check-THEN-offer: probe
+            // first, then a couch confirm sheet lets the user choose to apply — it never auto-updates. Both
+            // dismiss the sheet first (so no dialog is layered behind the ModalBottomSheet's window).
+            onUpdateFiles = { launchChoiceFor = null; checkForUpdatesThenOffer(s) },
             onVerifyFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = true) },
             onLaunch = { mode, goldbergMode, remember, controllerPassthrough ->
                 // Persist the choice on the shortcut (contract literals: launchMode ∈ RealSteam/Goldberg/Raw,
@@ -1014,7 +1044,11 @@ fun BigPictureScreen(navController: NavController) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        steamUpdateLabel,
+                        // Prefix a live "N%" once real download progress starts; the indeterminate
+                        // "checking/setup" phase (fraction < 0) shows just the phase label.
+                        if (steamUpdateProgress >= 0f)
+                            "${(steamUpdateProgress.coerceIn(0f, 1f) * 100).toInt()}% — $steamUpdateLabel"
+                        else steamUpdateLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1025,6 +1059,33 @@ fun BigPictureScreen(navController: NavController) {
                     Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
             },
+        )
+    }
+
+    // "Check for updates" outcome (couch UI): a delta is (or might be) due — offer to apply it. Reuses the
+    // fully D-pad + touch navigable BpSheetScaffold (a focusable bottom sheet), NOT a bare touch dialog.
+    // Never auto-updates; [Update now] / [Check online] runs the authoritative updateNow pass.
+    steamUpdateOffer?.let { (s, status) ->
+        val available = status.state == SteamGameUpdater.State.UPDATE_AVAILABLE
+        val title = if (available) {
+            if (status.installedBuild > 0L && status.liveBuild > 0L)
+                "Update available — build ${status.installedBuild} → ${status.liveBuild}"
+            else "Update available for ${s.name}"
+        } else {
+            "Couldn't check ${s.name} from cached data — check online?"
+        }
+        BpSheetScaffold(
+            title = title,
+            rows = listOf(
+                BpRow(Icons.Filled.Download, if (available) "Update now" else "Check online") {
+                    steamUpdateOffer = null
+                    runSteamMaintenance(s, verify = false)
+                },
+                BpRow(Icons.Filled.Close, if (available) "Later" else "Cancel") {
+                    steamUpdateOffer = null
+                },
+            ),
+            onDismiss = { steamUpdateOffer = null },
         )
     }
 }

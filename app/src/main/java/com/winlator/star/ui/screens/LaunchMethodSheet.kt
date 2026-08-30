@@ -33,8 +33,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -59,6 +61,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -136,16 +139,19 @@ private const val HELP_GOLDBERG_MODE =
  * (`launchMode` / `launchModeRemembered` / `controllerPassthrough`), stages the picked component, and
  * launches. State is keyed on [shortcut] so reopening for a different game re-seeds from its saved choice.
  *
- * [onVerifyFiles] / [onUpdateFiles] are retained for caller compatibility (RealSteam maintenance now lives
- * on the full details page); the compact popup no longer surfaces the Verify/Update block.
+ * [onVerifyFiles] / [onUpdateFiles] drive the slim Steam-only maintenance row (a "Verify files" +
+ * "Check for updates" pair, [MaintenanceRow]) shown above the pinned Launch footer — a compact stand-in
+ * for real Steam's per-game "Verify integrity" / "Update". Non-null only for Steam shortcuts (the caller
+ * wires them to [SteamGameUpdater.verifyFiles] / [SteamGameUpdater.updateNow]); the row is hidden for
+ * Epic / GOG / Custom sources.
  */
 @Composable
 fun LaunchMethodSheet(
     shortcut: Shortcut,
     onDismiss: () -> Unit,
     onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean, controllerPassthrough: Boolean) -> Unit,
-    @Suppress("UNUSED_PARAMETER") onVerifyFiles: (() -> Unit)? = null,
-    @Suppress("UNUSED_PARAMETER") onUpdateFiles: (() -> Unit)? = null,
+    onVerifyFiles: (() -> Unit)? = null,
+    onUpdateFiles: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val accent = MaterialTheme.colorScheme.primary
@@ -205,6 +211,7 @@ fun LaunchMethodSheet(
                 method, { method = it }, goldbergMode, { goldbergMode = it },
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
+                onVerifyFiles, onUpdateFiles,
             )
         } else {
             PortraitCard(
@@ -212,6 +219,7 @@ fun LaunchMethodSheet(
                 method, { method = it }, goldbergMode, { goldbergMode = it },
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
+                onVerifyFiles, onUpdateFiles,
             )
         }
     }
@@ -242,6 +250,8 @@ private fun PortraitCard(
     onDismiss: () -> Unit,
     doLaunch: () -> Unit,
     openDetails: () -> Unit,
+    onVerifyFiles: (() -> Unit)?,
+    onUpdateFiles: (() -> Unit)?,
 ) {
     val cs = MaterialTheme.colorScheme
     Surface(
@@ -302,6 +312,12 @@ private fun PortraitCard(
                         shortcut, isSteam, hasDetails, passthrough, onPassthrough,
                         rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = false,
                     )
+
+                    // Steam-only game-files maintenance (slim row, above the pinned Launch footer).
+                    if (isSteam && appId > 0 && (onVerifyFiles != null || onUpdateFiles != null)) {
+                        Spacer(Modifier.height(12.dp))
+                        MaintenanceRow(accent, compact = false, onVerifyFiles, onUpdateFiles)
+                    }
                 }
 
                 HorizontalDivider(color = cs.outline)
@@ -337,6 +353,8 @@ private fun LandscapeCard(
     onDismiss: () -> Unit,
     doLaunch: () -> Unit,
     openDetails: () -> Unit,
+    onVerifyFiles: (() -> Unit)?,
+    onUpdateFiles: (() -> Unit)?,
 ) {
     val cs = MaterialTheme.colorScheme
     val cfg = LocalConfiguration.current
@@ -389,6 +407,13 @@ private fun LandscapeCard(
                             shortcut, isSteam, hasDetails, passthrough, onPassthrough,
                             rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = true,
                         )
+
+                        // Steam-only game-files maintenance (slim row). It lives INSIDE this scroll
+                        // region, so on short screens it scrolls rather than pushing the pinned footer off.
+                        if (isSteam && appId > 0 && (onVerifyFiles != null || onUpdateFiles != null)) {
+                            Spacer(Modifier.height(10.dp))
+                            MaintenanceRow(accent, compact = true, onVerifyFiles, onUpdateFiles)
+                        }
                     }
                     // Launch/Cancel footer — pinned OUTSIDE the scroll region so it is always visible.
                     HorizontalDivider(color = cs.outline)
@@ -621,6 +646,68 @@ private fun FooterRow(
             Spacer(Modifier.width(7.dp))
             Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
         }
+    }
+}
+
+/** Steam-only game-files maintenance: a slim single row of two compact buttons — "Verify files"
+ *  (full integrity re-validate → [SteamGameUpdater.verifyFiles]) and "Check for updates" (delta update →
+ *  [SteamGameUpdater.updateNow]). The two hand off to the caller's [onVerify] / [onUpdate] lambdas, which
+ *  run the SAME shared maintenance path as the game-menu action. Deliberately compact (one short row, no
+ *  status box) so it fits inside the scroll area above the pinned Launch footer in both orientations. */
+@Composable
+private fun MaintenanceRow(
+    accent: Color,
+    compact: Boolean,
+    onVerify: (() -> Unit)?,
+    onUpdate: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
+    ) {
+        if (onVerify != null) {
+            MaintButton("Verify files", Icons.Filled.Refresh, accent, compact, Modifier.weight(1f), onVerify)
+        }
+        if (onUpdate != null) {
+            MaintButton("Check for updates", Icons.Filled.Download, accent, compact, Modifier.weight(1f), onUpdate)
+        }
+    }
+}
+
+/** One compact maintenance button: accent icon + short label in a bordered pill, matching the sheet's
+ *  chip idiom. Sizes to its [modifier] (the row gives each an equal weight so the pair never overflows);
+ *  the label ellipsizes on very narrow widths rather than wrapping or pushing the row wider. */
+@Composable
+private fun MaintButton(
+    label: String,
+    icon: ImageVector,
+    accent: Color,
+    compact: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(if (compact) 9.dp else 10.dp)
+    Row(
+        modifier
+            .clip(shape)
+            .background(cs.surfaceContainerHigh)
+            .border(1.dp, cs.outline, shape)
+            .clickable(onClick = onClick)
+            .padding(vertical = if (compact) 6.dp else 8.dp, horizontal = if (compact) 6.dp else 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(if (compact) 14.dp else 16.dp))
+        Spacer(Modifier.width(if (compact) 5.dp else 7.dp))
+        Text(
+            label,
+            style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+            color = cs.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

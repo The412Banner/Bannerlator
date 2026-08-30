@@ -350,6 +350,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var steamUpdateLabel by remember { mutableStateOf("") }
     var steamUpdateTitle by remember { mutableStateOf("") }
     var steamUpdateHandle by remember { mutableStateOf<SteamGameUpdater.UpdateHandle?>(null) }
+    // "Check for updates" is check-THEN-offer (never auto-applies): a cheap [checkForUpdate] probe runs
+    // first, and when it finds a delta (or can't tell from cached data) this holds the game + its status so
+    // the confirm dialog below can offer to apply it. null = no offer pending.
+    var steamUpdateOffer by remember { mutableStateOf<Pair<Shortcut, SteamGameUpdater.UpdateStatus>?>(null) }
     // Manual RealSteam maintenance: run a delta [update] or a full "verify integrity" [verify] pass for the
     // game, reusing the shared progress modal. Standalone — it never launches the game; the outcome
     // surfaces as a toast. Cancellable via steamUpdateHandle (the modal's Cancel button).
@@ -374,6 +378,32 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         steamUpdateHandle =
             if (verify) SteamGameUpdater.verifyFiles(context, appId, progress, done)
             else SteamGameUpdater.updateNow(context, appId, progress, done)
+    }
+    // "Check for updates": a cheap, network-free [checkForUpdate] probe (shown in the shared progress modal
+    // as the animated "Checking…" indeterminate phase), then BRANCH — we never auto-apply. Up-to-date /
+    // not-installed just inform via a toast; an available (or can't-tell-offline) result opens the confirm
+    // dialog, whose [Update now] / [Check online] hands off to runSteamMaintenance (the authoritative
+    // updateNow pass). The onResult lands on the main thread (see checkForUpdate's doc).
+    fun checkForUpdatesThenOffer(s: Shortcut) {
+        val appId = steamAppIdOf(s)
+        steamUpdateTitle = "Checking for updates"
+        steamUpdateLabel = "Checking ${s.name}…"
+        steamUpdateProgress = -1f   // opens in the animated indeterminate state, never a static 0%.
+        steamUpdateFor = s
+        steamUpdateHandle = SteamGameUpdater.checkForUpdate(context, appId) { status ->
+            steamUpdateFor = null
+            steamUpdateHandle = null
+            when (status.state) {
+                SteamGameUpdater.State.UP_TO_DATE -> {
+                    val b = if (status.installedBuild > 0L) " (build ${status.installedBuild})" else ""
+                    Toast.makeText(context, "${s.name} is up to date$b", Toast.LENGTH_LONG).show()
+                }
+                SteamGameUpdater.State.NOT_INSTALLED ->
+                    Toast.makeText(context, "${s.name} isn't installed", Toast.LENGTH_LONG).show()
+                SteamGameUpdater.State.UPDATE_AVAILABLE, SteamGameUpdater.State.UNKNOWN ->
+                    steamUpdateOffer = s to status
+            }
+        }
     }
     // The single launch choke point for the game grid/list. Every game opens the source-adaptive
     // launch-method popup first (Steam → SteamLite/Goldberg/Raw; Epic/GOG/Custom → Raw-only), UNLESS the
@@ -2716,9 +2746,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         LaunchMethodSheet(
             shortcut = s,
             onDismiss = { launchChoiceFor = null },
-            // Manual Update / Verify (SteamLite roadmap #3): dismiss the sheet, then run the pass in the
-            // shared progress modal (so the dialog isn't layered behind the ModalBottomSheet's window).
-            onUpdateFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = false) },
+            // Verify runs a full re-validate pass directly. "Check for updates" is check-THEN-offer: probe
+            // first, then a confirm dialog lets the user choose to apply — it never auto-updates. Both
+            // dismiss the sheet first (so no dialog is layered behind the ModalBottomSheet's window).
+            onUpdateFiles = { launchChoiceFor = null; checkForUpdatesThenOffer(s) },
             onVerifyFiles = { launchChoiceFor = null; runSteamMaintenance(s, verify = true) },
             onLaunch = { mode, goldbergMode, remember, controllerPassthrough ->
                 // Persist the choice on the shortcut's [Extra Data] so a remembered pick skips the popup
@@ -2851,7 +2882,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        steamUpdateLabel,
+                        // Prefix a live "N%" once real download progress starts; the indeterminate
+                        // "checking/setup" phase (fraction < 0) shows just the phase label.
+                        if (steamUpdateProgress >= 0f)
+                            "${(steamUpdateProgress.coerceIn(0f, 1f) * 100).toInt()}% — $steamUpdateLabel"
+                        else steamUpdateLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -2860,6 +2895,46 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             confirmButton = {
                 TextButton(onClick = { steamUpdateHandle?.cancel() }) {
                     Text("Cancel", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+        )
+    }
+
+    // "Check for updates" outcome: a delta is (or might be) due — offer to apply it. Never auto-updates;
+    // [Update now] / [Check online] runs the authoritative updateNow pass, [Later] / [Cancel] does nothing.
+    steamUpdateOffer?.let { (s, status) ->
+        val available = status.state == SteamGameUpdater.State.UPDATE_AVAILABLE
+        OutlinedAlertDialog(
+            onDismissRequest = { steamUpdateOffer = null },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            title = {
+                Text(
+                    if (available) "Update available" else "Check online?",
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
+            text = {
+                Text(
+                    if (available) {
+                        if (status.installedBuild > 0L && status.liveBuild > 0L)
+                            "${s.name}: build ${status.installedBuild} → ${status.liveBuild}. Update now?"
+                        else "A newer build of ${s.name} is available. Update now?"
+                    } else {
+                        "Couldn't check ${s.name} from cached data. Do an online check now " +
+                            "(and update if it's behind)?"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { steamUpdateOffer = null; runSteamMaintenance(s, verify = false) }) {
+                    Text(if (available) "Update now" else "Check online", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { steamUpdateOffer = null }) {
+                    Text(if (available) "Later" else "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
         )

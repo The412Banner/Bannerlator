@@ -385,7 +385,7 @@ fun ContentDownloadSheet(
                             // installed here lands exactly where the standalone sheet puts it. Header mirrors
                             // the component detail header; the Manage-sources (Tune) button lives here and
                             // drives the pane's own dialog via showDriverManage. ──
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, top = 10.dp, bottom = 6.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 6.dp)) {
                                 // Compact single line: "GPU Drivers   Turnip / adrenotools" + manage button.
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                     Text("GPU Drivers", color = cs.onSurface,
@@ -410,7 +410,7 @@ fun ContentDownloadSheet(
                             // Detail header: selected component + (if it's in the passed scope) its active
                             // version + a one-line role. Active only shows for the type the user opened.
                             val activeVer = inUseKey?.takeIf { it.isNotEmpty() && selectedType in contentTypes }
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, top = 10.dp, bottom = 6.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 6.dp)) {
                                 // Compact single line: "<type>   active: <ver>  ·  <role>".
                                 val role = roleFor(selectedType)
                                 val sub = buildString {
@@ -1176,7 +1176,7 @@ private fun RailSourceFooter(
 ) {
     val cs = MaterialTheme.colorScheme
     Divider(color = cs.outline.copy(alpha = 0.5f), modifier = Modifier.padding(top = 8.dp))
-    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, top = 8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.Hub, contentDescription = null, tint = cs.primary, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))

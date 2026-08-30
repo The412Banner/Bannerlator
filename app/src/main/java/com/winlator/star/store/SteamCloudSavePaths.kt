@@ -6,6 +6,7 @@ import android.util.Log
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.core.SaveLocator
+import com.winlator.star.core.WinePath
 import java.io.File
 
 /**
@@ -100,10 +101,30 @@ object SteamCloudSavePaths {
             instAbs.substring(imageFsRoot.length).trimStart('/') else instAbs.trimStart('/')
         val keys = listOf("/${instRel.lowercase()}/", "/${instAbs.trimStart('/').lowercase()}/")
 
+        // The game's real Android install dir, for the drive-map match below.
+        val instAbsFile = File(installDir).absolutePath.replace('\\', '/').trimEnd('/')
+
         for (sc in shortcuts) {
             val raw = sc.path ?: continue
-            // Normalize the Winlator exec target: '\'→'/', lowercase, drop a leading drive letter
-            // ("z:"), fence with a leading '/' so the key's boundary matches.
+
+            // PRIMARY (drive-agnostic): resolve the shortcut's exec back through ITS container's drive
+            // map to a real Android path, then check it lives under the install dir. This is what makes
+            // a game parked OFF imagefs resolve — the "Install to SD card" option puts it on the card as
+            // F:\… (or an auto letter) — which the string match below misses: that match strips the
+            // drive letter ("f:") off the exec, leaving "/bannerlator/…", while the key built from the
+            // absolute SD install path is "/storage/<uuid>/bannerlator/…", so they never overlap.
+            // resolveAndroidPath returns null for a Z:\ imagefs game (Z: isn't in the drive map), which
+            // falls through to the original string match — so internal games are unaffected.
+            val android = runCatching { WinePath.resolveAndroidPath(sc.container, raw) }.getOrNull()
+            if (android != null) {
+                val ap = android.absolutePath.replace('\\', '/').trimEnd('/')
+                if (ap.equals(instAbsFile, ignoreCase = true) ||
+                    ap.startsWith("$instAbsFile/", ignoreCase = true)) return sc.container
+            }
+
+            // FALLBACK (imagefs string match, unchanged): normalize the Winlator exec target: '\'→'/',
+            // lowercase, drop a leading drive letter ("z:"), fence with a leading '/' so the key's
+            // boundary matches.
             var exec = raw.replace('\\', '/').lowercase().trim()
             exec = exec.replaceFirst(Regex("^[a-z]:"), "")
             if (!exec.startsWith("/")) exec = "/$exec"

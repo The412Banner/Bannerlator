@@ -18,6 +18,7 @@ import com.winlator.star.container.Container;
 import com.winlator.star.container.ContainerManager;
 import com.winlator.star.container.Shortcut;
 import com.winlator.star.core.FileUtils;
+import com.winlator.star.core.WinePath;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -271,23 +272,34 @@ public final class StarLaunchBridge {
 
                 File shortcutFile = new File(desktopDir, safeName + ".desktop");
 
-                // Derive path relative to imagefs root (forward slashes)
+                // Build the shortcut's Exec= path. No WINEPREFIX in Exec=; Winlator derives WINEPREFIX
+                // from the container object via container_id. Both branches emit 4 backslashes per
+                // separator so StringUtils.unescape()'s two-pass strip yields a valid X:\path\game.exe.
+                //
+                //   • A game under imagefs/ is reachable as the container's fixed Z: drive, so keep the
+                //     historical Z:\… mapping for it (byte-identical to before).
+                //   • A game installed OFF imagefs — the "Install to SD card" option parks it on the
+                //     physical card — has no fixed letter, so resolve it through the container's drive
+                //     map exactly like the "+" add-game importer: WinePath.resolveWindowsPath maps its
+                //     storage volume to a drive letter (reusing a pre-declared one like F:, else
+                //     auto-mounting a fresh letter) AND persists container.drives itself, so the letter
+                //     survives to launch time with no extra mount code. escapeForExec applies the
+                //     4-backslash separators.
                 String imageFsRoot = new java.io.File(activity.getFilesDir(), "imagefs").getAbsolutePath();
-                String relPath = exePath.startsWith(imageFsRoot)
-                        ? exePath.substring(imageFsRoot.length()) : exePath;
-                if (relPath.startsWith("/")) relPath = relPath.substring(1);
-
-                // Convert to Windows path — match Winlator's native shortcut format.
-                // No WINEPREFIX in Exec=; Winlator derives WINEPREFIX from the container
-                // object via container_id.
-                // Use 4 backslashes per separator so StringUtils.unescape() produces
-                // a valid Z:\path\to\game.exe after its two-pass strip.
-                String windowsPath = relPath.replace("/", "\\\\\\\\");
+                String execPath;
+                if (exePath.startsWith(imageFsRoot)) {
+                    String relPath = exePath.substring(imageFsRoot.length());
+                    if (relPath.startsWith("/")) relPath = relPath.substring(1);
+                    execPath = "Z:\\\\\\\\" + relPath.replace("/", "\\\\\\\\");
+                } else {
+                    String winPath = WinePath.INSTANCE.resolveWindowsPath(container, exePath);
+                    execPath = WinePath.INSTANCE.escapeForExec(winPath);
+                }
 
                 // Icon= references a PNG saved in container.getIconsDir(64) by saveCoverArt().
                 String content = "[Desktop Entry]\n"
                         + "Name=" + gameName + "\n"
-                        + "Exec=wine Z:\\\\\\\\" + windowsPath + "\n"
+                        + "Exec=wine " + execPath + "\n"
                         + "Icon=" + safeName + "\n"
                         + "Type=Application\n"
                         + "StartupWMClass=explorer\n"

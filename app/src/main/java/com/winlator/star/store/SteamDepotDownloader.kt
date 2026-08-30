@@ -248,14 +248,19 @@ object SteamDepotDownloader {
      *   fed to [DownloadSpeedConfig] to derive maxDownloads/maxDecompress.
      * @param debugLog when true (or in a debug build) writes the verbose steam_debug.txt firehose +
      *   JavaSteam-internal bridge for this download. Off = logcat-only; failures still leave a trace.
+     * @param installRoot when non-null, the `steam_games` base a fresh install lands in instead of the
+     *   internal `imagefs/steam_games` default — used by the "Install to SD card" toggle, which passes
+     *   `<sd>/bannerlator/steam_games` ([SteamSdInstall.SdTarget.steamGamesBase]). Ignored for a resume
+     *   or an update/verify of an already-installed game, which stay in their existing directory.
      */
     fun installApp(
         appId: Int,
         ctx: Context,
         speedTier: Int = DownloadSpeedConfig.DEFAULT_TIER,
         debugLog: Boolean = false,
+        installRoot: String? = null,
     ): DownloadControl =
-        buildControl(appId, ctx, speedTier, debugLog, isResume = false)
+        buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot)
 
     /**
      * Resume a previously paused install. Keeps the existing DB row (bytes intact).
@@ -269,7 +274,8 @@ object SteamDepotDownloader {
     ): DownloadControl =
         buildControl(appId, ctx, speedTier, debugLog, isResume = true)
 
-    private fun buildControl(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean, isResume: Boolean): DownloadControl {
+    private fun buildControl(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean, isResume: Boolean,
+                             installRoot: String? = null): DownloadControl {
         val cancelled     = AtomicBoolean(false)
         val paused        = AtomicBoolean(false)
         val downloaderRef = AtomicReference<DepotDownloader?>(null)
@@ -294,7 +300,8 @@ object SteamDepotDownloader {
         )
 
         CoroutineScope(Dispatchers.IO).launch {
-            runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog, isResume, control = control)
+            runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog, isResume,
+                    control = control, installRoot = installRoot)
         }
 
         return control
@@ -321,6 +328,11 @@ object SteamDepotDownloader {
         //                      tail can require forward progress and fail-fast on a stalled (dead) depot.
         resumeAttempt: Int = 0,
         resumeFloorBytes: Long = 0L,
+        // Fresh-install location override for the "Install to SD card" toggle (the `steam_games` base,
+        // e.g. `<sd>/bannerlator/steam_games`). Null = internal default. Only consulted for a genuine
+        // fresh install below; a resume / update-of-installed-game derives its dir from the DB instead,
+        // so the auto-resume recursions (all isResume=true) leave it null.
+        installRoot: String? = null,
     ) {
         // One gate for all verbose diagnostics: on in debug builds, or when the user ticked
         // "Log debug session" for this download. Off ⇒ steam_debug.txt is never created (no 4 MB
@@ -385,8 +397,32 @@ object SteamDepotDownloader {
 
         // Sanitise game name for directory usage
         val safeName = row.name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
-        val installDir = File(File(ctx.filesDir, "imagefs/steam_games"), safeName)
-        dlog("Install dir: ${installDir.absolutePath}")
+        // Where this app's files go. installApp always installs a game to where it ALREADY lives when
+        // it lives somewhere, and only a brand-new install picks a fresh location:
+        //   • a resume returns to the directory the in-progress download already chose (persisted on
+        //     the steam_downloads row at queueDownload time) — so an SD download resumes onto the SD
+        //     card, and a session-recovery / short-depot auto-resume never relocates a half-install.
+        //   • an update/verify or reinstall of an already-installed game stays on its games-row
+        //     install_dir (markUninstalled clears that field, so it's non-blank only for a genuinely
+        //     installed game) — so updating an SD game updates the SD copy in place, never a stray
+        //     internal one.
+        //   • a fresh install honours the SD toggle (installRoot = <sd>/bannerlator/steam_games) when
+        //     set, else the internal imagefs default (the fast path — unchanged from before).
+        val internalBase = File(ctx.filesDir, "imagefs/steam_games")
+        val resumeDir   = if (isResume) db.getDownload(appId)?.installDir?.takeIf { it.isNotBlank() } else null
+        val existingDir = row.installDir.takeIf { it.isNotBlank() }
+        val installDir = when {
+            resumeDir   != null -> File(resumeDir)
+            existingDir != null -> File(existingDir)
+            installRoot != null -> File(File(installRoot), safeName)
+            else                -> File(internalBase, safeName)
+        }
+        // A brand-new install steered onto the SD card (or any off-imagefs root) by the toggle. Update
+        // and resume paths never take the installRoot branch, so they never re-check space here (the
+        // SD free-space guard fires once installTotal is known, further below).
+        val isFreshSdInstall = installRoot != null && resumeDir == null && existingDir == null
+        val onInternal = installDir.absolutePath.startsWith(ctx.filesDir.absolutePath.trimEnd('/') + "/")
+        dlog("Install dir: ${installDir.absolutePath}${if (onInternal) "" else " (external/SD)"}")
 
         // Denominators come from the SELECTED-depot sums computed at library sync
         // (SteamRepository now filters out other-OS / non-english / undownloadable depots):
@@ -423,6 +459,28 @@ object SteamDepotDownloader {
         val downloadTotalSeed: Long = if (cachedDownload > 0L) cachedDownload else installTotal
         dlog("Denominators: install=${fmtSize(installTotal)} download=${fmtSize(downloadTotalSeed)} " +
                 "(hasPicsSize=$hasPicsSize, cachedDownload=$cachedDownload)")
+
+        // SD free-space guard — reuse SteamSdInstall's margin (shared with CopyGameToDriveC). StatFs
+        // needs an existing path, so walk up to the nearest existing ancestor of the target (the card
+        // root before its bannerlator/ tree is created). Requiring the FULL install size up front
+        // (best-effort — this is the manifest-true total when resolved, else the PICS estimate) stops
+        // an SD download from filling the card and stranding a half-install. Only a genuine fresh SD
+        // install is checked; a resume/update reuses files already on the card.
+        if (isFreshSdInstall && installTotal > 1L) {
+            var probe = installDir
+            while (!probe.exists() && probe.parentFile != null) probe = probe.parentFile!!
+            val free = SteamSdInstall.freeBytes(probe)
+            if (free < installTotal + SteamSdInstall.FREE_SPACE_MARGIN) {
+                dlog("SD free-space guard FAILED: need ${fmtSize(installTotal)} + margin " +
+                        "${fmtSize(SteamSdInstall.FREE_SPACE_MARGIN)}, only ${fmtSize(free)} free on " +
+                        probe.absolutePath)
+                emitFailed(appId, "Not enough space on the SD card — need about ${fmtSize(installTotal)}, " +
+                        "${fmtSize(free)} free. Free some space or install to internal storage.")
+                return
+            }
+            dlog("SD free-space guard OK: ${fmtSize(free)} free on ${probe.absolutePath} for a " +
+                    "${fmtSize(installTotal)} install")
+        }
 
         // Queue in DB so UI shows progress (skip reset on resume — keep existing bytes).
         // The DB tracks the INSTALL (uncompressed) bytes/total; compressed is UI-only.

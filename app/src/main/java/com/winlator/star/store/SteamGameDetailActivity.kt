@@ -222,6 +222,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var progressTextVisible by mutableStateOf(false)
 
     private var showSpeedPicker by mutableStateOf(false)
+    // Removable SD card detected when the download dialog opens (null = none, so the SD option is
+    // hidden). Detected off the UI thread in onInstallClicked before the picker is shown.
+    private var sdTarget by mutableStateOf<SteamSdInstall.SdTarget?>(null)
     // Non-null while an uninstall is deleting files → shows the blocking progress spinner.
     private var uninstallingName by mutableStateOf<String?>(null)
     // Non-null briefly after an uninstall → themed auto-dismiss confirmation bar (not a Toast).
@@ -403,13 +406,17 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                             DownloadSpeedConfig.TIER_BLAZING -> 3
                             else -> 2  // Fast
                         },
+                        sdTarget = sdTarget,
                         onDismiss = { showSpeedPicker = false },
-                        onDownload = { tier, debugLog ->
+                        onDownload = { tier, debugLog, installToSd ->
                             showSpeedPicker = false
                             lastSpeedTier = tier
                             installBtnEnabled = false
                             installBtnText = "Starting…"
-                            downloadHandle = SteamDepotDownloader.installApp(appId, applicationContext, lastSpeedTier, debugLog)
+                            // SD toggle → install under <sd>/bannerlator/steam_games; else internal default.
+                            val installRoot = if (installToSd) sdTarget?.steamGamesBase?.absolutePath else null
+                            downloadHandle = SteamDepotDownloader.installApp(
+                                appId, applicationContext, lastSpeedTier, debugLog, installRoot)
                         },
                     )
                 }
@@ -948,7 +955,16 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     }
                 })
         } else {
-            showSpeedPicker = true
+            // Detect a removable SD card off the UI thread (StorageRoots does Binder + filesystem
+            // work), then open the download dialog. The SD "Install to…" option is shown only when a
+            // card is actually present; internal stays the default.
+            Thread {
+                val sd = try { SteamSdInstall.detect(this) } catch (_: Throwable) { null }
+                runOnUiThread {
+                    sdTarget = sd
+                    showSpeedPicker = true
+                }
+            }.apply { isDaemon = true; name = "SteamSdDetect" }.start()
         }
     }
 
@@ -3045,8 +3061,9 @@ private fun InfoChip(label: String) {
 @Composable
 private fun DownloadSpeedPickerDialog(
     selectedIndex: Int,
+    sdTarget: SteamSdInstall.SdTarget?,
     onDismiss: () -> Unit,
-    onDownload: (speedTier: Int, debugLog: Boolean) -> Unit,
+    onDownload: (speedTier: Int, debugLog: Boolean, installToSd: Boolean) -> Unit,
 ) {
     // Tiers mirror GameNative: cores × ratio scales download + decompress concurrency.
     // Higher tiers download faster but use more RAM/CPU during decompression.
@@ -3059,6 +3076,8 @@ private fun DownloadSpeedPickerDialog(
     var selected by remember { mutableIntStateOf(selectedIndex) }
     // Per-download, not persisted — defaults off each time (scoped to this one download).
     var debugLog by remember { mutableStateOf(false) }
+    // SD-card install opt-in — off by default; only offered when a removable card is present.
+    var installToSd by remember { mutableStateOf(false) }
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
@@ -3126,10 +3145,54 @@ private fun DownloadSpeedPickerDialog(
                         modifier = Modifier.padding(start = 4.dp, end = 4.dp),
                     )
                 }
+
+                // SD-card install toggle — only when a removable card is present. Internal is the fast
+                // default; the card frees internal space but is FUSE-backed and slower, so it's an
+                // explicit opt-in with a one-time warning (and the Copy-to-Drive-C escape hatch).
+                if (sdTarget != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { installToSd = !installToSd }
+                            .padding(vertical = 4.dp),
+                    ) {
+                        Checkbox(
+                            checked = installToSd,
+                            onCheckedChange = { installToSd = it },
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Install to SD card (frees internal space)",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                text = "${sdTarget.label} · ${SteamSdInstall.fmtBytes(sdTarget.freeBytes)} free",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    if (installToSd) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "⚠️ The SD card is slower than internal storage. Some games stall on " +
+                                "intro movies or asset loads from the card — if that happens, open the " +
+                                "shortcut and use \"Copy game to Drive C\" to move it onto fast internal " +
+                                "storage.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 4.dp, end = 4.dp),
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDownload(options[selected].second, debugLog) }) {
+            TextButton(onClick = { onDownload(options[selected].second, debugLog, installToSd) }) {
                 Text("Download")
             }
         },

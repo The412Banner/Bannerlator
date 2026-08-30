@@ -339,8 +339,13 @@ private fun LandscapeCard(
     openDetails: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val cfg = LocalConfiguration.current
+    // Fit-to-screen: never exceed the device's landscape bounds (minus dialog margins), so short or
+    // small screens can't clip the dialog. The controls below scroll; the Launch footer is pinned.
+    val dialogW = minOf(580, cfg.screenWidthDp - 24).coerceAtLeast(320).dp
+    val dialogH = minOf(332, cfg.screenHeightDp - 24).coerceAtLeast(220).dp
     Surface(
-        modifier = Modifier.padding(16.dp).width(580.dp).height(332.dp),
+        modifier = Modifier.padding(16.dp).width(dialogW).height(dialogH),
         shape = RoundedCornerShape(18.dp),
         color = cs.surface,
         contentColor = cs.onSurface,
@@ -354,34 +359,38 @@ private fun LandscapeCard(
 
                 // Right: all controls.
                 Column(Modifier.weight(1f).fillMaxHeight().padding(start = 13.dp, top = 11.dp, end = 13.dp, bottom = 11.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        CloseButton(onDismiss, size = 24.dp)
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        MicroLabel("Launch with")
-                        Spacer(Modifier.width(6.dp))
-                        HelpDot(accent, highlighted = false, onClick = { toggleHelp(HELP_LAUNCH_WITH) })
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    ChipsRow(method, enabledMethods, accent, compact = true, onMethod, toggleHelp)
-                    Spacer(Modifier.height(6.dp))
-                    MethodDesc(method, source)
-
-                    AnimatedVisibility(visible = method == LaunchMethod.GOLDBERG) {
-                        Column {
-                            Spacer(Modifier.height(8.dp))
-                            GoldbergSegmentedLandscape(goldbergMode, accent, onGoldbergMode, toggleHelp)
+                    // Scrollable controls: whatever can't fit the fixed-height card scrolls, so the
+                    // pinned Launch footer below is NEVER clipped (landscape cut-off fix).
+                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            CloseButton(onDismiss, size = 24.dp)
                         }
-                    }
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            MicroLabel("Launch with")
+                            Spacer(Modifier.width(6.dp))
+                            HelpDot(accent, highlighted = false, onClick = { toggleHelp(HELP_LAUNCH_WITH) })
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        ChipsRow(method, enabledMethods, accent, compact = true, onMethod, toggleHelp)
+                        Spacer(Modifier.height(6.dp))
+                        MethodDesc(method, source)
 
-                    // Options + footer pinned to the bottom of the controls column (margin-top:auto).
-                    Spacer(Modifier.weight(1f))
-                    HorizontalDivider(color = cs.outline)
-                    OptionsBlock(
-                        shortcut, isSteam, hasDetails, passthrough, onPassthrough,
-                        rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = true,
-                    )
+                        AnimatedVisibility(visible = method == LaunchMethod.GOLDBERG) {
+                            Column {
+                                Spacer(Modifier.height(8.dp))
+                                GoldbergSegmentedLandscape(goldbergMode, accent, onGoldbergMode, toggleHelp)
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+                        HorizontalDivider(color = cs.outline)
+                        OptionsBlock(
+                            shortcut, isSteam, hasDetails, passthrough, onPassthrough,
+                            rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = true,
+                        )
+                    }
+                    // Launch/Cancel footer — pinned OUTSIDE the scroll region so it is always visible.
                     HorizontalDivider(color = cs.outline)
                     FooterRow(accent, onDismiss, doLaunch, topPad = 8.dp, bottomPad = 0.dp, startPad = 0.dp, endPad = 0.dp)
                 }

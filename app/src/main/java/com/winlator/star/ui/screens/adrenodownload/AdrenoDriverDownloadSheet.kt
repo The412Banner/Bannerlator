@@ -4,12 +4,15 @@ import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -33,6 +37,8 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,8 +62,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.winlator.star.contents.AdrenotoolsManager
 import kotlinx.coroutines.launch
@@ -68,48 +76,11 @@ fun AdrenoDriverDownloadSheet(
     onDismiss: () -> Unit,
     onDriverInstalled: (String) -> Unit,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cs = MaterialTheme.colorScheme
-
-    val repo = remember { RemoteDriverRepository(context) }
-    // Recomputed whenever the manage dialog changes a source (add/remove/toggle), via manageRefreshKey.
-    var manageRefreshKey by remember { mutableStateOf(0) }
-    val sources = remember(manageRefreshKey) { DriverSources.allSources(context) }
+    // The Manage-sources button lives in the sheet header, so its open-state is hoisted here and handed
+    // to the pane (which owns the dialog itself). See AdrenoDriverListPane.
     var showManage by remember { mutableStateOf(false) }
-
-    var selectedSourceIndex by remember { mutableStateOf(0) }
-    var loading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var entries by remember { mutableStateOf<List<RemoteDriverEntry>>(emptyList()) }
-
-    var pendingEntry by remember { mutableStateOf<RemoteDriverEntry?>(null) }
-    var downloading by remember { mutableStateOf(false) }
-    var downloadProgress by remember { mutableStateOf(0) }
-    var downloadStage by remember { mutableStateOf("") }
-    var refreshKey by remember { mutableStateOf(0) }
-
-    // Keep the selected chip in range if a source is disabled/removed out from under it.
-    LaunchedEffect(sources.size) {
-        if (selectedSourceIndex > sources.lastIndex) selectedSourceIndex = 0
-    }
-
-    LaunchedEffect(selectedSourceIndex, refreshKey, manageRefreshKey) {
-        val source = sources.getOrNull(selectedSourceIndex)
-        if (source == null) {
-            entries = emptyList(); errorMessage = null; loading = false
-            return@LaunchedEffect
-        }
-        loading = true
-        errorMessage = null
-        entries = emptyList()
-        repo.fetchEntries(source).fold(
-            onSuccess = { entries = it },
-            onFailure = { errorMessage = it.message ?: it::class.java.simpleName },
-        )
-        loading = false
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -139,46 +110,139 @@ fun AdrenoDriverDownloadSheet(
                 }
             }
 
-            // Horizontally scrollable source chip row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                sources.forEachIndexed { index, source ->
-                    SourceChip(
-                        text = source.name,
-                        selected = index == selectedSourceIndex,
-                        onClick = { selectedSourceIndex = index },
-                    )
-                }
+            // Chip row + driver list + download/install/manage dialogs are shared with the WIN Components
+            // landscape pane (single source of truth). cardStyle = false keeps the flat bottom-sheet rows.
+            AdrenoDriverListPane(
+                showManage = showManage,
+                onManageDismiss = { showManage = false },
+                onDriverInstalled = onDriverInstalled,
+                cardStyle = false,
+            )
+        }
+    }
+}
+
+/**
+ * The reusable body of the GPU-driver downloader: the source chip row, the remote-driver list, and the
+ * download/install + manage-sources dialogs. Extracted from [AdrenoDriverDownloadSheet] so the WIN
+ * Components landscape rail can render the exact same driver UI in its right pane (see ContentDownloadSheet)
+ * — one source of truth, one install path ([AdrenotoolsManager.installDriver]). Host inside a [ColumnScope]
+ * (the list weight-fills the remaining height).
+ *
+ * [cardStyle] = false keeps the flat bottom-sheet rows used by the standalone sheet (unchanged). true
+ * renders outlined-card rows matching the WIN Components pane, including a best-effort "Installed" badge
+ * (matched by normalized driver name against the installed adrenotools drivers).
+ *
+ * The Manage-sources dialog is owned here but its open-state is hoisted to the caller (the caller places
+ * the trigger button in its own header): pass [showManage] and [onManageDismiss].
+ */
+@Composable
+fun ColumnScope.AdrenoDriverListPane(
+    showManage: Boolean,
+    onManageDismiss: () -> Unit,
+    onDriverInstalled: (String) -> Unit,
+    cardStyle: Boolean = false,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val cs = MaterialTheme.colorScheme
+
+    val repo = remember { RemoteDriverRepository(context) }
+    // Recomputed whenever the manage dialog changes a source (add/remove/toggle), via manageRefreshKey.
+    var manageRefreshKey by remember { mutableStateOf(0) }
+    val sources = remember(manageRefreshKey) { DriverSources.allSources(context) }
+
+    var selectedSourceIndex by remember { mutableStateOf(0) }
+    var loading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var entries by remember { mutableStateOf<List<RemoteDriverEntry>>(emptyList()) }
+
+    var pendingEntry by remember { mutableStateOf<RemoteDriverEntry?>(null) }
+    var downloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf(0) }
+    var downloadStage by remember { mutableStateOf("") }
+    var refreshKey by remember { mutableStateOf(0) }
+
+    // Installed adrenotools drivers (folder name == meta.json "name"), normalized, for the card-style
+    // Installed badge. enumarateInstalledDrivers() is a cheap filesDir listing; re-read after each install.
+    var installRefreshKey by remember { mutableStateOf(0) }
+    val installedNorm = remember(installRefreshKey) {
+        runCatching { AdrenotoolsManager(context).enumarateInstalledDrivers() }
+            .getOrDefault(arrayListOf())
+            .map { normDriver(it) }
+            .toSet()
+    }
+
+    // Keep the selected chip in range if a source is disabled/removed out from under it.
+    LaunchedEffect(sources.size) {
+        if (selectedSourceIndex > sources.lastIndex) selectedSourceIndex = 0
+    }
+
+    LaunchedEffect(selectedSourceIndex, refreshKey, manageRefreshKey) {
+        val source = sources.getOrNull(selectedSourceIndex)
+        if (source == null) {
+            entries = emptyList(); errorMessage = null; loading = false
+            return@LaunchedEffect
+        }
+        loading = true
+        errorMessage = null
+        entries = emptyList()
+        repo.fetchEntries(source).fold(
+            onSuccess = { entries = it },
+            onFailure = { errorMessage = it.message ?: it::class.java.simpleName },
+        )
+        loading = false
+    }
+
+    // Horizontally scrollable source chip row
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        sources.forEachIndexed { index, source ->
+            SourceChip(
+                text = source.name,
+                selected = index == selectedSourceIndex,
+                onClick = { selectedSourceIndex = index },
+            )
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+    Divider(color = cs.outline.copy(alpha = 0.4f))
+
+    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        when {
+            loading -> CenteredLoading()
+            errorMessage != null -> CenteredError(
+                message = errorMessage ?: "",
+                onRetry = { refreshKey++ },
+            )
+            entries.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "No drivers found.",
+                    color = cs.onSurfaceVariant,
+                )
             }
-
-            Spacer(Modifier.height(12.dp))
-            Divider(color = cs.outline.copy(alpha = 0.4f))
-
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                when {
-                    loading -> CenteredLoading()
-                    errorMessage != null -> CenteredError(
-                        message = errorMessage ?: "",
-                        onRetry = { refreshKey++ },
+            // Card style spaces + insets the rows (matching the WIN Components pane); flat style keeps the
+            // original edge-to-edge rows with a divider under each.
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = if (cardStyle) PaddingValues(horizontal = 12.dp, vertical = 8.dp) else PaddingValues(0.dp),
+                verticalArrangement = if (cardStyle) Arrangement.spacedBy(8.dp) else Arrangement.spacedBy(0.dp),
+            ) {
+                items(entries, key = { it.source + "_" + it.downloadUrl }) { entry ->
+                    EntryRow(
+                        entry = entry,
+                        installed = cardStyle && normDriver(entry.displayName) in installedNorm,
+                        cardStyle = cardStyle,
+                        onClick = { pendingEntry = entry },
                     )
-                    entries.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            "No drivers found.",
-                            color = cs.onSurfaceVariant,
-                        )
-                    }
-                    else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(entries, key = { it.source + "_" + it.downloadUrl }) { entry ->
-                            EntryRow(entry = entry, onClick = { pendingEntry = entry })
-                            Divider(color = cs.outline.copy(alpha = 0.25f))
-                        }
-                    }
+                    if (!cardStyle) Divider(color = cs.outline.copy(alpha = 0.25f))
                 }
             }
         }
@@ -187,7 +251,7 @@ fun AdrenoDriverDownloadSheet(
     if (showManage) {
         ManageSourcesDialog(
             context = context,
-            onDismiss = { showManage = false },
+            onDismiss = onManageDismiss,
             onChanged = { manageRefreshKey++ },
         )
     }
@@ -231,6 +295,7 @@ fun AdrenoDriverDownloadSheet(
                                         downloading = false
                                         pendingEntry = null
                                         if (driverId.isNotEmpty()) {
+                                            installRefreshKey++ // re-enumerate so the Installed badge picks it up
                                             Toast.makeText(context, "Installed: $driverId", Toast.LENGTH_SHORT).show()
                                             onDriverInstalled(driverId)
                                         } else {
@@ -319,36 +384,87 @@ private fun SourceChip(
 }
 
 @Composable
-private fun EntryRow(entry: RemoteDriverEntry, onClick: () -> Unit) {
+private fun EntryRow(
+    entry: RemoteDriverEntry,
+    installed: Boolean,
+    cardStyle: Boolean,
+    onClick: () -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    if (!cardStyle) {
+        // Flat bottom-sheet row (standalone sheet) — unchanged.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Memory,
+                contentDescription = null,
+                tint = cs.primary,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = entry.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = cs.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Filled.CloudDownload,
+                contentDescription = "Download",
+                tint = cs.primary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        return
+    }
+
+    // Card row matching the WIN Components DownloadContentItem idiom (surfaceContainer fill, 1dp outline,
+    // rounded 10dp). An already-installed driver shows a checkmark + "Installed" and isn't tappable.
+    val installedBlue = Color(0xFF4FC3F7) // matches DownloadContentItem's installed/in-use blue
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .then(if (installed) Modifier else Modifier.clickable(onClick = onClick)),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = cs.surfaceContainer),
+        border = BorderStroke(1.dp, cs.outline),
     ) {
-        Icon(
-            imageVector = Icons.Filled.Memory,
-            contentDescription = null,
-            tint = cs.primary,
-            modifier = Modifier.size(22.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = entry.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            color = cs.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        Icon(
-            imageVector = Icons.Filled.CloudDownload,
-            contentDescription = "Download",
-            tint = cs.primary,
-            modifier = Modifier.size(22.dp),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            Icon(Icons.Filled.Memory, contentDescription = null, tint = cs.primary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    entry.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (installed) {
+                    Text("Installed", style = MaterialTheme.typography.labelSmall, color = installedBlue)
+                }
+            }
+            if (installed) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = "Installed", tint = installedBlue,
+                    modifier = Modifier.size(20.dp))
+            } else {
+                Icon(Icons.Filled.CloudDownload, contentDescription = "Download", tint = cs.primary,
+                    modifier = Modifier.size(22.dp))
+            }
+        }
     }
 }
+
+/** Normalized driver identity (lowercase, alphanumerics only) for best-effort installed-matching. */
+private fun normDriver(s: String): String = s.lowercase().filter { it.isLetterOrDigit() }
 
 @Composable
 private fun CenteredLoading() {

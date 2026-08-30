@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -91,7 +92,9 @@ import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 import java.io.File
 
 /**
@@ -273,57 +276,107 @@ internal fun SaveManagerScreen(
         }
     }
 
-    // One end-to-end combo per button: syncFrom = Download+Apply (cloud → into game), else = Collect+
-    // Upload (game → to cloud). onStatus now spans both phases; the manager guards not-set-up itself
-    // (returns onError with the "add to a container first" message), and we also disable the buttons
-    // for NOT_SET_UP rows up front.
-    fun runQuickMove(appId: Int, syncFrom: Boolean) {
-        if (appId in busyAppIds) return
+    // One end-to-end combo for a single game, awaited to completion: syncFrom = Download+Apply
+    // (cloud → into game), else = Collect+Upload (game → to cloud). Suspends until the manager reports
+    // onDone/onError, driving the SAME per-row state a quick button tap does — busy spinner, live
+    // progress line, and a per-row status refresh when it settles — so a bulk sync lights up the
+    // individual rows exactly like tapping each one would. Returns true on success, false on error;
+    // guards a double-run on the same appId. Must be called from the composition (main) scope. Reused
+    // by the per-row buttons ([runQuickMove]) and the banner's "Sync Now" ([runSyncAll]).
+    suspend fun syncOne(appId: Int, syncFrom: Boolean): Boolean {
+        if (appId in busyAppIds) return false
         busyAppIds = busyAppIds + appId
         rowProgress[appId] = RowProgress(if (syncFrom) "Preparing sync from Cloud…" else "Preparing sync to Cloud…")
-        // The manager may call back on a worker thread, so marshal every UI write onto the
-        // composition scope (main) before touching state.
-        val cb = object : SteamCloudSaveManager.Callback {
-            override fun onStatus(message: String) {
-                scope.launch { rowProgress[appId] = RowProgress(message) }
-            }
-            override fun onDone(summary: String) {
-                scope.launch {
-                    busyAppIds = busyAppIds - appId
-                    rowProgress[appId] = RowProgress(summary)
-                    // Refresh just this row's status (records + local staleness, no network) so the
-                    // pill + last-synced line are current when the progress line clears.
-                    val updated = withContext(Dispatchers.IO) { SaveSyncStore.statusOf(context, appId) }
-                    statuses = statuses.map { if (it.appId == appId) updated else it }
-                    kotlinx.coroutines.delay(PROGRESS_LINGER_MS)
-                    rowProgress.remove(appId)
-                }
-            }
-            override fun onError(message: String) {
-                scope.launch {
-                    busyAppIds = busyAppIds - appId
-                    rowProgress[appId] = RowProgress("Error: $message", isError = true)
-                    kotlinx.coroutines.delay(PROGRESS_LINGER_MS)
-                    rowProgress.remove(appId)
-                }
-            }
+        // Use the same installDir source as SaveSyncStore + the detail page (getGame), so the combo
+        // resolves the identical container. An empty dir → the manager's not-set-up guard fires.
+        val installDir = withContext(Dispatchers.IO) {
+            SteamRepository.getInstance().database.getGame(appId)?.installDir ?: ""
         }
-        // The combos need the game's install dir (to resolve its container); look it up by appId off
-        // the main thread, then dispatch. An empty dir → the manager's not-set-up guard fires.
-        scope.launch {
-            // Use the same installDir source as SaveSyncStore + the detail page (getGame), so the row
-            // combo resolves the identical container. An empty dir → the not-set-up guard fires.
-            val installDir = withContext(Dispatchers.IO) {
-                SteamRepository.getInstance().database.getGame(appId)?.installDir ?: ""
+        // Bridge the manager's callback API to a suspend point. onStatus may land on a worker thread, so
+        // marshal that UI write onto the composition scope; onDone/onError resolve the await exactly once.
+        val (ok, msg) = suspendCancellableCoroutine<Pair<Boolean, String>> { cont ->
+            val cb = object : SteamCloudSaveManager.Callback {
+                override fun onStatus(message: String) {
+                    scope.launch { rowProgress[appId] = RowProgress(message) }
+                }
+                override fun onDone(summary: String) { if (cont.isActive) cont.resume(true to summary) }
+                override fun onError(message: String) { if (cont.isActive) cont.resume(false to message) }
             }
             if (syncFrom) SteamCloudSaveManager.syncFromCloud(context, appId, installDir, cb)
             else SteamCloudSaveManager.syncToCloud(context, appId, installDir, cb)
         }
+        // Settle the row: drop busy, show the summary/error, and (on success) refresh just this row's
+        // status (records + local staleness, no network) so its pill + last-synced line are current.
+        busyAppIds = busyAppIds - appId
+        rowProgress[appId] = if (ok) RowProgress(msg) else RowProgress("Error: $msg", isError = true)
+        if (ok) {
+            val updated = withContext(Dispatchers.IO) { SaveSyncStore.statusOf(context, appId) }
+            statuses = statuses.map { if (it.appId == appId) updated else it }
+        }
+        // Let the summary linger, then clear the row's progress line — in the background so a bulk sync
+        // moves straight on to the next game instead of blocking on every row's linger.
+        scope.launch {
+            kotlinx.coroutines.delay(PROGRESS_LINGER_MS)
+            rowProgress.remove(appId)
+        }
+        return ok
+    }
+
+    // Per-row quick button: fire-and-forget a single combo on the composition scope (buttons for
+    // NOT_SET_UP rows are disabled up front; the manager also guards not-set-up itself).
+    fun runQuickMove(appId: Int, syncFrom: Boolean) {
+        scope.launch { syncOne(appId, syncFrom) }
     }
 
     // Steam-list needs-sync count. Drives BOTH the Steam tab's rail badge and the content-pane
     // warning strip below. (Custom rows load inside their own tab, so this is Steam scope only.)
     val needSync = statuses.count { it.state.needsAttention() }
+
+    // ── Banner "Sync Now" — one-touch sync of every Steam game that needs attention ──────────────
+    // Runs the needs-attention games SEQUENTIALLY (one at a time, so it doesn't hammer the network and
+    // each row's progress stays legible), each in its CORRECT direction, reusing the same per-game path
+    // as the row buttons ([syncOne]). Best-effort: one game's failure never aborts the rest.
+    var syncAllRunning by remember { mutableStateOf(false) }
+    // (current 1-based index, total) while a bulk sync runs — drives the button's "Syncing 3/7…" label.
+    var syncAllProgress by remember { mutableStateOf(0 to 0) }
+
+    fun runSyncAll() {
+        if (syncAllRunning) return
+        // Snapshot the games to sync + their direction NOW (statuses mutate as rows settle). Direction:
+        // cloud newer → download; local newer / local-only / never-synced → upload. NOT_SET_UP (and any
+        // non-attention state) is skipped — there's no container to sync, so it stays flagged. Skip any
+        // row already mid-sync from a per-row tap so it isn't double-run / miscounted.
+        val jobs = statuses.mapNotNull { s ->
+            if (s.appId in busyAppIds) return@mapNotNull null
+            when (s.state) {
+                SaveState.CLOUD_AHEAD -> s.appId to true                                          // cloud → download
+                SaveState.LOCAL_AHEAD, SaveState.LOCAL_ONLY, SaveState.NEVER_SYNCED -> s.appId to false  // local → upload
+                else -> null                                                                       // NOT_SET_UP / settled → skip
+            }
+        }
+        if (jobs.isEmpty()) {
+            // Everything flagged is un-syncable (e.g. all NOT_SET_UP) — say so rather than no-op silently.
+            resultBarMsg = "Nothing to sync yet — add these games to a container first."
+            return
+        }
+        syncAllRunning = true
+        syncAllProgress = 0 to jobs.size
+        scope.launch {
+            var okCount = 0
+            var failCount = 0
+            for ((i, job) in jobs.withIndex()) {
+                syncAllProgress = (i + 1) to jobs.size
+                val ok = try { syncOne(job.first, job.second) } catch (_: Throwable) { false }
+                if (ok) okCount++ else failCount++
+            }
+            // Re-list so the needs-attention count drops + the needs-attention-first sort re-settles
+            // (per-row refresh already flipped each synced row's pill).
+            reload()
+            syncAllRunning = false
+            resultBarMsg = if (failCount == 0) "Synced $okCount game${plural(okCount)}."
+                           else "Synced $okCount, $failCount failed."
+        }
+    }
 
     // Root Box so the status bar can float as an overlay over whichever tab is showing (matches how
     // the store screens place UninstallResultBar at their outermost container).
@@ -417,6 +470,11 @@ internal fun SaveManagerScreen(
                 // Shown only when there's something to sync, and only on the Steam tab (its scope);
                 // hidden at 0 and on the Custom/Epic/Settings tabs.
                 if (needSync > 0 && selectedTab == 0) {
+                    // Don't offer a one-touch sync when it can't work: needs a signed-in account and a
+                    // live-enough connection (per-game failures are still handled best-effort at run time).
+                    val canSyncAll = signedIn &&
+                        steamStatus != SteamRepository.SteamStatus.OFFLINE &&
+                        steamStatus != SteamRepository.SteamStatus.SIGNED_OUT
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -424,14 +482,39 @@ internal fun SaveManagerScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.errorContainer)
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     ) {
                         Text(
                             text = "⚠️ $needSync game${plural(needSync)} need syncing",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f),
                         )
+                        Spacer(Modifier.width(8.dp))
+                        // One tap syncs every needs-attention game (right direction each). Disabled while
+                        // a bulk sync runs (then shows "Syncing i/N…") or when offline / signed out.
+                        TextButton(
+                            onClick = { runSyncAll() },
+                            enabled = canSyncAll && !syncAllRunning,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        ) {
+                            if (syncAllRunning) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    strokeWidth = 2.dp,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(
+                                text = if (syncAllRunning) "Syncing ${syncAllProgress.first}/${syncAllProgress.second}…" else "Sync Now",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = if (canSyncAll) MaterialTheme.colorScheme.onErrorContainer
+                                        else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.5f),
+                            )
+                        }
                     }
                 }
 

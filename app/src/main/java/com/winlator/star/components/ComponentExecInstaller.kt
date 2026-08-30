@@ -284,14 +284,56 @@ object ComponentExecInstaller {
             }
         }
 
+        // Hand off to the shared prefix-exe launcher below. `execArgs` here has already had its
+        // silent flags stripped by visibleArgs() so the wizard is visible on the container desktop.
+        launchPrefixExe(
+            context = context,
+            container = container,
+            shortcutKey = "component_$name",
+            displayName = "$name installer",
+            execTarget = execTarget,
+            execArgs = execArgs,
+            envPairs = envPairs.toString(),
+            autoCloseExe = safe,
+        )
+    }
+
+    /**
+     * Launches an executable that ALREADY lives inside [container]'s prefix in an auto-closing Wine
+     * session — the shared machinery behind both [launchInstaller] above and the Steam installScript
+     * "Run Process" step ([com.winlator.star.store.steamscript.InstallScriptExecutor]).
+     *
+     * Writes a transient `.desktop` (`Exec=wine <execTarget>` + `[Extra Data]` execArgs/envVars) into
+     * `filesDir/desktops` and starts [XServerDisplayActivity] with `component_installer_exe`, so the
+     * session ends by itself when [autoCloseExe] exits (see `evaluateInstallerTick`). Unlike
+     * [launchInstaller] this does NOT download/stage the exe (the caller's exe is already in the
+     * prefix) and passes [execArgs] through UNTOUCHED — the caller decides whether to strip silent
+     * flags (the component path strips them for a visible wizard; the installScript path keeps `/S`).
+     *
+     * @param shortcutKey  filename-safe key for the transient `.desktop` (also its `Icon=` name)
+     * @param displayName  the shortcut's `Name=` line
+     * @param execTarget   the exe's Windows path, ALREADY escaped via [WinePath.escapeForExec]
+     * @param execArgs     argument string written verbatim to `[Extra Data] execArgs` ("" for none)
+     * @param envPairs     space-separated `KEY=VALUE` pairs for `[Extra Data] envVars` ("" for none)
+     * @param autoCloseExe basename of the process to watch so the session self-closes when it exits
+     */
+    fun launchPrefixExe(
+        context: Context,
+        container: Container,
+        shortcutKey: String,
+        displayName: String,
+        execTarget: String,
+        execArgs: String,
+        envPairs: String,
+        autoCloseExe: String,
+    ) {
         val desktopDir = File(context.filesDir, "desktops").apply { mkdirs() }
-        val shortcutName = "component_${name}"
-        val shortcut = File(desktopDir, "$shortcutName.desktop").apply {
+        val shortcut = File(desktopDir, "$shortcutKey.desktop").apply {
             writeText(buildString {
                 append("[Desktop Entry]\n")
-                append("Name=").append(name).append(" installer\n")
+                append("Name=").append(displayName).append("\n")
                 append("Exec=wine ").append(execTarget).append("\n")
-                append("Icon=").append(shortcutName).append("\n")
+                append("Icon=").append(shortcutKey).append("\n")
                 append("Type=Application\n")
                 append("StartupWMClass=explorer\n")
                 append("\ncontainer_id:").append(container.id).append("\n")
@@ -305,9 +347,9 @@ object ComponentExecInstaller {
         intent.putExtra("container_id", container.id)
         intent.putExtra("shortcut_path", shortcut.absolutePath)
         intent.putExtra("shortcut_name", shortcut.nameWithoutExtension)
-        // Tells XServerDisplayActivity to auto-close the session once this installer process exits,
-        // so the user doesn't have to manually exit the container after each installer.
-        intent.putExtra("component_installer_exe", safe)
+        // Tells XServerDisplayActivity to auto-close the session once this process exits, so the user
+        // doesn't have to manually exit the container after the installer finishes.
+        intent.putExtra("component_installer_exe", autoCloseExe)
         if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }

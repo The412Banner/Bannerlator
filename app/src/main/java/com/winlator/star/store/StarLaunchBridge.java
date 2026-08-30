@@ -19,6 +19,7 @@ import com.winlator.star.container.ContainerManager;
 import com.winlator.star.container.Shortcut;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.WinePath;
+import com.winlator.star.store.steamscript.InstallScriptExecutor;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -334,6 +335,24 @@ public final class StarLaunchBridge {
                 }
 
                 Log.d(TAG, "Wrote shortcut: " + shortcutFile.getPath());
+
+                // installScript (Phase 1): a Steam depot may ship an installScript.vdf whose
+                // "Run Process" step installs a required client into the prefix — e.g. Trackmania's
+                // bundled UbisoftConnectInstaller.exe, which the real Steam client runs at install
+                // time. We run it here, the first point where the container, appId and on-disk install
+                // dir all exist, so the game gets past its "… is not currently installed" gate before
+                // the user ever launches it. Steam-origin only; once per (container, appId); best-effort
+                // (never throws, and no-ops when the game ships no such script, i.e. normal games).
+                if (steamAppId > 0) {
+                    try {
+                        File installDir = InstallScriptExecutor.locateInstallDir(new File(exePath));
+                        if (installDir != null) {
+                            InstallScriptExecutor.maybeRun(activity, container, steamAppId, installDir);
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "installScript maybeRun failed for " + gameName, t);
+                    }
+                }
 
                 // Resolve cover art URL: fix protocol-relative, then try store URL,
                 // fall back to SteamGridDB if needed.

@@ -3976,6 +3976,39 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         } catch (Throwable t) {
                             Log.w("BH_STEAM_ACHV", "flushPendingSyncBack on exit errored", t);
                         }
+                        // SteamLite (Steam client) logs — fold the genuine client's own logs from this
+                        // container's prefix into a single shareable steamlite.txt beside wine_debug.log,
+                        // with a summary + auto-scanned diagnostics on top. We run it HERE, on the exit
+                        // worker thread, precisely because the wine tree (and the Steam client) have just
+                        // been terminated + flushed above — so the logs on disk are complete. Gated on the
+                        // default-OFF toggle AND on realSteamPlan != null: only a launch that actually went
+                        // through SteamLite this session collects, so a normal launch of the same container
+                        // never picks up a STALE Steam-logs dir left in the prefix by an earlier run. The
+                        // collector itself also no-ops when the marker/logs aren't present. Fully guarded —
+                        // logging must never break a game exiting.
+                        try {
+                            if (realSteamPlan != null
+                                    && preferences.getBoolean("enable_steamlite_logs", false)) {
+                                Context appCtx = getApplicationContext();
+                                String gameName = currentLogGameName();
+                                File driveC = new File(container.getRootDir(), ".wine/drive_c");
+                                File perGameLogDir =
+                                        com.winlator.star.core.LogLocation.resolveGameLogDir(appCtx, gameName);
+                                com.winlator.star.core.SteamLiteLogCollector.Info info =
+                                        new com.winlator.star.core.SteamLiteLogCollector.Info(
+                                                String.valueOf(container.id),
+                                                container.getWineVersion(),
+                                                emulator,
+                                                wineInfo != null && wineInfo.isArm64EC(),
+                                                dxwrapper,
+                                                dxwrapperConfig != null ? dxwrapperConfig.get("version") : null,
+                                                dxwrapperConfig != null ? dxwrapperConfig.get("vkd3dVersion") : null);
+                                com.winlator.star.core.SteamLiteLogCollector.collect(
+                                        appCtx, driveC, perGameLogDir, gameName, realSteamPlan.appId, info);
+                            }
+                        } catch (Throwable t) {
+                            Log.w("SteamLiteLogs", "collect on exit errored", t);
+                        }
                     } catch (Throwable t) {
                         Log.w("XServerDisplayActivity", "exit save-backup phase errored", t);
                     } finally {

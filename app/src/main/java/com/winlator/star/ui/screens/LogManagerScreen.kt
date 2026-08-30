@@ -97,6 +97,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
     var wineDebug by remember { mutableStateOf(prefs.getBoolean("enable_wine_debug", false)) }
     var box64Logs by remember { mutableStateOf(prefs.getBoolean("enable_box64_logs", false)) }
     var dxvkLogs by remember { mutableStateOf(prefs.getBoolean("enable_dxvk_logs", true)) }
+    var steamLite by remember { mutableStateOf(prefs.getBoolean("enable_steamlite_logs", false)) }
     var logcat by remember { mutableStateOf(prefs.getBoolean("enable_logcat", true)) }
     var crashReports by remember { mutableStateOf(prefs.getBoolean("enable_crash_reports", true)) }
     var exitAutosave by remember { mutableStateOf(prefs.getBoolean(ExitReasonReporter.PREF_AUTOSAVE, false)) }
@@ -248,6 +249,11 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     hint = "Safe to leave on — mostly written at startup",
                     onInfo = { info = "DXVK & VKD3D" to LogCopy.DXVK }) {
                     dxvkLogs = it; putBool("enable_dxvk_logs", it)
+                }
+                LogToggle("SteamLite (Steam client)", steamLite,
+                    hint = "Only when a game launches through SteamLite",
+                    onInfo = { info = "SteamLite (Steam client)" to LogCopy.STEAMLITE }) {
+                    steamLite = it; putBool("enable_steamlite_logs", it)
                 }
                 LogToggle("Android logcat", logcat,
                     hint = "Bannerlator's own output only",
@@ -1145,6 +1151,22 @@ private object LogCopy {
         "This is the log to check for black screens, missing textures or a game that refuses a " +
         "graphics feature. Safe to leave on."
 
+    const val STEAMLITE =
+        "Little to no performance cost.\n\n" +
+        "Collects the REAL Steam client's own logs — the ones it writes for itself while a game runs " +
+        "under SteamLite (the online / VAC launch path). That covers your login and network connection, " +
+        "which game it launched, downloads, cloud saves and achievements. Steam writes these small files " +
+        "as it goes, so leaving this on costs you essentially nothing.\n\n" +
+        "It ONLY produces anything when a game is actually launched through SteamLite. A normal launch, " +
+        "or a Goldberg (offline) launch, writes nothing at all — so there is no output to find unless you " +
+        "played online through the real client.\n\n" +
+        "Everything is gathered into a single \"steamlite.txt\" next to that game's other logs, and it " +
+        "opens with a plain-English summary of what ran plus an auto-scan that flags common problems " +
+        "(a VAC-insecure launch, a login taken over by another device, a cloud-save conflict) so you " +
+        "don't have to read the raw logs.\n\n" +
+        "Your Steam account name and auth tokens are scrubbed out as it is written, and your Steam ID is " +
+        "partially masked — but a masked Steam ID may still remain, which is normal and safe to share."
+
     const val LOGCAT =
         "No performance cost.\n\n" +
         "Android's own system log, as it relates to Bannerlator. It is captured on demand — when you " +
@@ -1191,6 +1213,7 @@ private object LogCopy {
         append("• Box64 / FEXCore\n$BOX64\n\n")
         append("\nSafe to leave on\n\n")
         append("• DXVK & VKD3D\n$DXVK\n\n")
+        append("• SteamLite (Steam client)\n$STEAMLITE\n\n")
         append("• Android logcat\n$LOGCAT\n\n")
         append("• Crash reports\n$CRASH\n\n")
         append("\nOrganisation\n\n")

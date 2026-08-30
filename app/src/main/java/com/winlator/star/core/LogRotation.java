@@ -116,6 +116,13 @@ public final class LogRotation {
      */
     public static boolean isOurRunLog(String name) {
         String n = name.toLowerCase(Locale.US);
+        // The one .txt we own per run: SteamLite's combined client-log bundle. It has to be listed
+        // BEFORE the ".log only" gate below, and it earns its place on this allowlist the same way
+        // everything else does — it is a fixed name WE write, so it is safe to archive/prune/delete
+        // even in a shared or user-chosen log root (which is exactly why this list is exhaustive and
+        // not a "any .txt" match: see the class javadoc). It is not a crash report, so — unlike
+        // crash_*.txt, which lives in the _app bucket — it does belong to a game's per-run rotation.
+        if (n.equals(com.winlator.star.core.SteamLiteLogCollector.OUTPUT_NAME)) return true;
         if (!n.endsWith(".log")) return false;              // never .txt — that is other people's
         return n.equals("wine_debug.log")
                 || n.equals("logcat.log")

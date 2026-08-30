@@ -1,12 +1,14 @@
 package com.winlator.star.store
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +55,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -84,6 +88,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
@@ -3184,6 +3190,277 @@ private fun DownloadSpeedPickerDialog(
     // SD-card install opt-in — off by default; only offered when a removable card is present.
     var installToSd by remember { mutableStateOf(false) }
 
+    // Landscape gets a WIDE two-column variant. In landscape the portrait Column (4 radios +
+    // debug checkbox +warning + SD checkbox +warning) stacks past the short screen height and
+    // clips the action buttons with no scroll, so split it into two scrollable columns under a
+    // pinned action bar. Portrait is unchanged. Same state + callback as below — only the layout
+    // differs. (State is remembered above, before this branch, so both paths share it.)
+    val isLandscape =
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    if (isLandscape) {
+        val cs = MaterialTheme.colorScheme
+        // Match ExePicker/PerformanceDashboard: bound to the CURRENT (short) landscape height so
+        // the card + its pinned bar always fit; the columns scroll inside.
+        val maxH = (LocalConfiguration.current.screenHeightDp * 0.94f).dp
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.96f)
+                    .widthIn(max = 720.dp)
+                    .heightIn(max = maxH),
+                shape = RoundedCornerShape(16.dp),
+                color = cs.surface,
+                border = BorderStroke(1.dp, cs.primary.copy(alpha = 0.22f)),
+            ) {
+                Column(Modifier.heightIn(max = maxH)) {
+                    // Header — no download-size/on-disk values are in scope in this composable, so
+                    // per the mock's subline we keep the header to the title only rather than
+                    // inventing numbers (portrait shows the same title).
+                    Text(
+                        text = "Download speed",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = cs.onSurface,
+                        modifier = Modifier.padding(
+                            start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp,
+                        ),
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(cs.outline.copy(alpha = 0.20f)),
+                    )
+
+                    // ── Two scrollable columns; the action bar below sits OUTSIDE this Row. ──
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        // LEFT — speed tiers with an inline 4-segment RAM/CPU load meter.
+                        Column(
+                            modifier = Modifier
+                                .weight(1.15f)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState())
+                                .padding(start = 14.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                        ) {
+                            Text(
+                                text = "SPEED & RESOURCE USE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = cs.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            // Iterate the SAME options list — tier value + selection index are
+                            // unchanged; only the display name/hint are derived for the wide layout.
+                            options.forEachIndexed { index, (_, tier) ->
+                                val isSel = selected == index
+                                val name = when (tier) {
+                                    DownloadSpeedConfig.TIER_SLOW -> "Slow"
+                                    DownloadSpeedConfig.TIER_MEDIUM -> "Medium"
+                                    DownloadSpeedConfig.TIER_FAST -> "Fast"
+                                    else -> "Blazing"
+                                }
+                                val hint = when (tier) {
+                                    DownloadSpeedConfig.TIER_SLOW ->
+                                        "Lowest RAM / CPU — gentlest on the device"
+                                    DownloadSpeedConfig.TIER_MEDIUM ->
+                                        "Balanced throughput and resource use"
+                                    DownloadSpeedConfig.TIER_FAST ->
+                                        "Best speed for most devices"
+                                    else -> "Fastest — highest RAM / CPU on decompress"
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 3.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isSel) cs.primary.copy(alpha = 0.16f)
+                                            else Color.Transparent,
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSel) cs.primary.copy(alpha = 0.55f)
+                                            else cs.outline.copy(alpha = 0.25f),
+                                            shape = RoundedCornerShape(10.dp),
+                                        )
+                                        .clickable { selected = index }
+                                        .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
+                                ) {
+                                    RadioButton(
+                                        selected = isSel,
+                                        onClick = { selected = index },
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = cs.onSurface,
+                                            )
+                                            // Fast is the recommended default — flag it by tier
+                                            // value (not a hard index) so it tracks the list.
+                                            if (tier == DownloadSpeedConfig.TIER_FAST) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(5.dp))
+                                                        .background(cs.primary)
+                                                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                                                ) {
+                                                    Text(
+                                                        text = "RECOMMENDED",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = cs.onPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+                                                }
+                                            }
+                                            Spacer(Modifier.width(8.dp))
+                                            // Meter fills Slow=1 … Blazing=4.
+                                            SpeedLoadMeter(filled = index + 1)
+                                        }
+                                        Text(
+                                            text = hint,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = cs.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Column divider.
+                        Box(
+                            Modifier
+                                .fillMaxHeight()
+                                .width(1.dp)
+                                .background(cs.outline.copy(alpha = 0.20f)),
+                        )
+
+                        // RIGHT — the two option checkboxes + their contextual warnings. Same
+                        // conditions as portrait: debug warning only when checked; the whole SD
+                        // block only when sdTarget != null, its warning only when checked.
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState())
+                                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+                        ) {
+                            Text(
+                                text = "OPTIONS",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = cs.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.height(8.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.Top,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { debugLog = !debugLog }
+                                    .padding(vertical = 4.dp),
+                            ) {
+                                Checkbox(
+                                    checked = debugLog,
+                                    onCheckedChange = { debugLog = it },
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Log debug session",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = cs.onSurface,
+                                    )
+                                    Text(
+                                        text = "Writes a detailed log to help diagnose download problems.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = cs.onSurfaceVariant,
+                                    )
+                                    if (debugLog) {
+                                        Spacer(Modifier.height(6.dp))
+                                        DownloadDialogWarning(
+                                            text = "⚠️ Don't post this log publicly. Share it only directly " +
+                                                "with the developer or someone you trust — unless you're " +
+                                                "debugging it yourself.",
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (sdTarget != null) {
+                                Spacer(Modifier.height(6.dp))
+                                Row(
+                                    verticalAlignment = Alignment.Top,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { installToSd = !installToSd }
+                                        .padding(vertical = 4.dp),
+                                ) {
+                                    Checkbox(
+                                        checked = installToSd,
+                                        onCheckedChange = { installToSd = it },
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Install to SD card (frees internal space)",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = cs.onSurface,
+                                        )
+                                        Text(
+                                            text = "${sdTarget.label} · ${SteamSdInstall.fmtBytes(sdTarget.freeBytes)} free",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = cs.onSurfaceVariant,
+                                        )
+                                        if (installToSd) {
+                                            Spacer(Modifier.height(6.dp))
+                                            DownloadDialogWarning(
+                                                text = "⚠️ The SD card is slower than internal storage. Some " +
+                                                    "games stall on intro movies or asset loads from the card — " +
+                                                    "if that happens, open the shortcut and use \"Copy game to " +
+                                                    "Drive C\" to move it onto fast internal storage.",
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Pinned action bar — OUTSIDE the scroll, so Cancel/Download never clip. ──
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(cs.outline.copy(alpha = 0.20f)),
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    ) {
+                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                        Spacer(Modifier.width(4.dp))
+                        Button(
+                            onClick = {
+                                onDownload(options[selected].second, debugLog, installToSd)
+                            },
+                        ) { Text("Download") }
+                    }
+                }
+            }
+        }
+        return
+    }
+
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Download speed") },
@@ -3305,6 +3582,44 @@ private fun DownloadSpeedPickerDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+}
+
+/** 4-segment RAM/CPU load meter used by the landscape [DownloadSpeedPickerDialog] tiers —
+ *  [filled] of 4 boxes lit (Slow=1 … Blazing=4). Display-only. */
+@Composable
+private fun SpeedLoadMeter(filled: Int) {
+    val cs = MaterialTheme.colorScheme
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        repeat(4) { i ->
+            Box(
+                modifier = Modifier
+                    .size(width = 12.dp, height = 4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (i < filled) cs.primary else cs.surfaceVariant),
+            )
+        }
+    }
+}
+
+/** Inline red ⚠️ warning box used by the landscape [DownloadSpeedPickerDialog] options column —
+ *  same wording as portrait, boxed to read compactly beside its checkbox. */
+@Composable
+private fun DownloadDialogWarning(text: String) {
+    val cs = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(cs.error.copy(alpha = 0.12f))
+            .border(1.dp, cs.error.copy(alpha = 0.30f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = cs.error,
+        )
+    }
 }
 
 @Composable

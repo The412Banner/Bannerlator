@@ -33,10 +33,11 @@ import java.util.UUID;
  *       public-Download mechanism the app already uses for logs/backups/community configs).</li>
  * </ul>
  *
- * NOTE (device wiring): as of this change the bundled {@code libwin_fg.so} on main is still the v0.2
- * quality build with NO capture support — the capture-enabled .so is swapped in separately once it is
- * proven. This class is the toggle wiring; it goes live when that .so lands. The env/conf keys below
- * are the contract the capture .so must honor.
+ * NOTE (device wiring): the bundled {@code libwin_fg.so} on main NOW carries the capture path (its
+ * binary exports the {@code capture_shard_mb}/{@code wfgcap} symbols), so capture arms from this
+ * wiring. It piggy-backs on the win-fg layer, which only loads when the game's frame-gen engine is
+ * "bionic" (Win-FG) — capture does nothing on an Off/LSFG game. The env/conf keys below are the
+ * contract the capture .so honors.
  */
 public final class WinFgCapture {
     private WinFgCapture() {}
@@ -54,6 +55,8 @@ public final class WinFgCapture {
     public static final String PREF_CONSENT_TS      = "winfg_capture_consent_ts";
     /** Capture resolution selection (default {@link #RES_MATCH}). */
     public static final String PREF_CAPTURE_RES     = "winfg_capture_res";
+    /** Rolling-shard size cap in MiB (default {@link #DEFAULT_CAPTURE_SHARD_MB}); bounds per-file size. */
+    public static final String PREF_CAPTURE_SHARD_MB = "winfg_capture_shard_mb";
 
     // ── win-fg layer contract (reconcile these with the capture .so) ───────────
     public static final String ENV_CAPTURE         = "WIN_FG_CAPTURE";          // "1" while recording
@@ -61,12 +64,15 @@ public final class WinFgCapture {
     public static final String ENV_CAPTURE_CONSENT = "WIN_FG_CAPTURE_CONSENT";  // compact consent record
     public static final String ENV_CAPTURE_W       = "WIN_FG_CAPTURE_W";        // target box width  (px)
     public static final String ENV_CAPTURE_H       = "WIN_FG_CAPTURE_H";        // target box height (px)
+    public static final String ENV_CAPTURE_SHARD_MB = "WIN_FG_CAPTURE_SHARD_MB"; // rolling shard size cap (MiB)
     /** conf.toml gate values (mirror the env). */
     public static final String CONF_CAPTURE_ON  = "on";
     public static final String CONF_CAPTURE_OFF = "off";
     /** conf.toml resolution keys (mirror {@link #ENV_CAPTURE_W}/{@link #ENV_CAPTURE_H}). */
     public static final String CONF_CAPTURE_WIDTH  = "capture_width";
     public static final String CONF_CAPTURE_HEIGHT = "capture_height";
+    /** conf.toml rolling-shard size cap key (MiB) — mirrors {@link #ENV_CAPTURE_SHARD_MB}. */
+    public static final String CONF_CAPTURE_SHARD_MB = "capture_shard_mb";
 
     // ── Capture resolution options (global; how the layer sizes the recorded frame) ──
     /** Record at the session's actual resolved render size — native, no downscale (DEFAULT). */
@@ -76,6 +82,14 @@ public final class WinFgCapture {
     /** Force a 1920×1080 target box. */
     public static final String RES_1080P = "1080p";
     public static final String DEFAULT_CAPTURE_RES = RES_MATCH;
+    /**
+     * Default rolling-shard size cap (MiB). The capture layer opens a new .wfgcap file each time the
+     * current one passes this, so it bounds per-FILE size (NOT total data). Kept small (256) so a
+     * session lands as several manageable files instead of multi-GB shards — friendlier to move/upload.
+     * The layer's own built-in default is 1024; the app stamps this smaller value into conf.toml + env.
+     * Layer clamps to [16, 65536].
+     */
+    public static final int DEFAULT_CAPTURE_SHARD_MB = 256;
     // Fixed target boxes for the preset options. The capture .so downscales aspect-preserving to the
     // box and NEVER upscales, so a preset larger than the native frame is effectively native.
     private static final int RES_720P_W  = 1280, RES_720P_H  = 720;
@@ -115,6 +129,17 @@ public final class WinFgCapture {
     /** Persist the capture-resolution selection (global, like the toggle). */
     public static void setCaptureRes(Context c, String res) {
         prefs(c).edit().putString(PREF_CAPTURE_RES, res).apply();
+    }
+
+    /** The persisted rolling-shard size cap (MiB), default {@link #DEFAULT_CAPTURE_SHARD_MB}. */
+    public static int captureShardMb(Context c) {
+        int v = prefs(c).getInt(PREF_CAPTURE_SHARD_MB, DEFAULT_CAPTURE_SHARD_MB);
+        return v >= 16 ? v : DEFAULT_CAPTURE_SHARD_MB;   // mirror the layer's lower clamp
+    }
+
+    /** Persist the rolling-shard size cap (MiB, global like the toggle). */
+    public static void setCaptureShardMb(Context c, int mb) {
+        prefs(c).edit().putInt(PREF_CAPTURE_SHARD_MB, mb).apply();
     }
 
     /**
@@ -248,6 +273,7 @@ public final class WinFgCapture {
         int[] wh = resolveCaptureSize(c, gameW, gameH);
         envVars.put(ENV_CAPTURE_W, Integer.toString(wh[0]));
         envVars.put(ENV_CAPTURE_H, Integer.toString(wh[1]));
+        envVars.put(ENV_CAPTURE_SHARD_MB, Integer.toString(captureShardMb(c)));
         return true;
     }
 }

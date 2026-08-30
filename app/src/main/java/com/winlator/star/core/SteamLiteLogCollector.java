@@ -149,8 +149,11 @@ public final class SteamLiteLogCollector {
 
             StringBuilder out = new StringBuilder(8 * 1024);
             appendSummary(out, context, gameName, appId, info, steamLiteVersion, dxText);
-            appendDiagnostics(out, wineText, dxText, steamRaw);
-            appendRawSections(out, steamRedacted);
+            // The genuine Steam client logs accumulate across every launch — anchor to THIS run so the
+            // diagnostics and raw sections report this session, not days of history. Null = no anchor.
+            String since = sessionStart(steamRaw.get("gameprocess_log.txt"), appId);
+            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since);
+            appendRawSections(out, steamRedacted, since);
 
             // Belt-and-suspenders: re-scan the finished file for anything a header line carried through.
             String finished = SteamLogRedactor.auditSteamClientText(out.toString());
@@ -226,9 +229,14 @@ public final class SteamLiteLogCollector {
 
     /** A curated scan of THIS session's logs into plain-English one-liners. The value of the file:
      *  a reader sees the known-failure summary without reading four logs. */
-    private static void appendDiagnostics(StringBuilder out, String wineText, String dxText,
-                                          Map<String, String> steam) {
+    private static void appendDiagnostics(StringBuilder out, int appId, String wineText, String dxText,
+                                          Map<String, String> steam, String since) {
         out.append("\n===== DIAGNOSTICS (auto-scan) =====\n");
+        if (since != null)
+            out.append("- Session scope: findings below are from THIS run (since ").append(since).append(").\n");
+        else
+            out.append("- Session scope: could not anchor this run in the logs; some counts may include "
+                    + "earlier sessions.\n");
         List<String> f = new ArrayList<>();
 
         String connection = steam.get("connection_log.txt");
@@ -239,7 +247,7 @@ public final class SteamLiteLogCollector {
         // A single haystack for signatures that could land in any Steam log.
         String allSteam = join(steam.values());
 
-        // ── FONT / GDI (a known recurring freeze — kept prominent) ──
+        // ── FONT / GDI (wine_debug is per-run, so NOT session-bounded) ──
         Hit font = scan(wineText, FONT_HANDLES);
         if (font.count > 0) {
             f.add("FONT: Wine ran out of font handles (" + font.count + "x) — text/VGUI can fail to "
@@ -251,44 +259,35 @@ public final class SteamLiteLogCollector {
                 f.add("FONT: Wine font errors (err:font:) x" + fontErr.count + "." + when(fontErr));
         }
 
-        // ── SteamLite agent / secure-launch health ──
-        appendSecureLaunch(f, gameproc);
+        // ── SteamLite agent / secure-launch health (reads wine_debug ORDER + real-Steam tracking) ──
+        appendSecureLaunch(f, wineText, gameproc, appId, since);
         boolean lsteam = matches(wineText, LSTEAMCLIENT_OFF) || matches(allSteam, LSTEAMCLIENT_OFF);
         f.add("CLIENT: Real Steam client mode (lsteamclient disabled — expected for SteamLite) = "
                 + yn(lsteam) + ".");
-        if (matches(allSteam, STEAMCLIENT_FAIL) || matches(wineText, STEAMCLIENT_FAIL))
+        if (matches(wineText, STEAMCLIENT_FAIL))
             f.add("CLIENT: steamclient64.dll FAILED to load — the real Steam client may not have initialised.");
-        Hit appinfoDenied = scan(allSteam, APPINFO_DENIED);
-        Hit appinfoOk = scan(allSteam, APPINFO_OK);
+        Hit appinfoDenied = scanSince(allSteam, APPINFO_DENIED, since);
         if (appinfoDenied.count > 0)
             f.add("APPINFO: app-info access tokens DENIED — a strict live-service title; the VAC/online "
                     + "path may not work (Brawlhalla-style)." + when(appinfoDenied));
-        else if (appinfoOk.count > 0)
-            f.add("APPINFO: app-info access tokens granted." + when(appinfoOk));
 
-        // ── AUTH (connection_log) ──
-        appendAuth(f, connection);
+        // ── AUTH + SESSION CONFLICT (connection_log, bounded to this run) ──
+        appendAuth(f, connection, since);
+        appendSessionConflict(f, connection, since);
 
-        // ── Steam session conflict (connection_log) — a distinct, obvious line ──
-        appendSessionConflict(f, connection);
-
-        // ── CONTENT (content_log) ──
-        Hit dlFail = scan(content, CONTENT_FAIL);
+        // ── CONTENT / ACHIEVEMENTS / CLOUD (bounded to this run) ──
+        Hit dlFail = scanSince(content, CONTENT_FAIL, since);
         if (dlFail.count > 0)
             f.add("CONTENT: download/manifest failures (" + dlFail.count + "x)." + when(dlFail));
+        appendAchievements(f, stats, since);
+        appendCloud(f, cloud, since);
 
-        // ── ACHIEVEMENTS (stats_log) ──
-        appendAchievements(f, stats);
-
-        // ── CLOUD (cloud_log) — both directions ──
-        appendCloud(f, cloud);
-
-        // ── CRASH / teardown ──
-        Hit crash = scan(cat(wineText, allSteam), CRASH);
+        // ── CRASH / teardown (wine_debug — per-run) ──
+        Hit crash = scan(wineText, CRASH);
         if (crash.count > 0)
             f.add("CRASH: native crash detected (" + crash.count + "x — unhandled exception / access "
                     + "violation)." + when(crash));
-        appendTeardown(f, cat(wineText, allSteam));
+        appendTeardown(f, wineText);
 
         // Emit. If wine_debug wasn't captured, say so and connect the two toggles.
         if (wineText == null)
@@ -301,65 +300,77 @@ public final class SteamLiteLogCollector {
         }
     }
 
-    private static void appendSecureLaunch(List<String> f, String gameproc) {
-        if (gameproc == null) return;
-        int steamIdx = -1, gameIdx = -1, gameCount = 0;
-        String[] lines = gameproc.split("\n", -1);
-        for (int i = 0; i < lines.length; i++) {
-            String ln = lines[i];
-            boolean isGameLine = GAME_PROC_LINE.matcher(ln).find() && EXE_REF.matcher(ln).find();
-            if (!isGameLine) continue;
-            boolean isAgent = AGENT_EXE.matcher(ln).find();
-            if (isAgent) { if (steamIdx < 0) steamIdx = i; }
-            else { if (gameIdx < 0) gameIdx = i; gameCount++; }
+    /**
+     * Secure launch = the real Steam client actually launched the game this session. Primary signal:
+     * gameprocess_log tracked this appId (Goldberg/offline never produces this log at all). ORDER
+     * confirmation, when wine_debug is present: the steam.exe agent's DXVK "Game:" marker appears
+     * before the game's. This reads WINE_DEBUG for the ordering — the previous version scanned
+     * gameprocess_log for a "steam.exe" line that only exists in wine_debug, so it always came up empty
+     * and false-flagged INSECURE. INSECURE is now only reported on positive evidence.
+     */
+    private static void appendSecureLaunch(List<String> f, String wineText, String gameproc, int appId,
+                                           String since) {
+        Pattern tracked = ci("appid\\s+" + appId + "\\b[^\\n]*adding\\s+pid");
+        boolean realSteamTracked = gameproc != null && tracked.matcher(gameproc).find();
+
+        // Order from wine_debug DXVK markers: "info:  Game: steam.exe" then "info:  Game: <game>.exe".
+        Boolean orderSecure = null;
+        if (wineText != null) {
+            int agent = firstLineIndex(wineText, DXVK_GAME_STEAM);
+            int game = firstLineIndex(wineText, DXVK_GAME_NONSTEAM);
+            if (agent >= 0 && game >= 0) orderSecure = agent < game;
+            else if (agent >= 0) orderSecure = Boolean.TRUE;   // agent initialised at all
         }
-        if (steamIdx >= 0 && gameIdx >= 0) {
-            boolean secure = steamIdx < gameIdx;
-            f.add("SECURE LAUNCH: steam.exe agent started " + (secure ? "BEFORE" : "AFTER")
-                    + " the game = " + yn(secure)
-                    + (secure ? " (secure)." : " (INSECURE — VAC may kick this session)."));
-        } else if (steamIdx >= 0) {
-            f.add("SECURE LAUNCH: steam.exe agent started; the game process was not seen in "
-                    + "gameprocess_log this run.");
-        } else if (gameIdx >= 0) {
-            f.add("SECURE LAUNCH: the game process started but the steam.exe agent was not seen first "
-                    + "= NO (INSECURE — VAC may kick this session).");
+
+        if (realSteamTracked || Boolean.TRUE.equals(orderSecure)) {
+            f.add("SECURE LAUNCH: launched through the real Steam client"
+                    + (Boolean.TRUE.equals(orderSecure) ? " (steam.exe agent initialised before the game)"
+                       : " (appID " + appId + " tracked by the Steam agent)")
+                    + " = YES (VAC-eligible secure launch).");
+        } else if (Boolean.FALSE.equals(orderSecure)) {
+            f.add("SECURE LAUNCH: the game's render marker appeared before the steam.exe agent's — "
+                    + "possible INSECURE launch; if VAC kicks you, check the Game: order in wine_debug.log.");
+        } else if (gameproc != null || wineText != null) {
+            f.add("SECURE LAUNCH: could not confirm the steam.exe agent launched the game this session "
+                    + "(no real-Steam tracking line found) — check the raw sections if VAC kicks you.");
         }
-        if (gameCount > 1)
-            f.add("SECURE LAUNCH: the game process launched " + gameCount + " times — possible "
-                    + "double-launch or a launcher/arch hand-off (e.g. game.exe -> game_win64.exe).");
+
+        if (gameproc != null) {
+            int launches = countMatchesSince(gameproc, tracked, since);
+            if (launches > 1)
+                f.add("SECURE LAUNCH: the game was tracked " + launches + " times this session — possible "
+                        + "double-launch or a launcher/arch hand-off (e.g. game.exe -> game_win64.exe).");
+        }
     }
 
-    private static void appendAuth(List<String> f, String connection) {
+    private static void appendAuth(List<String> f, String connection, String since) {
         if (connection == null) return;
-        boolean logonOk = matches(connection, LOGON_OK);
-        Hit logonFail = scan(connection, LOGON_FAIL);
+        boolean logonOk = matchesSince(connection, LOGON_OK, since);
+        Hit logonFail = scanSince(connection, LOGON_FAIL, since);
         if (logonOk) f.add("AUTH: logon succeeded (OK).");
         if (logonFail.count > 0) {
             String er = firstGroup(connection, ERESULT);
             f.add("AUTH: a logon failure was logged" + (er != null ? " (EResult " + er + ")" : "")
                     + "." + when(logonFail));
         }
-        if (matches(connection, JWT_USED)) {
+        if (matchesSince(connection, JWT_USED, since)) {
             String exp = firstGroup(connection, JWT_EXPIRY);
             f.add("AUTH: a JWT session token was used (value scrubbed)"
                     + (exp != null ? "; expiry " + exp : "") + ".");
         }
-        Hit cmOk = scan(connection, CM_CONNECT_OK);
-        Hit cmFail = scan(connection, CM_CONNECT_FAIL);
+        Hit cmFail = scanSince(connection, CM_CONNECT_FAIL, since);
         if (cmFail.count > 0)
             f.add("AUTH: CM (Steam server) connection problems (" + cmFail.count + "x)." + when(cmFail));
-        else if (cmOk.count > 0)
-            f.add("AUTH: connected to a Steam CM server." + when(cmOk));
     }
 
     /** LoggedInElsewhere & friends — "is another session clashing with this one?" as one clear line. */
-    private static void appendSessionConflict(List<String> f, String connection) {
+    private static void appendSessionConflict(List<String> f, String connection, String since) {
         if (connection == null) return;
         String reason = null;
         String stamp = null;
         String[] lines = connection.split("\n", -1);
         for (String ln : lines) {
+            if (since != null) { String ts = stampOf(ln); if (ts != null && ts.compareTo(since) < 0) continue; }
             String r = conflictReason(ln);
             if (r != null) { reason = r; stamp = stampOf(ln); break; }
         }
@@ -372,12 +383,13 @@ public final class SteamLiteLogCollector {
         }
     }
 
-    private static void appendAchievements(List<String> f, String stats) {
+    private static void appendAchievements(List<String> f, String stats, String since) {
         if (stats == null) return;
         List<String> names = new ArrayList<>();
         int unlocks = 0;
         String[] lines = stats.split("\n", -1);
         for (String ln : lines) {
+            if (since != null) { String ts = stampOf(ln); if (ts != null && ts.compareTo(since) < 0) continue; }
             Matcher m = ACH_UNLOCK.matcher(ln);
             if (m.find()) {
                 unlocks++;
@@ -392,27 +404,27 @@ public final class SteamLiteLogCollector {
                     + (names.isEmpty() ? "." : " (" + join(names, ", ") + ")."));
         }
         // Did the unlock actually reach Steam's servers?
-        boolean storeCall = matches(stats, STORE_STATS);
+        boolean storeCall = matchesSince(stats, STORE_STATS, since);
         if (storeCall) {
-            boolean storeFail = matches(stats, STORE_STATS_FAIL);
+            boolean storeFail = matchesSince(stats, STORE_STATS_FAIL, since);
             f.add("ACHIEVEMENTS: stats synced to Steam (StoreUserStats) = " + (storeFail ? "FAILED" : "OK") + ".");
         } else if (unlocks > 0) {
             f.add("ACHIEVEMENTS: no StoreUserStats call seen this session — unlocks may not have reached Steam.");
         }
     }
 
-    private static void appendCloud(List<String> f, String cloud) {
+    private static void appendCloud(List<String> f, String cloud, String since) {
         if (cloud == null) return;
-        int down = countFiles(cloud, CLOUD_DOWNLOAD);
-        int up = countFiles(cloud, CLOUD_UPLOAD);
+        int down = countFiles(cloud, CLOUD_DOWNLOAD, since);
+        int up = countFiles(cloud, CLOUD_UPLOAD, since);
         if (down > 0) f.add("CLOUD: " + down + " save file(s) downloaded from Steam Cloud at launch.");
         if (up > 0) f.add("CLOUD: " + up + " save file(s) uploaded to Steam Cloud.");
-        if (matches(cloud, CLOUD_CONFLICT)) {
+        if (matchesSince(cloud, CLOUD_CONFLICT, since)) {
             f.add("CLOUD: *** CONFLICT *** Steam Cloud reported a save conflict — two devices wrote the "
                     + "same save; resolve it before playing again to avoid losing progress.");
-        } else if (matches(cloud, CLOUD_FAIL)) {
+        } else if (matchesSince(cloud, CLOUD_FAIL, since)) {
             f.add("CLOUD: sync result = FAILED.");
-        } else if (matches(cloud, CLOUD_DISABLED)) {
+        } else if (matchesSince(cloud, CLOUD_DISABLED, since)) {
             f.add("CLOUD: sync result = disabled for this app.");
         } else if (down > 0 || up > 0) {
             f.add("CLOUD: sync result = OK.");
@@ -433,18 +445,22 @@ public final class SteamLiteLogCollector {
 
     // ── Raw sections ────────────────────────────────────────────────────────────────────────────
 
-    private static void appendRawSections(StringBuilder out, Map<String, String> redacted) {
+    private static void appendRawSections(StringBuilder out, Map<String, String> redacted, String since) {
         out.append('\n');
         if (redacted.isEmpty()) {
             out.append("(No Steam client logs were present in the prefix for this run.)\n");
             return;
         }
+        if (since != null)
+            out.append("(Raw sections below are trimmed to this session, since ").append(since).append(".)\n");
         for (String[] pair : INCLUDED) {
             String body = redacted.get(pair[0]);
             if (body == null) continue;
+            String shown = since == null ? body : filterSince(body, since);
+            if (shown.trim().isEmpty()) shown = "(no lines in this session's window)\n";
             out.append("\n===== ").append(pair[0]).append(" — ").append(pair[1]).append(" =====\n");
-            out.append(body);
-            if (!body.endsWith("\n")) out.append('\n');
+            out.append(shown);
+            if (!shown.endsWith("\n")) out.append('\n');
         }
     }
 
@@ -464,6 +480,10 @@ public final class SteamLiteLogCollector {
     private static final Pattern GAME_PROC_LINE = ci("\\b(game|process|launch|adding|spawn)\\b");
     private static final Pattern EXE_REF = ci("\\.exe\\b");
     private static final Pattern AGENT_EXE = ci("\\bsteam\\.exe\\b");
+    /** DXVK "Game:" markers in wine_debug: the agent inits DXVK ("info:  Game: steam.exe") before the
+     *  game ("info:  Game: <game>.exe"). Used for the secure-launch ORDER check (per-line matched). */
+    private static final Pattern DXVK_GAME_STEAM = ci("^info:\\s+Game:\\s+steam\\.exe");
+    private static final Pattern DXVK_GAME_NONSTEAM = ci("^info:\\s+Game:\\s+(?!steam\\.exe)\\S+\\.exe");
 
     private static final Pattern LSTEAMCLIENT_OFF = ci("lsteamclient disabled|PROTON_DISABLE_LSTEAMCLIENT");
     private static final Pattern STEAMCLIENT_FAIL =
@@ -532,6 +552,67 @@ public final class SteamLiteLogCollector {
         return text != null && p.matcher(text).find();
     }
 
+    /** Like {@link #scan} but only counts lines timestamped at/after {@code since} (this session).
+     *  A line with no timestamp is always considered (multi-line continuation). since==null == scan. */
+    private static Hit scanSince(String text, Pattern p, String since) {
+        if (since == null) return scan(text, p);
+        Hit h = new Hit();
+        if (text == null) return h;
+        for (String line : text.split("\n", -1)) {
+            String ts = stampOf(line);
+            if (ts != null && ts.compareTo(since) < 0) continue;
+            if (p.matcher(line).find()) {
+                h.count++;
+                if (h.first == null) h.first = ts;
+                h.last = ts;
+            }
+        }
+        return h;
+    }
+
+    private static boolean matchesSince(String text, Pattern p, String since) {
+        return scanSince(text, p, since).count > 0;
+    }
+
+    private static int countMatchesSince(String text, Pattern p, String since) {
+        return scanSince(text, p, since).count;
+    }
+
+    /** Index of the first line matching {@code p}, or -1. */
+    private static int firstLineIndex(String text, Pattern p) {
+        if (text == null) return -1;
+        String[] lines = text.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) if (p.matcher(lines[i]).find()) return i;
+        return -1;
+    }
+
+    /** This session's start = timestamp of the LAST "AppID <appId> ... adding PID" in gameprocess_log
+     *  (when the game launched this run), or null if not determinable. Timestamps are
+     *  "YYYY-MM-DD HH:MM:SS", so a lexical compare is chronological. */
+    private static String sessionStart(String gameproc, int appId) {
+        if (gameproc == null) return null;
+        Pattern p = ci("appid\\s+" + appId + "\\b[^\\n]*adding\\s+pid");
+        String anchor = null;
+        for (String line : gameproc.split("\n", -1)) {
+            if (p.matcher(line).find()) { String ts = stampOf(line); if (ts != null) anchor = ts; }
+        }
+        return anchor;
+    }
+
+    /** Keep only this-session lines of a raw block: a line at/after {@code since}, plus any following
+     *  un-timestamped continuation lines so multi-line records aren't cut mid-entry. */
+    private static String filterSince(String text, String since) {
+        if (text == null) return "";
+        StringBuilder sb = new StringBuilder(text.length());
+        boolean including = false;
+        for (String line : text.split("\n", -1)) {
+            String ts = stampOf(line);
+            if (ts != null) including = ts.compareTo(since) >= 0;
+            if (including) sb.append(line).append('\n');
+        }
+        return sb.toString();
+    }
+
     /** " [first -> last]" / " [stamp]" for a hit, or "" when no timestamps were found. */
     private static String when(Hit h) {
         if (h == null || h.count == 0 || h.first == null) return "";
@@ -552,11 +633,13 @@ public final class SteamLiteLogCollector {
         return null;
     }
 
-    /** Count save files a cloud line touches: an explicit "<n> files" if present, else 1 per line. */
-    private static int countFiles(String text, Pattern direction) {
+    /** Count save files a cloud line touches: an explicit "<n> files" if present, else 1 per line.
+     *  Bounded to this session when {@code since} is set. */
+    private static int countFiles(String text, Pattern direction, String since) {
         if (text == null) return 0;
         int total = 0;
         for (String line : text.split("\n", -1)) {
+            if (since != null) { String ts = stampOf(line); if (ts != null && ts.compareTo(since) < 0) continue; }
             if (!direction.matcher(line).find()) continue;
             Matcher m = CLOUD_FILE_COUNT.matcher(line);
             if (m.find()) {

@@ -229,6 +229,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
         refreshInGamePlayerSlotList();
     };
     private TouchpadView touchpadView;
+
+    // ---- Controller-test panel (Controls > Players popup) — input isolation ----
+    // While the popup is open (controllerTestActive == true) a game controller's key/axis events are
+    // forked into controllerTestController — a THROWAWAY snapshot used ONLY to drive the visualizer —
+    // and swallowed at the dispatch chokepoints so they NEVER reach winHandler / the guest. The flag is
+    // strictly gated: when it's false the input path is byte-for-byte unchanged. All access is on the
+    // main (input-dispatch) thread. lastControllerTestAxisLogMs throttles the axis-fall-through
+    // diagnostic (the folded-in spike) to once per second.
+    private boolean controllerTestActive = false;
+    private final ExternalController controllerTestController = new ExternalController();
+    private boolean controllerTestGuideDown = false;
+    private long lastControllerTestAxisLogMs = 0L;
+
     private XEnvironment environment;
     private DrawerLayout drawerLayout;
     private ContainerManager containerManager;
@@ -2560,6 +2573,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         applyHandheldDim(); // re-assert the handheld dim state after resume (brightness can reset)
         // Watch for headphone/USB/BT/HDMI plug changes during play so audio follows the new route.
         registerAudioRouteWatcher();
+        // Re-arm controller-test isolation if the popup is still showing (onPause cleared the flag).
+        if (XServerDialogState.INSTANCE.getActiveDialog().getValue()
+                == XServerDialogState.ActiveDialog.CONTROLLER_TEST) {
+            controllerTestActive = true;
+        }
     }
 
     @Override
@@ -2570,6 +2588,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (inputControlsView != null) inputControlsView.releaseAllInputs();
         if (touchpadView != null) touchpadView.releaseAllInputs();
         if (winHandler != null && inputControlsView != null) winHandler.releaseAllControllerInputs();
+
+        // Never leave controller-test isolation latched across a background (the guest SIGSTOPs when
+        // backgrounded). onResume re-arms it if the popup is still up.
+        controllerTestActive = false;
 
         // Check if we are entering Picture-in-Picture mode
         if (!isInPictureInPictureMode()) {
@@ -5097,6 +5119,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        // Belt-and-suspenders: also drop controller-test isolation on stop (see onPause).
+        controllerTestActive = false;
         savePlaytimeData();
         handler.removeCallbacks(savePlaytimeRunnable);
         // Release the panel refresh-rate vote while backgrounded so we don't pin the display rate
@@ -6876,6 +6900,27 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 updateAutoHideForControllers();
             };
 
+            // Controller-test popup: arm/disarm the input-isolation fork with the popup's visibility.
+            // While active, dispatch{Generic,Key}Event fork game-controller events into the throwaway
+            // visualizer snapshot instead of the guest. On close, drop any residual state and release
+            // all controller inputs so nothing is left half-pressed.
+            ds.onControllerTestActive = (active) -> {
+                controllerTestActive = active;
+                if (active) {
+                    controllerTestController.state.reset();
+                    controllerTestController.remappedState.reset();
+                    controllerTestGuideDown = false;
+                    refreshPlayerSlots.run();
+                } else {
+                    if (winHandler != null) winHandler.releaseAllControllerInputs();
+                    XServerDialogState.INSTANCE.setControllerTestSnapshot(null);
+                }
+            };
+            // "Identify" — buzz the pad owning the given 0-based slot (bypasses the vibration gate).
+            ds.onControllerIdentify = (slot) -> {
+                if (winHandler != null) winHandler.testRumble(slot);
+            };
+
             // Hot-plug (add/remove/progressive-change) → status toast. WinHandler fires a plain callback
             // on the main looper; we DEBOUNCE a burst (a fast unplug/replug, or a pad that fans out into
             // several sibling sub-devices) into a single toast, keeping only the latest reason/descriptor.
@@ -7924,6 +7969,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             super.dispatchGenericMotionEvent(event);
             return true;
         }
+        // Controller-test isolation: while the Players popup is open, a game-controller AXIS event
+        // drives ONLY the throwaway visualizer snapshot and is swallowed here — it never reaches
+        // winHandler / touchpadView / the guest. Strictly gated on controllerTestActive so the normal
+        // path below is byte-for-byte unchanged when the popup is closed.
+        if (controllerTestActive && isControllerTestMotionEvent(event)) {
+            controllerTestFeedMotionEvent(event);
+            return true;
+        }
         boolean handledByWinHandler = false;
         boolean handledByTouchpadView = false;
 
@@ -7963,6 +8016,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return true;
         }
 
+        // Controller-test isolation: while the Players popup is open, a game-controller BUTTON event
+        // drives ONLY the throwaway visualizer snapshot and is swallowed here (before the drawer-open
+        // hotkey handling below), so testing a pad can never drive the game. Non-controller keys (back,
+        // volume, etc.) fall through untouched. Strictly gated on controllerTestActive.
+        if (controllerTestActive && ExternalController.isGameController(event.getDevice())) {
+            controllerTestFeedKeyEvent(event);
+            return true;
+        }
+
         // Handle the PlayStation or Xbox Home button to open the drawer
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE || event.getKeyCode() == KeyEvent.KEYCODE_HOME || event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_SELECT) {
@@ -7980,6 +8042,79 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return inputControlsView;
     }
 
+    // ---- Controller-test panel input fork (gated on controllerTestActive; see field docs) ----
+
+    /** True for a motion event that belongs to a game controller (joystick/gamepad source + a real
+     *  controller device). Only these are forked to the visualizer and swallowed while test mode is on;
+     *  mouse / other sources are left to the normal path. */
+    private boolean isControllerTestMotionEvent(MotionEvent event) {
+        int src = event.getSource();
+        boolean joystickish = (src & android.view.InputDevice.SOURCE_JOYSTICK) == android.view.InputDevice.SOURCE_JOYSTICK
+                || (src & android.view.InputDevice.SOURCE_GAMEPAD) == android.view.InputDevice.SOURCE_GAMEPAD;
+        return joystickish && ExternalController.isGameController(event.getDevice());
+    }
+
+    /** Fork a controller AXIS event into the throwaway snapshot (never the guest). Also emits the
+     *  folded-in axis-fall-through DIAGNOSTIC (throttled to 1/sec): if lines under the "ControllerTest"
+     *  logcat tag appear while the popup is open, joystick motion IS reaching this Activity through the
+     *  non-focusable Dialog on the tester's device (the top-risk unknown). Buttons visualize regardless
+     *  (KEY dispatch is reliable); sticks/triggers degrade gracefully if axis fall-through fails here. */
+    private void controllerTestFeedMotionEvent(MotionEvent event) {
+        if (ExternalController.isJoystickDevice(event)) {
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastControllerTestAxisLogMs > 1000L) {
+                lastControllerTestAxisLogMs = now;
+                Log.d("ControllerTest", "axis dispatch reached src=" + event.getSource()
+                        + " dev=" + event.getDeviceId()
+                        + " LX=" + event.getAxisValue(MotionEvent.AXIS_X)
+                        + " LY=" + event.getAxisValue(MotionEvent.AXIS_Y)
+                        + " RX=" + event.getAxisValue(MotionEvent.AXIS_Z)
+                        + " RY=" + event.getAxisValue(MotionEvent.AXIS_RZ));
+            }
+        }
+        controllerTestController.updateStateFromMotionEvent(event);
+        controllerTestPublishSnapshot(event.getDevice());
+    }
+
+    /** Fork a controller BUTTON event into the throwaway snapshot (never the guest). */
+    private void controllerTestFeedKeyEvent(KeyEvent event) {
+        if (event.getRepeatCount() == 0) {
+            controllerTestController.updateStateFromKeyEvent(event);
+        }
+        // Guide/Home is NOT part of GamepadState's button bitfield — track it separately for the picture.
+        int kc = event.getKeyCode();
+        if (kc == KeyEvent.KEYCODE_BUTTON_MODE || kc == KeyEvent.KEYCODE_HOME) {
+            controllerTestGuideDown = event.getAction() == KeyEvent.ACTION_DOWN;
+        }
+        controllerTestPublishSnapshot(event.getDevice());
+    }
+
+    /** Push the throwaway controller state to the Compose visualizer. Reads ONLY the snapshot copy —
+     *  never winHandler, so the guest is untouched. Main-thread only. */
+    private void controllerTestPublishSnapshot(android.view.InputDevice device) {
+        com.winlator.star.inputcontrols.GamepadState st = controllerTestController.state;
+        int battery = -1;
+        if (device != null && android.os.Build.VERSION.SDK_INT >= 29) {
+            try {
+                android.os.BatteryState bs = device.getBatteryState();
+                if (bs != null && bs.isPresent()) {
+                    float cap = bs.getCapacity();
+                    if (cap >= 0f) battery = Math.round(cap * 100f);
+                }
+            } catch (Throwable ignored) { }
+        }
+        XServerDialogState.INSTANCE.setControllerTestSnapshot(new XServerDialogState.ControllerTestSnapshot(
+                st.buttons & 0xFFFF,
+                st.dpad[0], st.dpad[1], st.dpad[2], st.dpad[3],
+                st.thumbLX, st.thumbLY, st.thumbRX, st.thumbRY,
+                st.triggerL, st.triggerR,
+                controllerTestGuideDown,
+                device != null ? device.getId() : -1,
+                device != null && device.getName() != null ? device.getName() : "",
+                ExternalController.classifyType(device).ordinal(),
+                battery));
+    }
+
     /** Snapshot the current input-device/slot state as UI rows. Main-thread only (reads
      *  WinHandler.getPlayerSlotAssignments). Shared by the Players sub-tab refresh and the toast. */
     private java.util.List<XServerDialogState.PlayerSlotRow> buildPlayerSlotRows() {
@@ -7989,7 +8124,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         for (com.winlator.star.winhandler.WinHandler.PlayerSlotInfo info : infos) {
             uiRows.add(new XServerDialogState.PlayerSlotRow(
                     info.displayName, info.descriptor, info.currentSlot,
-                    info.override, info.isOnScreen, info.isGameController));
+                    info.override, info.isOnScreen, info.isGameController,
+                    winHandler.slotHasVibrator(info.currentSlot)));
         }
         return uiRows;
     }

@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 object XServerDialogState {
 
     enum class ActiveDialog {
-        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK, CAST
+        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK, CAST,
+        CONTROLLER_TEST
     }
 
     // -------------------------------------------------------------------------
@@ -364,6 +365,9 @@ object XServerDialogState {
         val override: Int,
         val isOnScreen: Boolean,
         val isGameController: Boolean,
+        // Whether the device currently owning this row's slot exposes a rumble motor — gates the
+        // controller-test "Identify" buzz button. Defaults false so it never claims rumble it can't do.
+        val hasVibrator: Boolean = false,
     )
 
     private val _playerSlots = MutableStateFlow<List<PlayerSlotRow>>(emptyList())
@@ -378,6 +382,51 @@ object XServerDialogState {
     @JvmField var onPlayerSlotsRefresh: Runnable? = null
     /** Manual "Reset Input" recovery — rebuilds the fake-input transport in place (no relaunch). */
     @JvmField var onResetInput: Runnable? = null
+
+    // -------------------------------------------------------------------------
+    // Controller Test panel (Controls > Players popup). While the popup is open the activity forks a
+    // THROWAWAY copy of the physical controller state — used ONLY to drive the visualizer — and pushes
+    // it here every input event; the game's real input path is left byte-for-byte untouched (the
+    // isolation is gated on onControllerTestActive at the activity's dispatch chokepoints). The
+    // emulated target is always an Xbox 360 pad; `type` only picks which picture to draw.
+    // -------------------------------------------------------------------------
+    /** Live snapshot of the pad being pressed while the test panel is open. Purely for visualization —
+     *  it never reaches the guest. `buttons` is the GamepadState button bitfield (ExternalController
+     *  IDX_* bit positions). dpad up/right/down/left match GamepadState.dpad[0..3]. */
+    data class ControllerTestSnapshot(
+        val buttons: Int,
+        val dpadUp: Boolean,
+        val dpadRight: Boolean,
+        val dpadDown: Boolean,
+        val dpadLeft: Boolean,
+        val thumbLX: Float,
+        val thumbLY: Float,
+        val thumbRX: Float,
+        val thumbRY: Float,
+        val triggerL: Float,
+        val triggerR: Float,
+        val guide: Boolean,
+        val deviceId: Int,
+        val deviceName: String,
+        // 0 = XBOX, 1 = PS, 2 = GENERIC (ExternalController.PadType ordinal).
+        val padType: Int,
+        // -1 when unknown; 0..100 otherwise (InputDevice.getBatteryState, API29+).
+        val batteryPct: Int,
+    )
+
+    private val _controllerTestSnapshot = MutableStateFlow<ControllerTestSnapshot?>(null)
+    val controllerTestSnapshot: StateFlow<ControllerTestSnapshot?> = _controllerTestSnapshot
+    fun setControllerTestSnapshot(v: ControllerTestSnapshot?) { _controllerTestSnapshot.value = v }
+    fun clearControllerTestSnapshot() { _controllerTestSnapshot.value = null }
+
+    fun interface BooleanCallback { fun invoke(active: Boolean) }
+    /** Fired true when the controller-test popup becomes visible and false when it goes away (close,
+     *  or lifecycle onPause/onStop). The activity flips its input-isolation flag on this. */
+    @JvmField var onControllerTestActive: BooleanCallback? = null
+
+    fun interface IntCallback { fun invoke(value: Int) }
+    /** "Identify" — buzz the pad currently owning the given 0-based slot (WinHandler.testRumble). */
+    @JvmField var onControllerIdentify: IntCallback? = null
 
     // -------------------------------------------------------------------------
     // Controller-status TOAST (P5b) — a small app-themed card that fades into the TOP-RIGHT of the

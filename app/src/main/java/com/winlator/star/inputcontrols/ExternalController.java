@@ -320,6 +320,26 @@ public class ExternalController {
     }
 
 
+    /** Physical family a controller belongs to, used ONLY to pick which picture the in-game
+     *  controller-test panel draws. The emulated XInput target is always an Xbox 360 pad regardless
+     *  of this — classification never changes what the guest sees. */
+    public enum PadType { XBOX, PS, GENERIC }
+
+    /** Classify a device into {@link PadType} by vendor id (Sony 0x054C → PS, Microsoft 0x045E →
+     *  XBOX) with a name fallback (playstation/dualshock/dualsense → PS, xbox → XBOX). Everything
+     *  else is GENERIC. Null-safe. */
+    public static PadType classifyType(InputDevice device) {
+        if (device == null) return PadType.GENERIC;
+        int vendor = device.getVendorId();
+        String name = device.getName();
+        String lower = name != null ? name.toLowerCase(Locale.US) : "";
+        if (vendor == 0x054C || lower.contains("playstation") || lower.contains("dualshock") || lower.contains("dualsense"))
+            return PadType.PS;
+        if (vendor == 0x045E || lower.contains("xbox"))
+            return PadType.XBOX;
+        return PadType.GENERIC;
+    }
+
     public float getCenteredAxis(MotionEvent event, int axis, int historyPos) {
         if (axis == MotionEvent.AXIS_HAT_X || axis == MotionEvent.AXIS_HAT_Y) {
             float value = event.getAxisValue(axis);

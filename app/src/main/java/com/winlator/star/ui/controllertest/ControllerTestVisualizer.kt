@@ -46,11 +46,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -270,6 +273,7 @@ fun ControllerTestPanel(
     }
 
     Column(modifier) {
+        val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         // Scrollable middle (header … readouts). The footer below is PINNED so the verified tally +
         // Identify + Done are ALWAYS visible — they no longer clip off the bottom in a short landscape
         // panel. weight(fill=false) lets the card still wrap small when everything fits.
@@ -309,22 +313,40 @@ fun ControllerTestPanel(
         }
         Spacer(Modifier.height(8.dp))
 
-        // The pad picture — a pre-rendered per-family PNG with a live-highlight overlay. Kept COMPACT
-        // and centered (PadArtView caps its own size and keeps the 500:350 art aspect).
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            PadArtView(art = art, snapshot = snapshot)
-        }
-        Spacer(Modifier.height(10.dp))
-
-        // Readout strip.
+        // Pad + live readouts. In LANDSCAPE the pad sits on the LEFT and the metrics column on the
+        // RIGHT so the readouts never overflow off the bottom (the Identify/Done footer stays pinned);
+        // portrait stacks the pad above a full-width readout strip. PadArtView caps its own size and
+        // keeps the 500:350 art aspect.
         val ls = snapshot?.let { fmt2(it.thumbLX) + ", " + fmt2(it.thumbLY) } ?: "0.00, 0.00"
         val rs = snapshot?.let { fmt2(it.thumbRX) + ", " + fmt2(it.thumbRY) } ?: "0.00, 0.00"
         val tr = snapshot?.let { pct(it.triggerL) + " · " + pct(it.triggerR) } ?: "0% · 0%"
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            StatTile("Last input", lastInput, Modifier.weight(1f))
-            StatTile("Left stick", ls, Modifier.weight(1f))
-            StatTile("Right stick", rs, Modifier.weight(1f))
-            StatTile("Triggers L·R", tr, Modifier.weight(1f))
+        val readouts = listOf(
+            "Last input" to lastInput,
+            "Left stick" to ls,
+            "Right stick" to rs,
+            "Triggers L·R" to tr,
+        )
+        if (landscape) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(Modifier.weight(0.58f), contentAlignment = Alignment.Center) {
+                    PadArtView(art = art, snapshot = snapshot)
+                }
+                Column(Modifier.weight(0.42f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((k, v) in readouts) StatTile(k, v, Modifier.fillMaxWidth())
+                }
+            }
+        } else {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                PadArtView(art = art, snapshot = snapshot)
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                for ((k, v) in readouts) StatTile(k, v, Modifier.weight(1f))
+            }
         }
         Spacer(Modifier.height(10.dp))
         } // end scrollable middle
@@ -521,8 +543,9 @@ internal fun PadArtView(
             // Movable stick nubs — the PNG's stick is baked static, so overlay a nub that covers the
             // baked one at rest and slides within the socket as the thumb is pushed.
             snapshot?.let { s ->
-                drawStickNub(ref, "lstick", s.thumbLX, s.thumbLY, sx, sy, sr)
-                drawStickNub(ref, if (ref.el.containsKey("rstick")) "rstick" else "cstick", s.thumbRX, s.thumbRY, sx, sy, sr)
+                drawStickNub(ref, "lstick", s.thumbLX, s.thumbLY, sx, sy, sr, accent, "l3" in pressedManifest)
+                val rNub = if (ref.el.containsKey("rstick")) "rstick" else "cstick"
+                drawStickNub(ref, rNub, s.thumbRX, s.thumbRY, sx, sy, sr, accent, "r3" in pressedManifest)
             }
         }
     }
@@ -530,8 +553,13 @@ internal fun PadArtView(
 
 /** Draw a movable stick nub at the socket center offset by the thumb (screen-Y-down convention, same
  *  as the readouts), clamped to stay inside the socket. Dark fill sized to cover the baked nub at rest,
- *  with a subtle top rim. No-op for pads without this socket (e.g. SNES). */
-private fun DrawScope.drawStickNub(ref: PadArtRef, id: String, tx: Float, ty: Float, sx: Float, sy: Float, sr: Float) {
+ *  with a subtle top rim. As the stick DEFLECTS the nub tints toward the accent and gains a halo + ring
+ *  (the same glow the buttons get) so an active stick reads as "live" like a pressed button; a
+ *  stick-click pins it to full glow. No-op for pads without this socket (e.g. SNES). */
+private fun DrawScope.drawStickNub(
+    ref: PadArtRef, id: String, tx: Float, ty: Float, sx: Float, sy: Float, sr: Float,
+    accent: Color, clicked: Boolean,
+) {
     val t = ref.el[id] ?: return
     val socketR = t.third * sr
     val nubR = socketR * 0.55f
@@ -545,6 +573,17 @@ private fun DrawScope.drawStickNub(ref: PadArtRef, id: String, tx: Float, ty: Fl
     }
     val cx = t.first * sx + ox
     val cy = t.second * sy + oy
-    drawCircle(Color(0xFF12161D), nubR, Offset(cx, cy))
-    drawCircle(Color(0x22FFFFFF), nubR, Offset(cx, cy - nubR * 0.12f), style = Stroke(width = 1.2f))
+
+    // Glow intensity ramps with deflection past a small deadzone; a stick-click pins it to full.
+    val defl = kotlin.math.min(1f, kotlin.math.sqrt((tx * tx + ty * ty).toDouble()).toFloat())
+    val glow = if (clicked) 1f else if (defl > 0.08f) defl else 0f
+    if (glow > 0f) {
+        drawCircle(accent.copy(alpha = 0.30f * glow), nubR * 1.5f, Offset(cx, cy)) // halo — matches buttons
+    }
+    val fill = if (glow > 0f) lerp(Color(0xFF12161D), accent, 0.65f * glow) else Color(0xFF12161D)
+    drawCircle(fill, nubR, Offset(cx, cy))
+    if (glow > 0f) {
+        drawCircle(accent.copy(alpha = glow), nubR, Offset(cx, cy), style = Stroke(width = 2f)) // ring — matches buttons
+    }
+    drawCircle(Color(0x22FFFFFF), nubR, Offset(cx, cy - nubR * 0.12f), style = Stroke(width = 1.2f)) // top rim
 }

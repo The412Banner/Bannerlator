@@ -3426,11 +3426,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // Map a Proton layer name to the bundled DirectAudio asset set, or null if the build is unsupported.
     // The driver is BUILD-SPECIFIC (a driver built against Wine major X only initializes on Wine X), but
     // device-proven interchangeable WITHIN the Wine-11 point-release family (11.0-1/-3/-5): the same
-    // complete 3-file set drives any arm64ec 11.0-x layer. Wine 10 (10.0-4) has its own ABI, its own set.
+    // complete 3-file set drives any arm64ec 11.0-x layer. Wine 10 (10.0-4/10.0-34) has its own ABI, its own set.
     private static String directAudioAssetDir(String layerName) {
         if (layerName == null) return null;
         if (layerName.contains("11.0-")) return "wine11";   // any arm64ec Wine-11 point release
         if (layerName.contains("10.0-4")) return "wine10";  // the arm64ec Wine-10 build we ship for
+        if (layerName.contains("10.0-34")) return "wine10"; // Wine-10 family (same major as 10.0-4) -> same set
         return null;                                         // not a supported build -> leave its own driver
     }
 

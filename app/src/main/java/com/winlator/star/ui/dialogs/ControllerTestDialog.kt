@@ -26,7 +26,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -189,10 +188,8 @@ private fun ControllerTestScaffold(state: XServerDialogState) {
                         .background(cs.surfaceVariant.copy(alpha = 0.35f))
                         .padding(12.dp)
                 )
-                HorizontalDivider(
-                    modifier = Modifier.fillMaxHeight().width(1.dp),
-                    color = cs.outline
-                )
+                // Vertical divider between the rail and the test panel.
+                Box(Modifier.fillMaxHeight().width(1.dp).background(cs.outline))
                 TestPanel(
                     state = state,
                     selected = selected,

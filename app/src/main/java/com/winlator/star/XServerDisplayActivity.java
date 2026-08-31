@@ -8096,7 +8096,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         int battery = -1;
         if (device != null && android.os.Build.VERSION.SDK_INT >= 29) {
             try {
-                android.os.BatteryState bs = device.getBatteryState();
+                android.hardware.BatteryState bs = device.getBatteryState();
                 if (bs != null && bs.isPresent()) {
                     float cap = bs.getCapacity();
                     if (cap >= 0f) battery = Math.round(cap * 100f);

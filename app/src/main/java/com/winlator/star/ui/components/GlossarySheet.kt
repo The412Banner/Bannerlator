@@ -56,6 +56,8 @@ internal val CONTAINER_GLOSSARY: List<GlossarySection> = listOf(
             "An older cross-platform graphics standard. It's the 'Renderer' fallback, and what WineD3D and Zink target when Vulkan isn't used directly."),
         GlossaryEntry("Zink",
             "Translates OpenGL into Vulkan, so OpenGL-based games and tools still run on a phone GPU that only speaks Vulkan."),
+        GlossaryEntry("freedreno",
+            "A native OpenGL driver for Adreno GPUs (via Mesa). It skips the OpenGL-to-Vulkan translation that Zink does, so it can be faster for older OpenGL games — but it tops out at OpenGL 3.3. Optional: pick it under \"OpenGL Driver\"; Zink stays the default."),
     )),
     GlossarySection("The Windows layer", listOf(
         GlossaryEntry("Wine",

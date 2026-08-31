@@ -121,6 +121,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var selectedGraphicsDriver by mutableStateOf(Container.DEFAULT_GRAPHICS_DRIVER)
     // graphicsDriverConfig stored via dummy View tag in Screen composable
     var graphicsDriverConfig by mutableStateOf(Container.DEFAULT_GRAPHICSDRIVERCONFIG)
+    // OpenGL Driver (Phase 1): the guest OpenGL gallium driver — "zink" (default) or "freedreno". Stored
+    // as the plain identifier (not a display name), a SEPARATE axis from selectedGraphicsDriver (Vulkan).
+    var selectedOpenGLDriver by mutableStateOf(Container.DEFAULT_OPENGL_DRIVER)
 
     // Advanced Vulkan present options — backed by the container's dedicated renderer* fields
     // (NOT graphicsDriverConfig, whose KeyValueSet/semicolon mismatch made these never apply).
@@ -483,6 +486,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // Graphics driver (load as display name for dropdown)
         selectedGraphicsDriver   = identifierToDisplay(seed?.graphicsDriver ?: defaultGraphicsDriverForNewContainer(), graphicsDriverEntries)
         graphicsDriverConfig     = seed?.graphicsDriverConfig ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG
+        selectedOpenGLDriver     = seed?.getOpenGLDriver() ?: Container.DEFAULT_OPENGL_DRIVER
         rendererNative           = seed?.isRendererNative() ?: false
         rendererNativeBackend    = seed?.getRendererNativeBackend() ?: "auto"
         rendererPresentMode      = seed?.getRendererPresentMode() ?: "fifo"
@@ -923,6 +927,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setCPUListWoW64(cpuListWoW64In)
             c.graphicsDriver     = graphicsDriver
             c.graphicsDriverConfig = finalGDConfig
+            c.setOpenGLDriver(selectedOpenGLDriver)
             c.setDXWrapper(dxWrapper)
             c.setDXWrapperConfig(dxConfig)
             c.audioDriver        = audioDriver
@@ -1077,6 +1082,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         put("cpuListWoW64", cpuListWoW64In)
         put("graphicsDriver", graphicsDriver)
         put("graphicsDriverConfig", finalGDConfig)
+        put("openglDriver", selectedOpenGLDriver)
         put("dxwrapper", dxWrapper)
         put("dxwrapperConfig", dxConfig)
         put("audioDriver", audioDriver)

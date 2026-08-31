@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-08-31 (cont.) — 🎮📐 **Controller Test: landscape metrics → 2×2 grid so all four tiles fit (device-follow-up)**
+> Device screenshots showed the landscape split (pad LEFT / metrics RIGHT) worked, but the four StatTiles stacked as a 4-high column ran ~230dp — taller than the ~136dp pad — so the bottom two (Right stick, Triggers L·R) scrolled under the pinned footer. Portrait's 4-across strip was fine.
+> - **Fix** (`ui/controllertest/ControllerTestVisualizer.kt`, landscape branch only): render the four readouts as a **2×2 grid** — `readouts.chunked(2)` → two Rows of two `StatTile(weight 1f)` (odd-count-safe `Spacer(weight 1f)`) instead of a single 4-high `Column`. Block height drops to ~112dp ≤ the pad, so all four tiles show with NO scroll and the Identify/Done footer stays clear. Padding-shrink alone would've reclaimed only ~15dp.
+> - Weights nudged **pad 0.58→0.52 / metrics 0.42→0.48** so each cell fits `0.00, 0.00`; Row `verticalAlignment` Top→CenterVertically so the shorter grid centers against the pad. **Portrait untouched** (shared `StatTile`, still the full-width 4-across strip).
+> - Edit-only, +14/−4 one file. versionCode FROZEN at 76 (dev build). Branch `feat/players-controller-test`. **CI-green NOT device-proven** — awaits on-device confirm all four landscape tiles are visible. NOT on main; 345 EXCLUDED.
+
 ## 2026-08-31 (cont.) — 🎮🎞️ **Controller Test: stick nubs GLOW on deflection + landscape pad-left/metrics-right; branch untangled from a parallel-session mic commit, then rebased onto main**
 > Two user-reported device issues on the visual Controller Test popup (`ui/controllertest/ControllerTestVisualizer.kt`), both fixed:
 > - **Sticks moved but didn't highlight** like the glowing buttons. `drawStickNub` now takes `(accent, clicked)` and ramps a glow with deflection past an ~8% deadzone (a stick-click pins it full): nub fill `lerp(#12161D → accent, 0.65×glow)` + the SAME halo (`accent α 0.30×glow`, r×1.5) + ring (`accent α glow`, stroke 2) the pressed buttons use. Call sites pass `"l3"/"r3" in pressedManifest` for the click. No-op on socket-less pads (SNES).

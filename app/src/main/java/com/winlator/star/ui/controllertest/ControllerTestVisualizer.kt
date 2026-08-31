@@ -329,14 +329,24 @@ fun ControllerTestPanel(
         if (landscape) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.Top,
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(Modifier.weight(0.58f), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(0.52f), contentAlignment = Alignment.Center) {
                     PadArtView(art = art, snapshot = snapshot)
                 }
-                Column(Modifier.weight(0.42f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for ((k, v) in readouts) StatTile(k, v, Modifier.fillMaxWidth())
+                // 2×2 grid instead of a 4-high column: ~half the height, so all four tiles
+                // sit beside the pad without the last two scrolling under the pinned footer.
+                Column(Modifier.weight(0.48f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (pair in readouts.chunked(2)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            for ((k, v) in pair) StatTile(k, v, Modifier.weight(1f))
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         } else {

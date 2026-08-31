@@ -110,6 +110,9 @@ fun SettingsControllerTestDialog(
         val cfg = LocalConfiguration.current
         val w = min(760, cfg.screenWidthDp - 24).coerceAtLeast(300).dp
         val maxH = (cfg.screenHeightDp - 24).coerceAtLeast(220).dp
+        // Bound the panel/binder height (card padding + toggle row) so their scroll engages and the
+        // test panel's pinned footer (Identify/Done) stays on-screen in a short landscape screen.
+        val panelMax = (maxH.value - 76f).coerceAtLeast(180f).dp
 
         Box(
             Modifier
@@ -147,7 +150,7 @@ fun SettingsControllerTestDialog(
                             onRenameProfile = onRenameProfile,
                             onSaved = onBindingsChanged,
                             onOpenAllBindings = onOpenAllBindings,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = panelMax),
                         )
                     } else {
                         ControllerTestPanel(
@@ -160,7 +163,7 @@ fun SettingsControllerTestDialog(
                             identifyEnabled = snap?.hasVibrator == true,
                             onIdentify = { ControllerTestBus.onIdentify?.run() },
                             onDone = null,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = panelMax),
                             nameHint = padName,
                         )
                     }

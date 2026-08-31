@@ -269,7 +269,11 @@ fun ControllerTestPanel(
         pressed.firstOrNull { it in ALL_ELEMENTS }?.let { lastInput = friendlyName(it) }
     }
 
-    Column(modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier) {
+        // Scrollable middle (header … readouts). The footer below is PINNED so the verified tally +
+        // Identify + Done are ALWAYS visible — they no longer clip off the bottom in a short landscape
+        // panel. weight(fill=false) lets the card still wrap small when everything fits.
+        Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState())) {
         // Header row.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
@@ -323,9 +327,10 @@ fun ControllerTestPanel(
             StatTile("Triggers L·R", tr, Modifier.weight(1f))
         }
         Spacer(Modifier.height(10.dp))
+        } // end scrollable middle
 
-        // Verified tally + footer actions.
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        // Verified tally + footer actions — PINNED below the scroll (always visible in landscape).
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
             val done = seen.count { it in ALL_ELEMENTS }
             Text(
                 if (done >= ALL_ELEMENTS.size) "All inputs registering (${ALL_ELEMENTS.size} tested)"
@@ -513,6 +518,33 @@ internal fun PadArtView(
                     drawCircle(accent, t.third * sr * 1.25f, Offset(t.first * sx, t.second * sy), style = Stroke(width = 2.5f))
                 }
             }
+            // Movable stick nubs — the PNG's stick is baked static, so overlay a nub that covers the
+            // baked one at rest and slides within the socket as the thumb is pushed.
+            snapshot?.let { s ->
+                drawStickNub(ref, "lstick", s.thumbLX, s.thumbLY, sx, sy, sr)
+                drawStickNub(ref, if (ref.el.containsKey("rstick")) "rstick" else "cstick", s.thumbRX, s.thumbRY, sx, sy, sr)
+            }
         }
     }
+}
+
+/** Draw a movable stick nub at the socket center offset by the thumb (screen-Y-down convention, same
+ *  as the readouts), clamped to stay inside the socket. Dark fill sized to cover the baked nub at rest,
+ *  with a subtle top rim. No-op for pads without this socket (e.g. SNES). */
+private fun DrawScope.drawStickNub(ref: PadArtRef, id: String, tx: Float, ty: Float, sx: Float, sy: Float, sr: Float) {
+    val t = ref.el[id] ?: return
+    val socketR = t.third * sr
+    val nubR = socketR * 0.55f
+    val travel = socketR * 0.45f
+    var ox = tx * travel
+    var oy = ty * travel
+    val maxOff = socketR - nubR
+    val mag = kotlin.math.sqrt((ox * ox + oy * oy).toDouble()).toFloat()
+    if (mag > maxOff && mag > 0f) {
+        val k = maxOff / mag; ox *= k; oy *= k
+    }
+    val cx = t.first * sx + ox
+    val cy = t.second * sy + oy
+    drawCircle(Color(0xFF12161D), nubR, Offset(cx, cy))
+    drawCircle(Color(0x22FFFFFF), nubR, Offset(cx, cy - nubR * 0.12f), style = Stroke(width = 1.2f))
 }

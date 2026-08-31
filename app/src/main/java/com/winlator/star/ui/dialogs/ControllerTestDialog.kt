@@ -372,9 +372,12 @@ private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
     val manager = remember { InputControlsManager(context) }
     var profilesRev by remember { mutableIntStateOf(0) }
     val profiles = remember(profilesRev) { manager.getProfiles().toList() }
-    var selectedProfileId by remember { mutableStateOf(state.activeProfileId) }
+    // The Bind tab is the PHYSICAL lane: seed from the ACTIVE physical profile (not the OSC one) so the
+    // picker reflects what's live on the pad. -1 = — None — (native passthrough) → edit nothing.
+    var selectedProfileId by remember { mutableStateOf(state.physicalProfileId) }
     val selectedProfile = remember(profilesRev, selectedProfileId) {
-        profiles.firstOrNull { it.id == selectedProfileId } ?: profiles.firstOrNull()
+        if (selectedProfileId < 0) null
+        else profiles.firstOrNull { it.id == selectedProfileId } ?: profiles.firstOrNull()
     }
     val padName = remember { ExternalController.getControllers().firstOrNull()?.name }
     var renaming by remember { mutableStateOf(false) }
@@ -385,11 +388,23 @@ private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
         art = padArtOf(snap, padName),
         snapshot = snap,
         allProfiles = profiles,
-        onSelectProfile = { p -> selectedProfileId = p.id },
+        // The Bind picker IS the physical-lane activation control: selecting a profile activates it on
+        // the physical pad (and edits it); — None — reverts the pad to native Xbox passthrough. Both are
+        // independent of the OSC lane (Touch tab), so the two run simultaneously with no clobber.
+        onSelectProfile = { p ->
+            selectedProfileId = p.id
+            state.onPhysicalProfileChanged?.invoke(p.id)
+        },
+        onSelectNone = {
+            selectedProfileId = -1
+            state.onPhysicalProfileChanged?.invoke(-1)
+        },
         onCreateProfile = { name ->
             val p = manager.createProfile(name)
             selectedProfileId = p.id
             profilesRev++
+            state.onPhysicalProfileChanged?.invoke(p.id)   // activate the new profile on the pad
+            state.onProfilesChanged?.run()                 // keep the Touch dropdown live
         },
         onRenameProfile = { renameText = selectedProfile?.name ?: ""; renaming = true },
         onSaved = { },
@@ -412,7 +427,10 @@ private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
             confirmButton = {
                 TextButton(onClick = {
                     val p = selectedProfile
-                    if (p != null && renameText.isNotBlank()) { p.name = renameText.trim(); p.save(); profilesRev++ }
+                    if (p != null && renameText.isNotBlank()) {
+                        p.name = renameText.trim(); p.save(); profilesRev++
+                        state.onProfilesChanged?.run()   // keep the Touch dropdown live after a rename
+                    }
                     renaming = false
                 }) { Text("OK") }
             },

@@ -6403,6 +6403,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (profile != null) showInputControls(profile);
             }
 
+            String controllerProfile = shortcut.getExtra("controllerProfile");
+            if (!controllerProfile.isEmpty()) {
+                ControlsProfile physical = inputControlsManager.getProfile(Integer.parseInt(controllerProfile));
+                if (physical != null) setPhysicalProfile(physical);
+            }
+
             String simTouchScreen = shortcut.getExtra("simTouchScreen");
             touchpadView.setSimTouchScreen(simTouchScreen.equals("1"));
         }
@@ -6894,10 +6900,29 @@ public class XServerDisplayActivity extends AppCompatActivity {
             };
             ds.onResetInput = () -> {
                 winHandler.resetInputPipeline();
+                // Physical lane: the rebuild cleared held/latched pad state — re-apply the active
+                // physical profile (or passthrough) so remapping resumes without a fresh event.
+                inputControlsView.reapplyPhysicalProfile();
                 refreshPlayerSlots.run();
                 showControllerStatusToast("reset", null);
                 // #333: pipeline reset re-seats slots → re-evaluate auto-hide against the fresh state.
                 updateAutoHideForControllers();
+            };
+
+            // Physical lane (Players > Bind): the in-game Bind picker activates a profile for the
+            // PHYSICAL pad's bindings (id), or -1 for native passthrough — independent of the OSC lane.
+            // A FRESH manager resolves the id off disk so a profile the binder just created (in its own
+            // manager) and templates both resolve here.
+            ds.onPhysicalProfileChanged = (profileId) -> {
+                ControlsProfile physical = profileId >= 0
+                        ? new InputControlsManager(this).getProfile(profileId) : null;
+                setPhysicalProfile(physical);
+            };
+            // Live profile lists: after the binder creates/renames a profile, reload ours and re-push the
+            // Touch dropdown so new/renamed profiles appear in both pickers with no relaunch.
+            ds.onProfilesChanged = () -> {
+                inputControlsManager.loadProfiles(true);
+                pushInputProfileNames();
             };
 
             // Controller-test popup: arm/disarm the input-isolation fork with the popup's visibility.
@@ -7425,6 +7450,34 @@ public class XServerDisplayActivity extends AppCompatActivity {
             XServerDrawerState.INSTANCE.setControlsFollowTheme(true);
             XServerDrawerState.INSTANCE.setControlsAccentColor(0xFF0055FF);
         }
+    }
+
+    // Physical lane (Players > Bind): activate `profile` on the PHYSICAL pad without drawing the OSC,
+    // persist it per-game as the "controllerProfile" extra (removed = passthrough), and mirror it to the
+    // dialog so the Bind picker reflects the active selection. null = revert to native Xbox passthrough.
+    private void setPhysicalProfile(ControlsProfile profile) {
+        inputControlsView.setPhysicalProfile(profile);
+        if (shortcut != null) {
+            shortcut.putExtra("controllerProfile", profile != null ? String.valueOf(profile.id) : null);
+            shortcut.saveData();
+        }
+        XServerDialogState.INSTANCE.physicalProfileId = profile != null ? profile.id : -1;
+    }
+
+    // Re-push the Touch (on-screen) profile dropdown from the current profiles, preserving the OSC
+    // selection. Called after an in-game create/rename so the list stays live (templates excluded).
+    private void pushInputProfileNames() {
+        ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
+        ArrayList<String> profileNames = new ArrayList<>();
+        int selectedPosition = 0;
+        for (int i = 0; i < profiles.size(); i++) {
+            ControlsProfile profile = profiles.get(i);
+            if (inputControlsView.getProfile() != null && profile.id == inputControlsView.getProfile().id)
+                selectedPosition = i + 1;
+            profileNames.add(profile.getName());
+        }
+        XServerDialogState.INSTANCE.setInputProfiles(profileNames);
+        XServerDialogState.INSTANCE.setSelectedProfileIdx(selectedPosition);
     }
 
     private void showInputControls(ControlsProfile profile) {

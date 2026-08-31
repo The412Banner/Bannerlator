@@ -75,6 +75,9 @@ fun VisualControllerBinder(
     onRenameProfile: () -> Unit,
     onSaved: () -> Unit,
     onOpenAllBindings: (() -> Unit)?,
+    // When non-null, the profile picker shows a "— None —" entry (physical-lane passthrough). Left null
+    // by the at-rest Settings editors, which are edit-only and have no live pad to revert.
+    onSelectNone: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -114,6 +117,9 @@ fun VisualControllerBinder(
                     Text(profile?.name ?: "— none —", fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 DropdownMenu(expanded = profMenu, onDismissRequest = { profMenu = false }) {
+                    if (onSelectNone != null) {
+                        DropdownMenuItem(text = { Text("— None (native Xbox) —") }, onClick = { profMenu = false; onSelectNone() })
+                    }
                     allProfiles.forEach { p ->
                         DropdownMenuItem(text = { Text(p.name) }, onClick = { profMenu = false; onSelectProfile(p) })
                     }

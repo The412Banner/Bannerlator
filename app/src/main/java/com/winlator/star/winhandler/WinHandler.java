@@ -1164,6 +1164,16 @@ public class WinHandler {
         state.dpad[0] = state.dpad[1] = state.dpad[2] = state.dpad[3] = false;
     }
 
+    // Re-push every live physical controller's current state through the slot pipeline, re-evaluating
+    // the physical-profile remap gate. Used when the physical lane changes (InputControlsView
+    // .setPhysicalProfile) so a switch to passthrough (raw resumes) or a bound profile (remap/silence)
+    // applies at once instead of waiting for the next input event. Mirrors releaseAllControllerInputs.
+    public void refreshControllerStates() {
+        for (ExternalController controller : controllers.values()) {
+            if (controller != null) sendGamepadState(controller);
+        }
+    }
+
     public void sendGamepadState(ExternalController controller) {
         if (controller == null)
             return;
@@ -1175,7 +1185,7 @@ public class WinHandler {
         // If it does, we should NOT send the raw state here, because InputControlsView
         // will send the remapped state via the no-arg sendGamepadState().
         InputControlsView inputControlsView = activity.getInputControlsView();
-        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getPhysicalProfile() : null;
         if (profile != null) {
             ExternalController profileController = profile.getController(controller.getDeviceId());
             if (profileController != null && profileController.getControllerBindingCount() > 0) {
@@ -2752,7 +2762,7 @@ public class WinHandler {
             sendGamepadState(controller);
         }
         InputControlsView inputControlsView = activity.getInputControlsView();
-        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getPhysicalProfile() : null;
         if (profile == null) return;
         for (ExternalController controller : profile.getControllers()) {
             controller.state.reset();

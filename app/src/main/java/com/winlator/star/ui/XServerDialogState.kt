@@ -414,6 +414,19 @@ object XServerDialogState {
      *  visual binder defaults to editing it. -1 when none. Set by the activity in setupUI. */
     @JvmField var activeProfileId: Int = -1
 
+    /** Id of the profile currently ACTIVE on the PHYSICAL pad (Players > Bind lane), independent of the
+     *  OSC lane. -1 = native Xbox passthrough. Seeded by the activity from the "controllerProfile"
+     *  shortcut extra and kept in sync as the Bind picker activates profiles, so the picker reflects it. */
+    @JvmField var physicalProfileId: Int = -1
+
+    /** Fired by the in-game Bind picker to ACTIVATE a profile on the physical pad (id), or -1 to revert
+     *  to native passthrough. The activity resolves the id and calls InputControlsView.setPhysicalProfile. */
+    @JvmField var onPhysicalProfileChanged: IntCallback? = null
+
+    /** Fired after the in-game binder creates/renames a profile so the activity re-reads profiles and
+     *  re-pushes the Touch dropdown — keeps both profile pickers live without a relaunch. */
+    @JvmField var onProfilesChanged: Runnable? = null
+
     // -------------------------------------------------------------------------
     // Controller-status TOAST (P5b) — a small app-themed card that fades into the TOP-RIGHT of the
     // in-game screen (below the Fusion HUD), lists each detected input device (type icon + name +
@@ -969,6 +982,7 @@ object XServerDialogState {
         onInputControlsConfirm = null; onInputControlsSettings = null
         onScreenEffectsApply = null; onSeAddProfile = null; onSeRemoveProfile = null
         onWindowClick = null
+        physicalProfileId = -1; onPhysicalProfileChanged = null; onProfilesChanged = null
         onTmRefresh = null; onTmDismissed = null; onTmNewTask = null; onTmNewTaskSubmit = null
         onTmBringToFront = null; onTmKillProcess = null; onTmSetAffinity = null; onTmQueryAffinity = null
         onInitGraphicsTab = null

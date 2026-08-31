@@ -127,16 +127,20 @@ class MainActivity : AppCompatActivity() {
     private val pendingRoute = mutableStateOf<String?>(null)
 
     // ---- Settings-side Controller Test (Input Controls screen) input fork ----
-    // While the at-rest controller-test dialog is open (controllerTestActive == true) a game
-    // controller's key/axis events are forked into controllerTestController — a throwaway snapshot that
-    // only drives the visualizer — and CONSUMED at the dispatch chokepoints so gamepad presses can't
-    // navigate the Compose UI (no dpad/button focus leakage). No game is running here, so there is no
-    // guest to protect — this is purely about not letting the pad drive the app UI while testing. The
-    // flag is armed only while the dialog is visible (cleared on dispose + onPause/onStop).
-    private var controllerTestActive = false
+    // While the at-rest controller-test dialog is open in TEST mode a game controller's key/axis events
+    // are forked into controllerTestController — a throwaway snapshot that only drives the visualizer —
+    // and CONSUMED at the dispatch chokepoints so gamepad presses can't navigate the Compose UI. The
+    // gate is read DIRECTLY from ControllerTestBus.active (a @Volatile set SYNCHRONOUSLY when the dialog
+    // shows, via a SideEffect — not a late LaunchedEffect/callback), AND'd with !controllerTestPaused so
+    // a background can't leave it latched. This is the fix for the "doesn't react + leaks until rotate"
+    // bug: the very first press after opening is already gated on the immediate value.
+    @Volatile private var controllerTestPaused = false
     private val controllerTestController = com.winlator.star.inputcontrols.ExternalController()
     private var controllerTestGuideDown = false
     private var lastControllerTestAxisLogMs = 0L
+
+    private fun settingsTestArmed(): Boolean =
+        com.winlator.star.ui.controllertest.ControllerTestBus.active && !controllerTestPaused
     private var controllerTestLastDeviceId = -1
 
     private val openImageLauncher = registerForActivityResult(
@@ -203,9 +207,11 @@ class MainActivity : AppCompatActivity() {
         // Settings-side Controller Test: the Input Controls screen's test dialog arms/disarms the input
         // fork through this bus (so this Activity consumes gamepad events instead of navigating the UI),
         // and asks us to natively rumble the live pad for "Identify".
+        // The gate itself is ControllerTestBus.active (read directly in dispatch). This callback only
+        // clears the throwaway controller's stale state when the dialog opens, and drops the snapshot
+        // when it closes.
         com.winlator.star.ui.controllertest.ControllerTestBus.onActiveChanged =
             com.winlator.star.ui.controllertest.ControllerTestBus.ActiveCallback { active ->
-                controllerTestActive = active
                 if (active) {
                     controllerTestController.state.reset()
                     controllerTestController.remappedState.reset()
@@ -341,28 +347,28 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Never leave the settings controller-test fork latched across a background.
-        controllerTestActive = false
+        // Pause (not clear) the fork across a background; the bus flag stays set by the open dialog so
+        // onResume re-arms without needing the dialog to recompose.
+        controllerTestPaused = true
     }
 
     override fun onStop() {
         super.onStop()
-        controllerTestActive = false
+        controllerTestPaused = true
     }
 
     override fun onResume() {
         super.onResume()
-        // Re-arm the settings controller-test fork if its dialog is still open (onPause cleared the flag).
-        controllerTestActive = com.winlator.star.ui.controllertest.ControllerTestBus.active
+        controllerTestPaused = false
     }
 
-    // ---- Settings-side Controller Test input fork (gated on controllerTestActive) ----
-    // When the test dialog is CLOSED, controllerTestActive is false and both overrides just call super
-    // (original behavior). When OPEN, a game-controller event drives ONLY the throwaway visualizer
-    // snapshot and is CONSUMED here so it can't move Compose focus / navigate the app UI.
+    // ---- Settings-side Controller Test input fork ----
+    // Gate = ControllerTestBus.active (armed SYNCHRONOUSLY by the dialog's SideEffect) AND not paused.
+    // When CLOSED both overrides just call super. When OPEN in TEST mode, a game-controller event drives
+    // ONLY the throwaway visualizer snapshot and is CONSUMED so it can't navigate the app UI.
 
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
-        if (controllerTestActive && isControllerTestMotionEvent(event)) {
+        if (settingsTestArmed() && isControllerTestMotionEvent(event)) {
             controllerTestFeedMotionEvent(event)
             return true
         }
@@ -370,7 +376,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (controllerTestActive &&
+        if (settingsTestArmed() &&
             com.winlator.star.inputcontrols.ExternalController.isGameController(event.device)) {
             controllerTestFeedKeyEvent(event)
             return true

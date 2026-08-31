@@ -62,7 +62,6 @@ import com.winlator.star.inputcontrols.ExternalController
 // Settings screen and the in-game Players popup.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-private val BIND_BLUE = Color(0xFF7AA0FF)
 private val WARN = Color(0xFFE7B64C)
 
 @Composable
@@ -95,16 +94,9 @@ fun VisualControllerBinder(
     val labels = remember(bindRev, controller) {
         BIND_TARGETS.associate { it.id to bindingLabelOrNull(controller, it.id) }
     }
-    // Pad element is "bound" if its own key is bound, or (for a stick) any of its directions/click.
-    val boundPad = remember(bindRev, controller) {
-        val s = HashSet<String>()
-        for ((id, _) in padElementRects(art)) {
-            val self = labels[id] != null
-            val stick = (id == "l3" && (labels["lsu"] != null || labels["lsd"] != null || labels["lsl"] != null || labels["lsr"] != null)) ||
-                (id == "r3" && (labels["rsu"] != null || labels["rsd"] != null || labels["rsl"] != null || labels["rsr"] != null))
-            if (self || stick) s.add(id)
-        }
-        s
+    // BindTarget ids that are currently bound (PadArtView maps them to manifest coords for the dots).
+    val boundBindIds = remember(bindRev, controller) {
+        labels.filterValues { it != null }.keys.toSet()
     }
 
     Column(modifier.verticalScroll(rememberScrollState())) {
@@ -188,7 +180,15 @@ fun VisualControllerBinder(
         // ── Pad + edit panel — side-by-side when there's width (wide Settings card), stacked when
         // narrow (the in-game popup's right column, or portrait). ──
         val padBox: @Composable () -> Unit = {
-            BindPad(art, snapshot, boundPad, selectedId, cs.primary) { id -> selectedId = id }
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                PadArtView(
+                    art = art,
+                    snapshot = snapshot,
+                    boundBindIds = boundBindIds,
+                    selectedBindId = selectedId,
+                    onTapBind = { id -> selectedId = id },
+                )
+            }
         }
         val panel: @Composable () -> Unit = {
             if (selectedId == null) {
@@ -225,58 +225,6 @@ fun VisualControllerBinder(
             }
         }
         } // end else (profile + controller present)
-    }
-}
-
-@Composable
-private fun BindPad(
-    art: PadArt,
-    snapshot: ControllerTestSnapshot?,
-    boundPad: Set<String>,
-    selectedId: String?,
-    accent: Color,
-    onSelect: (String) -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    val pressed = pressedSet(snapshot)
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-        Box(
-            Modifier
-                .background(Color(0xFF0B111B), RoundedCornerShape(14.dp))
-                .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
-                .padding(8.dp)
-        ) {
-            Canvas(
-                Modifier
-                    .widthIn(max = 252.dp)
-                    .heightIn(max = 140.dp)
-                    .aspectRatio(320f / 210f)
-                    .pointerInput(art) {
-                        detectTapGestures { pos ->
-                            val s = size.width / 320f
-                            val hit = padElementRects(art).firstOrNull { (_, r) ->
-                                pos.x >= r.left * s && pos.x <= r.right * s && pos.y >= r.top * s && pos.y <= r.bottom * s
-                            }?.first
-                            if (hit != null) onSelect(hit)
-                        }
-                    }
-            ) {
-                val s = size.width / 320f
-                drawPad(art, snapshot, pressed, emptyList(), accent)
-                for ((id, r) in padElementRects(art)) {
-                    if (id in boundPad) {
-                        drawCircle(BIND_BLUE, 3.5f * s, Offset(r.right * s, r.top * s))
-                    }
-                    if (id == selectedId) {
-                        drawRoundRect(
-                            accent, Offset(r.left * s, r.top * s),
-                            Size(r.width * s, r.height * s),
-                            CornerRadius(6f * s, 6f * s), style = Stroke(width = 2f * s)
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 

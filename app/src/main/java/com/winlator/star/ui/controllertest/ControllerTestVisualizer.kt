@@ -2,8 +2,10 @@ package com.winlator.star.ui.controllertest
 
 import android.view.InputDevice
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +51,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -120,7 +125,9 @@ object ControllerTestBus {
 // ── Pad-art catalog + matcher ────────────────────────────────────────────────────────────────────
 
 /** Which drawn controller family to show. Order is the ordinal contract stored in the snapshot. */
-enum class PadArt { XBOX_360, XBOX_MODERN, DUALSENSE, DUALSHOCK4, SWITCH_PRO, EIGHTBITDO, GENERIC, DUALSHOCK3, STEAM }
+// Order matters: the snapshot stores PadArt.ordinal, so GAMECUBE/SNES are appended at the end (they are
+// selectable-only via the manual override and never auto-returned by classifyPadArt).
+enum class PadArt { XBOX_360, XBOX_MODERN, DUALSENSE, DUALSHOCK4, SWITCH_PRO, EIGHTBITDO, GENERIC, DUALSHOCK3, STEAM, GAMECUBE, SNES }
 
 fun padArtLabel(a: PadArt): String = when (a) {
     PadArt.XBOX_360 -> "Xbox 360"
@@ -132,6 +139,8 @@ fun padArtLabel(a: PadArt): String = when (a) {
     PadArt.GENERIC -> "Generic"
     PadArt.DUALSHOCK3 -> "DualShock 3"
     PadArt.STEAM -> "Steam"
+    PadArt.GAMECUBE -> "GameCube"
+    PadArt.SNES -> "SNES"
 }
 
 private fun padArtSafe(ordinal: Int): PadArt = PadArt.values().getOrElse(ordinal) { PadArt.GENERIC }
@@ -296,24 +305,10 @@ fun ControllerTestPanel(
         }
         Spacer(Modifier.height(8.dp))
 
-        // The pad picture (320×210 art space). Kept COMPACT and centered — capped so it never balloons
-        // to full panel width on a wide landscape popup (which clipped the pad and pushed the readouts +
-        // tally + footer off-screen). aspectRatio on the Canvas keeps the whole pad visible at rest.
+        // The pad picture — a pre-rendered per-family PNG with a live-highlight overlay. Kept COMPACT
+        // and centered (PadArtView caps its own size and keeps the 500:350 art aspect).
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF0B111B))
-                    .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
-                    .padding(8.dp)
-            ) {
-                Canvas(
-                    Modifier
-                        .widthIn(max = 248.dp)
-                        .heightIn(max = 136.dp)
-                        .aspectRatio(320f / 210f)
-                ) { drawPad(art, snapshot, pressed, seen, accent) }
-            }
+            PadArtView(art = art, snapshot = snapshot)
         }
         Spacer(Modifier.height(10.dp))
 
@@ -390,310 +385,134 @@ private fun StatTile(key: String, value: String, modifier: Modifier) {
     }
 }
 
-// ── Drawing (320×210 art space, ported from the artwork reference) ───────────────────────────────
-private val PAD_BODY = Color(0xFF28323F)
-private val PAD_LINE = Color(0xFF3D4A5C)
-private val PAD_HOLLOW = Color(0xFF161E29)
-private val PAD_STROKE = Color(0xFF4A586C)
-private val VERIFIED = Color(0xFF57C777)
-private val FAINT = Color(0xFF67748C)
-private val NEUTRAL = Color(0xFF9FB0C8)
-// Xbox face colors.
-private val XA = Color(0xFF5CC46B); private val XB = Color(0xFFE5564F)
-private val XX = Color(0xFF4A9FE8); private val XY = Color(0xFFF2C94C)
-// PlayStation symbol colors.
-private val PTRI = Color(0xFF54D6BB); private val PCIR = Color(0xFFF4676B)
-private val PSQ = Color(0xFFE77FC0); private val PCROSS = Color(0xFF7AA0FF)
+// ── Pad art (pre-rendered PNG + live-highlight overlay + tap-to-bind) ────────────────────────────
+internal val BIND_BLUE = Color(0xFF7AA0FF)
 
-/** Glyph text + color for the four face positions, keyed by bit id (y=north, b=east, a=south, x=west). */
-private fun faceGlyphs(art: PadArt): Map<String, Pair<String, Color>> = when {
-    isPsFamily(art) -> mapOf(
-        "y" to Pair("△", PTRI), "b" to Pair("○", PCIR), "a" to Pair("✕", PCROSS), "x" to Pair("□", PSQ)
-    )
-    art == PadArt.SWITCH_PRO -> mapOf(
-        "y" to Pair("X", NEUTRAL), "b" to Pair("A", NEUTRAL), "a" to Pair("B", NEUTRAL), "x" to Pair("Y", NEUTRAL)
-    )
-    art == PadArt.GENERIC -> mapOf(
-        "y" to Pair("Y", NEUTRAL), "b" to Pair("B", NEUTRAL), "a" to Pair("A", NEUTRAL), "x" to Pair("X", NEUTRAL)
-    )
-    else -> mapOf( // Xbox 360 / Xbox / 8BitDo / Steam — Xbox colors
-        "y" to Pair("Y", XY), "b" to Pair("B", XB), "a" to Pair("A", XA), "x" to Pair("X", XX)
-    )
-}
-
-private fun bumperLabels(art: PadArt): Pair<String, String> = when {
-    isPsFamily(art) -> "L1" to "R1"
-    art == PadArt.SWITCH_PRO -> "L" to "R"
-    else -> "LB" to "RB"
-}
-
-private fun triggerLabels(art: PadArt): Pair<String, String> = when {
-    isPsFamily(art) -> "L2" to "R2"
-    art == PadArt.SWITCH_PRO -> "ZL" to "ZR"
-    else -> "LT" to "RT"
-}
-
-/** Tappable / overlay hit rects for each drawn pad element, in the 320×210 art space (caller scales
- *  by s = canvasWidthPx/320). Mirrors the element positions drawn by drawPad. Used by the visual
- *  binder for tap-to-select + the bound/selected overlay. Stick DIRECTIONS (lsu/…) are list-only and
- *  intentionally absent here (a stick's tap selects its click, l3/r3). */
-internal fun padElementRects(art: PadArt): List<Pair<String, Rect>> {
-    val ps = isPsFamily(art)
-    val out = ArrayList<Pair<String, Rect>>()
-    fun c(id: String, cx: Float, cy: Float, r: Float) = out.add(id to Rect(cx - r, cy - r, cx + r, cy + r))
-    fun b(id: String, x: Float, y: Float, w: Float, h: Float, pad: Float = 3f) =
-        out.add(id to Rect(x - pad, y - pad, x + w + pad, y + h + pad))
-    b("lt", 70f, 13f, 52f, 12f); b("rt", 198f, 13f, 52f, 12f)
-    b("lb", 66f, 34f, 56f, 15f); b("rb", 198f, 34f, 56f, 15f)
-    if (ps) {
-        b("dup", 86f, 81f, 12f, 18f, 2f); b("ddown", 86f, 107f, 12f, 18f, 2f)
-        b("dleft", 70f, 97f, 18f, 12f, 2f); b("dright", 96f, 97f, 18f, 12f, 2f)
-        c("l3", 128f, 140f, 17f); c("r3", 192f, 140f, 17f)
-        val cx = 228f; val cy = 97f; val d = 19f
-        c("y", cx, cy - d, 14f); c("b", cx + d, cy, 14f); c("a", cx, cy + d, 14f); c("x", cx - d, cy, 14f)
-        b("back", 108f, 63f, 9f, 13f); b("start", 203f, 63f, 9f, 13f); c("guide", 160f, 150f, 10f)
-    } else {
-        c("l3", 96f, 86f, 19f)
-        b("dup", 104f, 104f, 12f, 18f, 2f); b("ddown", 104f, 130f, 12f, 18f, 2f)
-        b("dleft", 88f, 120f, 18f, 12f, 2f); b("dright", 114f, 120f, 18f, 12f, 2f)
-        c("r3", 206f, 122f, 18f)
-        val cx = 232f; val cy = 94f; val d = 20f
-        c("y", cx, cy - d, 15f); c("b", cx + d, cy, 15f); c("a", cx, cy + d, 15f); c("x", cx - d, cy, 15f)
-        if (art == PadArt.SWITCH_PRO) {
-            b("back", 136f, 87f, 14f, 4f); b("start", 170f, 82f, 12f, 12f); c("guide", 160f, 150f, 10f)
-        } else {
-            b("back", 140f, 88f, 12f, 9f); b("start", 168f, 88f, 12f, 9f); c("guide", 160f, 72f, 12f)
-        }
+/** Resolve the manifest element id to LIGHT for a pressed GamepadState logical id (a/b/…/dup/back/…),
+ *  honoring per-family names (back→share on DS4, →minus on Switch, …) and presence on that pad. */
+private fun highlightManifest(ref: PadArtRef, logical: String): String? {
+    val cands = when (logical) {
+        "a", "b", "x", "y", "lt", "rt", "l3", "r3" -> listOf(logical)
+        "lb" -> listOf("lb", "l")
+        "rb" -> listOf("rb", "r")
+        "dup" -> listOf("dpad_up"); "ddown" -> listOf("dpad_down")
+        "dleft" -> listOf("dpad_left"); "dright" -> listOf("dpad_right")
+        "back" -> listOf("back", "select", "share", "minus", "view")
+        "start" -> listOf("start", "options", "plus", "menu")
+        "guide" -> listOf("guide", "home")
+        else -> emptyList()
     }
-    return out
+    return cands.firstOrNull { ref.el.containsKey(it) }
 }
 
-internal fun DrawScope.drawPad(
+/** Manifest element id (as tapped on the pad) → BindTarget id. */
+internal fun manifestToBindId(manifestId: String): String? = when (manifestId) {
+    "a", "b", "x", "y", "lt", "rt", "l3", "r3", "lb", "rb", "start", "back", "guide" -> manifestId
+    "dpad_up" -> "dup"; "dpad_down" -> "ddown"; "dpad_left" -> "dleft"; "dpad_right" -> "dright"
+    "l" -> "lb"; "r" -> "rb"
+    "lstick" -> "l3"; "rstick" -> "r3"; "cstick" -> "r3"
+    "home" -> "guide"
+    "options" -> "start"; "plus" -> "start"; "menu" -> "start"
+    "select" -> "back"; "share" -> "back"; "minus" -> "back"; "view" -> "back"
+    else -> null
+}
+
+/** BindTarget id → manifest element id (for bound markers + the selection ring). */
+private fun bindToManifest(ref: PadArtRef, bindId: String): String? {
+    val cands = when (bindId) {
+        "a", "b", "x", "y", "lt", "rt", "l3", "r3" -> listOf(bindId)
+        "lb" -> listOf("lb", "l"); "rb" -> listOf("rb", "r")
+        "dup" -> listOf("dpad_up"); "ddown" -> listOf("dpad_down")
+        "dleft" -> listOf("dpad_left"); "dright" -> listOf("dpad_right")
+        "back" -> listOf("back", "select", "share", "minus", "view")
+        "start" -> listOf("start", "options", "plus", "menu")
+        "guide" -> listOf("guide", "home")
+        "lsu", "lsd", "lsl", "lsr" -> listOf("lstick")
+        "rsu", "rsd", "rsl", "rsr" -> listOf("rstick", "cstick")
+        else -> emptyList()
+    }
+    return cands.firstOrNull { ref.el.containsKey(it) }
+}
+
+/**
+ * The pad picture: a pre-rendered per-family PNG fit into a compact bounded box (keeping the 500:350
+ * art aspect), with a Compose Canvas overlay that (a) glows each pressed element live, (b) in bind mode
+ * marks bound elements + rings the selected one, and (c) hit-tests taps to the nearest element for
+ * tap-to-bind. Coords come from the hardcoded PAD_REFS manifest.
+ */
+@Composable
+internal fun PadArtView(
     art: PadArt,
-    snap: ControllerTestSnapshot?,
-    pressed: Set<String>,
-    seen: List<String>,
-    accent: Color,
+    snapshot: ControllerTestSnapshot?,
+    modifier: Modifier = Modifier,
+    boundBindIds: Set<String> = emptySet(),
+    selectedBindId: String? = null,
+    onTapBind: ((String) -> Unit)? = null,
 ) {
-    val s = size.width / 320f
-    val ps = isPsFamily(art)
-
-    drawBody(art, s)
-
-    // Triggers (analog fill) + bumpers.
-    val (ltL, rtL) = triggerLabels(art)
-    drawTriggers(s, snap, pressed, seen, accent, ltL, rtL)
-    val (lbL, rbL) = bumperLabels(art)
-    drawLitRect(66f, 34f, 56f, 15f, 7f, "lb", s, pressed, seen, accent)
-    label(lbL, 94f, 42f, s, FAINT)
-    drawLitRect(198f, 34f, 56f, 15f, 7f, "rb", s, pressed, seen, accent)
-    label(rbL, 226f, 42f, s, FAINT)
-
-    // Sticks + dpad (arrangement differs for the PS family).
-    if (ps) {
-        drawDpad(92f, 103f, s, pressed, seen, accent)
-        drawStickEl("l3", 128f, 140f, 16f, snap?.thumbLX ?: 0f, snap?.thumbLY ?: 0f, s, pressed, seen, accent)
-        drawStickEl("r3", 192f, 140f, 16f, snap?.thumbRX ?: 0f, snap?.thumbRY ?: 0f, s, pressed, seen, accent)
-        drawFaces(228f, 97f, 12f, faceGlyphs(art), pressed, seen, accent, s)
-    } else {
-        drawStickEl("l3", 96f, 86f, 17f, snap?.thumbLX ?: 0f, snap?.thumbLY ?: 0f, s, pressed, seen, accent)
-        drawDpad(110f, 126f, s, pressed, seen, accent)
-        drawStickEl("r3", 206f, 122f, 16f, snap?.thumbRX ?: 0f, snap?.thumbRY ?: 0f, s, pressed, seen, accent)
-        drawFaces(232f, 94f, 13f, faceGlyphs(art), pressed, seen, accent, s)
+    val ref = PAD_REFS[art] ?: PAD_REFS[PadArt.GENERIC]!!
+    val accent = MaterialTheme.colorScheme.primary
+    val pressedManifest = remember(snapshot, art) {
+        val out = HashSet<String>()
+        for (p in pressedSet(snapshot)) highlightManifest(ref, p)?.let { out.add(it) }
+        out
     }
+    val boundManifest = remember(boundBindIds, art) {
+        val out = HashSet<String>()
+        for (bid in boundBindIds) bindToManifest(ref, bid)?.let { out.add(it) }
+        out
+    }
+    val selectedManifest = selectedBindId?.let { bindToManifest(ref, it) }
 
-    drawCenter(art, ps, s, pressed, seen, accent)
-}
-
-private fun DrawScope.drawBody(art: PadArt, s: Float) {
-    when {
-        art == PadArt.EIGHTBITDO -> {
-            drawRoundRect(PAD_BODY, Offset(38f * s, 58f * s), Size(244f * s, 102f * s), CornerRadius(48f * s, 48f * s), style = Fill)
-            drawRoundRect(PAD_LINE, Offset(38f * s, 58f * s), Size(244f * s, 102f * s), CornerRadius(48f * s, 48f * s), style = Stroke(2f * s))
+    Box(
+        modifier
+            .widthIn(max = 248.dp)
+            .heightIn(max = 136.dp)
+            .aspectRatio(ref.vbW / ref.vbH)
+    ) {
+        Image(
+            painter = painterResource(ref.drawableRes),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.Fit,
+        )
+        Canvas(
+            Modifier.matchParentSize().then(
+                if (onTapBind != null) Modifier.pointerInput(art) {
+                    detectTapGestures { pos ->
+                        val sx = size.width / ref.vbW
+                        val sy = size.height / ref.vbH
+                        val sr = maxOf(sx, sy)
+                        var best: String? = null
+                        var bestD = Float.MAX_VALUE
+                        for ((id, t) in ref.el) {
+                            val cx = t.first * sx; val cy = t.second * sy; val rr = t.third * sr
+                            val dx = pos.x - cx; val dy = pos.y - cy; val d = dx * dx + dy * dy
+                            if (d <= rr * rr && d < bestD) { bestD = d; best = id }
+                        }
+                        best?.let { manifestToBindId(it) }?.let { onTapBind(it) }
+                    }
+                } else Modifier
+            )
+        ) {
+            val sx = size.width / ref.vbW
+            val sy = size.height / ref.vbH
+            val sr = maxOf(sx, sy)
+            for (mid in boundManifest) {
+                val t = ref.el[mid] ?: continue
+                drawCircle(BIND_BLUE, 4f, Offset(t.first * sx + t.third * sr * 0.6f, t.second * sy - t.third * sr * 0.6f))
+            }
+            for (mid in pressedManifest) {
+                val t = ref.el[mid] ?: continue
+                val rr = t.third * sr
+                drawCircle(accent.copy(alpha = 0.30f), rr * 1.5f, Offset(t.first * sx, t.second * sy))
+                drawCircle(accent, rr, Offset(t.first * sx, t.second * sy), style = Stroke(width = 2f))
+            }
+            selectedManifest?.let { mid ->
+                val t = ref.el[mid]
+                if (t != null) {
+                    drawCircle(accent, t.third * sr * 1.25f, Offset(t.first * sx, t.second * sy), style = Stroke(width = 2.5f))
+                }
+            }
         }
-        isPsFamily(art) -> drawBodyPath(bodyPs(s))
-        art == PadArt.GENERIC -> drawBodyPath(bodyGeneric(s))
-        else -> drawBodyPath(bodyXbox(s))
     }
-}
-
-private fun DrawScope.drawBodyPath(p: Path) {
-    drawPath(p, PAD_BODY, style = Fill)
-    drawPath(p, PAD_LINE, style = Stroke(width = 2f))
-}
-
-private fun bodyXbox(s: Float): Path = Path().apply {
-    moveTo(160f * s, 58f * s)
-    cubicTo(122f * s, 58f * s, 96f * s, 54f * s, 74f * s, 60f * s)
-    cubicTo(44f * s, 68f * s, 26f * s, 92f * s, 30f * s, 126f * s)
-    cubicTo(33f * s, 152f * s, 52f * s, 170f * s, 78f * s, 166f * s)
-    cubicTo(100f * s, 162f * s, 112f * s, 150f * s, 132f * s, 148f * s)
-    cubicTo(148f * s, 146f * s, 172f * s, 146f * s, 188f * s, 148f * s)
-    cubicTo(208f * s, 150f * s, 220f * s, 162f * s, 242f * s, 166f * s)
-    cubicTo(268f * s, 170f * s, 287f * s, 152f * s, 290f * s, 126f * s)
-    cubicTo(294f * s, 92f * s, 276f * s, 68f * s, 246f * s, 60f * s)
-    cubicTo(224f * s, 54f * s, 198f * s, 58f * s, 160f * s, 58f * s)
-    close()
-}
-
-private fun bodyPs(s: Float): Path = Path().apply {
-    moveTo(160f * s, 60f * s)
-    cubicTo(120f * s, 60f * s, 92f * s, 60f * s, 72f * s, 66f * s)
-    cubicTo(46f * s, 74f * s, 32f * s, 96f * s, 40f * s, 126f * s)
-    cubicTo(46f * s, 152f * s, 68f * s, 172f * s, 90f * s, 164f * s)
-    cubicTo(106f * s, 158f * s, 112f * s, 150f * s, 130f * s, 149f * s)
-    cubicTo(148f * s, 148f * s, 172f * s, 148f * s, 190f * s, 149f * s)
-    cubicTo(208f * s, 150f * s, 214f * s, 158f * s, 230f * s, 164f * s)
-    cubicTo(252f * s, 172f * s, 274f * s, 152f * s, 280f * s, 126f * s)
-    cubicTo(288f * s, 96f * s, 274f * s, 74f * s, 248f * s, 66f * s)
-    cubicTo(228f * s, 60f * s, 200f * s, 60f * s, 160f * s, 60f * s)
-    close()
-}
-
-private fun bodyGeneric(s: Float): Path = Path().apply {
-    moveTo(74f * s, 72f * s)
-    cubicTo(50f * s, 72f * s, 40f * s, 86f * s, 42f * s, 108f * s)
-    cubicTo(44f * s, 132f * s, 60f * s, 152f * s, 84f * s, 152f * s)
-    cubicTo(104f * s, 152f * s, 110f * s, 144f * s, 130f * s, 143f * s)
-    cubicTo(150f * s, 142f * s, 170f * s, 142f * s, 190f * s, 143f * s)
-    cubicTo(210f * s, 144f * s, 216f * s, 152f * s, 236f * s, 152f * s)
-    cubicTo(260f * s, 152f * s, 276f * s, 132f * s, 278f * s, 108f * s)
-    cubicTo(280f * s, 86f * s, 270f * s, 72f * s, 246f * s, 72f * s)
-    cubicTo(206f * s, 72f * s, 114f * s, 72f * s, 74f * s, 72f * s)
-    close()
-}
-
-private fun DrawScope.drawTriggers(
-    s: Float, snap: ControllerTestSnapshot?, pressed: Set<String>, seen: List<String>,
-    accent: Color, ltLabel: String, rtLabel: String,
-) {
-    drawLitRect(70f, 13f, 52f, 12f, 6f, "lt", s, pressed, seen, accent)
-    val ltv = (snap?.triggerL ?: 0f).coerceIn(0f, 1f)
-    if (ltv > 0.02f) drawRoundRect(accent, Offset(70f * s, 13f * s), Size(52f * ltv * s, 12f * s), CornerRadius(6f * s, 6f * s))
-    drawLitRect(198f, 13f, 52f, 12f, 6f, "rt", s, pressed, seen, accent)
-    val rtv = (snap?.triggerR ?: 0f).coerceIn(0f, 1f)
-    if (rtv > 0.02f) drawRoundRect(accent, Offset((198f + 52f * (1f - rtv)) * s, 13f * s), Size(52f * rtv * s, 12f * s), CornerRadius(6f * s, 6f * s))
-    label(ltLabel, 96f, 9f, s, FAINT)
-    label(rtLabel, 224f, 9f, s, FAINT)
-}
-
-private fun DrawScope.drawLitRect(
-    x: Float, y: Float, w: Float, h: Float, rad: Float, id: String,
-    s: Float, pressed: Set<String>, seen: List<String>, accent: Color,
-) {
-    val down = id in pressed
-    drawRoundRect(
-        if (down) accent.copy(alpha = 0.20f) else PAD_HOLLOW,
-        Offset(x * s, y * s), Size(w * s, h * s), CornerRadius(rad * s, rad * s), style = Fill
-    )
-    drawRoundRect(
-        if (down) accent else if (id in seen) VERIFIED else PAD_STROKE,
-        Offset(x * s, y * s), Size(w * s, h * s), CornerRadius(rad * s, rad * s), style = Stroke(width = 1.8f * s)
-    )
-}
-
-private fun DrawScope.drawDpad(cx: Float, cy: Float, s: Float, pressed: Set<String>, seen: List<String>, accent: Color) {
-    drawLitRect(cx - 6f, cy - 22f, 12f, 18f, 3f, "dup", s, pressed, seen, accent)
-    drawLitRect(cx - 6f, cy + 4f, 12f, 18f, 3f, "ddown", s, pressed, seen, accent)
-    drawLitRect(cx - 22f, cy - 6f, 18f, 12f, 3f, "dleft", s, pressed, seen, accent)
-    drawLitRect(cx + 4f, cy - 6f, 18f, 12f, 3f, "dright", s, pressed, seen, accent)
-}
-
-private fun DrawScope.drawStickEl(
-    id: String, cx: Float, cy: Float, r: Float, tx: Float, ty: Float,
-    s: Float, pressed: Set<String>, seen: List<String>, accent: Color,
-) {
-    drawCircle(PAD_HOLLOW, r * s, Offset(cx * s, cy * s), style = Fill)
-    drawCircle(PAD_STROKE, r * s, Offset(cx * s, cy * s), style = Stroke(width = 2f * s))
-    val capX = (cx + tx * 6f) * s
-    val capY = (cy + ty * 6f) * s
-    val deflected = (tx * tx + ty * ty) > 0.35f * 0.35f
-    val hot = id in pressed || deflected
-    val capR = r * 0.52f
-    drawCircle(if (hot) accent.copy(alpha = 0.22f) else PAD_LINE, capR * s, Offset(capX, capY), style = Fill)
-    drawCircle(
-        if (hot) accent else if (id in seen) VERIFIED else PAD_STROKE,
-        capR * s, Offset(capX, capY), style = Stroke(width = 2.4f * s)
-    )
-}
-
-private fun DrawScope.drawFaces(
-    cx: Float, cy: Float, r: Float, glyphs: Map<String, Pair<String, Color>>,
-    pressed: Set<String>, seen: List<String>, accent: Color, s: Float,
-) {
-    val d = r + 7f
-    val positions = listOf(
-        "y" to Offset(cx, cy - d), "b" to Offset(cx + d, cy),
-        "a" to Offset(cx, cy + d), "x" to Offset(cx - d, cy)
-    )
-    for ((id, pos) in positions) {
-        val g = glyphs[id] ?: continue
-        val (ch, col) = g
-        val down = id in pressed
-        drawCircle(if (down) col.copy(alpha = 0.22f) else PAD_HOLLOW, r * s, Offset(pos.x * s, pos.y * s), style = Fill)
-        drawCircle(
-            if (down) accent else if (id in seen) VERIFIED else col,
-            r * s, Offset(pos.x * s, pos.y * s), style = Stroke(width = 2.4f * s)
-        )
-        label(ch, pos.x, pos.y + 0.5f, s, if (down) accent else col, bold = true, sizeUnits = 14f)
-    }
-}
-
-private fun DrawScope.drawCenter(
-    art: PadArt, ps: Boolean, s: Float, pressed: Set<String>, seen: List<String>, accent: Color,
-) {
-    if (ps) {
-        // Touchpad (bigger on DualSense), then Share/Options + PS button.
-        val tpW = if (art == PadArt.DUALSENSE) 82f else 74f
-        val tpX = 160f - tpW / 2f
-        drawRoundRect(PAD_HOLLOW, Offset(tpX * s, 58f * s), Size(tpW * s, 32f * s), CornerRadius(7f * s, 7f * s), style = Fill)
-        drawRoundRect(PAD_STROKE, Offset(tpX * s, 58f * s), Size(tpW * s, 32f * s), CornerRadius(7f * s, 7f * s), style = Stroke(width = 1.6f * s))
-        if (art == PadArt.DUALSENSE) drawCircle(FAINT, 2.5f * s, Offset(160f * s, 94f * s), style = Fill) // mic
-        if (art == PadArt.DUALSHOCK4) drawLine(PCROSS, Offset(140f * s, 56f * s), Offset(180f * s, 56f * s), strokeWidth = 2f * s) // lightbar hint
-        drawLitRect(108f, 63f, 9f, 13f, 2f, "back", s, pressed, seen, accent)     // Share
-        drawLitRect(203f, 63f, 9f, 13f, 2f, "start", s, pressed, seen, accent)    // Options
-        drawGuide(160f, 150f, 7f, s, pressed, seen, accent)                       // PS button
-    } else if (art == PadArt.SWITCH_PRO) {
-        // Minus / Plus / Home / Capture.
-        drawLitRect(136f, 87f, 14f, 4f, 2f, "back", s, pressed, seen, accent)     // minus
-        drawLitRect(170f, 82f, 12f, 12f, 2f, "start", s, pressed, seen, accent)   // plus
-        label("+", 176f, 89f, s, NEUTRAL, bold = true, sizeUnits = 11f)
-        drawGuide(160f, 150f, 7f, s, pressed, seen, accent)                       // Home
-        drawRoundRect(PAD_STROKE, Offset(150f * s, 104f * s), Size(9f * s, 9f * s), CornerRadius(2f * s, 2f * s), style = Stroke(width = 1.5f * s)) // Capture
-    } else {
-        // Xbox 360 / Xbox / 8BitDo / Generic / Steam.
-        drawGuide(160f, 72f, if (art == PadArt.STEAM) 11f else 10f, s, pressed, seen, accent)
-        drawLitRect(140f, 88f, 12f, 9f, 2f, "back", s, pressed, seen, accent)
-        drawLitRect(168f, 88f, 12f, 9f, 2f, "start", s, pressed, seen, accent)
-        if (art == PadArt.XBOX_MODERN) // Share button hint
-            drawRoundRect(PAD_STROKE, Offset(154f * s, 104f * s), Size(12f * s, 8f * s), CornerRadius(2f * s, 2f * s), style = Stroke(width = 1.5f * s))
-    }
-}
-
-private fun DrawScope.drawGuide(cx: Float, cy: Float, r: Float, s: Float, pressed: Set<String>, seen: List<String>, accent: Color) {
-    val down = "guide" in pressed
-    drawCircle(if (down) accent.copy(alpha = 0.22f) else PAD_HOLLOW, r * s, Offset(cx * s, cy * s), style = Fill)
-    drawCircle(
-        if (down) accent else if ("guide" in seen) VERIFIED else PAD_STROKE,
-        r * s, Offset(cx * s, cy * s), style = Stroke(width = 2f * s)
-    )
-}
-
-private fun DrawScope.label(
-    text: String, xUnits: Float, yUnits: Float, s: Float, color: Color,
-    bold: Boolean = false, sizeUnits: Float = 9f,
-) {
-    val paint = android.graphics.Paint().apply {
-        this.color = android.graphics.Color.argb(
-            (color.alpha * 255).roundToInt(),
-            (color.red * 255).roundToInt(),
-            (color.green * 255).roundToInt(),
-            (color.blue * 255).roundToInt()
-        )
-        textSize = sizeUnits * s
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-        isFakeBoldText = bold
-    }
-    drawContext.canvas.nativeCanvas.drawText(text, xUnits * s, yUnits * s, paint)
 }

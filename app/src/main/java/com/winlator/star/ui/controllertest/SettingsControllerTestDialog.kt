@@ -65,22 +65,25 @@ fun SettingsControllerTestDialog(
     onRenameProfile: () -> Unit,
     onBindingsChanged: () -> Unit,
     onOpenAllBindings: () -> Unit,
-    startInBind: Boolean = true,
+    startInBind: Boolean = false,
 ) {
-    // Arm/disarm the MainActivity input fork with this dialog's visibility.
-    DisposableEffect(Unit) {
-        ControllerTestBus.setActive(true)
-        onDispose {
-            ControllerTestBus.setActive(false)
-            ControllerTestBus.setSnapshot(null)
-        }
-    }
-
     val snap by ControllerTestBus.snapshot.collectAsState()
     var manualArt by remember { mutableStateOf<PadArt?>(null) }
     var bindMode by remember { mutableStateOf(startInBind) }
     // Name from the connected pad so the art matches even before any press (bind mode has no live fork).
     val padName = remember { ExternalController.getControllers().firstOrNull()?.name }
+
+    // Reset the throwaway controller when the dialog opens; drop the snapshot + gate when it closes.
+    // (The GATE itself is armed SYNCHRONOUSLY in the SideEffect below, not here, so the first press
+    // after opening is already captured — fixes the "doesn't react + leaks until rotate" bug.)
+    DisposableEffect(Unit) {
+        ControllerTestBus.onActiveChanged?.invoke(true)
+        onDispose {
+            ControllerTestBus.active = false
+            ControllerTestBus.onActiveChanged?.invoke(false)
+            ControllerTestBus.setSnapshot(null)
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -92,6 +95,9 @@ fun SettingsControllerTestDialog(
     ) {
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect {
+            // Arm the fork gate SYNCHRONOUSLY (test mode only). MainActivity reads ControllerTestBus.active
+            // directly at its dispatch chokepoints, so this is live before the first input event.
+            ControllerTestBus.active = !bindMode
             window?.apply {
                 if (bindMode) clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                 else addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)

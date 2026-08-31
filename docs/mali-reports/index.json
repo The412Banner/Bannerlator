@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-08-31T12-36-00-7e5f08",
+    "created": "2026-08-31T12:36:00.655Z",
+    "reporter": "Air",
+    "device": "Samsung a24",
+    "gpu": "Mali G57 mc2",
+    "game": "Pes 2017",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
     "id": "2026-08-27T05-46-51-583137",
     "created": "2026-08-27T05:46:51.511Z",
     "reporter": "Han",

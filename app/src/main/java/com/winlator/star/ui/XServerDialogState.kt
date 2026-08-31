@@ -84,6 +84,15 @@ object XServerDialogState {
     val effectsSupported: StateFlow<Boolean> = _effectsSupported
     fun setEffectsSupported(v: Boolean) { _effectsSupported.value = v }
 
+    // ───── OpenGL Driver selector (Phase 1) — Graphics tab ─────
+    // The guest OpenGL gallium driver: "zink" (default, GL-on-Vulkan) or "freedreno" (native OpenGL).
+    // Seeded from the launch-resolved value in initInlineTabStates; a change is persisted per shortcut/
+    // container and takes effect on the NEXT launch (a running gallium driver can't be hot-swapped).
+    private val _openglDriver = MutableStateFlow("zink")
+    val openglDriver: StateFlow<String> = _openglDriver
+    fun setOpenGLDriver(v: String) { _openglDriver.value = v }
+    @JvmField var onOpenGLDriverChanged: java.util.function.Consumer<String>? = null
+
     fun setSgsrEnabled(v: Boolean)    { _sgsrEnabled.value = v }
     fun setSgsrSharpness(v: Int)      { _sgsrSharpness.value = v }
     fun setHdrEnabled(v: Boolean)     { _hdrEnabled.value = v }

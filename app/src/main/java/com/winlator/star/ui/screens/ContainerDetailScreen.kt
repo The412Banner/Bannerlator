@@ -871,6 +871,25 @@ private fun TopLevelFields(
         })
         Spacer(Modifier.height(8.dp))
 
+        // OpenGL Driver (Phase 1): native freedreno vs GL-over-Vulkan Zink. GL-only and a SEPARATE axis
+        // from the Vulkan Graphics Driver above — DXVK/VKD3D games are unaffected. Stored as the plain
+        // identifier; the dropdown just maps it to a friendly label.
+        val openglDriverIds = remember { listOf("zink", "freedreno") }
+        val openglDriverLabels = remember { listOf("Zink (default)", "freedreno") }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            LabeledDropdown(
+                label = stringResource(R.string.opengl_driver),
+                options = openglDriverLabels,
+                selectedOption = openglDriverLabels[openglDriverIds.indexOf(viewModel.selectedOpenGLDriver).coerceAtLeast(0)],
+                onSelect = { sel -> viewModel.selectedOpenGLDriver = openglDriverIds[openglDriverLabels.indexOf(sel).coerceAtLeast(0)] },
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = { helpRes = R.string.help_opengl_driver }) {
+                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
         // DX Wrapper + config button
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {

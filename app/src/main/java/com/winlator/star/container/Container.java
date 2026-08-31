@@ -40,6 +40,14 @@ public class Container {
      * instead of {@link #DEFAULT_GRAPHICS_DRIVER}, which targets Adreno/Turnip.
      */
     public static final String GRAPHICS_DRIVER_GAMENATIVE = "wrapper-gamenative";
+    /**
+     * OpenGL Driver selector (Phase 1): which gallium driver serves guest OpenGL. {@code "zink"} (the
+     * default, GL-on-Vulkan through the Turnip wrapper ICD — current behaviour) or {@code "freedreno"}
+     * (native OpenGL via Mesa freedreno + the kgsl winsys; a fast path for older GL&lt;=3.3 titles). This
+     * is a SEPARATE axis from {@link #graphicsDriver} (the Vulkan/Turnip wrapper) and is GL-only —
+     * DXVK/VKD3D Vulkan games are untouched.
+     */
+    public static final String DEFAULT_OPENGL_DRIVER = "zink";
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk+vkd3d";
@@ -71,6 +79,7 @@ public class Container {
     private String envVars = DEFAULT_ENV_VARS;
     private String graphicsDriver = DEFAULT_GRAPHICS_DRIVER;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
+    private String openglDriver = DEFAULT_OPENGL_DRIVER;
     private String dxwrapper = DEFAULT_DXWRAPPER;
     private String dxwrapperConfig = "";
     private String fpsCounterConfig = DEFAULT_FPS_COUNTER_CONFIG;
@@ -192,6 +201,10 @@ public class Container {
     public String getGraphicsDriverConfig() { return this.graphicsDriverConfig; }
 
     public void setGraphicsDriverConfig(String graphicsDriverConfig) { this.graphicsDriverConfig = graphicsDriverConfig; }
+
+    public String getOpenGLDriver() { return this.openglDriver; }
+
+    public void setOpenGLDriver(String openglDriver) { this.openglDriver = openglDriver != null ? openglDriver : DEFAULT_OPENGL_DRIVER; }
 
     public String getDXWrapper() {
         return dxwrapper;
@@ -1086,6 +1099,7 @@ public class Container {
             data.put("cpuListWoW64", cpuListWoW64);
             data.put("graphicsDriver", graphicsDriver);
             data.put("graphicsDriverConfig", graphicsDriverConfig);
+            data.put("openglDriver", openglDriver);
             data.put("emulator", emulator);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
@@ -1155,6 +1169,9 @@ public class Container {
                     break;
                 case "graphicsDriverConfig" :
                     setGraphicsDriverConfig(data.getString(key));
+                    break;
+                case "openglDriver" :
+                    setOpenGLDriver(data.getString(key));
                     break;
                 case "emulator":
                     setEmulator(data.getString(key));

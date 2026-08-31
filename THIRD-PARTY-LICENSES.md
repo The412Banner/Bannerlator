@@ -76,6 +76,7 @@ SOFTWARE.
 | FEXCore | FEX-Emu | MIT *(per upstream)* | x86/x64 translation (alternate) |
 | Wine / Proton | WineHQ / Valve | LGPL-2.1+ *(per upstream)* | The Windows runtime |
 | Mesa / Turnip ([Banners-Turnip](https://github.com/The412Banner/Banners-Turnip)) | Mesa / jacojayy (Timeline-Semaphore patches) | MIT *(per upstream)* | Adreno Vulkan driver |
+| Mesa **freedreno + kgsl** OpenGL build (`opengl_freedreno.tzst`) | Mesa; build sourced from [Winlator-Ludashi](https://github.com/StevenMXZ/Winlator-Ludashi) v4.0 | MIT *(per upstream)* | Native guest OpenGL gallium driver (Mesa 26.3.0-devel) for the **OpenGL Driver** selector, pending our own build |
 | DXVK / [VEGAS DXVK](https://github.com/isygold/vegas-releases) | doitsujin / **isygold** | Zlib *(per upstream)* | D3D9/10/11 → Vulkan (VEGAS = Adreno-tuned DXVK fork) |
 | VKD3D-Proton | Valve / Wine | LGPL-2.1 *(per upstream)* | D3D12 → Vulkan |
 | [OpenXR-SDK](https://github.com/KhronosGroup/OpenXR-SDK) | Khronos | Apache-2.0 *(per upstream)* | XR support |

@@ -299,6 +299,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // spec. Null ⇒ every non-RealSteam (or failed-prep) launch is byte-for-byte unchanged.
     private RealSteamLauncher.Plan realSteamPlan;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
+    // OpenGL Driver selector (Phase 1): the guest OpenGL gallium driver resolved for THIS launch —
+    // "zink" (default, GL-on-Vulkan via the Turnip wrapper ICD — current behaviour) or "freedreno"
+    // (native OpenGL via Mesa freedreno + kgsl winsys; fast path for GL<=3.3 titles). Resolved from the
+    // container with the per-shortcut "openglDriver" extra winning (see setup block below); applied to
+    // the guest env by applySelectedOpenGLDriverEnv(). GL-only — DXVK/VKD3D Vulkan games unaffected.
+    private String openglDriver = Container.DEFAULT_OPENGL_DRIVER;
+    // True only when WE auto-set MESA_GL_VERSION_OVERRIDE=3.3 for freedreno (i.e. it was unset). Lets the
+    // zink branch drop that cap ONLY when it was our auto value, never a user-supplied override.
+    private boolean autoMesaGlVersionOverride = false;
     // Which Vulkan driver the host compositor/present layer runs on ("system" = Android's own driver,
     // or an installed adrenotools Turnip). Separate from graphicsDriver (which the guest game renders
     // through). Default "system" — a Turnip compositor can black-screen on builds whose WSI doesn't
@@ -1124,7 +1133,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void driveHudFrameTick(int wid) {
         if (frameRatingWindowId == -1 || !hudCounterEnabled) return;   // HUD inactive or toggled off -> never count
         if (wid != frameRatingWindowId && wid != glZinkHealedWindowId) {
-            if (!guestGlIsZink()) return;                      // only the GL/Zink present topology
+            if (!guestGlIsZink() && !"freedreno".equals(envVars.get("GALLIUM_DRIVER"))) return;                      // only the GL/Zink present topology
             // Device-observed (Stronghold Crusader / Zink): the window the game actually presents to is
             // a CHILD GL render surface with no WM class — NOT a top-level application window — while the
             // HUD's _MESA_DRV binding sits on the top-level game window. So we must NOT require the
@@ -2071,6 +2080,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         graphicsDriver = container.getGraphicsDriver();
         rendererDriverId = container.getRendererDriverId();
+        openglDriver = container.getOpenGLDriver();
         String graphicsDriverConfig = container.getGraphicsDriverConfig();
         audioDriver = container.getAudioDriver();
         emulator = container.getEmulator();
@@ -2089,6 +2099,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (shortcut != null) {
             graphicsDriver = shortcut.getExtra("graphicsDriver", container.getGraphicsDriver());
             rendererDriverId = shortcut.getExtra("rendererDriverId", container.getRendererDriverId());
+            openglDriver = shortcut.getExtra("openglDriver", container.getOpenGLDriver());
             graphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig());
             audioDriver = shortcut.getExtra("audioDriver", container.getAudioDriver());
             emulator = shortcut.getExtra("emulator", container.getEmulator());
@@ -5736,6 +5747,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             overrideEnvVars.clear(); // Clear overrideEnvVars as per smali logic
         }
 
+        // OpenGL Driver selector (Phase 1): re-assert the selected guest GL driver env NOW, after every
+        // container/shortcut/RealSteam/override env merge above — DEFAULT_ENV_VARS carries
+        // ZINK_DESCRIPTORS/ZINK_DEBUG, so a freedreno selection's ZINK_* removals must run last to stick.
+        applySelectedOpenGLDriverEnv();
+
         // Create our overall XEnvironment with various components
         preloaderDialog.step(3, "Building environment…");
         environment = new XEnvironment(this, imageFs);
@@ -6777,6 +6793,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // restarts into a clean, non-over-queued state (the LSFG black-frame flicker fix).
         ds.onFgResetResume = () -> runOnUiThread(this::resumeFromFgReset);
 
+        // OpenGL Driver selector (Phase 1) — Graphics tab dropdown. Seed the drawer with the driver
+        // resolved for THIS launch, then persist a change to the SAME owner the launch seed reads from
+        // (shortcut when launched from one, else container). A GL driver swap can't hot-swap the running
+        // gallium driver, so this takes effect on the NEXT launch.
+        ds.setOpenGLDriver(getSelectedOpenGLDriver());
+        ds.onOpenGLDriverChanged = (driverId) -> {
+            persistOpenGLDriverChoice(driverId);
+            ds.setOpenGLDriver(getSelectedOpenGLDriver());
+        };
+
         // Input Controls state (renderer-independent: controller profiles + vibration work on
         // BOTH the GL and Vulkan host renderers, so this must run before the GL-only guard below.
         // Previously the early return for non-GL renderers left the profile dropdown empty.)
@@ -7542,6 +7568,103 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    // ---- OpenGL Driver selector (Phase 1) -------------------------------------------------------
+    // Resolves the guest OpenGL gallium driver for THIS launch to a canonical id: "freedreno" (native
+    // OpenGL via Mesa freedreno + kgsl winsys) only when the resolved openglDriver equals "freedreno"
+    // (case-insensitive); everything else -> "zink" (the GL-on-Vulkan default). openglDriver has already
+    // been resolved with the per-shortcut override winning over the container (see the setup block), so
+    // this is a pure normalisation.
+    private String getSelectedOpenGLDriver() {
+        return (openglDriver != null && openglDriver.trim().equalsIgnoreCase("freedreno")) ? "freedreno" : "zink";
+    }
+
+    // Applies the selected OpenGL driver's env recipe onto the shared guest env map (mirrors the proven
+    // Winlator-Ludashi v4.0 design). GL-ONLY: it never touches VK_ICD_FILENAMES (the Turnip wrapper
+    // Vulkan ICD that DXVK/VKD3D ride), so Vulkan games are unaffected. Idempotent — called at the flip
+    // point in extractGraphicsDriverFiles() AND re-asserted after the env merges in setupXEnvironment()
+    // so the container's DEFAULT_ENV_VARS ZINK_* keys can't clobber a freedreno selection.
+    private void applySelectedOpenGLDriverEnv() {
+        if ("freedreno".equals(getSelectedOpenGLDriver())) {
+            envVars.put("GALLIUM_DRIVER", "freedreno");
+            envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "kgsl");
+            // Cap GL at 3.3 (freedreno's ceiling) — but only when the user hasn't pinned their own value.
+            if (!envVars.has("MESA_GL_VERSION_OVERRIDE")) {
+                envVars.put("MESA_GL_VERSION_OVERRIDE", "3.3");
+                autoMesaGlVersionOverride = true;
+            }
+            if (!envVars.has("FD_MESA_DEBUG")) envVars.put("FD_MESA_DEBUG", "hiprio");
+            if (!envVars.has("vblank_mode")) envVars.put("vblank_mode", "0");
+            // Zink-only gallium knobs are inert under freedreno — drop them (they ship in DEFAULT_ENV_VARS).
+            envVars.remove("ZINK_DESCRIPTORS");
+            envVars.remove("ZINK_DEBUG");
+            envVars.remove("ZINK_INLINE_UNIFORMS");
+        } else {
+            envVars.put("GALLIUM_DRIVER", "zink");
+            envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
+            envVars.put("ZINK_DESCRIPTORS", "lazy");
+            envVars.put("ZINK_DEBUG", "compact");
+            // Drop the freedreno 3.3 cap so Zink advertises its full GL version — but ONLY when WE
+            // auto-set it, never a user-supplied MESA_GL_VERSION_OVERRIDE.
+            if (autoMesaGlVersionOverride) {
+                envVars.remove("MESA_GL_VERSION_OVERRIDE");
+                autoMesaGlVersionOverride = false;
+            }
+        }
+    }
+
+    // Overlays the selected guest GL gallium driver pair (opengl_<driver>.tzst -> usr/lib libgallium +
+    // soname) on top of the extra_libs payload (which bakes zink). Swap-on-change, mirroring the
+    // .extra_libs_version marker pattern: a marker file colocated with the imagefs libs records the
+    // installed GL driver id, so we only re-extract on the first boot or when the selection changes.
+    // GL-only, additive, idempotent — never touches extra_libs.tzst or the Vulkan ICD.
+    private void extractOpenGLDriver(File rootDir) {
+        String selected = getSelectedOpenGLDriver();
+        File markerFile = new File(imageFs.getLibDir(), ".opengl_driver");
+        String installed = readOpenGLDriverMarker(markerFile);
+        if (firstTimeBoot || !selected.equals(installed)) {
+            Log.d("XServerDisplayActivity", "extracting OpenGL driver '" + selected + "' (installed="
+                    + installed + ", firstBoot=" + firstTimeBoot + ")");
+            extractGraphicsAsset("opengl_" + selected + ".tzst", rootDir);
+            writeOpenGLDriverMarker(markerFile, selected);
+        }
+    }
+
+    // Reads the installed guest GL driver marker (colocated with the imagefs libs). Missing/unreadable/
+    // empty => null, which forces a re-extract (installs updating into this build have no marker yet).
+    private String readOpenGLDriverMarker(File markerFile) {
+        if (!markerFile.exists()) return null;
+        try (BufferedReader reader = new BufferedReader(new FileReader(markerFile))) {
+            String line = reader.readLine();
+            return (line == null || line.trim().isEmpty()) ? null : line.trim();
+        } catch (Exception e) {
+            Log.d("XServerDisplayActivity", "opengl driver marker unreadable, treating as null: " + e.getMessage());
+            return null;
+        }
+    }
+
+    // Persists the installed GL driver id after a successful overlay so the swap-on-change gate converges.
+    private void writeOpenGLDriverMarker(File markerFile, String driverId) {
+        try (FileOutputStream out = new FileOutputStream(markerFile)) {
+            out.write(driverId.getBytes());
+        } catch (Exception e) {
+            Log.d("XServerDisplayActivity", "Failed to write opengl driver marker: " + e.getMessage());
+        }
+    }
+
+    // Persists the OpenGL Driver choice to the SAME owner the launch resolver reads (the shortcut when
+    // the game was launched from one, else the container) so it survives relaunch; updates the in-memory
+    // resolved value too so the drawer seed reflects it this session. Takes effect on the NEXT launch.
+    private void persistOpenGLDriverChoice(String driverId) {
+        if (shortcut != null) {
+            shortcut.putExtra("openglDriver", driverId);
+            shortcut.saveData();
+        } else if (container != null) {
+            container.setOpenGLDriver(driverId);
+            container.saveData();
+        }
+        openglDriver = driverId;
+    }
+
     // Wrapper Version Manager (Step 1, issue #132): extract a bundled graphics_driver asset, but
     // prefer a user-installed override at filesDir/graphics_driver/<assetFileName> when present.
     // Byte-for-byte identical to the old bundled-asset extract when no override exists.
@@ -7673,7 +7796,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
-    envVars.put("GALLIUM_DRIVER", "zink");
+    // OpenGL Driver selector (Phase 1) flip point: choose the guest gallium GL driver — Zink (default,
+    // GL-on-Vulkan) or native freedreno — per the container/shortcut selection. Re-asserted in
+    // setupXEnvironment() AFTER the container/shortcut/override env merges, because DEFAULT_ENV_VARS
+    // carries ZINK_DESCRIPTORS/ZINK_DEBUG which would otherwise clobber a freedreno selection. The
+    // VK_ICD_FILENAMES above (Turnip wrapper Vulkan ICD) is left unchanged — DXVK/VKD3D are untouched.
+    applySelectedOpenGLDriverEnv();
 
     // 2. SHARED LIBS EXTRACTION
     // First boot extracts everything. After that, extra_libs.tzst carries the vkBasalt layer
@@ -7706,6 +7834,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         extractGraphicsAsset("extra_libs.tzst", rootDir);
         writeExtraLibsVersion(extraLibsVersionFile, EXTRA_LIBS_VERSION);
     }
+
+    // OpenGL Driver selector (Phase 1): overlay the selected guest GL gallium driver pair right AFTER the
+    // extra_libs/layers payload (which bakes zink), so the freedreno pair wins when it is selected.
+    // Swap-on-change via a marker colocated with the imagefs libs — see extractOpenGLDriver.
+    extractOpenGLDriver(rootDir);
 
     // Wrapper Version Manager (#132): the leegao BCn layer (libbcn_layer.so + manifest) normally
     // ships inside extra_libs.tzst. A user-installed "BCn layer" override (leegao_bcn.tzst) overlays

@@ -872,6 +872,24 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
     HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
+    // OpenGL Driver (Phase 1): native freedreno vs GL-over-Vulkan Zink, for GL games. Persisted to the
+    // shortcut/container and applied on the NEXT launch (the running gallium driver can't be hot-swapped),
+    // so this is a plain persisted choice rather than a live control.
+    val openglDriver by XServerDialogState.openglDriver.collectAsState()
+    val glDriverIds = remember { listOf("zink", "freedreno") }
+    val glDriverLabels = remember { listOf("Zink (default)", "freedreno") }
+    val glDriverIdx = glDriverIds.indexOf(openglDriver).coerceAtLeast(0)
+    ReshadeDropdown(stringResource(R.string.opengl_driver), glDriverLabels, glDriverIdx) { i ->
+        XServerDialogState.onOpenGLDriverChanged?.accept(glDriverIds[i])
+    }
+    Text(
+        stringResource(R.string.opengl_driver_drawer_note),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
+
     // Fullscreen aspect-ratio mode (#71 Stage 2): a segmented selector (Off/Fit/Stretch/Fill/Integer)
     // that sets the mode live WITHOUT closing the drawer, so the user can compare modes before
     // dismissing it — same box-chip idiom as the Scaling-mode row.

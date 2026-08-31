@@ -437,7 +437,7 @@ class MainActivity : AppCompatActivity() {
                 controllerTestGuideDown,
                 device?.id ?: -1,
                 device?.name ?: "",
-                com.winlator.star.inputcontrols.ExternalController.classifyType(device).ordinal,
+                com.winlator.star.ui.controllertest.classifyPadArt(device).ordinal,
                 battery,
                 hasVibrator
             )

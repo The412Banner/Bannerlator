@@ -8116,7 +8116,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 controllerTestGuideDown,
                 device != null ? device.getId() : -1,
                 device != null && device.getName() != null ? device.getName() : "",
-                ExternalController.classifyType(device).ordinal(),
+                com.winlator.star.ui.controllertest.ControllerTestVisualizerKt.classifyPadArt(device).ordinal(),
                 battery,
                 hasVibrator));
     }

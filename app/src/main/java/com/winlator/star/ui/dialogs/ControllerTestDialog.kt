@@ -50,6 +50,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.winlator.star.ui.XServerDialogState
 import com.winlator.star.ui.controllertest.ControllerTestPanel
+import com.winlator.star.ui.controllertest.PadArt
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -104,8 +105,11 @@ fun ControllerTestDialog(state: XServerDialogState) {
 private fun ControllerTestScaffold(state: XServerDialogState) {
     val cs = MaterialTheme.colorScheme
     val cfg = LocalConfiguration.current
-    val dialogW = min(940, cfg.screenWidthDp - 24).coerceAtLeast(320).dp
-    val dialogH = min(470, cfg.screenHeightDp - 24).coerceAtLeast(240).dp
+    // Neat floating panel (not a fill), mirroring the LaunchMethodSheet landscape scaffold's fit-cap +
+    // 16dp margin. Smaller/DPI-friendlier than the original 940×470. Both halves scroll and the pad
+    // Canvas is aspect-ratio scaled, so nothing clips unreachably at the reduced size.
+    val dialogW = min(720, cfg.screenWidthDp - 32).coerceAtLeast(320).dp
+    val dialogH = min(412, cfg.screenHeightDp - 32).coerceAtLeast(240).dp
 
     var selected by remember { mutableStateOf<String?>(null) }
 
@@ -121,7 +125,7 @@ private fun ControllerTestScaffold(state: XServerDialogState) {
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            modifier = Modifier.padding(12.dp).width(dialogW).height(dialogH),
+            modifier = Modifier.padding(16.dp).width(dialogW).height(dialogH),
             shape = RoundedCornerShape(18.dp),
             color = cs.surface,
             contentColor = cs.onSurface,
@@ -315,15 +319,15 @@ private fun TestPanel(state: XServerDialogState, selected: String?, modifier: Mo
     val rows by state.playerSlots.collectAsState()
     val snap by state.controllerTestSnapshot.collectAsState()
     val selectedRow = rows.firstOrNull { it.descriptor == selected }
-    var manualIsPs by remember(selected) { mutableStateOf<Boolean?>(null) }
+    var manualArt by remember(selected) { mutableStateOf<PadArt?>(null) }
 
     ControllerTestPanel(
         snapshot = snap,
         title = "Controller Test",
         subtitle = selectedRow?.displayName ?: "No controller selected",
         resetKey = selected,
-        manualIsPs = manualIsPs,
-        onTypeChange = { manualIsPs = it },
+        manualArt = manualArt,
+        onArtChange = { manualArt = it },
         identifyEnabled = (selectedRow?.currentSlot ?: -1) >= 0 && (selectedRow?.hasVibrator == true),
         onIdentify = { state.onControllerIdentify?.invoke(selectedRow?.currentSlot ?: -1) },
         onDone = { state.dismiss() },

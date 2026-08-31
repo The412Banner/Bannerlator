@@ -55,7 +55,7 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
     }
 
     val snap by ControllerTestBus.snapshot.collectAsState()
-    var manualIsPs by remember { mutableStateOf<Boolean?>(null) }
+    var manualArt by remember { mutableStateOf<PadArt?>(null) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -104,8 +104,8 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
                     subtitle = snap?.deviceName?.takeIf { it.isNotEmpty() }
                         ?: "Press any button on your controller",
                     resetKey = Unit,
-                    manualIsPs = manualIsPs,
-                    onTypeChange = { manualIsPs = it },
+                    manualArt = manualArt,
+                    onArtChange = { manualArt = it },
                     identifyEnabled = snap?.hasVibrator == true,
                     onIdentify = { ControllerTestBus.onIdentify?.run() },
                     onDone = onDismiss,

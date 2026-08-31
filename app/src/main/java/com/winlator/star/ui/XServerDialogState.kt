@@ -410,6 +410,10 @@ object XServerDialogState {
     /** "Identify" — buzz the pad currently owning the given 0-based slot (WinHandler.testRumble). */
     @JvmField var onControllerIdentify: IntCallback? = null
 
+    /** Id of the profile active in the running game (inputControlsView.getProfile()), so the in-game
+     *  visual binder defaults to editing it. -1 when none. Set by the activity in setupUI. */
+    @JvmField var activeProfileId: Int = -1
+
     // -------------------------------------------------------------------------
     // Controller-status TOAST (P5b) — a small app-themed card that fades into the TOP-RIGHT of the
     // in-game screen (below the Fusion HUD), lists each detected input device (type icon + name +

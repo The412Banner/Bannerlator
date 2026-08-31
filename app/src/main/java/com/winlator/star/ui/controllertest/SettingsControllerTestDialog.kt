@@ -3,17 +3,24 @@ package com.winlator.star.ui.controllertest
 import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -24,28 +31,42 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.winlator.star.inputcontrols.ControlsProfile
+import com.winlator.star.inputcontrols.ExternalController
 import kotlin.math.min
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
-// At-rest (Settings → Input Controls) Controller Test. Hosts the shared ControllerTestPanel — picture,
-// live highlight, verified checklist, battery, Xbox/PS toggle, native Identify. NO player-slot rail
-// (meaningless with no running container).
+// At-rest (Settings → Input Controls) Controller Test + Bind. TEST mode = the shared ControllerTestPanel
+// (picture, live highlight, verified checklist, battery, Identify). BIND mode = the shared
+// VisualControllerBinder (tap a button on the pad to remap it, profiles, pass-through banner).
 //
-// Like the in-game popup this is a FLAG_NOT_FOCUSABLE window: a normal (focusable) Dialog would capture
-// gamepad key/axis events itself and let the pad navigate the dialog's own buttons. Non-focusable →
-// the events fall through to MainActivity's dispatch overrides, which fork them into the visualizer
-// snapshot and CONSUME them (so the pad never moves Compose focus). Finger taps still drive the UI.
+// Focusability is toggled by mode: TEST keeps FLAG_NOT_FOCUSABLE so gamepad key/axis events fall through
+// to MainActivity's fork (live highlight); BIND clears it so the profile-name text field can take focus
+// and the soft keyboard opens.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
+fun SettingsControllerTestDialog(
+    onDismiss: () -> Unit,
+    profile: ControlsProfile?,
+    allProfiles: List<ControlsProfile>,
+    onSelectProfile: (ControlsProfile) -> Unit,
+    onCreateProfile: (String) -> Unit,
+    onRenameProfile: () -> Unit,
+    onBindingsChanged: () -> Unit,
+    onOpenAllBindings: () -> Unit,
+    startInBind: Boolean = true,
+) {
     // Arm/disarm the MainActivity input fork with this dialog's visibility.
     DisposableEffect(Unit) {
         ControllerTestBus.setActive(true)
@@ -57,6 +78,9 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
 
     val snap by ControllerTestBus.snapshot.collectAsState()
     var manualArt by remember { mutableStateOf<PadArt?>(null) }
+    var bindMode by remember { mutableStateOf(startInBind) }
+    // Name from the connected pad so the art matches even before any press (bind mode has no live fork).
+    val padName = remember { ExternalController.getControllers().firstOrNull()?.name }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -69,7 +93,8 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect {
             window?.apply {
-                addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                if (bindMode) clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                else addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                 clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                 setDimAmount(0f)
             }
@@ -78,11 +103,8 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
         val cs = MaterialTheme.colorScheme
         val cfg = LocalConfiguration.current
         val w = min(760, cfg.screenWidthDp - 24).coerceAtLeast(300).dp
-        // Card WRAPS to its content (header + compact pad + readouts + footer) — only capped so a tiny
-        // screen can still scroll it. No fixed height, so there's no giant empty box around the pad.
         val maxH = (cfg.screenHeightDp - 24).coerceAtLeast(220).dp
 
-        // Scrim consumes stray taps; the centered card holds the shared panel.
         Box(
             Modifier
                 .fillMaxSize()
@@ -101,20 +123,68 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
                 border = BorderStroke(1.dp, cs.outline),
                 shadowElevation = 24.dp,
             ) {
-                ControllerTestPanel(
-                    snapshot = snap,
-                    title = "Test your controller",
-                    subtitle = snap?.deviceName?.takeIf { it.isNotEmpty() }
-                        ?: "Press any button on your controller",
-                    resetKey = Unit,
-                    manualArt = manualArt,
-                    onArtChange = { manualArt = it },
-                    identifyEnabled = snap?.hasVibrator == true,
-                    onIdentify = { ControllerTestBus.onIdentify?.run() },
-                    onDone = onDismiss,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                )
+                Column(Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        TestBindToggle(bindMode) { bindMode = it }
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = onDismiss) { Text("Close") }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    if (bindMode) {
+                        VisualControllerBinder(
+                            profile = profile,
+                            art = padArtOf(snap, padName),
+                            snapshot = snap,
+                            allProfiles = allProfiles,
+                            onSelectProfile = onSelectProfile,
+                            onCreateProfile = onCreateProfile,
+                            onRenameProfile = onRenameProfile,
+                            onSaved = onBindingsChanged,
+                            onOpenAllBindings = onOpenAllBindings,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        ControllerTestPanel(
+                            snapshot = snap,
+                            title = "Test your controller",
+                            subtitle = snap?.deviceName?.takeIf { it.isNotEmpty() } ?: (padName ?: "Press any button on your controller"),
+                            resetKey = Unit,
+                            manualArt = manualArt,
+                            onArtChange = { manualArt = it },
+                            identifyEnabled = snap?.hasVibrator == true,
+                            onIdentify = { ControllerTestBus.onIdentify?.run() },
+                            onDone = null,
+                            modifier = Modifier.fillMaxWidth(),
+                            nameHint = padName,
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+internal fun TestBindToggle(bind: Boolean, onChange: (Boolean) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, cs.outline, RoundedCornerShape(10.dp))
+    ) {
+        SegItem("Test", !bind, cs.primary, cs.onPrimary, cs.onSurfaceVariant) { onChange(false) }
+        SegItem("Bind", bind, cs.primary, cs.onPrimary, cs.onSurfaceVariant) { onChange(true) }
+    }
+}
+
+@Composable
+private fun SegItem(label: String, on: Boolean, onBg: Color, onFg: Color, offFg: Color, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .background(if (on) onBg else Color.Transparent)
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 7.dp)
+    ) {
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (on) onFg else offFg)
     }
 }

@@ -363,7 +363,29 @@ fun InputControlsScreen() {
     }
 
     if (showControllerTest) {
-        SettingsControllerTestDialog(onDismiss = { showControllerTest = false })
+        SettingsControllerTestDialog(
+            onDismiss = { showControllerTest = false },
+            profile = currentProfile,
+            allProfiles = profiles,
+            onSelectProfile = { p -> loadProfile(profiles.indexOf(p) + 1) },
+            onCreateProfile = { name ->
+                currentProfile = manager.createProfile(name)
+                refreshProfiles()
+                refreshControllers()
+            },
+            onRenameProfile = { promptRenameOldName = currentProfile?.name },
+            onBindingsChanged = { refreshControllers() },
+            onOpenAllBindings = {
+                if (currentProfile != null) {
+                    val cid = ExternalController.getControllers().firstOrNull()?.id
+                        ?: com.winlator.star.inputcontrols.ControlsProfile.DEFAULT_CONTROLLER_ID
+                    val intent = Intent(context, ExternalControllerBindingsActivity::class.java)
+                    intent.putExtra("profile_id", currentProfile!!.id)
+                    intent.putExtra("controller_id", cid)
+                    context.startActivity(intent)
+                } else AppUtils.showToast(context, R.string.no_profile_selected)
+            },
+        )
     }
 
     Column(
@@ -545,8 +567,8 @@ fun InputControlsScreen() {
                 Icon(Icons.Default.Gamepad, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Test controller", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                    Text("Check every button, stick, dpad & trigger registers", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text("Test & bind controller", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Text("Visually remap buttons + verify every input registers", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
         }

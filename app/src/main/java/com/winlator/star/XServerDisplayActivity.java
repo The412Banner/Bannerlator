@@ -6910,6 +6910,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     controllerTestController.state.reset();
                     controllerTestController.remappedState.reset();
                     controllerTestGuideDown = false;
+                    // Default the in-game visual binder to the profile the game is running.
+                    com.winlator.star.inputcontrols.ControlsProfile activeProfile =
+                            inputControlsView != null ? inputControlsView.getProfile() : null;
+                    XServerDialogState.INSTANCE.activeProfileId = activeProfile != null ? activeProfile.id : -1;
                     refreshPlayerSlots.run();
                 } else {
                     if (winHandler != null) winHandler.releaseAllControllerInputs();

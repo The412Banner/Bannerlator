@@ -20,18 +20,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,9 +53,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.winlator.star.inputcontrols.ExternalController
+import com.winlator.star.inputcontrols.InputControlsManager
 import com.winlator.star.ui.XServerDialogState
 import com.winlator.star.ui.controllertest.ControllerTestPanel
 import com.winlator.star.ui.controllertest.PadArt
+import com.winlator.star.ui.controllertest.TestBindToggle
+import com.winlator.star.ui.controllertest.VisualControllerBinder
+import com.winlator.star.ui.controllertest.padArtOf
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -81,6 +91,10 @@ fun ControllerTestDialog(state: XServerDialogState) {
     // Devices hot-plug — pull a fresh snapshot when the popup opens.
     LaunchedEffect(Unit) { state.onPlayerSlotsRefresh?.run() }
 
+    // Test ↔ Bind. TEST keeps FLAG_NOT_FOCUSABLE (gamepad falls through to the game Activity's fork for
+    // the live highlight + isolation); BIND clears it so the profile-name text field can take focus.
+    var bindMode by remember { mutableStateOf(false) }
+
     Dialog(
         onDismissRequest = { state.dismiss() },
         properties = DialogProperties(
@@ -92,17 +106,22 @@ fun ControllerTestDialog(state: XServerDialogState) {
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect {
             window?.apply {
-                addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                if (bindMode) clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                else addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                 clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                 setDimAmount(0f)
             }
         }
-        ControllerTestScaffold(state)
+        ControllerTestScaffold(state, bindMode) { bindMode = it }
     }
 }
 
 @Composable
-private fun ControllerTestScaffold(state: XServerDialogState) {
+private fun ControllerTestScaffold(
+    state: XServerDialogState,
+    bindMode: Boolean,
+    onBindModeChange: (Boolean) -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
     val cfg = LocalConfiguration.current
     // Neat floating panel (not a fill), mirroring the LaunchMethodSheet landscape scaffold's fit-cap +
@@ -142,13 +161,20 @@ private fun ControllerTestScaffold(state: XServerDialogState) {
                         .background(cs.surfaceVariant.copy(alpha = 0.35f))
                         .padding(12.dp)
                 )
-                // Vertical divider between the rail and the test panel.
+                // Vertical divider between the rail and the test/bind panel.
                 Box(Modifier.fillMaxHeight().width(1.dp).background(cs.outline))
-                TestPanel(
-                    state = state,
-                    selected = selected,
-                    modifier = Modifier.weight(1f).fillMaxHeight().padding(14.dp)
-                )
+                Column(Modifier.weight(1f).fillMaxHeight().padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        TestBindToggle(bindMode, onBindModeChange)
+                        Spacer(Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    if (bindMode) {
+                        InGameBindPanel(state, Modifier.weight(1f).fillMaxWidth())
+                    } else {
+                        TestPanel(state = state, selected = selected, modifier = Modifier.weight(1f).fillMaxWidth())
+                    }
+                }
             }
         }
     }
@@ -334,4 +360,63 @@ private fun TestPanel(state: XServerDialogState, selected: String?, modifier: Mo
         modifier = modifier,
         nameHint = selectedRow?.displayName,
     )
+}
+
+// The RIGHT half in BIND mode — the shared visual binder, editing a profile chosen in-game (defaults
+// to the profile the game is running). Profiles come from InputControlsManager; create/rename happen
+// here without leaving the game.
+@Composable
+private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
+    val context = LocalContext.current
+    val snap by state.controllerTestSnapshot.collectAsState()
+    val manager = remember { InputControlsManager(context) }
+    var profilesRev by remember { mutableIntStateOf(0) }
+    val profiles = remember(profilesRev) { manager.getProfiles().toList() }
+    var selectedProfileId by remember { mutableStateOf(state.activeProfileId) }
+    val selectedProfile = remember(profilesRev, selectedProfileId) {
+        profiles.firstOrNull { it.id == selectedProfileId } ?: profiles.firstOrNull()
+    }
+    val padName = remember { ExternalController.getControllers().firstOrNull()?.name }
+    var renaming by remember { mutableStateOf(false) }
+    var renameText by remember { mutableStateOf("") }
+
+    VisualControllerBinder(
+        profile = selectedProfile,
+        art = padArtOf(snap, padName),
+        snapshot = snap,
+        allProfiles = profiles,
+        onSelectProfile = { p -> selectedProfileId = p.id },
+        onCreateProfile = { name ->
+            val p = manager.createProfile(name)
+            selectedProfileId = p.id
+            profilesRev++
+        },
+        onRenameProfile = { renameText = selectedProfile?.name ?: ""; renaming = true },
+        onSaved = { },
+        onOpenAllBindings = null,
+        modifier = modifier,
+    )
+
+    if (renaming) {
+        AlertDialog(
+            onDismissRequest = { renaming = false },
+            title = { Text("Rename profile") },
+            text = {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val p = selectedProfile
+                    if (p != null && renameText.isNotBlank()) { p.name = renameText.trim(); p.save(); profilesRev++ }
+                    renaming = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { renaming = false }) { Text("Cancel") } }
+        )
+    }
 }

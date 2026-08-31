@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -135,6 +136,14 @@ fun padArtLabel(a: PadArt): String = when (a) {
 
 private fun padArtSafe(ordinal: Int): PadArt = PadArt.values().getOrElse(ordinal) { PadArt.GENERIC }
 
+/** Resolve which family art to show: the live pad's detected family, else a name heuristic, else
+ *  Generic. Exposed so the binder hosts pick the same art the test panel does. */
+internal fun padArtOf(snapshot: ControllerTestSnapshot?, nameHint: String?): PadArt = when {
+    snapshot != null -> padArtSafe(snapshot.padArt)
+    nameHint != null -> classifyPadArtByName(nameHint)
+    else -> PadArt.GENERIC
+}
+
 /** Finer-grained mapper (additive to ExternalController.classifyType): vendorId + productId + name →
  *  PadArt. Null-safe; used by the snapshot producers so the picture matches the device Android reports. */
 fun classifyPadArt(device: InputDevice?): PadArt {
@@ -193,7 +202,7 @@ private fun friendlyName(id: String): String = when (id) {
     "guide" -> "Guide"; else -> id
 }
 
-private fun pressedSet(snap: ControllerTestSnapshot?): Set<String> {
+internal fun pressedSet(snap: ControllerTestSnapshot?): Set<String> {
     if (snap == null) return emptySet()
     val s = HashSet<String>()
     fun bit(i: Int) = (snap.buttons and (1 shl i)) != 0
@@ -424,7 +433,42 @@ private fun triggerLabels(art: PadArt): Pair<String, String> = when {
     else -> "LT" to "RT"
 }
 
-private fun DrawScope.drawPad(
+/** Tappable / overlay hit rects for each drawn pad element, in the 320×210 art space (caller scales
+ *  by s = canvasWidthPx/320). Mirrors the element positions drawn by drawPad. Used by the visual
+ *  binder for tap-to-select + the bound/selected overlay. Stick DIRECTIONS (lsu/…) are list-only and
+ *  intentionally absent here (a stick's tap selects its click, l3/r3). */
+internal fun padElementRects(art: PadArt): List<Pair<String, Rect>> {
+    val ps = isPsFamily(art)
+    val out = ArrayList<Pair<String, Rect>>()
+    fun c(id: String, cx: Float, cy: Float, r: Float) = out.add(id to Rect(cx - r, cy - r, cx + r, cy + r))
+    fun b(id: String, x: Float, y: Float, w: Float, h: Float, pad: Float = 3f) =
+        out.add(id to Rect(x - pad, y - pad, x + w + pad, y + h + pad))
+    b("lt", 70f, 13f, 52f, 12f); b("rt", 198f, 13f, 52f, 12f)
+    b("lb", 66f, 34f, 56f, 15f); b("rb", 198f, 34f, 56f, 15f)
+    if (ps) {
+        b("dup", 86f, 81f, 12f, 18f, 2f); b("ddown", 86f, 107f, 12f, 18f, 2f)
+        b("dleft", 70f, 97f, 18f, 12f, 2f); b("dright", 96f, 97f, 18f, 12f, 2f)
+        c("l3", 128f, 140f, 17f); c("r3", 192f, 140f, 17f)
+        val cx = 228f; val cy = 97f; val d = 19f
+        c("y", cx, cy - d, 14f); c("b", cx + d, cy, 14f); c("a", cx, cy + d, 14f); c("x", cx - d, cy, 14f)
+        b("back", 108f, 63f, 9f, 13f); b("start", 203f, 63f, 9f, 13f); c("guide", 160f, 150f, 10f)
+    } else {
+        c("l3", 96f, 86f, 19f)
+        b("dup", 104f, 104f, 12f, 18f, 2f); b("ddown", 104f, 130f, 12f, 18f, 2f)
+        b("dleft", 88f, 120f, 18f, 12f, 2f); b("dright", 114f, 120f, 18f, 12f, 2f)
+        c("r3", 206f, 122f, 18f)
+        val cx = 232f; val cy = 94f; val d = 20f
+        c("y", cx, cy - d, 15f); c("b", cx + d, cy, 15f); c("a", cx, cy + d, 15f); c("x", cx - d, cy, 15f)
+        if (art == PadArt.SWITCH_PRO) {
+            b("back", 136f, 87f, 14f, 4f); b("start", 170f, 82f, 12f, 12f); c("guide", 160f, 150f, 10f)
+        } else {
+            b("back", 140f, 88f, 12f, 9f); b("start", 168f, 88f, 12f, 9f); c("guide", 160f, 72f, 12f)
+        }
+    }
+    return out
+}
+
+internal fun DrawScope.drawPad(
     art: PadArt,
     snap: ControllerTestSnapshot?,
     pressed: Set<String>,

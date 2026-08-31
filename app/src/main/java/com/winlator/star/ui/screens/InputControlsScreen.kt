@@ -80,6 +80,7 @@ import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
 import com.winlator.star.ui.components.PlayerSlotsEditor
+import com.winlator.star.ui.controllertest.SettingsControllerTestDialog
 import com.winlator.star.util.InAppFilePicker
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
@@ -110,6 +111,8 @@ fun InputControlsScreen() {
     var promptCreateName by remember { mutableStateOf(false) }
     var promptRenameOldName by remember { mutableStateOf<String?>(null) }
     var pendingConfirmation by remember { mutableStateOf<Pair<Int, () -> Unit>?>(null) }
+    // At-rest controller-test dialog (picture + live highlight + verified checklist + native Identify).
+    var showControllerTest by remember { mutableStateOf(false) }
 
     fun refreshProfiles() {
         profiles = manager.getProfiles()
@@ -359,6 +362,10 @@ fun InputControlsScreen() {
         }
     }
 
+    if (showControllerTest) {
+        SettingsControllerTestDialog(onDismiss = { showControllerTest = false })
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -525,6 +532,25 @@ fun InputControlsScreen() {
 
         // ── External Controllers ────────────────────────────────────
         Text("External Controllers", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+
+        // Test controller: opens the live pad-picture test (button/stick/dpad/trigger highlight +
+        // verified checklist + native rumble Identify). No profile needed — it just reads the pad.
+        Box(
+            modifier = Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp))
+                .clickable { showControllerTest = true }
+                .padding(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Gamepad, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Test controller", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Text("Check every button, stick, dpad & trigger registers", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
         // #333: the Default / Any Controller binding template — newly connected controllers inherit
         // these mappings automatically, so a fresh controller is never blank. Always shown.
         Box(

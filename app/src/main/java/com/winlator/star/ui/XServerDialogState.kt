@@ -390,33 +390,15 @@ object XServerDialogState {
     // isolation is gated on onControllerTestActive at the activity's dispatch chokepoints). The
     // emulated target is always an Xbox 360 pad; `type` only picks which picture to draw.
     // -------------------------------------------------------------------------
-    /** Live snapshot of the pad being pressed while the test panel is open. Purely for visualization —
-     *  it never reaches the guest. `buttons` is the GamepadState button bitfield (ExternalController
-     *  IDX_* bit positions). dpad up/right/down/left match GamepadState.dpad[0..3]. */
-    data class ControllerTestSnapshot(
-        val buttons: Int,
-        val dpadUp: Boolean,
-        val dpadRight: Boolean,
-        val dpadDown: Boolean,
-        val dpadLeft: Boolean,
-        val thumbLX: Float,
-        val thumbLY: Float,
-        val thumbRX: Float,
-        val thumbRY: Float,
-        val triggerL: Float,
-        val triggerR: Float,
-        val guide: Boolean,
-        val deviceId: Int,
-        val deviceName: String,
-        // 0 = XBOX, 1 = PS, 2 = GENERIC (ExternalController.PadType ordinal).
-        val padType: Int,
-        // -1 when unknown; 0..100 otherwise (InputDevice.getBatteryState, API29+).
-        val batteryPct: Int,
-    )
-
-    private val _controllerTestSnapshot = MutableStateFlow<ControllerTestSnapshot?>(null)
-    val controllerTestSnapshot: StateFlow<ControllerTestSnapshot?> = _controllerTestSnapshot
-    fun setControllerTestSnapshot(v: ControllerTestSnapshot?) { _controllerTestSnapshot.value = v }
+    // The snapshot type is the shared/neutral one (com.winlator.star.ui.controllertest) so the in-game
+    // dialog and the at-rest Settings screen produce the SAME data for the SAME visualizer panel.
+    private val _controllerTestSnapshot =
+        MutableStateFlow<com.winlator.star.ui.controllertest.ControllerTestSnapshot?>(null)
+    val controllerTestSnapshot: StateFlow<com.winlator.star.ui.controllertest.ControllerTestSnapshot?> =
+        _controllerTestSnapshot
+    fun setControllerTestSnapshot(v: com.winlator.star.ui.controllertest.ControllerTestSnapshot?) {
+        _controllerTestSnapshot.value = v
+    }
     fun clearControllerTestSnapshot() { _controllerTestSnapshot.value = null }
 
     fun interface BooleanCallback { fun invoke(active: Boolean) }

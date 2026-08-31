@@ -126,6 +126,19 @@ class MainActivity : AppCompatActivity() {
     // by AppShell, which navigates to it and clears it.
     private val pendingRoute = mutableStateOf<String?>(null)
 
+    // ---- Settings-side Controller Test (Input Controls screen) input fork ----
+    // While the at-rest controller-test dialog is open (controllerTestActive == true) a game
+    // controller's key/axis events are forked into controllerTestController — a throwaway snapshot that
+    // only drives the visualizer — and CONSUMED at the dispatch chokepoints so gamepad presses can't
+    // navigate the Compose UI (no dpad/button focus leakage). No game is running here, so there is no
+    // guest to protect — this is purely about not letting the pad drive the app UI while testing. The
+    // flag is armed only while the dialog is visible (cleared on dispose + onPause/onStop).
+    private var controllerTestActive = false
+    private val controllerTestController = com.winlator.star.inputcontrols.ExternalController()
+    private var controllerTestGuideDown = false
+    private var lastControllerTestAxisLogMs = 0L
+    private var controllerTestLastDeviceId = -1
+
     private val openImageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -186,6 +199,23 @@ class MainActivity : AppCompatActivity() {
 
         // First-run/install decision is made; let the OS splash hand off to the Compose UI.
         contentReady = true
+
+        // Settings-side Controller Test: the Input Controls screen's test dialog arms/disarms the input
+        // fork through this bus (so this Activity consumes gamepad events instead of navigating the UI),
+        // and asks us to natively rumble the live pad for "Identify".
+        com.winlator.star.ui.controllertest.ControllerTestBus.onActiveChanged =
+            com.winlator.star.ui.controllertest.ControllerTestBus.ActiveCallback { active ->
+                controllerTestActive = active
+                if (active) {
+                    controllerTestController.state.reset()
+                    controllerTestController.remappedState.reset()
+                    controllerTestGuideDown = false
+                } else {
+                    com.winlator.star.ui.controllertest.ControllerTestBus.setSnapshot(null)
+                }
+            }
+        com.winlator.star.ui.controllertest.ControllerTestBus.onIdentify =
+            Runnable { settingsControllerIdentify() }
 
         setContent {
             WinlatorTheme {
@@ -307,6 +337,135 @@ class MainActivity : AppCompatActivity() {
         // The game (XServerDisplayActivity) shares this process, so a mid-play capture survives until here.
         WinFgDiag.stopDiagLog(this)
         super.onDestroy()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Never leave the settings controller-test fork latched across a background.
+        controllerTestActive = false
+    }
+
+    override fun onStop() {
+        super.onStop()
+        controllerTestActive = false
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-arm the settings controller-test fork if its dialog is still open (onPause cleared the flag).
+        controllerTestActive = com.winlator.star.ui.controllertest.ControllerTestBus.active
+    }
+
+    // ---- Settings-side Controller Test input fork (gated on controllerTestActive) ----
+    // When the test dialog is CLOSED, controllerTestActive is false and both overrides just call super
+    // (original behavior). When OPEN, a game-controller event drives ONLY the throwaway visualizer
+    // snapshot and is CONSUMED here so it can't move Compose focus / navigate the app UI.
+
+    override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        if (controllerTestActive && isControllerTestMotionEvent(event)) {
+            controllerTestFeedMotionEvent(event)
+            return true
+        }
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (controllerTestActive &&
+            com.winlator.star.inputcontrols.ExternalController.isGameController(event.device)) {
+            controllerTestFeedKeyEvent(event)
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun isControllerTestMotionEvent(event: android.view.MotionEvent): Boolean {
+        val src = event.source
+        val joystickish =
+            (src and android.view.InputDevice.SOURCE_JOYSTICK) == android.view.InputDevice.SOURCE_JOYSTICK ||
+            (src and android.view.InputDevice.SOURCE_GAMEPAD) == android.view.InputDevice.SOURCE_GAMEPAD
+        return joystickish && com.winlator.star.inputcontrols.ExternalController.isGameController(event.device)
+    }
+
+    private fun controllerTestFeedMotionEvent(event: android.view.MotionEvent) {
+        if (com.winlator.star.inputcontrols.ExternalController.isJoystickDevice(event)) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - lastControllerTestAxisLogMs > 1000L) {
+                lastControllerTestAxisLogMs = now
+                android.util.Log.d(
+                    "ControllerTest",
+                    "settings axis dispatch reached src=" + event.source + " dev=" + event.deviceId
+                )
+            }
+        }
+        controllerTestController.updateStateFromMotionEvent(event)
+        controllerTestPublishSnapshot(event.device)
+    }
+
+    private fun controllerTestFeedKeyEvent(event: android.view.KeyEvent) {
+        if (event.repeatCount == 0) controllerTestController.updateStateFromKeyEvent(event)
+        val kc = event.keyCode
+        if (kc == android.view.KeyEvent.KEYCODE_BUTTON_MODE || kc == android.view.KeyEvent.KEYCODE_HOME) {
+            controllerTestGuideDown = event.action == android.view.KeyEvent.ACTION_DOWN
+        }
+        controllerTestPublishSnapshot(event.device)
+    }
+
+    private fun controllerTestPublishSnapshot(device: android.view.InputDevice?) {
+        val st = controllerTestController.state
+        var battery = -1
+        if (device != null && Build.VERSION.SDK_INT >= 29) {
+            try {
+                val bs = device.batteryState
+                if (bs != null && bs.isPresent) {
+                    val cap = bs.capacity
+                    if (cap >= 0f) battery = Math.round(cap * 100f)
+                }
+            } catch (_: Throwable) { }
+        }
+        var hasVibrator = false
+        if (device != null) {
+            val vib = device.vibrator
+            hasVibrator = vib != null && vib.hasVibrator()
+        }
+        controllerTestLastDeviceId = device?.id ?: -1
+        com.winlator.star.ui.controllertest.ControllerTestBus.setSnapshot(
+            com.winlator.star.ui.controllertest.ControllerTestSnapshot(
+                st.buttons.toInt() and 0xFFFF,
+                st.dpad[0], st.dpad[1], st.dpad[2], st.dpad[3],
+                st.thumbLX, st.thumbLY, st.thumbRX, st.thumbRY,
+                st.triggerL, st.triggerR,
+                controllerTestGuideDown,
+                device?.id ?: -1,
+                device?.name ?: "",
+                com.winlator.star.inputcontrols.ExternalController.classifyType(device).ordinal,
+                battery,
+                hasVibrator
+            )
+        )
+    }
+
+    /** Native "Identify" — rumble the last pad the visualizer saw, via VibratorManager (independent
+     *  motors, API 31+) or the single vibrator otherwise. No game / WinHandler here. */
+    private fun settingsControllerIdentify() {
+        val id = controllerTestLastDeviceId
+        if (id < 0) return
+        val device = android.view.InputDevice.getDevice(id) ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                val vm = device.vibratorManager
+                val ids = vm?.vibratorIds
+                if (vm != null && ids != null && ids.isNotEmpty()) {
+                    val combo = android.os.CombinedVibration.startParallel()
+                    for (vid in ids) combo.addVibrator(vid, android.os.VibrationEffect.createOneShot(420L, 200))
+                    vm.vibrate(combo.combine())
+                    return
+                }
+            }
+            val v = device.vibrator
+            if (v != null && v.hasVibrator()) {
+                v.vibrate(android.os.VibrationEffect.createOneShot(420L, 200))
+            }
+        } catch (_: Throwable) { }
     }
 
     /** Only accepts known drawer routes so a bad extra can't crash navigation. */

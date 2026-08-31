@@ -8103,7 +8103,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
             } catch (Throwable ignored) { }
         }
-        XServerDialogState.INSTANCE.setControllerTestSnapshot(new XServerDialogState.ControllerTestSnapshot(
+        boolean hasVibrator = false;
+        if (device != null) {
+            android.os.Vibrator vib = device.getVibrator();
+            hasVibrator = vib != null && vib.hasVibrator();
+        }
+        XServerDialogState.INSTANCE.setControllerTestSnapshot(new com.winlator.star.ui.controllertest.ControllerTestSnapshot(
                 st.buttons & 0xFFFF,
                 st.dpad[0], st.dpad[1], st.dpad[2], st.dpad[3],
                 st.thumbLX, st.thumbLY, st.thumbRX, st.thumbRY,
@@ -8112,7 +8117,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 device != null ? device.getId() : -1,
                 device != null && device.getName() != null ? device.getName() : "",
                 ExternalController.classifyType(device).ordinal(),
-                battery));
+                battery,
+                hasVibrator));
     }
 
     /** Snapshot the current input-device/slot state as UI rows. Main-thread only (reads

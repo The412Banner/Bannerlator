@@ -19,6 +19,10 @@
     <uses-feature
         android:name="oculus.software.overlay_keyboard"
         android:required="false" />
+    <!-- Mic capture is opt-in per container/shortcut (DirectAudio) — never required to run. -->
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
 
     <!-- Permissions (unique, no duplicates) -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -28,6 +32,9 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <!-- Opt-in per-container/shortcut Microphone: granted only when the user enables the toggle;
+         the DirectAudio driver opens the AAudio INPUT stream (the app never records itself). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />

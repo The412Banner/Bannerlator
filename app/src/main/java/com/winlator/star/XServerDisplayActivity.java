@@ -293,6 +293,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private String rendererDriverId = "system";
     private HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
+    // Best-effort RECORD_AUDIO request when a mic-enabled DirectAudio game launches (see onCreate).
+    private static final int RECORD_AUDIO_REQUEST_CODE = 0xADD;
     private String emulator = Container.DEFAULT_EMULATOR;
     private String dxwrapper = Container.DEFAULT_DXWRAPPER;
     private KeyValueSet dxwrapperConfig;
@@ -2111,6 +2113,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
             audioDriver = Container.DEFAULT_AUDIO_DRIVER;
         }
 
+        // Microphone (opt-in per container/shortcut). The DirectAudio driver opens its OWN AAudio INPUT
+        // stream when BANNER_AUDIO_DIRECT_MIC=1 is in the launch env; that needs RECORD_AUDIO. The editors
+        // request it when the user turns the toggle on, but a shortcut granted-then-revoked in system
+        // settings (or an imported config) can still arrive here with the flag set — so best-effort
+        // re-request it now, on the main thread, before the guest loads. Never blocks the launch: if it's
+        // denied, the driver simply gets no input (it owns capture and handles the missing-permission
+        // case). The app never touches AudioRecord/AAudio/MediaRecorder itself.
+        if ("directaudio".equals(audioDriver) && directMicRequestedInEnv()
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{ Manifest.permission.RECORD_AUDIO }, RECORD_AUDIO_REQUEST_CODE);
+        }
+
         // Gyro (motion aim) — resolve the whole config ONCE here and push it into WinHandler in a
         // single call. enabled/target/activator/sensitivity/invertX/invertY are per-game (the
         // shortcut extra wins, else the container value, else the GYRO_*_DEFAULT baked into the
@@ -3392,6 +3407,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } catch (Throwable t) {
             android.util.Log.w("DirectAudio", "applyDirectAudioConfig failed", t);
         }
+    }
+
+    // True when the resolved launch env (shortcut over container) carries BANNER_AUDIO_DIRECT_MIC=1 — the
+    // opt-in mic flag the DirectAudio driver reads to open an AAudio INPUT stream. It's a presence flag
+    // (the editors write "=1" or remove it), and a shortcut's putAll only overrides keys it actually
+    // carries, so "present in either scope" is exactly the merged launch-env result. Read straight from
+    // the container/shortcut sources here because the merged EnvVars isn't built until the background
+    // launch thread, and this runs on the main thread (where a permission request is valid).
+    private boolean directMicRequestedInEnv() {
+        // container.getEnvVars() and shortcut.getExtra("envVars") are both the raw space-joined env
+        // string, so the same presence check covers either scope.
+        if (DirectAudioSupport.isMicEnabledInEnv(container.getEnvVars())) return true;
+        if (shortcut != null && DirectAudioSupport.isMicEnabledInEnv(shortcut.getExtra("envVars"))) return true;
+        return false;
     }
 
     // Map a Proton layer name to the bundled DirectAudio asset set, or null if the build is unsupported.

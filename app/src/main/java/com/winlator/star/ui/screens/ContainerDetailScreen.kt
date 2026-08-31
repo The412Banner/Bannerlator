@@ -1040,6 +1040,59 @@ private fun TopLevelFields(
         }
         Spacer(Modifier.height(8.dp))
 
+        // Microphone (DirectAudio only). Opt-in per container, default OFF — a knowingly-granted
+        // permission. ON seeds BANNER_AUDIO_DIRECT_MIC=1 into this scope's env; the DirectAudio driver
+        // opens the AAudio INPUT stream itself when the flag is present (the app never records). Greyed
+        // off DirectAudio, since only that driver consumes the flag today. Keyed on the live env
+        // (viewModel.envVarsStr) so it can't capture a stale value and drift.
+        run {
+            val micCtx = LocalContext.current
+            val micDriverActive = StringUtils.parseIdentifier(viewModel.selectedAudioDriver) == "directaudio" && directAudioSupported
+            val micOn = com.winlator.star.core.DirectAudioSupport.isMicEnabledInEnv(viewModel.envVarsStr)
+            val micPermLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { granted ->
+                if (granted) {
+                    viewModel.envVarsStr = com.winlator.star.core.DirectAudioSupport.withMicEnabled(viewModel.envVarsStr, true)
+                } else {
+                    viewModel.envVarsStr = com.winlator.star.core.DirectAudioSupport.withMicEnabled(viewModel.envVarsStr, false)
+                    Toast.makeText(micCtx, "Microphone permission denied — mic stays off.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    enabled = micDriverActive,
+                    checked = micOn && micDriverActive,
+                    onCheckedChange = { want ->
+                        if (want) {
+                            if (androidx.core.content.ContextCompat.checkSelfPermission(micCtx, android.Manifest.permission.RECORD_AUDIO)
+                                    == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                viewModel.envVarsStr = com.winlator.star.core.DirectAudioSupport.withMicEnabled(viewModel.envVarsStr, true)
+                            } else {
+                                micPermLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                            }
+                        } else {
+                            viewModel.envVarsStr = com.winlator.star.core.DirectAudioSupport.withMicEnabled(viewModel.envVarsStr, false)
+                        }
+                    }
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Microphone",
+                        color = if (micDriverActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        if (micDriverActive) "Let games use the mic (DirectAudio captures input)"
+                        else "Available on the DirectAudio driver",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.5.sp
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
         // Emulator (arm64ec only)
         if (viewModel.isArm64EC) {
             LabeledDropdown(

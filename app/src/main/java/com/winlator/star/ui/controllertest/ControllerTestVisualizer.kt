@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -285,17 +287,23 @@ fun ControllerTestPanel(
         }
         Spacer(Modifier.height(8.dp))
 
-        // The pad picture (320×210 art space).
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF0B111B))
-                .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
-                .padding(8.dp)
-        ) {
-            Canvas(Modifier.fillMaxWidth().aspectRatio(320f / 210f)) {
-                drawPad(art, snapshot, pressed, seen, accent)
+        // The pad picture (320×210 art space). Kept COMPACT and centered — capped so it never balloons
+        // to full panel width on a wide landscape popup (which clipped the pad and pushed the readouts +
+        // tally + footer off-screen). aspectRatio on the Canvas keeps the whole pad visible at rest.
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFF0B111B))
+                    .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
+                    .padding(8.dp)
+            ) {
+                Canvas(
+                    Modifier
+                        .widthIn(max = 248.dp)
+                        .heightIn(max = 136.dp)
+                        .aspectRatio(320f / 210f)
+                ) { drawPad(art, snapshot, pressed, seen, accent) }
             }
         }
         Spacer(Modifier.height(10.dp))

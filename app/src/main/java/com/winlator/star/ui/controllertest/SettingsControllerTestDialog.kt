@@ -7,8 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -77,7 +78,9 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
         val cs = MaterialTheme.colorScheme
         val cfg = LocalConfiguration.current
         val w = min(760, cfg.screenWidthDp - 24).coerceAtLeast(300).dp
-        val h = min(600, cfg.screenHeightDp - 24).coerceAtLeast(240).dp
+        // Card WRAPS to its content (header + compact pad + readouts + footer) — only capped so a tiny
+        // screen can still scroll it. No fixed height, so there's no giant empty box around the pad.
+        val maxH = (cfg.screenHeightDp - 24).coerceAtLeast(220).dp
 
         // Scrim consumes stray taps; the centered card holds the shared panel.
         Box(
@@ -91,7 +94,7 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Surface(
-                modifier = Modifier.padding(12.dp).width(w).height(h),
+                modifier = Modifier.padding(12.dp).width(w).heightIn(max = maxH),
                 shape = RoundedCornerShape(18.dp),
                 color = cs.surface,
                 contentColor = cs.onSurface,
@@ -109,7 +112,7 @@ fun SettingsControllerTestDialog(onDismiss: () -> Unit) {
                     identifyEnabled = snap?.hasVibrator == true,
                     onIdentify = { ControllerTestBus.onIdentify?.run() },
                     onDone = onDismiss,
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                 )
             }
         }

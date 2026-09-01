@@ -407,7 +407,10 @@ private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
             state.onProfilesChanged?.run()                 // keep the Touch dropdown live
         },
         onRenameProfile = { renameText = selectedProfile?.name ?: ""; renaming = true },
-        onSaved = { },
+        // A live binding edit saves to disk on the binder's OWN manager instance, but the ACTIVE
+        // physical lane holds a separate instance resolved off disk at activation — so re-apply it to
+        // pull the just-saved bindings into the running pad (onPhysicalProfileChanged re-reads fresh).
+        onSaved = { if (selectedProfileId >= 0) state.onPhysicalProfileChanged?.invoke(selectedProfileId) },
         onOpenAllBindings = null,
         modifier = modifier,
     )

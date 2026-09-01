@@ -567,7 +567,7 @@ fun InputControlsScreen() {
                 Icon(Icons.Default.Gamepad, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Test & bind controller", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Text("Test and Bind Physical Controllers", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                     Text("Visually remap buttons + verify every input registers", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }

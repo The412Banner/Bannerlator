@@ -28,6 +28,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import com.winlator.star.ui.screens.MenuItemDivider
+import com.winlator.star.ui.screens.outlinedMenuCard
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -397,9 +399,14 @@ private fun ArtSelector(effective: PadArt, manual: PadArt?, onChange: (PadArt?) 
             shape = RoundedCornerShape(10.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
         ) { Text((if (manual == null) "Auto · " else "") + padArtLabel(effective), fontSize = 12.sp) }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            modifier = Modifier.outlinedMenuCard(),
+        ) {
             DropdownMenuItem(text = { Text("Auto-detect") }, onClick = { open = false; onChange(null) })
             for (a in PadArt.values()) {
+                MenuItemDivider()
                 DropdownMenuItem(text = { Text(padArtLabel(a)) }, onClick = { open = false; onChange(a) })
             }
         }

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-08-31 (cont.) — 🎮🎨 **Settings Input Controls: rename the test/bind card + unify all popup-menu styling on the shared `outlinedMenuCard()`**
+> Follow-ups from Settings → Input Controls: (1) the shared **Art selector** dropdown (Xbox 360/DualSense/…) had no outline/dividers; (2) rename the "External Controllers" entry card.
+> - **Menu styling unified** — switched every controller-test popup menu to the app's canonical `Modifier.outlinedMenuCard()` (surfaceContainer fill + 1dp outline, rounded 10) + `MenuItemDivider()` from `ui/screens/MenuStyle.kt` (the same helpers the Settings profile dropdown already used): the shared **Art selector** (`ControllerTestVisualizer.ArtSelector`), the in-game **profile** picker (`VisualControllerBinder`), and the in-game **Slot** picker (`ControllerTestDialog.SlotPicker`) — replacing the earlier inline `border`+`HorizontalDivider` so all menus read identically (the helper adds the background fill the inline border lacked). The in-game popup Surface keeps its 1dp outline.
+> - **Card renamed** — "Test & bind controller" → **"Test and Bind Physical Controllers"** (`InputControlsScreen.kt`), clarifying it's the physical-pad path (vs the OSC/touch profiles).
+> - Note: Settings binding uses the SAME shared `VisualControllerBinder`/`ControllerTestPanel` as in-game (same `.icp` store); profile create/rename/duplicate/delete on Settings is its dedicated +/✎/⧉/🗑 toolbar. The Settings binder stays EDIT-ONLY (no live-pad activation — no running game), so it passes `onSelectNone`/`onDeleteProfile` = null.
+> - versionCode FROZEN 76. Branch `feat/players-controller-test`. CI-green pending; not device-proven. 345 files untouched.
+
 ## 2026-08-31 (cont.) — 🎮🎨 **Bind screen: add Delete profile + fix menu styling (outline + dividers)**
 > User asks: a Delete/Remove option beside Rename in the in-game Bind profile picker, and the dropdown menus + the popup panel had no outline and no divider lines between options.
 > - **Delete profile** — `VisualControllerBinder` gains an optional `onDeleteProfile` param → a red "Delete…" item after "Rename…" (only when a profile is selected; null on the at-rest Settings editors so they're unaffected). `ControllerTestDialog.InGameBindPanel` wires it to a confirm `AlertDialog` → `InputControlsManager.removeProfile(p)` + `profilesRev++`; if the deleted profile was the active physical lane, reverts the pad to native (`onPhysicalProfileChanged(-1)`) and refreshes the Touch list.

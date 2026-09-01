@@ -27,7 +27,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -54,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import com.winlator.star.inputcontrols.Binding
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
+import com.winlator.star.ui.screens.MenuItemDivider
+import com.winlator.star.ui.screens.outlinedMenuCard
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // Shared VISUAL controller-binding editor. Tap a button on the drawn pad → bind it (keyboard / mouse /
@@ -123,21 +124,20 @@ fun VisualControllerBinder(
                 DropdownMenu(
                     expanded = profMenu,
                     onDismissRequest = { profMenu = false },
-                    modifier = Modifier.border(1.dp, cs.outline, RoundedCornerShape(8.dp)),
+                    modifier = Modifier.outlinedMenuCard(),
                 ) {
-                    val divider = cs.outline.copy(alpha = 0.4f)
                     if (onSelectNone != null) {
                         DropdownMenuItem(text = { Text("— None (native Xbox) —") }, onClick = { profMenu = false; onSelectNone() })
-                        HorizontalDivider(color = divider)
+                        MenuItemDivider()
                     }
                     allProfiles.forEach { p ->
                         DropdownMenuItem(text = { Text(p.name) }, onClick = { profMenu = false; onSelectProfile(p) })
-                        HorizontalDivider(color = divider)
+                        MenuItemDivider()
                     }
                     if (profile != null) {
                         DropdownMenuItem(text = { Text("Rename…") }, onClick = { profMenu = false; onRenameProfile() })
                         if (onDeleteProfile != null) {
-                            HorizontalDivider(color = divider)
+                            MenuItemDivider()
                             DropdownMenuItem(
                                 text = { Text("Delete…", color = cs.error) },
                                 onClick = { profMenu = false; onDeleteProfile() },

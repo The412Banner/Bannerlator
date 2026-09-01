@@ -23,7 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -62,6 +61,8 @@ import com.winlator.star.ui.controllertest.PadArt
 import com.winlator.star.ui.controllertest.TestBindToggle
 import com.winlator.star.ui.controllertest.VisualControllerBinder
 import com.winlator.star.ui.controllertest.padArtOf
+import com.winlator.star.ui.screens.MenuItemDivider
+import com.winlator.star.ui.screens.outlinedMenuCard
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -331,7 +332,7 @@ private fun SlotPicker(row: XServerDialogState.PlayerSlotRow, state: XServerDial
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+            modifier = Modifier.outlinedMenuCard(),
         ) {
             options.forEachIndexed { i, opt ->
                 DropdownMenuItem(text = { Text(opt.first) }, onClick = {
@@ -340,7 +341,7 @@ private fun SlotPicker(row: XServerDialogState.PlayerSlotRow, state: XServerDial
                         state.onPlayerSlotChanged?.invoke(row.descriptor, opt.second)
                     }
                 })
-                if (i < options.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                if (i < options.lastIndex) MenuItemDivider()
             }
         }
     }

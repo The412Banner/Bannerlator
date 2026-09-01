@@ -62,6 +62,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
+name = "bl-steam-client"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "cbc",
+ "crc32fast",
+ "flate2",
+ "hmac",
+ "jni",
+ "lzma-rs",
+ "rand 0.8.6",
+ "reqwest",
+ "rsa",
+ "ruzstd",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "tungstenite",
+ "zeroize",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1962,28 +1984,6 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
-
-[[package]]
-name = "bl-steam-client"
-version = "0.1.0"
-dependencies = [
- "aes",
- "cbc",
- "crc32fast",
- "flate2",
- "hmac",
- "jni",
- "lzma-rs",
- "rand 0.8.6",
- "reqwest",
- "rsa",
- "ruzstd",
- "serde_json",
- "sha1",
- "sha2",
- "tungstenite",
- "zeroize",
-]
 
 [[package]]
 name = "writeable"

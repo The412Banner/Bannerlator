@@ -38,6 +38,7 @@ public class DRI3Extension implements Extension {
         private static final byte QUERY_VERSION = 0;
         private static final byte OPEN = 1;
         private static final byte PIXMAP_FROM_BUFFER = 2;
+        private static final byte GET_SUPPORTED_MODIFIERS = 6;
         private static final byte PIXMAP_FROM_BUFFERS = 7;
     }
 
@@ -70,7 +71,29 @@ public class DRI3Extension implements Extension {
             outputStream.writeShort(client.getSequenceNumber());
             outputStream.writeInt(0);
             outputStream.writeInt(1);
-            outputStream.writeInt(0);
+            outputStream.writeInt(2); // DRI3 1.2: enables Mesa x11_dri3_has_multibuffer (needed by freedreno kgsl winsys)
+            outputStream.writePad(16);
+        }
+    }
+
+    // DRI3 1.2 GetSupportedModifiers. We advertise no explicit modifiers (empty window+screen
+    // lists); the guest Winlator-Mesa then uses its AHardwareBuffer PixmapFromBuffers path
+    // (modifier 1255), which pixmapFromBuffers() already handles. Required so freedreno's
+    // kgsl winsys can complete DRI3 buffer setup at GL context/drawable creation.
+    private void getSupportedModifiers(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        int windowId = inputStream.readInt();
+        inputStream.skip(4); // depth (1) + bpp (1) + unused (2)
+
+        Window window = client.xServer.windowManager.getWindow(windowId);
+        if (window == null) throw new BadWindow(windowId);
+
+        try (XStreamLock lock = outputStream.lock()) {
+            outputStream.writeByte(RESPONSE_CODE_SUCCESS);
+            outputStream.writeByte((byte)0);
+            outputStream.writeShort(client.getSequenceNumber());
+            outputStream.writeInt(0);   // reply length (no modifier data follows)
+            outputStream.writeInt(0);   // num window modifiers
+            outputStream.writeInt(0);   // num screen modifiers
             outputStream.writePad(16);
         }
     }
@@ -213,6 +236,11 @@ public class DRI3Extension implements Extension {
             case ClientOpcodes.PIXMAP_FROM_BUFFER:
                 try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
                     pixmapFromBuffer(client, inputStream, outputStream);
+                }
+                break;
+            case ClientOpcodes.GET_SUPPORTED_MODIFIERS:
+                try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                    getSupportedModifiers(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.PIXMAP_FROM_BUFFERS:

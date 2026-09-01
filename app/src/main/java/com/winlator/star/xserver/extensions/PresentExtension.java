@@ -225,7 +225,7 @@ public class PresentExtension implements Extension {
             outputStream.writeShort(client.getSequenceNumber());
             outputStream.writeInt(0);
             outputStream.writeInt(1);
-            outputStream.writeInt(0);
+            outputStream.writeInt(2); // Present 1.2: pairs with DRI3 1.2 for Mesa x11_dri3_has_multibuffer
             outputStream.writePad(16);
         }
     }

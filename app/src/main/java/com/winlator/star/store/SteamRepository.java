@@ -415,6 +415,13 @@ public final class SteamRepository {
 
     public void connect() {
         if (steamClient == null) { Log.e(TAG, "connect() before initialize()"); return; }
+        if (realSteamSuspended) {
+            // FGS START_STICKY restart / foreground ON_START / pill tap while a real-Steam game holds
+            // the account: stay down; keep the notification honest about why.
+            Log.i(REALSTEAM_TAG, "connect() skipped — app session suspended for in-game real-Steam session");
+            refreshFgsStatus();
+            return;
+        }
         if (connected) { Log.i(TAG, "connect() skipped — already connected"); return; }
         // Guard against double-connect (e.g. onStartCommand called twice for START_STICKY)
         if (!connecting.compareAndSet(false, true)) {
@@ -432,6 +439,10 @@ public final class SteamRepository {
         // a second time while the previous TCP connection is still closing.
         pumpHandler.post(() -> {
             try {
+                if (realSteamSuspended) {   // suspended between the post and the run — abandon the connect
+                    connecting.set(false);
+                    return;
+                }
                 steamClient.connect();
             } catch (Throwable t) {
                 Log.e(TAG, "steamClient.connect() threw " + t.getClass().getSimpleName()
@@ -606,7 +617,7 @@ public final class SteamRepository {
     // The pill is the honest, always-visible replacement for the notification (which is cosmetic).
     // Every transition is written to the PERSISTENT steam_session.txt (survives across downloads,
     // which the per-download steam_debug.txt does not) and mirrored into the active download log.
-    public enum SteamStatus { CONNECTING, ONLINE, SIGNED_IN_ELSEWHERE, OFFLINE, SIGNED_OUT }
+    public enum SteamStatus { CONNECTING, ONLINE, SIGNED_IN_ELSEWHERE, OFFLINE, SIGNED_OUT, PAUSED_FOR_GAME }
     private volatile SteamStatus status = SteamStatus.OFFLINE;
     public SteamStatus getStatus() { return status; }
 
@@ -633,6 +644,7 @@ public final class SteamRepository {
             case CONNECTING:          return "Connecting to Steam…";
             case SIGNED_IN_ELSEWHERE: return "Signed in elsewhere";
             case SIGNED_OUT:          return "Signed out";
+            case PAUSED_FOR_GAME:     return "Paused — game session active";
             case OFFLINE:
             default:                  return "Offline";
         }
@@ -678,6 +690,10 @@ public final class SteamRepository {
      * guards; does nothing if there is no saved token (user must sign in interactively).
      */
     public void reconnectNow() {
+        if (realSteamSuspended) {
+            Log.i(REALSTEAM_TAG, "reconnectNow ignored — app session suspended for in-game real-Steam session");
+            return;
+        }
         loggingOut = false;
         logoffRecoveryAttempts = 0;
         reconnectAttempts = 0;
@@ -688,6 +704,78 @@ public final class SteamRepository {
         } else if (!loggedIn) {
             loginWithToken(pGet("username", ""), pGet("refresh_token", ""));
         }
+    }
+
+    // --- Real-Steam (SteamLite) in-game session hand-off ------------------------------------------
+    // A launchMode=RealSteam game logs the SAME account into genuine Steam from inside the container
+    // (the steam.exe agent). If this repository keeps its own CM session up meanwhile, Steam sees two
+    // sessions on one account: VAC Source titles tolerate the tug-of-war, live-service titles do not
+    // ("could not connect to Steam servers" / "INCORRECT VERSION"), and the agent's LaunchApp can stall
+    // (black screen). So while the game holds the account we take our session DOWN and pin every
+    // reconnect path (user pill tap, FGS restart, foreground ON_START, network self-heal, involuntary
+    // logoff recovery, download retry) shut. Credentials are untouched — prefs keep the refresh token,
+    // username and steamId64 — so the plan can still be built and the next resume re-logs-on from them.
+    // The flag is process-local: a process restart (the normal game-exit path restarts the app) or a
+    // crash can never leave the app permanently offline.
+    private static final String REALSTEAM_TAG = "BH_REALSTEAM";
+    private volatile boolean realSteamSuspended = false;
+
+    /** True while the app's own CM session is deliberately down because a real-Steam game holds the account. */
+    public boolean isSuspendedForRealSteam() { return realSteamSuspended; }
+
+    /**
+     * Take the app's own CM session down for the duration of an in-container real-Steam session.
+     * Idempotent. Safe from any non-UI thread (the disconnect closes the socket inline, like the FGS
+     * teardown does); credentials are kept. Status becomes {@link SteamStatus#PAUSED_FOR_GAME}.
+     */
+    public void suspendForRealSteam() {
+        if (realSteamSuspended) {
+            Log.i(REALSTEAM_TAG, "suspendForRealSteam: already suspended");
+            return;
+        }
+        realSteamSuspended = true;   // set FIRST so every reconnect path sees it before the socket drops
+        Log.i(REALSTEAM_TAG, "suspending app CM session for in-game real-Steam session (connected="
+                + connected + " loggedIn=" + loggedIn + " status=" + status + ")");
+        // Neutralise every retry budget/intent so nothing re-drives a connect once the socket closes.
+        loggingOn.set(false);
+        forceReconnect = false;
+        reconnectAttempts = 0;
+        logoffRecoveryAttempts = 0;
+        try { disconnect(); }
+        catch (Throwable t) { Log.w(REALSTEAM_TAG, "disconnect during suspend threw", t); }
+        // disconnect() stops the pump, so an in-flight connect() can never resolve — clear its latch or
+        // the post-game connect() would be skipped as "already connecting" forever.
+        connecting.set(false);
+        setStatus(SteamStatus.PAUSED_FOR_GAME, "suspended for in-game real-Steam session");
+    }
+
+    /**
+     * Release the real-Steam hold and bring the app's own CM session back (re-logon from the saved
+     * token via {@link #reconnectNow()}). Idempotent — a no-op when not suspended. Safe from any
+     * thread (network I/O is posted to the pump). When {@code awaitLoggedInMs > 0} the CALLER's thread
+     * (never the UI thread) blocks up to that long for the fresh logon, so exit-time work that rides
+     * the CM session (achievement sync-back, Steam Cloud upload) finds it live.
+     *
+     * @return true if the session is logged in when this returns.
+     */
+    public boolean resumeAfterRealSteam(long awaitLoggedInMs) {
+        if (!realSteamSuspended) return connected && loggedIn;
+        realSteamSuspended = false;
+        boolean saved = isLoggedInPrefs();
+        Log.i(REALSTEAM_TAG, "resuming app CM session after real-Steam game (savedSession=" + saved + ")");
+        if (!saved) {
+            setStatus(SteamStatus.SIGNED_OUT, "resumed after real-Steam game — no saved session");
+            return false;
+        }
+        reconnectNow();
+        if (awaitLoggedInMs > 0) {
+            long deadline = System.currentTimeMillis() + awaitLoggedInMs;
+            while (!loggedIn && System.currentTimeMillis() < deadline) {
+                try { Thread.sleep(150); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+            }
+        }
+        return loggedIn;
     }
 
     /**
@@ -761,6 +849,7 @@ public final class SteamRepository {
     private void onNetworkAvailable(String source) {
         try {
             if (!pumping.get()) return;                 // pump down (disconnected/stopped) — nothing to heal
+            if (realSteamSuspended) return;             // a real-Steam game holds the account — do not tug
             if (loggingOut) return;                     // respect a deliberate sign-out
             if (!isLoggedInPrefs()) return;             // no saved token — user must sign in
             if (connected && loggedIn) return;          // already healthy
@@ -786,6 +875,12 @@ public final class SteamRepository {
         loggedIn  = false;
         connecting.set(false);
         loggingOn.set(false);   // any in-flight logon died with the socket
+        // Suspended for an in-game real-Steam session: this is the disconnect WE asked for (or a late
+        // callback drained after it). Hold the paused state — no reconnect, no OFFLINE flip.
+        if (realSteamSuspended) {
+            setStatus(SteamStatus.PAUSED_FOR_GAME, "disconnected — paused for in-game real-Steam session");
+            return;
+        }
         // Reconnect on an involuntary socket drop, OR when we deliberately forced a reconnect to
         // recover from a clean CM logoff (onLoggedOff) — the latter arrives as "user-initiated".
         if ((forced || !cb.isUserInitiated()) && pumping.get() && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
@@ -795,7 +890,7 @@ public final class SteamRepository {
             Log.i(TAG, "Auto-reconnect in " + delayMs + "ms (attempt " + reconnectAttempts + ")");
             if (pumpHandler != null) {
                 pumpHandler.postDelayed(() -> {
-                    if (pumping.get() && !connected) {
+                    if (pumping.get() && !connected && !realSteamSuspended) {
                         Log.i(TAG, "Auto-reconnect: calling connect()");
                         steamClient.connect();
                     }
@@ -858,6 +953,14 @@ public final class SteamRepository {
 
         loggedIn = false;
         loggingOn.set(false);
+
+        // Suspended for an in-game real-Steam session: whatever this logoff is (our own teardown, or
+        // the agent's login replacing a session that hadn't fully closed yet), do NOT recover — the
+        // game owns the account until resumeAfterRealSteam().
+        if (realSteamSuspended) {
+            setStatus(SteamStatus.PAUSED_FOR_GAME, "logged off — paused for in-game real-Steam session");
+            return;
+        }
 
         // User-initiated sign-out, or a logoff meaning the session is intentionally gone
         // (logged in elsewhere / session replaced by a DIFFERENT client) -> surface it, do NOT recover/loop.
@@ -1586,6 +1689,10 @@ public final class SteamRepository {
     /** Auto-login using a stored refresh token. Must not be called on the main thread. */
     public void loginWithToken(String username, String refreshToken) {
         if (steamUser == null) return;
+        if (realSteamSuspended) {
+            Log.i(REALSTEAM_TAG, "loginWithToken skipped — app session suspended for in-game real-Steam session");
+            return;
+        }
         // Re-arm the background self-heal on any login attempt (idempotent) so a re-login after a
         // logout — which unregistered it while the pump kept running — re-attaches the callback.
         registerNetworkCallback();
@@ -1669,6 +1776,10 @@ public final class SteamRepository {
      */
     public boolean reconnectAndRelogin(long timeoutMs) {
         if (steamClient == null) return false;
+        if (realSteamSuspended) {
+            Log.i(REALSTEAM_TAG, "reconnectAndRelogin refused — app session suspended for in-game real-Steam session");
+            return false;
+        }
         if (!isLoggedInPrefs()) return false;   // no saved token — nothing to recover to; caller must re-auth
         Log.i(TAG, "reconnectAndRelogin: forcing a fresh session (timeout " + timeoutMs + "ms)");
         setStatus(SteamStatus.CONNECTING, "forced reconnect+relogin for retry");

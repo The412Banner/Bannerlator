@@ -7457,6 +7457,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // dialog so the Bind picker reflects the active selection. null = revert to native Xbox passthrough.
     private void setPhysicalProfile(ControlsProfile profile) {
         inputControlsView.setPhysicalProfile(profile);
+        // #345-proven: a pad's D-pad is an AXIS_HAT_* MOTION event (analog sticks are motion too), and the
+        // framework focus-routes joystick motion — it only reaches InputControlsView.onGenericMotionEvent
+        // when that view is VISIBLE + FOCUSED. Buttons are KEY events dispatched directly, so they work
+        // without this (which is why A remapped but the D-pad didn't). Give the view focus for the physical
+        // lane WITHOUT drawing the OSC: showTouchscreenControls is left untouched (the Touch lane owns it),
+        // and onDraw stays gated on the OSC profile + showTouchscreenControls, so a physical-only view is
+        // visible+focused for motion delivery yet paints nothing and claims no slot.
+        if (profile != null) {
+            inputControlsView.setVisibility(View.VISIBLE);
+            inputControlsView.requestFocus();
+        } else if (inputControlsView.getProfile() == null) {
+            // No physical AND no OSC profile — nothing needs the view; let it go so touches pass through.
+            inputControlsView.setVisibility(View.GONE);
+        }
         if (shortcut != null) {
             shortcut.putExtra("controllerProfile", profile != null ? String.valueOf(profile.id) : null);
             shortcut.saveData();

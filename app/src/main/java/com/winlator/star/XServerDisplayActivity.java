@@ -6793,16 +6793,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // restarts into a clean, non-over-queued state (the LSFG black-frame flicker fix).
         ds.onFgResetResume = () -> runOnUiThread(this::resumeFromFgReset);
 
-        // OpenGL Driver selector (Phase 1) — Graphics tab dropdown. Seed the drawer with the driver
-        // resolved for THIS launch, then persist a change to the SAME owner the launch seed reads from
-        // (shortcut when launched from one, else container). A GL driver swap can't hot-swap the running
-        // gallium driver, so this takes effect on the NEXT launch.
-        ds.setOpenGLDriver(getSelectedOpenGLDriver());
-        ds.onOpenGLDriverChanged = (driverId) -> {
-            persistOpenGLDriverChoice(driverId);
-            ds.setOpenGLDriver(getSelectedOpenGLDriver());
-        };
-
         // Input Controls state (renderer-independent: controller profiles + vibration work on
         // BOTH the GL and Vulkan host renderers, so this must run before the GL-only guard below.
         // Previously the early return for non-GL renderers left the profile dropdown empty.)
@@ -7649,20 +7639,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.d("XServerDisplayActivity", "Failed to write opengl driver marker: " + e.getMessage());
         }
-    }
-
-    // Persists the OpenGL Driver choice to the SAME owner the launch resolver reads (the shortcut when
-    // the game was launched from one, else the container) so it survives relaunch; updates the in-memory
-    // resolved value too so the drawer seed reflects it this session. Takes effect on the NEXT launch.
-    private void persistOpenGLDriverChoice(String driverId) {
-        if (shortcut != null) {
-            shortcut.putExtra("openglDriver", driverId);
-            shortcut.saveData();
-        } else if (container != null) {
-            container.setOpenGLDriver(driverId);
-            container.saveData();
-        }
-        openglDriver = driverId;
     }
 
     // Wrapper Version Manager (Step 1, issue #132): extract a bundled graphics_driver asset, but

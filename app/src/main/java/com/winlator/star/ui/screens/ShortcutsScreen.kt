@@ -5921,6 +5921,12 @@ internal fun ShortcutSettingsDialogScreen(
         mutableStateOf(shortcut.getExtra("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig()))
     }
 
+    // OpenGL Driver (Phase 1) — per-game override of the container's GL gallium driver ("zink" default,
+    // GL-on-Vulkan, or "freedreno" native GL). GL-only; DXVK/VKD3D Vulkan games are unaffected. "" = inherit
+    // the container default — the extra stays ABSENT so launch's getExtra("openglDriver", container default)
+    // falls back to the container (an empty string would NOT inherit, so we never store one).
+    var openglDriverOverride by remember { mutableStateOf(shortcut.getExtra("openglDriver", "")) }
+
     // DX wrapper
     val dxWrapperEntries = remember { res.getStringArray(R.array.dxwrapper_entries).toList() }
     var selectedDxWrapper by remember {
@@ -6401,6 +6407,9 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("screenAlignment", screenAlignment.ifEmpty { null })
             putExtra("graphicsDriver", StringUtils.parseIdentifier(selectedGfxDriver))
             putExtra("graphicsDriverConfig", graphicsDriverConfig)
+            // "" (Default/container) -> null -> putExtra removes the key, so launch re-inherits the
+            // container's OpenGL Driver; "zink"/"freedreno" store the per-game override.
+            putExtra("openglDriver", openglDriverOverride.ifEmpty { null })
             putExtra("renderer", StringUtils.parseIdentifier(selectedRenderer))
             putExtra("sfCompatMode", if (sfCompatMode) "1" else "0")
             // Gyro per-game overrides (read by the launch resolver in XServerDisplayActivity).
@@ -6858,6 +6867,29 @@ internal fun ShortcutSettingsDialogScreen(
                     DpButton(dp, "gfxConfig", onActivate = { showGfxConfig = true }, modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(onClick = { showGfxConfig = true }, modifier = Modifier.fillMaxWidth()) {
                             Text("${stringResource(R.string.graphics_driver)}: ${GraphicsDriverConfigDialog.getVersion(graphicsDriverConfig)}")
+                        }
+                    }
+
+                    // OpenGL Driver (Phase 1) — per-game override of the container's GL gallium driver. GL-only
+                    // (DXVK/VKD3D Vulkan games unaffected); applies on the NEXT launch. "Default (container)"
+                    // clears the override (extra ABSENT) so launch re-inherits the container's OpenGL Driver.
+                    run {
+                        val openglLabels = listOf("Default (container)", "Zink", "freedreno")
+                        val openglIdx = when (openglDriverOverride) { "zink" -> 1; "freedreno" -> 2; else -> 0 }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            DpDrop(
+                                dp, "openglDriver",
+                                label = stringResource(R.string.opengl_driver),
+                                options = openglLabels,
+                                selected = openglLabels[openglIdx],
+                                onSelect = {
+                                    openglDriverOverride = when (openglLabels.indexOf(it)) { 1 -> "zink"; 2 -> "freedreno"; else -> "" }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { helpRes = R.string.help_opengl_driver }) {
+                                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
 

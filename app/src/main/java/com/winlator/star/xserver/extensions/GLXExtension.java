@@ -359,6 +359,9 @@ public class GLXExtension implements Extension {
         boolean isDirect = inputStream.readByte() != 0;
         inputStream.skip(3);
         
+        // DIAGNOSTIC: if this logs, Mesa got PAST driver/device/screen acquisition and the wall is
+        // downstream (buffer/makeCurrent). If it never logs, the wall is device acquisition (before GLX ctx).
+        Log.d("GLXExtension", "createNewContext ctx=" + contextId + " fbconfig=" + fbconfigId + " renderType=" + renderType + " direct=" + isDirect);
         if (renderType != GLXRenderType.GLX_RGBA_TYPE) throw new BadValue(renderType);
         
         FBConfig fbconfig = findFBConfig(fbconfigId);

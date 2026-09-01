@@ -7577,6 +7577,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if ("freedreno".equals(getSelectedOpenGLDriver())) {
             envVars.put("GALLIUM_DRIVER", "freedreno");
             envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "kgsl");
+            // === DIAGNOSTIC (temporary — REMOVE before ship): surface WHY the freedreno kgsl
+            // driver fails GL context creation. LIBGL_DEBUG=verbose logs driver .so resolution/load
+            // (driver-not-found vs device-open-fail); MESA_DEBUG=1 logs screen/context errors.
+            // Both reach wine_debug.log (same channel as the existing MESA-LOADER warning). ===
+            envVars.put("LIBGL_DEBUG", "verbose");
+            envVars.put("MESA_DEBUG", "1");
             // Cap GL at 3.3 (freedreno's ceiling) — but only when the user hasn't pinned their own value.
             if (!envVars.has("MESA_GL_VERSION_OVERRIDE")) {
                 envVars.put("MESA_GL_VERSION_OVERRIDE", "3.3");

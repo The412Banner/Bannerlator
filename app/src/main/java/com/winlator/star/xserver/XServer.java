@@ -8,6 +8,8 @@ import com.winlator.star.winhandler.WinHandler;
 import com.winlator.star.xserver.extensions.BigReqExtension;
 import com.winlator.star.xserver.extensions.DRI3Extension;
 import com.winlator.star.xserver.extensions.Extension;
+import com.winlator.star.xserver.extensions.GLXExtension;
+import com.winlator.star.xserver.extensions.XComposite;
 import com.winlator.star.xserver.extensions.MITSHMExtension;
 import com.winlator.star.xserver.extensions.PresentExtension;
 import com.winlator.star.xserver.extensions.RandrExtension;
@@ -210,6 +212,8 @@ public class XServer {
         extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension());
         extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension());
         extensions.put(RandrExtension.MAJOR_OPCODE, new RandrExtension(screenInfo));
+        extensions.put(GLXExtension.MAJOR_OPCODE, new GLXExtension(this));
+        extensions.put(XComposite.MAJOR_OPCODE, new XComposite(this));
     }
 
     public <T extends Extension> T getExtension(int opcode) {

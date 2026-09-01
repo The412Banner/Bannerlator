@@ -489,6 +489,22 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             else -> launchChoiceFor = shortcut
         }
     }
+    // A SteamLite launch that failed inside the container (the launch overlay's "Retry" / "Launch
+    // with Goldberg" buttons) records a pending relaunch before the session's normal exit restarts
+    // the app; pick it up here, once the library is loaded, and re-enter the matching launch flow.
+    LaunchedEffect(shortcuts) {
+        if (shortcuts.isEmpty()) return@LaunchedEffect
+        val pending = SteamSessionManager.takePendingRelaunch(context) ?: return@LaunchedEffect
+        val s = shortcuts.firstOrNull { it.file.path == pending.shortcutPath } ?: return@LaunchedEffect
+        when (pending.mode) {
+            SteamSessionManager.RelaunchMode.STEAMLITE -> launchWithSteamLite(s)
+            SteamSessionManager.RelaunchMode.GOLDBERG -> {
+                SteamPrefs.init(context)
+                val gm = SteamPrefs.getGoldbergMode(steamAppIdOf(s)).let { if (it == GoldbergMode.OFF) GoldbergMode.REGULAR else it }
+                launchWithGoldberg(s, gm)
+            }
+        }
+    }
     var showSortMenu by remember { mutableStateOf(false) }
     var showImportContainerPicker by remember { mutableStateOf(false) }
     var pendingImportContainerIndex by remember { mutableStateOf(-1) }

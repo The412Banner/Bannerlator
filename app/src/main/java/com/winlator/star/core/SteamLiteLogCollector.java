@@ -110,6 +110,18 @@ public final class SteamLiteLogCollector {
      */
     public static void collect(Context context, File driveC, File perGameLogDir,
                                String gameName, int appId, Info info) {
+        collect(context, driveC, perGameLogDir, gameName, appId, info, null);
+    }
+
+    /**
+     * As {@link #collect(Context, File, File, String, int, Info)}, plus the live agent-channel event
+     * lines of this launch ({@link com.winlator.star.store.SteamAgentChannel#eventLines()}) when the
+     * agent connected. When present they are the DEFINITIVE record of sign-in / secure-launch / exit
+     * and take precedence over the log-file inference in the DIAGNOSTICS section; they are also
+     * appended as their own raw section. Null/empty = no channel this run (older agent).
+     */
+    public static void collect(Context context, File driveC, File perGameLogDir,
+                               String gameName, int appId, Info info, List<String> agentEvents) {
         try {
             if (driveC == null || perGameLogDir == null) return;
 
@@ -161,8 +173,9 @@ public final class SteamLiteLogCollector {
             // The genuine Steam client logs accumulate across every launch — anchor to THIS run so the
             // diagnostics and raw sections report this session, not days of history. Null = no anchor.
             String since = sessionStart(steamRaw.get("gameprocess_log.txt"), appId);
-            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog);
+            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog, agentEvents);
             appendRawSections(out, steamRedacted, since);
+            appendAgentSection(out, agentEvents);
 
             // Belt-and-suspenders: re-scan the finished file for anything a header line carried through.
             String finished = SteamLogRedactor.auditSteamClientText(out.toString());
@@ -239,7 +252,8 @@ public final class SteamLiteLogCollector {
     /** A curated scan of THIS session's logs into plain-English one-liners. The value of the file:
      *  a reader sees the known-failure summary without reading four logs. */
     private static void appendDiagnostics(StringBuilder out, int appId, String wineText, String dxText,
-                                          Map<String, String> steam, String since, String launcherLog) {
+                                          Map<String, String> steam, String since, String launcherLog,
+                                          List<String> agentEvents) {
         out.append("\n===== DIAGNOSTICS (auto-scan) =====\n");
         if (since != null)
             out.append("- Session scope: findings below are from THIS run (since ").append(since).append(").\n");
@@ -247,6 +261,9 @@ public final class SteamLiteLogCollector {
             out.append("- Session scope: could not anchor this run in the logs; some counts may include "
                     + "earlier sessions.\n");
         List<String> f = new ArrayList<>();
+
+        // ── Live agent channel (definitive when present — the agent TOLD us what happened) ──
+        boolean agentVerdict = appendAgentChannel(f, agentEvents);
 
         String connection = steam.get("connection_log.txt");
         String gameproc = steam.get("gameprocess_log.txt");
@@ -269,7 +286,8 @@ public final class SteamLiteLogCollector {
         }
 
         // ── SteamLite agent / secure-launch health (reads wine_debug ORDER + real-Steam tracking) ──
-        appendSecureLaunch(f, wineText, gameproc, appId, since, launcherLog);
+        // Skipped when the live channel already gave the definitive verdict above.
+        if (!agentVerdict) appendSecureLaunch(f, wineText, gameproc, appId, since, launcherLog);
         boolean lsteam = matches(wineText, LSTEAMCLIENT_OFF) || matches(allSteam, LSTEAMCLIENT_OFF);
         f.add("CLIENT: Real Steam client mode (lsteamclient disabled — expected for SteamLite) = "
                 + yn(lsteam) + ".");
@@ -365,6 +383,92 @@ public final class SteamLiteLogCollector {
         }
 
         appendTrackedCount(f, gameproc, tracked, since);
+    }
+
+    /**
+     * Fold the live agent-channel events (agent-src/AGENT_CHANNEL.md) into plain-English lines. Every
+     * line is app-side data already scrubbed by the agent (masked SteamID, no token). Returns true
+     * when the events settled the secure-launch question (a {@code game_spawned} / fallback /
+     * refusal / sign-in failure was seen), so the file-based inference can be skipped.
+     */
+    private static boolean appendAgentChannel(List<String> f, List<String> agentEvents) {
+        if (agentEvents == null || agentEvents.isEmpty()) return false;
+        boolean started = false, loggedIn = false, verdict = false;
+        String loginFail = null, refused = null, fallback = null, spawned = null, exited = null, shutdown = null;
+        int achievements = 0;
+        boolean sessionLost = false;
+        for (String line : agentEvents) {
+            try {
+                org.json.JSONObject o = new org.json.JSONObject(line);
+                String ev = o.optString("ev", "");
+                switch (ev) {
+                    case "started": started = true; break;
+                    case "logged_in": loggedIn = true; break;
+                    case "login_failed":
+                        loginFail = "EResult " + o.optInt("eresult", 0) + " " + o.optString("reason", "");
+                        break;
+                    case "launch_refused":
+                        refused = o.optString("reason", "") + " (error " + o.optInt("error", -1) + ")";
+                        break;
+                    case "insecure_fallback":
+                        fallback = o.optString("exe", "") + " — " + o.optString("reason", "");
+                        break;
+                    case "direct_exe":
+                        fallback = o.optString("exe", "") + " — direct-exe mode";
+                        break;
+                    case "game_spawned":
+                        spawned = o.optString("exe", "") + (o.optBoolean("secure", false) ? " SECURE" : " INSECURE");
+                        break;
+                    case "session_lost": sessionLost = true; break;
+                    case "achievement": achievements++; break;
+                    case "game_exited": exited = "after " + (o.optLong("ms", 0L) / 1000L) + "s"; break;
+                    case "shutdown": shutdown = o.optString("reason", "") + " (code " + o.optInt("code", 0) + ")"; break;
+                    default: break;
+                }
+            } catch (Exception ignored) {}
+        }
+        if (!started) {
+            f.add("AGENT: the live channel opened but the agent never reported 'started' — treat the lines below as partial.");
+        }
+        if (loginFail != null) {
+            f.add("AUTH (agent): sign-in FAILED inside the container — " + loginFail.trim()
+                    + ". The game did not get a Steam session; check the saved sign-in / re-auth.");
+            verdict = true;
+        } else if (loggedIn) {
+            f.add("AUTH (agent): signed in to Steam inside the container = OK.");
+        } else if (started) {
+            f.add("AUTH (agent): no sign-in result was reported (agent ended before logon completed).");
+        }
+        if (spawned != null) {
+            boolean secure = spawned.endsWith(" SECURE");
+            f.add("SECURE LAUNCH (agent): " + (secure
+                    ? "Steam's LaunchApp started " + spawned.replace(" SECURE", "") + " = YES (VAC-eligible secure launch)."
+                    : "the game (" + spawned.replace(" INSECURE", "") + ") was started WITHOUT Steam's LaunchApp = NO — "
+                      + "INSECURE launch: VAC servers will reject it and live-service titles may report a wrong build."));
+            verdict = true;
+        } else if (fallback != null) {
+            f.add("SECURE LAUNCH (agent): NO — CreateProcess fallback (" + fallback + ").");
+            verdict = true;
+        } else if (refused != null) {
+            f.add("SECURE LAUNCH (agent): Steam REFUSED the launch — " + refused + "; no game process was reported.");
+            verdict = true;
+        }
+        if (refused != null && spawned != null && spawned.endsWith(" SECURE"))
+            f.add("LAUNCH (agent): LaunchApp was refused first, then Steam spawned the game late inside the grace window (benign).");
+        if (sessionLost) f.add("SESSION (agent): the in-game Steam session was LOST while the game ran.");
+        if (achievements > 0) f.add("ACHIEVEMENTS (agent): " + achievements + " unlock event(s) reported live.");
+        if (exited != null) f.add("EXIT (agent): game exited " + exited + ".");
+        if (shutdown != null) f.add("EXIT (agent): agent shutdown reason " + shutdown + ".");
+        return verdict;
+    }
+
+    /** Raw section: the agent-channel lines verbatim (already token-free / SteamID-masked). */
+    private static void appendAgentSection(StringBuilder out, List<String> agentEvents) {
+        if (agentEvents == null || agentEvents.isEmpty()) return;
+        out.append("\n===== agent channel — live events (steam.exe → app) =====\n");
+        for (String line : agentEvents) {
+            out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
+        }
     }
 
     private static void appendTrackedCount(List<String> f, String gameproc, Pattern tracked, String since) {

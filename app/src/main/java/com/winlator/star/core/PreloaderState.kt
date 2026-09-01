@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.StateFlow
 /** Which face of the launch overlay is currently showing. */
 enum class Phase { SETUP, GUEST, FAILED }
 
+/** One extra button on the failure card (e.g. "Retry", "Launch with Goldberg"). */
+data class FailureAction(val label: String, val primary: Boolean, val run: Runnable)
+
 /** Populated only when [Phase.FAILED] — drives the failure card. */
 data class Failure(
     val stage: String,
@@ -14,6 +17,8 @@ data class Failure(
     val detail: String?,
     val logDir: String?,
     val loggingEnabled: Boolean,
+    /** Optional extra actions rendered before the standard Close / Open-log buttons. */
+    val actions: List<FailureAction> = emptyList(),
 )
 
 /**
@@ -102,8 +107,14 @@ object PreloaderState {
 
     /** Surface a launch failure card instead of dismissing. */
     @JvmStatic fun fail(stage: String, what: String, detail: String?, logDir: String?, loggingEnabled: Boolean) {
+        fail(stage, what, detail, logDir, loggingEnabled, emptyList())
+    }
+
+    /** Failure card with extra action buttons (SteamLite: Retry / Launch with Goldberg). */
+    @JvmStatic fun fail(stage: String, what: String, detail: String?, logDir: String?, loggingEnabled: Boolean,
+                        actions: List<FailureAction>) {
         val cur = _ui.value ?: PreloaderUi(title = "")
-        _ui.value = cur.copy(phase = Phase.FAILED, failure = Failure(stage, what, detail, logDir, loggingEnabled))
+        _ui.value = cur.copy(phase = Phase.FAILED, failure = Failure(stage, what, detail, logDir, loggingEnabled, actions))
     }
 
     @JvmStatic fun hide() { _ui.value = null }

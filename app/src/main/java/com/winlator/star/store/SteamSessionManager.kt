@@ -287,6 +287,76 @@ object SteamSessionManager {
         return handle
     }
 
+    // ── Live agent channel (Phase 1-C) ──────────────────────────────────────────────────────
+
+    @Volatile private var agentChannel: SteamAgentChannel? = null
+
+    /** The channel of the launch in flight (null when none / the agent never connected). */
+    fun agentChannel(): SteamAgentChannel? = agentChannel
+
+    /**
+     * Open the loopback listener the in-container agent will connect to. Called by the launch
+     * activity BEFORE the guest boots; the returned port goes into the plan env as `BL_AGENT_PORT`.
+     * Any previous channel is closed first (one launch at a time). 0 when it could not be opened.
+     */
+    fun openAgentChannel(listener: SteamAgentChannel.Listener?): Int {
+        closeAgentChannel()
+        val ch = SteamAgentChannel.open(listener) ?: return 0
+        agentChannel = ch
+        return ch.port
+    }
+
+    fun closeAgentChannel() {
+        val ch = agentChannel ?: return
+        agentChannel = null
+        ch.close()
+    }
+
+    /** The raw event lines of the current/last launch (for the SteamLite log collector). */
+    fun agentEventLines(): List<String> = agentChannel?.eventLines() ?: emptyList()
+
+    // ── Pending relaunch (fail-card "Retry" / "Launch with Goldberg") ────────────────────────
+    // The launch activity can't re-run the library's launch flow itself (its exit path restarts
+    // the process), so it records the wish here and the library screen consumes it on its next
+    // composition: Retry re-opens the SteamLite pre-flight, Goldberg runs the Goldberg launch.
+
+    private const val RELAUNCH_PREFS = "steam_relaunch"
+    private const val RELAUNCH_TTL_MS = 3L * 60 * 1000
+
+    enum class RelaunchMode { STEAMLITE, GOLDBERG }
+
+    data class PendingRelaunch(val shortcutPath: String, val containerId: Int, val mode: RelaunchMode)
+
+    fun setPendingRelaunch(ctx: Context, shortcutPath: String, containerId: Int, mode: RelaunchMode) {
+        try {
+            ctx.applicationContext.getSharedPreferences(RELAUNCH_PREFS, Context.MODE_PRIVATE).edit()
+                .putString("path", shortcutPath)
+                .putInt("container", containerId)
+                .putString("mode", mode.name)
+                .putLong("at", System.currentTimeMillis())
+                .apply()
+            Log.i(TAG, "pending relaunch recorded: $mode for $shortcutPath")
+        } catch (t: Throwable) {
+            Log.w(TAG, "setPendingRelaunch failed", t)
+        }
+    }
+
+    /** Consume (and clear) a pending relaunch recorded within the last few minutes, if any. */
+    fun takePendingRelaunch(ctx: Context): PendingRelaunch? {
+        return try {
+            val p = ctx.applicationContext.getSharedPreferences(RELAUNCH_PREFS, Context.MODE_PRIVATE)
+            val path = p.getString("path", null) ?: return null
+            val at = p.getLong("at", 0L)
+            val mode = try { RelaunchMode.valueOf(p.getString("mode", "") ?: "") } catch (_: Throwable) { null }
+            p.edit().clear().apply()
+            if (mode == null || System.currentTimeMillis() - at > RELAUNCH_TTL_MS) null
+            else PendingRelaunch(path, p.getInt("container", 0), mode)
+        } catch (t: Throwable) {
+            Log.w(TAG, "takePendingRelaunch failed", t)
+            null
+        }
+    }
+
     private fun checkForUpdateBlocking(ctx: Context, appId: Int): SteamGameUpdater.UpdateStatus? {
         val latch = CountDownLatch(1)
         var out: SteamGameUpdater.UpdateStatus? = null

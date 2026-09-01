@@ -108,6 +108,26 @@ public final class RealSteamLauncher {
                                String displayName,
                                String hostInstallDir,
                                boolean controllerPassthrough) {
+        return prepare(ctx, driveC, steamLiteInstallDir, shortcut, appId, displayName, hostInstallDir,
+                controllerPassthrough, 0);
+    }
+
+    /**
+     * As {@link #prepare(Context, File, File, Shortcut, int, String, String, boolean)}, plus the live
+     * agent channel: when {@code agentPort > 0} the plan env carries {@code BL_AGENT_PORT} and the
+     * agent streams its login/launch/game events to {@code 127.0.0.1:<port>} (see
+     * {@link SteamAgentChannel}). {@code 0} = no channel; an agent without the feature ignores the var.
+     * The existing {@code WN_*} keys are unchanged.
+     */
+    public static Plan prepare(Context ctx,
+                               File driveC,
+                               File steamLiteInstallDir,
+                               Shortcut shortcut,
+                               int appId,
+                               String displayName,
+                               String hostInstallDir,
+                               boolean controllerPassthrough,
+                               int agentPort) {
         try {
             // ── 0. Validate prerequisites ────────────────────────────────────────────────────────
             if (driveC == null) { Log.w(TAG, "prepare: null driveC — fallback"); return null; }
@@ -233,6 +253,8 @@ public final class RealSteamLauncher {
             // left off by default so the proven VAC launch path (which relies on the refresh) is
             // unchanged until it's re-verified online with the skip on.
             env.put("WN_STEAM_APPINFO_WAIT_MS", "4000");
+            // Live agent↔app channel (additive; the agent is fully functional without it).
+            if (agentPort > 0) env.put("BL_AGENT_PORT", String.valueOf(agentPort));
 
             String specArgWin = "C:\\" + appId + ".spec";
             Log.i(TAG, "prepare: staged appId=" + appId + " canonical=\"" + canonicalName

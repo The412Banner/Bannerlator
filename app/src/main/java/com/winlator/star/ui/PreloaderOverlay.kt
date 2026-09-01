@@ -516,6 +516,18 @@ private fun FailureCard(failure: Failure?) {
                 )
             }
             Spacer(Modifier.height(14.dp))
+            // Extra actions (SteamLite: "Retry" / "Launch with Goldberg") sit on their own row so
+            // the standard Close / Open-log pair below never reflows.
+            if (failure.actions.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    failure.actions.forEachIndexed { i, a ->
+                        if (i > 0) Spacer(Modifier.width(8.dp))
+                        if (a.primary) Button(onClick = { a.run.run() }) { Text(a.label) }
+                        else OutlinedButton(onClick = { a.run.run() }) { Text(a.label) }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
             if (failure.loggingEnabled && !failure.logDir.isNullOrEmpty()) {
                 Text(
                     text = "Log saved to ${failure.logDir}",

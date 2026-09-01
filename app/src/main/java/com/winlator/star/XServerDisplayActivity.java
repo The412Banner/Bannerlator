@@ -4069,7 +4069,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                                                 dxwrapperConfig != null ? dxwrapperConfig.get("version") : null,
                                                 dxwrapperConfig != null ? dxwrapperConfig.get("vkd3dVersion") : null);
                                 com.winlator.star.core.SteamLiteLogCollector.collect(
-                                        appCtx, driveC, perGameLogDir, gameName, realSteamPlan.appId, info);
+                                        appCtx, driveC, perGameLogDir, gameName, realSteamPlan.appId, info,
+                                        steamAgentChannel != null ? steamAgentChannel.eventLines() : null);
                             }
                         } catch (Throwable t) {
                             Log.w("SteamLiteLogs", "collect on exit errored", t);
@@ -4339,6 +4340,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             SteamDatabase.GameRow row = SteamRepository.getInstance().getDatabase().getGame(ref.appId);
             String displayName = (row != null && row.name != null) ? row.name : shortcut.name;
 
+            // Live agent↔app channel: bind the loopback listener BEFORE the guest boots so the plan
+            // env can carry its port (BL_AGENT_PORT). Best-effort — 0 = no channel, launch unchanged.
+            int agentPort = com.winlator.star.store.SteamSessionManager.INSTANCE.openAgentChannel(agentChannelListener);
+            steamAgentChannel = com.winlator.star.store.SteamSessionManager.INSTANCE.agentChannel();
+
             realSteamPlan = RealSteamLauncher.prepare(
                     this,
                     realSteamDriveC,
@@ -4347,21 +4353,183 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     ref.appId,
                     displayName,
                     ref.installDir,
-                    isControllerPassthroughLaunch());
+                    isControllerPassthroughLaunch(),
+                    agentPort);
 
             if (realSteamPlan != null) {
                 Log.i("BH_REALSTEAM", "RealSteam launch armed (appId=" + realSteamPlan.appId
-                        + ", steamapps\\common\\" + realSteamPlan.canonicalName + ")");
+                        + ", steamapps\\common\\" + realSteamPlan.canonicalName
+                        + (agentPort > 0 ? ", agent channel port " + agentPort : ", no agent channel") + ")");
                 // The app's own CM session is suspended later, in suspendAppSteamSessionForRealSteam()
                 // — AFTER the pre-launch Steam Cloud pull and achievement seed, which still ride it.
+                armAgentWatchdog();
             } else {
                 Log.w("BH_REALSTEAM", "RealSteam prep incomplete — falling back to normal launch");
+                closeAgentChannel();
             }
         } catch (Throwable t) {
             // Never let a RealSteam setup failure abort the launch — fall through to the normal path.
             realSteamPlan = null;
+            closeAgentChannel();
             Log.w("BH_REALSTEAM", "RealSteam setup errored — falling back to normal launch", t);
         }
+    }
+
+    // ── Live SteamLite agent channel (Phase 1-C) ─────────────────────────────────────────────────
+    // The in-container agent streams its login / launch / game events over loopback (see
+    // SteamAgentChannel + agent-src/AGENT_CHANNEL.md). They drive the launch overlay's reassurance
+    // line with the REAL state ("Signing in to Steam…", "Steam accepted the launch…", "Game running
+    // (secure)") and, on a failed sign-in / insecure fallback / no sign-in within a bound, replace the
+    // black screen with a failure card offering Retry / Launch with Goldberg. Everything here is
+    // best-effort: an agent without the feature never connects and the launch behaves as before.
+    private static final String AGENT_TAG = "BH_STEAM_AGENT";
+    /** No logged_in / login_failed / game_spawned within this long of arming → "sign-in did not complete". */
+    private static final long AGENT_LOGIN_TIMEOUT_MS = 75_000L;
+    private com.winlator.star.store.SteamAgentChannel steamAgentChannel = null;
+    private volatile boolean agentConnected = false;
+    private volatile boolean agentLoginResolved = false;
+    private final android.os.Handler agentWatchdog = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable agentWatchdogRunnable = () -> {
+        if (agentLoginResolved || winStarted || exiting) return;
+        if (!agentConnected) {
+            Log.i(AGENT_TAG, "watchdog: agent never connected (no channel support?) — leaving the launch alone");
+            return;
+        }
+        Log.w(AGENT_TAG, "watchdog: no sign-in result from the agent within " + (AGENT_LOGIN_TIMEOUT_MS / 1000) + "s");
+        showAgentFailure("Steam sign-in",
+                "Steam sign-in did not complete",
+                "The Steam client inside the container reported no sign-in result within "
+                        + (AGENT_LOGIN_TIMEOUT_MS / 1000) + "s.");
+    };
+
+    private final com.winlator.star.store.SteamAgentChannel.Listener agentChannelListener =
+            new com.winlator.star.store.SteamAgentChannel.Listener() {
+        @Override public void onAgentConnected() {
+            agentConnected = true;
+            preloaderHint("Steam client started — signing in…");
+        }
+        @Override public void onAgentDisconnected() { /* game_exited / shutdown already said why */ }
+        @Override public void onAgentEvent(String ev, org.json.JSONObject obj) {
+            switch (ev) {
+                case "started":
+                    preloaderHint("Signing in to Steam…");
+                    break;
+                case "logged_in":
+                    agentLoginResolved = true;
+                    preloaderHint("Signed in to Steam — launching the game…");
+                    break;
+                case "login_failed": {
+                    agentLoginResolved = true;
+                    int er = obj.optInt("eresult", 0);
+                    String reason = obj.optString("reason", "");
+                    showAgentFailure("Steam sign-in",
+                            "Steam rejected the sign-in" + (reason.isEmpty() ? "" : " (" + reason + ")"),
+                            (er != 0 ? "EResult " + er + " — " : "")
+                                    + "The saved Steam sign-in did not work inside the container. "
+                                    + "Retry, sign in again from the Steam tab, or launch offline with Goldberg.");
+                    break;
+                }
+                case "appinfo": {
+                    String st = obj.optString("state", "");
+                    if ("not_installed".equals(st) || "timeout".equals(st))
+                        preloaderHint("Steam doesn't see the game as installed — launching anyway…");
+                    break;
+                }
+                case "launch_accepted":
+                    preloaderHint("Steam accepted the launch — starting the game…");
+                    break;
+                case "launch_refused":
+                    preloaderHint("Steam refused the launch (" + obj.optString("reason", "") + ") — trying a direct start…");
+                    break;
+                case "insecure_fallback":
+                    agentLoginResolved = true;
+                    if (!winStarted) {
+                        showAgentFailure("Steam launch",
+                                "Steam did not start the game — insecure fallback",
+                                "Steam's LaunchApp refused (" + obj.optString("reason", "") + "). The game can still run "
+                                        + "WITHOUT Steam protection: VAC servers will reject it and live-service titles may "
+                                        + "report a wrong build. Retry, launch offline with Goldberg, or keep going insecure.",
+                                true);
+                    } else {
+                        preloaderHint("Running WITHOUT Steam protection (insecure fallback)");
+                    }
+                    break;
+                case "direct_exe":
+                    agentLoginResolved = true;
+                    preloaderHint("Starting the selected exe directly (no Steam launch)…");
+                    break;
+                case "game_spawned": {
+                    agentLoginResolved = true;
+                    boolean secure = obj.optBoolean("secure", false);
+                    preloaderHint(secure ? "Game running (secure Steam launch)" : "Game running (insecure — no VAC)");
+                    break;
+                }
+                case "session_lost":
+                    preloaderHint("Steam session lost — online features may drop");
+                    break;
+                case "game_exited":
+                case "shutdown":
+                    Log.i(AGENT_TAG, ev + ": " + obj);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
+
+    private void preloaderHint(String text) {
+        try { if (preloaderDialog != null) preloaderDialog.hint(text); } catch (Throwable ignored) {}
+    }
+
+    private void armAgentWatchdog() {
+        agentWatchdog.removeCallbacks(agentWatchdogRunnable);
+        agentWatchdog.postDelayed(agentWatchdogRunnable, AGENT_LOGIN_TIMEOUT_MS);
+    }
+
+    private void closeAgentChannel() {
+        agentWatchdog.removeCallbacks(agentWatchdogRunnable);
+        try { com.winlator.star.store.SteamSessionManager.INSTANCE.closeAgentChannel(); } catch (Throwable ignored) {}
+    }
+
+    private void showAgentFailure(String stage, String what, String detail) {
+        showAgentFailure(stage, what, detail, false);
+    }
+
+    /**
+     * Failure card for an agent-reported problem, with "Retry" (re-runs the SteamLite pre-flight +
+     * launch from the library) and "Launch with Goldberg" (offline) — both record a pending relaunch
+     * the library screen consumes after this session's normal exit path restarts the app — plus an
+     * optional "Keep going" that just returns to the launch spinner.
+     */
+    private void showAgentFailure(String stage, String what, String detail, boolean offerContinue) {
+        final String logDir = com.winlator.star.core.LogLocation.resolveLogDir(this).getAbsolutePath();
+        final boolean logging = isLaunchLoggingEnabled();
+        final Shortcut sc = shortcut;
+        final Container c = container;
+        runOnUiThread(() -> {
+            if (exiting || preloaderDialog == null) return;
+            cancelLaunchTimers();
+            java.util.List<com.winlator.star.core.FailureAction> actions = new ArrayList<>();
+            if (offerContinue) {
+                actions.add(new com.winlator.star.core.FailureAction("Keep going", false,
+                        () -> { try { preloaderDialog.enterGuest("Waiting for the game to render…"); } catch (Throwable ignored) {} }));
+            }
+            if (sc != null && c != null) {
+                actions.add(new com.winlator.star.core.FailureAction("Launch with Goldberg", false, () -> {
+                    com.winlator.star.store.SteamSessionManager.INSTANCE.setPendingRelaunch(
+                            getApplicationContext(), sc.file.getPath(), c.id,
+                            com.winlator.star.store.SteamSessionManager.RelaunchMode.GOLDBERG);
+                    exit();
+                }));
+                actions.add(new com.winlator.star.core.FailureAction("Retry", true, () -> {
+                    com.winlator.star.store.SteamSessionManager.INSTANCE.setPendingRelaunch(
+                            getApplicationContext(), sc.file.getPath(), c.id,
+                            com.winlator.star.store.SteamSessionManager.RelaunchMode.STEAMLITE);
+                    exit();
+                }));
+            }
+            preloaderDialog.fail(stage, what, detail, logDir, logging, actions);
+        });
     }
 
     /**
@@ -4390,6 +4558,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * logon and must only be used off the UI thread. Never throws.
      */
     private void releaseRealSteamSession(String why, long awaitLoggedInMs) {
+        // The agent channel dies with the guest; drop the listener + port (event lines stay readable
+        // on steamAgentChannel for the log collector).
+        closeAgentChannel();
         if (!realSteamSessionHeld) return;
         realSteamSessionHeld = false;
         try {

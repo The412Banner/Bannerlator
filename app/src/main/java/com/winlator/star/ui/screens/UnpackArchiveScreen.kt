@@ -31,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -117,10 +118,18 @@ fun UnpackArchiveScreen(
     // 7-Zip can't open — those must be installed by running Setup.exe in a container. Classify BEFORE
     // offering a doomed 7-Zip "unpack" action (Records.ini + a `7zz l` pre-flight, off the main thread).
     var innoClass by remember(archivePath) { mutableStateOf<SevenZip.InnoClassification?>(null) }
+    // GOG DLC auto-batch: sibling setup_*.exe installers (base game first, then any DLC/extra setups)
+    // in the same folder. Populated for the innoextract route only; size > 1 means DLC was found, which
+    // reveals the "also extract DLC" toggle below. Default the toggle on — auto-batch is the ask.
+    var dlcInstallers by remember(archivePath) { mutableStateOf<List<File>>(emptyList()) }
+    var alsoExtractDlc by remember(archivePath) { mutableStateOf(true) }
     LaunchedEffect(archivePath) {
         typeLoading = true
         if (isInno) {
             innoClass = withContext(Dispatchers.IO) { SevenZip.classifyInno(context, archive) }
+            if (innoClass?.route == SevenZip.InnoRoute.INNOEXTRACT) {
+                dlcInstallers = withContext(Dispatchers.IO) { SevenZip.siblingInnoInstallers(archive) }
+            }
         } else {
             val info = withContext(Dispatchers.IO) { SevenZip.list(context, archive) }
             detectedType = info?.type
@@ -563,18 +572,42 @@ fun UnpackArchiveScreen(
                         RunSetupInContainer(exe = archive)
                     }
                 } else {
+                    val dlcCount = (dlcInstallers.size - 1).coerceAtLeast(0)
+                    val batchDlc = alsoExtractDlc && dlcCount > 0
+                    // DLC/extra setups found next to the base installer: offer to extract them all into
+                    // the same game folder (base first, DLC overlaid), or untick for base-game only.
+                    if (dlcCount > 0) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        ) {
+                            Checkbox(checked = alsoExtractDlc, onCheckedChange = { alsoExtractDlc = it })
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "Also extract $dlcCount DLC setup${if (dlcCount == 1) "" else "s"} found in this folder",
+                                color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
+                            )
+                        }
+                    }
                     Button(
                         onClick = {
                             UnpackManager.clearIfTerminal()
                             // isInno=true selects the innoextract engine in the service.
-                            UnpackService.start(context, archive.absolutePath, destPath, 1, buffer.bytes, true, sourceSize)
+                            if (batchDlc) {
+                                UnpackService.startBatch(context, dlcInstallers.map { it.absolutePath }, destPath, sourceSize)
+                            } else {
+                                UnpackService.start(context, archive.absolutePath, destPath, 1, buffer.bytes, true, sourceSize)
+                            }
                         },
                         enabled = !gatedByPermission && archive.isFile && !otherJobRunning,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                     ) {
                         Icon(Icons.Filled.Unarchive, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Unpack game files (innoextract)", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (batchDlc) "Unpack game + $dlcCount DLC (innoextract)" else "Unpack game files (innoextract)",
+                            fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        )
                     }
                     // No dead-ends: also offer the container route (e.g. if innoextract fails at runtime).
                     Spacer(Modifier.height(8.dp))

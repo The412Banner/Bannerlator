@@ -51,8 +51,17 @@ object FastExtract {
                 SevenZip.InnoRoute.INNOEXTRACT -> {
                     if (!hasAllFiles) return Outcome.OpenScreen(file.absolutePath, null)
                     val dest = defaultDest(archive, isInno = true)
-                    UnpackService.start(context, archive.absolutePath, dest, 1, ReadBuffer.MB1.bytes, true, size, "inno")
-                    Outcome.Started(archive.name)
+                    // Auto-detect GOG DLC/extra setups in the same folder and extract them all into one
+                    // merged game folder (base first, DLC overlaid on top). `size` already sums every
+                    // .bin in the folder, so it doubles as the combined batch payload for the bar.
+                    val installers = withContext(Dispatchers.IO) { SevenZip.siblingInnoInstallers(archive) }
+                    if (installers.size > 1) {
+                        UnpackService.startBatch(context, installers.map { it.absolutePath }, dest, size)
+                        Outcome.Started("${archive.name} + ${installers.size - 1} DLC")
+                    } else {
+                        UnpackService.start(context, archive.absolutePath, dest, 1, ReadBuffer.MB1.bytes, true, size, "inno")
+                        Outcome.Started(archive.name)
+                    }
                 }
                 SevenZip.InnoRoute.FREEARC_NATIVE -> {
                     if (!hasAllFiles) return Outcome.OpenScreen(file.absolutePath, null)

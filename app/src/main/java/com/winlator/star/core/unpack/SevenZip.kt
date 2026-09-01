@@ -155,6 +155,33 @@ object SevenZip {
     /** True when [file] is (part of) an InnoSetup installer/repack — see [resolveInnoTarget]. */
     fun isInnoSetup(file: File): Boolean = resolveInnoTarget(file) != null
 
+    // GOG offline installers are always named `setup_<slug>[_<dlc>]_<version>.exe`; a game folder that
+    // also holds DLC has one such `.exe` per installer (each with its own `<basename>-N.bin` volumes).
+    private val GOG_SETUP_EXE = Regex("""(?i)^setup_.+\.exe$""")
+
+    /**
+     * All the distinct InnoSetup/GOG installers sitting next to [mainInstaller] in the same folder —
+     * the base game plus any sibling DLC/extra `setup_*.exe` files GOG drops in the download folder.
+     * [mainInstaller] is always first; the rest follow in name order (deterministic).
+     *
+     * Each `.exe` is its own installer (innoextract reads each one's `-N.bin` payload from its header),
+     * so extracting them one-by-one into the SAME destination overlays the DLC files onto the base
+     * game — exactly what running the DLC installers in sequence would do. Returns just [mainInstaller]
+     * when nothing else is found (the ordinary single-game case), so callers can treat 1 as "no batch".
+     *
+     * Name-only detection is intentional: it's cheap, it never spawns a process, and the false-positive
+     * cost is one innoextract that exits non-zero on a non-Inno `setup_*.exe` (the batch runner tolerates
+     * and skips a failed sibling). Reads a directory listing — call it off the main thread.
+     */
+    fun siblingInnoInstallers(mainInstaller: File): List<File> {
+        val parent = mainInstaller.parentFile ?: return listOf(mainInstaller)
+        val mainPath = mainInstaller.absolutePath
+        val extras = (parent.listFiles() ?: return listOf(mainInstaller))
+            .filter { it.isFile && it.absolutePath != mainPath && GOG_SETUP_EXE.matches(it.name) }
+            .sortedBy { it.name.lowercase() }
+        return listOf(mainInstaller) + extras
+    }
+
     /** How an InnoSetup installer must be unpacked. */
     enum class InnoRoute {
         /** Standard InnoSetup / GOG — extract the game files in-app with innoextract. */

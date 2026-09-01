@@ -47,6 +47,15 @@ data class UnpackState(
     val isInno: Boolean = false,
     /** Which engine ran: "7z" | "inno" | "unarc". Lets the error UI tailor its guidance. */
     val engine: String = "7z",
+    /**
+     * GOG multi-installer batch: how many InnoSetup installers this job runs (base game + any
+     * sibling DLC setups auto-detected in the same folder). 1 = an ordinary single-file extract.
+     */
+    val batchTotal: Int = 1,
+    /** Which installer of [batchTotal] is currently extracting (1-based); 0 before the first. */
+    val batchIndex: Int = 0,
+    /** How many DLC installers in the batch failed (base-game failure is fatal, not counted here). */
+    val batchFailed: Int = 0,
 ) {
     val isRunning: Boolean get() = phase == UnpackPhase.LISTING || phase == UnpackPhase.EXTRACTING
 }

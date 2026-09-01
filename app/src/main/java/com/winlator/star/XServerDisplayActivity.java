@@ -4352,18 +4352,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (realSteamPlan != null) {
                 Log.i("BH_REALSTEAM", "RealSteam launch armed (appId=" + realSteamPlan.appId
                         + ", steamapps\\common\\" + realSteamPlan.canonicalName + ")");
-                // Single session per account: the agent logs THIS account into genuine Steam seconds
-                // after wine starts. Take the app's own CM session down NOW (the plan already captured
-                // the token; prefs keep it) so Steam never sees two sessions — live-service titles
-                // refuse to connect ("INCORRECT VERSION") and the agent's LaunchApp can stall when the
-                // sessions fight. Released on game exit / activity destroy (releaseRealSteamSession).
-                try {
-                    SteamRepository.getInstance().suspendForRealSteam();
-                    realSteamSessionHeld = true;
-                } catch (Throwable t) {
-                    Log.w("BH_REALSTEAM", "could not suspend the app's Steam session — the game may hit "
-                            + "a session conflict", t);
-                }
+                // The app's own CM session is suspended later, in suspendAppSteamSessionForRealSteam()
+                // — AFTER the pre-launch Steam Cloud pull and achievement seed, which still ride it.
             } else {
                 Log.w("BH_REALSTEAM", "RealSteam prep incomplete — falling back to normal launch");
             }
@@ -4375,8 +4365,25 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /**
+     * Take the app's own Steam CM session down for a real-Steam launch so the in-guest agent is the
+     * account's only session. No-op unless {@link #maybeStageRealSteam()} armed a plan. Must run on the
+     * launch worker AFTER every pre-launch consumer of the app session (Steam Cloud pull, achievement
+     * seed) and BEFORE the guest starts. Never throws.
+     */
+    private void suspendAppSteamSessionForRealSteam() {
+        if (realSteamPlan == null || realSteamSessionHeld) return;
+        try {
+            SteamRepository.getInstance().suspendForRealSteam();
+            realSteamSessionHeld = true;
+        } catch (Throwable t) {
+            Log.w("BH_REALSTEAM", "could not suspend the app's Steam session — the game may hit "
+                    + "a session conflict", t);
+        }
+    }
+
+    /**
      * Give the account back to the app's own Steam CM session after a real-Steam launch: the inverse
-     * of the suspend in {@link #maybeStageRealSteam()}. Idempotent (guarded by
+     * of {@link #suspendAppSteamSessionForRealSteam()}. Idempotent (guarded by
      * {@link #realSteamSessionHeld}) and a no-op for every non-RealSteam launch, so it is safe to call
      * from both the normal exit worker (after the guest — and the agent's own Steam_LogOff — is gone)
      * and onDestroy (abnormal teardown). {@code awaitLoggedInMs > 0} blocks the CALLER for the fresh
@@ -5911,6 +5918,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // read/merge/write can block here. Best-effort; never blocks/crashes the launch. No-op for
         // non-Steam / Goldberg-OFF shortcuts.
         maybeSeedAndStartAchievementWatcher();
+
+        // Single session per account: the RealSteam agent logs THIS account into genuine Steam seconds
+        // after wine starts, so the app's own CM session must be down by then — but only NOW, after the
+        // cloud pull + achievement seed above have used it (suspending earlier made the pre-launch
+        // cloud download fail with AsyncJobFailedException). Released on game exit / activity destroy.
+        suspendAppSteamSessionForRealSteam();
 
         // Start all environment components (XServer, Audio, Wine, etc.)
         preloaderDialog.step(4, "Launching Windows…");

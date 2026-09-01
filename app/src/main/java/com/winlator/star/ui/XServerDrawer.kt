@@ -3225,6 +3225,22 @@ private fun PlayersSection() {
     )
     Spacer(Modifier.height(8.dp))
 
+    // Full landscape popup: the same slot controls in a left rail, plus a live "Controller Test"
+    // picture that lights up as each button/stick/dpad/trigger is pressed (game input is isolated
+    // while it's open). Opens the CONTROLLER_TEST dialog hosted by XServerDialogHost.
+    Button(
+        onClick = { XServerDialogState.show(XServerDialogState.ActiveDialog.CONTROLLER_TEST) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+    ) { Text("Physical Controller Test / Bind") }
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "Test each physical controller, remap its buttons, and confirm every input registers.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(10.dp))
+
     if (rows.isEmpty()) {
         Text(
             "No input devices detected.",

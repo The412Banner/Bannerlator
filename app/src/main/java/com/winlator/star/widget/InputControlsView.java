@@ -80,6 +80,9 @@ public class InputControlsView extends View {
     private float offsetY;
     private ControlElement selectedElement;
     private ControlsProfile profile;
+    // PHYSICAL lane (Players > Bind): remaps the physical pad's bindings WITHOUT drawing the OSC,
+    // so it runs alongside the OSC `profile` above with no clobber. null == raw Xbox passthrough.
+    private ControlsProfile physicalProfile;
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private VisualStyle visualStyle = VisualStyle.GAMEHUB;
     private TouchpadView touchpadView;
@@ -524,6 +527,42 @@ public class InputControlsView extends View {
         updateTouchscreenMouseButtons();
     }
 
+    public synchronized ControlsProfile getPhysicalProfile() {
+        return physicalProfile;
+    }
+
+    // Activates a profile for the PHYSICAL pad's controller bindings (Players > Bind lane), independent
+    // of the OSC `profile`. Releases/neutralizes the outgoing physical controllers first so nothing
+    // stays latched across the switch, then pushes a fresh state so the new lane applies at once:
+    // null == revert to raw Xbox passthrough. NOTE: setProfile(null) (OSC hide) must NOT clear this.
+    public synchronized void setPhysicalProfile(ControlsProfile physicalProfile) {
+        WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+        releaseTrackedControllerMappings();
+        activeControllerKeys.clear();
+        controllerDeviceIds.clear();
+        if (this.physicalProfile != null) {
+            for (ExternalController controller : this.physicalProfile.getControllers()) {
+                controller.state.reset();
+                controller.remappedState.reset();
+            }
+        }
+        this.physicalProfile = physicalProfile;
+        if (this.physicalProfile != null) {
+            for (ExternalController controller : this.physicalProfile.getControllers()) {
+                controller.state.reset();
+                controller.remappedState.reset();
+            }
+        }
+        // Re-push the live physical devices through the new lane (passthrough resumes / remap applies).
+        if (winHandler != null) winHandler.refreshControllerStates();
+    }
+
+    // Re-apply the current physical lane after a transport rebuild (Reset Input) so held/latched state
+    // is cleared and the pad resumes remapping (or passthrough) without waiting for the next event.
+    public synchronized void reapplyPhysicalProfile() {
+        setPhysicalProfile(this.physicalProfile);
+    }
+
     public synchronized void releaseActiveControls() {
         if (profile != null && profile.isElementsLoaded()) {
             for (ControlElement element : profile.getElements()) {
@@ -548,9 +587,9 @@ public class InputControlsView extends View {
         releaseTrackedControllerMappings();
         activeControllerKeys.clear();
         controllerDeviceIds.clear();
-        if (profile == null) return;
+        if (physicalProfile == null) return;
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
-        for (ExternalController controller : profile.getControllers()) {
+        for (ExternalController controller : physicalProfile.getControllers()) {
             controller.state.reset();
             controller.remappedState.reset();
             if (winHandler != null) winHandler.sendGamepadState(controller);
@@ -1004,8 +1043,8 @@ public class InputControlsView extends View {
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
-        if (!editMode && profile != null) {
-            ExternalController controller = profile.getController(event.getDeviceId());
+        if (!editMode && physicalProfile != null) {
+            ExternalController controller = physicalProfile.getController(event.getDeviceId());
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
                 controllerDeviceIds.put(controller, event.getDeviceId());
                 processControllerMappings(controller);
@@ -1460,8 +1499,8 @@ public class InputControlsView extends View {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
-        if (profile != null && event.getRepeatCount() == 0) {
-            ExternalController controller = profile.getController(event.getDeviceId());
+        if (physicalProfile != null && event.getRepeatCount() == 0) {
+            ExternalController controller = physicalProfile.getController(event.getDeviceId());
             if (controller != null) {
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(event.getKeyCode());
                 if (controllerBinding != null) {

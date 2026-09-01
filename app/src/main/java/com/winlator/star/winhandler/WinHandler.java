@@ -745,6 +745,43 @@ public class WinHandler {
     }
 
     /**
+     * "Identify this pad" buzz for the in-game Players controller-test panel. Fires a short, firm
+     * rumble on the slot's owner device, going STRAIGHT to {@link #dispatchControllerVibration} so it
+     * bypasses the per-container vibration mode/master gate — this is an explicit user action in the
+     * test panel, not game-driven rumble, so it must work even when in-game vibration is set to Off.
+     * Main-thread only.
+     */
+    public void testRumble(int slot) {
+        if (slot < 0 || slot >= MAX_CONTROLLERS)
+            return;
+        // strong/weak are raw 0..65535 (same scale the guest sends); dispatchControllerVibration runs
+        // them through rawToAmplitude/applyIntensity exactly like an in-game rumble.
+        dispatchControllerVibration(48000, 32000, 420, slot, false);
+    }
+
+    /**
+     * True when the slot's resolved owner device actually exposes a vibrator (physical pad motor, or
+     * the phone vibrator when OSC owns the slot). Lets the test panel disable the Identify button for
+     * pads with no rumble. Main-thread only.
+     */
+    public boolean slotHasVibrator(int slot) {
+        if (slot < 0 || slot >= MAX_CONTROLLERS)
+            return false;
+        Integer deviceId = resolveSlotOwnerDeviceId(slot);
+        if (deviceId == null)
+            return false;
+        if (deviceId == OSC_DEVICE_ID) {
+            Vibrator v = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+            return v != null && v.hasVibrator();
+        }
+        android.view.InputDevice d = android.view.InputDevice.getDevice(deviceId);
+        if (d == null)
+            return false;
+        Vibrator v = d.getVibrator();
+        return v != null && v.hasVibrator();
+    }
+
+    /**
      * Controller-mode dispatch: resolves the same deviceId-owns-slot / OSC-or-no-vibrator phone
      * fallback that this method always used, then delivers via independent low/high motors
      * (VibratorManager, API 31+) when the target exposes ≥1 vibrator id, blending to one motor
@@ -1127,6 +1164,16 @@ public class WinHandler {
         state.dpad[0] = state.dpad[1] = state.dpad[2] = state.dpad[3] = false;
     }
 
+    // Re-push every live physical controller's current state through the slot pipeline, re-evaluating
+    // the physical-profile remap gate. Used when the physical lane changes (InputControlsView
+    // .setPhysicalProfile) so a switch to passthrough (raw resumes) or a bound profile (remap/silence)
+    // applies at once instead of waiting for the next input event. Mirrors releaseAllControllerInputs.
+    public void refreshControllerStates() {
+        for (ExternalController controller : controllers.values()) {
+            if (controller != null) sendGamepadState(controller);
+        }
+    }
+
     public void sendGamepadState(ExternalController controller) {
         if (controller == null)
             return;
@@ -1138,7 +1185,7 @@ public class WinHandler {
         // If it does, we should NOT send the raw state here, because InputControlsView
         // will send the remapped state via the no-arg sendGamepadState().
         InputControlsView inputControlsView = activity.getInputControlsView();
-        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getPhysicalProfile() : null;
         if (profile != null) {
             ExternalController profileController = profile.getController(controller.getDeviceId());
             if (profileController != null && profileController.getControllerBindingCount() > 0) {
@@ -2715,7 +2762,7 @@ public class WinHandler {
             sendGamepadState(controller);
         }
         InputControlsView inputControlsView = activity.getInputControlsView();
-        ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+        ControlsProfile profile = inputControlsView != null ? inputControlsView.getPhysicalProfile() : null;
         if (profile == null) return;
         for (ExternalController controller : profile.getControllers()) {
             controller.state.reset();

@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 object XServerDialogState {
 
     enum class ActiveDialog {
-        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK, CAST
+        NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK, CAST,
+        CONTROLLER_TEST
     }
 
     // -------------------------------------------------------------------------
@@ -364,6 +365,9 @@ object XServerDialogState {
         val override: Int,
         val isOnScreen: Boolean,
         val isGameController: Boolean,
+        // Whether the device currently owning this row's slot exposes a rumble motor — gates the
+        // controller-test "Identify" buzz button. Defaults false so it never claims rumble it can't do.
+        val hasVibrator: Boolean = false,
     )
 
     private val _playerSlots = MutableStateFlow<List<PlayerSlotRow>>(emptyList())
@@ -378,6 +382,50 @@ object XServerDialogState {
     @JvmField var onPlayerSlotsRefresh: Runnable? = null
     /** Manual "Reset Input" recovery — rebuilds the fake-input transport in place (no relaunch). */
     @JvmField var onResetInput: Runnable? = null
+
+    // -------------------------------------------------------------------------
+    // Controller Test panel (Controls > Players popup). While the popup is open the activity forks a
+    // THROWAWAY copy of the physical controller state — used ONLY to drive the visualizer — and pushes
+    // it here every input event; the game's real input path is left byte-for-byte untouched (the
+    // isolation is gated on onControllerTestActive at the activity's dispatch chokepoints). The
+    // emulated target is always an Xbox 360 pad; `type` only picks which picture to draw.
+    // -------------------------------------------------------------------------
+    // The snapshot type is the shared/neutral one (com.winlator.star.ui.controllertest) so the in-game
+    // dialog and the at-rest Settings screen produce the SAME data for the SAME visualizer panel.
+    private val _controllerTestSnapshot =
+        MutableStateFlow<com.winlator.star.ui.controllertest.ControllerTestSnapshot?>(null)
+    val controllerTestSnapshot: StateFlow<com.winlator.star.ui.controllertest.ControllerTestSnapshot?> =
+        _controllerTestSnapshot
+    fun setControllerTestSnapshot(v: com.winlator.star.ui.controllertest.ControllerTestSnapshot?) {
+        _controllerTestSnapshot.value = v
+    }
+    fun clearControllerTestSnapshot() { _controllerTestSnapshot.value = null }
+
+    fun interface BooleanCallback { fun invoke(active: Boolean) }
+    /** Fired true when the controller-test popup becomes visible and false when it goes away (close,
+     *  or lifecycle onPause/onStop). The activity flips its input-isolation flag on this. */
+    @JvmField var onControllerTestActive: BooleanCallback? = null
+
+    fun interface IntCallback { fun invoke(value: Int) }
+    /** "Identify" — buzz the pad currently owning the given 0-based slot (WinHandler.testRumble). */
+    @JvmField var onControllerIdentify: IntCallback? = null
+
+    /** Id of the profile active in the running game (inputControlsView.getProfile()), so the in-game
+     *  visual binder defaults to editing it. -1 when none. Set by the activity in setupUI. */
+    @JvmField var activeProfileId: Int = -1
+
+    /** Id of the profile currently ACTIVE on the PHYSICAL pad (Players > Bind lane), independent of the
+     *  OSC lane. -1 = native Xbox passthrough. Seeded by the activity from the "controllerProfile"
+     *  shortcut extra and kept in sync as the Bind picker activates profiles, so the picker reflects it. */
+    @JvmField var physicalProfileId: Int = -1
+
+    /** Fired by the in-game Bind picker to ACTIVATE a profile on the physical pad (id), or -1 to revert
+     *  to native passthrough. The activity resolves the id and calls InputControlsView.setPhysicalProfile. */
+    @JvmField var onPhysicalProfileChanged: IntCallback? = null
+
+    /** Fired after the in-game binder creates/renames a profile so the activity re-reads profiles and
+     *  re-pushes the Touch dropdown — keeps both profile pickers live without a relaunch. */
+    @JvmField var onProfilesChanged: Runnable? = null
 
     // -------------------------------------------------------------------------
     // Controller-status TOAST (P5b) — a small app-themed card that fades into the TOP-RIGHT of the
@@ -934,6 +982,7 @@ object XServerDialogState {
         onInputControlsConfirm = null; onInputControlsSettings = null
         onScreenEffectsApply = null; onSeAddProfile = null; onSeRemoveProfile = null
         onWindowClick = null
+        physicalProfileId = -1; onPhysicalProfileChanged = null; onProfilesChanged = null
         onTmRefresh = null; onTmDismissed = null; onTmNewTask = null; onTmNewTaskSubmit = null
         onTmBringToFront = null; onTmKillProcess = null; onTmSetAffinity = null; onTmQueryAffinity = null
         onInitGraphicsTab = null

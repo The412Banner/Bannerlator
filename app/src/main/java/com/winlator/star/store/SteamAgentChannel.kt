@@ -48,11 +48,16 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
     private val connectedOnce = AtomicBoolean(false)
 
     /** Last state seen on the wire (for the overlay + diagnostics). */
-    @Volatile var loggedIn: Boolean = false; private set
-    @Volatile var launchAccepted: Boolean = false; private set
-    @Volatile var gameSpawned: Boolean = false; private set
-    @Volatile var secure: Boolean? = null; private set
-    @Volatile var lastFailure: String? = null; private set
+    @Volatile var loggedIn: Boolean = false
+        private set
+    @Volatile var launchAccepted: Boolean = false
+        private set
+    @Volatile var gameSpawned: Boolean = false
+        private set
+    @Volatile var secure: Boolean? = null
+        private set
+    @Volatile var lastFailure: String? = null
+        private set
     val isConnected: Boolean get() = connectedOnce.get() && client != null
 
     /** Bounded copy of every event line received this launch, oldest first. */

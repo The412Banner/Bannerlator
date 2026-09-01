@@ -198,7 +198,6 @@ public final class SteamRepository {
                     pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
                 }
                 lastSessionStatus = "LoggedIn";
-                rustLogonFailures = 0;
                 setStatus(SteamStatus.ONLINE, "rust engine logged on");
                 Log.i(RUST_TAG, SteamLogRedactor.redact("logged on as " + pGet("username", "") + " steamId=" + steamId64));
                 // Same event the JavaSteam onLoggedOn emits, so the login screens / pill react alike.

@@ -274,7 +274,7 @@ object BlSteamEngine {
             while (i < body.size && shift < 64) {
                 val b = body[i++].toInt() and 0xFF
                 v = v or ((b and 0x7F).toLong() shl shift)
-                if (b and 0x80 == 0) return v
+                if ((b and 0x80) == 0) return v
                 shift += 7
             }
             return null

@@ -147,7 +147,9 @@ import com.winlator.star.store.GoldbergMode
 import com.winlator.star.store.GoldbergPatcher
 import com.winlator.star.store.SteamDatabase
 import com.winlator.star.store.SteamLiteComponent
+import com.winlator.star.store.SteamLoginActivity
 import com.winlator.star.store.SteamPrefs
+import com.winlator.star.store.SteamSessionManager
 import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.ui.Screen
 import com.winlator.star.ui.findActivity
@@ -204,9 +206,68 @@ fun BigPictureScreen(navController: NavController) {
     // Steam launch-method popup (M3), couch UI: the Steam-origin game whose SteamLite-vs-Goldberg
     // chooser is open, plus the download-on-launch progress overlay (shared for both components).
     var launchChoiceFor by remember { mutableStateOf<Shortcut?>(null) }
+    // SteamLite launch pre-flight (session → cloud saves → update check BEFORE the container opens);
+    // every RealSteam launch routes through it. Mirrors ShortcutsScreen.
+    var preflightFor by remember { mutableStateOf<Shortcut?>(null) }
     var componentDownloadFor by remember { mutableStateOf<Shortcut?>(null) }
     var componentDownloadLabel by remember { mutableStateOf("") }
     var componentDownloadProgress by remember { mutableFloatStateOf(0f) }
+    // Goldberg launch (persist sub-mode → component on demand → patch → launch); shared by the popup's
+    // Goldberg pick and the pre-flight's "Launch with Goldberg" fallback. Mirrors ShortcutsScreen.
+    fun launchWithGoldberg(s: Shortcut, gm: GoldbergMode) {
+        val appId = steamAppIdOf(s)
+        SteamPrefs.init(context)
+        SteamPrefs.setGoldbergMode(appId, gm)
+        val applyThenLaunch = {
+            Thread({
+                val installDir = runCatching {
+                    SteamDatabase.getInstance(context).getGame(appId)?.installDir
+                }.getOrNull().orEmpty()
+                activity.runOnUiThread {
+                    if (installDir.isEmpty()) {
+                        launchShortcut(activity, s)
+                    } else {
+                        GoldbergPatcher.applyModeAsync(context, appId, installDir, s.name, gm) { _, _ ->
+                            launchShortcut(activity, s)
+                        }
+                    }
+                }
+            }, "goldberg-apply-launch").start()
+        }
+        if (!GoldbergComponent.isInstalled(context)) {
+            componentDownloadFor = s
+            componentDownloadLabel = "Steam Emulator (Goldberg)"
+            componentDownloadProgress = 0f
+            GoldbergComponent.downloadAsync(
+                context,
+                { f -> componentDownloadProgress = f },
+                { ok, msg ->
+                    componentDownloadFor = null
+                    if (ok) applyThenLaunch()
+                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                },
+            )
+        } else applyThenLaunch()
+    }
+    // SteamLite launch: package on demand, then the pre-flight dialog (which starts the container).
+    fun launchWithSteamLite(s: Shortcut) {
+        if (!SteamLiteComponent.isInstalled(context)) {
+            componentDownloadFor = s
+            componentDownloadLabel = "SteamLite (Real Steam / VAC)"
+            componentDownloadProgress = 0f
+            SteamLiteComponent.downloadAsync(
+                context,
+                { f -> componentDownloadProgress = f },
+                { ok, msg ->
+                    componentDownloadFor = null
+                    if (ok) preflightFor = s
+                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                },
+            )
+        } else {
+            preflightFor = s
+        }
+    }
     // RealSteam manual maintenance (the launch popup's Verify / Update buttons — SteamLite roadmap #3),
     // couch UI: the game whose maintenance run is in flight, its progress (<0 = indeterminate "checking",
     // 0..1 while working), a label, a dialog title, and the cancel handle. NO longer on the launch path —
@@ -361,8 +422,9 @@ fun BigPictureScreen(navController: NavController) {
 
     // Re-grab focus after a sheet / dialog closes so D-pad keeps working (the launch-method popup and
     // its download overlay are their own windows too, so wait until they're gone before re-grabbing).
-    LaunchedEffect(activeSheet, editShortcut, launchChoiceFor, componentDownloadFor) {
-        if (activeSheet == null && !editShortcut && launchChoiceFor == null && componentDownloadFor == null) grabFocus()
+    LaunchedEffect(activeSheet, editShortcut, launchChoiceFor, componentDownloadFor, preflightFor) {
+        if (activeSheet == null && !editShortcut && launchChoiceFor == null && componentDownloadFor == null
+            && preflightFor == null) grabFocus()
     }
 
     // Preload the selected cover so the hero + blurred background are ready.
@@ -392,6 +454,9 @@ fun BigPictureScreen(navController: NavController) {
             val remembered = sc.getExtra("launchMode", "").isNotEmpty() &&
                 sc.getExtra("launchModeRemembered", "") == "1"
             when {
+                // A remembered RealSteam pick still runs the SteamLite pre-flight (session check).
+                remembered && sc.getExtra("launchMode", "") == "RealSteam" && isSteamOriginShortcut(sc) ->
+                    launchWithSteamLite(sc)
                 remembered -> launchShortcut(activity, sc)
                 else -> launchChoiceFor = sc
             }
@@ -926,41 +991,7 @@ fun BigPictureScreen(navController: NavController) {
                 s.saveData()
                 launchChoiceFor = null
                 when (mode) {
-                    "Goldberg" -> {
-                        val gm = goldbergMode ?: GoldbergMode.REGULAR
-                        SteamPrefs.init(context)
-                        SteamPrefs.setGoldbergMode(appId, gm)
-                        val applyThenLaunch = {
-                            Thread({
-                                val installDir = runCatching {
-                                    SteamDatabase.getInstance(context).getGame(appId)?.installDir
-                                }.getOrNull().orEmpty()
-                                activity.runOnUiThread {
-                                    if (installDir.isEmpty()) {
-                                        launchShortcut(activity, s)
-                                    } else {
-                                        GoldbergPatcher.applyModeAsync(context, appId, installDir, s.name, gm) { _, _ ->
-                                            launchShortcut(activity, s)
-                                        }
-                                    }
-                                }
-                            }, "goldberg-apply-launch").start()
-                        }
-                        if (!GoldbergComponent.isInstalled(context)) {
-                            componentDownloadFor = s
-                            componentDownloadLabel = "Steam Emulator (Goldberg)"
-                            componentDownloadProgress = 0f
-                            GoldbergComponent.downloadAsync(
-                                context,
-                                { f -> componentDownloadProgress = f },
-                                { ok, msg ->
-                                    componentDownloadFor = null
-                                    if (ok) applyThenLaunch()
-                                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                                },
-                            )
-                        } else applyThenLaunch()
-                    }
+                    "Goldberg" -> launchWithGoldberg(s, goldbergMode ?: GoldbergMode.REGULAR)
                     "Raw" -> {
                         // Raw: run the game's .exe directly, no Steam layer (Epic/GOG/Custom, or a Steam
                         // game the user chose to run raw). launchMode="Raw" is inert to the launch pipeline
@@ -968,28 +999,43 @@ fun BigPictureScreen(navController: NavController) {
                         launchShortcut(activity, s)
                     }
                     else -> {
-                        // RealSteam (SteamLite): ensure the SteamLite package is present (download on
-                        // demand if missing), then launch. Update/verify are now the popup's manual
-                        // buttons — there's no auto-update gate before launch.
-                        if (!SteamLiteComponent.isInstalled(context)) {
-                            componentDownloadFor = s
-                            componentDownloadLabel = "SteamLite (Real Steam / VAC)"
-                            componentDownloadProgress = 0f
-                            SteamLiteComponent.downloadAsync(
-                                context,
-                                { f -> componentDownloadProgress = f },
-                                { ok, msg ->
-                                    componentDownloadFor = null
-                                    if (ok) launchShortcut(activity, s)
-                                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                                },
-                            )
-                        } else {
-                            launchShortcut(activity, s)
-                        }
+                        // RealSteam (SteamLite): package on demand, then the pre-flight dialog (session →
+                        // cloud saves → update check) and only then the container. Update/verify stay the
+                        // popup's manual buttons; the pre-flight only OFFERS an update.
+                        launchWithSteamLite(s)
                     }
                 }
             },
+        )
+    }
+
+    // ── SteamLite pre-flight ("Getting Steam ready") — runs BEFORE XServerDisplayActivity ──────────
+    preflightFor?.let { s ->
+        val appId = steamAppIdOf(s)
+        val installDir = remember(s) {
+            runCatching { SteamDatabase.getInstance(context).getGame(appId)?.installDir }.getOrNull().orEmpty()
+        }
+        val savePrefs = remember { context.getSharedPreferences("save_manager_prefs", Context.MODE_PRIVATE) }
+        SteamPreflightDialog(
+            shortcut = s,
+            request = SteamSessionManager.PreflightRequest(
+                appId = appId,
+                installDir = installDir,
+                gameName = s.name,
+                pullCloudSaves = savePrefs.getBoolean("auto_download_steam_on_launch", true),
+            ),
+            onLaunch = { preflightFor = null; launchShortcut(activity, s, preflightDone = true) },
+            onDismiss = { preflightFor = null },
+            onSignIn = {
+                preflightFor = null
+                context.startActivity(Intent(context, SteamLoginActivity::class.java))
+            },
+            onGoldberg = {
+                preflightFor = null
+                SteamPrefs.init(context)
+                launchWithGoldberg(s, SteamPrefs.getGoldbergMode(appId).let { if (it == GoldbergMode.OFF) GoldbergMode.REGULAR else it })
+            },
+            onUpdate = { preflightFor = null; runSteamMaintenance(s, verify = false) },
         )
     }
 
@@ -1803,13 +1849,15 @@ internal fun loadCover(s: Shortcut): ImageBitmap? {
 }
 
 // `internal` so the Games-wall screen launches games through the identical entry point.
-internal fun launchShortcut(activity: Activity, shortcut: Shortcut) {
+// [preflightDone] = the SteamLite pre-flight already pulled cloud saves; the activity skips its own pull.
+internal fun launchShortcut(activity: Activity, shortcut: Shortcut, preflightDone: Boolean = false) {
     if (!XrActivity.isEnabled(activity)) {
         val intent = Intent(activity, XServerDisplayActivity::class.java).apply {
             putExtra("container_id", shortcut.container.id)
             putExtra("shortcut_path", shortcut.file.path)
             putExtra("shortcut_name", shortcut.name)
             putExtra("disableXinput", shortcut.getExtra("disableXinput", "0"))
+            if (preflightDone) putExtra(SteamSessionManager.EXTRA_PREFLIGHT_DONE, true)
         }
         activity.startActivity(intent)
     } else {

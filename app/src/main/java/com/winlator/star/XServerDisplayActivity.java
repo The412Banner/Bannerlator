@@ -4661,6 +4661,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (sc == null) return;
             if (!isGenuineSteamShortcut()) return;
 
+            // The SteamLite pre-flight (SteamSessionManager, run in the launch popup BEFORE this
+            // activity opened) already did this pull — never repeat it over the game art.
+            if (getIntent().getBooleanExtra(com.winlator.star.store.SteamSessionManager.EXTRA_PREFLIGHT_DONE, false)) {
+                Log.i("BH_SAVE_SYNC", "auto-download Steam: done by the launch pre-flight — skip");
+                return;
+            }
+
             SharedPreferences savePrefs = getSharedPreferences("save_manager_prefs", MODE_PRIVATE);
             if (!savePrefs.getBoolean("auto_download_steam_on_launch", true)) return;
 

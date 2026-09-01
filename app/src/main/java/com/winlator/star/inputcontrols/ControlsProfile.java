@@ -442,6 +442,25 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return immutableElements;
     }
 
+    /**
+     * Cheap on-disk peek for the settings screen's "has layout" badge: does this profile's file hold
+     * any on-screen (touch) elements? Elements are NOT materialized outside the editor (the settings
+     * screen only streams the header), so getElements()/isElementsLoaded() can't answer this at rest.
+     * Reads the JSON once and counts the "elements" array without building ControlElement objects.
+     */
+    public boolean hasElementsOnDisk() {
+        if (elementsLoaded) return !elements.isEmpty();
+        File file = getProfileFile(context, id);
+        if (!file.isFile()) return false;
+        try {
+            JSONObject data = new JSONObject(InputControlsManager.readStringAtomically(file));
+            JSONArray arr = data.optJSONArray("elements");
+            return arr != null && arr.length() > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public boolean isTemplate() {
         return name.toLowerCase(Locale.ENGLISH).contains("template");
     }

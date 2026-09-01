@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -118,6 +119,9 @@ fun InputControlsScreen() {
     var showOverflow by remember { mutableStateOf(false) }
     // Selected tab (0=On-Screen, 1=Controller, 2=Assign, 3=Device). rememberSaveable so rotation keeps it.
     var selectedTab by rememberSaveable { mutableStateOf(0) }
+    // Extras — content badges for the selected profile (recomputed in refreshControllers()).
+    var profileHasLayout by remember { mutableStateOf(false) }
+    var profileBinds by remember { mutableStateOf(0) }
 
     fun refreshProfiles() {
         profiles = manager.getProfiles()
@@ -135,6 +139,10 @@ fun InputControlsScreen() {
         // #333: the Default/Any-Controller template (__default__) has its own dedicated top row, so
         // don't also render it as a regular controller row (that produced a duplicate box once saved).
         controllers = loaded.filter { it.getId() != com.winlator.star.inputcontrols.ControlsProfile.DEFAULT_CONTROLLER_ID }
+        // Extras — Profile-bar content badges: 🎮 N binds = total physical bindings across the profile's
+        // controllers (incl. the Default template), 🖐 Layout = the profile's file has on-screen elements.
+        profileBinds = loaded.sumOf { it.getControllerBindingCount() }
+        profileHasLayout = currentProfile?.hasElementsOnDisk() ?: false
     }
 
     fun loadProfile(position: Int) {
@@ -431,7 +439,23 @@ fun InputControlsScreen() {
                 Column(Modifier.weight(1f)) {
                     Text(displayText, color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    // Content badges (🖐 Layout / 🎮 N binds) land here in the extras pass.
+                    // Content badges: tell you what the selected profile HOLDS before you act on it.
+                    if (hasProfile && (profileHasLayout || profileBinds > 0)) {
+                        Spacer(Modifier.height(3.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (profileHasLayout) ProfileBadge(
+                                "🖐 Layout",
+                                fg = MaterialTheme.colorScheme.primary,
+                                bg = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            )
+                            if (profileBinds > 0) ProfileBadge(
+                                "🎮 $profileBinds binds",
+                                // green = "has physical binds", echoing the connected-pad green used below.
+                                fg = Color(0xFF7FCE82),
+                                bg = Color(0xFF57B85A).copy(alpha = 0.16f),
+                            )
+                        }
+                    }
                 }
                 IconButton(onClick = { showProfileDropdown = true }) {
                     Icon(Icons.Default.ArrowDropDown, "Select profile", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -696,6 +720,20 @@ fun InputControlsScreen() {
                                 // intentional: connected (green) / disconnected (red) are distinct status colors, kept off-theme
                                 val tintColor = if (controller.isConnected()) Color(0xFF4CAF50) else Color(0xFFE57373)
                                 val accentColor = AColor.parseColor("#4CAF50")
+                                // Extras — battery (API 29+) + own-vibrator test rumble for a connected pad.
+                                val padDevice = if (controller.isConnected())
+                                    android.view.InputDevice.getDevice(controller.getDeviceId()) else null
+                                var padBattery = -1
+                                if (padDevice != null && android.os.Build.VERSION.SDK_INT >= 29) {
+                                    try {
+                                        val bs = padDevice.batteryState
+                                        if (bs != null && bs.isPresent) {
+                                            val cap = bs.capacity
+                                            if (cap >= 0f) padBattery = Math.round(cap * 100f)
+                                        }
+                                    } catch (_: Throwable) {}
+                                }
+                                val padHasVibrator = padDevice?.vibrator?.hasVibrator() == true
 
                                 Box(
                                     modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp)).clickable {
@@ -716,7 +754,15 @@ fun InputControlsScreen() {
                                         Spacer(Modifier.width(12.dp))
                                         Column(Modifier.weight(1f)) {
                                             Text(controller.getName(), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                                            Text("$bindingsCount Bindings", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                            Text(
+                                                if (padBattery >= 0) "$bindingsCount Bindings · 🔋 $padBattery%" else "$bindingsCount Bindings",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                        }
+                                        // Extras — test rumble: pulse this pad's own vibrator (no game running at rest).
+                                        if (padHasVibrator && padDevice != null) {
+                                            IconButton(onClick = { pulsePad(padDevice) }) {
+                                                Icon(Icons.Default.Vibration, "Test rumble", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
                                         }
                                         // #333: copy bindings from the Default template or another controller onto this one.
                                         Box {
@@ -783,6 +829,42 @@ fun InputControlsScreen() {
           }
         }
     }
+}
+
+/** A small pill badge for the Profile bar (🖐 Layout / 🎮 N binds). Explicit fg/bg so callers pick
+ *  the accent (theme primary) vs green (physical-binds) tint to match the screen's color language. */
+@Composable
+private fun ProfileBadge(text: String, fg: Color, bg: Color) {
+    Text(
+        text,
+        color = fg,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    )
+}
+
+/** At-rest test rumble for a connected pad: pulse its OWN vibrator directly (no WinHandler / running
+ *  game here), mirroring MainActivity.settingsControllerIdentify — VibratorManager (independent motors,
+ *  API 31+) or the single vibrator otherwise. */
+private fun pulsePad(device: android.view.InputDevice) {
+    try {
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            val vm = device.vibratorManager
+            val ids = vm?.vibratorIds
+            if (vm != null && ids != null && ids.isNotEmpty()) {
+                val combo = android.os.CombinedVibration.startParallel()
+                for (vid in ids) combo.addVibrator(vid, android.os.VibrationEffect.createOneShot(300L, 200))
+                vm.vibrate(combo.combine())
+                return
+            }
+        }
+        val v = device.vibrator
+        if (v != null && v.hasVibrator()) v.vibrate(android.os.VibrationEffect.createOneShot(300L, 200))
+    } catch (_: Throwable) {}
 }
 
 /**

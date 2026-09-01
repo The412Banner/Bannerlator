@@ -9,6 +9,9 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 
+import com.winlator.star.store.blsteam.BlSteamEngine;
+import com.winlator.star.store.blsteam.BlSteamEngineFlag;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -163,6 +166,72 @@ public final class SteamRepository {
 
     private boolean isLoggedInPrefs() {
         return !pGet("refresh_token", "").isEmpty() && !pGet("username", "").isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // Native Rust Steam engine (libblsteam.so) — Phase 0, hidden flag, default OFF
+    // -------------------------------------------------------------------------
+    // docs/STEAM_RUST_ENGINE_PLAN.md. When BlSteamEngineFlag is ON (read once in initialize()),
+    // this repository's CM session is driven by BlSteamEngine instead of JavaSteam: connect(),
+    // reconnectNow() and loginWithToken() route to rustConnect(), disconnect()/logout() stop the
+    // engine, and the engine's state feeds the status pill + steam_prefs (steam_id_64/account_id,
+    // rotated refresh_token) so SteamLite and Goldberg keep reading the same keys. The JavaSteam
+    // objects are still built but never connected, and the JavaSteam-backed `connected`/`loggedIn`
+    // flags stay false — every JavaSteam surface (library sync, depots, friends, cloud) therefore
+    // refuses honestly ("not logged in") rather than hitting a dead SteamClient. Phase 1+ move those
+    // surfaces over. Flag OFF: none of this runs.
+    private static final String RUST_TAG = "BL_STEAM_REPO";
+    private volatile boolean rustEngine = false;
+
+    /** True when this process runs its Steam CM session on the native Rust engine. */
+    public boolean isRustEngine() { return rustEngine; }
+
+    private final BlSteamEngine.Listener rustListener = new BlSteamEngine.Listener() {
+        @Override public void onEngineState(int state, long steamId64) {
+            if (state == BlSteamEngine.STATE_LOGGED_ON) {
+                if (steamId64 != 0L) {
+                    pPut("steam_id_64", steamId64);
+                    pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
+                }
+                lastSessionStatus = "LoggedIn";
+                setStatus(SteamStatus.ONLINE, "rust engine logged on");
+                Log.i(RUST_TAG, SteamLogRedactor.redact("logged on as " + pGet("username", "") + " steamId=" + steamId64));
+            } else if (state == BlSteamEngine.STATE_CONNECTING || state == BlSteamEngine.STATE_CONNECTED) {
+                if (!realSteamSuspended) setStatus(SteamStatus.CONNECTING, "rust engine state " + state);
+            } else {
+                if (realSteamSuspended)  setStatus(SteamStatus.PAUSED_FOR_GAME, "rust engine down — paused for in-game real-Steam session");
+                else if (loggingOut)     setStatus(SteamStatus.SIGNED_OUT, "rust engine: signed out");
+                else                     setStatus(SteamStatus.OFFLINE, "rust engine disconnected");
+            }
+        }
+        @Override public void onRefreshTokenRotated(String refreshToken) {
+            SteamLogRedactor.registerSecret(refreshToken);
+            pPut("refresh_token", refreshToken);
+            slog("rust engine: refresh token rotated");
+        }
+        @Override public void onEngineFailure(String reason) {
+            Log.w(RUST_TAG, "engine failure: " + reason);
+            if (!realSteamSuspended) setStatus(SteamStatus.OFFLINE, "rust engine: " + reason);
+        }
+    };
+
+    /** Rust-engine counterpart of connect()+loginWithToken(): resolve a CM, connect, token logon. */
+    private void rustConnect(String source) {
+        if (appContext == null) { Log.e(RUST_TAG, "rustConnect before initialize()"); return; }
+        if (!isLoggedInPrefs()) {
+            setStatus(SteamStatus.SIGNED_OUT, "rust engine: no saved session (" + source + ")");
+            return;
+        }
+        if (BlSteamEngine.INSTANCE.isActive() && BlSteamEngine.INSTANCE.state() == BlSteamEngine.STATE_LOGGED_ON) {
+            Log.i(RUST_TAG, "rustConnect skipped — already logged on (" + source + ")");
+            return;
+        }
+        loggingOut = false;
+        SteamLogRedactor.registerSecret(pGet("username", ""));
+        SteamLogRedactor.registerSecret(pGet("refresh_token", ""));
+        setStatus(SteamStatus.CONNECTING, "rust engine connect (" + source + ")");
+        BlSteamEngine.INSTANCE.start(appContext, pGet("username", ""), pGet("refresh_token", ""),
+                pGet("steam_id_64", 0L), rustListener);
     }
 
     // -------------------------------------------------------------------------
@@ -351,6 +420,9 @@ public final class SteamRepository {
         SteamLogRedactor.registerSecret(pGet("username", ""));
         SteamLogRedactor.registerSecret(pGet("refresh_token", ""));
         SteamDatabase.getInstance(appContext);
+        // Hidden dev flag, read once per process so a live session is never swapped mid-flight.
+        rustEngine = BlSteamEngineFlag.isEnabled(appContext);
+        if (rustEngine) Log.i(RUST_TAG, "use_rust_steam_engine=ON — CM session will run on libblsteam.so");
         if (steamClient != null) return;
 
         SteamConfiguration config = SteamConfiguration.create(b -> {
@@ -422,6 +494,7 @@ public final class SteamRepository {
             refreshFgsStatus();
             return;
         }
+        if (rustEngine) { rustConnect("connect"); return; }
         if (connected) { Log.i(TAG, "connect() skipped — already connected"); return; }
         // Guard against double-connect (e.g. onStartCommand called twice for START_STICKY)
         if (!connecting.compareAndSet(false, true)) {
@@ -496,6 +569,7 @@ public final class SteamRepository {
     }
 
     public void disconnect() {
+        if (rustEngine) BlSteamEngine.INSTANCE.stop();
         if (steamClient != null) steamClient.disconnect();
         stopPump();
         connected = false;
@@ -699,6 +773,7 @@ public final class SteamRepository {
         reconnectAttempts = 0;
         if (!isLoggedInPrefs()) return;
         setStatus(SteamStatus.CONNECTING, "user tapped reconnect");
+        if (rustEngine) { rustConnect("reconnectNow"); return; }
         if (!connected) {
             connect();                                              // onConnected auto-logs-in
         } else if (!loggedIn) {
@@ -1693,6 +1768,7 @@ public final class SteamRepository {
             Log.i(REALSTEAM_TAG, "loginWithToken skipped — app session suspended for in-game real-Steam session");
             return;
         }
+        if (rustEngine) { rustConnect("loginWithToken"); return; }
         // Re-arm the background self-heal on any login attempt (idempotent) so a re-login after a
         // logout — which unregistered it while the pump kept running — re-attaches the callback.
         registerNetworkCallback();
@@ -1841,6 +1917,7 @@ public final class SteamRepository {
         // re-login re-arms it via loginWithToken(); the isLoggedInPrefs()/loggingOut guards in
         // onNetworkAvailable are a second line of defence in case it is still attached.)
         unregisterNetworkCallback();
+        if (rustEngine) BlSteamEngine.INSTANCE.stop();
         if (steamUser != null) steamUser.logOff();
         if (prefs != null) {
             prefs.edit()

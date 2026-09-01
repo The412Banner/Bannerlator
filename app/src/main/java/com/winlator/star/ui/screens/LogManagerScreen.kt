@@ -101,6 +101,9 @@ fun LogManagerScreen(onClose: () -> Unit) {
     var logcat by remember { mutableStateOf(prefs.getBoolean("enable_logcat", true)) }
     var crashReports by remember { mutableStateOf(prefs.getBoolean("enable_crash_reports", true)) }
     var exitAutosave by remember { mutableStateOf(prefs.getBoolean(ExitReasonReporter.PREF_AUTOSAVE, false)) }
+    var rustSteamEngine by remember {
+        mutableStateOf(prefs.getBoolean(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, false))
+    }
 
     // Location + channels moved here from the old Settings › Logs section, which this screen
     // replaces. They used to be saved by the Settings "Save" FAB; here every change is written
@@ -277,6 +280,15 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     enabled = ExitReasonReporter.isSupported(),
                     onInfo = { info = "Exit reasons" to LogCopy.EXIT_REASONS }) {
                     exitAutosave = it; putBool(ExitReasonReporter.PREF_AUTOSAVE, it)
+                }
+                // Developer switch for the native Rust Steam engine (docs/STEAM_RUST_ENGINE_PLAN.md,
+                // Phase 0). Read once per process by SteamRepository.initialize(), so it takes effect
+                // on the next app start. OFF = JavaSteam as today; ON = CM connect + token logon run on
+                // libblsteam.so (library/downloads/friends still JavaSteam-only in this phase).
+                LogToggle("Rust Steam engine (developer, restart required)", rustSteamEngine,
+                    hint = "Experimental — CM session on libblsteam.so; store surfaces stay offline in this phase") {
+                    rustSteamEngine = it
+                    putBool(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, it)
                 }
 
                 // Outlined rather than a filled button: the design keeps solid accent for switches

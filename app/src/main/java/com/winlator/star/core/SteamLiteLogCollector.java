@@ -53,6 +53,12 @@ public final class SteamLiteLogCollector {
     /** Per Steam log: how much of its (accumulating) tail to carry, and the head cap on wine_debug. */
     private static final long STEAM_LOG_TAIL_BYTES = 256L * 1024;
     private static final long WINE_SCAN_TAIL_BYTES = 4L * 1024 * 1024;
+    /** The agent's own log is small and rewritten each run; a modest tail covers the whole file. */
+    private static final long LAUNCHER_LOG_TAIL_BYTES = 256L * 1024;
+    // Exact "watching ... for exit (<path>)" suffixes from the agent's launch log; the "for exit ("
+    // prefix keeps the steamservice line ("... will use CreateProcess fallback") from matching.
+    private static final String LAUNCHER_SECURE_MARK   = "for exit (LaunchApp path)";
+    private static final String LAUNCHER_FALLBACK_MARK = "for exit (CreateProcess fallback)";
     private static final long DX_SCAN_TAIL_BYTES   = 1L * 1024 * 1024;
 
     /** The Steam logs we include, in the debug-flow order the summary reads top-to-bottom. */
@@ -146,13 +152,16 @@ public final class SteamLiteLogCollector {
             // Sibling session logs in the SAME folder, scanned (not copied — they are their own files).
             String wineText = readTail(new File(perGameLogDir, "wine_debug.log"), WINE_SCAN_TAIL_BYTES);
             String dxText = readFirstDxvk(perGameLogDir);
+            // Our steam.exe agent's own log (C:\wn-launcher.log, rewritten every run) — the definitive
+            // record of whether Steam's LaunchApp spawned the game or the agent fell back to CreateProcess.
+            String launcherLog = readTail(new File(driveC, "wn-launcher.log"), LAUNCHER_LOG_TAIL_BYTES);
 
             StringBuilder out = new StringBuilder(8 * 1024);
             appendSummary(out, context, gameName, appId, info, steamLiteVersion, dxText);
             // The genuine Steam client logs accumulate across every launch — anchor to THIS run so the
             // diagnostics and raw sections report this session, not days of history. Null = no anchor.
             String since = sessionStart(steamRaw.get("gameprocess_log.txt"), appId);
-            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since);
+            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog);
             appendRawSections(out, steamRedacted, since);
 
             // Belt-and-suspenders: re-scan the finished file for anything a header line carried through.
@@ -230,7 +239,7 @@ public final class SteamLiteLogCollector {
     /** A curated scan of THIS session's logs into plain-English one-liners. The value of the file:
      *  a reader sees the known-failure summary without reading four logs. */
     private static void appendDiagnostics(StringBuilder out, int appId, String wineText, String dxText,
-                                          Map<String, String> steam, String since) {
+                                          Map<String, String> steam, String since, String launcherLog) {
         out.append("\n===== DIAGNOSTICS (auto-scan) =====\n");
         if (since != null)
             out.append("- Session scope: findings below are from THIS run (since ").append(since).append(").\n");
@@ -260,7 +269,7 @@ public final class SteamLiteLogCollector {
         }
 
         // ── SteamLite agent / secure-launch health (reads wine_debug ORDER + real-Steam tracking) ──
-        appendSecureLaunch(f, wineText, gameproc, appId, since);
+        appendSecureLaunch(f, wineText, gameproc, appId, since, launcherLog);
         boolean lsteam = matches(wineText, LSTEAMCLIENT_OFF) || matches(allSteam, LSTEAMCLIENT_OFF);
         f.add("CLIENT: Real Steam client mode (lsteamclient disabled — expected for SteamLite) = "
                 + yn(lsteam) + ".");
@@ -309,9 +318,29 @@ public final class SteamLiteLogCollector {
      * and false-flagged INSECURE. INSECURE is now only reported on positive evidence.
      */
     private static void appendSecureLaunch(List<String> f, String wineText, String gameproc, int appId,
-                                           String since) {
+                                           String since, String launcherLog) {
         Pattern tracked = ci("appid\\s+" + appId + "\\b[^\\n]*adding\\s+pid");
         boolean realSteamTracked = gameproc != null && tracked.matcher(gameproc).find();
+
+        // DEFINITIVE signal, when present: the agent's own per-run log records which path started the
+        // game ("watching \"<exe>\" for exit (LaunchApp path|CreateProcess fallback)"). A fallback run
+        // still gets tracked by Steam and shows the DXVK markers in the "secure" order, so the
+        // heuristics below would wrongly say YES for it — the agent log wins.
+        if (launcherLog != null) {
+            if (launcherLog.contains(LAUNCHER_FALLBACK_MARK)) {
+                f.add("SECURE LAUNCH: NO — the steam.exe agent started the game via CreateProcess fallback "
+                        + "(Steam's LaunchApp did not spawn it) = INSECURE launch: VAC servers will reject "
+                        + "it and live-service titles report a wrong build (INCORRECT VERSION).");
+                appendTrackedCount(f, gameproc, tracked, since);
+                return;
+            }
+            if (launcherLog.contains(LAUNCHER_SECURE_MARK)) {
+                f.add("SECURE LAUNCH: launched through the real Steam client (agent log: LaunchApp path) "
+                        + "= YES (VAC-eligible secure launch).");
+                appendTrackedCount(f, gameproc, tracked, since);
+                return;
+            }
+        }
 
         // Order from wine_debug DXVK markers: "info:  Game: steam.exe" then "info:  Game: <game>.exe".
         Boolean orderSecure = null;
@@ -335,6 +364,10 @@ public final class SteamLiteLogCollector {
                     + "(no real-Steam tracking line found) — check the raw sections if VAC kicks you.");
         }
 
+        appendTrackedCount(f, gameproc, tracked, since);
+    }
+
+    private static void appendTrackedCount(List<String> f, String gameproc, Pattern tracked, String since) {
         if (gameproc != null) {
             int launches = countMatchesSince(gameproc, tracked, since);
             if (launches > 1)

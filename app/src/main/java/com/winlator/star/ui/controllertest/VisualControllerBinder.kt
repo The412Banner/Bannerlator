@@ -27,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -78,6 +79,9 @@ fun VisualControllerBinder(
     // When non-null, the profile picker shows a "— None —" entry (physical-lane passthrough). Left null
     // by the at-rest Settings editors, which are edit-only and have no live pad to revert.
     onSelectNone: (() -> Unit)? = null,
+    // When non-null, the profile picker shows a "Delete…" action (alongside Rename…). Null = no delete
+    // (the host handles the confirm + removal).
+    onDeleteProfile: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -116,15 +120,29 @@ fun VisualControllerBinder(
                 ) {
                     Text(profile?.name ?: "— none —", fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                DropdownMenu(expanded = profMenu, onDismissRequest = { profMenu = false }) {
+                DropdownMenu(
+                    expanded = profMenu,
+                    onDismissRequest = { profMenu = false },
+                    modifier = Modifier.border(1.dp, cs.outline, RoundedCornerShape(8.dp)),
+                ) {
+                    val divider = cs.outline.copy(alpha = 0.4f)
                     if (onSelectNone != null) {
                         DropdownMenuItem(text = { Text("— None (native Xbox) —") }, onClick = { profMenu = false; onSelectNone() })
+                        HorizontalDivider(color = divider)
                     }
                     allProfiles.forEach { p ->
                         DropdownMenuItem(text = { Text(p.name) }, onClick = { profMenu = false; onSelectProfile(p) })
+                        HorizontalDivider(color = divider)
                     }
                     if (profile != null) {
                         DropdownMenuItem(text = { Text("Rename…") }, onClick = { profMenu = false; onRenameProfile() })
+                        if (onDeleteProfile != null) {
+                            HorizontalDivider(color = divider)
+                            DropdownMenuItem(
+                                text = { Text("Delete…", color = cs.error) },
+                                onClick = { profMenu = false; onDeleteProfile() },
+                            )
+                        }
                     }
                 }
             }

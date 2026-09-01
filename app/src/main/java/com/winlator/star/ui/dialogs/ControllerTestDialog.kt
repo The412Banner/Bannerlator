@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -144,7 +145,8 @@ private fun ControllerTestScaffold(
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            modifier = Modifier.padding(16.dp).width(dialogW).height(dialogH),
+            modifier = Modifier.padding(16.dp).width(dialogW).height(dialogH)
+                .border(1.dp, cs.outline, RoundedCornerShape(18.dp)),
             shape = RoundedCornerShape(18.dp),
             color = cs.surface,
             contentColor = cs.onSurface,
@@ -326,14 +328,19 @@ private fun SlotPicker(row: XServerDialogState.PlayerSlotRow, state: XServerDial
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(9.dp),
         ) { Text("Slot: $selectedLabel", fontSize = 12.sp) }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { (label, value) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+        ) {
+            options.forEachIndexed { i, opt ->
+                DropdownMenuItem(text = { Text(opt.first) }, onClick = {
                     expanded = false
-                    if (value != row.override) {
-                        state.onPlayerSlotChanged?.invoke(row.descriptor, value)
+                    if (opt.second != row.override) {
+                        state.onPlayerSlotChanged?.invoke(row.descriptor, opt.second)
                     }
                 })
+                if (i < options.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
             }
         }
     }
@@ -382,6 +389,7 @@ private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
     val padName = remember { ExternalController.getControllers().firstOrNull()?.name }
     var renaming by remember { mutableStateOf(false) }
     var renameText by remember { mutableStateOf("") }
+    var deleting by remember { mutableStateOf(false) }
 
     VisualControllerBinder(
         profile = selectedProfile,
@@ -407,6 +415,7 @@ private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
             state.onProfilesChanged?.run()                 // keep the Touch dropdown live
         },
         onRenameProfile = { renameText = selectedProfile?.name ?: ""; renaming = true },
+        onDeleteProfile = { deleting = true },
         // A live binding edit saves to disk on the binder's OWN manager instance, but the ACTIVE
         // physical lane holds a separate instance resolved off disk at activation — so re-apply it to
         // pull the just-saved bindings into the running pad (onPhysicalProfileChanged re-reads fresh).
@@ -438,6 +447,29 @@ private fun InGameBindPanel(state: XServerDialogState, modifier: Modifier) {
                 }) { Text("OK") }
             },
             dismissButton = { TextButton(onClick = { renaming = false }) { Text("Cancel") } }
+        )
+    }
+
+    if (deleting) {
+        val p = selectedProfile
+        AlertDialog(
+            onDismissRequest = { deleting = false },
+            title = { Text("Delete profile") },
+            text = { Text("Delete \"${p?.name ?: ""}\"? This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (p != null) {
+                        val wasActive = selectedProfileId == p.id
+                        manager.removeProfile(p)
+                        selectedProfileId = -1
+                        profilesRev++
+                        if (wasActive) state.onPhysicalProfileChanged?.invoke(-1) // revert pad to native Xbox
+                        state.onProfilesChanged?.run()                            // keep the Touch list live
+                    }
+                    deleting = false
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { deleting = false }) { Text("Cancel") } }
         )
     }
 }

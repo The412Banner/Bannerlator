@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -69,6 +70,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.sp
 import com.winlator.star.R
 import com.winlator.star.ControlsEditorActivity
@@ -122,6 +124,8 @@ fun InputControlsScreen() {
     // Extras — content badges for the selected profile (recomputed in refreshControllers()).
     var profileHasLayout by remember { mutableStateOf(false) }
     var profileBinds by remember { mutableStateOf(0) }
+    // Bumped on ON_RESUME (e.g. returning from the layout editor) so the On-Screen preview re-reads disk.
+    var layoutRev by remember { mutableStateOf(0) }
 
     fun refreshProfiles() {
         profiles = manager.getProfiles()
@@ -168,7 +172,7 @@ fun InputControlsScreen() {
         // needing to leave and re-enter this screen.
         val lifecycle = lifecycleOwner.lifecycle
         val resumeObserver = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) refreshControllers()
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) { refreshControllers(); layoutRev++ }
         }
         lifecycle.addObserver(resumeObserver)
         onDispose {
@@ -639,26 +643,39 @@ fun InputControlsScreen() {
                 when (selectedTab) {
                     // ── On-Screen: the touch overlay layout ──────────────
                     0 -> {
+                        // Shared by the Edit Layout button AND tapping the preview.
+                        val openLayoutEditor: () -> Unit = {
+                            if (currentProfile != null) {
+                                val intent = Intent(context, ControlsEditorActivity::class.java)
+                                intent.putExtra("profile_id", currentProfile!!.id)
+                                context.startActivity(intent)
+                                (context as? Activity)?.overridePendingTransition(
+                                    com.winlator.star.R.anim.slide_in_up,
+                                    com.winlator.star.R.anim.slide_out_down
+                                )
+                            } else AppUtils.showToast(context, R.string.no_profile_selected)
+                        }
                         Text("On-Screen Controls", color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                         Text("Touch overlay drawn on top of the game.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Button(
-                            onClick = {
-                                if (currentProfile != null) {
-                                    val intent = Intent(context, ControlsEditorActivity::class.java)
-                                    intent.putExtra("profile_id", currentProfile!!.id)
-                                    context.startActivity(intent)
-                                    (context as? Activity)?.overridePendingTransition(
-                                        com.winlator.star.R.anim.slide_in_up,
-                                        com.winlator.star.R.anim.slide_out_down
-                                    )
-                                } else AppUtils.showToast(context, R.string.no_profile_selected)
-                            },
+                            onClick = openLayoutEditor,
                             // intentional: success green signals the primary "go/edit" action; kept off-theme by design
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Edit Layout", color = Color.White) } // intentional: white kept for contrast on the green fill
+
+                        // Live read-only preview — only when the selected profile actually has an overlay.
+                        val cp = currentProfile
+                        if (cp != null && profileHasLayout) {
+                            Text("Preview — your overlay on the game",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            OnScreenLayoutPreview(profileId = cp.id, refreshKey = layoutRev, onOpenEditor = openLayoutEditor)
+                        } else if (cp != null) {
+                            Text("No on-screen layout — tap Edit Layout to add one.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        }
                     }
 
                     // ── Controller: physical pads (test/bind + Default + per-pad) ──
@@ -827,6 +844,70 @@ fun InputControlsScreen() {
                 Spacer(Modifier.height(8.dp))
             }
           }
+        }
+    }
+}
+
+/**
+ * Live read-only thumbnail of a profile's on-screen (touch) overlay. Hosts the app's OWN
+ * `InputControlsView` (edit-mode OFF) via `AndroidView` — the same widget the editor / in-game use, so
+ * the preview is pixel-honest (GAMEHUB style, default overlay opacity). A transparent tap-catcher on
+ * top keeps it non-interactive AND opens the editor on tap.
+ *
+ * GOTCHA: elements materialize their fractional positions against the HOSTING view's size, so we load a
+ * FRESH `ControlsProfile` off disk here — laying it out against this small frame must never mutate the
+ * pixel positions of the profile object the rest of the screen shares. The draw path is xServer-free
+ * (see `InputControlsView.onDraw` / `ControlElement.draw`), so no XServer is needed at rest.
+ */
+@Composable
+private fun OnScreenLayoutPreview(profileId: Int, refreshKey: Int, onOpenEditor: () -> Unit) {
+    val context = LocalContext.current
+    val cs = MaterialTheme.colorScheme
+    // Fresh throwaway instance; re-read when the profile changes OR we return from the editor (refreshKey).
+    val previewProfile = remember(profileId, refreshKey) {
+        InputControlsManager.loadProfile(context, ControlsProfile.getProfileFile(context, profileId))
+    }
+    // Game-screen aspect (device long:short, clamped; 16:9 fallback) so it reads as a mini game screen.
+    val aspect = remember {
+        val dm = context.resources.displayMetrics
+        val w = dm.widthPixels.toFloat()
+        val h = dm.heightPixels.toFloat()
+        val a = if (w > 0f && h > 0f) maxOf(w, h) / minOf(w, h) else 16f / 9f
+        a.coerceIn(1.3f, 2.4f)
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(aspect)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF0F0C0B)) // dark "game screen" ground
+            .border(1.dp, cs.outline, RoundedCornerShape(12.dp)),
+    ) {
+        if (previewProfile != null) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    com.winlator.star.widget.InputControlsView(ctx).apply {
+                        setEditMode(false)            // plain overlay: no grid / edit handles
+                        setShowTouchscreenControls(true)
+                        setOverlayOpacity(0.9f)       // crisp thumbnail
+                        // Read-only thumbnail: never interactive on the view itself.
+                        isClickable = false
+                        isFocusable = false
+                        isFocusableInTouchMode = false
+                    }
+                },
+                update = { view ->
+                    view.setProfile(previewProfile)   // fresh instance; loads lazily in onDraw once measured
+                    view.invalidate()
+                },
+            )
+            // Transparent tap-catcher ON TOP: swallows taps (keeps the render static) and opens the editor.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable { onOpenEditor() }
+            )
         }
     }
 }

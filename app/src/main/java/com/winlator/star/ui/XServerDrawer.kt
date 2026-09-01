@@ -3232,10 +3232,10 @@ private fun PlayersSection() {
         onClick = { XServerDialogState.show(XServerDialogState.ActiveDialog.CONTROLLER_TEST) },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
-    ) { Text("Controller Test") }
+    ) { Text("Physical Controller Test / Bind") }
     Spacer(Modifier.height(4.dp))
     Text(
-        "Test each controller and confirm every input registers.",
+        "Test each physical controller, remap its buttons, and confirm every input registers.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )

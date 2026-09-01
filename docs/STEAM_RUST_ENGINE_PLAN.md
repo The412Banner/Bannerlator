@@ -1,7 +1,23 @@
 # Bannerlator Unified Native Rust Steam Engine — Phased Plan
 
-Status: **STUDY + PLAN ONLY** (no code, no git, no build). For review.
+Status: **Phase 0 DONE, Phase 1 (A/B/C) IMPLEMENTED — awaiting CI + device proof.** See "Status" below.
 Author basis: direct study of WinNative's `wnsteam` (local clone `/home/claude-user/winnative`, tip `eaa4640`) + Bannerlator current state (`/home/claude-user/bannerlators-mainrel`, main `f68522b3`).
+
+---
+
+## 0. Status (living section)
+
+| Phase | State | Where |
+|---|---|---|
+| **0 — toolchain, crate, CI, connect/login MVP** | **DONE** (`feat/blsteam-engine-p0` @ `f4f2c47e`): crate vendored as `app/src/main/cpp/bl-steam-client/` → `libblsteam.so`; Kotlin facades `com.winlator.star.store.blsteam.*`; CI cargo step + caches; hidden flag `use_rust_steam_engine` (default OFF, Log Manager dev toggle); `SteamRepository` routes connect/logon to `BlSteamEngine` when ON. | branch p0 |
+| **1-A — owned library / PICS on the engine (flag ON)** | **IMPLEMENTED, not device-proven.** `BlLibraryCrawler` (license list → package info → app tokens → app product-info in 25-app batches) feeds the SAME per-app parser (`SteamRepository.processAppKv`, extracted verbatim from the JavaSteam path) and the SAME `steam_*` rows + `LibraryProgress`/`LibrarySynced` events. `syncLibrary` / `refreshAppProductInfo` / `resolveOwnedDlc` are engine-agnostic (`fetchProductInfoKv`). Dev parity diff under log tag **`BL_STEAM_PICS`** (+ `<externalFiles>/bl_steam_pics_diff.txt`): snapshot of the previous engine's rows vs the Rust crawl, app-by-app. `BlSteamEngine` now decodes logon-response / logged-off EResults, never retries a rejected token, caps re-logons (3/min). Downloads, cloud, achievements, friends still JavaSteam (honest refusal when ON). | branch p1 |
+| **1-B — session doorman + launch pre-flight (ships to everyone)** | **IMPLEMENTED, not device-proven.** `store/SteamSessionManager` (`ensureSession`, `maybeRenewRefreshToken` [Rust: wires `BlSteamEngine.renewRefreshToken()` when the JWT `exp` is < 14 days out], `preflightAsync`: session → Steam Cloud pull → update check). `ui/screens/SteamPreflightDialog` ("Getting Steam ready") runs BEFORE `XServerDisplayActivity` for every RealSteam launch (popup pick + remembered); Sign in / Launch with Goldberg / Retry / Launch anyway / Update. Activity skips its own cloud pull on `preflightDone`. Goldberg/Raw/non-Steam launches untouched. | branch p1 |
+| **1-C — live agent↔app channel** | **IMPLEMENTED, not device-proven.** Agent (`bl-wt-steam-vac/agent-src`, `steam.exe`, MinGW) connects to `127.0.0.1:$BL_AGENT_PORT` and streams newline JSON events (`started`, `logged_in`(masked), `login_failed`, `appinfo`, `launch_accepted`, `launch_refused`, `insecure_fallback`, `direct_exe`, `game_spawned{secure}`, `session_lost`, `achievement`, `game_exited`, `shutdown`, `status`); accepts `{"cmd":"status"|"logoff"}`. App: `store/SteamAgentChannel` (loopback `ServerSocket`), `RealSteamLauncher.prepare(..., agentPort)` → `BL_AGENT_PORT`, overlay hints from real state, failure card with Retry / Launch with Goldberg on `login_failed` / pre-render `insecure_fallback` / no sign-in in 75 s, `SteamLiteLogCollector` DIAGNOSTICS prefers the events. Rebuilt agent NOT published (needs an explicit go). | branch p1 + agent-src |
+| 1 (plan §3 "Friends/chat/presence") | NOT started — deferred behind 1-A/B/C (the launch-reliability items were pulled forward). Stretch "chat over the agent socket" not done; message shapes TODO in `SteamAgentChannel` docs. | — |
+| 2 — cloud / achievements / downloads on the engine | NOT started. The pre-flight's cloud step is SKIPPED when the flag is ON until 2b lands. | — |
+| 3 / 4 | NOT started. | — |
+
+**Phase-1 scope note.** The executed Phase 1 differs from §3's original ordering: library/PICS (originally 2a), the session doorman and the agent channel were pulled forward because they gate launch reliability; social (original Phase 1) moves after them.
 
 ---
 

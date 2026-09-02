@@ -79,3 +79,5 @@ beta-branch refusal in `BlDepotInstaller` and the `DepotSizeResolver` fallback (
   writes the same keys.
 - JavaSteam remains selectable (flag OFF) until the engine is device-proven per surface;
   Phase 4 (remove the dependency) is gated on that proof.
+
+<!-- pr-check smoke test -->

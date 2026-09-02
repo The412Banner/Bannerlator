@@ -3,13 +3,15 @@ package com.winlator.star.store.blsteam
 import java.util.concurrent.CompletableFuture
 
 /**
- * Mirrors JavaSteam's `in.dragonbra.javasteam.steam.authentication.IAuthenticator`
- * shape exactly. SteamLoginViewModel's existing `object : IAuthenticator { ... }`
- * block becomes `object : BlAuthenticator { ... }` with zero
- * method-signature changes.
+ * Steam Guard prompt bridge for the engine's credentials auth session (the same
+ * CompletableFuture shape the app's `SteamAuthManager` already resolves from the
+ * sign-in dialog, so one implementation serves both engines).
  *
- * The native client invokes these via JNI when Steam asks for a Steam Guard
- * confirmation during BeginAuthSessionViaCredentials / PollAuthSessionStatus.
+ * The native client invokes these via JNI on its auth thread when Steam asks for
+ * a Steam Guard confirmation during BeginAuthSessionViaCredentials /
+ * PollAuthSessionStatus, and BLOCKS on the returned future. A code Steam rejects
+ * is re-requested with `previousCodeWasIncorrect = true`; completing a future
+ * exceptionally (cancel) aborts the sign-in.
  */
 interface BlAuthenticator {
 

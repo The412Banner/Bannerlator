@@ -31,6 +31,17 @@ class BlSteamSession : AutoCloseable {
         nativeSetAutoPopulateLibrary(h, enabled)
     }
 
+    /**
+     * Whether the runtime announces the persona as Online right after logon. JavaSteam never
+     * announces on its own (the app does it when friends/chat are enabled), so the engine
+     * mirrors that: OFF leaves no social footprint until [setPersonaState] is called. Safe
+     * before and after [connect]; takes effect at the next logon.
+     */
+    fun setAutoPersonaOnline(enabled: Boolean) {
+        val h = nativeHandle.get(); if (h == 0L) return
+        try { nativeSetAutoPersonaOnline(h, enabled) } catch (_: UnsatisfiedLinkError) {}
+    }
+
     fun connect(url: String): Boolean {
         val h = nativeHandle.get(); if (h == 0L) return false
         return nativeConnect(h, url)
@@ -678,6 +689,7 @@ class BlSteamSession : AutoCloseable {
         @JvmStatic private external fun nativeSetCaBundlePath(handle: Long, path: String)
         @JvmStatic private external fun nativeSetStateObserver(handle: Long, observer: BlSteamStateObserver?)
         @JvmStatic private external fun nativeSetAutoPopulateLibrary(handle: Long, enabled: Boolean)
+        @JvmStatic private external fun nativeSetAutoPersonaOnline(handle: Long, enabled: Boolean)
         @JvmStatic private external fun nativeConnect(handle: Long, url: String): Boolean
         @JvmStatic private external fun nativeDisconnect(handle: Long)
         @JvmStatic private external fun nativeLogOffAndDisconnect(handle: Long, flushMs: Int)

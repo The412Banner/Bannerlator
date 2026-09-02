@@ -12,6 +12,7 @@ use crate::transport::Transport;
 use crate::wire_format::read_u32_le;
 use std::collections::HashMap;
 use std::panic::{self, AssertUnwindSafe};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -26,6 +27,10 @@ pub struct CMClientRuntime {
     pics_product_info: Mutex<HashMap<u64, CMsgClientPICSProductInfoResponse>>,
     on_state: Mutex<Option<StateCallback>>,
     on_client_message: Mutex<Option<ClientMessageCallback>>,
+    /// Announce the persona as Online right after a successful logon. The desktop client does; a
+    /// headless session that must leave no social footprint (friends/chat opted out) turns it off
+    /// and announces later, explicitly, when the user opts in.
+    auto_persona_online: AtomicBool,
 }
 
 impl CMClientRuntime {
@@ -38,6 +43,7 @@ impl CMClientRuntime {
             pics_product_info: Mutex::new(HashMap::new()),
             on_state: Mutex::new(None),
             on_client_message: Mutex::new(None),
+            auto_persona_online: AtomicBool::new(true),
         });
 
         let weak = Arc::downgrade(&runtime);
@@ -87,6 +93,14 @@ impl CMClientRuntime {
         self.core.reset_session_identity();
         self.core.set_state(ClientState::Disconnected);
         self.notify_state(ClientState::Disconnected);
+    }
+
+    pub fn set_auto_persona_online(&self, enabled: bool) {
+        self.auto_persona_online.store(enabled, Ordering::Relaxed);
+    }
+
+    pub fn auto_persona_online(&self) -> bool {
+        self.auto_persona_online.load(Ordering::Relaxed)
     }
 
     pub fn set_ca_bundle_path(&self, path: &str) {
@@ -171,8 +185,10 @@ impl CMClientRuntime {
             }
             InboundAction::LogonOk => {
                 self.start_heartbeat_from_logon(body);
-                self.core
-                    .enqueue_proto_message(self.core.build_set_persona_state(1));
+                if self.auto_persona_online() {
+                    self.core
+                        .enqueue_proto_message(self.core.build_set_persona_state(1));
+                }
                 self.core
                     .enqueue_proto_message(self.core.build_request_user_persona());
                 let job_id = self.jobs.next_job_id();

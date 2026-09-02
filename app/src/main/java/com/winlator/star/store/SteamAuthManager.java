@@ -7,6 +7,11 @@ import android.util.Log;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.winlator.star.store.blsteam.BlAuthResult;
+import com.winlator.star.store.blsteam.BlAuthenticator;
+import com.winlator.star.store.blsteam.BlSteamEngine;
+import com.winlator.star.store.blsteam.BlSteamSession;
+
 import in.dragonbra.javasteam.enums.EOSType;
 import in.dragonbra.javasteam.steam.authentication.AuthPollResult;
 import in.dragonbra.javasteam.steam.authentication.AuthSessionDetails;
@@ -34,6 +39,13 @@ import in.dragonbra.javasteam.steam.authentication.SteamAuthentication;
  *     → onSuccess(username, refreshToken) posted to main thread
  *
  * Cancellation: cancelAuth() completes pending futures exceptionally.
+ *
+ * Rust engine (use_rust_steam_engine ON): the SAME listener contract is driven by
+ * libblsteam.so's auth session ({@link BlSteamSession#startLoginWithCredentials}) on the engine's
+ * live channel — RSA password, Steam Guard (email / mobile code with wrong-code re-prompt / mobile
+ * confirmation) and the poll loop all run natively; the {@link BlAuthenticator} bridge below is the
+ * same CompletableFuture shape as the JavaSteam IAuthenticator, resolved from the UI by
+ * {@link #submitGuardCode}.
  */
 public final class SteamAuthManager {
 
@@ -81,6 +93,10 @@ public final class SteamAuthManager {
      */
     public void startCredentialLogin(String username, String password, AuthListener listener) {
         pendingCodeFuture = null;
+        if (SteamRepository.getInstance().isRustEngine()) {
+            startCredentialLoginRust(username, password, listener);
+            return;
+        }
 
         new Thread(() -> {
             try {
@@ -137,6 +153,101 @@ public final class SteamAuthManager {
         CompletableFuture<String> f = pendingCodeFuture;
         if (f != null) f.completeExceptionally(new InterruptedException("User cancelled"));
         pendingCodeFuture = null;
+        if (rustAuthActive) {
+            rustAuthActive = false;
+            BlSteamSession s = BlSteamEngine.INSTANCE.session();
+            if (s != null) {
+                try { s.cancelLogin(); } catch (Throwable t) { Log.w(TAG, "cancelLogin failed", t); }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Rust engine path
+    // -------------------------------------------------------------------------
+
+    /** True while a native credentials auth session is running (so cancelAuth() can abort it). */
+    private volatile boolean rustAuthActive = false;
+
+    /**
+     * Credentials sign-in on the Rust engine. The engine's channel must be up (connect-only or
+     * logged on) — SteamLoginActivity only calls in once the repository reports "Connected".
+     * The native auth thread calls the {@link BlAuthenticator} for Steam Guard and blocks on the
+     * returned futures exactly like JavaSteam's poll loop; the final {@link BlAuthResult} carries
+     * the refresh token + account name + SteamID64, which are persisted through
+     * {@link SteamRepository#saveSession(String, String, long)} before the UI is told.
+     */
+    private void startCredentialLoginRust(String username, String password, AuthListener listener) {
+        BlSteamSession session = BlSteamEngine.INSTANCE.session();
+        if (session == null || !BlSteamEngine.INSTANCE.isConnected()) {
+            mainHandler.post(() -> listener.onFailure("Not connected to Steam"));
+            return;
+        }
+        rustAuthActive = true;
+        Log.i(TAG, "credentials sign-in starting on the Rust engine");
+        try {
+            session.startLoginWithCredentials(username, password, true, buildRustAuthenticator(listener),
+                    result -> onRustAuthResult(result, username, listener));
+        } catch (Throwable t) {
+            rustAuthActive = false;
+            Log.e(TAG, "Rust credentials login could not start: " + SteamLogRedactor.redact(Log.getStackTraceString(t)));
+            String msg = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
+            mainHandler.post(() -> listener.onFailure(msg));
+        }
+    }
+
+    /** Native auth thread → main thread. Intermediate (remote-interaction) updates carry no token. */
+    private void onRustAuthResult(BlAuthResult result, String username, AuthListener listener) {
+        if (result.getSuccess() && !result.getRefreshToken().isEmpty()) {
+            rustAuthActive = false;
+            String accountName = result.getAccountName();
+            String finalName = (accountName != null && !accountName.isEmpty()) ? accountName : username;
+            long sid = result.getSteamId();
+            if (sid == 0L) sid = SteamSessionManager.jwtSteamId64(result.getRefreshToken());
+            SteamRepository.getInstance().saveSession(finalName, result.getRefreshToken(), sid);
+            Log.i(TAG, "credentials sign-in OK on the Rust engine (steamId known=" + (sid != 0L) + ")");
+            mainHandler.post(() -> listener.onSuccess(finalName, result.getRefreshToken()));
+            return;
+        }
+        if (result.getHadRemoteInteraction() && result.getErrorMessage().isEmpty()) {
+            // Steam saw the phone approve / interact; the poll loop keeps running.
+            mainHandler.post(listener::onDeviceConfirmationRequired);
+            return;
+        }
+        rustAuthActive = false;
+        String msg = result.getErrorMessage().isEmpty()
+                ? SteamRepository.eresultName(result.getErrorCode()) : result.getErrorMessage();
+        Log.w(TAG, "credentials sign-in failed on the Rust engine: eresult=" + result.getErrorCode()
+                + " " + SteamLogRedactor.redact(msg));
+        mainHandler.post(() -> listener.onFailure(msg));
+    }
+
+    /** Same three prompts as {@link #buildAuthenticator}, on the engine's {@link BlAuthenticator} shape. */
+    private BlAuthenticator buildRustAuthenticator(AuthListener listener) {
+        return new BlAuthenticator() {
+            @Override
+            public CompletableFuture<Boolean> acceptDeviceConfirmation() {
+                mainHandler.post(listener::onDeviceConfirmationRequired);
+                return CompletableFuture.completedFuture(true);
+            }
+
+            @Override
+            public CompletableFuture<String> getEmailCode(String email, boolean previousCodeWasIncorrect) {
+                CompletableFuture<String> future = new CompletableFuture<>();
+                pendingCodeFuture = future;
+                final String domain = email != null ? email : "";
+                mainHandler.post(() -> listener.onSteamGuardEmailRequired(domain, previousCodeWasIncorrect));
+                return future;
+            }
+
+            @Override
+            public CompletableFuture<String> getDeviceCode(boolean previousCodeWasIncorrect) {
+                CompletableFuture<String> future = new CompletableFuture<>();
+                pendingCodeFuture = future;
+                mainHandler.post(() -> listener.onSteamGuardTotpRequired(previousCodeWasIncorrect));
+                return future;
+            }
+        };
     }
 
     // -------------------------------------------------------------------------

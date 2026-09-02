@@ -57,6 +57,9 @@ fn android_log(tag: &str, message: &str) {
     }
 }
 
+/// Steam Guard code re-prompts before the credentials sign-in gives up.
+const GUARD_CODE_MAX_ATTEMPTS: u32 = 5;
+
 fn qr_log(message: &str) {
     android_log("BL_STEAM_QR", message);
 }
@@ -81,6 +84,9 @@ struct BlSteamSessionHandle {
     /// by the connection's location) and the datacenter code whose CDN hosts are preferred
     /// (empty = directory order). Set from Kotlin (`nativeSetCdnPreference`).
     cdn_preference: Mutex<(u32, String)>,
+    /// Announce Online at logon (see `CMClientRuntime::set_auto_persona_online`). Applied to the
+    /// runtime when it is created and live-updated by `nativeSetAutoPersonaOnline`.
+    auto_persona_online: AtomicBool,
 }
 
 impl BlConnectionHandle {
@@ -108,6 +114,7 @@ impl BlSteamSessionHandle {
             library_observer: Arc::new(Mutex::new(None)),
             library_observer_installed: Mutex::new(false),
             cdn_preference: Mutex::new((0, String::new())),
+            auto_persona_online: AtomicBool::new(true),
         }
     }
 
@@ -152,6 +159,7 @@ impl BlSteamSessionHandle {
         if !self.ca_bundle_path.is_empty() {
             runtime.set_ca_bundle_path(&self.ca_bundle_path);
         }
+        runtime.set_auto_persona_online(self.auto_persona_online.load(Ordering::Relaxed));
         let state_observer = Arc::clone(&self.state_observer);
         runtime.set_on_state(move |state| {
             dispatch_state_observer(&state_observer, state);
@@ -1884,6 +1892,28 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
 }
 
 #[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeSetAutoPersonaOnline(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    enabled: jboolean,
+) {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return;
+    };
+    let enabled = enabled != JNI_FALSE;
+    handle.auto_persona_online.store(enabled, Ordering::Relaxed);
+    if let Some(runtime) = handle
+        .runtime
+        .lock()
+        .expect("session runtime poisoned")
+        .as_ref()
+    {
+        runtime.set_auto_persona_online(enabled);
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeConnect(
     mut env: JNIEnv,
     _class: JClass,
@@ -2862,76 +2892,19 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
                     let _ = authenticator_accept_device_confirmation(authenticator);
                 }
             }
-            crate::pb::cauthentication::EAuthSessionGuardType::DeviceCode => {
+            crate::pb::cauthentication::EAuthSessionGuardType::DeviceCode
+            | crate::pb::cauthentication::EAuthSessionGuardType::EmailCode => {
+                let is_email = chosen_guard
+                    == crate::pb::cauthentication::EAuthSessionGuardType::EmailCode;
                 let Some(authenticator) = authenticator.as_ref() else {
                     dispatch_auth_result(
                         &callback,
                         AuthSessionResult {
-                            error_message: "Steam Guard device code required".to_string(),
-                            ..Default::default()
-                        },
-                    );
-                    return;
-                };
-                let Some(code) = authenticator_get_device_code(authenticator, false) else {
-                    if cancel.load(Ordering::Relaxed) {
-                        return;
-                    }
-                    dispatch_auth_result(
-                        &callback,
-                        AuthSessionResult {
-                            error_message: "Steam Guard device code was not provided".to_string(),
-                            ..Default::default()
-                        },
-                    );
-                    return;
-                };
-                let update = build_guard_code_request(
-                    pending.client_id,
-                    pending.steamid,
-                    chosen_guard,
-                    code,
-                );
-                let update_job = match request_service_method_job(
-                    &runtime,
-                    "Authentication.UpdateAuthSessionWithSteamGuardCode#1",
-                    false,
-                    update.serialize(),
-                    timeout,
-                    Some(cancel.as_ref()),
-                ) {
-                    Some(job) => job,
-                    None => {
-                        if cancel.load(Ordering::Relaxed) {
-                            return;
-                        }
-                        dispatch_auth_result(
-                            &callback,
-                            AuthSessionResult {
-                                error_message: "UpdateAuthSessionWithSteamGuardCode timed out"
-                                    .to_string(),
-                                ..Default::default()
+                            error_message: if is_email {
+                                "Steam Guard email code required".to_string()
+                            } else {
+                                "Steam Guard device code required".to_string()
                             },
-                        );
-                        return;
-                    }
-                };
-                // C++ accepts eresult 1 (OK) or 29 (DuplicateRequest — same code
-                // resubmitted) as a non-fatal "proceed to poll".
-                if !crate::auth_session::guard_update_succeeded(&update_job) {
-                    dispatch_auth_result(
-                        &callback,
-                        auth_result_from_job(&update_job, "UpdateAuthSessionWithSteamGuardCode"),
-                    );
-                    return;
-                }
-            }
-            crate::pb::cauthentication::EAuthSessionGuardType::EmailCode => {
-                let Some(authenticator) = authenticator.as_ref() else {
-                    dispatch_auth_result(
-                        &callback,
-                        AuthSessionResult {
-                            error_message: "Steam Guard email code required".to_string(),
                             ..Default::default()
                         },
                     );
@@ -2941,52 +2914,86 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
                     .allowed_confirmations
                     .iter()
                     .find(|confirmation| confirmation.confirmation_type == chosen_guard)
-                    .map(|confirmation| confirmation.associated_message.as_str())
+                    .map(|confirmation| confirmation.associated_message.clone())
                     .unwrap_or_default();
-                let Some(code) = authenticator_get_email_code(authenticator, email, false) else {
-                    if cancel.load(Ordering::Relaxed) {
-                        return;
-                    }
-                    dispatch_auth_result(
-                        &callback,
-                        AuthSessionResult {
-                            error_message: "Steam Guard email code was not provided".to_string(),
-                            ..Default::default()
-                        },
-                    );
-                    return;
-                };
-                let update = build_guard_code_request(
-                    pending.client_id,
-                    pending.steamid,
-                    chosen_guard,
-                    code,
-                );
-                let update_job = match request_service_method_job(
-                    &runtime,
-                    "Authentication.UpdateAuthSessionWithSteamGuardCode#1",
-                    false,
-                    update.serialize(),
-                    timeout,
-                    Some(cancel.as_ref()),
-                ) {
-                    Some(job) => job,
-                    None => {
+                // Like the desktop client / JavaSteam's IAuthenticator contract: a code Steam
+                // rejects (88 TwoFactorCodeMismatch, 65 InvalidLoginAuthCode) re-prompts the user
+                // with `previousCodeWasIncorrect = true` instead of failing the whole sign-in.
+                let mut previous_incorrect = false;
+                let mut attempts = 0u32;
+                loop {
+                    attempts += 1;
+                    let code = if is_email {
+                        authenticator_get_email_code(authenticator, &email, previous_incorrect)
+                    } else {
+                        authenticator_get_device_code(authenticator, previous_incorrect)
+                    };
+                    let Some(code) = code else {
                         if cancel.load(Ordering::Relaxed) {
                             return;
                         }
                         dispatch_auth_result(
                             &callback,
                             AuthSessionResult {
-                                error_message: "UpdateAuthSessionWithSteamGuardCode timed out"
-                                    .to_string(),
+                                error_message: if is_email {
+                                    "Steam Guard email code was not provided".to_string()
+                                } else {
+                                    "Steam Guard device code was not provided".to_string()
+                                },
                                 ..Default::default()
                             },
                         );
                         return;
+                    };
+                    let update = build_guard_code_request(
+                        pending.client_id,
+                        pending.steamid,
+                        chosen_guard,
+                        code,
+                    );
+                    let update_job = match request_service_method_job(
+                        &runtime,
+                        "Authentication.UpdateAuthSessionWithSteamGuardCode#1",
+                        false,
+                        update.serialize(),
+                        timeout,
+                        Some(cancel.as_ref()),
+                    ) {
+                        Some(job) => job,
+                        None => {
+                            if cancel.load(Ordering::Relaxed) {
+                                return;
+                            }
+                            dispatch_auth_result(
+                                &callback,
+                                AuthSessionResult {
+                                    error_message: "UpdateAuthSessionWithSteamGuardCode timed out"
+                                        .to_string(),
+                                    ..Default::default()
+                                },
+                            );
+                            return;
+                        }
+                    };
+                    // C++ accepts eresult 1 (OK) or 29 (DuplicateRequest — same code
+                    // resubmitted) as a non-fatal "proceed to poll".
+                    if crate::auth_session::guard_update_succeeded(&update_job) {
+                        break;
                     }
-                };
-                if !crate::auth_session::guard_update_succeeded(&update_job) {
+                    if !update_job.synthetic_failure
+                        && matches!(update_job.eresult, 65 | 88)
+                        && attempts < GUARD_CODE_MAX_ATTEMPTS
+                    {
+                        android_log(
+                            "BL_STEAM_AUTH",
+                            &format!(
+                                "steam guard code rejected (eresult={}) — re-prompting (attempt {})",
+                                update_job.eresult, attempts
+                            ),
+                        );
+                        previous_incorrect = true;
+                        continue;
+                    }
                     dispatch_auth_result(
                         &callback,
                         auth_result_from_job(&update_job, "UpdateAuthSessionWithSteamGuardCode"),

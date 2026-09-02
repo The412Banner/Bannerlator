@@ -150,8 +150,10 @@ public final class SteamRepository {
     private volatile boolean connected = false;
     private volatile boolean loggedIn  = false;
 
-    public boolean isConnected() { return connected; }
-    public boolean isLoggedIn()  { return loggedIn; }
+    /** Engine-agnostic: the CM channel is up (JavaSteam ConnectedCallback / Rust engine Connected+). */
+    public boolean isConnected() { return rustEngine ? BlSteamEngine.INSTANCE.isConnected() : connected; }
+    /** Engine-agnostic: a logged-on CM session exists right now (JavaSteam LoggedOn / Rust engine LoggedOn). */
+    public boolean isLoggedIn()  { return rustEngine ? BlSteamEngine.INSTANCE.isLoggedOn() : loggedIn; }
 
     // -------------------------------------------------------------------------
     // SharedPreferences (set on initialize)
@@ -173,22 +175,40 @@ public final class SteamRepository {
     }
 
     // -------------------------------------------------------------------------
-    // Native Rust Steam engine (libblsteam.so) — Phase 0, hidden flag, default OFF
+    // Native Rust Steam engine (libblsteam.so) — hidden flag, default OFF
     // -------------------------------------------------------------------------
     // docs/STEAM_RUST_ENGINE_PLAN.md. When BlSteamEngineFlag is ON (read once in initialize()),
     // this repository's CM session is driven by BlSteamEngine instead of JavaSteam: connect(),
-    // reconnectNow() and loginWithToken() route to rustConnect(), disconnect()/logout() stop the
-    // engine, and the engine's state feeds the status pill + steam_prefs (steam_id_64/account_id,
+    // reconnectNow(), loginWithToken(), ensureLoggedIn() and reconnectAndRelogin() route to the
+    // engine, disconnect()/logout() stop it, and the engine's state feeds the status pill,
+    // isConnected()/isLoggedIn() and steam_prefs (steam_id_64/account_id, display_name, cell_id,
     // rotated refresh_token) so SteamLite and Goldberg keep reading the same keys. The JavaSteam
-    // objects are still built but never connected, and the JavaSteam-backed `connected`/`loggedIn`
-    // flags stay false — every JavaSteam surface (library sync, depots, friends, cloud) therefore
-    // refuses honestly ("not logged in") rather than hitting a dead SteamClient. Phase 1+ move those
-    // surfaces over. Flag OFF: none of this runs.
+    // objects are still built but never connected, and every JavaSteam handler getter returns null
+    // under the engine so no surface can run against the dead SteamClient. Phase 3a: with the flag
+    // ON the app is a full replacement — auth (credentials / Steam Guard / QR), session
+    // keep-alive + self-heal, social and presence all run on the engine. Flag OFF: none of this runs.
     private static final String RUST_TAG = "BL_STEAM_REPO";
     private volatile boolean rustEngine = false;
 
     /** True when this process runs its Steam CM session on the native Rust engine. */
     public boolean isRustEngine() { return rustEngine; }
+
+    /** Auto-reconnect budget on the engine (same shape as the JavaSteam MAX_RECONNECT_ATTEMPTS ladder). */
+    private volatile int rustReconnectAttempts = 0;
+    /** Set when another client took the account (LoggedInElsewhere / LogonSessionReplaced) — no tug-back. */
+    private volatile boolean rustSignedInElsewhere = false;
+    private java.util.concurrent.ScheduledExecutorService rustScheduler = null;
+
+    private synchronized java.util.concurrent.ScheduledExecutorService rustScheduler() {
+        if (rustScheduler == null) {
+            rustScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "BlSteamRepoScheduler");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        return rustScheduler;
+    }
 
     private final BlSteamEngine.Listener rustListener = new BlSteamEngine.Listener() {
         @Override public void onEngineState(int state, long steamId64) {
@@ -197,6 +217,9 @@ public final class SteamRepository {
                     pPut("steam_id_64", steamId64);
                     pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
                 }
+                rustReconnectAttempts = 0;
+                rustSignedInElsewhere = false;
+                logoffRecoveryAttempts = 0;
                 lastSessionStatus = "LoggedIn";
                 setStatus(SteamStatus.ONLINE, "rust engine logged on");
                 Log.i(RUST_TAG, SteamLogRedactor.redact("logged on as " + pGet("username", "") + " steamId=" + steamId64));
@@ -206,13 +229,21 @@ public final class SteamRepository {
                 // JavaSteam path would receive its LicenseList push.
                 rustSyncLibrary("logon");
             } else if (state == BlSteamEngine.STATE_CONNECTING || state == BlSteamEngine.STATE_CONNECTED) {
-                if (state == BlSteamEngine.STATE_CONNECTED) emit("Connected");
-                if (!realSteamSuspended) setStatus(SteamStatus.CONNECTING, "rust engine state " + state);
+                if (state == BlSteamEngine.STATE_CONNECTED) {
+                    rustReconnectAttempts = 0;
+                    emit("Connected");
+                }
+                if (realSteamSuspended) return;
+                // Connect-only (no saved sign-in): the channel is up for the login screens; the pill
+                // stays "Signed out" like a signed-out JavaSteam session would show nothing.
+                if (!isLoggedInPrefs()) setStatus(SteamStatus.SIGNED_OUT, "rust engine connected — no saved sign-in");
+                else setStatus(SteamStatus.CONNECTING, "rust engine state " + state);
             } else {
-                if (realSteamSuspended)  setStatus(SteamStatus.PAUSED_FOR_GAME, "rust engine down — paused for in-game real-Steam session");
-                else if (loggingOut)     setStatus(SteamStatus.SIGNED_OUT, "rust engine: signed out");
-                else if (rustTokenRejected) setStatus(SteamStatus.SIGNED_OUT, "rust engine: refresh token rejected — needs re-auth");
-                else                     setStatus(SteamStatus.OFFLINE, "rust engine disconnected");
+                if (realSteamSuspended)       setStatus(SteamStatus.PAUSED_FOR_GAME, "rust engine down — paused for in-game real-Steam session");
+                else if (loggingOut)          setStatus(SteamStatus.SIGNED_OUT, "rust engine: signed out");
+                else if (rustTokenRejected)   setStatus(SteamStatus.SIGNED_OUT, "rust engine: refresh token rejected — needs re-auth");
+                else if (rustSignedInElsewhere) setStatus(SteamStatus.SIGNED_IN_ELSEWHERE, "rust engine: account owned by another client");
+                else if (!rustScheduleReconnect()) setStatus(SteamStatus.OFFLINE, "rust engine disconnected");
                 emit("Disconnected");
             }
         }
@@ -233,10 +264,19 @@ public final class SteamRepository {
                 emit("LoginFailed:" + name);
             } else {
                 Log.i(RUST_TAG, "rust engine: logged off eresult=" + eresult + " (" + name + ")");
+                if (realSteamSuspended) return;   // our own teardown for the in-game session
+                if (loggingOut) return;           // user sign-out — status is set by logout()
                 if (eresult == 34 || eresult == 43) {   // LoggedInElsewhere / LogonSessionReplaced
-                    if (!realSteamSuspended)
-                        setStatus(SteamStatus.SIGNED_IN_ELSEWHERE, "rust engine: replaced by another client " + name);
+                    // Another client owns the account: surface it, never tug back (a re-logon would
+                    // start a logon tug-of-war). The user taps the pill once they signed out there.
+                    rustSignedInElsewhere = true;
+                    setStatus(SteamStatus.SIGNED_IN_ELSEWHERE, "rust engine: replaced by another client " + name);
                     emit("LoggedOut");
+                } else {
+                    // Involuntary logoff (e.g. Expired): the engine re-reports Connected and re-logs on
+                    // from the saved token itself (bounded by its storm guard) — mirror the JavaSteam
+                    // "involuntary logoff recovery" status so the pill shows we're recovering.
+                    setStatus(SteamStatus.CONNECTING, "rust engine: involuntary logoff " + name + " — re-logging on");
                 }
             }
         }
@@ -250,30 +290,118 @@ public final class SteamRepository {
             // pool request and the region picker read it back.
             pPut("cell_id", cellId);
         }
+        @Override public void onAccountInfo(String personaName) {
+            // ClientAccountInfo → the account's persona (display) name, the value getDisplayName()
+            // serves and RealSteamLauncher hands to the in-container client.
+            if (personaName != null && !personaName.isEmpty()) pPut("display_name", personaName);
+        }
         @Override public void onEngineFailure(String reason) {
             Log.w(RUST_TAG, "engine failure: " + reason);
-            if (!realSteamSuspended) setStatus(SteamStatus.OFFLINE, "rust engine: " + reason);
+            if (realSteamSuspended || loggingOut || rustTokenRejected || rustSignedInElsewhere) return;
+            SteamStatus cur = status;
+            if (cur == SteamStatus.SIGNED_OUT || cur == SteamStatus.SIGNED_IN_ELSEWHERE) return;
+            setStatus(SteamStatus.OFFLINE, "rust engine: " + reason);
         }
     };
 
-    /** Rust-engine counterpart of connect()+loginWithToken(): resolve a CM, connect, token logon. */
+    /**
+     * Rust-engine counterpart of connect()+loginWithToken(): resolve a CM, connect and log on from the
+     * saved token — or, with no saved sign-in, bring the channel up connect-only so the credentials /
+     * QR login screens can run their auth session on it (the JavaSteam client is likewise connected
+     * before a sign-in). Reuses a live session when one is up (logon on it instead of a second
+     * connect). Never runs network I/O on the caller's thread.
+     */
     private void rustConnect(String source) {
         if (appContext == null) { Log.e(RUST_TAG, "rustConnect before initialize()"); return; }
-        if (!isLoggedInPrefs()) {
-            setStatus(SteamStatus.SIGNED_OUT, "rust engine: no saved session (" + source + ")");
-            return;
-        }
-        if (BlSteamEngine.INSTANCE.isActive() && BlSteamEngine.INSTANCE.state() == BlSteamEngine.STATE_LOGGED_ON) {
-            Log.i(RUST_TAG, "rustConnect skipped — already logged on (" + source + ")");
+        if (realSteamSuspended) {
+            Log.i(REALSTEAM_TAG, "rustConnect skipped — app session suspended for in-game real-Steam session (" + source + ")");
             return;
         }
         loggingOut = false;
         rustTokenRejected = false;
-        SteamLogRedactor.registerSecret(pGet("username", ""));
-        SteamLogRedactor.registerSecret(pGet("refresh_token", ""));
-        setStatus(SteamStatus.CONNECTING, "rust engine connect (" + source + ")");
-        BlSteamEngine.INSTANCE.start(appContext, pGet("username", ""), pGet("refresh_token", ""),
-                pGet("steam_id_64", 0L), rustListener);
+        rustSignedInElsewhere = false;
+        // Background self-heal (idempotent) — on the JavaSteam path startPump() arms it.
+        registerNetworkCallback();
+        final String user = pGet("username", "");
+        final String token = pGet("refresh_token", "");
+        final long sid = pGet("steam_id_64", 0L);
+        final boolean saved = isLoggedInPrefs();
+        if (saved) {
+            SteamLogRedactor.registerSecret(user);
+            SteamLogRedactor.registerSecret(token);
+        }
+        BlSteamEngine eng = BlSteamEngine.INSTANCE;
+        if (eng.isActive() || eng.isStarting()) {
+            int st = eng.state();
+            if (st == BlSteamEngine.STATE_LOGGED_ON) {
+                Log.i(RUST_TAG, "rustConnect skipped — already logged on (" + source + ")");
+                return;
+            }
+            if (saved) {
+                // Channel up (or coming up) without a session: log on to it — the interactive sign-in
+                // and the "connected but logged off" recovery both land here.
+                setStatus(SteamStatus.CONNECTING, "rust engine logon on live channel (" + source + ")");
+                if (eng.logon(user, token, sid)) return;
+                // No handle after all (a teardown raced us) — fall through to a fresh start.
+            } else {
+                Log.i(RUST_TAG, "rustConnect: channel up, no saved sign-in (" + source + ")");
+                return;
+            }
+        }
+        if (saved) setStatus(SteamStatus.CONNECTING, "rust engine connect (" + source + ")");
+        else setStatus(SteamStatus.SIGNED_OUT, "rust engine connect-only — no saved session (" + source + ")");
+        eng.setAutoPersonaOnline(rustSocialEnabled());
+        eng.start(appContext, saved ? user : "", saved ? token : "", saved ? sid : 0L, rustListener);
+    }
+
+    /** The friends/chat opt-in (steam_prefs, default OFF) — gates the engine's Online announce at logon. */
+    private boolean rustSocialEnabled() {
+        return prefs != null && prefs.getBoolean("steam_social_enabled", false);
+    }
+
+    /**
+     * Engine auto-reconnect after an involuntary disconnect: the same 2s·n ladder JavaSteam's
+     * onDisconnected runs (5 attempts), reset by a successful connect / reconnectNow() / the network
+     * self-heal. Returns true when an attempt was scheduled (status is CONNECTING meanwhile).
+     */
+    private boolean rustScheduleReconnect() {
+        if (!rustEngine || appContext == null) return false;
+        if (loggingOut || realSteamSuspended || rustTokenRejected || rustSignedInElsewhere) return false;
+        if (rustReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            Log.w(RUST_TAG, "auto-reconnect budget exhausted (" + MAX_RECONNECT_ATTEMPTS + ") — waiting for network/user");
+            return false;
+        }
+        rustReconnectAttempts++;
+        final int attempt = rustReconnectAttempts;
+        long delayMs = attempt * 2000L;   // 2s, 4s, 6s, 8s, 10s
+        setStatus(SteamStatus.CONNECTING, "rust engine auto-reconnect attempt " + attempt);
+        Log.i(RUST_TAG, "auto-reconnect in " + delayMs + "ms (attempt " + attempt + ")");
+        try {
+            rustScheduler().schedule(() -> {
+                try {
+                    if (!rustEngine || loggingOut || realSteamSuspended || rustTokenRejected || rustSignedInElsewhere) return;
+                    if (BlSteamEngine.INSTANCE.isActive() || BlSteamEngine.INSTANCE.isStarting()) return;
+                    rustConnect("auto-reconnect " + attempt);
+                } catch (Throwable t) {
+                    Log.w(RUST_TAG, "auto-reconnect failed", t);
+                }
+            }, delayMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (Throwable t) {
+            Log.w(RUST_TAG, "auto-reconnect could not be scheduled", t);
+            return false;
+        }
+        return true;
+    }
+
+    /** Block the CALLER (never the UI thread) until the engine is logged on or [timeoutMs] elapsed. */
+    private boolean rustAwaitLoggedOn(long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (!BlSteamEngine.INSTANCE.isLoggedOn() && System.currentTimeMillis() < deadline) {
+            if (rustTokenRejected || rustSignedInElsewhere) break;
+            try { Thread.sleep(150); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+        }
+        return BlSteamEngine.INSTANCE.isLoggedOn();
     }
 
     /** Set when Steam rejected the saved refresh token on the Rust engine (cleared by a fresh connect/login). */
@@ -281,12 +409,11 @@ public final class SteamRepository {
 
     /**
      * Engine-agnostic "is there a live, logged-on CM session right now?" — the JavaSteam
-     * {@code loggedIn} flag, or the Rust engine's LoggedOn state. The Phase-0 contract keeps
-     * {@link #isLoggedIn()} false under the Rust engine so JavaSteam-only surfaces refuse honestly;
-     * callers that only need a session (the launch pre-flight, the session manager) use this.
+     * {@code loggedIn} flag, or the Rust engine's LoggedOn state. Since Phase 3a this is exactly
+     * {@link #isLoggedIn()} (kept as an alias for the pre-flight / session-manager call sites).
      */
     public boolean isSessionLoggedOn() {
-        return rustEngine ? BlSteamEngine.INSTANCE.isLoggedOn() : loggedIn;
+        return isLoggedIn();
     }
 
     /** Human-readable Steam EResult name for the handful we act on (falls back to the number). */
@@ -615,10 +742,15 @@ public final class SteamRepository {
     // and SteamAppTicket which need them after login)
     // -------------------------------------------------------------------------
 
-    public SteamCloud     getSteamCloud()     { return steamCloud; }
-    public SteamUserStats getSteamUserStats() { return steamUserStats; }
-    public SteamFriends   getSteamFriends()   { return steamFriends; }
-    public CallbackManager getCallbackManager() { return manager; }
+    // Under the Rust engine every JavaSteam handler getter is null: the SteamClient is built but never
+    // connected, so a caller that reached for one would only hang on a dead connection. Surfaces the
+    // engine serves (auth, session, social, presence, library, downloads) branch on isRustEngine()
+    // before they get here; the rest (cloud, achievements, beta passwords, depot-size resolve) refuse
+    // fast until their engine port lands.
+    public SteamCloud     getSteamCloud()     { return rustEngine ? null : steamCloud; }
+    public SteamUserStats getSteamUserStats() { return rustEngine ? null : steamUserStats; }
+    public SteamFriends   getSteamFriends()   { return rustEngine ? null : steamFriends; }
+    public CallbackManager getCallbackManager() { return rustEngine ? null : manager; }
 
     // -------------------------------------------------------------------------
     // Manifest request codes (required since ~2022 to authenticate CDN manifests)
@@ -1065,6 +1197,8 @@ public final class SteamRepository {
         logoffRecoveryAttempts = 0;
         reconnectAttempts = 0;
         rustTokenRejected = false;
+        rustSignedInElsewhere = false;
+        rustReconnectAttempts = 0;
         if (!isLoggedInPrefs()) return;
         setStatus(SteamStatus.CONNECTING, "user tapped reconnect");
         if (rustEngine) { rustConnect("reconnectNow"); return; }
@@ -1128,7 +1262,7 @@ public final class SteamRepository {
      * @return true if the session is logged in when this returns.
      */
     public boolean resumeAfterRealSteam(long awaitLoggedInMs) {
-        if (!realSteamSuspended) return connected && loggedIn;
+        if (!realSteamSuspended) return isConnected() && isLoggedIn();
         realSteamSuspended = false;
         boolean saved = isLoggedInPrefs();
         Log.i(REALSTEAM_TAG, "resuming app CM session after real-Steam game (savedSession=" + saved + ")");
@@ -1139,12 +1273,12 @@ public final class SteamRepository {
         reconnectNow();
         if (awaitLoggedInMs > 0) {
             long deadline = System.currentTimeMillis() + awaitLoggedInMs;
-            while (!loggedIn && System.currentTimeMillis() < deadline) {
+            while (!isLoggedIn() && System.currentTimeMillis() < deadline) {
                 try { Thread.sleep(150); }
                 catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
             }
         }
-        return loggedIn;
+        return isLoggedIn();
     }
 
     /**
@@ -1217,6 +1351,20 @@ public final class SteamRepository {
      */
     private void onNetworkAvailable(String source) {
         try {
+            if (rustEngine) {
+                // Same guards as below, against the engine's state: a saved session, not deliberately
+                // signed out / paused / rejected / owned elsewhere, not healthy, nothing in flight.
+                if (realSteamSuspended || loggingOut || rustTokenRejected || rustSignedInElsewhere) return;
+                if (!isLoggedInPrefs()) return;
+                if (BlSteamEngine.INSTANCE.isLoggedOn() || BlSteamEngine.INSTANCE.isStarting()) return;
+                long now = System.currentTimeMillis();
+                if ((now - lastNetworkReconnectAt) < NETWORK_RECONNECT_DEBOUNCE_MS) return;
+                lastNetworkReconnectAt = now;
+                Log.i(RUST_TAG, "Network available (" + source + ") — self-healing Steam session");
+                rustReconnectAttempts = 0;   // clear the auto-reconnect cap so it can't permanently strand us
+                reconnectNow();
+                return;
+            }
             if (!pumping.get()) return;                 // pump down (disconnected/stopped) — nothing to heal
             if (realSteamSuspended) return;             // a real-Steam game holds the account — do not tug
             if (loggingOut) return;                     // respect a deliberate sign-out
@@ -2047,12 +2195,19 @@ public final class SteamRepository {
 
     /** Auto-login using a stored refresh token. Must not be called on the main thread. */
     public void loginWithToken(String username, String refreshToken) {
-        if (steamUser == null) return;
         if (realSteamSuspended) {
             Log.i(REALSTEAM_TAG, "loginWithToken skipped — app session suspended for in-game real-Steam session");
             return;
         }
-        if (rustEngine) { rustConnect("loginWithToken"); return; }
+        if (rustEngine) {
+            // The login screens call this right after saveSession(); the engine logs on to the
+            // channel the auth session ran on (or connects fresh). Credentials come from prefs.
+            SteamLogRedactor.registerSecret(username);
+            SteamLogRedactor.registerSecret(refreshToken);
+            rustConnect("loginWithToken");
+            return;
+        }
+        if (steamUser == null) return;
         // Re-arm the background self-heal on any login attempt (idempotent) so a re-login after a
         // logout — which unregistered it while the pump kept running — re-attaches the callback.
         registerNetworkCallback();
@@ -2103,6 +2258,12 @@ public final class SteamRepository {
      * @return true if logged in by the time we return.
      */
     public boolean ensureLoggedIn(long timeoutMs) {
+        if (rustEngine) {
+            if (BlSteamEngine.INSTANCE.isLoggedOn()) return true;
+            if (realSteamSuspended || !isLoggedInPrefs()) return false;
+            rustConnect("ensureLoggedIn");
+            return rustAwaitLoggedOn(timeoutMs);
+        }
         if (loggedIn) return true;
         if (steamClient == null || !connected) return false;
         if (!isLoggedInPrefs()) return false;   // no saved token — user must sign in
@@ -2135,12 +2296,24 @@ public final class SteamRepository {
      *         token to recover to, or the fresh logon didn't land within {@code timeoutMs}.
      */
     public boolean reconnectAndRelogin(long timeoutMs) {
-        if (steamClient == null) return false;
         if (realSteamSuspended) {
             Log.i(REALSTEAM_TAG, "reconnectAndRelogin refused — app session suspended for in-game real-Steam session");
             return false;
         }
         if (!isLoggedInPrefs()) return false;   // no saved token — nothing to recover to; caller must re-auth
+        if (rustEngine) {
+            // Tear the engine session down and build a fresh one from the saved token, then wait.
+            Log.i(RUST_TAG, "reconnectAndRelogin: forcing a fresh engine session (timeout " + timeoutMs + "ms)");
+            setStatus(SteamStatus.CONNECTING, "forced reconnect+relogin for retry");
+            loggingOut = false;
+            rustReconnectAttempts = 0;
+            BlSteamEngine.INSTANCE.stop();
+            rustConnect("reconnectAndRelogin");
+            boolean ok = rustAwaitLoggedOn(timeoutMs);
+            Log.i(RUST_TAG, "reconnectAndRelogin: loggedIn=" + ok);
+            return ok;
+        }
+        if (steamClient == null) return false;
         Log.i(TAG, "reconnectAndRelogin: forcing a fresh session (timeout " + timeoutMs + "ms)");
         setStatus(SteamStatus.CONNECTING, "forced reconnect+relogin for retry");
         // Arm the involuntary-logoff recovery path so the client-initiated disconnect below re-logs-in
@@ -2173,12 +2346,27 @@ public final class SteamRepository {
      * (called from Phase 2 auth flow after pollingWaitForResult).
      */
     public void saveSession(String username, String refreshToken) {
+        saveSession(username, refreshToken, 0L);
+    }
+
+    /**
+     * {@link #saveSession(String, String)} plus the account's SteamID64 when the auth flow already
+     * knows it (the Rust credentials session returns it; the QR session's token carries it in its
+     * JWT {@code sub}). 0 leaves the stored id untouched — the logon response writes it anyway.
+     */
+    public void saveSession(String username, String refreshToken, long steamId64) {
         loggingOut = false;
         logoffRecoveryAttempts = 0;
+        rustTokenRejected = false;
+        rustSignedInElsewhere = false;
         SteamLogRedactor.registerSecret(username);
         SteamLogRedactor.registerSecret(refreshToken);
         pPut("username", username);
         pPut("refresh_token", refreshToken);
+        if (steamId64 != 0L) {
+            pPut("steam_id_64", steamId64);
+            pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
+        }
     }
 
     /**
@@ -2202,7 +2390,8 @@ public final class SteamRepository {
         // onNetworkAvailable are a second line of defence in case it is still attached.)
         unregisterNetworkCallback();
         rustTokenRejected = false;
-        if (rustEngine) BlSteamEngine.INSTANCE.stop();
+        rustSignedInElsewhere = false;
+        if (rustEngine) BlSteamEngine.INSTANCE.stop();   // ClientLogOff + disconnect (the session ends server-side)
         if (steamUser != null) steamUser.logOff();
         if (prefs != null) {
             prefs.edit()
@@ -2217,6 +2406,12 @@ public final class SteamRepository {
         setStatus(SteamStatus.SIGNED_OUT, "user logout");
         Log.i(TAG, "Logged out");
         emit("LoggedOut");
+        if (rustEngine && !realSteamSuspended) {
+            // JavaSteam keeps its CM channel up after logOff so the sign-in screens (which wait for
+            // "Connected") can start an auth session at once — bring a connect-only engine session
+            // back for the same reason (account switch = sign out, sign in as someone else).
+            rustConnect("logout");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -2257,13 +2452,14 @@ public final class SteamRepository {
         }
     }
 
-    public SteamClient   getSteamClient() { return steamClient; }
-    public SteamApps     getSteamApps()   { return steamApps; }
+    public SteamClient   getSteamClient() { return rustEngine ? null : steamClient; }
+    public SteamApps     getSteamApps()   { return rustEngine ? null : steamApps; }
 
     /** The SteamContent handler (manifest request codes + CDN server list) — auto-registered on the
-     *  SteamClient. Used by DepotSizeResolver for metadata-only manifest fetches. Null if not connected. */
+     *  SteamClient. Used by DepotSizeResolver for metadata-only manifest fetches. Null if not connected
+     *  (and always null under the Rust engine — see the handler getters above). */
     public SteamContent  getSteamContent() {
-        SteamClient sc = steamClient;
+        SteamClient sc = getSteamClient();
         return sc != null ? sc.getHandler(SteamContent.class) : null;
     }
 

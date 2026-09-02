@@ -2,20 +2,22 @@ package com.winlator.star.store.blsteam
 
 import android.content.Context
 import android.util.Log
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Process-wide owner of the native Steam CM session (Phase 0 of the Rust engine).
+ * Process-wide owner of the native Steam CM session (Phase 0 of the Rust engine, grown through
+ * Phase 3a into the full session brain).
  *
- * Responsibilities in this phase are deliberately small: resolve a CM, connect, log on with the
- * saved refresh token, and report state transitions to the [Listener] (which `SteamRepository`
- * maps onto its status pill and `steam_prefs`). It is the seam the later phases grow into —
- * the single "Steam session manager" that owns the credential, refreshes it before launches
- * and coordinates the one-session-per-account rule with the in-container SteamLite agent
- * (the engine already carries `isPlayingBlocked` / `kickPlayingSession` for that).
+ * Responsibilities: resolve a CM, connect, log on with the saved refresh token (or stay
+ * connect-only so an interactive credentials / QR sign-in can run on the channel), report state
+ * transitions to the [Listener] (which `SteamRepository` maps onto its status pill and
+ * `steam_prefs`), and fan the inbound message firehose out to [MessageTap]s (the social feed, the
+ * account-info decoder). It is the single "Steam session manager" that owns the credential and
+ * coordinates the one-session-per-account rule with the in-container SteamLite agent.
  *
- * Threading: [start] and [stop] are safe from any thread; network I/O runs on a private
- * worker thread. Listener callbacks arrive on native worker threads.
+ * Threading: every entry point is safe from any thread; network I/O runs on a private worker
+ * thread. Listener / tap callbacks arrive on native worker threads — never block them.
  */
 object BlSteamEngine {
 
@@ -47,11 +49,24 @@ object BlSteamEngine {
 
         /** Steam's cell id for this account/connection (ClientLogonResponse field 7); persist as `cell_id`. */
         fun onCellId(cellId: Int) {}
+
+        /** ClientAccountInfo (EMsg 768): the account's persona name — persist as `display_name`. */
+        fun onAccountInfo(personaName: String) {}
+    }
+
+    /**
+     * Raw inbound-message tap (proto-flagged CM messages: `emsg`, header EResult, protobuf body).
+     * Fires on the native pump thread after the engine's own bookkeeping ran, so snapshot getters on
+     * the session already reflect the message. Must not block or throw.
+     */
+    fun interface MessageTap {
+        fun onMessage(emsg: Int, eresult: Int, body: ByteArray)
     }
 
     /** EMsg ids we decode on the state observer's message firehose (rust/src/emsg.rs). */
     private const val EMSG_CLIENT_LOGON_RESPONSE = 751
     private const val EMSG_CLIENT_LOGGED_OFF = 757
+    private const val EMSG_CLIENT_ACCOUNT_INFO = 768
 
     /** Steam EResults that mean the saved refresh token is dead — never auto-retry these. */
     private val REJECTED_ERESULTS = setOf(5, 15, 65, 68, 87)
@@ -63,18 +78,29 @@ object BlSteamEngine {
     @Volatile private var session: BlSteamSession? = null
     @Volatile private var listener: Listener? = null
     private val starting = AtomicBoolean(false)
+    private val taps = CopyOnWriteArrayList<MessageTap>()
 
-    // Credentials for the pending logon, captured at start() so the Connected callback can log on
-    // without touching SharedPreferences from a native thread.
+    // Credentials for the pending logon, captured at start()/logon() so the Connected callback can
+    // log on without touching SharedPreferences from a native thread. An EMPTY token means
+    // "connect only": the channel is brought up for an interactive sign-in and no logon is sent.
     @Volatile private var pendingToken: String = ""
     @Volatile private var pendingUser: String = ""
     @Volatile private var pendingSteamId: Long = 0L
 
+    /** Announce Online at logon; mirrors the friends/chat opt-in (see [setAutoPersonaOnline]). */
+    @Volatile private var autoPersonaOnline: Boolean = false
+
     val isActive: Boolean get() = session != null
+
+    /** True while [start] is bringing a session up (no handle yet). */
+    val isStarting: Boolean get() = starting.get()
 
     fun state(): Int = session?.state() ?: STATE_DISCONNECTED
 
     fun isLoggedOn(): Boolean = state() == STATE_LOGGED_ON
+
+    /** Encrypted channel up (logged on or not) — an interactive sign-in can run on it. */
+    fun isConnected(): Boolean = state() >= STATE_CONNECTED
 
     fun steamId64(): Long = session?.steamId() ?: 0L
 
@@ -85,16 +111,27 @@ object BlSteamEngine {
      */
     fun session(): BlSteamSession? = session
 
+    fun addMessageTap(tap: MessageTap) { taps.addIfAbsent(tap) }
+    fun removeMessageTap(tap: MessageTap) { taps.remove(tap) }
+
     /**
-     * Connect to a Steam CM and log on with [refreshToken]. Idempotent while a session is up or a
-     * start is in flight. All network work happens on a worker thread; the result is reported via
-     * [Listener].
+     * Whether the engine announces the persona Online right after logon (the desktop client
+     * does). OFF = no social footprint until `setPersonaState` is called explicitly, which is what
+     * the JavaSteam path did while friends/chat were opted out. Applies to the live session and
+     * every later one.
+     */
+    fun setAutoPersonaOnline(enabled: Boolean) {
+        autoPersonaOnline = enabled
+        try { session?.setAutoPersonaOnline(enabled) } catch (_: Throwable) {}
+    }
+
+    /**
+     * Connect to a Steam CM and log on with [refreshToken] — or, when [refreshToken] is empty, just
+     * connect (connect-only: the login screens then run their auth session on the channel and
+     * call [logon] with the token they obtain). Idempotent while a session is up or a start is in
+     * flight. All network work happens on a worker thread; the result is reported via [Listener].
      */
     fun start(ctx: Context, username: String, refreshToken: String, steamId64: Long, l: Listener) {
-        if (refreshToken.isEmpty()) {
-            l.onEngineFailure("no refresh token")
-            return
-        }
         if (session != null) {
             Log.i(TAG, "start ignored — session already active (state=${state()})")
             return
@@ -121,6 +158,31 @@ object BlSteamEngine {
         }, "BlSteamEngine-start").start()
     }
 
+    /**
+     * Log on to the CURRENT session with [refreshToken] (after an interactive sign-in completed on a
+     * connect-only session, or after a logoff left the channel up). Returns false when there is no
+     * session to log on to — the caller then uses [start]. While a start is in flight the
+     * credentials are simply recorded and used when the channel reaches Connected.
+     */
+    fun logon(username: String, refreshToken: String, steamId64: Long): Boolean {
+        if (refreshToken.isEmpty()) return false
+        pendingToken = refreshToken
+        pendingUser = username
+        pendingSteamId = steamId64
+        logonRejected = false
+        val s = session
+        if (s == null) return starting.get()
+        return when (s.state()) {
+            STATE_LOGGED_ON -> { Log.i(TAG, "logon skipped — already logged on"); true }
+            STATE_CONNECTED -> {
+                Log.i(TAG, "logon on the existing session")
+                queueTokenLogon(s)
+                true
+            }
+            else -> true   // Connecting: the Connected callback sends the logon
+        }
+    }
+
     private fun connectAndLogon(app: Context) {
         BlSteamClient.ensureLoaded()
         val caPath = CaBundleExtractor.ensureBundle(app)
@@ -135,7 +197,7 @@ object BlSteamEngine {
             listener?.onEngineFailure("no CM server resolved")
             return
         }
-        Log.i(TAG, "CM picked: $cmUrl")
+        Log.i(TAG, "CM picked: $cmUrl" + (if (pendingToken.isEmpty()) " (connect-only, awaiting sign-in)" else ""))
         appContext = app
         currentCmUrl = cmUrl
         reachedConnected = false
@@ -144,6 +206,7 @@ object BlSteamEngine {
         s.setCaBundlePath(caPath)
         // Phase 0: no post-logon PICS crawl — the library still comes from the JavaSteam path.
         s.setAutoPopulateLibrary(false)
+        s.setAutoPersonaOnline(autoPersonaOnline)
         logonRejected = false
         logonStamps.clear()
         s.setStateObserver(object : BlSteamStateObserver {
@@ -151,9 +214,10 @@ object BlSteamEngine {
                 onNativeState(s, state)
             }
             override fun onClientMessage(emsg: Int, eresult: Int, body: ByteArray) {
-                // Firehose of inbound CM messages. We decode exactly two: the logon response and a
-                // server-side logoff, whose EResult (protobuf field 1) tells us whether the saved
-                // token is dead — the native runtime reports both as a plain "Connected" state.
+                // Firehose of inbound CM messages. The engine decodes the logon response / a
+                // server-side logoff (their EResult, protobuf field 1, tells whether the saved token
+                // is dead — the native runtime reports both as a plain "Connected" state) and the
+                // account-info push; everything is then fanned out to the taps.
                 if (emsg == EMSG_CLIENT_LOGON_RESPONSE || emsg == EMSG_CLIENT_LOGGED_OFF) {
                     val er = firstVarintField(body, 1, eresult)
                     if (emsg == EMSG_CLIENT_LOGON_RESPONSE && er == 1) {
@@ -163,6 +227,15 @@ object BlSteamEngine {
                         if (cell > 0 && session === s) listener?.onCellId(cell)
                     }
                     onLogonMessage(s, emsg, er)
+                } else if (emsg == EMSG_CLIENT_ACCOUNT_INFO && session === s) {
+                    val name = accountInfoPersonaName(body)
+                    if (name.isNotEmpty()) listener?.onAccountInfo(name)
+                }
+                if (session === s) {
+                    for (t in taps) {
+                        try { t.onMessage(emsg, eresult, body) }
+                        catch (e: Throwable) { Log.w(TAG, "message tap failed", e) }
+                    }
                 }
             }
         })
@@ -228,28 +301,18 @@ object BlSteamEngine {
         }
         if (state == STATE_CONNECTED) {
             // Encrypted channel is up (or Steam just answered a logon / logged us off — the runtime
-            // re-reports Connected for both): queue the token logon unless the token was rejected
-            // or we are looping. The LoggedOn transition follows via this same observer.
+            // re-reports Connected for both): queue the token logon unless the token was rejected,
+            // we are looping, or this is a connect-only session awaiting an interactive sign-in.
+            // The LoggedOn transition follows via this same observer.
             if (logonRejected) {
                 Log.w(TAG, "token rejected by Steam — not re-logging on; tearing down")
                 teardownAsync("refresh token rejected")
                 return
             }
-            val now = System.currentTimeMillis()
-            val storm = synchronized(logonStamps) {
-                while (logonStamps.isNotEmpty() && now - logonStamps.first() > LOGON_WINDOW_MS) logonStamps.removeFirst()
-                if (logonStamps.size >= MAX_LOGONS_PER_WINDOW) true
-                else { logonStamps.addLast(now); false }
-            }
-            if (storm) {
-                Log.w(TAG, "logon storm guard: $MAX_LOGONS_PER_WINDOW logons in ${LOGON_WINDOW_MS / 1000}s — backing off")
-                teardownAsync("logon loop (backing off)")
+            if (pendingToken.isEmpty()) {
+                Log.i(TAG, "connected (connect-only) — waiting for an interactive sign-in")
+            } else if (!queueTokenLogon(s)) {
                 return
-            }
-            val ok = s.logonWithRefreshToken(pendingToken, pendingUser, pendingSteamId)
-            if (!ok) {
-                Log.w(TAG, "logonWithRefreshToken refused by native")
-                listener?.onEngineFailure("native logon refused")
             }
         }
         val sid = if (state == STATE_LOGGED_ON) s.steamId() else 0L
@@ -264,10 +327,31 @@ object BlSteamEngine {
         }
     }
 
+    /** Send the saved-token logon on [s] under the storm guard. False when the engine backed off. */
+    private fun queueTokenLogon(s: BlSteamSession): Boolean {
+        val now = System.currentTimeMillis()
+        val storm = synchronized(logonStamps) {
+            while (logonStamps.isNotEmpty() && now - logonStamps.first() > LOGON_WINDOW_MS) logonStamps.removeFirst()
+            if (logonStamps.size >= MAX_LOGONS_PER_WINDOW) true
+            else { logonStamps.addLast(now); false }
+        }
+        if (storm) {
+            Log.w(TAG, "logon storm guard: $MAX_LOGONS_PER_WINDOW logons in ${LOGON_WINDOW_MS / 1000}s — backing off")
+            teardownAsync("logon loop (backing off)")
+            return false
+        }
+        val ok = s.logonWithRefreshToken(pendingToken, pendingUser, pendingSteamId)
+        if (!ok) {
+            Log.w(TAG, "logonWithRefreshToken refused by native")
+            listener?.onEngineFailure("native logon refused")
+        }
+        return true
+    }
+
     /**
      * Ask Steam for a fresh refresh token for the current session (blocking, off the main
      * thread). On success the new token is handed to [Listener.onRefreshTokenRotated] and
-     * returned; the caller persists it. Not invoked automatically in Phase 0.
+     * returned; the caller persists it.
      */
     fun renewRefreshToken(timeoutMs: Int = 15_000): String? {
         val s = session ?: return null
@@ -331,6 +415,15 @@ object BlSteamEngine {
             if (i < 0) return fallback
         }
         return fallback
+    }
+
+    /** CMsgClientAccountInfo field 1 = persona_name. */
+    private fun accountInfoPersonaName(body: ByteArray): String {
+        return try {
+            val r = BlProto(body)
+            while (r.next()) if (r.field == 1 && r.wireType == 2) return r.string()
+            ""
+        } catch (_: Throwable) { "" }
     }
 
     /**

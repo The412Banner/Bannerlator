@@ -142,14 +142,28 @@ object SteamSessionManager {
     }
 
     /** `exp` claim (ms since epoch) of a JWT, or 0 when unreadable. Reads only the payload segment. */
-    internal fun jwtExpiryMs(token: String): Long {
+    internal fun jwtExpiryMs(token: String): Long = jwtPayload(token)?.optLong("exp", 0L)?.times(1000L) ?: 0L
+
+    /**
+     * SteamID64 from a Steam refresh token's JWT `sub` claim, or 0 when unreadable. The QR auth
+     * flow never learns the SteamID from Steam directly (JavaSteam derives it the same way); the
+     * token itself is never logged.
+     */
+    @JvmStatic
+    fun jwtSteamId64(token: String): Long {
+        val sub = jwtPayload(token)?.optString("sub", "") ?: return 0L
+        val id = sub.toLongOrNull() ?: return 0L
+        return if (id > 76561197960265728L) id else 0L
+    }
+
+    private fun jwtPayload(token: String): JSONObject? {
         return try {
             val parts = token.split('.')
-            if (parts.size < 2) return 0L
+            if (parts.size < 2) return null
             val payload = String(Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP), Charsets.UTF_8)
-            JSONObject(payload).optLong("exp", 0L) * 1000L
+            JSONObject(payload)
         } catch (_: Throwable) {
-            0L
+            null
         }
     }
 

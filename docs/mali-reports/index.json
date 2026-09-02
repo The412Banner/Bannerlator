@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-09-02T18-48-54-ad33bb",
+    "created": "2026-09-02T18:48:54.545Z",
+    "reporter": "Ali",
+    "device": "Samsung S21 fe",
+    "gpu": "Mali-G78 mp14",
+    "game": "Don't starve",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 1
+  },
+  {
     "id": "2026-09-02T18-25-17-d4440c",
     "created": "2026-09-02T18:25:17.983Z",
     "reporter": "",

@@ -3569,6 +3569,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     fresh: jboolean,
     ca_bundle_path: JString,
     max_workers: jint,
+    decompress_workers: jint,
     listener: JObject,
 ) {
     let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
@@ -3612,6 +3613,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     let app_id = app_id.max(0) as u32;
     let fresh = fresh != JNI_FALSE;
     let max_workers = max_workers.max(1) as u32;
+    let max_process_workers = decompress_workers.max(1) as u32;
     handle.download_cancel.store(false, Ordering::Relaxed);
     let download_cancel = Arc::clone(&handle.download_cancel);
     let (cdn_cell_id, cdn_prefer_dc) = handle.cdn_preference();
@@ -3768,6 +3770,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
                 &ca_bundle_path,
                 fresh,
                 max_workers,
+                max_process_workers,
                 Some(download_cancel.as_ref()),
                 Some(progress_cb),
                 Some(code_refresher_cb),
@@ -4294,6 +4297,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     install_dir: JString,
     ca_bundle_path: JString,
     max_workers: jint,
+    decompress_workers: jint,
 ) -> jlong {
     let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
         return -1;
@@ -4336,6 +4340,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
         &ca_bundle_path,
         true,
         max_workers.max(1) as u32,
+        decompress_workers.max(1) as u32,
     );
     if result.success {
         result.bytes_written as jlong

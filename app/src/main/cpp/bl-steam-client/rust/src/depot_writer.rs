@@ -6,6 +6,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Component, Path};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{sync_channel, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -53,7 +54,11 @@ pub type DepotChunkProgressCallback<'a> = &'a (dyn Fn(u64, u64, bool) + Sync);
 pub struct DepotWriteOptions<'a> {
     pub cdn_auth_token: &'a str,
     pub timeout: Duration,
+    /// Fetch-pool size (network parallelism) = the tier's `maxDownloads`.
     pub max_workers: u32,
+    /// Process-pool size (decrypt+decompress+write parallelism) = the tier's `maxDecompress`.
+    /// Defaults to [`Self::max_workers`]'s default so existing callers/tests keep their behaviour.
+    pub max_process_workers: u32,
     pub cancel: Option<&'a AtomicBool>,
     pub on_progress: Option<DepotChunkProgressCallback<'a>>,
 }
@@ -64,6 +69,7 @@ impl Default for DepotWriteOptions<'_> {
             cdn_auth_token: "",
             timeout: CdnClient::default_timeout(),
             max_workers: 8,
+            max_process_workers: 8,
             cancel: None,
             on_progress: None,
         }
@@ -339,6 +345,20 @@ pub fn write_depot_sequential(
     }
 }
 
+/// Decoupled two-pool depot writer (JavaSteam parity).
+///
+/// A **fetch pool** (`max_workers`, the tier's `maxDownloads`) work-steals chunk-job indices: a
+/// chunk already correct on disk is counted as verifying and never enqueued; anything else is
+/// fetched RAW (encrypted) from the CDN with the existing retry/rotation logic and handed to a
+/// **bounded `sync_channel`**. A separate **process pool** (`max_process_workers`, the tier's
+/// `maxDecompress`) drains the channel and does the decrypt+decompress+write-at-offset, counting
+/// bytes on the WRITE (as in the fused model). Decoupling keeps the socket busy while workers
+/// decompress/write, which is the win on many-small-file games.
+///
+/// The channel bound is deliberately small (`(max_workers + max_process_workers).max(4)`): it caps
+/// in-flight compressed+decompressed chunk buffers to tens of MB, independent of game size. The
+/// public JavaSteam engine OOM-crashed on big games (HITMAN 87 GB, issue #408) precisely because it
+/// used deep in-memory channels — never make this unbounded or scale it with game size.
 fn write_depot_parallel(
     manifest: &ContentManifest,
     depot_key: &[u8],
@@ -353,7 +373,12 @@ fn write_depot_parallel(
     let error_slot: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     let next_index = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let jobs = Arc::new(plan.chunk_jobs.clone());
-    let worker_count = (plan.worker_count as usize).max(1).min(jobs.len());
+    // Fetch pool = the tier's download parallelism; process pool = the tier's decompress
+    // parallelism. Both clamped to the job count so we never spawn idle threads.
+    let fetch_count = (plan.worker_count as usize).max(1).min(jobs.len());
+    let proc_count = (options.max_process_workers as usize).max(1).min(jobs.len());
+    // Load-bearing: keeps heap O(workers), not O(game size). Do NOT raise or unbound this.
+    let channel_bound = (fetch_count + proc_count).max(4);
     let cdn_auth_token = options.cdn_auth_token.to_string();
     let timeout = options.timeout;
     let cancel_flag = options.cancel.map(|c| {
@@ -362,20 +387,24 @@ fn write_depot_parallel(
     });
     // SAFETY: we only spawn scoped threads so all `'a` references outlive joins.
     let scope_result = thread::scope(|scope| -> DepotWriteResult {
-        let mut handles = Vec::with_capacity(worker_count);
-        for worker_id in 0..worker_count {
+        let (tx, rx) = sync_channel::<(ChunkWriteJob, Vec<u8>)>(channel_bound);
+        let rx = Arc::new(Mutex::new(rx));
+
+        // ── Fetch pool: skip already-correct chunks, fetch the rest RAW, hand off downstream. ──
+        let mut fetch_handles = Vec::with_capacity(fetch_count);
+        for worker_id in 0..fetch_count {
             let bytes_written = Arc::clone(&bytes_written);
             let error_slot = Arc::clone(&error_slot);
             let next_index = Arc::clone(&next_index);
             let jobs = Arc::clone(&jobs);
             let cdn_auth_token = cdn_auth_token.clone();
+            let tx = tx.clone();
             let manifest_ref = manifest;
-            let depot_key_ref = depot_key;
             let target_dir_ref = target_dir;
             let cdn_ref = cdn;
             let servers_ref = servers;
             let progress = options.on_progress;
-            handles.push(scope.spawn(move || {
+            fetch_handles.push(scope.spawn(move || {
                 let mut conn = cdn_ref.open_connection();
                 let mut slow_chunks = 0u32;
                 let mut worker_server_bias = worker_id % servers_ref.len();
@@ -394,16 +423,14 @@ fn write_depot_parallel(
                     let file = match manifest_ref.files.get(job.file_idx as usize) {
                         Some(file) => file,
                         None => {
-                            *error_slot.lock().expect("err slot poisoned") =
-                                Some("bad file index".to_string());
+                            record_first_error(&error_slot, "bad file index".to_string());
                             return;
                         }
                     };
                     let chunk = match file.chunks.get(job.chunk_idx as usize) {
                         Some(chunk) => chunk,
                         None => {
-                            *error_slot.lock().expect("err slot poisoned") =
-                                Some("bad chunk index".to_string());
+                            record_first_error(&error_slot, "bad chunk index".to_string());
                             return;
                         }
                     };
@@ -424,20 +451,18 @@ fn write_depot_parallel(
                     }
                     let start_server = (idx + worker_server_bias) % servers_ref.len();
                     let started = Instant::now();
-                    match fetch_process_write_chunk(
+                    match fetch_raw_chunk(
                         cdn_ref,
                         Some(&mut conn),
                         servers_ref,
                         manifest_ref,
                         job.file_idx as usize,
                         job.chunk_idx as usize,
-                        depot_key_ref,
-                        target_dir_ref,
                         &cdn_auth_token,
                         start_server,
                         timeout,
                     ) {
-                        Ok(bytes) => {
+                        Ok(raw) => {
                             if started.elapsed()
                                 > Duration::from_secs(SLOW_CHUNK_ROTATE_THRESHOLD_SECS)
                                 && servers_ref.len() > 1
@@ -446,20 +471,101 @@ fn write_depot_parallel(
                             } else {
                                 slow_chunks = 0;
                             }
-                            let total = bytes_written.fetch_add(bytes, Ordering::Relaxed) + bytes;
-                            if let Some(cb) = progress {
-                                cb(total, total_bytes, false);
+                            // Bounded hand-off with backpressure; bail promptly on cancel/error so a
+                            // full channel whose consumers have all died can never wedge us.
+                            let mut payload = (job, raw);
+                            loop {
+                                if cancel_flag.is_some_and(|c| c.load(Ordering::Relaxed)) {
+                                    return;
+                                }
+                                if error_slot.lock().expect("err slot poisoned").is_some() {
+                                    return;
+                                }
+                                match tx.try_send(payload) {
+                                    Ok(()) => break,
+                                    Err(TrySendError::Full(p)) => {
+                                        payload = p;
+                                        thread::sleep(Duration::from_millis(5));
+                                    }
+                                    Err(TrySendError::Disconnected(_)) => return,
+                                }
                             }
                         }
                         Err(error) => {
-                            *error_slot.lock().expect("err slot poisoned") = Some(error);
+                            record_first_error(&error_slot, error);
                             return;
                         }
                     }
                 }
             }));
         }
-        for handle in handles {
+        // Drop the template sender: once every fetch worker exits, the channel disconnects and the
+        // process pool drains what remains, then its blocked `recv()`s return `Err` and it exits.
+        drop(tx);
+
+        // ── Process pool: decrypt + decompress + write-at-offset each fetched chunk. ──
+        let mut proc_handles = Vec::with_capacity(proc_count);
+        for _ in 0..proc_count {
+            let bytes_written = Arc::clone(&bytes_written);
+            let error_slot = Arc::clone(&error_slot);
+            let rx = Arc::clone(&rx);
+            let manifest_ref = manifest;
+            let depot_key_ref = depot_key;
+            let target_dir_ref = target_dir;
+            let progress = options.on_progress;
+            proc_handles.push(scope.spawn(move || {
+                loop {
+                    if cancel_flag.is_some_and(|c| c.load(Ordering::Relaxed)) {
+                        return;
+                    }
+                    if error_slot.lock().expect("err slot poisoned").is_some() {
+                        return;
+                    }
+                    // The lock is held only across the (fast) dequeue; the decompress+write below
+                    // runs unlocked so the process workers actually parallelise.
+                    let msg = {
+                        let guard = rx.lock().expect("rx poisoned");
+                        guard.recv()
+                    };
+                    let (job, raw) = match msg {
+                        Ok(item) => item,
+                        Err(_) => return,
+                    };
+                    let file = match manifest_ref.files.get(job.file_idx as usize) {
+                        Some(file) => file,
+                        None => {
+                            record_first_error(&error_slot, "bad file index".to_string());
+                            return;
+                        }
+                    };
+                    let chunk = match file.chunks.get(job.chunk_idx as usize) {
+                        Some(chunk) => chunk,
+                        None => {
+                            record_first_error(&error_slot, "bad chunk index".to_string());
+                            return;
+                        }
+                    };
+                    let path = join_target_path(target_dir_ref, &file.filename);
+                    match process_and_write_chunk(&path, chunk, &raw, depot_key_ref) {
+                        Ok(bytes) => {
+                            let total = bytes_written.fetch_add(bytes, Ordering::Relaxed) + bytes;
+                            if let Some(cb) = progress {
+                                cb(total, total_bytes, false);
+                            }
+                        }
+                        Err(error) => {
+                            record_first_error(&error_slot, error);
+                            return;
+                        }
+                    }
+                }
+            }));
+        }
+
+        for handle in fetch_handles {
+            let _ = handle.join();
+        }
+        for handle in proc_handles {
             let _ = handle.join();
         }
         if cancel_flag.is_some_and(|c| c.load(Ordering::Relaxed)) {
@@ -544,6 +650,83 @@ pub fn process_and_write_chunk(
         return Err(format!("decode: {}", processed.error));
     }
     write_chunk_at(path, chunk.offset, &processed.data)
+}
+
+/// Record the FIRST error seen by either pool; later workers must not clobber it.
+fn record_first_error(slot: &Mutex<Option<String>>, err: String) {
+    let mut guard = slot.lock().expect("err slot poisoned");
+    if guard.is_none() {
+        *guard = Some(err);
+    }
+}
+
+/// Fetch ONE raw (still-encrypted, still-compressed) chunk from the CDN — the network half of
+/// [`fetch_process_write_chunk`], split out for the decoupled two-pool writer. Same retry/rotation
+/// as the fused path: [`MAX_CHUNK_ATTEMPTS`] tries, server rotation via
+/// [`chunk_attempt_server_indices`], [`retry_backoff_millis`] backoff, and a fresh connection on
+/// each retry. The decrypt/decompress/write is done downstream by the process pool.
+#[allow(clippy::too_many_arguments)]
+pub fn fetch_raw_chunk(
+    cdn: &CdnClient,
+    mut conn: Option<&mut CdnConnection>,
+    servers: &[CContentServerDirectoryServerInfo],
+    manifest: &ContentManifest,
+    file_idx: usize,
+    chunk_idx: usize,
+    cdn_auth_token: &str,
+    start_server_index: usize,
+    timeout: Duration,
+) -> Result<Vec<u8>, String> {
+    if servers.is_empty() {
+        return Err("write_depot: no CDN servers".to_string());
+    }
+    let file = manifest
+        .files
+        .get(file_idx)
+        .ok_or_else(|| "write_depot: bad file index".to_string())?;
+    let chunk = file
+        .chunks
+        .get(chunk_idx)
+        .ok_or_else(|| "write_depot: bad chunk index".to_string())?;
+    let mut last_error = String::new();
+    for (attempt, server_idx) in
+        chunk_attempt_server_indices(start_server_index, servers.len(), MAX_CHUNK_ATTEMPTS)
+            .into_iter()
+            .enumerate()
+    {
+        if attempt > 0 {
+            thread::sleep(Duration::from_millis(retry_backoff_millis(attempt as u32)));
+            if let Some(connection) = conn.as_deref_mut() {
+                *connection = cdn.open_connection();
+            }
+        }
+        let fetched = match conn.as_deref_mut() {
+            Some(connection) => cdn.fetch_chunk_with_connection(
+                connection,
+                &servers[server_idx],
+                manifest.metadata.depot_id,
+                &chunk.sha,
+                cdn_auth_token,
+                timeout,
+            ),
+            None => cdn.fetch_chunk(
+                &servers[server_idx],
+                manifest.metadata.depot_id,
+                &chunk.sha,
+                cdn_auth_token,
+                timeout,
+            ),
+        };
+        if !fetched.ok() {
+            last_error = fetched.error;
+            continue;
+        }
+        return Ok(fetched.data);
+    }
+    Err(format!(
+        "write_depot: chunk for '{}' failed after {} attempts: {}",
+        file.filename, MAX_CHUNK_ATTEMPTS, last_error
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -988,6 +1171,129 @@ mod tests {
         assert_eq!(result.bytes_written, 0);
         assert_eq!(fs::metadata(dir.join("empty.bin")).unwrap().len(), 5);
         assert!(dir.join("folder").is_dir());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn default_options_carry_a_process_pool() {
+        // The process-pool cap defaults to the fetch-pool cap so pre-2-pool callers/tests behave.
+        assert_eq!(DepotWriteOptions::default().max_process_workers, 8);
+        assert_eq!(DepotWriteOptions::default().max_workers, 8);
+    }
+
+    fn three_chunk_manifest() -> ContentManifest {
+        ContentManifest {
+            metadata: crate::content_manifest::Metadata {
+                filenames_encrypted: false,
+                depot_id: 7,
+                ..Default::default()
+            },
+            files: vec![crate::content_manifest::FileMapping {
+                filename: "data.bin".into(),
+                size: 9,
+                chunks: vec![
+                    ChunkData {
+                        offset: 0,
+                        cb_original: 3,
+                        crc: depot_adler_hash(b"abc"),
+                        ..Default::default()
+                    },
+                    ChunkData {
+                        offset: 3,
+                        cb_original: 3,
+                        crc: depot_adler_hash(b"def"),
+                        ..Default::default()
+                    },
+                    ChunkData {
+                        offset: 6,
+                        cb_original: 3,
+                        crc: depot_adler_hash(b"ghi"),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn two_pool_writer_verifies_existing_chunks_and_finalizes() {
+        // Multi-chunk + multi-worker forces the parallel two-pool path. Every chunk is already
+        // correct on disk, so the FETCH pool counts each as verifying (never enqueues) and the
+        // PROCESS pool drains an empty channel and exits cleanly — with no network at all.
+        let dir = temp_dir("two_pool_existing");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abcdefghi").unwrap();
+        let manifest = three_chunk_manifest();
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+
+        let verified = std::sync::atomic::AtomicU64::new(0);
+        let progress = |done: u64, total: u64, verifying: bool| {
+            assert_eq!(total, 9);
+            if verifying {
+                verified.fetch_add(1, Ordering::Relaxed);
+            }
+            assert!(done <= 9);
+        };
+        let progress_cb: DepotChunkProgressCallback = &progress;
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers: 4,
+                max_process_workers: 2,
+                on_progress: Some(progress_cb),
+                ..Default::default()
+            },
+        );
+
+        assert!(result.ok(), "{}", result.error);
+        assert_eq!(result.bytes_written, 9);
+        assert_eq!(result.files_written, 1);
+        // All three chunks were verified on disk, none fetched.
+        assert_eq!(verified.load(Ordering::Relaxed), 3);
+        assert_eq!(fs::metadata(dir.join("data.bin")).unwrap().len(), 9);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn two_pool_writer_respects_cancel() {
+        // Cancel set before the pools start: both drain their loops immediately and the writer
+        // reports the cancel verdict rather than a chunk error.
+        let dir = temp_dir("two_pool_cancel");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abcdefghi").unwrap();
+        let manifest = three_chunk_manifest();
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+        let cancel = AtomicBool::new(true);
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers: 4,
+                max_process_workers: 2,
+                cancel: Some(&cancel),
+                ..Default::default()
+            },
+        );
+        assert!(!result.ok());
+        assert_eq!(result.error, "cancelled");
+        assert!(result.resume_trust_safe);
         let _ = fs::remove_dir_all(&dir);
     }
 

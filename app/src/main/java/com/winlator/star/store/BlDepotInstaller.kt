@@ -303,7 +303,12 @@ internal object BlDepotInstaller {
         if (cancelled.get()) { activeAppId = -1; gate.release(); finishCancelled(appId, db); return }
         if (paused.get()) { activeAppId = -1; gate.release(); finishPaused(appId, db, installBase); return }
         val caPath = CaBundleExtractor.ensureBundle(ctx)
-        val maxWorkers = DownloadSpeedConfig(speedTier).maxDownloads.coerceIn(1, 32)
+        val speedConfig = DownloadSpeedConfig(speedTier)
+        val maxWorkers = speedConfig.maxDownloads.coerceIn(1, 32)
+        // Fetch pool = maxDownloads (network), process pool = maxDecompress (decrypt+decompress+
+        // write): the engine now runs a decoupled 2-stage pipeline so the socket never idles while
+        // a worker decompresses, matching the JavaSteam engine's tier semantics.
+        val maxDecompress = speedConfig.maxDecompress.coerceIn(1, 32)
         SteamDepotDownloader.acquireDownloadWakelock(ctx)
         repo.setDownloadActive(true)
 
@@ -396,7 +401,7 @@ internal object BlDepotInstaller {
             }
         }
 
-        dlog("downloadApp(appId=$appId depots=${specs.size} branch=$selectedBranch fresh=$verify workers=$maxWorkers)")
+        dlog("downloadApp(appId=$appId depots=${specs.size} branch=$selectedBranch fresh=$verify workers=$maxWorkers decompress=$maxDecompress)")
         var completedNormally = false
         var retryAsResume = false
         // Layer 1 bookkeeping: a genuinely-short (not Steam-denied) depot asks for a bounded resume.
@@ -406,7 +411,7 @@ internal object BlDepotInstaller {
         try {
             session.downloadApp(
                 appId, specs.map { it.first }.toIntArray(), specs.map { it.second }.toLongArray(),
-                selectedBranch, installDir.absolutePath, verify, caPath, maxWorkers, listener,
+                selectedBranch, installDir.absolutePath, verify, caPath, maxWorkers, maxDecompress, listener,
             )
             done.await()
             dlog("downloadApp finished: success=$success error='${error}' written=${fmt(bytesWritten)} " +

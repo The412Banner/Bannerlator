@@ -89,11 +89,14 @@ object SteamDepotDownloader {
         993090 to setOf(993092),
     )
 
+    /** The depots to drop for [appId] per [STALE_DUPLICATE_DEPOTS] (shared with the Rust-engine path). */
+    internal fun staleDuplicateDepots(appId: Int): Set<Int> = STALE_DUPLICATE_DEPOTS[appId].orEmpty()
+
     // -------------------------------------------------------------------------
     // Active download tracking — used by UI to detect stale DL_DOWNLOADING rows
     // -------------------------------------------------------------------------
 
-    private val activeDownloads = java.util.concurrent.ConcurrentHashMap<Int, Unit>()
+    internal val activeDownloads = java.util.concurrent.ConcurrentHashMap<Int, Unit>()
 
     /** True if a download for this appId is currently running in this process. */
     @JvmStatic fun isDownloading(appId: Int): Boolean = activeDownloads.containsKey(appId)
@@ -113,7 +116,7 @@ object SteamDepotDownloader {
     /** Lazily create (once) and acquire the shared partial wakelock. Null/exception-safe: a device
      *  without POWER_SERVICE (universal in practice) must not break the download. */
     @Synchronized
-    private fun acquireDownloadWakelock(ctx: Context) {
+    internal fun acquireDownloadWakelock(ctx: Context) {
         try {
             var wl = wakeLock
             if (wl == null) {
@@ -132,7 +135,7 @@ object SteamDepotDownloader {
 
     /** Release one acquire of the shared wakelock. Guarded: a reference-counted release throws if the
      *  count already hit zero, which is benign — we just want it dropped on every terminal path. */
-    private fun releaseDownloadWakelock() {
+    internal fun releaseDownloadWakelock() {
         try {
             val wl = wakeLock ?: return
             if (wl.isHeld) { wl.release(); dlog("WAKELOCK: released (held=${wl.isHeld})") }
@@ -148,7 +151,8 @@ object SteamDepotDownloader {
     private var debugLogFile: File? = null
     val debugLogPath: String get() = debugLogFile?.absolutePath ?: "(not initialized)"
 
-    private fun initDebugLog(ctx: Context, truncate: Boolean = true) {
+    internal fun initDebugLog(ctx: Context, truncate: Boolean = true,
+                              engine: String = "JavaSteam DepotDownloader (Ktor CIO)") {
         try {
             val dir = ctx.getExternalFilesDir(null)
             if (dir != null) {
@@ -159,7 +163,7 @@ object SteamDepotDownloader {
                     val hdr = if (truncate) "=== Steam DepotDownloader Debug Log (JavaSteam native) ==="
                               else "=== Retry attempt (session recovery) ==="
                     w.write("$hdr\n")
-                    w.write("Engine: JavaSteam DepotDownloader (Ktor CIO)\n")
+                    w.write("Engine: $engine\n")
                     w.write("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}\n\n")
                 }
                 dlog("Debug log: ${debugLogFile!!.absolutePath}")
@@ -178,11 +182,15 @@ object SteamDepotDownloader {
         if (debugLogFile != null) dlog(msg)
     }
 
-    private fun dlog(msg: String) {
+    private fun dlog(msg: String) = dlog(TAG, msg)
+
+    /** [dlog] under a caller-chosen logcat tag (the Rust-engine path logs as `BL_STEAM_DL`); the
+     *  steam_debug.txt line is identical either way. */
+    internal fun dlog(tag: String, msg: String) {
         // Scrub username/email/token from EVERY line (incl. JavaSteam-bridge + stack traces, which
         // all funnel through here) — these files are shared for support and must never carry secrets.
         val safe = SteamLogRedactor.redact(msg)
-        Log.i(TAG, safe)
+        Log.i(tag, safe)
         debugLogFile ?: return
         try {
             BufferedWriter(FileWriter(debugLogFile!!, true)).use { w ->
@@ -252,15 +260,22 @@ object SteamDepotDownloader {
      *   internal `imagefs/steam_games` default — used by the "Install to SD card" toggle, which passes
      *   `<sd>/bannerlator/steam_games` ([SteamSdInstall.SdTarget.steamGamesBase]). Ignored for a resume
      *   or an update/verify of an already-installed game, which stay in their existing directory.
+     * @param verify "verify integrity" pass: re-validate EVERY on-disk file against the live manifest
+     *   and re-fetch what is missing or corrupt. Consumed by the Rust-engine path only (it selects the
+     *   engine's fresh/verify mode); the JavaSteam engine ignores it — there the caller clears the
+     *   `.DepotDownloader/` resume state up front instead ([SteamGameUpdater.verifyFiles]), exactly as
+     *   before.
      */
+    @JvmOverloads
     fun installApp(
         appId: Int,
         ctx: Context,
         speedTier: Int = DownloadSpeedConfig.DEFAULT_TIER,
         debugLog: Boolean = false,
         installRoot: String? = null,
+        verify: Boolean = false,
     ): DownloadControl =
-        buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot)
+        buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot, verify = verify)
 
     /**
      * Resume a previously paused install. Keeps the existing DB row (bytes intact).
@@ -275,7 +290,15 @@ object SteamDepotDownloader {
         buildControl(appId, ctx, speedTier, debugLog, isResume = true)
 
     private fun buildControl(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean, isResume: Boolean,
-                             installRoot: String? = null): DownloadControl {
+                             installRoot: String? = null, verify: Boolean = false): DownloadControl {
+        // Phase 2-A (docs/STEAM_RUST_ENGINE_PLAN.md): with use_rust_steam_engine ON the whole
+        // install/resume/update/verify runs on libblsteam.so's journaled downloader. Same public
+        // surface (this DownloadControl, the DownloadProgress:/DownloadComplete: events, the
+        // DownloadRegistry row, the DB rows, the .bannerlator_build marker). Flag OFF: the JavaSteam
+        // path below is untouched.
+        if (SteamRepository.getInstance().isRustEngine) {
+            return BlDepotInstaller.start(appId, ctx, speedTier, debugLog, isResume, installRoot, verify)
+        }
         val cancelled     = AtomicBoolean(false)
         val paused        = AtomicBoolean(false)
         val downloaderRef = AtomicReference<DepotDownloader?>(null)
@@ -1133,7 +1156,7 @@ object SteamDepotDownloader {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private fun emitFailed(appId: Int, reason: String) {
+    internal fun emitFailed(appId: Int, reason: String) {
         SteamRepository.getInstance().database.markDownloadFailed(appId, reason)
         SteamRepository.getInstance().emit("DownloadFailed:$appId:$reason")
         Log.e(TAG, "DownloadFailed $appId: $reason")
@@ -1143,7 +1166,7 @@ object SteamDepotDownloader {
         DownloadRegistry.update("${Store.STEAM}:$appId") { it.copy(state = DownloadState.FAILED, error = reason) }
     }
 
-    private fun fmtSize(bytes: Long): String = when {
+    internal fun fmtSize(bytes: Long): String = when {
         bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
         bytes >= 1_048_576L     -> "%.1f MB".format(bytes / 1_048_576.0)
         else                    -> "%.0f KB".format(bytes / 1024.0)
@@ -1151,7 +1174,7 @@ object SteamDepotDownloader {
 
     /** Recursive on-disk byte total for a completed install (real footprint, dedup already applied
      *  by the filesystem — used by the false-complete guard's overlapping-depot branch). */
-    private fun dirSizeBytes(f: File): Long =
+    internal fun dirSizeBytes(f: File): Long =
         when {
             !f.exists() -> 0L
             f.isFile    -> f.length()

@@ -11,6 +11,21 @@ use std::time::Duration;
 
 pub const MAX_MANIFEST_FETCH_ATTEMPTS: usize = 5;
 
+/// Name of the per-install download journal directory, created next to the game files.
+///
+/// Bannerlator keeps this engine's journal in its own directory (`.bl_depot/`) rather than the
+/// JavaSteam DepotDownloader's `.DepotDownloader/`: the two record "installed manifest per depot"
+/// in different formats, and a half-parsed foreign journal must never make either engine skip a
+/// depot it has not validated. Contents: `depot.config` (installed manifest id per depot, the
+/// in-progress sentinel while a depot is being written), `<depot>_<manifest>.manifest` (cached raw
+/// manifest), `<depot>_<manifest>.cleanpause` (clean-pause marker), `denied.depots`.
+pub const CONFIG_DIR_NAME: &str = ".bl_depot";
+
+/// `<install_dir>/.bl_depot`.
+pub fn config_dir_path(install_dir: impl AsRef<Path>) -> PathBuf {
+    install_dir.as_ref().join(CONFIG_DIR_NAME)
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct DepotSpec {
     pub depot_id: u32,
@@ -315,7 +330,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     if let Err(error) = fs::create_dir_all(install_dir) {
         return DepotDownloadResult::fail(format!("download: mkdir install dir: {error}"));
     }
-    let config_dir = Path::new(install_dir).join(".DepotDownloader");
+    let config_dir = config_dir_path(install_dir);
     if let Err(error) = fs::create_dir_all(&config_dir) {
         return DepotDownloadResult::fail(format!("download: mkdir config dir: {error}"));
     }
@@ -639,7 +654,8 @@ mod tests {
     #[test]
     fn resolved_download_uses_cached_manifest_and_records_install() {
         let dir = temp_dir("resolved_download_cached_manifest");
-        let config_dir = dir.join(".DepotDownloader");
+        let config_dir = config_dir_path(&dir);
+        assert_eq!(config_dir, dir.join(".bl_depot"));
         fs::create_dir_all(&config_dir).unwrap();
         let raw_manifest = raw_layout_manifest(100, 555, "empty.bin", 5);
         fs::write(config_dir.join("100_555.manifest"), raw_manifest).unwrap();

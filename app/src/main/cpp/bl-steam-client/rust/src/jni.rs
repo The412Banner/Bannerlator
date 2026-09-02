@@ -3327,7 +3327,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
             );
             return;
         };
-        let config_dir = std::path::Path::new(&install_dir).join(".DepotDownloader");
+        let config_dir = crate::depot_downloader::config_dir_path(&install_dir);
         let installed_cfg = crate::depot_config::DepotConfigStore::load(&config_dir);
         let mut resolved = Vec::with_capacity(specs.len());
         let mut denied: Vec<u32> = Vec::new();

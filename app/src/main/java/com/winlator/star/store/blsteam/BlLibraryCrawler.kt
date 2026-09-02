@@ -31,7 +31,9 @@ class BlLibraryCrawler(private val session: BlSteamSession) {
         val licenseType: Int,
     )
 
-    /** Receives the crawl's results in order; every callback runs on the crawl thread. */
+    /** Receives the crawl's results in order; every callback runs on the crawl thread.
+     *  Wildcards suppressed so the Java implementer in SteamRepository can override with plain generics. */
+    @JvmSuppressWildcards
     interface Sink {
         /** Step 0: the account's license list (may be called once). */
         fun onLicenses(licenses: List<License>)

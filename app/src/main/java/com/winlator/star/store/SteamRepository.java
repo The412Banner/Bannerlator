@@ -385,8 +385,8 @@ public final class SteamRepository {
                         return !rustEngine || !BlSteamEngine.INSTANCE.isLoggedOn() || BlSteamEngine.INSTANCE.session() != s;
                     }
                 });
-            } catch (Throwable t) {
-                Log.w(RUST_TAG, "library sync crashed", t);
+            } catch (Throwable err) {
+                Log.w(RUST_TAG, "library sync crashed", err);
             } finally {
                 rustSyncing.set(false);
             }

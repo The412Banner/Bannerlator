@@ -1,0 +1,35 @@
+{
+  "id": "2026-09-02T21-28-57-ccabc8",
+  "created": "2026-09-02T21:28:57.788Z",
+  "ip_hash": "U5oBWcLfw/",
+  "fields": {
+    "reporter_name": "Fenix",
+    "device_model": "Tecno pova neo LE6H",
+    "soc": "Unisoc ums9230",
+    "gpu": "Mali-G57",
+    "android": "11",
+    "ram": "6",
+    "app_version": "3.0.3",
+    "install_source": "Lanzamiento en GitHub",
+    "game_name": "Star Wars battlefront 2 2005",
+    "steam_appid": "",
+    "store": "Otro",
+    "exe": "Battlefront.exe",
+    "symptom": "Pantalla negra (sin imagen)",
+    "when": "Falla en el logotipo del editor/carga",
+    "graphics_driver": "System pero me funciona qualcom 856 o otros",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1",
+    "proton": "Protón 10 o otros inferiores a 11",
+    "box64": "Intermediate",
+    "resolution": "800x600",
+    "framegen": "No",
+    "repro": "1 habro el juego \n2 Herror todo se ve negro excepto algunas letras del juego que se ven de colo blanco lo de más negro y otros juegos puro negro pero con sonido",
+    "tried": "Cambie el controlador use bcn pero cuando lo puse se salía del juego, la verdad no sé que hacer"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_20260902-025643.jpg"
+    }
+  ]
+}

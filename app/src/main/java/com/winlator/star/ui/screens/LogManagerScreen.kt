@@ -102,7 +102,8 @@ fun LogManagerScreen(onClose: () -> Unit) {
     var crashReports by remember { mutableStateOf(prefs.getBoolean("enable_crash_reports", true)) }
     var exitAutosave by remember { mutableStateOf(prefs.getBoolean(ExitReasonReporter.PREF_AUTOSAVE, false)) }
     var rustSteamEngine by remember {
-        mutableStateOf(prefs.getBoolean(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, false))
+        mutableStateOf(prefs.getBoolean(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY,
+            com.winlator.star.store.blsteam.BlSteamEngineFlag.DEFAULT))
     }
 
     // Location + channels moved here from the old Settings › Logs section, which this screen
@@ -286,8 +287,8 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 // next app start. OFF = JavaSteam as today; ON = the full Steam stack (auth, session,
                 // library, downloads, cloud, achievements, social, presence) runs on libblsteam.so and
                 // the engine's steam_engine.txt is folded into the SteamLite log bundle (Phase 3b-4).
-                LogToggle("Rust Steam engine (developer, restart required)", rustSteamEngine,
-                    hint = "Experimental — the whole Steam session (sign-in, library, downloads, cloud, achievements, friends) runs on libblsteam.so; its log joins the SteamLite bundle",
+                LogToggle("Native Steam engine (restart required)", rustSteamEngine,
+                    hint = "On by default — the whole Steam session (sign-in, library, downloads, cloud, achievements, friends) runs on the native engine; its log joins the SteamLite bundle. Off = legacy Java engine",
                     onInfo = { info = "Rust Steam engine" to LogCopy.RUST_ENGINE }) {
                     rustSteamEngine = it
                     putBool(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, it)
@@ -1222,12 +1223,12 @@ private object LogCopy {
         "Set it to 0 to keep no history at all."
 
     const val RUST_ENGINE =
-        "Experimental — no performance cost in game.\n\n" +
+        "On by default — no performance cost in game.\n\n" +
         "Runs the whole Steam side of Bannerlator (sign-in, library, downloads, cloud saves, " +
-        "achievements, friends) on the app's new native engine instead of the older Java one. " +
-        "Needs an app restart to take effect.\n\n" +
-        "Turn it off to go back to the old engine — nothing is lost. While it's on, the engine's " +
-        "own log is added to the SteamLite bundle so a problem can be traced."
+        "achievements, friends) on the app's native engine. Needs an app restart to take effect.\n\n" +
+        "Turn it off only if something Steam-related misbehaves: that switches back to the legacy " +
+        "Java engine for this release — nothing is lost. While the native engine is on, its own log " +
+        "is added to the SteamLite bundle so a problem can be traced."
 
     fun explainAll(): String = buildString {
         append("Costs performance while on\n\n")

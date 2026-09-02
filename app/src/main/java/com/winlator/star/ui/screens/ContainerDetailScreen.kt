@@ -106,6 +106,15 @@ import com.winlator.star.contentdialog.VegasKeyKnowledge
 import com.winlator.star.contentdialog.VegasTierPresets
 import com.winlator.star.container.VegasLiveCheck
 import com.winlator.star.core.HttpUtils
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 // Serializes all native adrenotools probing (isDriverSupported + enumerateExtensions) off the
 // main thread. Serial = no concurrent AdrenoTools hooks (old SIGSEGV); off-main = no ANR.
@@ -344,7 +353,7 @@ fun ContainerDetailScreen(
             // window) and would otherwise render BEHIND this AlertDialog. It reopens on sheet dismiss.
             onDownloadDxvk = { showDxvkConfig = false; if (isVegasWrapper) showVegasDownloadSheet = true else showDxvkDownloadSheet = true },
             onDownloadVkd3d = { showDxvkConfig = false; showVkd3dDownloadSheet = true },
-            onOpenConfigDownload = { showDxvkConfig = false; showStockConfigSheet = true }
+            onOpenConfigDownload = { showDxvkConfig = false; showStockConfigSheet = true },
             onDownloadD7vk = { showDxvkConfig = false; showD7vkDownloadSheet = true }
         )
     }
@@ -3298,6 +3307,7 @@ private fun SectionLabel(
 
 
 // ─── VEGAS-expanded DxvkConfigDialog (replaces upstream's simpler version) ────
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun DxvkConfigDialog(
     isArm64EC: Boolean,
@@ -4942,6 +4952,7 @@ internal fun DxvkConfigDialog(
 
 
 // ─── Upstream dialogs that follow DxvkConfigDialog ──────────────────────────────
+@Composable
 internal fun WineD3DConfigDialog(
     initialConfig: String,
     onConfirm: (String) -> Unit,

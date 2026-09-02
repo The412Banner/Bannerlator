@@ -2205,7 +2205,33 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
                 .find(|(k, _)| k == "connect")
                 .map(|(_, v)| v.as_str())
                 .unwrap_or(""),
+            "rp": persona
+                .rich_presence
+                .iter()
+                .map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone())))
+                .collect::<serde_json::Map<String, serde_json::Value>>(),
         }))
+        .collect::<Vec<_>>())
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
+/// Every known relationship as `[{"sid","rel"}]` (EFriendRelationship values) — the roster's
+/// friend / incoming-invite / outgoing-invite buckets. Cheap: a cached map, no network.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetFriendRelationships(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return new_string_or_null(&mut env, "[]");
+    };
+    let value = json!(handle
+        .core
+        .friend_relationships()
+        .iter()
+        .map(|(sid, rel)| json!({ "sid": *sid as i64, "rel": rel }))
         .collect::<Vec<_>>())
     .to_string();
     new_string_or_null(&mut env, &value)
@@ -2337,6 +2363,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
             "message": m.message,
             "timestamp": m.timestamp,
             "ordinal": m.ordinal,
+            "type": m.chat_entry_type,
         }))
         .collect::<Vec<_>>())
     .to_string();
@@ -2415,6 +2442,201 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
         }
     };
     new_string_or_null(&mut env, &url)
+}
+
+/// Blocking typing notification (`FriendMessages.SendMessage`, chat_entry_type 2).
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeSendFriendTyping(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+) -> jboolean {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return JNI_FALSE;
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return JNI_FALSE;
+    };
+    let ok = request_authed_service_success(&runtime, Duration::from_secs(10), |core, job_id| {
+        core.build_send_friend_message_typed(
+            steam_id as u64,
+            crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TYPING,
+            "",
+            false,
+            job_id,
+        )
+    });
+    if ok {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
+
+/// Fire-and-forget `CMsgClientAddFriend` — by SteamID64 (`steam_id` != 0) or by account name /
+/// e-mail. The verdict arrives as `CMsgClientAddFriendResponse` (EMsg 792) on the firehose.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeAddFriend(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+    account_name: JString,
+) -> jboolean {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return JNI_FALSE;
+    };
+    let name = jstring_to_string(&mut env, &account_name).unwrap_or_default();
+    if handle.enqueue_proto(handle.core.build_add_friend(steam_id as u64, &name)) {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
+
+/// Fire-and-forget `CMsgClientRemoveFriend` (remove / decline / cancel an invite).
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeRemoveFriend(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+) -> jboolean {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return JNI_FALSE;
+    };
+    if handle.enqueue_proto(handle.core.build_remove_friend(steam_id as u64)) {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
+
+/// Blocking friend profile lookup (`CMsgClientFriendProfileInfo`); JSON or null.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetFriendProfileInfo(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let Some(body) = request_proto_body(&runtime, Duration::from_secs(15), |core, job_id| {
+        core.build_friend_profile_info(steam_id as u64, job_id)
+    }) else {
+        return ptr::null_mut();
+    };
+    let Some(resp) =
+        crate::pb::cmsg_client_friends_ops::CMsgClientFriendProfileInfoResponse::deserialize(&body)
+    else {
+        return ptr::null_mut();
+    };
+    let value = json!({
+        "eresult": resp.eresult,
+        "steamId": resp.steamid_friend as i64,
+        "timeCreated": resp.time_created,
+        "realName": resp.real_name,
+        "cityName": resp.city_name,
+        "stateName": resp.state_name,
+        "countryName": resp.country_name,
+        "headline": resp.headline,
+        "summary": resp.summary,
+    })
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
+/// Blocking `UserAccount.CreateFriendInviteToken#1`; the raw invite token or null.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeCreateFriendInviteToken(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let Some(body) =
+        request_authed_service_body(&runtime, Duration::from_secs(15), |core, job_id| {
+            core.build_create_friend_invite_token_call(job_id)
+        })
+    else {
+        return ptr::null_mut();
+    };
+    let Some(resp) =
+        crate::pb::cuseraccount::CUserAccountCreateFriendInviteTokenResponse::deserialize(&body)
+    else {
+        return ptr::null_mut();
+    };
+    if resp.invite_token.is_empty() {
+        return ptr::null_mut();
+    }
+    new_string_or_null(&mut env, &resp.invite_token)
+}
+
+/// Blocking web-audience access token mint (`Authentication.GenerateAccessTokenForApp`, no
+/// renewal) for the community `steamLoginSecure` cookie (chat image upload, user search). The
+/// refresh token only travels to Steam; it is never logged.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGenerateWebAccessToken(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    refresh_token: JString,
+    steam_id: jlong,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let Some(refresh_token) = jstring_to_string(&mut env, &refresh_token) else {
+        return ptr::null_mut();
+    };
+    let steam_id = if steam_id != 0 {
+        steam_id as u64
+    } else {
+        handle.core.steam_id()
+    };
+    if refresh_token.is_empty() || steam_id == 0 {
+        return ptr::null_mut();
+    }
+    let request = crate::pb::cauthentication::AccessTokenGenerateForAppRequest {
+        refresh_token,
+        steamid: steam_id,
+        renewal_type: crate::pb::cauthentication::EAuthTokenRenewalType::None,
+    }
+    .serialize();
+    let Some(token_body) =
+        request_authed_service_body(&runtime, Duration::from_secs(15), move |core, job_id| {
+            core.build_authed_service_call(
+                "Authentication.GenerateAccessTokenForApp#1",
+                job_id,
+                request,
+            )
+        })
+    else {
+        return ptr::null_mut();
+    };
+    let access_token = crate::pb::cauthentication::AccessTokenGenerateForAppResponse::deserialize(
+        &token_body,
+    )
+    .map(|r| r.access_token)
+    .unwrap_or_default();
+    if access_token.is_empty() {
+        return ptr::null_mut();
+    }
+    new_string_or_null(&mut env, &access_token)
 }
 
 #[no_mangle]

@@ -216,6 +216,12 @@ object SteamQuickInvite {
         return try {
             val repo = SteamRepository.getInstance()
             if (!repo.ensureLoggedIn(8_000L)) return null
+            if (repo.isRustEngine) {
+                // Engine: the same UserAccount.CreateFriendInviteToken#1 call, natively.
+                val token = com.winlator.star.store.blsteam.BlSteamEngine.session()
+                    ?.createFriendInviteToken()?.takeIf { it.isNotBlank() } ?: return null
+                return INVITE_LINK_BASE + token
+            }
             val client = repo.steamClient ?: return null
             val unified = client.getHandler(SteamUnifiedMessages::class.java) ?: return null
             val userAccount = unified.createService(UserAccount::class.java) ?: return null

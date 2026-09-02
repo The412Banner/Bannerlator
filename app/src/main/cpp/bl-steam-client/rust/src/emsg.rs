@@ -22,6 +22,12 @@ impl EMsg {
     pub const CLIENT_SERVER_UNAVAILABLE: Self = Self(5500);
     pub const CLIENT_PERSONA_STATE: Self = Self(766);
     pub const CLIENT_FRIENDS_LIST: Self = Self(767);
+    pub const CLIENT_REMOVE_FRIEND: Self = Self(714);
+    pub const CLIENT_ADD_FRIEND: Self = Self(791);
+    pub const CLIENT_ADD_FRIEND_RESPONSE: Self = Self(792);
+    pub const CLIENT_FRIEND_PROFILE_INFO: Self = Self(5330);
+    pub const CLIENT_FRIEND_PROFILE_INFO_RESPONSE: Self = Self(5331);
+    pub const CLIENT_PLAYER_NICKNAME_LIST: Self = Self(5587);
     pub const CLIENT_PLAYING_SESSION_STATE: Self = Self(9600);
     pub const CLIENT_ACCOUNT_INFO: Self = Self(768);
     pub const CLIENT_EMAIL_ADDR_INFO: Self = Self(779);

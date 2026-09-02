@@ -577,6 +577,50 @@ class BlSteamSession : AutoCloseable {
                catch (_: UnsatisfiedLinkError) { "[]" }
     }
 
+    /** Every known relationship as JSON `[{"sid","rel"}]` (EFriendRelationship codes). Cached, no network. */
+    fun getFriendRelationships(): String {
+        val h = nativeHandle.get(); if (h == 0L) return "[]"
+        return try { nativeGetFriendRelationships(h) ?: "[]" }
+               catch (_: UnsatisfiedLinkError) { "[]" }
+    }
+
+    // Blocking: "typing…" notification to a friend.
+    fun sendFriendTyping(steamId: Long): Boolean {
+        val h = nativeHandle.get(); if (h == 0L) return false
+        return try { nativeSendFriendTyping(h, steamId) } catch (_: UnsatisfiedLinkError) { false }
+    }
+
+    /** Fire-and-forget friend request: by SteamID64 ([steamId] != 0) or by account name / e-mail. */
+    fun addFriend(steamId: Long, accountName: String = ""): Boolean {
+        val h = nativeHandle.get(); if (h == 0L) return false
+        return try { nativeAddFriend(h, steamId, accountName) } catch (_: UnsatisfiedLinkError) { false }
+    }
+
+    /** Fire-and-forget remove friend / decline incoming invite / cancel outgoing invite. */
+    fun removeFriend(steamId: Long): Boolean {
+        val h = nativeHandle.get(); if (h == 0L) return false
+        return try { nativeRemoveFriend(h, steamId) } catch (_: UnsatisfiedLinkError) { false }
+    }
+
+    // Blocking friend profile info (real name / location / summary / account age); JSON or null.
+    fun getFriendProfileInfo(steamId: Long): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeGetFriendProfileInfo(h, steamId) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    // Blocking quick-invite token mint (UserAccount.CreateFriendInviteToken); the raw token or null.
+    fun createFriendInviteToken(): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeCreateFriendInviteToken(h) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    // Blocking web-audience access token for the community steamLoginSecure cookie; null on failure.
+    fun generateWebAccessToken(refreshToken: String, steamId: Long): String? {
+        if (refreshToken.isEmpty()) return null
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeGenerateWebAccessToken(h, refreshToken, steamId) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
     // Blocking: send a 1-to-1 friend message; returns response JSON or null.
     fun sendFriendMessage(steamId: Long, message: String): String? {
         val h = nativeHandle.get(); if (h == 0L) return null
@@ -794,6 +838,13 @@ class BlSteamSession : AutoCloseable {
         @JvmStatic private external fun nativeGetLicenseList(handle: Long): String?
         @JvmStatic private external fun nativeGetFriendsList(handle: Long): LongArray
         @JvmStatic private external fun nativeGetFriendPersonas(handle: Long): String?
+        @JvmStatic private external fun nativeGetFriendRelationships(handle: Long): String?
+        @JvmStatic private external fun nativeSendFriendTyping(handle: Long, steamId: Long): Boolean
+        @JvmStatic private external fun nativeAddFriend(handle: Long, steamId: Long, accountName: String): Boolean
+        @JvmStatic private external fun nativeRemoveFriend(handle: Long, steamId: Long): Boolean
+        @JvmStatic private external fun nativeGetFriendProfileInfo(handle: Long, steamId: Long): String?
+        @JvmStatic private external fun nativeCreateFriendInviteToken(handle: Long): String?
+        @JvmStatic private external fun nativeGenerateWebAccessToken(handle: Long, refreshToken: String, steamId: Long): String?
         @JvmStatic private external fun nativeSendFriendMessage(handle: Long, steamId: Long, message: String): String?
         @JvmStatic private external fun nativeGetRecentMessages(handle: Long, steamId: Long, count: Int): String?
         @JvmStatic private external fun nativeDrainFriendMessages(handle: Long): String?

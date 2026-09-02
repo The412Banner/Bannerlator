@@ -1,6 +1,7 @@
 use crate::proto_wire::{Reader, WireType, Writer};
 
 pub const CHAT_ENTRY_TYPE_TEXT: i32 = 1;
+pub const CHAT_ENTRY_TYPE_TYPING: i32 = 2;
 
 #[derive(Clone, Debug, Default)]
 pub struct CFriendMessagesSendMessageRequest {

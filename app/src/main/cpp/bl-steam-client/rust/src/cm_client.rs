@@ -18,6 +18,9 @@ use crate::pb::cfamilygroups::CFamilyGroupsGetFamilyGroupRequest;
 use crate::pb::cinventory::CInventoryGetItemDefMetaRequest;
 use crate::pb::cmsg_client_change_status::CMsgClientChangeStatus;
 use crate::pb::cmsg_client_friends_list::CMsgClientFriendsList;
+use crate::pb::cmsg_client_friends_ops::{
+    CMsgClientAddFriend, CMsgClientFriendProfileInfo, CMsgClientRemoveFriend,
+};
 use crate::pb::cmsg_client_games_played::{
     CMsgClientGamesPlayed, GamePlayedEntry, GamePlayedProcessInfo,
 };
@@ -48,6 +51,7 @@ use crate::pb::cplayer::{
     CPlayerGetOwnedGamesRequest, CPlayerSetRichPresenceKv, CPlayerSetRichPresenceRequest,
 };
 use crate::pb::cpublishedfile::CPublishedFileGetUserFilesRequest;
+use crate::pb::cuseraccount::CUserAccountCreateFriendInviteTokenRequest;
 use crate::proto_envelope::encode_proto_envelope;
 use crate::ticket_cache::BlTicketCache;
 use flate2::read::{GzDecoder, ZlibDecoder};
@@ -160,6 +164,8 @@ pub struct IncomingFriendMessage {
     pub message: String,
     pub timestamp: u32,
     pub ordinal: i32,
+    /// `EChatEntryType`: 1 = text (`message` set), 2 = typing notification (`message` empty).
+    pub chat_entry_type: i32,
 }
 
 impl Default for CMClientCore {
@@ -482,18 +488,103 @@ impl CMClientCore {
         contains_bbcode: bool,
         job_id: u64,
     ) -> Option<OutboundServiceCall> {
+        self.build_send_friend_message_typed(
+            steamid,
+            crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TEXT,
+            message,
+            contains_bbcode,
+            job_id,
+        )
+    }
+
+    /// `FriendMessages.SendMessage` with an explicit `EChatEntryType` — 1 text, 2 typing (empty
+    /// message; the peer shows "typing…" for a few seconds, exactly what the Steam client sends).
+    pub fn build_send_friend_message_typed(
+        &self,
+        steamid: u64,
+        chat_entry_type: i32,
+        message: &str,
+        contains_bbcode: bool,
+        job_id: u64,
+    ) -> Option<OutboundServiceCall> {
         self.build_authed_service_call(
             "FriendMessages.SendMessage#1",
             job_id,
             crate::pb::cfriendmessages::CFriendMessagesSendMessageRequest {
                 steamid,
-                chat_entry_type: crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TEXT,
+                chat_entry_type,
                 message: message.to_string(),
                 contains_bbcode,
-                echo_to_sender: true,
-                low_priority: false,
+                echo_to_sender: chat_entry_type == crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TEXT,
+                low_priority: chat_entry_type != crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TEXT,
             }
             .serialize(),
+        )
+    }
+
+    /// `CMsgClientAddFriend`: by SteamID64 (`steamid` != 0) or by account name / e-mail. Steam
+    /// answers with `CMsgClientAddFriendResponse` (EMsg 792) on the message firehose.
+    pub fn build_add_friend(
+        &self,
+        steamid: u64,
+        accountname_or_email: &str,
+    ) -> Option<OutboundProtoMessage> {
+        if steamid == 0 && accountname_or_email.is_empty() {
+            return None;
+        }
+        self.build_outbound_proto_message(
+            EMsg::CLIENT_ADD_FRIEND,
+            CMsgClientAddFriend {
+                steamid_to_add: steamid,
+                accountname_or_email_to_add: accountname_or_email.to_string(),
+            }
+            .serialize(),
+            0,
+        )
+    }
+
+    /// `CMsgClientRemoveFriend`: remove a friend, decline an incoming invite or cancel an
+    /// outgoing one. The updated relationship arrives as an incremental `CMsgClientFriendsList`.
+    pub fn build_remove_friend(&self, steamid: u64) -> Option<OutboundProtoMessage> {
+        if steamid == 0 {
+            return None;
+        }
+        self.build_outbound_proto_message(
+            EMsg::CLIENT_REMOVE_FRIEND,
+            CMsgClientRemoveFriend { friendid: steamid }.serialize(),
+            0,
+        )
+    }
+
+    /// `CMsgClientFriendProfileInfo` (job-matched; the 5331 response is delivered to the job).
+    pub fn build_friend_profile_info(
+        &self,
+        steamid: u64,
+        job_id: u64,
+    ) -> Option<OutboundProtoMessage> {
+        if steamid == 0 {
+            return None;
+        }
+        self.build_job_proto_message(
+            EMsg::CLIENT_FRIEND_PROFILE_INFO,
+            job_id,
+            CMsgClientFriendProfileInfo {
+                steamid_friend: steamid,
+            }
+            .serialize(),
+            0,
+        )
+    }
+
+    /// `UserAccount.CreateFriendInviteToken#1` — the shareable `s.team/p/<token>` quick-invite.
+    pub fn build_create_friend_invite_token_call(
+        &self,
+        job_id: u64,
+    ) -> Option<OutboundServiceCall> {
+        self.build_authed_service_call(
+            "UserAccount.CreateFriendInviteToken#1",
+            job_id,
+            CUserAccountCreateFriendInviteTokenRequest::default().serialize(),
         )
     }
 
@@ -1319,6 +1410,7 @@ impl CMClientCore {
             | EMsg::CLIENT_REQUEST_ENCRYPTED_APP_TICKET_RESPONSE
             | EMsg::CLIENT_GET_USER_STATS_RESPONSE
             | EMsg::CLIENT_GET_DEPOT_DECRYPTION_KEY_RESPONSE
+            | EMsg::CLIENT_FRIEND_PROFILE_INFO_RESPONSE
             | EMsg::CLIENT_MMS_CREATE_LOBBY_RESPONSE
             | EMsg::CLIENT_MMS_JOIN_LOBBY_RESPONSE
             | EMsg::CLIENT_MMS_LEAVE_LOBBY_RESPONSE
@@ -1491,16 +1583,20 @@ impl CMClientCore {
                     if let Some(note) =
                         crate::pb::cfriendmessages::CFriendMessagesIncomingMessageNotification::deserialize(body)
                     {
-                        if note.chat_entry_type
+                        let is_text = note.chat_entry_type
                             == crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TEXT
-                            && !note.message.is_empty()
-                        {
+                            && !note.message.is_empty();
+                        let is_typing = note.chat_entry_type
+                            == crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TYPING
+                            && !note.local_echo;
+                        if is_text || is_typing {
                             self.push_incoming_message(IncomingFriendMessage {
                                 friend_id: note.steamid_friend,
                                 from_self: note.local_echo,
                                 message: note.message,
                                 timestamp: note.rtime32_server_timestamp,
                                 ordinal: note.ordinal,
+                                chat_entry_type: note.chat_entry_type,
                             });
                         }
                     }
@@ -1524,6 +1620,17 @@ impl CMClientCore {
             .expect("friends list poisoned")
             .iter()
             .filter_map(|(sid, relationship)| (*relationship == 3).then_some(*sid))
+            .collect()
+    }
+
+    /// Every known relationship (`EFriendRelationship`: 2 request received, 3 friend, 4 request
+    /// sent, 5 ignored, 6 ignored friend, …), not just mutual friends — the roster's invite buckets.
+    pub fn friend_relationships(&self) -> Vec<(u64, u32)> {
+        self.friends
+            .lock()
+            .expect("friends list poisoned")
+            .iter()
+            .map(|(sid, relationship)| (*sid, *relationship))
             .collect()
     }
 

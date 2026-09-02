@@ -1412,6 +1412,9 @@ public final class SteamRepository {
                 if (cm == null) return;
                 ConnectivityManager.NetworkCallback cb = new ConnectivityManager.NetworkCallback() {
                     @Override public void onAvailable(Network network) {
+                        // A new default network (Wi-Fi ↔ hotspot, VPN up/down) = a different NAT:
+                        // drop the cached pre-flight network verdict so the next launch re-tests.
+                        try { NetworkProbe.invalidate("default network " + network); } catch (Throwable ignored) {}
                         onNetworkAvailable("onAvailable");
                     }
                     @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {

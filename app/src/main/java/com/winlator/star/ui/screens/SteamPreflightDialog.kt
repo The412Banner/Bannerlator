@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,14 +50,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 // Plain-terms help copy for the "?" bubbles (same idea as LaunchMethodSheet's: what it is, one breath).
 private const val HELP_PREFLIGHT =
-    "Four quick checks before the game opens, so it starts with a working Steam login, your latest " +
-        "saves, the current build and an up-to-date SteamLite client. Cancel stops it at any point."
+    "Five quick checks before the game opens, so it starts with a working Steam login, your latest " +
+        "saves, a known network shape, the current build and an up-to-date SteamLite client. Cancel " +
+        "stops it at any point."
 private const val HELP_SESSION =
     "Makes sure you're signed in to Steam (and refreshes your login if it's about to expire) before " +
         "the game starts."
 private const val HELP_CLOUD =
     "Pulls your newest cloud saves into the game folder first so you don't play on an old save. " +
         "A newer local save is never overwritten."
+private const val HELP_NETWORK =
+    "How this network handles online game traffic. Steam sign-in and downloads work on any NAT; " +
+        "games with their own servers (e.g. Brawlhalla) can fail behind a strict/symmetric NAT such " +
+        "as phone hotspots or many VPNs. Fix: home Wi-Fi, a hotspot with port mapping, or a VPN with " +
+        "port forwarding."
 private const val HELP_UPDATE =
     "Checks whether Steam has a newer build of the game; you choose whether to update before playing."
 private const val HELP_NEED_SIGN_IN =
@@ -84,8 +91,8 @@ private const val HELP_CLIENT_OFFER =
 /**
  * The SteamLite launch pre-flight ("Getting Steam ready") — a small modal that runs
  * [SteamSessionManager.preflightAsync] for [shortcut] BEFORE the container opens: Steam sign-in →
- * cloud saves → update check → SteamLite client check, each as a live row with a status, plus a
- * Cancel that always works.
+ * cloud saves → network shape (NAT verdict, informational) → update check → SteamLite client
+ * check, each as a live row with a status, plus a Cancel that always works.
  *
  * Outcomes:
  *  - all green → [onLaunch] (the caller starts `XServerDisplayActivity` with `preflightDone=1`);
@@ -227,6 +234,7 @@ fun SteamPreflightDialog(
                 Spacer(Modifier.height(10.dp))
                 StepRow("Steam sign-in", states[Step.SESSION], helpText == HELP_SESSION) { toggleHelp(HELP_SESSION) }
                 StepRow("Cloud saves", states[Step.CLOUD], helpText == HELP_CLOUD) { toggleHelp(HELP_CLOUD) }
+                StepRow("Network", states[Step.NETWORK], helpText == HELP_NETWORK) { toggleHelp(HELP_NETWORK) }
                 StepRow("Game files", states[Step.UPDATE], helpText == HELP_UPDATE) { toggleHelp(HELP_UPDATE) }
                 StepRow(
                     "SteamLite client", states[Step.CLIENT], helpText == HELP_CLIENT,
@@ -330,6 +338,8 @@ private fun StepRow(
             StepState.RUNNING -> CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = cs.primary)
             StepState.DONE -> Icon(Icons.Filled.Check, contentDescription = null, tint = cs.primary, modifier = Modifier.size(16.dp))
             StepState.WARN -> Icon(Icons.Filled.Warning, contentDescription = null, tint = cs.error, modifier = Modifier.size(16.dp))
+            // Informational heads-up (a strict NAT) — amber, not the error red: the launch goes ahead.
+            StepState.NOTICE -> Icon(Icons.Filled.Warning, contentDescription = null, tint = NoticeAmber, modifier = Modifier.size(16.dp))
             StepState.SKIPPED -> Icon(Icons.Filled.Check, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(16.dp))
             StepState.PENDING, null -> Spacer(Modifier.size(16.dp))
         }
@@ -339,7 +349,11 @@ private fun StepRow(
             Text(
                 state?.second ?: "Waiting…",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (state?.first == StepState.WARN) cs.error else cs.onSurfaceVariant,
+                color = when (state?.first) {
+                    StepState.WARN -> cs.error
+                    StepState.NOTICE -> NoticeAmber
+                    else -> cs.onSurfaceVariant
+                },
             )
             if (progress != null) {
                 Spacer(Modifier.height(4.dp))
@@ -355,6 +369,9 @@ private fun StepRow(
         PreflightHelpDot(highlighted = helpOpen, onClick = onHelp)
     }
 }
+
+/** The app's amber (PreloaderOverlay's mid Metacritic tier) for the informational NOTICE state. */
+private val NoticeAmber = Color(0xFFE1A100)
 
 /** The launch popup's corner "?" (LaunchMethodSheet.HelpDot), on the dialog's primary accent. */
 @Composable

@@ -243,6 +243,16 @@ public final class SteamLiteLogCollector {
         if (driver != null) out.append("Driver: ").append(driver).append('\n');
         out.append("SteamLite version: ").append(orDash(steamLiteVersion)).append('\n');
 
+        // Network shape (NAT / UDP verdict): the pre-flight's cached STUN result when it is still
+        // fresh, else a bounded (~2.5 s) probe now — we are on the exit worker thread. The public IP
+        // is masked to its first two octets; a strict NAT here is the usual answer to "online works
+        // at home but not on my hotspot / VPN".
+        try {
+            com.winlator.star.store.NetworkProbe.Result net =
+                    com.winlator.star.store.NetworkProbe.probeCachedOrFresh();
+            out.append("Network: ").append(net.logLine()).append('\n');
+        } catch (Throwable ignored) {}
+
         // The scrub note, matching the app's own wording (Log Manager / LogReport).
         out.append('\n');
         out.append("Safe to share — auth tokens, cookies and your Steam account name are removed and ")

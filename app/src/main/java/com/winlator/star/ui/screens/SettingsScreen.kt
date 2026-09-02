@@ -91,6 +91,7 @@ import com.winlator.star.fexcore.FEXCoreEditPresetDialog
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.midi.MidiManager
+import com.winlator.star.store.NetworkProbe
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.SteamRegion
 import com.winlator.star.xenvironment.ImageFsInstaller
@@ -142,6 +143,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     var steamRegionProbe by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
     var steamRegionProbing by remember { mutableStateOf(false) }
     var showSteamRegionDropdown by remember { mutableStateOf(false) }
+    // "Test network" (store/NetworkProbe): the same NAT / UDP verdict the SteamLite pre-flight shows.
+    var steamNetResult by remember { mutableStateOf(NetworkProbe.cached()) }
+    var steamNetProbing by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         UpdateManager.check(context) { info -> activity?.runOnUiThread { updateInfo = info } }
     }
@@ -674,12 +678,39 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 ) { Text(if (steamRegionProbing) "Testing…" else "Test regions", color = MaterialTheme.colorScheme.onSurface) }
                 if (steamRegionProbing) CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                Button(
+                    enabled = !steamNetProbing,
+                    onClick = {
+                        steamNetProbing = true
+                        Thread({
+                            val res = NetworkProbe.probe()   // never throws; ≤ ~2.5 s
+                            activity?.runOnUiThread { steamNetResult = res; steamNetProbing = false }
+                        }, "steam-net-probe-ui").start()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                ) { Text(if (steamNetProbing) "Testing…" else "Test network", color = MaterialTheme.colorScheme.onSurface) }
+                if (steamNetProbing) CircularProgressIndicator(modifier = Modifier.size(18.dp))
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = {
-                    steamHelp = "Test regions" to
-                        "Pings every Steam datacenter now and shows each one's response time in the " +
-                        "list above. Auto also remembers the fastest as its pick. Nothing else changes."
+                    steamHelp = "Test regions / Test network" to
+                        "Test regions pings every Steam datacenter now and shows each one's response time " +
+                        "in the list above; Auto also remembers the fastest as its pick.\n\n" +
+                        "Test network checks how this network handles online game traffic (the same " +
+                        "check the SteamLite launch shows). Steam sign-in and downloads work on any NAT; " +
+                        "games with their own servers (e.g. Brawlhalla) can fail behind a strict/symmetric " +
+                        "NAT such as phone hotspots or many VPNs. Fix: home Wi-Fi, a hotspot with port " +
+                        "mapping, or a VPN with port forwarding."
                 }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            steamNetResult?.let { net ->
+                Text(
+                    "Network: " + net.verdict() +
+                        (if (net.nat != NetworkProbe.Nat.OPEN_CONE && net.maskedIp != null) " (IP ${net.maskedIp})" else "") +
+                        (if (net.ipv6) " · IPv6" else ""),
+                    color = if (net.isWarning) Color(0xFFE1A100) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
             }
             Text(
                 "Which Steam datacenter to connect to for the store, downloads and the in-game Steam session. " +

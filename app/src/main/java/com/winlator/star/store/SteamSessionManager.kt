@@ -24,7 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  *     expiring refresh token is renewed here ([maybeRenewRefreshToken]).
  *  2. **Cloud saves** — the pre-launch Steam Cloud pull (moved here from the activity; the
  *     activity skips it when the launch intent carries `preflightDone`).
- *  3. **Update check** — the cheap, non-downloading [SteamGameUpdater.checkForUpdate] probe. Never
+ *  3. **Network shape** — the [NetworkProbe] STUN verdict (open / strict NAT / UDP blocked),
+ *     informational only: it never blocks, it tells the user up front whether a game's own
+ *     online mode is likely to connect on this network.
+ *  4. **Update check** — the cheap, non-downloading [SteamGameUpdater.checkForUpdate] probe. Never
  *     auto-applies; an available update is offered and the caller runs the existing Update pass.
  *
  * Everything is best-effort and bounded; nothing here can hang the popup. Backed by
@@ -42,6 +45,8 @@ object SteamSessionManager {
     private const val SESSION_WAIT_MS = 20_000L
     private const val CLOUD_WAIT_MS = 35_000L
     private const val UPDATE_CHECK_WAIT_MS = 10_000L
+    /** STUN budget for the network-shape row (NetworkProbe); the row waits at most this + 500 ms. */
+    private const val NETWORK_PROBE_MS = 2_500
     private const val RENEW_TOKEN_WITHIN_MS = 14L * 24 * 60 * 60 * 1000
     private const val RENEW_WAIT_MS = 15_000
 
@@ -169,8 +174,9 @@ object SteamSessionManager {
 
     // ── Pre-flight ────────────────────────────────────────────────────────────────────────────
 
-    enum class Step { SESSION, CLOUD, UPDATE, CLIENT }
-    enum class StepState { PENDING, RUNNING, DONE, SKIPPED, WARN }
+    enum class Step { SESSION, CLOUD, NETWORK, UPDATE, CLIENT }
+    /** NOTICE = done, but worth a look (amber): informational, never blocks — the network verdict. */
+    enum class StepState { PENDING, RUNNING, DONE, SKIPPED, WARN, NOTICE }
 
     /** What the pre-flight should do for one launch. */
     data class PreflightRequest(
@@ -230,6 +236,16 @@ object SteamSessionManager {
 
         Thread({
             try {
+                // Network shape (NetworkProbe) runs beside the session step so its ~1-2.5 s hides
+                // behind the sign-in wait; the row is reported in order, after cloud saves. Cached
+                // for 10 min, so a Retry / Launch-anyway re-run doesn't probe again.
+                val netLatch = CountDownLatch(1)
+                var net: NetworkProbe.Result? = null
+                Thread({
+                    try { net = NetworkProbe.probeCachedOrFresh(NETWORK_PROBE_MS) } catch (t: Throwable) { Log.w(TAG, "network probe errored", t) }
+                    finally { netLatch.countDown() }
+                }, "steam-preflight-net").apply { isDaemon = true }.start()
+
                 // 1. Session -------------------------------------------------------------------
                 if (skipSession) {
                     step(Step.SESSION, StepState.SKIPPED, "Launching without a live Steam session")
@@ -272,7 +288,22 @@ object SteamSessionManager {
                 }
                 if (handle.isCancelled) { post { listener.onCancelled() }; return@Thread }
 
-                // 3. Update check ----------------------------------------------------------------
+                // 3. Network shape (informational — NEVER blocks the launch) -------------------------
+                // Steam sign-in and downloads work on any NAT; this is for games with their own
+                // servers / P2P (Brawlhalla "Incorrect Version" on a hotspot or VPN), so the user
+                // sees the network verdict up front instead of guessing.
+                step(Step.NETWORK, StepState.RUNNING, "Checking network…")
+                netLatch.await(NETWORK_PROBE_MS + 500L, TimeUnit.MILLISECONDS)
+                val verdict = net
+                if (verdict == null) {
+                    step(Step.NETWORK, StepState.DONE, "Couldn't check")
+                } else {
+                    Log.i(TAG, "network: ${verdict.logLine()}")
+                    step(Step.NETWORK, if (verdict.isWarning) StepState.NOTICE else StepState.DONE, verdict.verdict())
+                }
+                if (handle.isCancelled) { post { listener.onCancelled() }; return@Thread }
+
+                // 4. Update check ----------------------------------------------------------------
                 if (skipUpdate || !req.checkForUpdates || req.appId <= 0) {
                     step(Step.UPDATE, StepState.SKIPPED, if (skipUpdate) "Launching this build" else "Update check: off")
                 } else {
@@ -299,7 +330,7 @@ object SteamSessionManager {
                     }
                 }
 
-                // 4. SteamLite client package --------------------------------------------------------
+                // 5. SteamLite client package --------------------------------------------------------
                 // Safety net for remembered launches that skip the popup (which has its own
                 // "Update & Launch" gate). Bounded catalog fetch; offline / a failed fetch never
                 // blocks — the installed package launches (even below MIN_AGENT_VERSION: the agent

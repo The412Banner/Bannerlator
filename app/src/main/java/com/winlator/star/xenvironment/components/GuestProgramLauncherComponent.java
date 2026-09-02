@@ -12,12 +12,14 @@ import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
+import com.winlator.star.BuildConfig;
 import com.winlator.star.box64.Box64Preset;
 import com.winlator.star.box64.Box64PresetManager;
 import com.winlator.star.container.Container;
 import com.winlator.star.container.Shortcut;
 import com.winlator.star.contents.ContentProfile;
 import com.winlator.star.contents.ContentsManager;
+import com.winlator.star.store.SteamLogRedactor;
 import com.winlator.star.core.Callback;
 import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
@@ -49,6 +51,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
 public class GuestProgramLauncherComponent extends EnvironmentComponent {
+    private static final String TAG = "GuestProgramLauncher";
     private String guestExecutable;
     private static int pid = -1;
     private String[] bindingPaths;
@@ -549,6 +552,19 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         File box64File = new File(rootDir, "/usr/bin/box64");
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
+        }
+
+        // Diagnostic: dump every env var the Wine process actually receives.
+        // Gated behind BuildConfig.DEBUG to avoid shipping to production.
+        // Skips WN_STEAM_* / BL_* (auth tokens, agent channel) and routes
+        // the rest through SteamLogRedactor to strip any residual secrets.
+        if (BuildConfig.DEBUG) {
+            String[] finalEnv = envVars.toStringArray();
+            Log.d(TAG, "=== FINAL ENV VARS (" + finalEnv.length + " entries) ===");
+            for (String entry : finalEnv) {
+                if (entry.startsWith("WN_STEAM_") || entry.startsWith("BL_")) continue;
+                Log.d(TAG, "  " + SteamLogRedactor.redact(entry));
+            }
         }
 
         return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {

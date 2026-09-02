@@ -110,11 +110,13 @@ internal object KnownEnvVars {
         KnownEnvVar("DXVK_HUD", EnvVarType.SELECT_MULTIPLE, listOf(
             "scale=0.5", "scale=0.7", "scale=1.0", "opacity=0.5", "opacity=0.7", "devinfo", "fps", "frametimes",
             "submissions", "drawcalls", "pipelines", "descriptors", "memory", "gpuload", "version", "api", "cs",
-            "compiler", "samplers")),
-        KnownEnvVar("DXVK_CONFIG_FILE", EnvVarType.SELECT, listOf(
-            "/storage/emulated/0/starengine.ini",
-            "/storage/emulated/0/Download/starengine.ini",
-            "/storage/emulated/0/Winlator/starengine.ini")),
+            "compiler", "samplers",
+            // VEGAS-build HUD items (HudVegasItem governor line + HudCommitItem). Registered
+            // inside VEGAS DXVK builds' HudItemSet; vanilla DXVK silently ignores unknown
+            // tokens, so listing them unconditionally is safe.
+            "vegas", "commit")),
+        // NOTE: the old VEGAS_HUD env var was removed — nothing in any shipped VEGAS build
+        // ever read it (verified against cf04e7f source). Its tokens live in DXVK_HUD now.
         KnownEnvVar("MESA_EXTENSION_MAX_YEAR", EnvVarType.NUMBER),
         KnownEnvVar("WRAPPER_MAX_IMAGE_COUNT", EnvVarType.TEXT),
         KnownEnvVar("MESA_GL_VERSION_OVERRIDE", EnvVarType.TEXT),
@@ -150,6 +152,7 @@ internal object KnownEnvVars {
         KnownEnvVar("DXVK_ASYNC", EnvVarType.CHECKBOX, listOf("0", "1")),
         KnownEnvVar("DXVK_GPLASYNCCACHE", EnvVarType.CHECKBOX, listOf("0", "1")),
         KnownEnvVar("DXVK_CONFIG", EnvVarType.TEXT),
+        KnownEnvVar("DXVK_CONFIG_FILE", EnvVarType.TEXT),
         // Wine extras
         KnownEnvVar("WINE_DISABLE_FULLSCREEN_HACK", EnvVarType.CHECKBOX, listOf("0", "1")),
         KnownEnvVar("WINE_X11FORCEGLX", EnvVarType.CHECKBOX, listOf("0", "1")),

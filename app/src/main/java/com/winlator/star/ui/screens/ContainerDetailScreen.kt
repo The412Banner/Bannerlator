@@ -92,6 +92,23 @@ import com.winlator.star.widget.perfhud.parseHudOutline
 import com.winlator.star.widget.exportHudDiagnostics
 import com.winlator.star.widget.ColorPickerView
 import com.winlator.star.widget.CPUListView
+import android.content.Intent
+import android.os.Environment
+import android.provider.DocumentsContract
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.window.Dialog
+import com.winlator.star.container.VegasLiveCheck
+import com.winlator.star.contentdialog.VegasKeyCatalog
+import com.winlator.star.contentdialog.VegasKeyKnowledge
+import com.winlator.star.contentdialog.VegasTierPresets
+import com.winlator.star.core.HttpUtils
 import com.winlator.star.ui.components.CollapsibleRail
 import com.winlator.star.ui.components.ContainerGlossarySheet
 import com.winlator.star.ui.components.EnvVarsEditor
@@ -129,6 +146,7 @@ fun ContainerDetailScreen(
     var showVegasDownloadSheet   by remember { mutableStateOf(false) }
     var showVkd3dDownloadSheet   by remember { mutableStateOf(false) }
     var showD7vkDownloadSheet    by remember { mutableStateOf(false) }
+    var showStockConfigSheet     by remember { mutableStateOf(false) }
     var showVulkanConfig          by remember { mutableStateOf(false) }
     // Bumped after a DXVK/VKD3D/Vegas download so the open DxvkConfigDialog re-reads its version lists.
     var dxvkRefreshKey           by remember { mutableStateOf(0) }
@@ -324,16 +342,39 @@ fun ContainerDetailScreen(
         DxvkConfigDialog(
             isArm64EC = viewModel.isArm64EC,
             isVegas = isVegasWrapper,
-            relaxDxvkFilter = relaxDxvkFilter,
+            containerRootDir = viewModel.container?.rootDir,
             refreshKey = dxvkRefreshKey,
             initialConfig = viewModel.dxWrapperConfig,
-            onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showDxvkConfig = false },
+            onConfirm = { newConfig ->
+                viewModel.dxWrapperConfig = newConfig
+                viewModel.container?.let { c ->
+                    val file = DXVKConfigDialog.parseConfig(newConfig).get("dxvkConfigFile")
+                    val ckv = DXVKConfigDialog.parseConfig(c.getDXWrapperConfig())
+                    if (ckv.get("dxvkConfigFile") != file) {
+                        ckv.put("dxvkConfigFile", file)
+                        c.setDXWrapperConfig(ckv.toString())
+                        c.saveData()
+                    }
+                }
+                showDxvkConfig = false
+            },
             onDismiss = { showDxvkConfig = false },
-            // Close the config dialog first — the download sheet is a ModalBottomSheet (activity
-            // window) and would otherwise render BEHIND this AlertDialog. It reopens on sheet dismiss.
+            onLivePointerChanged = { p ->
+                val kv = DXVKConfigDialog.parseConfig(viewModel.dxWrapperConfig)
+                if (kv.get("dxvkConfigFile") != p) {
+                    kv.put("dxvkConfigFile", p)
+                    viewModel.dxWrapperConfig = kv.toString()
+                    viewModel.container?.let { c ->
+                        val ckv = DXVKConfigDialog.parseConfig(c.getDXWrapperConfig())
+                        ckv.put("dxvkConfigFile", p)
+                        c.setDXWrapperConfig(ckv.toString())
+                        c.saveData()
+                    }
+                }
+            },
             onDownloadDxvk = { showDxvkConfig = false; if (isVegasWrapper) showVegasDownloadSheet = true else showDxvkDownloadSheet = true },
-            onDownloadVkd3d = { showDxvkConfig = false; showVkd3dDownloadSheet = true },
-            onDownloadD7vk = { showDxvkConfig = false; showD7vkDownloadSheet = true }
+            onOpenConfigDownload = { showDxvkConfig = false; showStockConfigSheet = true },
+            onDownloadVkd3d = { showDxvkConfig = false; showVkd3dDownloadSheet = true }
         )
     }
     if (showWineD3DConfig) {
@@ -434,6 +475,11 @@ fun ContainerDetailScreen(
         VegasDownloadSheet(
             onDismiss = { showVegasDownloadSheet = false; showDxvkConfig = true },
             onContentChanged = { dxvkRefreshKey++ }
+        )
+    }
+    if (showStockConfigSheet) {
+        StockConfigDownloadSheet(
+            onDismiss = { showStockConfigSheet = false; showDxvkConfig = true }
         )
     }
 }
@@ -3268,7 +3314,7 @@ internal fun ExtensionPickerDialog(
 internal fun DxvkConfigDialog(
     isArm64EC: Boolean,
     isVegas: Boolean = false,
-    relaxDxvkFilter: Boolean = false,
+    containerRootDir: java.io.File? = null,
     refreshKey: Int = 0,
     initialConfig: String,
     onConfirm: (String) -> Unit,
@@ -3276,6 +3322,13 @@ internal fun DxvkConfigDialog(
     onDownloadDxvk: () -> Unit = {},
     onDownloadVkd3d: () -> Unit = {},
     onDownloadD7vk: () -> Unit = {},
+    relaxDxvkFilter: Boolean = false,
+    // Fires after every successful live-file write with the file the game must read.
+    // The host persists dxvkConfigFile immediately — waiting for OK left toggles
+    // invisible to launched games when the sheet was dismissed without OK (the
+    // pointer kept aiming at the old path, e.g. a legacy /sdcard/dxvk.conf).
+    onLivePointerChanged: (String) -> Unit = {},
+    onOpenConfigDownload: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -3283,12 +3336,55 @@ internal fun DxvkConfigDialog(
     val activity = context.findActivity() ?: return
     var isProcessing by remember { mutableStateOf(false) }
 
+    // Virtual "Browse…" entry in the custom-source dropdown; launches the file picker.
+    val BROWSE_CONFIG_MARKER = "Browse for file…"
+
     val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
     val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
+    val configSourceEntries = remember { mutableStateOf(listOf<String>()) }
     // Seeded with the bundled sentinel so the D7VK version dropdown always offers "Bundled (default)"
     // even before the async catalog load lands (or when there are no downloaded d7vk profiles).
     val d7vkVersions    = remember { mutableStateOf(listOf(DXVKConfigDialog.D7VK_BUNDLED)) }
-    val configSourceEntries = remember { mutableStateOf(listOf<String>()) }
+
+    // ---- VEGAS config source: stock/custom two-source model (Tier-2B) ----
+    // Declared before LaunchedEffect: the init block below references these on first load.
+    val stockSources = remember { mutableStateOf(listOf<DXVKConfigDialog.StockSource>()) }
+    // Installed VEGAS builds (verNames) — drives the inline ⬇ on the stock-config row:
+    // versions whose parked .conf is missing can be fetched straight from the releases
+    // feed without re-downloading the whole build.
+    val installedVegasVersions = remember { mutableStateOf(listOf<String>()) }
+    val customEntries = remember { mutableStateOf(listOf<String>()) }
+    var useDefaults by remember { mutableStateOf(true) }
+    var selectedStock by remember { mutableStateOf<String?>(null) }   // stock verName
+    var selectedCustom by remember { mutableStateOf<String?>(null) }  // custom file path
+    var stockEdited by remember { mutableStateOf(false) }
+    var toggleVersion by remember { mutableStateOf(0) }               // bump after a write -> re-snapshot
+    // Capture-once backups: the auto slot is the FILE <name>.bak beside the live file.
+    // It is created on the FIRST edit after a fresh selection/restore and then left
+    // alone — across edits AND sessions (no in-memory set to reset). Restore consumes
+    // it, so the next edit recaptures. Manual "Backup now" copies use .bak-manual-N
+    // and are never touched automatically.
+    // §6c value editor: the row whose value picker is open + the freeform draft.
+    var valuePickerRow by remember { mutableStateOf<VegasKeyKnowledge.EditRow?>(null) }
+    var customValueDraft by remember { mutableStateOf("") }
+    var pendingDeleteKey by remember { mutableStateOf<String?>(null) }
+    // (+) add-key editor: freeform key/value appended to the live file (stock OR custom).
+    var showAddKey by remember { mutableStateOf(false) }
+    var addKeyDraft by remember { mutableStateOf("") }
+    var addValueDraft by remember { mutableStateOf("") }
+    // §tier: staged FAQ tier selection (null = auto). Applied through vegas.forceTier.
+    var tierChoice by remember { mutableStateOf<Int?>(null) }
+    // §tier: device detection, read once per dialog open (sysfs is cheap, still cached).
+    val gpuModel = remember { VegasTierPresets.readGpuModel() }
+    val detectedTier = remember { VegasTierPresets.classifyModel(gpuModel) }
+    var showBackups by remember { mutableStateOf(false) }
+    var restoreTarget by remember { mutableStateOf<java.io.File?>(null) }
+    // §7 release notes: live fetch (isygold/vegas-releases) cached per version per session,
+    // bundled fallback (VegasTierPresets.BUNDLED_NOTES), hidden when neither.
+    var notesCache by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+    var notesLoading by remember { mutableStateOf(false) }
+    var notesSource by remember { mutableStateOf<String?>(null) }  // "live" | "bundled" | "none"
+    var showNotes by remember { mutableStateOf(false) }
 
     LaunchedEffect(refreshKey) {
         withContext(Dispatchers.IO) {
@@ -3301,11 +3397,51 @@ internal fun DxvkConfigDialog(
             val vkd3d = DXVKConfigDialog.loadVkd3dVersionList(context, cm)
             val d7vk = DXVKConfigDialog.loadD7vkVersionList(context, cm)
             val cfgsrc = DXVKConfigDialog.loadVegasConfigSourceList(context)
+            val stock = if (isVegas) DXVKConfigDialog.loadVegasStockSources(context, cm) else listOf()
+            val installed = if (isVegas)
+                cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+                    ?.mapNotNull { it.verName }?.distinct().orEmpty()
+                else listOf()
             withContext(Dispatchers.Main) {
                 allDxvkVersions.value = versions
                 vkd3dVersions.value = vkd3d
                 d7vkVersions.value = d7vk
                 configSourceEntries.value = cfgsrc
+                stockSources.value = stock
+                installedVegasVersions.value = installed
+                                // Option B init: the stored dxvkConfigFile IS the live file. Restore by matching:
+                // parked stock file -> stock dropdown; sidecar of a known stock -> that stock
+                // baseline (the pointer moved when the first edit happened); anything else
+                // (custom path, incl. a legacy vegas/active.conf) -> custom dropdown, edited
+                // in place. No active.conf copy is ever created or implied.
+                val stored = config.get("dxvkConfigFile")
+                val stockMatch = stock.firstOrNull { it.file.absolutePath == stored }
+                val sDir = containerRootDir?.let { java.io.File(java.io.File(it, "vegas"), "configs") }
+                val sidecarMatch = if (stored.isNotEmpty() && sDir != null && sDir.isDirectory) {
+                    stock.firstOrNull { it.tag != null && java.io.File(sDir, it.tag + ".user.conf").absolutePath == stored }
+                } else null
+                val customBase = cfgsrc.filter { it != "None" }
+                customEntries.value = if (stored.isNotEmpty() && stored !in customBase) customBase + stored else customBase
+                when {
+                    stored.isEmpty() -> {
+                        useDefaults = true
+                    }
+                    stockMatch != null -> {
+                        selectedStock = stockMatch.displayLabel()
+                        selectedCustom = null
+                        useDefaults = false
+                    }
+                    sidecarMatch != null -> {
+                        selectedStock = sidecarMatch.displayLabel()
+                        selectedCustom = null
+                        useDefaults = false
+                    }
+                    else -> {
+                        selectedCustom = stored
+                        selectedStock = null
+                        useDefaults = false
+                    }
+                }
             }
         }
     }
@@ -3326,9 +3462,29 @@ internal fun DxvkConfigDialog(
         } else allDxvkVersions.value
     }
 
-    var selectedDxvk by remember(filteredDxvk) {
+    var selectedDxvk by remember(allDxvkVersions.value) {
         val stored = config.get("version")
-        mutableStateOf(filteredDxvk.firstOrNull { it == stored } ?: filteredDxvk.firstOrNull() ?: stored)
+        mutableStateOf(allDxvkVersions.value.firstOrNull { it == stored } ?: allDxvkVersions.value.firstOrNull() ?: stored)
+    }
+
+    // Re-sync installed versions every time this dialog is composed (it only exists while
+    // open): deletions made in the contents hub previously left ghosts in the uni-select.
+    LaunchedEffect(Unit) {
+        if (!isVegas) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            val cm = ContentsManager(context)
+            cm.syncContents()
+            val versions = DXVKConfigDialog.loadVegasVersionList(context, cm)
+            val stock = DXVKConfigDialog.loadVegasStockSources(context, cm)
+            val installed = cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+                ?.mapNotNull { it.verName }?.distinct().orEmpty()
+            withContext(Dispatchers.Main) {
+                allDxvkVersions.value = versions
+                stockSources.value = stock
+                installedVegasVersions.value = installed
+                if (selectedDxvk !in versions) selectedDxvk = versions.firstOrNull() ?: selectedDxvk
+            }
+        }
     }
 
     val dxvkType = remember(selectedDxvk) { DXVKConfigDialog.getDXVKType(selectedDxvk) }
@@ -3349,12 +3505,425 @@ internal fun DxvkConfigDialog(
         val stored = config.get("d7vkVersion")
         mutableStateOf(d7vkVersions.value.firstOrNull { it == stored } ?: DXVKConfigDialog.D7VK_BUNDLED)
     }
-    var selectedConfigSource by remember(configSourceEntries.value) {
-        val stored = config.get("dxvkConfigFile")
-        mutableStateOf(configSourceEntries.value.firstOrNull { it == stored } ?: configSourceEntries.value.firstOrNull() ?: "None")
-    }
     var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
     var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
+
+    // VEGAS knowledge layer: bundled asset or null (null -> unclassified fallback).
+    val vegasKnowledge = remember {
+        val k = DXVKConfigDialog.loadVegasKeyKnowledge(context)
+        // Autonomy: re-apply feed-discovered version tail persisted from prior sessions.
+        val saved = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
+            .getString("released_tail", null)?.split("|")?.filter { it.isNotBlank() }
+        if (!saved.isNullOrEmpty()) k.mergeReleasedTail(saved)
+        k
+    }
+    // VEGAS key catalog (classifier ground truth, §6b): null -> classifier off, rows unverified.
+    // Heal with live tail — tags seen via GitHub feed that are newer than bundled catalog (heals "catalog behind").
+    val vegasCatalog = remember {
+        val cat = DXVKConfigDialog.loadVegasKeyCatalog(context)
+        if (cat != null) {
+            val tail = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
+                .getString("catalog_tail", null)?.split("|")?.filter { it.isNotBlank() }
+            if (!tail.isNullOrEmpty()) cat.mergeTailTags(tail)
+        }
+        cat
+    }
+    val activeStockTag = remember(selectedStock, stockSources.value) {
+        stockSources.value.firstOrNull { it.verName == selectedStock || it.displayLabel() == selectedStock }?.tag
+    }
+    // Coverage rule (STOCK rows only): installed tag missing from catalog (or no tag
+    // recorded) -> "catalog behind build". Tail-healed tags count as covered.
+    val catalogBehind = remember(vegasCatalog, selectedStock, activeStockTag) {
+        vegasCatalog != null && selectedStock != null && (activeStockTag == null || !vegasCatalog.isCoveredOrTail(activeStockTag))
+    }
+    var showCatalogDialog by remember { mutableStateOf(false) }
+    var showKeyDocSheet by remember { mutableStateOf(false) }
+    // Fork-Feature filter persists across dialog opens (user request: toggle → OK → reopen
+    // must stay filtered). Written through on every flip — cheap pref, no OK gate needed.
+    val forkFilterPrefs = remember { context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE) }
+    var forkFilter by remember { mutableStateOf(forkFilterPrefs.getBoolean("forkFilter", false)) }
+    // §6a.6 schema-aware editor: wrong-family key awaiting the block-with-explanation dialog.
+    var pendingSchemaBlock by remember { mutableStateOf<String?>(null) }
+    // §6b.1 user-initiated "Check for new builds" (report only — observation, never mutation).
+    var liveReport by remember { mutableStateOf<VegasLiveCheck.Report?>(null) }
+    var liveChecking by remember { mutableStateOf(false) }
+
+        // ---- Option B: "the selected path IS the live file" ----
+    // Stock baseline: the parked stock file is read-only until the FIRST edit; that first
+    // write creates the user's own sidecar <container>/vegas/configs/<tag>.user.conf which
+    // becomes the live file (and the saved dxvkConfigFile pointer moves with it). Custom
+    // selections are the live file from the start, edited in place. No active.conf.
+    val stockPathForSelected = remember(selectedStock, stockSources.value) {
+        selectedStock?.let { s ->
+            stockSources.value.firstOrNull { it.verName == s || it.displayLabel() == s }?.file?.absolutePath
+        }
+    }
+    // Sidecar lives inside the container so it survives WCP updates of the parked file.
+    // Fix blue-button-not-staying: tag may be null when .provenance.json is missing (older installs).
+    // Fall back to the stock verName (stripped) so the sidecar is always resolvable.
+    val sidecarFallback = remember(selectedStock, stockSources.value) {
+        stockSources.value.firstOrNull { it.verName == selectedStock || it.displayLabel() == selectedStock }
+            ?.verName?.removePrefix("vegas-")?.substringBefore(" ·")
+            ?: selectedStock?.removePrefix("vegas-")?.substringBefore(" ·")
+    }
+    val sidecarBase = remember(activeStockTag, sidecarFallback) {
+        (activeStockTag?.takeIf { it.isNotBlank() } ?: sidecarFallback)?.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    }
+    val sidecarPath = remember(containerRootDir, sidecarBase) {
+        if (sidecarBase == null) null
+        else {
+            val dir = if (containerRootDir != null)
+                java.io.File(java.io.File(containerRootDir, "vegas"), "configs")
+            else
+                java.io.File(context.filesDir, "vegas-defaults/configs")
+            java.io.File(dir, sidecarBase + ".user.conf").absolutePath
+        }
+    }
+    // Probe both tag-based and verName-based sidecar names so an older tag-sidecar is still found
+    val sidecarExists = remember(toggleVersion, sidecarPath, containerRootDir, sidecarFallback, activeStockTag) {
+        if (sidecarPath != null && java.io.File(sidecarPath).isFile) true
+        else if (containerRootDir != null && sidecarFallback != null) {
+            // legacy fallback: check the alternative naming
+            val altBase = sidecarFallback.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            if (altBase != sidecarBase) java.io.File(java.io.File(java.io.File(containerRootDir, "vegas"), "configs"), altBase + ".user.conf").isFile
+            else false
+        } else false
+    }
+    // Resolve the actual existing sidecar file (prefer tag-based, fallback to verName-based)
+    val resolvedSidecarPath = remember(sidecarPath, containerRootDir, sidecarFallback, toggleVersion) {
+        if (sidecarPath != null && java.io.File(sidecarPath).isFile) sidecarPath
+        else if (containerRootDir != null && sidecarFallback != null) {
+            val alt = java.io.File(java.io.File(java.io.File(containerRootDir, "vegas"), "configs"), sidecarFallback.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".user.conf").absolutePath
+            if (java.io.File(alt).isFile) alt else sidecarPath
+        } else sidecarPath
+    }
+    val liveFile = remember(useDefaults, selectedStock, selectedCustom, stockPathForSelected, resolvedSidecarPath, sidecarExists) {
+        when {
+            useDefaults -> null
+            selectedStock != null && sidecarExists && resolvedSidecarPath != null -> java.io.File(resolvedSidecarPath!!)
+            selectedStock != null -> stockPathForSelected?.let { java.io.File(it) }
+            selectedCustom != null -> java.io.File(selectedCustom!!)
+            else -> null
+        }
+    }
+    // "" = USE DEFAULTS (no file).
+    val livePath = liveFile?.absolutePath ?: ""
+    // Option B backups: .bak-* copies beside the CURRENT live file, newest first.
+    val backupsList = remember(liveFile, toggleVersion) {
+        val dir = liveFile?.parentFile
+        val name = liveFile?.name
+        if (dir == null || name == null || !dir.isDirectory) emptyList()
+        else dir.listFiles { f -> f.isFile && f.name.startsWith(name + ".bak") }
+            ?.sortedByDescending { it.lastModified() } ?: emptyList()
+    }
+    // Config-file snapshot, read ONCE per source pick or per write (never re-read on the fly):
+    // empty text = USE DEFAULTS; missing = live file not found on disk.
+    val configSourceText = remember(useDefaults, liveFile, toggleVersion) {
+        if (useDefaults || liveFile == null) ""
+        else if (liveFile.isFile) runCatching { liveFile.readText() }.getOrDefault("")
+        else ""
+    }
+    val configSourceMissing = remember(liveFile, useDefaults) {
+        !useDefaults && liveFile != null && !liveFile.isFile
+    }
+    val configRows = remember(vegasKnowledge, configSourceText, selectedDxvk) {
+        if (vegasKnowledge != null) vegasKnowledge.editRows(configSourceText, selectedDxvk)
+        else VegasKeyKnowledge.editRowsUnclassified(configSourceText)
+    }
+
+    // §6c value editor ground truth: distinct enabled values per key across ALL installed
+    // stock baseline files — the value-picker option pool. Boolean keys (only 0/1 values)
+    // stay switch-driven. Nothing when no stock package is installed.
+    val stockBaselineKeyValues = remember(stockSources.value, vegasKnowledge, selectedDxvk) {
+        val m = mutableMapOf<String, MutableSet<String>>()
+        for (src in stockSources.value) {
+            val f = src.file
+            if (!f.isFile) continue
+            val rows = (vegasKnowledge?.editRows(runCatching { f.readText() }.getOrDefault(""), src.verName)
+                ?: VegasKeyKnowledge.editRowsUnclassified(runCatching { f.readText() }.getOrDefault("")))
+            for (r in rows) if (r.enabled && r.value.isNotEmpty()) m.getOrPut(r.key) { linkedSetOf() }.add(r.value)
+        }
+        m.mapValues { it.value.toList() }
+    }
+    // The SELECTED baseline's rows: value-picker reset target + pending-row source.
+    val baselineRowsForSelected = remember(activeStockTag, vegasKnowledge, stockSources.value, selectedDxvk) {
+        if (selectedStock == null) emptyList()
+        else {
+            val f = stockSources.value.firstOrNull { it.tag == activeStockTag }?.file
+            if (f == null || !f.isFile) emptyList()
+            else (vegasKnowledge?.editRows(runCatching { f.readText() }.getOrDefault(""), selectedDxvk)
+                ?: VegasKeyKnowledge.editRowsUnclassified(runCatching { f.readText() }.getOrDefault("")))
+        }
+    }
+    // Pending rows (stock editor only): baseline keys ABSENT from the active config —
+    // switch OFF, "added on save" when enabled. Custom files are user-owned: never listed.
+    val pendingRows = remember(baselineRowsForSelected, configRows) {
+        val activeKeys = configRows.map { it.key }.toSet()
+        baselineRowsForSelected.filter { it.key !in activeKeys }
+    }
+    // Keys whose active row differs from the selected baseline (value or comment state) —
+    // "edited" mark + per-key reset in the value picker.
+    val changedKeys = remember(configRows, baselineRowsForSelected, selectedStock) {
+        if (selectedStock == null) emptySet()
+        else {
+            val base = baselineRowsForSelected.associateBy { it.key }
+            configRows.filter { r ->
+                val b = base[r.key]
+                b != null && (b.value != r.value || b.enabled != r.enabled)
+            }.map { it.key }.toSet()
+        }
+    }
+
+    fun isBooleanKey(key: String): Boolean =
+        stockBaselineKeyValues[key]?.isNotEmpty() == true && stockBaselineKeyValues[key]!!.all { it == "0" || it == "1" }
+
+    // §tier: the vegas.forceTier value currently in the active config (3 = high, 2 = mid,
+    // 1 = entry, 0 = auto, null = unset). Recomputed after every write (toggleVersion).
+    val activeForceTier = remember(configRows, toggleVersion) {
+        configRows.firstOrNull { it.key == "vegas.forceTier" }?.value?.toIntOrNull()
+    }
+
+    fun schemaName(s: VegasKeyCatalog.Schema?): String = when (s) {
+        VegasKeyCatalog.Schema.SAREK -> "Sarek (dxvk.vegas.*)"
+        VegasKeyCatalog.Schema.STAR -> "Star Engine (vegas.*)"
+        null -> "unknown"
+    }
+
+    // Restore a .bak archive as the LIVE file: capture-once semantics — the backup is
+    // CONSUMED (written into the live file, then deleted if it is the auto slot), so
+    // nothing accumulates and the next edit recaptures fresh. Manual .bak-manual-N
+    // copies survive restores: they are deliberate snapshots, not rolling state.
+    fun restoreBackup(backup: java.io.File) {
+        val target = liveFile ?: return
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                if (!target.isFile) return@withContext false
+                val content = runCatching { backup.readText() }.getOrNull() ?: return@withContext false
+                if (!runCatching { target.writeText(content) }.isSuccess) return@withContext false
+                if (backup.name == target.name + ".bak") backup.delete()
+                true
+            }
+            if (ok) { stockEdited = true; toggleVersion++ }
+            else Toast.makeText(activity, "Failed to restore backup", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Manual safety net for capture-once backups: an explicit user-taken snapshot.
+    // Named <name>.bak-manual (-2, -3…) so it never collides with the auto slot,
+    // shows up in the same Restore list, and survives restores and edits alike.
+    fun manualBackup() {
+        val target = liveFile ?: return
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                if (!target.isFile) return@withContext false
+                var bak = java.io.File(target.absolutePath + ".bak-manual")
+                var n = 2
+                while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-manual-" + n); n++ }
+                runCatching { java.nio.file.Files.copy(target.toPath(), bak.toPath()) }.isSuccess
+            }
+            if (ok) toggleVersion++
+            else Toast.makeText(activity, "Failed to create backup", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // §7 release notes: report-only fetch from the vegas-releases feed (the same source
+    // the live-check uses), matched by the SELECTED version's tag, cached per session.
+    // Falls back to the bundled per-build notes; hidden entirely when neither exists.
+    fun openReleaseNotes() {
+        val version = selectedDxvk.removePrefix("vegas-")
+        val cached = notesCache
+        if (cached != null && cached.first == version) {
+            notesSource = "live"
+            showNotes = true
+            return
+        }
+        val bundled = VegasTierPresets.BUNDLED_NOTES[version]
+        notesSource = if (bundled != null) "bundled" else "none"
+        showNotes = true
+        if (notesLoading) return
+        notesLoading = true
+        HttpUtils.download("https://api.github.com/repos/isygold/vegas-releases/releases") { body ->
+            scope.launch {
+                val parsed = runCatching {
+                    val arr = JSONArray(body)
+                    (0 until arr.length()).mapNotNull { i ->
+                        val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                        val tag = o.optString("tag_name", "").removePrefix("vegas-")
+                        val b = o.optString("body", "")
+                        tag to b
+                    }.firstOrNull { it.first == version }?.second
+                        ?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(8)
+                }.getOrNull()
+                if (parsed != null && parsed.isNotEmpty()) {
+                    notesCache = version to parsed
+                    notesSource = "live"
+                }
+                notesLoading = false
+            }
+        }
+    }
+
+    // §6b.1 user-initiated "Check for new builds" — report + heal catalog tail (so next open isn't "unverified").
+    fun runLiveCheck() {
+        if (liveChecking) return
+        liveChecking = true
+        HttpUtils.download("https://api.github.com/repos/isygold/vegas-releases/releases") { body ->
+            try {
+                scope.launch {
+                    val catalogNewest = vegasCatalog?.newestTag()
+                    val newestAt = catalogNewest?.let { vegasCatalog?.publishedAtOf(it) }
+                    val report = VegasLiveCheck.check(body, activeStockTag, catalogNewest, newestAt)
+                    liveReport = report
+                    // heal: any newer tags seen live become covered
+                    if (report.feedOk && report.newerTags.isNotEmpty()) {
+                        val prefs = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
+                        val cur = prefs.getString("catalog_tail", "")?.split('|')?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+                        var added = false
+                        for (t in report.newerTags) if (t.isNotBlank() && cur.add(t)) added = true
+                        // also ensure installed tag itself is considered seen (covers hash-renamed installs)
+                        if (report.installedTag != null && report.installedTag.isNotBlank() && cur.add(report.installedTag!!)) added = true
+                        // cap growth so the persisted tail stays bounded
+                        VegasKeyCatalog.capToMax(cur)
+                        if (added) {
+                            prefs.edit().putString("catalog_tail", cur.joinToString("|")).apply()
+                            vegasCatalog?.mergeTailTags(cur.toList())
+                        }
+                    }
+                    liveChecking = false
+                }
+            } catch (_: IllegalStateException) {
+                // coroutine scope already disposed (user navigated away) — ignore
+            }
+        }
+    }
+
+
+    val pickCustomConfigLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val path = InAppFilePicker.pickedPath(result.data)
+            if (path != null) {
+                selectedCustom = path
+                selectedStock = null
+                useDefaults = false
+                if (path !in customEntries.value) customEntries.value = customEntries.value + path
+            }
+        }
+    }
+
+    // Comment/uncomment the exact config line. Option B: the selected path IS the live
+    // file. Stock baselines stay pristine until the FIRST edit — that write creates the
+    // user's own sidecar copy (<container>/vegas/configs/<tag>.user.conf) which becomes
+    // the live file. Custom files are written in place from the start. No active.conf,
+    // no import, no seed/switch decision rows. §6a.6: wrong-schema keys are BLOCKED
+    // with an explanation before anything else (stock rows only — custom is user-owned).
+    fun commitConfigWrite(isStockPath: Boolean, transform: (String) -> String?) {
+        val target = liveFile ?: return
+        // Use the resolved sidecar path (existing file) for final pointer; fall back to intended new sidecar
+        val intendedSidecar = sidecarPath
+        val effectiveSidecar = resolvedSidecarPath ?: intendedSidecar
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                if (!target.isFile) return@withContext false
+                val text = runCatching { target.readText() }.getOrNull() ?: return@withContext false
+                val next = transform(text) ?: return@withContext false
+                // Capture-once backup: create the auto slot ONLY when it does not exist
+                // yet (first edit after a fresh selection/restore). Never .bak-2, -3…
+                // from repeat edits or new sessions — the slot persists until consumed
+                // by a restore. Manual "Backup now" copies use .bak-manual-N instead.
+                val autoBak = java.io.File(target.absolutePath + ".bak")
+                if (!autoBak.isFile) {
+                    runCatching { java.nio.file.Files.copy(target.toPath(), autoBak.toPath()) }
+                }
+                // Ensure the target's parent directory exists (fallback sidecar or custom path).
+                if (!target.parentFile.isDirectory) target.parentFile.mkdirs()
+                // Stock + pristine baseline: materialize the sidecar with the edited content.
+                // From then on the sidecar IS the live file (pointer saved on OK).
+                if (isStockPath && !sidecarExists && effectiveSidecar != null) {
+                    val s = java.io.File(effectiveSidecar!!)
+                    if (!s.parentFile.exists() && !s.parentFile.mkdirs()) return@withContext false
+                    if (!s.parentFile.isDirectory) return@withContext false
+                    runCatching { s.writeText(next) }.isSuccess
+                } else {
+                    runCatching { target.writeText(next) }.isSuccess
+                }
+            }
+            if (ok) {
+                if (isStockPath) stockEdited = true
+                toggleVersion++
+                // The game reads dxvkConfigFile at launch — point it at the file we just
+                // wrote NOW, not on OK. Dismissing the sheet must never orphan toggles.
+                val finalPath = if (isStockPath && !sidecarExists && effectiveSidecar != null) effectiveSidecar!!
+                                else target.absolutePath
+                onLivePointerChanged(finalPath)
+            }
+            else Toast.makeText(activity, "Failed to update config file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Comment/uncomment the exact config line (Option B direct-write; §6a.6 wrong-schema
+    // block). Pending (absent) keys: enabling appends the line with the row's stock
+    // default; disabling an absent key is a structural no-op.
+    fun applyToggle(key: String, value: String, enable: Boolean) {
+        if (useDefaults || liveFile == null) return
+        val isStockPath = selectedStock != null
+        // §6a.6 schema-aware editor: block BEFORE the write — a wrong-family key can never
+        // be meaningfully applied to this build's schema. Stock rows only.
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+            pendingSchemaBlock = key
+            return
+        }
+        commitConfigWrite(isStockPath) { text ->
+            VegasKeyKnowledge.toggleLine(text, key, enable)
+                ?: if (enable) VegasKeyKnowledge.setLine(text, key, value) else text
+        }
+    }
+
+    // Value edit (non-boolean keys via the value picker): same pipeline; setLine preserves
+    // comment state and appends an enabled line for absent (pending) keys.
+    fun applyValue(key: String, value: String) {
+        if (useDefaults || liveFile == null) return
+        val isStockPath = selectedStock != null
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+            pendingSchemaBlock = key
+            return
+        }
+        commitConfigWrite(isStockPath) { text ->
+            VegasKeyKnowledge.setLine(text, key, value)
+        }
+    }
+
+    // (+) Add a brand-new key=value line to the live file (stock sidecar OR custom —
+    // both are plain live files under Option B). setLine appends an enabled line at
+    // the end when the key is absent; an existing key gets its value updated in
+    // place instead of duplicating. Same guards as applyValue.
+    fun applyAddKey(key: String, value: String) {
+        if (useDefaults || liveFile == null) return
+        val isStockPath = selectedStock != null
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+            pendingSchemaBlock = key
+            return
+        }
+        commitConfigWrite(isStockPath) { text ->
+            VegasKeyKnowledge.setLine(text, key, value)
+        }
+    }
+
+    // Per-key delete: drops the key's line entirely from the live file (stock sidecar
+    // OR custom — both plain live files under Option B). Same guards as applyValue so a
+    // gated (wrong-schema) key can't be silently dropped without the user seeing why.
+    fun applyDeleteKey(key: String) {
+        if (useDefaults || liveFile == null) return
+        val isStockPath = selectedStock != null
+        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+            pendingSchemaBlock = key
+            return
+        }
+        commitConfigWrite(isStockPath) { text ->
+            VegasKeyKnowledge.removeLine(text, key)
+        }
+    }
 
     val pickVegasLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -3386,29 +3955,36 @@ internal fun DxvkConfigDialog(
         }
     }
 
-    OutlinedAlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isVegas) "VEGAS ${stringResource(R.string.configuration)}" else "DXVK ${stringResource(R.string.configuration)}") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    LabeledDropdown(
-                        stringResource(R.string.vkd3d_version), vkd3dVersions.value, selectedVkd3d, { selectedVkd3d = it },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContentInstallGear(onDownloadFile = onDownloadVkd3d)
-                }
+                // §VEGAS version management (VEGAS mode): top section, inline action cluster
+                // at the right edge — download gear, delete, install-from-file. Non-VEGAS
+                // keeps the original DXVK-first order below.
+                // §loglevel: VEGAS ignores the config-file log-level key; it must be an env var.
+                Text(
+                    stringResource(R.string.vegas_config_loglevel_envvar_note),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall.merge(TextStyle(fontWeight = FontWeight.Bold))
+                )
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    LabeledDropdown(
-                        if (isVegas) "Vegas Selector" else stringResource(R.string.dxvk_version),
-                        filteredDxvk, selectedDxvk, { selectedDxvk = it },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContentInstallGear(
-                        onDownloadFile = onDownloadDxvk
-                    )
-                    if (isVegas) {
+                if (isVegas) {
+                    SectionLabel("VEGAS VERSION")
+                    if (filteredDxvk.isEmpty()) {
+                        Text(
+                            "no VEGAS build installed — download one via the sheet",
+                            color = MaterialTheme.colorScheme.outline,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LabeledDropdown(
+                            "", filteredDxvk, selectedDxvk, { selectedDxvk = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ContentInstallGear(onDownloadFile = onDownloadDxvk)
                         IconButton(
                             onClick = {
                                 isProcessing = true
@@ -3417,9 +3993,16 @@ internal fun DxvkConfigDialog(
                                         withContext(Dispatchers.IO) {
                                             val cm = ContentsManager(context)
                                             cm.syncContents()
+                                            // Match the exact "vegas-<selected>" name OR any hash-suffixed
+                                            // variant ("vegas-2.4.1-cf04e7f" vs "-3137660" asset renames) —
+                                            // exact-equality silently no-oped for renamed installs.
                                             val expectedName = "vegas-$selectedDxvk"
                                             val profile = cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                                                .firstOrNull { it.verName == expectedName }
+                                                .firstOrNull {
+                                                    it.verName == expectedName ||
+                                                        it.verName.removePrefix("vegas-") == selectedDxvk ||
+                                                        it.verName == selectedDxvk
+                                                }
                                             if (profile != null) {
                                                 cm.removeContent(profile)
                                                 cm.syncContents()
@@ -3434,9 +4017,9 @@ internal fun DxvkConfigDialog(
                                             } else {
                                                 withContext(Dispatchers.Main) {
                                                     Toast.makeText(activity, "No installed VEGAS version to delete", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        }
+        }
+    }
+}
                                     } catch (e: Exception) {
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(activity, "ERROR: Failed to delete — ${e.message}", Toast.LENGTH_LONG).show()
@@ -3459,22 +4042,49 @@ internal fun DxvkConfigDialog(
                             Icon(Icons.Default.FolderOpen, contentDescription = "Install from file", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
+                    if (isProcessing) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    // §7 release-notes chip: visible when notes exist for the selected version
+                    // (live-cached or bundled); ● live / ◐ bundled marker.
+                    val verKey = selectedDxvk.removePrefix("vegas-")
+                    if (notesCache?.first == verKey || VegasTierPresets.BUNDLED_NOTES[verKey] != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { openReleaseNotes() }) {
+                                Text("What's new in $selectedDxvk", style = MaterialTheme.typography.bodySmall)
+                            }
+                            val live = notesCache?.first == verKey
+                            Text(
+                                if (live) "● live" else "◐ bundled",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (live) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
-                // When VKD3D is on, filteredDxvk hides DXVK 1.x (it can't back VKD3D-Proton's DXGI, #113).
-                // Tell the user why those versions vanished — but only when the filter is actually active
-                // (the Mali relaxDxvkFilter driver keeps 1.x visible, so no reminder there).
-                if (selectedVkd3d != "None" && !relaxDxvkFilter) {
-                    Text(
-                        text = "VKD3D needs DXVK 2.0 or newer — older 1.x versions are hidden.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LabeledDropdown(
+                        stringResource(R.string.vkd3d_version), vkd3dVersions.value, selectedVkd3d, { selectedVkd3d = it },
+                        modifier = Modifier.weight(1f)
                     )
-                }
-                if (isProcessing) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    ContentInstallGear(onDownloadFile = onDownloadVkd3d)
                 }
                 Spacer(Modifier.height(8.dp))
+                if (!isVegas) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LabeledDropdown(
+                            stringResource(R.string.dxvk_version),
+                            filteredDxvk, selectedDxvk, { selectedDxvk = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ContentInstallGear(onDownloadFile = onDownloadDxvk)
+                    }
+                    if (isProcessing) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
                 if (dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = asyncEnabled, onCheckedChange = { asyncEnabled = it })
@@ -3492,7 +4102,8 @@ internal fun DxvkConfigDialog(
                 }
                 LabeledDropdown(stringResource(R.string.frame_rate), framerateEntries, selectedFramerate, { selectedFramerate = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("VKD3D Feature Level", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
+                SectionLabel("API FEATURE LEVEL")
+                LabeledDropdown("", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledDropdown("DDraw Wrapper", ddraEntries, selectedDdra, { selectedDdra = it })
                 // D7VK is a catalog-backed component: when it's the chosen DDraw wrapper, offer a
@@ -3508,9 +4119,817 @@ internal fun DxvkConfigDialog(
                         ContentInstallGear(onDownloadFile = onDownloadD7vk)
                     }
                 }
+                // §tier: FAQ performance tiers (docs/vegas_faq.html #11) — GPU detection,
+                // staged selection → preview → apply as vegas.forceTier through the normal
+                // config write pipeline. Rendered above the Config section; writing to a
+                // file-based source only (defaults has no file, so Apply is gated).
                 if (isVegas) {
                     Spacer(Modifier.height(8.dp))
-                    LabeledDropdown("Config Source", configSourceEntries.value, selectedConfigSource, { selectedConfigSource = it })
+                    SectionLabel("PERFORMANCE TIER")
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            // effectiveTier = staged choice if present, else persisted value (0/null → Auto). Fixes
+                            // "blue stays on Auto after reopen" — chips now reflect what is actually applied.
+                            val staged = tierChoice
+                            val effectiveTier: Int? = staged ?: activeForceTier?.let { if (it == 0) null else it }
+                            val tierForPreview = staged
+                            Text(
+                                when {
+                                    gpuModel == null -> "GPU model unreadable — tier is manual"
+                                    detectedTier != null -> "$gpuModel · auto Tier $detectedTier"
+                                    else -> "GPU: $gpuModel — no tier suggestion"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(
+                                    selected = effectiveTier == null,
+                                    onClick = { tierChoice = null },
+                                    label = { Text("Auto${if (detectedTier != null) " · T$detectedTier" else ""}") }
+                                )
+                                VegasTierPresets.TIERS.forEach { t ->
+                                    FilterChip(
+                                        selected = effectiveTier == t.number,
+                                        onClick = { tierChoice = t.number },
+                                        label = { Text(t.label) }
+                                    )
+                                }
+                            }
+                            val p = tierForPreview?.let { VegasTierPresets.PARAMS[it] }
+                            if (tierForPreview != null && p != null) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Draw threshold ${p.drawThreshold} (D3D9 ${p.drawThresholdD3D9}) · HAAE pacing ${p.haaePacing}ms · governor cap ${p.governorCap} · shader zero-init ${p.shaderZeroInit} · frame-gen ${p.frameGen}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    "will write: vegas.forceTier = $tierForPreview",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Row(modifier = Modifier.padding(top = 4.dp)) {
+                                    TextButton(
+                                        enabled = !useDefaults,
+                                        onClick = { applyValue("vegas.forceTier", tierForPreview.toString()); tierChoice = null }
+                                    ) { Text("Apply tier", style = MaterialTheme.typography.bodySmall) }
+                                    if (useDefaults) {
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            "pick a config source first — defaults has no file to write to",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            } else {
+                                val applied = activeForceTier
+                                if (applied != null) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        if (applied == 0) "Applied — auto (vegas.forceTier = 0)"
+                                        else "Applied — vegas.forceTier = $applied",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Row(modifier = Modifier.padding(top = 4.dp)) {
+                                        TextButton(
+                                            enabled = !useDefaults,
+                                            onClick = { applyValue("vegas.forceTier", "0"); tierChoice = null }
+                                        ) { Text("Reset to auto", style = MaterialTheme.typography.bodySmall) }
+                                        if (useDefaults) {
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                "pick a config source first",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Mali hint: non-Adreno device — the experimental Mali "Wrapper + compat +
+                    // bcn" driver (with the relaxed DXVK list) lives in the driver settings.
+                    if (gpuModel != null && !gpuModel.contains("adreno", ignoreCase = true)) {
+                        Spacer(Modifier.height(6.dp))
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f)),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("Experimental — Mali driver", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    "Pair the Mali 'Wrapper + compat + bcn' driver with the relaxed DXVK list (all DXVK versions) in the container's driver settings.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+                if (isVegas) {
+                    Spacer(Modifier.height(8.dp))
+                    SectionLabel("CONFIG")
+                    // Guidance for the three config audiences (new / customizer / file-savvy).
+                    Text(
+                        "New to configs? Grab a Stock config via ⬇, then pick it below. " +
+                        "Want it your way? Edit anything in a stock config — changes auto-save as your own copy, the original stays untouched. " +
+                        "Prefer managing files yourself? \"Custom config file\" points at any .conf (the built-in way of doing DXVK_CONFIG_FILE). " +
+                        "Heads-up: builds SILENTLY IGNORE keys they don't recognise — if an added key does nothing, it's either not supported by that build or has a typo.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    // ---- config source: two-source model (stock/custom), one ACTIVE ----
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = useDefaults, onCheckedChange = { useDefaults = it }, modifier = Modifier.height(32.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Use defaults (no config file)", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (!useDefaults) {
+                        // Option B: the selected path IS the live file — no adoption banner,
+                        // no seed/switch decisions. Legacy containers' parked stock files are
+                        // simply live files (their content shows and applies).
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            LabeledDropdown(
+                                "Stock config (per version)",
+                                stockSources.value.map { it.displayLabel() },
+                                selectedStock ?: "",
+                                { s -> selectedStock = s; selectedCustom = null; useDefaults = false },
+                                modifier = Modifier.weight(1f)
+                            )
+                            // Inline ⬇ hands off to the host-level config-download sheet
+                            // (same layering as the build sheets: dialog hides, sheet shows).
+                            if (isVegas) {
+                                IconButton(onClick = onOpenConfigDownload) {
+                                    Icon(
+                                        Icons.Filled.Download,
+                                        contentDescription = "Download stock configs",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                        if (stockSources.value.isEmpty()) {
+                            Text(
+                                "no installed VEGAS package ships a config — install one via the sheet",
+                                color = MaterialTheme.colorScheme.outline,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        // Option B stock edit info: pristine baselines stay read-only; the
+                        // FIRST edit creates the user's own sidecar which takes over as the
+                        // live file (and the saved pointer).
+                        if (selectedStock != null && selectedCustom == null && stockPathForSelected != null && !configSourceMissing) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                if (sidecarExists)
+                                    "Your edits live in your own copy — the stock version stays pristine."
+                                else
+                                    "Read-only until the first edit — changes create your own copy.",
+                                color = if (sidecarExists) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        LabeledDropdown(
+                            "Custom config file",
+                            customEntries.value + BROWSE_CONFIG_MARKER,
+                            selectedCustom ?: "",
+                            { c ->
+                                if (c == BROWSE_CONFIG_MARKER) {
+                                    pickCustomConfigLauncher.launch(
+                                        InAppFilePicker.buildIntent(context, emptyArray(), "Select config file")
+                                    )
+                                } else {
+                                    selectedCustom = c; selectedStock = null; useDefaults = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (livePath.isNotEmpty()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "📍 $livePath",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        if (configSourceMissing) {
+                            Spacer(Modifier.height(4.dp))
+                            Text("not found: $livePath", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            // #5 ghost → one-tap remove from dropdown
+                            if (selectedCustom != null) {
+                                TextButton(onClick = {
+                                    customEntries.value = customEntries.value.filter { it != selectedCustom }
+                                    selectedCustom = null
+                                    if (selectedStock == null) useDefaults = true
+                                }) { Text("Remove from list", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                            }
+                        }
+                        // Option B backups: .bak-* beside the CURRENT live file. Always visible
+                        // once a live file exists — an empty list reads as "no backups yet" —
+                        // so the restore entry point can never be hidden by state (user's #5).
+                        if (liveFile != null && !configSourceMissing) {
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    if (backupsList.isEmpty())
+                                        "No backups yet — the first edit keeps a copy of the current file."
+                                    else
+                                        "Backups: ${backupsList.size} — restore a previously saved state",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                // Manual safety net for capture-once backups: an explicit
+                                // snapshot taken by the user, never overwritten automatically.
+                                if (liveFile != null && liveFile.isFile) {
+                                    TextButton(onClick = { manualBackup() }) {
+                                        Text("Backup now", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                                if (backupsList.isNotEmpty()) {
+                                    TextButton(onClick = { showBackups = true }) { Text("Restore…", style = MaterialTheme.typography.bodySmall) }
+                                }
+                            }
+                        }
+                        if (!configSourceMissing && configSourceText.isNotEmpty()) {
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(checked = forkFilter, onCheckedChange = { forkFilter = it; forkFilterPrefs.edit().putBoolean("forkFilter", it).apply() }, modifier = Modifier.height(32.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Fork-feature filter", style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (forkFilter) {
+                                // Combined semantics: fork-only view AND unavailable
+                                // (LATE/REMOVED) keys hidden — count what actually shows.
+                                val shownCount = configRows.count { row ->
+                                    val k = vegasKnowledge
+                                    k?.isForkKey(row.key) == true && !k.isGated(row.key, selectedDxvk)
+                                }
+                                Text(
+                                    "Fork features only: $shownCount of ${configRows.size} keys shown",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(Modifier.height(2.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                TextButton(onClick = { showAddKey = true; addKeyDraft = ""; addValueDraft = "" }) {
+                                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Add key", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                            Spacer(Modifier.height(2.dp))
+                            // #7 & #10 helpers: pre-filter + typo suggestion (conflict-free, no LazyColumn nesting)
+                            val visibleRows = remember(configRows, forkFilter, selectedDxvk, vegasKnowledge) {
+                                configRows.filter { r ->
+                                    if (forkFilter && vegasKnowledge?.isForkKey(r.key) != true) false
+                                    else if (forkFilter && vegasKnowledge != null && vegasKnowledge.isGated(r.key, selectedDxvk)) false
+                                    else true
+                                }
+                            }
+                            fun levenshtein(a: String, b: String): Int {
+                                val dp = Array(a.length + 1) { IntArray(b.length + 1) }
+                                for (i in 0..a.length) dp[i][0] = i
+                                for (j in 0..b.length) dp[0][j] = j
+                                for (i in 1..a.length) for (j in 1..b.length) {
+                                    val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                                    dp[i][j] = minOf(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+                                }
+                                return dp[a.length][b.length]
+                            }
+                            fun typoFor(key: String): String? {
+                                if (vegasCatalog == null) return null
+                                val bucket = vegasCatalog.classify(key, activeStockTag)
+                                if (bucket != VegasKeyCatalog.Bucket.NOWHERE) return null
+                                var best: String? = null
+                                var bestDist = 3
+                                for (cand in vegasCatalog.allKeys()) {
+                                    val d = levenshtein(key, cand)
+                                    if (d < bestDist) { bestDist = d; best = cand }
+                                }
+                                return if (bestDist in 1..2) best else null
+                            }
+                            // Gated keys are now *shown* as ineffective — no auto-off (per your "stop").
+                            // They appear grey `needs 2.8.0+ · ineffective` with ○──, you decide to Add/Remove.
+                            // No LaunchedEffect auto-mutation, Custom and Stock both stay as you left them.
+                            // Brighten primary 40% toward white so changed-value text is readable on
+                            // dark surfaces (AMOLED pure-black gives ~4.6:1 for #0055FF at bodySmall).
+                            val changedTextColor = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.40f)
+                            visibleRows.forEach { row ->
+                                val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
+                                val baseBadge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
+                                // Bucket vocabulary describes VEGAS stock configs; a custom (user-owned) file is
+                                // by definition not a VEGAS build — suffixes would read as warnings
+                                // about something the user did deliberately. Stock-only.
+                                // #1 fix: shorten chain so badge doesn't overflow on small screens
+                                val bucketPart = if (vegasCatalog != null && selectedStock != null)
+                                    when (vegasCatalog.classify(row.key, activeStockTag)) {
+                                        VegasKeyCatalog.Bucket.IN_BUILD -> ""
+                                        VegasKeyCatalog.Bucket.OTHER_BUILD -> if (catalogBehind) "" else " · other"
+                                        VegasKeyCatalog.Bucket.UPSTREAM -> " · upstream"
+                                        VegasKeyCatalog.Bucket.NOWHERE -> " · new"
+                                    }
+                                else ""
+                                // cap length so 90-key screens don't wrap badly; UNKNOWN already user-friendly
+                                val badgeRaw = baseBadge + bucketPart + if (catalogBehind) " · unverified" else ""
+                                val badge = if (badgeRaw.length > 48) badgeRaw.take(45) + "…" else badgeRaw
+                                val changed = selectedStock != null && row.key in changedKeys
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Switch(
+                                        checked = row.enabled,
+                                        onCheckedChange = { applyToggle(row.key, row.value, it) },
+                                        modifier = Modifier.height(32.dp).width(48.dp)
+                                    )
+                                    Text(
+                                        row.key,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                                                 else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (isBooleanKey(row.key)) {
+                                        // Boolean keys stay switch-driven; the value is the comment state.
+                                        Text(
+                                            row.value,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (changed) changedTextColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    } else {
+                                        // Non-boolean keys open the value picker (stock vocabulary + custom).
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .clip(MaterialTheme.shapes.small)
+                                                .heightIn(min = 40.dp)
+                                                .clickable(enabled = !gated) {
+                                                    valuePickerRow = row
+                                                    customValueDraft = row.value
+                                                }
+                                        ) {
+                                            Text(
+                                                row.value,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (changed) changedTextColor
+                                                        else if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
+                                            if (!gated) Icon(
+                                                Icons.Default.ExpandMore,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                    if (!gated) IconButton(
+                                        onClick = { pendingDeleteKey = row.key },
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = "Delete key ${row.key}",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                                // #10 typo inline suggestion (only for NOWHERE bucket, distance ≤2)
+                                typoFor(row.key)?.let { sug ->
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 48.dp)) {
+                                        Text("Typo? Did you mean $sug", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+                                        TextButton(onClick = {
+                                            // Fix: write correct key with same value, then delete typo key
+                                            applyValue(sug, row.value)
+                                            // delete old typo after a short delay so sidecar write settles
+                                            scope.launch { kotlinx.coroutines.delay(300); applyDeleteKey(row.key) }
+                                        }) { Text("Fix", style = MaterialTheme.typography.bodySmall) }
+                                    }
+                                }
+                                Text(badge, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                            // §6c pending rows (stock editor only): baseline keys ABSENT from the
+                            // active config — #4 fix: Add button not inverted Switch OFF.
+                            if (selectedStock != null && pendingRows.isNotEmpty()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text("New in this baseline — tap Add to insert", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                pendingRows.forEach { row ->
+                                    val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        TextButton(
+                                            enabled = !gated,
+                                            onClick = { applyToggle(row.key, row.value, true) },
+                                            modifier = Modifier.height(32.dp)
+                                        ) { Text("Add", style = MaterialTheme.typography.bodySmall) }
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            row.key,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (gated) MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                                                     else MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        if (isBooleanKey(row.key)) {
+                                            Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        } else {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier
+                                                    .clip(MaterialTheme.shapes.small)
+                                                    .heightIn(min = 40.dp)
+                                                    .clickable(enabled = !gated) {
+                                                        valuePickerRow = row
+                                                        customValueDraft = row.value
+                                                    }
+                                            ) {
+                                                Text(row.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                                                if (!gated) Icon(
+                                                    Icons.Default.ExpandMore,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Text("missing — will be added as ${row.key} = ${row.value}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                    // Knowledge footer: provenance + state of the data layer
+                    Spacer(Modifier.height(6.dp))
+                    val footerText = if (vegasKnowledge != null)
+                        "knowledge: fork ${vegasKnowledge.forkBuild()} · ${vegasKnowledge.generated()}"
+                    else
+                        "knowledge data unavailable — showing keys unclassified"
+                    Text(footerText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val catalogFooter = when {
+                        vegasCatalog == null -> "catalog unavailable — classifier off, rows marked unverified"
+                        selectedCustom != null -> "catalog: newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()} — classifier applies to stock configs"
+                        activeStockTag == null -> "catalog: newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()} — no stock source selected"
+                        catalogBehind -> "catalog behind build — key classes unverified (newest known: ${vegasCatalog.newestTag()})"
+                        else -> "catalog: covered · newest ${vegasCatalog.newestTag()} · ${vegasCatalog.generatedAt()}"
+                    }
+                    Text(catalogFooter, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { showKeyDocSheet = true }) {
+                            Icon(Icons.Filled.Book, contentDescription = "Config key reference", tint = MaterialTheme.colorScheme.primary)
+                        }
+                        TextButton(onClick = { showCatalogDialog = true }) { Text("Check catalog", style = MaterialTheme.typography.bodySmall) }
+                    }
+                    if (showCatalogDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showCatalogDialog = false },
+                            title = { Text("VEGAS key catalog") },
+                            text = {
+                                Column {
+                                    Text("generated ${vegasCatalog?.generatedAt() ?: "n/a"} · upstream ${vegasCatalog?.upstreamSource() ?: "n/a"} (${vegasCatalog?.upstreamFetchedAt() ?: "n/a"})")
+                                    Spacer(Modifier.height(4.dp))
+                                    vegasCatalog?.knownTags()?.forEach { t ->
+                                        val st = vegasCatalog.stateOf(t)
+                                        Text("$t — ${st?.name?.lowercase()?.replace('_', '-') ?: "?"}")
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("Updated at build time (assistant-side maintenance).\nCheck for new builds")
+                                    Spacer(Modifier.height(6.dp))
+                                    TextButton(onClick = { runLiveCheck() }, enabled = !liveChecking) {
+                                        Text(if (liveChecking) "Checking…" else "Check for new builds", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { showCatalogDialog = false }) { Text("OK") } }
+                        )
+                    }
+                    if (showKeyDocSheet) {
+                        VGlossarySheet(
+                            onDismiss = { showKeyDocSheet = false },
+                            vegasCatalog = vegasCatalog,
+                            installedTag = activeStockTag,
+                        )
+                    }
+                    // §6b.1 report dialog: observation only, zero writes. Shown regardless of
+                    // the catalog dialog's own visibility so a report survives its dismissal.
+                    liveReport?.let { r ->
+                        AlertDialog(
+                            onDismissRequest = { liveReport = null },
+                            title = { Text("VEGAS new-build check") },
+                            text = {
+                                Column {
+                                    if (!r.feedOk) {
+                                        Text("Could not reach the release feed (network or API failure).")
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("The bundled catalog is unchanged; keys for unknown builds stay 'unverified'.")
+                                    } else {
+                                        Text("Catalog newest: ${r.catalogNewestTag ?: "?"} (${r.catalogNewestAt.ifEmpty { "?" }}).")
+                                        Spacer(Modifier.height(4.dp))
+                                        if (r.newerCount == 0) {
+                                            Text("No newer releases found.")
+                                        } else {
+                                            Text("${r.newerCount} newer release(s) found" +
+                                                    (if (r.newBuildCount > 0) " — $r.newBuildCount stable" else " (all prerelease)") + ":")
+                                            r.newerTags.forEach { t -> Text("· $t", style = MaterialTheme.typography.bodySmall) }
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            if (r.installedFoundLive) "Your installed build is still listed upstream."
+                                            else "Your installed build is not in the current release list."
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("This check only reports — no writes, no catalog change. Download and classification still use the existing flows; the catalog asset updates at build time.")
+                                    }
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { liveReport = null }) { Text("OK") } }
+                        )
+                    }
+                    // Only meaningful while a config file is actually in play — hidden under
+                    // "Use defaults" (no file to be edited).
+                    if (stockEdited && !useDefaults) {
+                        Text(
+                            if (sidecarExists) "Edited · yours now — saved to your own copy"
+                            else "Edited · saved to the live config file",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    // §7 release-notes dialog: live or bundled notes for the selected version. Observation
+                    // only — the fetch never writes anything.
+                    if (showNotes) {
+                        val verKey = selectedDxvk.removePrefix("vegas-")
+                        val notes = notesCache?.takeIf { it.first == verKey }?.second
+                            ?: VegasTierPresets.BUNDLED_NOTES[verKey]
+                        AlertDialog(
+                            onDismissRequest = { showNotes = false },
+                            title = { Text("What's new — $verKey") },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    if (notes.isNullOrEmpty()) {
+                                        Text(if (notesLoading) "Fetching notes…" else "No release notes for this version.")
+                                    } else {
+                                        notes.forEach { n -> Text("· $n", style = MaterialTheme.typography.bodySmall) }
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        if (notesSource == "live") "Fetched from the vegas-releases feed."
+                                        else if (notesSource == "bundled") "Bundled with the app (offline)."
+                                        else "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { showNotes = false }) { Text("OK") } }
+                        )
+                    }
+                    // Option B backup picker: newest-first list of .bak archives beside the live
+                    // file; tapping one opens the danger-confirm (the restore itself backs
+                    // up the current state first).
+                    if (showBackups) {
+                        AlertDialog(
+                            onDismissRequest = { showBackups = false },
+                            title = { Text("Restore a backup") },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    if (backupsList.isEmpty()) {
+                                        Text("No backups yet — they appear after the first edit to this config file.")
+                                    }
+                                    backupsList.forEach { b ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            TextButton(
+                                                onClick = { restoreTarget = b; showBackups = false },
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text(
+                                                    "${b.name} · ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT).format(b.lastModified())}",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                            IconButton(onClick = {
+                                                if (b.delete()) toggleVersion++
+                                            }) {
+                                                Icon(
+                                                    Icons.Filled.Delete,
+                                                    contentDescription = "Delete backup",
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = { TextButton(onClick = { showBackups = false }) { Text("Close") } }
+                        )
+                    }
+                    restoreTarget?.let { backup ->
+                        AlertDialog(
+                            onDismissRequest = { restoreTarget = null },
+                            title = { Text("Restore this backup?") },
+                            text = {
+                                Text("The live config file will be replaced by '${backup.name}'. The current state is backed up first — nothing is lost.")
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { restoreBackup(backup); restoreTarget = null }) { Text("Restore") }
+                            },
+                            dismissButton = { TextButton(onClick = { restoreTarget = null }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
+                    // §6c value picker: tap a non-boolean key's value to pick from the stock vocabulary
+                    // (current file value first), the selected baseline's default (reset), or a
+                    // custom string. Value writes go through the same pipeline as toggles.
+                    valuePickerRow?.let { row ->
+                        val baseline = baselineRowsForSelected.firstOrNull { it.key == row.key }
+                        AlertDialog(
+                            onDismissRequest = { valuePickerRow = null },
+                            title = { Text(row.key) },
+                            confirmButton = {
+                                TextButton(onClick = { if (customValueDraft.isNotBlank()) applyValue(row.key, customValueDraft.trim()); valuePickerRow = null }) { Text("Done") }
+                            },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    Text(
+                                        "Values used in stock configs — pick one, reset to stock, or type your own.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    val opts = linkedSetOf<String>()
+                                    if (row.value.isNotEmpty()) opts.add(row.value)
+                                    stockBaselineKeyValues[row.key].orEmpty().forEach { opts.add(it) }
+                                    opts.forEach { v ->
+                                        TextButton(
+                                            onClick = { applyValue(row.key, v); customValueDraft = v },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text(v, style = MaterialTheme.typography.bodySmall) }
+                                    }
+                                    if (baseline != null && (baseline.value != row.value || baseline.enabled != row.enabled)) {
+                                        TextButton(
+                                            onClick = { applyValue(row.key, baseline.value); customValueDraft = baseline.value },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Reset to stock (${baseline.value})", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    OutlinedTextField(
+                                        value = customValueDraft,
+                                        onValueChange = { customValueDraft = it },
+                                        label = { Text("Custom value") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Row(modifier = Modifier.padding(top = 6.dp)) {
+                                        TextButton(
+                                            enabled = customValueDraft.isNotBlank(),
+                                            onClick = { applyValue(row.key, customValueDraft.trim()) }
+                                        ) { Text("Apply") }
+                                    }
+                                }
+                            },
+                            dismissButton = { TextButton(onClick = { valuePickerRow = null }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
+                    // glass delete confirmation: translucent card over a light scrim (config dialog shows through)
+                    pendingDeleteKey?.let { delKey ->
+                        Dialog(onDismissRequest = { pendingDeleteKey = null }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.25f))
+                            ) {
+                                Card(
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .padding(24.dp)
+                                        .fillMaxWidth(0.92f),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Text(
+                                            "Remove key?",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(
+                                            "Are you sure you want '$delKey' removed? You can get it back via Backup → Restore or Add key.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(Modifier.height(16.dp))
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                            TextButton(onClick = { pendingDeleteKey = null }) {
+                                                Text("Cancel")
+                                            }
+                                            Button(
+                                                onClick = {
+                                                    applyDeleteKey(delKey)
+                                                    pendingDeleteKey = null
+                                                    Toast.makeText(activity, "Removed $delKey — Restore to undo", Toast.LENGTH_SHORT).show()
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                            ) {
+                                                Text("Remove")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // §6a.6 schema block: the key belongs to the OTHER line's schema. Nothing
+                    // is written — no decision row, no backup, just the explanation.
+                    pendingSchemaBlock?.let { key ->
+                        val keyFam = vegasCatalog?.familyOf(key)
+                        val instFam = activeStockTag?.let { vegasCatalog?.schemaFamilyOf(it) }
+                        val prefix = when (keyFam) {
+                            VegasKeyCatalog.Schema.SAREK -> "dxvk.vegas."
+                            VegasKeyCatalog.Schema.STAR -> if (key == "dxvk.enableStarProfile") key else "vegas."
+                            null -> "?"
+                        }
+                        AlertDialog(
+                            onDismissRequest = { pendingSchemaBlock = null },
+                            title = { Text("Key not applicable to this build's schema") },
+                            text = {
+                                Text(
+                                    "$key belongs to the ${schemaName(keyFam)} schema ($prefix…).\n\n" +
+                                    "This build (${activeStockTag ?: "unknown"}) uses the ${schemaName(instFam)} schema — " +
+                                    "the option cannot be applied and would be ignored."
+                                )
+                            },
+                            confirmButton = { TextButton(onClick = { pendingSchemaBlock = null }) { Text("Got it") } }
+                        )
+                    }
+                    // (+) add-key dialog: freeform key/value appended to the live file.
+                    // Works for stock (writes the sidecar) and custom alike; an existing
+                    // key updates in place instead of duplicating (setLine semantics).
+                    if (showAddKey) {
+                        val keyValid = VegasKeyKnowledge.isValidConfigKey(addKeyDraft.trim())
+                        AlertDialog(
+                            onDismissRequest = { showAddKey = false },
+                            title = { Text("Add config entry") },
+                            text = {
+                                Column {
+                                    OutlinedTextField(
+                                        value = addKeyDraft,
+                                        onValueChange = { addKeyDraft = it },
+                                        label = { Text("Key (e.g. dxvk.maxFrameLatency)") },
+                                        singleLine = true,
+                                        isError = addKeyDraft.isNotBlank() && !keyValid,
+                                        supportingText = {
+                                            if (addKeyDraft.isNotBlank() && !keyValid) {
+                                                Text("Not a valid config key — use a dotted name or ENV_STYLE caps")
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    OutlinedTextField(
+                                        value = addValueDraft,
+                                        onValueChange = { addValueDraft = it },
+                                        label = { Text("Value") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    enabled = addKeyDraft.isNotBlank() && addValueDraft.isNotBlank() && keyValid,
+                                    onClick = {
+                                        applyAddKey(addKeyDraft.trim(), addValueDraft.trim())
+                                        showAddKey = false
+                                    }
+                                ) { Text("Add") }
+                            },
+                            dismissButton = { TextButton(onClick = { showAddKey = false }) { Text(stringResource(android.R.string.cancel)) } }
+                        )
+                    }
                 }
             }
         },
@@ -3525,7 +4944,7 @@ internal fun DxvkConfigDialog(
                 cfg.put("vkd3dLevel", selectedFeatureLevel)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
                 cfg.put("d7vkVersion", selectedD7vk)
-                cfg.put("dxvkConfigFile", if (selectedConfigSource == "None") "" else selectedConfigSource)
+                cfg.put("dxvkConfigFile", livePath)
                 onConfirm(cfg.toString())
             }) { Text(stringResource(android.R.string.ok)) }
         },
@@ -4089,3 +5508,469 @@ private fun ContentInstallGear(
 }
 
 
+
+@Composable
+private fun SectionLabel(
+    text: String,
+) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        letterSpacing = 0.08.em,
+        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+    )
+}
+
+
+@Composable
+private fun HudToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Spacer(Modifier.width(8.dp))
+        Text(label, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun HudThreeStop(label: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    Text(label, style = MaterialTheme.typography.bodySmall)
+    Row {
+        options.forEachIndexed { idx, opt ->
+            FilterChip(
+                selected = selected == idx,
+                onClick = { onSelect(idx) },
+                label = { Text(opt) },
+                modifier = Modifier.padding(end = 6.dp)
+            )
+        }
+    }
+    Spacer(Modifier.height(4.dp))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline install helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boolean) -> Unit) {
+    val cm = ContentsManager(activity)
+    Executors.newSingleThreadExecutor().execute {
+        try {
+            cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
+                var phase = 0
+                override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                    val message = when (reason) {
+                        ContentsManager.InstallFailedReason.ERROR_NOSPACE -> "Not enough storage space"
+                        ContentsManager.InstallFailedReason.ERROR_BADTAR -> "Corrupted archive file"
+
+// park + record provenance; the stock dropdown picks it up on next open.
+@Composable
+private fun StockConfigDownloadSheet(
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context.findActivity()
+    val scope = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(true) }
+    var rows by remember { mutableStateOf(listOf<VegasStockConfigFetcher.ReleaseConf>()) }
+    var parkedTag by remember { mutableStateOf<String?>(null) }
+    var retryKey by remember { mutableStateOf(0) }
+
+    LaunchedEffect(retryKey) {
+        loading = true
+        rows = withContext(Dispatchers.IO) { VegasStockConfigFetcher.listReleaseConfigs() }
+        loading = false
+        // Autonomy: persist any newly seen release versions so the classifier's
+        // known list grows by itself — no bundled-asset regeneration ever needed.
+        val prefs = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
+        val existing = prefs.getString("released_tail", "")?.split('|')
+            ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+        var added = false
+        for (rel in rows) {
+            val prefix = rel.tag.removePrefix("v").substringBefore('-')
+            for (c in rel.verNames + prefix) {
+                if (c.isNotBlank() && existing.add(c)) added = true
+            }
+        }
+        if (added) prefs.edit().putString("released_tail", existing.joinToString("|")).apply()
+        // Heal catalog tail too — tags seen live become "covered" so "unverified" doesn't stick forever
+        val catExisting = prefs.getString("catalog_tail", "")?.split('|')
+            ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+        var catAdded = false
+        for (rel in rows) if (rel.tag.isNotBlank() && catExisting.add(rel.tag)) catAdded = true
+        VegasKeyCatalog.capToMax(catExisting)
+        if (catAdded) prefs.edit().putString("catalog_tail", catExisting.joinToString("|")).apply()
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Text("Stock configs", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Tap a version to fetch its config. Builds without a shipped config show none.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+        if (loading) {
+            Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.Center) {
+                CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+            }
+        } else if (rows.isEmpty()) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    "Couldn't reach the releases feed — check connection and retry. (GitHub limit 60/h)",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { retryKey++ }) { Text("Retry") }
+            }
+        } else {
+            androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                items(rows.size) { idx ->
+                    val rel = rows[idx]
+                    val hasConf = rel.confUrl != null
+                    val busy = parkedTag == rel.tag
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = hasConf && !busy) {
+                                parkedTag = rel.tag
+                                scope.launch {
+                                    val res = withContext(Dispatchers.IO) { VegasStockConfigFetcher.park(context, rel) }
+                                    parkedTag = null
+                                    when (res) {
+                                        is VegasStockConfigFetcher.ParkResult.Ok -> {
+                                            activity?.let {
+                                                Toast.makeText(it,
+                                                    "Parked as ${res.parkedAs}.conf — now select \"${res.parkedAs}\" under Stock config",
+                                                    Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                        is VegasStockConfigFetcher.ParkResult.Fail ->
+                                            activity?.let { Toast.makeText(it, "Failed: ${res.reason}", Toast.LENGTH_LONG).show() }
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            if (hasConf) Icons.Filled.Download else Icons.Filled.Block,
+                            contentDescription = null,
+                            tint = if (hasConf) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(rel.tag.ifEmpty { "(untagged)" }, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                buildString {
+                                    append(rel.confName ?: "no config asset")
+                                    if (rel.date.isNotEmpty()) append("  ·  ${rel.date}")
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===== V-Glossary (VEGAS config-key dictionary) =====
+// Curated one-line definitions. Keys absent here render with "—".
+
+// VEGAS-specific entries are best-effort; verify against internal docs.
+private val KEY_DEFINITIONS: Map<String, String> = mapOf(
+    // --- environment / DXVK core ---
+    "DXVK_CONFIG_FILE" to "Native DXVK config-file path. Set automatically when a custom .conf is selected.",
+    "DXVK_FILTER_DEVICE_NAME" to "Substring filter to force or avoid a GPU by name.",
+    "DXVK_LOG_LEVEL" to "Sets DXVK log verbosity (none/info/warn/error).",
+    "GPU" to "Legacy environment hint; verify before use.",
+    // --- dxvk.* core ---
+    "dxvk.enableAsync" to "Enables async shader compilation (legacy; superseded by GPL).",
+    "dxvk.gplAsyncCache" to "Caches pipeline state for fast GPU link (GPL async).",
+    "dxvk.enableStarProfile" to "Enables the Star Engine tuning profile.",
+    "dxvk.hud" to "Configures the DXVK on-screen HUD (e.g. 'devinfo,fps').",
+    "dxvk.numCompilerThreads" to "Number of threads used for shader compilation.",
+    "dxvk.tearFree" to "Enables tear-free presentation.",
+    "dxvk.latencySleep" to "Inserts a sleep to reduce input latency (experimental).",
+    "dxvk.maxFrameLatency" to "Caps the number of frames queued for presentation.",
+    "dxvk.enableDebugUtils" to "Enables Vulkan debug-utils instrumentation.",
+    "dxvk.numAsyncThreads" to "Legacy async compile thread count.",
+    "dxvk.shrinkNvidiaHvvHeap" to "Reduces NV host-visible heap usage.",
+    "dxvk.useRawSsbo" to "Uses raw SSBO bindings (compat workaround).",
+    // --- dxvk.vegas.* (Sarek) / vegas.* (Star) — best-effort ---
+    "dxvk.vegas.enable" to "Master switch for VEGAS / DXVK-VEGAS extensions.", // ⚠ best-effort
+    "dxvk.vegas.gpuMask" to "Restricts rendering to a subset of GPUs (mask).", // ⚠ best-effort
+    "dxvk.vegas.tbdr" to "Enables TBDR (tile-based) optimizations for Adreno.", // ⚠ best-effort
+    "dxvk.vegas.threshold" to "Sets internal VEGAS quality / skip thresholds.", // ⚠ best-effort
+    "dxvk.vegas.vramSwap" to "Controls VEGAS VRAM swap-to-storage behavior.", // ⚠ best-effort
+    "vegas.enableUpscaler" to "Enables the VEGAS upscaler.",
+    "vegas.forceTier" to "Selects a fixed VEGAS performance tier.", // ⚠ best-effort
+    "vegas.profileDraws" to "Enables VEGAS draw-call profiling.", // ⚠ best-effort
+    "vegas.telemetry" to "Enables VEGAS telemetry collection.", // ⚠ best-effort
+    "VEGAS_GAME_CONFIG" to "Selects a per-game VEGAS config profile.", // ⚠ best-effort
+    "VEGAS_THRESHOLDS" to "VEGAS internal tuning thresholds.", // ⚠ best-effort
+    // --- d3d11.* ---
+    "d3d11.samplerAnisotropy" to "Caps the max anisotropy for samplers.",
+    "d3d11.maxFeatureLevel" to "Caps the reported D3D feature level.",
+    "d3d11.maxTessFactor" to "Caps the tessellation factor.",
+    "d3d11.ignoreGraphicsBarriers" to "Relaxes barrier insertion (compat).",
+    "d3d11.invariantPosition" to "Forces invariant position math (strict).",
+    "d3d11.enableDepthPrePass" to "Enables a depth pre-pass.",
+    "d3d11.disableMsaa" to "Disables MSAA.",
+    "d3d11.maxImplicitDiscardSize" to "Threshold for implicit resource discards.",
+    "d3d11.relaxedBarriers" to "Relaxes resource barriers (compat).",
+    "d3d11.cachedDynamicResources" to "Caches dynamic resource uploads.",
+    "d3d11.constantBufferRangeCheck" to "Validates CB range access.",
+    "d3d11.dcSingleUseMode" to "Uses single-use deferred contexts.",
+    "d3d11.maxDynamicImageBufferSize" to "Caps dynamic image buffer size.",
+    "d3d11.zeroWorkgroupMemory" to "Zeroes workgroup memory (compat).",
+    // --- d3d9.* ---
+    "d3d9.samplerAnisotropy" to "Caps anisotropy (D3D9).",
+    "d3d9.maxFrameRate" to "Caps presentation rate (D3D9).",
+    "d3d9.maxFrameLatency" to "Caps queued frames (D3D9).",
+    "d3d9.disableMsaa" to "Disables MSAA (D3D9).",
+    "d3d9.tearFree" to "Tear-free presentation (D3D9).",
+    "d3d9.invariantPosition" to "Invariant position (D3D9).",
+    "d3d9.forceAspectRatio" to "Forces a fixed aspect ratio.",
+    "d3d9.shaderModel" to "Caps the D3D9 shader model.",
+    "d3d9.enableDepthPrePass" to "Depth pre-pass (D3D9).",
+    "d3d9.enableDialogMode" to "Dialog-mode tweaks.",
+    "d3d9.evictManagedOnUnlock" to "Evicts managed textures on unlock.",
+    "d3d9.deferSurfaceCreation" to "Defers swapchain surface creation.",
+    "d3d9.customDeviceId" to "Spoofs the GPU device id.",
+    "d3d9.customVendorId" to "Spoof the GPU vendor id.",
+    "d3d9.customDeviceDesc" to "Spoofs the GPU description string.",
+    "d3d9.supportD32" to "Enables D3D9 D32 depth format support.",
+    "d3d9.supportDFFormats" to "Enables D3D9 float formats support.",
+    "d3d9.supportVCache" to "Enables D3D9 vertex-cache support.",
+    "d3d9.supportX4R4G4B4" to "Enables D3D9 X4R4G4B4 format support.",
+    "d3d9.seamlessCubes" to "Fixes cube-map seam sampling.",
+    "d3d9.strictConstantCopies" to "Stricter constant-buffer copies (compat).",
+    "d3d9.strictPow" to "Stricter pow() math (compat).",
+    "d3d9.floatEmulation" to "Controls float emulation mode.",
+    "d3d9.lenientClear" to "Lenient clear behavior.",
+    "d3d9.longMad" to "Uses long MAD (compat).",
+    "d3d9.memoryTrackTest" to "Memory-tracking test hook.",
+    "d3d9.noExplicitFrontBuffer" to "Avoids an explicit front buffer.",
+    "d3d9.numBackBuffers" to "Sets back-buffer count.",
+    "d3d9.presentInterval" to "Sets presentation interval.",
+    "d3d9.allowDiscard" to "Allows discard usage flags.",
+    "d3d9.allowDoNotWait" to "Allows do-not-wait usage flags.",
+    "d3d9.alphaTestWiggleRoom" to "Alpha-test tolerance (compat).",
+    "d3d9.cachedDynamicBuffers" to "Caches dynamic vertex/index buffers.",
+    "d3d9.forceSwapchainMSAA" to "Forces MSAA on the swapchain.",
+    "d3d9.maxAvailableMemory" to "Caps reported available memory.",
+    "d3d9.enumerateByDisplays" to "Enumerates adapters by display.",
+    "d3d9.dpiAware" to "Marks the app DPI-aware.",
+    // --- d3d8.* ---
+    "d3d8.batching" to "D3D8-era batching tweak (compat).", // ⚠ best-effort
+    "d3d8.drefScaling" to "D3D8 depth-reference scaling (compat).", // ⚠ best-effort
+    "d3d8.forceLegacyDiscard" to "Forces legacy discard behavior.", // ⚠ best-effort
+    "d3d8.forceVsDecl" to "Forces a specific vertex declaration.", // ⚠ best-effort
+    "d3d8.placeP8InScratch" to "Places P8 textures in scratch (compat).", // ⚠ best-effort
+    "d3d8.shadowPerspectiveDivide" to "Shadow perspective-divide fix (compat).", // ⚠ best-effort
+    // --- dxgi.* ---
+    "dxgi.maxFrameRate" to "Caps presentation frame rate.",
+    "dxgi.maxFrameLatency" to "Caps queued frames.",
+    "dxgi.maxDeviceMemory" to "Caps reported GPU memory.",
+    "dxgi.maxSharedMemory" to "Caps reported shared memory.",
+    "dxgi.syncInterval" to "Sets vsync interval (0 = disabled).",
+    "dxgi.tearFree" to "Tear-free presentation.",
+    "dxgi.numBackBuffers" to "Sets back-buffer count.",
+    "dxgi.customDeviceId" to "Spoofs the GPU device id.",
+    "dxgi.customVendorId" to "Spoof the GPU vendor id.",
+    "dxgi.customDeviceDesc" to "Spoofs the GPU description string.",
+    "dxgi.deferSurfaceCreation" to "Defers surface creation.",
+    "dxgi.emulateUMA" to "Emulates a UMA memory model.",
+    "dxgi.enableDummyCompositionSwapchain" to "Creates a dummy composition swapchain.",
+    "dxgi.hideAmdGpu" to "Hides the AMD GPU from the app.",
+    "dxgi.hideIntelGpu" to "Hides the Intel GPU from the app.",
+    "dxgi.hideNvidiaGpu" to "Hides the Nvidia GPU from the app.",
+    "dxgi.enableHDR" to "Enables HDR output when supported by the display.",
+    "dxgi.enableUe4Workarounds" to "Enables workarounds for Unreal Engine 4 rendering quirks.",
+    "dxgi.forceRefreshRate" to "Forces a specific display refresh rate (Hz). 0 = auto.",
+    "dxgi.hideNvkGpu" to "Hides the NVK (open-source NVIDIA) GPU from the app.",
+    // --- dxvk.* extended ---
+    "dxvk.allowFse" to "Allows fullscreen exclusive mode transitions.",
+    "dxvk.deviceFilter" to "Substring filter to restrict Vulkan device selection by name.",
+    "dxvk.disableNvLowLatency2" to "Disables the VK_NV_low_latency2 extension.",
+    "dxvk.enableDescriptorBuffer" to "Enables VK_EXT_descriptor_buffer for faster descriptor access.",
+    "dxvk.enableDescriptorHeap" to "Enables pooled descriptor heap allocation.",
+    "dxvk.enableGraphicsPipelineLibrary" to "Enables VK_EXT_graphics_pipeline_library for faster pipeline creation.",
+    "dxvk.enableImplicitResolves" to "Enables implicit MSAA/resolve transitions.",
+    "dxvk.enableMemoryDefrag" to "Enables automatic Vulkan memory defragmentation.",
+    "dxvk.enableNvRawAccessChains" to "Enables VK_NV_raw_access_chains for raw buffer access.",
+    "dxvk.enableUnifiedImageLayouts" to "Uses unified image layout tracking.",
+    "dxvk.hideIntegratedGraphics" to "Hides integrated GPUs from the app (discrete only).",
+    "dxvk.latencyTolerance" to "Latency tolerance in microseconds for sleep decisions.",
+    "dxvk.lowerSinCos" to "Uses lower-precision sin/cos for performance.",
+    "dxvk.maxFrameRate" to "Caps presentation frame rate at the DXVK layer.",
+    "dxvk.maxMemoryBudget" to "Overrides the Vulkan memory budget in MB.",
+    "dxvk.tilerMode" to "Controls TBDR tiler behavior (Adreno-specific).",
+    "dxvk.trackPipelineLifetime" to "Tracks pipeline object lifecycle for cache management.",
+    "dxvk.zeroMappedMemory" to "Zeroes memory on allocation (debug / leak detection).",
+    // --- d3d11.* extended ---
+    "d3d11.clampNegativeLodBias" to "Clamps negative LOD bias to 0.",
+    "d3d11.disableDirectImageMapping" to "Disables direct image-to-host mapping.",
+    "d3d11.enableContextLock" to "Serializes D3D11 device context access (compat).",
+    "d3d11.exposeDriverCommandLists" to "Exposes driver-level command list support.",
+    "d3d11.forceComputeLdsBarriers" to "Forces barriers between compute LDS accesses.",
+    "d3d11.forceComputeUavBarriers" to "Forces barriers between compute UAV accesses.",
+    "d3d11.forceSampleRateShading" to "Forces sample-rate shading for all materials.",
+    "d3d11.relaxedGraphicsBarriers" to "Relaxes barriers on graphics pipeline resources.",
+    "d3d11.reproducibleCommandStream" to "Produces deterministic command streams (debug).",
+    "d3d11.samplerLodBias" to "Global LOD bias applied to all samplers.",
+    // --- d3d8.* extended ---
+    "d3d8.scaleDref" to "Scales depth-reference values for D3D8 compat.",
+    // --- d3d9.* extended ---
+    "d3d9.cachedWriteOnlyBuffers" to "Caches write-only buffer data in system memory.",
+    "d3d9.clampNegativeLodBias" to "Clamps negative LOD bias to 0 (D3D9).",
+    "d3d9.countLosableResources" to "Counts resources that can be evicted (memory tracking).",
+    "d3d9.deviceLocalConstantBuffers" to "Places constant buffers in device-local memory.",
+    "d3d9.deviceLossOnFocusLoss" to "Reports device loss when the app loses focus.",
+    "d3d9.disableA8RT" to "Disables A8 render-target format support.",
+    "d3d9.extraFrontbuffer" to "Allocates an extra front buffer for compat.",
+    "d3d9.forceRefreshRate" to "Forces a specific display refresh rate for D3D9 (Hz).",
+    "d3d9.forceSampleRateShading" to "Forces sample-rate shading for D3D9 materials.",
+    "d3d9.forceSamplerTypeSpecConstants" to "Uses spec constants to control sampler types.",
+    "d3d9.hideAmdGpu" to "Hides the AMD GPU from D3D9 enumeration.",
+    "d3d9.hideIntelGpu" to "Hides the Intel GPU from D3D9 enumeration.",
+    "d3d9.hideNvidiaGpu" to "Hides the NVIDIA GPU from D3D9 enumeration.",
+    "d3d9.hideNvkGpu" to "Hides the NVK GPU from D3D9 enumeration.",
+    "d3d9.ignoreDefaultBufferLockRange" to "Ignores the default lock range on buffers.",
+    "d3d9.modeCountCompatibility" to "Reports a compatible display mode count.",
+    "d3d9.reproducibleCommandStream" to "Produces deterministic D3D9 command streams (debug).",
+    "d3d9.samplerLodBias" to "Global LOD bias applied to D3D9 samplers.",
+    "d3d9.supportCubeDepthFormats" to "Enables depth format support on cube textures.",
+    "d3d9.textureMemory" to "Caps total D3D9 texture memory pool in MB.",
+    "d3d9.useD32forD24" to "Uses D32 format where D24 would be used.",
+    "d3d9.useFP16" to "Uses half-precision float where full precision is not required.",
+    // --- HUD labels (VEGAS governor internal — not user-configurable) ---
+    "cap" to "HUD: Maximum draw-batch size before forced flush (governor internal).",
+    "draw" to "HUD: Draw calls per millisecond — game rendering workload.",
+    "flush" to "HUD: Number of GPU flushes per frame (auto-tuned by governor).",
+    "key" to "HUD/Sarek: Internal key identifier (not user-configurable).",
+    "thr" to "HUD: Draw-batch threshold — triggers flush when reached.",
+    // --- vegas.* extended ---
+    "vegas.enableHud" to "Enables the VEGAS governor HUD overlay.",
+)
+
+
+@Composable
+private fun VGlossarySheet(
+    onDismiss: () -> Unit,
+    vegasCatalog: VegasKeyCatalog?,
+    installedTag: String?,
+) {
+    val bucketOrder = listOf(
+        VegasKeyCatalog.Bucket.IN_BUILD,
+        VegasKeyCatalog.Bucket.UPSTREAM,
+        VegasKeyCatalog.Bucket.OTHER_BUILD,
+        VegasKeyCatalog.Bucket.NOWHERE,
+    )
+    val bucketLabel: (VegasKeyCatalog.Bucket) -> String = { b ->
+        when (b) {
+            VegasKeyCatalog.Bucket.IN_BUILD -> "Documented by this build"
+            VegasKeyCatalog.Bucket.UPSTREAM -> "Upstream only"
+            VegasKeyCatalog.Bucket.OTHER_BUILD -> "Other build"
+            VegasKeyCatalog.Bucket.NOWHERE -> "Not in catalog"
+        }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.25f))
+        ) {
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(24.dp)
+                .fillMaxWidth(0.96f)
+                .fillMaxHeight(0.86f),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
+            ),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("V-Glossary", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    buildString {
+                        append(if (installedTag != null) "Build: $installedTag" else "No build selected")
+                        append("  ·  catalog ${vegasCatalog?.generatedAt() ?: "n/a"}")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (vegasCatalog == null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Catalog offline — provenance hidden, definitions still shown.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                val keys = if (vegasCatalog != null) vegasCatalog.allKeys() else KEY_DEFINITIONS.keys.toList()
+                val grouped = keys.groupBy { key ->
+                    if (vegasCatalog != null) vegasCatalog.classify(key, installedTag) else VegasKeyCatalog.Bucket.NOWHERE
+                }
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    bucketOrder.filter { grouped.containsKey(it) }.forEach { bucket ->
+                        item {
+                            Text(
+                                bucketLabel(bucket),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        items(grouped.getValue(bucket).sorted()) { key ->
+                            Column(modifier = Modifier.padding(vertical = 5.dp)) {
+                                Text(
+                                    key,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val fam = vegasCatalog?.familyOf(key)?.name ?: "—"
+                                    Text("[$fam]", style = MaterialTheme.typography.labelSmall)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        KEY_DEFINITIONS[key] ?: "—",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("OK")
+                    }
+                }
+            }
+        }
+        }
+    }
+}

@@ -301,6 +301,7 @@
         <i><b>VKD3D</b></i> is a translation layer for Direct3D 12 API to Vulkan.<br /><br />
         <i><b>CNC DDraw</b></i> is an implementation of DirectDraw for better compatibility with classic games.
     ]]></string>
+    <string name="vegas_config_loglevel_envvar_note">⚠ Log level (DXVK_LOG_LEVEL) must be set as a container environment variable — VEGAS ignores the config-file key as present in file (dxvk.logLevel / DXVK_LOG_LEVEL).</string>
     <string name="help_wine_version"><![CDATA[
         <b>Wine version</b><br /><br />
         The compatibility layer that runs the Windows game — it translates Windows into Android without a real Windows install. <i><b>Proton</b></i> is a gaming-tuned build of Wine. Newer builds fix more games; leave it on the default unless a game needs a specific one.

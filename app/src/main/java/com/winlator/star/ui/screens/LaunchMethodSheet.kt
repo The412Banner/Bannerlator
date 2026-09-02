@@ -2,6 +2,7 @@ package com.winlator.star.ui.screens
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -43,6 +44,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -51,6 +53,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,11 +79,33 @@ import coil.compose.AsyncImage
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.GoldbergMode
 import com.winlator.star.store.SteamGameDetailActivity
+import com.winlator.star.store.SteamLiteComponent
 import com.winlator.star.store.SteamPrefs
+import com.winlator.star.store.SteamRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 // ── Where a shortcut comes from (drives which launch methods the popup offers) ────────────────────
 private enum class GameSource { STEAM, EPIC, GOG, CUSTOM }
+
+/**
+ * The SteamLite package status shown under the SteamLite chip + the footer's "Update & Launch" gate.
+ * Present only for Steam games with the package already installed (a missing package is fetched by
+ * the launch itself). [check] null = the bounded catalog check is still running; [note] = the
+ * one-line failure notice after a download that didn't make it.
+ */
+private class SteamLiteClientUi(
+    val check: SteamLiteComponent.UpdateCheck?,
+    val updating: Boolean,
+    val progress: Float,
+    val note: String?,
+    val onUpdateAndLaunch: () -> Unit,
+) {
+    /** A newer package is on offer and nothing has gone wrong yet → the footer gates on it. */
+    val gated: Boolean get() = check?.available == true && note == null
+}
 
 // The launch methods. STEAMLITE → "RealSteam", GOLDBERG → "Goldberg", RAW → "Raw" (the launchMode
 // contract literals the launch pipeline + callers already understand).
@@ -115,10 +141,19 @@ private const val HELP_RAW =
 private const val HELP_PASS =
     "For classic games (Half-Life 2, CS:S) that ignore a controller in Real-Steam mode. Hands the pad " +
         "straight to the game instead of Steam Input. SteamLite only."
+private const val HELP_VAC =
+    "On: the game must be started by Steam itself (VAC-secure). If Steam can't, you get a warning and " +
+        "up to ~60 s of waiting before a direct start. Off: the game has no VAC, so a direct start after " +
+        "~15 s is fine. Auto-detected from Steam's app info (Valve Anti-Cheat category); flip it if a " +
+        "VAC game is misdetected. SteamLite only."
 private const val HELP_REMEMBER =
     "Saves this launch method for this game and skips the popup next time. You can change it later."
 private const val HELP_DETAILS =
     "Opens the full Steam game page — achievements grid, DLC and cloud saves."
+private const val HELP_STEAMLITE_CLIENT =
+    "Bannerlator's small Steam client for online (VAC) launches. Newer versions add features the app " +
+        "relies on (live launch status, in-game friends). Update downloads ~18 MB and re-stages it into " +
+        "your container."
 private const val HELP_GOLDBERG_MODE =
     "Regular suits most games. Experimental turns on newer features for games Regular can't run. " +
         "ColdClient runs the game's own launcher (heaviest). Try Regular first."
@@ -136,8 +171,10 @@ private const val HELP_GOLDBERG_MODE =
  *    a horizontal segmented outlined menu to fit the shorter height.
  *
  * This composable only REPORTS the choice back via [onLaunch]; the caller persists the shortcut extras
- * (`launchMode` / `launchModeRemembered` / `controllerPassthrough`), stages the picked component, and
- * launches. State is keyed on [shortcut] so reopening for a different game re-seeds from its saved choice.
+ * (`launchMode` / `launchModeRemembered` / `controllerPassthrough` / `steamVacLaunch`), stages the picked
+ * component, and launches. State is keyed on [shortcut] so reopening for a different game re-seeds from
+ * its saved choice. `steamVacLaunch` ("" = follow the app-info VAC detection, "1"/"0" = user override)
+ * feeds the RealSteam launch's WN_STEAM_VAC secure-launch policy (see [RealSteamLauncher.prepare]).
  *
  * [onVerifyFiles] / [onUpdateFiles] drive the slim Steam-only maintenance row (a "Verify files" +
  * "Check for updates" pair, [MaintenanceRow]) shown above the pinned Launch footer — a compact stand-in
@@ -149,7 +186,7 @@ private const val HELP_GOLDBERG_MODE =
 fun LaunchMethodSheet(
     shortcut: Shortcut,
     onDismiss: () -> Unit,
-    onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean, controllerPassthrough: Boolean) -> Unit,
+    onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean, controllerPassthrough: Boolean, vacLaunch: String) -> Unit,
     onVerifyFiles: (() -> Unit)? = null,
     onUpdateFiles: (() -> Unit)? = null,
 ) {
@@ -182,6 +219,22 @@ fun LaunchMethodSheet(
     }
     var rememberChoice by remember(shortcut) { mutableStateOf(shortcut.getExtra("launchModeRemembered", "") == "1") }
     var controllerPassthrough by remember(shortcut) { mutableStateOf(shortcut.getExtra("controllerPassthrough", "") == "1") }
+    // "Requires secure (VAC) launch" (SteamLite only). Seeded from the saved override, else from the
+    // VAC marker the library sync recorded from PICS app-info (loaded off-main). Persisted only once the
+    // user touches it, so an untouched toggle keeps following the detection.
+    val vacOverride = remember(shortcut) { shortcut.getExtra("steamVacLaunch", "").trim() }
+    var detectedVac by remember(shortcut) { mutableStateOf<Boolean?>(null) }
+    var secureLaunch by remember(shortcut) { mutableStateOf(vacOverride == "1") }
+    var vacTouched by remember(shortcut) { mutableStateOf(false) }
+    LaunchedEffect(shortcut) {
+        if (isSteam && appId > 0) {
+            val detected = withContext(Dispatchers.IO) {
+                runCatching { SteamRepository.getInstance().getDatabase().isVacSecure(appId) }.getOrDefault(false)
+            }
+            detectedVac = detected
+            if (vacOverride != "1" && vacOverride != "0" && !vacTouched) secureLaunch = detected
+        }
+    }
     // The active "?" help bubble (null = none). Keyed on the shortcut so it resets per game.
     var helpText by remember(shortcut) { mutableStateOf<String?>(null) }
     val toggleHelp: (String) -> Unit = { helpText = if (helpText == it) null else it }
@@ -192,6 +245,7 @@ fun LaunchMethodSheet(
             if (method == LaunchMethod.GOLDBERG) goldbergMode else null,
             rememberChoice,
             if (method == LaunchMethod.STEAMLITE) controllerPassthrough else false,
+            if (vacTouched) (if (secureLaunch) "1" else "0") else vacOverride,
         )
     }
     val openDetails: () -> Unit = {
@@ -202,6 +256,52 @@ fun LaunchMethodSheet(
         onDismiss()
     }
 
+    // SteamLite package check (the SteamLite chip's badge + the footer's "Update & Launch" gate).
+    // Bounded ~5 s on a worker; a failed check just reads "couldn't check" and Launch stays plain.
+    // Only for Steam games with the package on disk — a missing package is fetched by the launch.
+    val steamLiteInstalled = remember(shortcut) { isSteam && SteamLiteComponent.isInstalled(context) }
+    var clientCheck by remember(shortcut) { mutableStateOf<SteamLiteComponent.UpdateCheck?>(null) }
+    var clientUpdating by remember(shortcut) { mutableStateOf(false) }
+    var clientProgress by remember(shortcut) { mutableStateOf(0f) }
+    var clientNote by remember(shortcut) { mutableStateOf<String?>(null) }
+    // Cleared when the sheet goes away so a download that finishes after Cancel never launches.
+    val alive = remember(shortcut) { AtomicBoolean(true) }
+    DisposableEffect(shortcut) { onDispose { alive.set(false) } }
+    LaunchedEffect(shortcut) {
+        if (steamLiteInstalled) SteamLiteComponent.checkUpdateAsync(context) { clientCheck = it }
+    }
+    // "Update & Launch": download with progress on the chip, then the normal launch (the pre-flight
+    // that follows re-checks and reads "Up to date"). A failed download is one line + a toast and
+    // the launch goes ahead on the installed package — never a block.
+    val updateAndLaunch: () -> Unit = {
+        val check = clientCheck
+        if (check != null && !clientUpdating) {
+            clientUpdating = true
+            clientProgress = 0f
+            clientNote = null
+            SteamLiteComponent.downloadAsync(
+                context,
+                { f -> clientProgress = f },
+                { ok, _ ->
+                    if (alive.get()) {
+                        clientUpdating = false
+                        if (ok) {
+                            clientCheck = check.copy(installed = check.latestVersion)
+                        } else {
+                            val installed = SteamLiteComponent.versionLabel(check.installed)
+                            clientNote = "Update failed — launching installed $installed"
+                            Toast.makeText(context, "SteamLite update failed — launching installed $installed", Toast.LENGTH_LONG).show()
+                        }
+                        doLaunch()
+                    }
+                },
+            )
+        }
+    }
+    val steamLiteClient = if (steamLiteInstalled) {
+        SteamLiteClientUi(clientCheck, clientUpdating, clientProgress, clientNote, updateAndLaunch)
+    } else null
+
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -210,16 +310,18 @@ fun LaunchMethodSheet(
                 shortcut, source, appId, isSteam, hasDetails, enabledMethods, accent,
                 method, { method = it }, goldbergMode, { goldbergMode = it },
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
+                secureLaunch, { secureLaunch = it; vacTouched = true }, detectedVac,
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
-                onVerifyFiles, onUpdateFiles,
+                onVerifyFiles, onUpdateFiles, steamLiteClient,
             )
         } else {
             PortraitCard(
                 shortcut, source, appId, isSteam, hasDetails, enabledMethods, accent,
                 method, { method = it }, goldbergMode, { goldbergMode = it },
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
+                secureLaunch, { secureLaunch = it; vacTouched = true }, detectedVac,
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
-                onVerifyFiles, onUpdateFiles,
+                onVerifyFiles, onUpdateFiles, steamLiteClient,
             )
         }
     }
@@ -244,6 +346,9 @@ private fun PortraitCard(
     onRemember: (Boolean) -> Unit,
     passthrough: Boolean,
     onPassthrough: (Boolean) -> Unit,
+    secureLaunch: Boolean,
+    onSecureLaunch: (Boolean) -> Unit,
+    detectedVac: Boolean?,
     helpText: String?,
     toggleHelp: (String) -> Unit,
     dismissHelp: () -> Unit,
@@ -252,6 +357,7 @@ private fun PortraitCard(
     openDetails: () -> Unit,
     onVerifyFiles: (() -> Unit)?,
     onUpdateFiles: (() -> Unit)?,
+    steamLiteClient: SteamLiteClientUi?,
 ) {
     val cs = MaterialTheme.colorScheme
     Surface(
@@ -297,6 +403,9 @@ private fun PortraitCard(
                     ChipsRow(method, enabledMethods, accent, compact = false, onMethod, toggleHelp)
                     Spacer(Modifier.height(9.dp))
                     MethodDesc(method, source)
+                    if (method == LaunchMethod.STEAMLITE && steamLiteClient != null) {
+                        SteamLiteClientBlock(steamLiteClient, accent, compact = false, toggleHelp, doLaunch)
+                    }
 
                     AnimatedVisibility(visible = method == LaunchMethod.GOLDBERG) {
                         Column {
@@ -310,6 +419,7 @@ private fun PortraitCard(
                     Spacer(Modifier.height(2.dp))
                     OptionsBlock(
                         shortcut, isSteam, hasDetails, passthrough, onPassthrough,
+                        secureLaunch, onSecureLaunch, detectedVac,
                         rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = false,
                     )
 
@@ -321,7 +431,8 @@ private fun PortraitCard(
                 }
 
                 HorizontalDivider(color = cs.outline)
-                FooterRow(accent, onDismiss, doLaunch, topPad = 10.dp, bottomPad = 12.dp, startPad = 8.dp, endPad = 14.dp)
+                val footer = footerLaunch(method, steamLiteClient, doLaunch)
+                FooterRow(accent, onDismiss, footer.second, footer.first, topPad = 10.dp, bottomPad = 12.dp, startPad = 8.dp, endPad = 14.dp)
             }
             if (helpText != null) HelpTip(helpText, dismissHelp)
         }
@@ -347,6 +458,9 @@ private fun LandscapeCard(
     onRemember: (Boolean) -> Unit,
     passthrough: Boolean,
     onPassthrough: (Boolean) -> Unit,
+    secureLaunch: Boolean,
+    onSecureLaunch: (Boolean) -> Unit,
+    detectedVac: Boolean?,
     helpText: String?,
     toggleHelp: (String) -> Unit,
     dismissHelp: () -> Unit,
@@ -355,6 +469,7 @@ private fun LandscapeCard(
     openDetails: () -> Unit,
     onVerifyFiles: (() -> Unit)?,
     onUpdateFiles: (() -> Unit)?,
+    steamLiteClient: SteamLiteClientUi?,
 ) {
     val cs = MaterialTheme.colorScheme
     val cfg = LocalConfiguration.current
@@ -393,6 +508,9 @@ private fun LandscapeCard(
                         ChipsRow(method, enabledMethods, accent, compact = true, onMethod, toggleHelp)
                         Spacer(Modifier.height(6.dp))
                         MethodDesc(method, source)
+                        if (method == LaunchMethod.STEAMLITE && steamLiteClient != null) {
+                            SteamLiteClientBlock(steamLiteClient, accent, compact = true, toggleHelp, doLaunch)
+                        }
 
                         AnimatedVisibility(visible = method == LaunchMethod.GOLDBERG) {
                             Column {
@@ -405,6 +523,7 @@ private fun LandscapeCard(
                         HorizontalDivider(color = cs.outline)
                         OptionsBlock(
                             shortcut, isSteam, hasDetails, passthrough, onPassthrough,
+                            secureLaunch, onSecureLaunch, detectedVac,
                             rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = true,
                         )
 
@@ -417,7 +536,8 @@ private fun LandscapeCard(
                     }
                     // Launch/Cancel footer — pinned OUTSIDE the scroll region so it is always visible.
                     HorizontalDivider(color = cs.outline)
-                    FooterRow(accent, onDismiss, doLaunch, topPad = 8.dp, bottomPad = 0.dp, startPad = 0.dp, endPad = 0.dp)
+                    val footer = footerLaunch(method, steamLiteClient, doLaunch)
+                    FooterRow(accent, onDismiss, footer.second, footer.first, topPad = 8.dp, bottomPad = 0.dp, startPad = 0.dp, endPad = 0.dp)
                 }
             }
             if (helpText != null) HelpTip(helpText, dismissHelp)
@@ -508,7 +628,7 @@ private fun MethodDesc(method: LaunchMethod, source: GameSource) {
     )
 }
 
-/** The option rows: Full details (Steam), Controller passthrough (Steam), Remember. */
+/** The option rows: Full details (Steam), Controller passthrough (Steam), Requires secure (VAC) launch (Steam), Remember. */
 @Composable
 private fun ColumnScope.OptionsBlock(
     shortcut: Shortcut,
@@ -516,6 +636,9 @@ private fun ColumnScope.OptionsBlock(
     hasDetails: Boolean,
     passthrough: Boolean,
     onPassthrough: (Boolean) -> Unit,
+    secureLaunch: Boolean,
+    onSecureLaunch: (Boolean) -> Unit,
+    detectedVac: Boolean?,
     rememberChoice: Boolean,
     onRemember: (Boolean) -> Unit,
     accent: Color,
@@ -546,6 +669,19 @@ private fun ColumnScope.OptionsBlock(
             compact = compact,
             onHelp = { toggleHelp(HELP_PASS) },
             trailing = { PillSwitch(passthrough, accent, onPassthrough) },
+        )
+        OptionRow(
+            title = "Requires secure (VAC) launch",
+            badge = "NEW",
+            subtitle = if (compact) null else when (detectedVac) {
+                true -> "Detected: VAC-secured. Steam must start it (up to ~60 s wait)."
+                false -> "Detected: no VAC. Direct start after ~15 s is fine."
+                null -> "Auto-detected from Steam's app info."
+            },
+            accent = accent,
+            compact = compact,
+            onHelp = { toggleHelp(HELP_VAC) },
+            trailing = { PillSwitch(secureLaunch, accent, onSecureLaunch) },
         )
     }
     OptionRow(
@@ -616,12 +752,31 @@ private fun OptionRow(
     }
 }
 
-/** Cancel (text) · spacer · small accent "Launch ▶". */
+/**
+ * What the footer's primary button says and does for the selected method: plain "Launch" unless the
+ * SteamLite chip is selected and its package check gates the launch ("Update & Launch"; disabled
+ * "Updating…" while the download runs). Goldberg / Raw are never gated.
+ */
+private fun footerLaunch(
+    method: LaunchMethod,
+    client: SteamLiteClientUi?,
+    doLaunch: () -> Unit,
+): Pair<String, (() -> Unit)?> {
+    if (method != LaunchMethod.STEAMLITE || client == null) return "Launch" to doLaunch
+    return when {
+        client.updating -> "Updating…" to null
+        client.gated -> "Update & Launch" to client.onUpdateAndLaunch
+        else -> "Launch" to doLaunch
+    }
+}
+
+/** Cancel (text) · spacer · small accent "Launch ▶" ([launch] null = disabled, e.g. mid-download). */
 @Composable
 private fun FooterRow(
     accent: Color,
     onDismiss: () -> Unit,
-    doLaunch: () -> Unit,
+    launch: (() -> Unit)?,
+    launchLabel: String,
     topPad: androidx.compose.ui.unit.Dp,
     bottomPad: androidx.compose.ui.unit.Dp,
     startPad: androidx.compose.ui.unit.Dp,
@@ -637,15 +792,92 @@ private fun FooterRow(
         }
         Spacer(Modifier.weight(1f))
         Button(
-            onClick = doLaunch,
+            onClick = { launch?.invoke() },
+            enabled = launch != null,
             shape = RoundedCornerShape(10.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 9.dp),
             colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = cs.onPrimary),
         ) {
-            Text("Launch", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(launchLabel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(7.dp))
             Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
         }
+    }
+}
+
+/**
+ * Under the SteamLite chip: the package's status line — checking / couldn't check / up to date /
+ * "Update available (v3 → v4)" badge (error-tinted "Update required" below
+ * [SteamLiteComponent.MIN_AGENT_VERSION]) / the download's progress — with a "?" bubble, and,
+ * when the update is optional, a quieter "Launch with installed version" link (the footer's primary
+ * is "Update & Launch" then). Absent for Goldberg / Raw.
+ */
+@Composable
+private fun SteamLiteClientBlock(
+    ui: SteamLiteClientUi,
+    accent: Color,
+    compact: Boolean,
+    toggleHelp: (String) -> Unit,
+    doLaunch: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val check = ui.check
+    val installed = SteamLiteComponent.versionLabel(check?.installed ?: 0)
+    val lineStyle = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium
+    Spacer(Modifier.height(if (compact) 6.dp else 8.dp))
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        when {
+            ui.updating -> Text(
+                "Updating SteamLite… ${(ui.progress.coerceIn(0f, 1f) * 100).toInt()}%",
+                style = lineStyle, color = cs.onSurface, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            ui.note != null -> Text(ui.note, style = lineStyle, color = cs.error, modifier = Modifier.weight(1f))
+            check == null -> Text("Checking for SteamLite updates…", style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f))
+            !check.checked -> Text(
+                "Couldn't check for SteamLite updates — using installed $installed",
+                style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f),
+            )
+            check.available -> {
+                // Badge: accent pill for an optional update, error pill when the app needs it.
+                val tint = if (check.required) cs.error else accent
+                val shape = RoundedCornerShape(999.dp)
+                Text(
+                    (if (check.required) "Update required" else "Update available") +
+                        " ($installed → v${check.latestVersion})",
+                    style = lineStyle, color = tint, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(shape)
+                        .background(tint.copy(alpha = 0.14f))
+                        .border(1.dp, tint.copy(alpha = 0.55f), shape)
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                )
+                Spacer(Modifier.weight(1f))
+            }
+            else -> Text("SteamLite client up to date ($installed)", style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.width(6.dp))
+        HelpDot(accent, highlighted = false, onClick = { toggleHelp(HELP_STEAMLITE_CLIENT) })
+    }
+    if (ui.updating) {
+        Spacer(Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { ui.progress.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().height(4.dp),
+            color = accent,
+            trackColor = cs.surfaceContainerHigh,
+        )
+    } else if (ui.gated && check?.required == false) {
+        // Optional update: the quieter way past the "Update & Launch" footer.
+        Text(
+            "Launch with installed version",
+            style = lineStyle, color = cs.onSurfaceVariant, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(onClick = doLaunch)
+                .padding(horizontal = 4.dp, vertical = 3.dp),
+        )
     }
 }
 

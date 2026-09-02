@@ -55,6 +55,8 @@ public final class SteamLiteLogCollector {
     private static final long WINE_SCAN_TAIL_BYTES = 4L * 1024 * 1024;
     /** The agent's own log is small and rewritten each run; a modest tail covers the whole file. */
     private static final long LAUNCHER_LOG_TAIL_BYTES = 256L * 1024;
+    /** Most recent engine-log lines folded into the bundle (Rust engine only). */
+    private static final int ENGINE_LINES_MAX = 400;
     // Exact "watching ... for exit (<path>)" suffixes from the agent's launch log; the "for exit ("
     // prefix keeps the steamservice line ("... will use CreateProcess fallback") from matching.
     private static final String LAUNCHER_SECURE_MARK   = "for exit (LaunchApp path)";
@@ -110,6 +112,18 @@ public final class SteamLiteLogCollector {
      */
     public static void collect(Context context, File driveC, File perGameLogDir,
                                String gameName, int appId, Info info) {
+        collect(context, driveC, perGameLogDir, gameName, appId, info, null);
+    }
+
+    /**
+     * As {@link #collect(Context, File, File, String, int, Info)}, plus the live agent-channel event
+     * lines of this launch ({@link com.winlator.star.store.SteamAgentChannel#eventLines()}) when the
+     * agent connected. When present they are the DEFINITIVE record of sign-in / secure-launch / exit
+     * and take precedence over the log-file inference in the DIAGNOSTICS section; they are also
+     * appended as their own raw section. Null/empty = no channel this run (older agent).
+     */
+    public static void collect(Context context, File driveC, File perGameLogDir,
+                               String gameName, int appId, Info info, List<String> agentEvents) {
         try {
             if (driveC == null || perGameLogDir == null) return;
 
@@ -156,13 +170,24 @@ public final class SteamLiteLogCollector {
             // record of whether Steam's LaunchApp spawned the game or the agent fell back to CreateProcess.
             String launcherLog = readTail(new File(driveC, "wn-launcher.log"), LAUNCHER_LOG_TAIL_BYTES);
 
+            // Rust engine (use_rust_steam_engine ON): the app-side session brain keeps its own
+            // record (steam_engine.txt — AUTH / SESSION / CLOUD / ACHV / DL lines, redacted at the
+            // source). Its lines feed the same AUTH / SESSION / CLOUD / ACHIEVEMENTS diagnostics the
+            // genuine client's logs feed, and ride along as a raw section. The always-on
+            // steam_session.txt (status transitions) is tailed next to it. Empty on JavaSteam.
+            List<String> engineLines = engineLines(context);
+            String sessionTail = engineLines.isEmpty() ? null : readEngineSessionTail(context);
+
             StringBuilder out = new StringBuilder(8 * 1024);
             appendSummary(out, context, gameName, appId, info, steamLiteVersion, dxText);
+            if (!engineLines.isEmpty()) out.append("Steam engine: Rust (libblsteam.so) — app-side session log included\n");
             // The genuine Steam client logs accumulate across every launch — anchor to THIS run so the
             // diagnostics and raw sections report this session, not days of history. Null = no anchor.
             String since = sessionStart(steamRaw.get("gameprocess_log.txt"), appId);
-            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog);
+            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog, agentEvents, engineLines);
             appendRawSections(out, steamRedacted, since);
+            appendAgentSection(out, agentEvents);
+            appendEngineSection(out, engineLines, sessionTail);
 
             // Belt-and-suspenders: re-scan the finished file for anything a header line carried through.
             String finished = SteamLogRedactor.auditSteamClientText(out.toString());
@@ -218,6 +243,16 @@ public final class SteamLiteLogCollector {
         if (driver != null) out.append("Driver: ").append(driver).append('\n');
         out.append("SteamLite version: ").append(orDash(steamLiteVersion)).append('\n');
 
+        // Network shape (NAT / UDP verdict): the pre-flight's cached STUN result when it is still
+        // fresh, else a bounded (~2.5 s) probe now — we are on the exit worker thread. The public IP
+        // is masked to its first two octets; a strict NAT here is the usual answer to "online works
+        // at home but not on my hotspot / VPN".
+        try {
+            com.winlator.star.store.NetworkProbe.Result net =
+                    com.winlator.star.store.NetworkProbe.probeCachedOrFresh();
+            out.append("Network: ").append(net.logLine()).append('\n');
+        } catch (Throwable ignored) {}
+
         // The scrub note, matching the app's own wording (Log Manager / LogReport).
         out.append('\n');
         out.append("Safe to share — auth tokens, cookies and your Steam account name are removed and ")
@@ -239,7 +274,8 @@ public final class SteamLiteLogCollector {
     /** A curated scan of THIS session's logs into plain-English one-liners. The value of the file:
      *  a reader sees the known-failure summary without reading four logs. */
     private static void appendDiagnostics(StringBuilder out, int appId, String wineText, String dxText,
-                                          Map<String, String> steam, String since, String launcherLog) {
+                                          Map<String, String> steam, String since, String launcherLog,
+                                          List<String> agentEvents, List<String> engineLines) {
         out.append("\n===== DIAGNOSTICS (auto-scan) =====\n");
         if (since != null)
             out.append("- Session scope: findings below are from THIS run (since ").append(since).append(").\n");
@@ -247,6 +283,9 @@ public final class SteamLiteLogCollector {
             out.append("- Session scope: could not anchor this run in the logs; some counts may include "
                     + "earlier sessions.\n");
         List<String> f = new ArrayList<>();
+
+        // ── Live agent channel (definitive when present — the agent TOLD us what happened) ──
+        boolean agentVerdict = appendAgentChannel(f, agentEvents);
 
         String connection = steam.get("connection_log.txt");
         String gameproc = steam.get("gameprocess_log.txt");
@@ -269,7 +308,8 @@ public final class SteamLiteLogCollector {
         }
 
         // ── SteamLite agent / secure-launch health (reads wine_debug ORDER + real-Steam tracking) ──
-        appendSecureLaunch(f, wineText, gameproc, appId, since, launcherLog);
+        // Skipped when the live channel already gave the definitive verdict above.
+        if (!agentVerdict) appendSecureLaunch(f, wineText, gameproc, appId, since, launcherLog);
         boolean lsteam = matches(wineText, LSTEAMCLIENT_OFF) || matches(allSteam, LSTEAMCLIENT_OFF);
         f.add("CLIENT: Real Steam client mode (lsteamclient disabled — expected for SteamLite) = "
                 + yn(lsteam) + ".");
@@ -291,11 +331,24 @@ public final class SteamLiteLogCollector {
         appendAchievements(f, stats, since);
         appendCloud(f, cloud, since);
 
+        // ── Rust engine (app-side session): AUTH / SESSION / CLOUD / ACHIEVEMENTS from steam_engine.txt ──
+        appendEngineDiagnostics(f, engineLines);
+
         // ── CRASH / teardown (wine_debug — per-run) ──
         Hit crash = scan(wineText, CRASH);
-        if (crash.count > 0)
+        if (crash.count > 0) {
             f.add("CRASH: native crash detected (" + crash.count + "x — unhandled exception / access "
                     + "violation)." + when(crash));
+            // Quote the exception/backtrace lines around the FIRST crash so the diagnostic carries the
+            // faulting address, the frames and (with +seh,+loaddll — added automatically on RealSteam
+            // launches when Wine debug is on) the module bases needed to resolve module+offset.
+            for (String line : crashExcerpt(wineText)) f.add("    | " + line);
+            // Known signature: the Steam client's overlay injection started the game's thread at an
+            // address from the AGENT's kernel32 (not mapped in the game) — recognisable from +seh +
+            // +loaddll + the agent's own module dump.
+            String overlay = overlayInjectionCrash(wineText, launcherLog);
+            if (overlay != null) f.add(overlay);
+        }
         appendTeardown(f, wineText);
 
         // Emit. If wine_debug wasn't captured, say so and connect the two toggles.
@@ -365,6 +418,237 @@ public final class SteamLiteLogCollector {
         }
 
         appendTrackedCount(f, gameproc, tracked, since);
+    }
+
+    /**
+     * Fold the live agent-channel events (agent-src/AGENT_CHANNEL.md) into plain-English lines. Every
+     * line is app-side data already scrubbed by the agent (masked SteamID, no token). Returns true
+     * when the events settled the secure-launch question (a {@code game_spawned} / fallback /
+     * refusal / sign-in failure was seen), so the file-based inference can be skipped.
+     */
+    private static boolean appendAgentChannel(List<String> f, List<String> agentEvents) {
+        if (agentEvents == null || agentEvents.isEmpty()) return false;
+        boolean started = false, loggedIn = false, verdict = false;
+        String loginFail = null, refused = null, fallback = null, spawned = null, exited = null, shutdown = null;
+        int achievements = 0;
+        boolean sessionLost = false;
+        for (String line : agentEvents) {
+            try {
+                org.json.JSONObject o = new org.json.JSONObject(line);
+                String ev = o.optString("ev", "");
+                switch (ev) {
+                    case "started": started = true; break;
+                    case "logged_in": loggedIn = true; break;
+                    case "login_failed":
+                        loginFail = "EResult " + o.optInt("eresult", 0) + " " + o.optString("reason", "");
+                        break;
+                    case "launch_refused":
+                        refused = o.optString("reason", "") + " (error " + o.optInt("error", -1) + ")";
+                        break;
+                    case "insecure_fallback":
+                        fallback = o.optString("exe", "") + " — " + o.optString("reason", "")
+                                + (o.has("vac") ? (o.optBoolean("vac", true) ? " (VAC title: secure launch LOST)"
+                                                                              : " (non-VAC title: direct start is fine)") : "");
+                        break;
+                    case "direct_exe":
+                        fallback = o.optString("exe", "") + " — direct-exe mode";
+                        break;
+                    case "game_spawned":
+                        spawned = o.optString("exe", "") + (o.optBoolean("secure", false) ? " SECURE" : " INSECURE");
+                        break;
+                    case "session_lost": sessionLost = true; break;
+                    case "achievement": achievements++; break;
+                    case "game_exited": exited = "after " + (o.optLong("ms", 0L) / 1000L) + "s"; break;
+                    case "shutdown": shutdown = o.optString("reason", "") + " (code " + o.optInt("code", 0) + ")"; break;
+                    default: break;
+                }
+            } catch (Exception ignored) {}
+        }
+        if (!started) {
+            f.add("AGENT: the live channel opened but the agent never reported 'started' — treat the lines below as partial.");
+        }
+        if (loginFail != null) {
+            f.add("AUTH (agent): sign-in FAILED inside the container — " + loginFail.trim()
+                    + ". The game did not get a Steam session; check the saved sign-in / re-auth.");
+            verdict = true;
+        } else if (loggedIn) {
+            f.add("AUTH (agent): signed in to Steam inside the container = OK.");
+        } else if (started) {
+            f.add("AUTH (agent): no sign-in result was reported (agent ended before logon completed).");
+        }
+        if (spawned != null) {
+            boolean secure = spawned.endsWith(" SECURE");
+            f.add("SECURE LAUNCH (agent): " + (secure
+                    ? "Steam's LaunchApp started " + spawned.replace(" SECURE", "") + " = YES (VAC-eligible secure launch)."
+                    : "the game (" + spawned.replace(" INSECURE", "") + ") was started WITHOUT Steam's LaunchApp = NO — "
+                      + "INSECURE launch: VAC servers will reject it and live-service titles may report a wrong build."));
+            verdict = true;
+        } else if (fallback != null) {
+            f.add("SECURE LAUNCH (agent): NO — CreateProcess fallback (" + fallback + ").");
+            verdict = true;
+        } else if (refused != null) {
+            f.add("SECURE LAUNCH (agent): Steam REFUSED the launch — " + refused + "; no game process was reported.");
+            verdict = true;
+        }
+        if (refused != null && spawned != null && spawned.endsWith(" SECURE"))
+            f.add("LAUNCH (agent): LaunchApp was refused first, then Steam spawned the game late inside the grace window (benign).");
+        if (sessionLost) f.add("SESSION (agent): the in-game Steam session was LOST while the game ran.");
+        if (achievements > 0) f.add("ACHIEVEMENTS (agent): " + achievements + " unlock event(s) reported live.");
+        if (exited != null) f.add("EXIT (agent): game exited " + exited + ".");
+        if (shutdown != null) f.add("EXIT (agent): agent shutdown reason " + shutdown + ".");
+        return verdict;
+    }
+
+    // ── Rust engine log (Phase 3b-4) ────────────────────────────────────────────────────────────
+
+    /** The engine's recent lines when the Rust engine drives the session; empty otherwise. */
+    private static List<String> engineLines(Context context) {
+        try {
+            if (!com.winlator.star.store.blsteam.BlSteamEngineFlag.isEnabled(context))
+                return java.util.Collections.emptyList();
+            List<String> lines = com.winlator.star.store.blsteam.BlSteamEngineLog.lines();
+            if (lines.isEmpty()) {
+                // The process may have restarted since the launch — fall back to the file's tail.
+                File f = com.winlator.star.store.blsteam.BlSteamEngineLog.file();
+                if (f == null) {
+                    File dir = context.getExternalFilesDir(null);
+                    if (dir != null) f = new File(dir, com.winlator.star.store.blsteam.BlSteamEngineLog.FILE_NAME);
+                }
+                String tail = f != null ? readTail(f, STEAM_LOG_TAIL_BYTES) : null;
+                if (tail == null) return java.util.Collections.emptyList();
+                lines = new ArrayList<>();
+                for (String l : tail.split("\n")) if (!l.trim().isEmpty()) lines.add(l);
+            }
+            int keep = Math.min(lines.size(), ENGINE_LINES_MAX);
+            return new ArrayList<>(lines.subList(lines.size() - keep, lines.size()));
+        } catch (Throwable t) {
+            Log.w(TAG, "engine log read failed: " + t.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /** Tail of the always-on steam_session.txt (status transitions), or null. */
+    private static String readEngineSessionTail(Context context) {
+        try {
+            File dir = context.getExternalFilesDir(null);
+            if (dir == null) return null;
+            return readTail(new File(dir, "steam_session.txt"), 32L * 1024);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Value of `key=` inside an engine line, or null. */
+    private static String engineField(String line, String key) {
+        Matcher m = Pattern.compile("\\b" + Pattern.quote(key) + "=([^\\s,()]+)").matcher(line);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /**
+     * Diagnostics lines derived from the engine's own record. Only what the engine logged for this
+     * process is used — the lines carry EResults, counts and app ids, never a token or a name.
+     */
+    private static void appendEngineDiagnostics(List<String> f, List<String> lines) {
+        if (lines == null || lines.isEmpty()) return;
+        int loggedOn = 0, logonFail = 0, loggedOff = 0, disconnects = 0, failures = 0, rotated = 0;
+        String lastLogonFail = null, lastLoggedOff = null, lastFailure = null;
+        boolean elsewhere = false, tokenRejected = false, signInOk = false, signInFail = false;
+        int cloudDl = 0, cloudDlFail = 0, cloudUl = 0, cloudUlFail = 0, cloudBatchRefused = 0;
+        String cloudLaunchIntent = null;
+        int achvFetch = 0, achvNoReply = 0, achvStoreOk = 0, achvStoreFail = 0;
+        int dlStarted = 0, dlComplete = 0, dlFailed = 0;
+        String lastDlFail = null;
+        for (String line : lines) {
+            int i = line.indexOf("] ");
+            String body = i >= 0 ? line.substring(i + 2) : line;
+            if (body.startsWith("SESSION: ")) {
+                String s = body.substring(9);
+                if (s.startsWith("logged on")) loggedOn++;
+                else if (s.startsWith("logged off by Steam")) {
+                    loggedOff++; lastLoggedOff = s;
+                    String er = engineField(s, "eresult");
+                    if ("34".equals(er) || "43".equals(er)) elsewhere = true;
+                } else if (s.startsWith("disconnected")) {
+                    disconnects++;
+                    if (s.contains("token rejected")) tokenRejected = true;
+                    if (s.contains("another client")) elsewhere = true;
+                } else if (s.startsWith("engine failure")) { failures++; lastFailure = s; }
+            } else if (body.startsWith("AUTH: ")) {
+                String s = body.substring(6);
+                if (s.startsWith("token logon failed")) { logonFail++; lastLogonFail = s; }
+                else if (s.contains("sign-in OK")) signInOk = true;
+                else if (s.contains("sign-in FAILED")) { signInFail = true; lastLogonFail = s; }
+                else if (s.startsWith("refresh token rotated")) rotated++;
+            } else if (body.startsWith("CLOUD: ")) {
+                String s = body.substring(7);
+                if (s.startsWith("download ")) { if (s.contains("FAILED")) cloudDlFail++; else cloudDl++; }
+                else if (s.startsWith("upload batch") && s.contains("REFUSED")) cloudBatchRefused++;
+                else if (s.startsWith("upload ") && !s.startsWith("upload batch")) { if (s.contains("FAILED")) cloudUlFail++; else cloudUl++; }
+                else if (s.startsWith("app launch intent")) cloudLaunchIntent = s;
+            } else if (body.startsWith("ACHV: ")) {
+                String s = body.substring(6);
+                if (s.startsWith("GetUserStats")) { if (s.contains("no reply")) achvNoReply++; else achvFetch++; }
+                else if (s.startsWith("StoreUserStats")) { if ("1".equals(engineField(s, "eresult"))) achvStoreOk++; else achvStoreFail++; }
+            } else if (body.startsWith("DL: ")) {
+                String s = body.substring(4);
+                if (s.contains(" started ")) dlStarted++;
+                else if (s.startsWith("complete")) dlComplete++;
+                else if (s.startsWith("FAILED")) { dlFailed++; lastDlFail = s; }
+            }
+        }
+        // AUTH (engine)
+        if (signInFail && !signInOk) f.add("AUTH (engine): an interactive sign-in FAILED — " + lastLogonFail + ".");
+        else if (signInOk) f.add("AUTH (engine): interactive sign-in = OK.");
+        if (tokenRejected) f.add("AUTH (engine): the saved sign-in was REJECTED by Steam — the user must sign in again"
+                + (lastLogonFail != null ? " (" + lastLogonFail + ")" : "") + ".");
+        else if (logonFail > 0) f.add("AUTH (engine): token logon failed " + logonFail + "x (transient) — last: " + lastLogonFail + ".");
+        else if (loggedOn > 0) f.add("AUTH (engine): saved-token logon succeeded (" + loggedOn + "x this process).");
+        if (rotated > 0) f.add("AUTH (engine): refresh token rotated " + rotated + "x (value never logged).");
+        // SESSION (engine)
+        if (elsewhere) f.add("SESSION (engine): the account was taken by ANOTHER client (LoggedInElsewhere / "
+                + "LogonSessionReplaced) — expected around a SteamLite game, a conflict otherwise.");
+        if (loggedOff > 0 && !elsewhere) f.add("SESSION (engine): Steam logged the app session off " + loggedOff + "x — last: " + lastLoggedOff + ".");
+        if (disconnects > 1) f.add("SESSION (engine): " + disconnects + " disconnects this process (reconnect ladder engaged).");
+        if (failures > 0) f.add("SESSION (engine): engine failures " + failures + "x — last: " + lastFailure + ".");
+        // CLOUD (engine)
+        if (cloudDl > 0 || cloudDlFail > 0) f.add("CLOUD (engine): " + cloudDl + " save file(s) downloaded"
+                + (cloudDlFail > 0 ? ", " + cloudDlFail + " FAILED" : "") + ".");
+        if (cloudUl > 0 || cloudUlFail > 0) f.add("CLOUD (engine): " + cloudUl + " save file(s) uploaded"
+                + (cloudUlFail > 0 ? ", " + cloudUlFail + " FAILED" : "") + ".");
+        if (cloudBatchRefused > 0) f.add("CLOUD (engine): Steam REFUSED to open an upload batch " + cloudBatchRefused + "x.");
+        if (cloudLaunchIntent != null && cloudLaunchIntent.contains("pending ops"))
+            f.add("CLOUD (engine): Steam reported PENDING cloud operations from another machine at launch (" + cloudLaunchIntent + ").");
+        // ACHIEVEMENTS (engine)
+        if (achvFetch > 0) f.add("ACHIEVEMENTS (engine): achievement state fetched " + achvFetch + "x from Steam.");
+        if (achvNoReply > 0) f.add("ACHIEVEMENTS (engine): GetUserStats got NO reply " + achvNoReply + "x.");
+        if (achvStoreOk > 0 || achvStoreFail > 0) f.add("ACHIEVEMENTS (engine): sync-back to Steam (StoreUserStats) = "
+                + (achvStoreFail > 0 ? achvStoreFail + "x FAILED" + (achvStoreOk > 0 ? ", " + achvStoreOk + "x OK" : "") : "OK") + ".");
+        // DOWNLOADS (engine)
+        if (dlFailed > 0) f.add("CONTENT (engine): " + dlFailed + " download pass(es) FAILED — last: " + lastDlFail + ".");
+        else if (dlStarted > 0) f.add("CONTENT (engine): " + dlComplete + " of " + dlStarted + " download pass(es) completed this process.");
+    }
+
+    /** Raw section: the engine's own lines (redacted at the source) + the session-status tail. */
+    private static void appendEngineSection(StringBuilder out, List<String> lines, String sessionTail) {
+        if (lines == null || lines.isEmpty()) return;
+        out.append("\n===== steam_engine.txt — Rust engine (app-side session) =====\n");
+        for (String line : lines) out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
+        if (sessionTail != null && !sessionTail.trim().isEmpty()) {
+            out.append("\n===== steam_session.txt — app session status transitions =====\n");
+            for (String line : sessionTail.split("\n")) {
+                if (line.trim().isEmpty()) continue;
+                out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
+            }
+        }
+    }
+
+    /** Raw section: the agent-channel lines verbatim (already token-free / SteamID-masked). */
+    private static void appendAgentSection(StringBuilder out, List<String> agentEvents) {
+        if (agentEvents == null || agentEvents.isEmpty()) return;
+        out.append("\n===== agent channel — live events (steam.exe → app) =====\n");
+        for (String line : agentEvents) {
+            out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
+        }
     }
 
     private static void appendTrackedCount(List<String> f, String gameproc, Pattern tracked, String since) {
@@ -583,6 +867,114 @@ public final class SteamLiteLogCollector {
 
     private static boolean matches(String text, Pattern p) {
         return text != null && p.matcher(text).find();
+    }
+
+    /** Lines worth quoting from a crash: Wine's seh channel (dispatch_exception / call_stack_handlers /
+     *  RtlUnwindEx frames), the "Unhandled exception" banner, winedbg "Backtrace:" frames ("=>0 0x…",
+     *  "  1 0x…"), the "Modules:" table, and loaddll lines (module base addresses). */
+    private static final Pattern CRASH_DETAIL = ci(
+            "(?:trace|warn|err|fixme):seh:|unhandled exception|\\bc0000005\\b|EXCEPTION_ACCESS_VIOLATION"
+                    + "|^\\s*backtrace:|^\\s*=>\\s*\\d+\\s+0x|^\\s*\\d+\\s+0x[0-9a-f]+|^\\s*modules:"
+                    + "|^\\s*(?:PE|ELF)\\s+[0-9a-f]+-|:loaddll:|in (?:32|64)-bit code|Exception code");
+    private static final int CRASH_EXCERPT_MAX_LINES = 24;
+    private static final int CRASH_EXCERPT_WINDOW = 120;
+
+    /** Up to {@link #CRASH_EXCERPT_MAX_LINES} matching lines: the 6 last loaddll lines BEFORE the first
+     *  crash line (the faulting module is usually among the latest loads) then the crash line and the
+     *  detail lines within the next {@link #CRASH_EXCERPT_WINDOW} lines. Long lines are clipped. */
+    private static List<String> crashExcerpt(String text) {
+        List<String> out = new ArrayList<>();
+        if (text == null) return out;
+        String[] lines = text.split("\n", -1);
+        int at = -1;
+        for (int i = 0; i < lines.length; i++) {
+            if (CRASH.matcher(lines[i]).find()) { at = i; break; }
+        }
+        if (at < 0) return out;
+        List<String> loads = new ArrayList<>();
+        for (int i = Math.max(0, at - 400); i < at; i++) {
+            if (lines[i].contains(":loaddll:")) {
+                loads.add(lines[i]);
+                if (loads.size() > 6) loads.remove(0);
+            }
+        }
+        for (String l : loads) out.add(clip(l));
+        int end = Math.min(lines.length, at + CRASH_EXCERPT_WINDOW);
+        for (int i = at; i < end && out.size() < CRASH_EXCERPT_MAX_LINES; i++) {
+            if (i == at || CRASH_DETAIL.matcher(lines[i]).find()) out.add(clip(lines[i]));
+        }
+        return out;
+    }
+
+    private static String clip(String s) {
+        String t = s.trim();
+        return t.length() > 220 ? t.substring(0, 220) + "…" : t;
+    }
+
+    // ── Overlay-injection crash attribution ─────────────────────────────────────────────────────
+
+    /** Wine +seh: "trace:seh:dispatch_exception code=c0000005 (EXCEPTION_ACCESS_VIOLATION) flags=0 addr=0000006FFFD92600". */
+    private static final Pattern SEH_AV_ADDR = ci("code=c0000005\\b[^\\n]*\\baddr=(?:0x)?([0-9a-f]{1,16})");
+    /** Wine +seh: "warn:seh:virtual_unwind backtrace: 0000006FFFD92600: unknown module." — the faulting
+     *  address is in NO module of the crashing process. */
+    private static final Pattern SEH_UNKNOWN_MODULE =
+            ci("virtual_unwind backtrace:\\s*(?:0x)?([0-9a-f]{1,16}):\\s*unknown module");
+    /** Wine +loaddll: "trace:loaddll:build_module Loaded L\"C:\\windows\\system32\\kernel32.dll\" at 0000007FDD4D0000: builtin". */
+    private static final Pattern LOADDLL_KERNEL32 =
+            ci(":loaddll:[^\\n]*kernel32\\.dll\"\\s+at\\s+(?:0x)?([0-9a-f]{1,16})");
+    /** The agent's own module dump in wn-launcher.log (agent-src dump_loaded_modules):
+     *  "[wn-launcher] modules(pre-LoadLibrary): base=0000006FFFD30000 size=0x... name=KERNEL32.DLL path=...". */
+    private static final Pattern AGENT_KERNEL32 = ci(
+            "modules\\(pre-LoadLibrary\\):\\s*base=(?:0x)?([0-9a-f]{1,16})\\s+size=(?:0x)?([0-9a-f]{1,16})"
+                    + "\\s+name=kernel32\\.dll");
+
+    /**
+     * Recognise the Steam overlay-injection startup crash (device-proven 2026-09-02): the first access
+     * violation's address lies inside the AGENT's kernel32 (base + size from the agent's
+     * {@code modules(pre-LoadLibrary)} dump in wn-launcher.log) but not inside the game's — Wine's own
+     * {@code virtual_unwind … unknown module} verdict for that address, or failing that a game kernel32
+     * ({@code +loaddll}, last load before the crash) mapped at a different base. steamclient64.dll's
+     * injection starts the child's thread at a kernel32 address taken from the agent process, which
+     * only works when both map kernel32 at the same base. Returns the plain-English line, or
+     * {@code null} when the evidence isn't there (no +seh addr, no agent module dump, or the address
+     * is outside the agent's kernel32 / inside the game's).
+     */
+    static String overlayInjectionCrash(String wineText, String launcherLog) {
+        if (wineText == null || launcherLog == null) return null;
+        Matcher ak = AGENT_KERNEL32.matcher(launcherLog);
+        if (!ak.find()) return null;
+        long agentBase = parseHex(ak.group(1)), agentSize = parseHex(ak.group(2));
+        if (agentBase < 0 || agentSize <= 0) return null;
+
+        Matcher av = SEH_AV_ADDR.matcher(wineText);
+        if (!av.find()) return null;
+        long addr = parseHex(av.group(1));
+        if (addr < agentBase || addr >= agentBase + agentSize) return null;
+
+        boolean unknownModule = false;
+        Matcher um = SEH_UNKNOWN_MODULE.matcher(wineText);
+        while (um.find()) {
+            if (parseHex(um.group(1)) == addr) { unknownModule = true; break; }
+        }
+        long gameKernel32 = -1;
+        Matcher lk = LOADDLL_KERNEL32.matcher(wineText.substring(0, av.start()));
+        while (lk.find()) gameKernel32 = parseHex(lk.group(1));
+        if (!unknownModule && (gameKernel32 < 0 || gameKernel32 == agentBase)) return null;
+
+        return "CRASH CAUSE: Steam overlay injection crash (address belongs to the agent's kernel32, not the "
+                + "game's) — overlay injection should be disabled. Fault address 0x" + Long.toHexString(addr)
+                + " = agent kernel32 0x" + Long.toHexString(agentBase) + " + 0x"
+                + Long.toHexString(addr - agentBase)
+                + (gameKernel32 >= 0 ? "; the game's kernel32 is at 0x" + Long.toHexString(gameKernel32) : "")
+                + (unknownModule ? "; Wine: \"unknown module\" for that address in the game" : "")
+                + ". Fix: RealSteamLauncher writes system/EnableGameOverlay=0 + apps/<appid>/OverlayAppEnable=0 "
+                + "into localconfig.vdf before every RealSteam launch.";
+    }
+
+    /** Unsigned hex (no 0x) → long; -1 when unparsable. */
+    private static long parseHex(String s) {
+        if (s == null || s.isEmpty() || s.length() > 16) return -1;
+        try { return Long.parseUnsignedLong(s, 16); } catch (NumberFormatException e) { return -1; }
     }
 
     /** Like {@link #scan} but only counts lines timestamped at/after {@code since} (this session).

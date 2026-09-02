@@ -91,7 +91,9 @@ import com.winlator.star.fexcore.FEXCoreEditPresetDialog
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.midi.MidiManager
+import com.winlator.star.store.NetworkProbe
 import com.winlator.star.store.SteamPrefs
+import com.winlator.star.store.SteamRegion
 import com.winlator.star.xenvironment.ImageFsInstaller
 import com.winlator.star.MainActivity
 import java.io.File
@@ -130,6 +132,20 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // Steam friend-chat notifications (default ON). Immediate-write like the update toggles — the store
     // reads SteamPrefs directly, so this isn't part of the Save-FAB snapshot.
     var steamChatNotifs by remember { mutableStateOf(SteamPrefs.isChatNotificationsEnabled(context)) }
+    // The Steam section's "?" help dialog: title to body (null = closed). One state for every row.
+    var steamHelp by remember { mutableStateOf<Pair<String, String>?>(null) }
+    // "In game" presence for Goldberg / Raw launches of Steam games (default ON; immediate-write).
+    var steamOfflinePresence by remember { mutableStateOf(SteamPrefs.isOfflinePresenceEnabled(context)) }
+    // Steam connection region (immediate-write like the toggle above; store/SteamRegion owns it).
+    var steamRegionMode by remember { mutableStateOf(SteamRegion.mode(context)) }
+    var steamRegionRemembered by remember { mutableStateOf(SteamRegion.rememberedAuto(context)) }
+    var steamRegionChoices by remember { mutableStateOf(SteamRegion.CATALOG) }
+    var steamRegionProbe by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
+    var steamRegionProbing by remember { mutableStateOf(false) }
+    var showSteamRegionDropdown by remember { mutableStateOf(false) }
+    // "Test network" (store/NetworkProbe): the same NAT / UDP verdict the SteamLite pre-flight shows.
+    var steamNetResult by remember { mutableStateOf(NetworkProbe.cached()) }
+    var steamNetProbing by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         UpdateManager.check(context) { info -> activity?.runOnUiThread { updateInfo = info } }
     }
@@ -555,9 +571,151 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     SteamPrefs.setChatNotificationsEnabled(context, it)
                 })
                 Text("Steam chat notifications", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Steam chat notifications" to
+                        "Shows an Android notification when a Steam friend messages you and their chat " +
+                        "isn't open in the app. Tap it to open the chat. Off = messages still arrive, you " +
+                        "just aren't told until you open Friends."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Text(
                 "Show a notification when a Steam friend messages you while their chat isn't open.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = steamOfflinePresence, onCheckedChange = {
+                    steamOfflinePresence = it
+                    SteamPrefs.setOfflinePresenceEnabled(context, it)
+                })
+                Text("Show me as in-game for offline launches", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Show me as in-game" to
+                        "When you launch a Steam game with Goldberg or Raw, tell Steam you're playing it so " +
+                        "friends see it and your playtime counts — like the real Steam client. " +
+                        "Off = launch silently. SteamLite launches always show as in-game."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            Text(
+                "When a Steam game launches with Goldberg or Raw (not SteamLite), report it to Steam as the game being played — friends see it and playtime counts, like the real client. Off = launch silently.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            // ── Steam connection region (store/SteamRegion) — written immediately; consumed by the
+            //    Rust engine's CM pick, JavaSteam's CM pick (next app start), the download CDN
+            //    preference and the in-game genuine client's CM seed.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Steam connection region", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Steam connection region" to
+                        "Which Steam datacenter to connect to. Auto pings each one and keeps the fastest " +
+                        "for a day, re-testing after a failed connect. Pick a specific one only if Auto " +
+                        "keeps choosing badly — the store applies it on its next connect."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            Box {
+                val regionLabel = if (steamRegionMode == SteamRegion.AUTO) {
+                    val r = steamRegionRemembered
+                    "Auto (nearest by ping" + (if (r != null) " — ${SteamRegion.nameOf(r.dc)} ${r.dc}, ${r.ms} ms" else "") + ")"
+                } else "${SteamRegion.nameOf(steamRegionMode)} ($steamRegionMode)"
+                Button(onClick = { showSteamRegionDropdown = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    modifier = Modifier.fillMaxWidth()) {
+                    Text(regionLabel, color = MaterialTheme.colorScheme.onSurface)
+                }
+                DropdownMenu(
+                    expanded = showSteamRegionDropdown,
+                    onDismissRequest = { showSteamRegionDropdown = false },
+                    modifier = Modifier.outlinedMenuCard()
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Auto (nearest by ping — remembers the winner)") },
+                        onClick = {
+                            steamRegionMode = SteamRegion.AUTO
+                            SteamRegion.setMode(context, SteamRegion.AUTO)
+                            showSteamRegionDropdown = false
+                        }
+                    )
+                    steamRegionChoices.forEach { dc ->
+                        MenuItemDivider()
+                        val ping = steamRegionProbe[dc.code]
+                        DropdownMenuItem(
+                            text = {
+                                Text(dc.name + "  (" + dc.code + ")" +
+                                    (if (ping != null) (if (ping < 0) "  — no response" else "  — $ping ms") else ""))
+                            },
+                            onClick = {
+                                steamRegionMode = dc.code
+                                SteamRegion.setMode(context, dc.code)
+                                showSteamRegionDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    enabled = !steamRegionProbing,
+                    onClick = {
+                        steamRegionProbing = true
+                        Thread({
+                            val res = try { SteamRegion.probeAll(context) } catch (_: Throwable) { emptyList() }
+                            val discovered = try { SteamRegion.datacenters(SteamRegion.fetchDirectory()) } catch (_: Throwable) { SteamRegion.CATALOG }
+                            activity?.runOnUiThread {
+                                steamRegionProbe = res.associate { it.dc to it.ms }
+                                steamRegionChoices = discovered
+                                steamRegionRemembered = SteamRegion.rememberedAuto(context)
+                                steamRegionProbing = false
+                            }
+                        }, "steam-region-probe-ui").start()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                ) { Text(if (steamRegionProbing) "Testing…" else "Test regions", color = MaterialTheme.colorScheme.onSurface) }
+                if (steamRegionProbing) CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                Button(
+                    enabled = !steamNetProbing,
+                    onClick = {
+                        steamNetProbing = true
+                        Thread({
+                            val res = NetworkProbe.probe()   // never throws; ≤ ~2.5 s
+                            activity?.runOnUiThread { steamNetResult = res; steamNetProbing = false }
+                        }, "steam-net-probe-ui").start()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                ) { Text(if (steamNetProbing) "Testing…" else "Test network", color = MaterialTheme.colorScheme.onSurface) }
+                if (steamNetProbing) CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Test regions / Test network" to
+                        "Test regions pings every Steam datacenter now and shows each one's response time " +
+                        "in the list above; Auto also remembers the fastest as its pick.\n\n" +
+                        "Test network checks how this network handles online game traffic (the same " +
+                        "check the SteamLite launch shows). Steam sign-in and downloads work on any NAT; " +
+                        "games with their own servers (e.g. Brawlhalla) can fail behind a strict/symmetric " +
+                        "NAT such as phone hotspots or many VPNs. Fix: home Wi-Fi, a hotspot with port " +
+                        "mapping, or a VPN with port forwarding."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            steamNetResult?.let { net ->
+                Text(
+                    "Network: " + net.verdict() +
+                        (if (net.nat != NetworkProbe.Nat.OPEN_CONE && net.maskedIp != null) " (IP ${net.maskedIp})" else "") +
+                        (if (net.ipv6) " · IPv6" else ""),
+                    color = if (net.isWarning) Color(0xFFE1A100) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+            }
+            Text(
+                "Which Steam datacenter to connect to for the store, downloads and the in-game Steam session. " +
+                "Auto pings each datacenter once and remembers the fastest for a day (re-tested after a failed connect). " +
+                "The store session applies it on its next connect.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                 modifier = Modifier.padding(start = 12.dp),
             )
@@ -1219,6 +1377,18 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             },
             dismissButton = {
                 TextButton(onClick = { showCaptureConsent = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // ── Steam section "?" help (one dialog, the tapped row picks the copy) ──
+    steamHelp?.let { (title, body) ->
+        AlertDialog(
+            onDismissRequest = { steamHelp = null },
+            title = { Text(title) },
+            text = { Text(body, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp) },
+            confirmButton = {
+                TextButton(onClick = { steamHelp = null }) { Text("Close") }
             }
         )
     }

@@ -65,6 +65,14 @@ object SteamGameUpdater {
     /** How long to wait for the pre-download PICS product-info refresh (live manifest/branch resolve). */
     private const val PICS_REFRESH_MS = 15_000L
 
+    /** Bound on the Rust engine's fresh single-app PICS read inside [checkForUpdate] (the launch
+     *  pre-flight waits at most 10 s for the whole probe). */
+    private const val CHECK_REFRESH_MS = 8_000L
+
+    /** The Rust engine's per-install download journal (see [BlDepotInstaller]), sibling of
+     *  [DEPOT_CONFIG_DIR]; cleared alongside it before a verify when that engine is selected. */
+    private const val BL_JOURNAL_DIR = BlDepotInstaller.JOURNAL_DIR
+
     /** JavaSteam DepotDownloader's on-disk resume state dir (installed-manifest ids + staging), under
      *  the game's install dir. Cleared before a corrupt-install verify so the engine re-validates every
      *  file against the live manifest instead of trusting a stale "already at this manifest" record. */
@@ -234,13 +242,30 @@ object SteamGameUpdater {
     // Decision logic (worker thread)
     // -------------------------------------------------------------------------
 
-    /** Resolve the [UpdateStatus] for [checkForUpdate] without any network I/O (see its doc). */
+    /**
+     * Resolve the [UpdateStatus] for [checkForUpdate] (see its doc). JavaSteam: no network, the synced
+     * `steam_branches` build is the hint. Rust engine (Phase 2-B): a FRESH single-app PICS refresh
+     * runs first — bounded to [CHECK_REFRESH_MS] so the pre-flight's "Game files" row never waits on
+     * it — so the compared live build is the one Steam reports right now, not the last library sync.
+     */
     private fun computeStatus(ctx: Context, appId: Int): UpdateStatus {
         // Not a resolvable Steam appId (custom import etc.) — nothing to check.
         if (appId <= 0) return UpdateStatus(State.UP_TO_DATE, 0L, 0L)
 
         val repo = SteamRepository.getInstance()
         val db = repo.database
+        if (repo.isRustEngine && repo.isSessionLoggedOn) {
+            val latch = java.util.concurrent.CountDownLatch(1)
+            var refreshed: Boolean? = null
+            Thread({
+                try { refreshed = repo.refreshAppProductInfo(appId, CHECK_REFRESH_MS) }
+                catch (t: Throwable) { Log.w(TAG, "app $appId fresh check refresh failed: ${t.message}") }
+                finally { latch.countDown() }
+            }, "steam-check-refresh-$appId").apply { isDaemon = true }.start()
+            val landed = latch.await(CHECK_REFRESH_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            Log.i(TAG, "app $appId fresh PICS refresh for the update check → " +
+                    (if (landed) refreshed.toString() else "timed out (comparing the synced build)"))
+        }
         val row = try { db.getGame(appId) } catch (_: Throwable) { null }
             ?: return UpdateStatus(State.UP_TO_DATE, 0L, 0L)   // not in DB — can't compare, treat as clean
 
@@ -504,7 +529,9 @@ object SteamGameUpdater {
      */
     private fun startInstallPass(ctx: Context, appId: Int, handle: UpdateHandle, verify: Boolean): Boolean {
         return try {
-            val control = SteamDepotDownloader.installApp(appId, ctx, DownloadSpeedConfig.DEFAULT_TIER, false)
+            // `verify` reaches the Rust-engine path only (its fresh/verify mode); JavaSteam ignores it.
+            val control = SteamDepotDownloader.installApp(appId, ctx, DownloadSpeedConfig.DEFAULT_TIER, false,
+                null, verify)
             handle.controlRef.set(control)
             // A cancel racing the installApp call: propagate to the freshly-created download.
             if (handle.isCancelled) { try { control.cancel.run() } catch (_: Throwable) {} }
@@ -542,6 +569,16 @@ object SteamGameUpdater {
             if (cfg.exists()) {
                 val ok = cfg.deleteRecursively()
                 Log.i(TAG, "cleared depot resume state at ${cfg.absolutePath} (ok=$ok)")
+            }
+            // Rust engine: its verify pass (`fresh = true`) already forgets the journal for the depots
+            // it re-validates; clearing the journal too keeps a stale record for a dropped depot from
+            // surviving a verify. Only when that engine is selected — never touched otherwise.
+            if (SteamRepository.getInstance().isRustEngine) {
+                val j = File(installDir, BL_JOURNAL_DIR)
+                if (j.exists()) {
+                    val ok = j.deleteRecursively()
+                    Log.i(TAG, "cleared Rust-engine download journal at ${j.absolutePath} (ok=$ok)")
+                }
             }
         } catch (t: Throwable) {
             Log.w(TAG, "clearDepotResumeState($installDir) failed: ${t.message}")

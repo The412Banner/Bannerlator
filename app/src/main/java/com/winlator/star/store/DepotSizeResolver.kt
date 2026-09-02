@@ -181,6 +181,8 @@ object DepotSizeResolver {
         val rows = db.getDepotManifests(appId).filter { it.manifestId != 0L }
         if (rows.isEmpty()) return fallback
 
+        if (repo.isRustEngine) return resolveOnWorkerRust(appId, repo, rows, fallback, db)
+
         val steamClient = repo.steamClient ?: return fallback
         val content = repo.getSteamContent() ?: return fallback
 
@@ -229,6 +231,44 @@ object DepotSizeResolver {
             // never closes the shared client; neither must the resolver. cdn owns nothing to free.
             try { scope.cancel() } catch (_: Throwable) {}
         }
+    }
+
+    /**
+     * The Rust-engine counterpart of the JavaSteam batch above: each unresolved depot's manifest is
+     * fetched metadata-only by the engine (`nativeFetchManifestSizes`: CDN pool + manifest request
+     * code + one manifest GET, no depot key, no chunk data) and its declared totals + block-rounded
+     * disk estimate persisted exactly like [resolveOneDepot] does. Same gates: serial, yields to an
+     * active download, degrades to the estimate on any failure.
+     */
+    private fun resolveOnWorkerRust(
+        appId: Int, repo: SteamRepository, rows: List<SteamDatabase.DepotManifestRow>,
+        fallback: Sizes, db: SteamDatabase,
+    ): Sizes {
+        val session = com.winlator.star.store.blsteam.BlSteamEngine.session() ?: return fallback
+        if (!com.winlator.star.store.blsteam.BlSteamEngine.isLoggedOn()) return fallback
+        val ctx = repo.appContextOrNull() ?: return fallback
+        val caPath = try { com.winlator.star.store.blsteam.CaBundleExtractor.ensureBundle(ctx) } catch (_: Throwable) { "" }
+        val branch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+        for (r in rows) {
+            if (r.realDiskBytes > 0L) continue                 // fully resolved (size + disk footprint)
+            if (repo.isDownloadActive()) break                 // a download started mid-resolve — yield
+            if (!repo.isLoggedIn) break
+            val sz = try { session.fetchManifestSizes(appId, r.depotId, r.manifestId, branch, caPath) } catch (t: Throwable) { null }
+            if (sz == null || sz.uncompressed <= 0L) {
+                Log.w(TAG, "resolve($appId): depot ${r.depotId} manifest sizes unavailable (rust) — keeping estimate")
+                continue
+            }
+            val disk = if (sz.disk > 0L) sz.disk else sz.uncompressed
+            try { db.updateDepotRealSize(appId, r.depotId, r.manifestId, sz.uncompressed, sz.compressed, disk) } catch (_: Throwable) {}
+            Log.i(TAG, "resolve($appId): depot ${r.depotId} real=${sz.uncompressed}B download=${sz.compressed}B " +
+                    "disk=${disk}B files=${sz.files} (PICS was ${r.sizeBytes}B) [rust]")
+        }
+        val result = cached(appId) ?: fallback
+        if (result.complete && result.realInstallBytes > 0L) {
+            try { db.setGameRealSize(appId, result.realInstallBytes) } catch (_: Throwable) {}
+            try { db.setGameRealDisk(appId, result.realDiskBytes) } catch (_: Throwable) {}
+        }
+        return result
     }
 
     /** Fetch one depot's manifest and persist its true sizes. Returns silently on any failure. */

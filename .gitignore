@@ -18,3 +18,8 @@
 # Samsung Galaxy Performance SDK — proprietary, not GPL, supplied per-build (see
 # app/libs/GalaxyPerf/README.md). Never commit the jar; keep the drop-point + docs.
 /app/libs/GalaxyPerf/*.jar
+
+# bl-steam-client (Rust): cargo build output and the CI-built cdylib. The .so is produced by
+# .github/workflows/_build.yml every run and copied into jniLibs — never commit it.
+/app/src/main/cpp/bl-steam-client/rust/target/
+/app/src/main/jniLibs/arm64-v8a/libblsteam.so

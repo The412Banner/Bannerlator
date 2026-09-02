@@ -70,6 +70,12 @@ public class PreloaderDialog {
         activity.runOnUiThread(() -> fail(stage, what, detail, logDir, loggingEnabled));
     }
 
+    // Failure card with extra action buttons (rendered before Close / Open log folder).
+    public synchronized void fail(String stage, String what, String detail, String logDir,
+                                  boolean loggingEnabled, java.util.List<FailureAction> actions) {
+        PreloaderState.fail(stage, what, detail, logDir, loggingEnabled, actions);
+    }
+
     public synchronized void close() {
         PreloaderState.hide();
     }

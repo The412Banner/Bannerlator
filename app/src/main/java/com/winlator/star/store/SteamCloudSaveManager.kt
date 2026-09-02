@@ -1,24 +1,13 @@
 package com.winlator.star.store
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.SaveLocator
-import `in`.dragonbra.javasteam.enums.EResult
-import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
-import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
-import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
-import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.File
-import java.io.RandomAccessFile
-import java.net.HttpURLConnection
-import java.net.URL
-import java.security.MessageDigest
-import java.util.Date
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -26,7 +15,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
-import java.util.zip.ZipInputStream
 
 /**
  * Steam Cloud (UFS) per-game save up/download manager.
@@ -35,30 +23,29 @@ import java.util.zip.ZipInputStream
  * entry points ([downloadSaves] cloud -> local, [uploadSaves] local -> cloud) plus a [Callback].
  * Each op runs on its own background thread and reports progress via the callback.
  *
- * Uses JavaSteam's [SteamCloud] handler (obtained from [SteamRepository.getSteamCloud]) which speaks
- * the real Steam UFS protocol:
- *   - [SteamCloud.getAppFileListChange] -> the remote file manifest for an app
- *   - [SteamCloud.clientFileDownload]   -> a signed CDN URL to GET one cloud file
- *   - [SteamCloud.beginAppUploadBatch] / [SteamCloud.beginFileUpload] /
- *     [SteamCloud.commitFileUpload] / [SteamCloud.completeAppUploadBatch] -> the upload handshake
+ * Speaks the real Steam UFS protocol through the engine-agnostic [SteamCloudBackend] seam — the
+ * JavaSteam `SteamCloud` handler when the app runs on JavaSteam, the Rust engine's `ccloud` service
+ * calls when `use_rust_steam_engine` is ON (Phase 3b-1). Either way the same four primitives:
+ *   - [SteamCloudBackend.listFiles]  -> the remote file manifest for an app
+ *   - [SteamCloudBackend.downloadOne] -> a signed CDN URL to GET one cloud file
+ *   - [SteamCloudBackend.beginBatch] / [SteamCloudBackend.uploadOne] /
+ *     [SteamCloudBackend.completeBatch] -> the upload handshake
  *
  * SAFETY — cloud saves can never be deleted by this class. See [uploadSaves]: `filesToDelete` is
- * hard-wired to an empty list on every code path, and an empty local folder is refused before any
- * batch is opened. There is no code path that computes or sends a deletion to the cloud.
+ * hard-wired to an empty list on every code path (the seam does not even expose a delete), and an
+ * empty local folder is refused before any batch is opened. There is no code path that computes or
+ * sends a deletion to the cloud.
  */
 object SteamCloudSaveManager {
 
     private const val TAG = "BH_STEAM_CLOUD"
 
-    /** Blocking timeout for each JavaSteam CM future (list / begin / commit / complete). */
+    /** Blocking timeout for the PICS product-info probe in [hasCloudSupport]. */
     private const val FUTURE_TIMEOUT_SEC = 60L
 
-    /** HTTP connect/read timeout for CDN block GET/PUT. */
-    private const val HTTP_TIMEOUT_MS = 60_000
-
-    /** Length in bytes of a SHA-1 digest — Steam UFS's per-file [AppFileInfo.getShaFile] and our
-     *  local [sha1] both produce this. A cloud entry whose sha isn't exactly this long is treated as
-     *  "no usable SHA" and its path is always re-uploaded (never skipped). */
+    /** Length in bytes of a SHA-1 digest — Steam UFS's per-file sha and our local
+     *  [SteamCloudBackend.sha1] both produce this. A cloud entry whose sha isn't exactly this long is
+     *  treated as "no usable SHA" and its path is always re-uploaded (never skipped). */
     private const val SHA1_LEN = 20
 
     /** How many files transfer concurrently in [downloadSaves]/[uploadSaves]. Each transfer keeps
@@ -100,29 +87,26 @@ object SteamCloudSaveManager {
                 val steamCloud = requireCloud() ?: run { cb.onError("Not signed in to Steam"); return@Thread }
 
                 cb.onStatus("Fetching cloud file list…")
-                val fileList: AppFileChangeList =
-                    steamCloud.getAppFileListChange(appId).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
-
-                val files = fileList.files
+                val files = steamCloud.listFiles(appId)
                 if (files.isEmpty()) { cb.onDone("No cloud saves found for this game"); return@Thread }
 
                 if (!localFolder.exists()) localFolder.mkdirs()
 
                 // Resolve the safe work set first (unsafe cloud paths are skipped, counted below),
-                // then GET the files CONCURRENTLY via a bounded pool. Each task runs the existing
-                // per-file downloadOne (its own clientFileDownload + its own HttpURLConnection); no
+                // then GET the files CONCURRENTLY via a bounded pool. Each task runs the backend's
+                // per-file downloadOne (its own download-info call + its own HttpURLConnection); no
                 // shared connection, no HTTP/2 multiplexing.
                 var skipped = 0
                 val work = ArrayList<Triple<String, String, File>>() // (displayName, remotePath, dest)
                 for (f in files) {
-                    val remotePath = remotePathOf(f, fileList)
+                    val remotePath = f.remotePath
                     val relLocal = sanitizeRelative(remotePath)
                     if (relLocal == null) {
                         Log.w(TAG, "Skipping unsafe cloud path: $remotePath")
                         skipped++
                         continue
                     }
-                    work.add(Triple(f.filename, remotePath, File(localFolder, relLocal)))
+                    work.add(Triple(remotePath.substringAfterLast('/'), remotePath, File(localFolder, relLocal)))
                 }
 
                 val downloaded = AtomicInteger(0)
@@ -130,7 +114,7 @@ object SteamCloudSaveManager {
                 runConcurrently(work, "steam-cloud-dl-$appId") { (name, remotePath, dest) ->
                     try {
                         cb.onStatus("Downloading: $name")
-                        if (downloadOne(steamCloud, appId, remotePath, dest)) {
+                        if (steamCloud.downloadOne(appId, remotePath, dest)) {
                             downloaded.incrementAndGet()
                         } else {
                             failures.add(name)
@@ -215,16 +199,14 @@ object SteamCloudSaveManager {
                 // "changed" and gets uploaded. We never skip a file we can't prove is byte-identical.
                 cb.onStatus("Comparing with cloud…")
                 val cloudShaByPath: Map<String, ByteArray> = try {
-                    val fileList = steamCloud.getAppFileListChange(appId)
-                        .get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
                     val map = HashMap<String, ByteArray>()
-                    for (f in fileList.files) {
-                        val sha = f.shaFile
+                    for (f in steamCloud.listFiles(appId)) {
+                        val sha = f.sha
                         if (sha.size != SHA1_LEN) {
-                            Log.w(TAG, "Cloud file has no usable SHA (${sha.size}B), will re-upload: ${f.filename}")
+                            Log.w(TAG, "Cloud file has no usable SHA (${sha.size}B), will re-upload: ${f.remotePath}")
                             continue
                         }
-                        val key = sanitizeRelative(remotePathOf(f, fileList)) ?: continue
+                        val key = sanitizeRelative(f.remotePath) ?: continue
                         map[key] = sha
                     }
                     map
@@ -240,7 +222,7 @@ object SteamCloudSaveManager {
                     val (file, cloudPath) = entry
                     val key = sanitizeRelative(cloudPath)
                     val cloudSha = if (key != null) cloudShaByPath[key] else null
-                    if (cloudSha != null && sha1(file).contentEquals(cloudSha)) {
+                    if (cloudSha != null && SteamCloudBackend.sha1(file).contentEquals(cloudSha)) {
                         continue // an identical copy is already in the cloud — skip
                     }
                     toUpload.add(entry)
@@ -259,36 +241,29 @@ object SteamCloudSaveManager {
                 val filesToUpload: List<String> = toUpload.map { it.second }
 
                 // filesToDelete is ALWAYS empty. This is the single source of truth for the
-                // "never delete from cloud" guarantee — it is a literal emptyList() and is never
-                // populated from local/remote diffs anywhere in this class. The incremental diff
-                // only ever SHRINKS the upload set; it never produces a deletion.
-                val filesToDelete: List<String> = emptyList()
+                // "never delete from cloud" guarantee — [SteamCloudBackend.beginBatch] takes no
+                // deletion list at all, so nothing in this class can produce one. The incremental
+                // diff only ever SHRINKS the upload set; it never produces a deletion.
 
                 cb.onStatus("Opening cloud upload batch…")
-                // Signature (JavaSteam 1.8.0):
-                //   beginAppUploadBatch(appId, machineName, filesToUpload, filesToDelete, clientId, appBuildId)
-                // clientId/appBuildId are best-effort 0L (classic token logon exposes no auth-session
-                // clientID, and we don't parse the installed build id). See report notes.
-                val batch = steamCloud.beginAppUploadBatch(
-                    appId,
-                    machineName(),
-                    filesToUpload,
-                    filesToDelete,   // ← always empty
-                    0L,              // clientId (unknown under classic logon)
-                    0L,              // appBuildId (not tracked)
-                ).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
+                // clientId/appBuildId are best-effort 0L inside the backends (classic token logon
+                // exposes no auth-session clientID, and we don't parse the installed build id).
+                val batchId = steamCloud.beginBatch(appId, filesToUpload)
+                if (batchId == 0L) {
+                    cb.onError("Steam refused to open a cloud upload batch — try again in a moment")
+                    return@Thread
+                }
 
                 // Upload the batch's files CONCURRENTLY (bounded pool) — WITHIN the single open
                 // batch. Only the per-file uploadOne is parallelized (its own beginFileUpload +
                 // block PUTs over its own HttpURLConnection(s) + commitFileUpload, all jobid-keyed);
                 // the batch begin/complete calls stay single and sequential around this loop.
-                val batchId = batch.batchID
                 val uploaded = AtomicInteger(0)
                 val allOk = AtomicBoolean(true)
                 runConcurrently(toUpload, "steam-cloud-ul-$appId") { (file, cloudPath) ->
                     try {
                         cb.onStatus("Uploading: ${file.name}")
-                        if (uploadOne(steamCloud, appId, file, cloudPath, batchId)) {
+                        if (steamCloud.uploadOne(appId, file, cloudPath, batchId)) {
                             uploaded.incrementAndGet()
                         } else {
                             allOk.set(false)
@@ -300,11 +275,7 @@ object SteamCloudSaveManager {
                 }
 
                 // Close the batch with the aggregate result (OK only if every file committed).
-                steamCloud.completeAppUploadBatch(
-                    appId,
-                    batchId,
-                    if (allOk.get()) EResult.OK else EResult.Fail,
-                ).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
+                steamCloud.completeBatch(appId, batchId, allOk.get())
 
                 if (allOk.get()) {
                     // ── HONESTY GUARD 2: did the cloud actually KEEP the committed files? ──
@@ -375,16 +346,11 @@ object SteamCloudSaveManager {
 
         cloudSupportCache[appId]?.let { return it }
 
-        val steamApps = SteamRepository.getInstance().steamApps ?: return null
         return try {
-            val resultSet = steamApps.picsGetProductInfo(PICSRequest(appId))
-                .toFuture().get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
-
-            var appKeyValues: KeyValue? = null
-            for (callback in resultSet.results) {
-                val info = callback.apps[appId]
-                if (info != null) { appKeyValues = info.keyValues; break }
-            }
+            // Engine-agnostic single-app product-info read (JavaSteam PICS future / Rust engine PICS
+            // hop) — null when not signed in, which the caller treats as "unknown".
+            val appKeyValues: KeyValue? =
+                SteamRepository.getInstance().fetchAppKeyValues(appId, FUTURE_TIMEOUT_SEC * 1000L)
 
             // No populated KeyValues (metadata-only / missing token) → genuinely unknown.
             if (appKeyValues == null || appKeyValues.children.isEmpty()) {
@@ -417,10 +383,9 @@ object SteamCloudSaveManager {
      * false = non-empty (retained, e.g. HL2), or null if the manifest re-fetch itself failed (⇒ can't
      * tell → caller keeps the optimistic success and does not mark).
      */
-    private fun isCloudManifestEmpty(sc: SteamCloud, appId: Int): Boolean? {
+    private fun isCloudManifestEmpty(sc: SteamCloudBackend, appId: Int): Boolean? {
         return try {
-            val fresh = sc.getAppFileListChange(appId).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
-            fresh.files.isEmpty()
+            sc.listFiles(appId).isEmpty()
         } catch (e: Exception) {
             Log.w(TAG, "post-upload emptiness check failed for appId=$appId", e)
             null
@@ -550,7 +515,12 @@ object SteamCloudSaveManager {
                 val r = runBlockingMove(BLOCKING_BOUND_MS) { cb -> collectFromContainer(ctx, appId, installDir, cb) }
                 return "No Steam Cloud support — saved locally only (${r.summary})"
             }
-            runBlockingMove(BLOCKING_BOUND_MS) { cb -> syncToCloud(ctx, appId, installDir, cb) }.summary
+            val r = runBlockingMove(BLOCKING_BOUND_MS) { cb -> syncToCloud(ctx, appId, installDir, cb) }
+            // Same post-exit sync signal the genuine client sends (`CCloud.AppExitSyncDone`) — the
+            // Rust backend implements it, JavaSteam's is a no-op. Best-effort, never changes the result.
+            try { requireCloud()?.signalAppExitSyncDone(appId, uploadsCompleted = r.ok, uploadsRequired = true) }
+            catch (t: Throwable) { Log.w(TAG, "exit-sync signal failed", t) }
+            r.summary
         } catch (e: Exception) {
             Log.e(TAG, "syncToCloudBlocking failed", e)
             "Sync error: ${e.message ?: e.javaClass.simpleName}"
@@ -569,6 +539,14 @@ object SteamCloudSaveManager {
             if (SteamCloudSavePaths.resolveContainer(ctx, appId, installDir) == null) {
                 return "This game needs to be added to a container first."
             }
+            // Same pre-launch signal the genuine client sends (`CCloud.AppLaunchIntent`): Steam
+            // reports pending cloud operations from another machine. Logged only — the newest-wins
+            // compare below is what decides; the Rust backend implements it, JavaSteam's is a no-op.
+            try {
+                requireCloud()?.signalAppLaunchIntent(appId)?.let { ops ->
+                    if (ops.isNotEmpty()) Log.i(TAG, "launch intent (appId $appId): pending cloud ops $ops")
+                }
+            } catch (t: Throwable) { Log.w(TAG, "launch-intent signal failed", t) }
             // Phase 1: Download cloud → Library. Populates the Library with the cloud copy (mtimes
             // preserved from the cloud timestamps), leaving the container untouched.
             val dl = runBlockingMove(BLOCKING_BOUND_MS) { cb -> downloadToLibrary(ctx, appId, cb) }
@@ -634,7 +612,7 @@ object SteamCloudSaveManager {
                 var applied = 0
                 var skipped = 0
                 for ((file, rel) in files) {
-                    val dest = SteamCloudSavePaths.toContainerPath(rel, container, installDir)
+                    val dest = SteamCloudSavePaths.toContainerPath(rel, container, installDir, appId)
                     if (dest == null) {
                         Log.w(TAG, "Apply: skipping unmapped/unsafe path: $rel")
                         skipped++
@@ -757,7 +735,7 @@ object SteamCloudSaveManager {
         // Map one container file → its %Root%/rest path and record it once (de-dupe across passes).
         fun consider(f: File) {
             if (!f.isFile) return
-            val libraryRel = SteamCloudSavePaths.toLibraryRel(f, container, installDir) ?: return
+            val libraryRel = SteamCloudSavePaths.toLibraryRel(f, container, installDir, appId) ?: return
             val canon = try { f.canonicalPath } catch (e: Exception) { f.absolutePath }
             if (seen.add(canon)) out.add(f to libraryRel)
         }
@@ -765,7 +743,7 @@ object SteamCloudSaveManager {
         // ── Pass 1: directories the Library already established for this game. ──
         val scopeDirs = LinkedHashSet<File>()
         for ((_, rel) in enumerateLocal(library)) {
-            val dest = SteamCloudSavePaths.toContainerPath(rel, container, installDir) ?: continue
+            val dest = SteamCloudSavePaths.toContainerPath(rel, container, installDir, appId) ?: continue
             val parent = dest.parentFile ?: continue
             if (parent.isDirectory) {
                 try { scopeDirs.add(parent.canonicalFile) } catch (_: Exception) {}
@@ -858,21 +836,8 @@ object SteamCloudSaveManager {
 
     // ── Private helpers ─────────────────────────────────────────────────────────
 
-    private fun requireCloud(): SteamCloud? = SteamRepository.getInstance().steamCloud
-
-    /** The remote (Steam-side) path for a file = its path prefix + filename, as Steam stores it.
-     *  This exact string is what [SteamCloud.clientFileDownload] and the upload calls key on. */
-    private fun remotePathOf(f: AppFileInfo, list: AppFileChangeList): String {
-        val prefixes = list.pathPrefixes
-        val idx = f.pathPrefixIndex
-        val prefix = if (idx in prefixes.indices) prefixes[idx] else ""
-        return when {
-            prefix.isEmpty() -> f.filename
-            f.filename.isEmpty() -> prefix
-            // Join with a single '/', matching GameNative's Paths.get(prefix, filename) on unix.
-            else -> prefix.trimEnd('/', '\\') + "/" + f.filename.trimStart('/', '\\')
-        }
-    }
+    /** The live session's cloud backend (JavaSteam handler or Rust engine), or null when signed out. */
+    private fun requireCloud(): SteamCloudBackend? = SteamCloudBackend.current()
 
     /** Convert a Steam cloud path into a SAFE relative filesystem path under the local folder.
      *  Normalizes '\' -> '/', strips leading slashes, and REJECTS any '..' traversal (returns null).
@@ -884,106 +849,6 @@ object SteamCloudSaveManager {
         val parts = norm.split('/').filter { it.isNotEmpty() && it != "." }
         if (parts.isEmpty() || parts.any { it == ".." }) return null
         return parts.joinToString("/")
-    }
-
-    /** GET one cloud file to [dest]. Returns true on success. Only writes locally. */
-    private fun downloadOne(sc: SteamCloud, appId: Int, remotePath: String, dest: File): Boolean {
-        val info = sc.clientFileDownload(appId, remotePath).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
-        if (info.urlHost.isEmpty()) {
-            Log.w(TAG, "Empty CDN host for $remotePath")
-            return false
-        }
-        val url = (if (info.useHttps) "https://" else "http://") + info.urlHost + info.urlPath
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = HTTP_TIMEOUT_MS
-        conn.readTimeout = HTTP_TIMEOUT_MS
-        for (h in info.requestHeaders) conn.setRequestProperty(h.name, h.value)
-        try {
-            val code = conn.responseCode
-            if (code !in 200..299) {
-                Log.w(TAG, "HTTP $code downloading $remotePath")
-                return false
-            }
-            dest.parentFile?.mkdirs()
-            // Steam serves the file zip-compressed when fileSize != rawFileSize (single entry).
-            val compressed = info.fileSize != info.rawFileSize
-            conn.inputStream.use { raw ->
-                if (compressed) {
-                    ZipInputStream(raw).use { zip ->
-                        if (zip.nextEntry == null) {
-                            Log.w(TAG, "Compressed cloud file $remotePath had no zip entry")
-                            return false
-                        }
-                        dest.outputStream().use { out -> zip.copyTo(out) }
-                    }
-                } else {
-                    dest.outputStream().use { out -> raw.copyTo(out) }
-                }
-            }
-            try { dest.setLastModified(info.timestamp.time) } catch (_: Exception) {}
-            return true
-        } finally {
-            conn.disconnect()
-        }
-    }
-
-    /** Upload a single local file to the cloud under [cloudPath]. Additive — no deletion involved. */
-    private fun uploadOne(sc: SteamCloud, appId: Int, file: File, cloudPath: String, batchId: Long): Boolean {
-        val sha = sha1(file)
-        val fileSize = file.length().toInt()
-
-        // beginFileUpload (JavaSteam 1.8.0): the remaining params (platformsToSync, cellId,
-        // canEncrypt, isSharedFile, deprecatedRealm, parentScope) carry Kotlin defaults.
-        val info = sc.beginFileUpload(
-            appId = appId,
-            fileSize = fileSize,
-            rawFileSize = fileSize,
-            fileSha = sha,
-            timestamp = Date(file.lastModified()),
-            filename = cloudPath,
-            uploadBatchId = batchId,
-        ).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
-
-        var ok = true
-        RandomAccessFile(file, "r").use { raf ->
-            for (block in info.blockRequests) {
-                val len = block.blockLength
-                val buf = ByteArray(len)
-                raf.seek(block.blockOffset)
-                var read = 0
-                while (read < len) {
-                    val n = raf.read(buf, read, len - read)
-                    if (n < 0) break
-                    read += n
-                }
-                val url = (if (block.useHttps) "https://" else "http://") + block.urlHost + block.urlPath
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = HTTP_TIMEOUT_MS
-                conn.readTimeout = HTTP_TIMEOUT_MS
-                conn.doOutput = true
-                conn.requestMethod = "PUT"
-                for (h in block.requestHeaders) conn.setRequestProperty(h.name, h.value)
-                try {
-                    conn.setFixedLengthStreamingMode(read)
-                    conn.outputStream.use { out -> out.write(buf, 0, read) }
-                    val code = conn.responseCode
-                    if (code !in 200..299) {
-                        Log.w(TAG, "HTTP $code uploading block of $cloudPath")
-                        ok = false
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Block upload failed for $cloudPath: ${e.javaClass.simpleName}")
-                    ok = false
-                } finally {
-                    conn.disconnect()
-                }
-            }
-        }
-
-        // Commit tells the CM whether the transfer for this file succeeded. This does not delete
-        // anything; on failure the CM simply drops this file's pending upload.
-        sc.commitFileUpload(ok, appId, sha, cloudPath).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
-        return ok
     }
 
     /** Recursively list files under [root], each paired with its cloud path (relative to root,
@@ -998,21 +863,6 @@ object SteamCloudSaveManager {
         }
         return out
     }
-
-    private fun sha1(file: File): ByteArray {
-        val md = MessageDigest.getInstance("SHA-1")
-        file.inputStream().use { input ->
-            val buf = ByteArray(8192)
-            var n = input.read(buf)
-            while (n >= 0) {
-                md.update(buf, 0, n)
-                n = input.read(buf)
-            }
-        }
-        return md.digest()
-    }
-
-    private fun machineName(): String = "Bannerlator (${Build.MODEL})"
 
     private fun plural(n: Int) = if (n == 1) "" else "s"
 }

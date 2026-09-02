@@ -101,6 +101,10 @@ fun LogManagerScreen(onClose: () -> Unit) {
     var logcat by remember { mutableStateOf(prefs.getBoolean("enable_logcat", true)) }
     var crashReports by remember { mutableStateOf(prefs.getBoolean("enable_crash_reports", true)) }
     var exitAutosave by remember { mutableStateOf(prefs.getBoolean(ExitReasonReporter.PREF_AUTOSAVE, false)) }
+    var rustSteamEngine by remember {
+        mutableStateOf(prefs.getBoolean(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY,
+            com.winlator.star.store.blsteam.BlSteamEngineFlag.DEFAULT))
+    }
 
     // Location + channels moved here from the old Settings › Logs section, which this screen
     // replaces. They used to be saved by the Settings "Save" FAB; here every change is written
@@ -277,6 +281,17 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     enabled = ExitReasonReporter.isSupported(),
                     onInfo = { info = "Exit reasons" to LogCopy.EXIT_REASONS }) {
                     exitAutosave = it; putBool(ExitReasonReporter.PREF_AUTOSAVE, it)
+                }
+                // Developer switch for the native Rust Steam engine (docs/STEAM_RUST_ENGINE_PLAN.md).
+                // Read once per process by SteamRepository.initialize(), so it takes effect on the
+                // next app start. OFF = JavaSteam as today; ON = the full Steam stack (auth, session,
+                // library, downloads, cloud, achievements, social, presence) runs on libblsteam.so and
+                // the engine's steam_engine.txt is folded into the SteamLite log bundle (Phase 3b-4).
+                LogToggle("Native Steam engine (restart required)", rustSteamEngine,
+                    hint = "On by default — the whole Steam session (sign-in, library, downloads, cloud, achievements, friends) runs on the native engine; its log joins the SteamLite bundle. Off = legacy Java engine",
+                    onInfo = { info = "Rust Steam engine" to LogCopy.RUST_ENGINE }) {
+                    rustSteamEngine = it
+                    putBool(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, it)
                 }
 
                 // Outlined rather than a filled button: the design keeps solid accent for switches
@@ -1207,6 +1222,14 @@ private object LogCopy {
         "run's files keep their normal names, so the newest log is always the obvious one.\n\n" +
         "Set it to 0 to keep no history at all."
 
+    const val RUST_ENGINE =
+        "On by default — no performance cost in game.\n\n" +
+        "Runs the whole Steam side of Bannerlator (sign-in, library, downloads, cloud saves, " +
+        "achievements, friends) on the app's native engine. Needs an app restart to take effect.\n\n" +
+        "Turn it off only if something Steam-related misbehaves: that switches back to the legacy " +
+        "Java engine for this release — nothing is lost. While the native engine is on, its own log " +
+        "is added to the SteamLite bundle so a problem can be traced."
+
     fun explainAll(): String = buildString {
         append("Costs performance while on\n\n")
         append("• Wine debug\n$WINE\n\n")
@@ -1218,6 +1241,8 @@ private object LogCopy {
         append("• Crash reports\n$CRASH\n\n")
         append("\nOrganisation\n\n")
         append("• Folder for each game\n$PER_GAME\n\n")
-        append("• Keep last runs\n$KEEP_LAST\n")
+        append("• Keep last runs\n$KEEP_LAST\n\n")
+        append("\nDeveloper\n\n")
+        append("• Rust Steam engine\n$RUST_ENGINE\n")
     }
 }

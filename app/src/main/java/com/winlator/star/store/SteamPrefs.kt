@@ -211,6 +211,27 @@ object SteamPrefs {
         prefs.edit().putBoolean(K_SOCIAL_ENABLED, v).apply()
     }
 
+    // ── "In game" presence for offline (Goldberg / Raw) launches (default ON) ──
+    // When a Steam-origin game launches WITHOUT the genuine client (Goldberg or Raw), the app's own
+    // CM session reports it as the game being played (CMsgClientGamesPlayed) — friends see "playing
+    // <game>" and Steam records the playtime, exactly as the real client would. A RealSteam launch
+    // never uses this (the genuine client reports itself while the app session is paused). Preference,
+    // not a credential, so clear() leaves it. Read by XServerDisplayActivity at guest start.
+
+    private const val K_OFFLINE_PRESENCE = "steam_offline_presence"
+
+    /** True (default) if Goldberg / Raw launches of Steam games should show the account as in-game. */
+    fun isOfflinePresenceEnabled(ctx: Context): Boolean {
+        init(ctx)
+        return prefs.getBoolean(K_OFFLINE_PRESENCE, true)
+    }
+
+    /** Enable/disable the in-game presence report for offline launches. */
+    fun setOfflinePresenceEnabled(ctx: Context, v: Boolean) {
+        init(ctx)
+        prefs.edit().putBoolean(K_OFFLINE_PRESENCE, v).apply()
+    }
+
     // ── Steam Cloud support cache (per-app UFS verdict) ───────────────────────
     // SteamCloudSaveManager.hasCloudSupport() hits PICS to learn whether an app has a UFS cloud store.
     // That verdict is stable per app, so cache the DEFINITIVE true/false here (survives process death)

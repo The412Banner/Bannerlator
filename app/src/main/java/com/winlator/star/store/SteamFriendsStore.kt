@@ -20,6 +20,9 @@ import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendsList
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.NicknameListCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.PersonaStateCallback
 import `in`.dragonbra.javasteam.types.SteamID
+import com.winlator.star.store.blsteam.BlSocialFeed
+import com.winlator.star.store.blsteam.BlSteamEngine
+import com.winlator.star.store.blsteam.BlSteamSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +49,12 @@ import java.util.concurrent.TimeUnit
  * touches — so the screen never blocks on the CM and never races the pump. Every public entry point
  * is guarded and non-throwing: these run from UI callbacks and the CM pump where a crash is
  * unacceptable.
+ *
+ * Rust engine (`use_rust_steam_engine` ON, Phase 3a-2): the SAME flows are fed by libblsteam.so —
+ * [BlSocialFeed] decodes the CM pushes (friends list, persona state, nicknames, add-friend
+ * response, incoming/typing messages) into the `rustOn*` handlers below, and every outbound call
+ * (persona state, friend requests, chat send/typing/history, profile info, web token) goes through
+ * [BlSteamSession] on the [io] executor. The JavaSteam branches are untouched when the flag is OFF.
  */
 object SteamFriendsStore {
 
@@ -79,6 +88,8 @@ object SteamFriendsStore {
         val gameName: String?,
         /** 40-char lowercase avatar hash, or null when the friend has no avatar loaded. */
         val avatarHash: String?,
+        /** Rich presence key/values Steam pushed for the friend (e.g. `status`, `connect`); empty when none. */
+        val richPresence: Map<String, String> = emptyMap(),
     ) {
         val displayName: String
             get() = nickname?.takeIf { it.isNotBlank() }
@@ -257,15 +268,383 @@ object SteamFriendsStore {
         } catch (t: Throwable) {
             Log.w(TAG, "listener registration failed", t)
         }
+        // Rust engine push decoder (inert while JavaSteam drives the session — no engine messages fire).
+        try { BlSocialFeed.install() } catch (t: Throwable) { Log.w(TAG, "social feed install failed", t) }
     }
 
     // ── Availability ──────────────────────────────────────────────────────────────
 
-    /** True when the live CM session can serve friends (logged in AND handler bound). */
+    /** True when the live CM session can serve friends (logged in AND a social backend is bound),
+     *  or the in-game client is relaying them through the agent while the app session is paused. */
     fun isAvailable(): Boolean = try {
-        repo.isLoggedIn && repo.steamFriends != null
+        (repo.isLoggedIn && (repo.isRustEngine || repo.steamFriends != null)) || agentRelayActive()
     } catch (t: Throwable) {
         false
+    }
+
+    // ── Agent relay (Phase 3b-5): friends/chat during a SteamLite game ────────────
+
+    /** The app session is paused for a real-Steam game AND the agent relay is live. */
+    private fun agentRelayActive(): Boolean = try {
+        repo.isSuspendedForRealSteam && SteamAgentFriendsBridge.isLive()
+    } catch (_: Throwable) { false }
+
+    /** Roster snapshot from the in-game client — same buckets/flows as the engine's friends list. */
+    fun agentOnFriends(entries: List<SteamAgentFriendsBridge.Entry>, selfName: String, selfState: Int) {
+        io.execute {
+            try {
+                for (e in entries) {
+                    when (e.relationship) {
+                        BlSocialFeed.REL_FRIEND -> { friendIds.add(e.steamId); incomingIds.remove(e.steamId); outgoingIds.remove(e.steamId) }
+                        BlSocialFeed.REL_REQUEST_RECIPIENT -> incomingIds.add(e.steamId)
+                        BlSocialFeed.REL_REQUEST_INITIATOR -> outgoingIds.add(e.steamId)
+                        else -> continue
+                    }
+                    agentMergePersona(e)
+                }
+                publish()
+                val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+                if (selfId != 0L) {
+                    val cur = _self.value
+                    _self.value = SteamFriend(
+                        selfId, selfName.takeIf { it.isNotBlank() } ?: cur?.personaName ?: "You", null,
+                        classifyCode(selfState, 0, null).first, "", 0, null, cur?.avatarHash,
+                    )
+                }
+                loadHistoriesFor(selfId)
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnFriends failed", t)
+            }
+        }
+    }
+
+    /** One friend's persona changed inside the in-game client. */
+    fun agentOnPersona(e: SteamAgentFriendsBridge.Entry) {
+        io.execute {
+            try {
+                if (e.steamId !in friendIds && e.steamId !in incomingIds && e.steamId !in outgoingIds) {
+                    if (e.relationship == BlSocialFeed.REL_FRIEND) friendIds.add(e.steamId) else return@execute
+                }
+                agentMergePersona(e)
+                publish()
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnPersona failed", t)
+            }
+        }
+    }
+
+    /** Merge a relayed persona over the retained entry (avatar / rich presence / nickname kept). */
+    private fun agentMergePersona(e: SteamAgentFriendsBridge.Entry) {
+        val prev = friendMap[e.steamId]
+        // The relay carries the app id, not the game name: keep the name the engine last saw when
+        // the app matches, else fall back to the "In game" label the classifier produces.
+        val gameName = if (e.appId != 0 && prev?.gameAppId == e.appId) prev.gameName else null
+        val (presence, statusText) = classifyCode(e.state, e.appId, gameName)
+        rustStates[e.steamId] = e.state
+        friendMap[e.steamId] = SteamFriend(
+            e.steamId,
+            e.name.takeIf { it.isNotBlank() } ?: prev?.personaName ?: "",
+            null, presence, statusText, e.appId, gameName,
+            prev?.avatarHash, prev?.richPresence ?: emptyMap(),
+        )
+    }
+
+    /** Incoming 1:1 message relayed from the in-game client — same path as an engine push. */
+    fun agentOnChatIn(id: Long, body: String, tsSec: Long) {
+        io.execute {
+            try {
+                clearTyping(id)
+                val ts = if (tsSec > 0L) tsSec else nowSec()
+                SteamChatDebug.log("RECV(agent) $id \"${SteamChatDebug.snip(body)}\" (activeChat=$activeChatId)")
+                appendMessage(id, ChatMessage(false, body, ts))
+                if (id != activeChatId) {
+                    bumpUnread(id)
+                    maybeNotify(id, body)
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnChatIn failed", t)
+            }
+        }
+    }
+
+    fun agentOnTyping(id: Long) {
+        try { markTyping(id) } catch (_: Throwable) {}
+    }
+
+    /** The in-game client's verdict on a relayed send; a refusal turns the optimistic bubble into a note. */
+    fun agentOnChatSent(id: Long, ok: Boolean) {
+        if (ok || id == 0L) return
+        io.execute {
+            try {
+                val list = histories[id] ?: return@execute
+                val last = synchronized(list) { list.lastOrNull { it.fromSelf } } ?: return@execute
+                replaceMessageText(id, last, last.text + "  (not sent — the in-game Steam client refused it)")
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnChatSent failed", t)
+            }
+        }
+    }
+
+    /** The relay went away (game exited); the resumed engine session re-syncs the roster. */
+    fun agentDetached() {
+        syncedThisSession = false
+    }
+
+    // ── Rust engine backend ───────────────────────────────────────────────────────
+
+    /** The engine session when the Rust engine drives Steam, else null (JavaSteam path). */
+    private fun rustSession(): BlSteamSession? =
+        if (repo.isRustEngine) BlSteamEngine.session() else null
+
+    /** EClientPersonaStateFlag bits — same set as [PERSONA_INFO_FLAGS], as the raw code the engine takes. */
+    private val RUST_PERSONA_FLAGS: Int = 1 or 2 or 16 or 256 or 512 or 4096
+
+    /** Last raw EPersonaState per friend on the engine (partial persona pushes omit it). */
+    private val rustStates = ConcurrentHashMap<Long, Int>()
+
+    /** Raw EPersonaState code → coarse bucket + label (the engine hands us the code, not the enum). */
+    private fun classifyCode(state: Int, gameAppId: Int, gameName: String?): Pair<Presence, String> {
+        if (gameAppId != 0 && state != 0) {
+            return Presence.IN_GAME to (gameName?.takeIf { it.isNotBlank() } ?: "In game")
+        }
+        return when (state) {
+            1, 5, 6 -> Presence.ONLINE to "Online"   // Online / LookingToTrade / LookingToPlay
+            2 -> Presence.AWAY to "Busy"
+            3 -> Presence.AWAY to "Away"
+            4 -> Presence.AWAY to "Snooze"
+            else -> Presence.OFFLINE to "Offline"
+        }
+    }
+
+    /** Engine counterpart of the JavaSteam [refresh] body — runs on [io]. */
+    private fun rustRefresh(s: BlSteamSession) {
+        if (!repo.isLoggedIn) return
+        val rels = BlSocialFeed.parseRelationships(s.getFriendRelationships())
+        val ids = ArrayList<Long>()
+        for ((id, rel) in rels) {
+            when (rel) {
+                BlSocialFeed.REL_FRIEND -> { friendIds.add(id); ids.add(id) }
+                BlSocialFeed.REL_REQUEST_RECIPIENT -> { incomingIds.add(id); ids.add(id) }
+                BlSocialFeed.REL_REQUEST_INITIATOR -> { outgoingIds.add(id); ids.add(id) }
+                else -> continue
+            }
+            if (friendMap[id] == null) friendMap[id] = placeholder(id)
+        }
+        // Seed from the engine's persona cache (what the handler cache was on JavaSteam).
+        try {
+            val arr = org.json.JSONArray(s.getFriendPersonas())
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val id = o.optLong("sid", 0L)
+                if (id == 0L || (id !in friendIds && id !in incomingIds && id !in outgoingIds)) continue
+                if (friendMap[id]?.personaName?.isNotBlank() == true) continue
+                val state = o.optInt("state", 0)
+                val app = o.optInt("app", 0)
+                val gameName = o.optString("gameName", "").takeIf { it.isNotBlank() }
+                val rp = LinkedHashMap<String, String>()
+                o.optJSONObject("rp")?.let { j -> j.keys().forEach { k -> rp[k] = j.optString(k, "") } }
+                val (presence, statusText) = classifyCode(state, app, gameName)
+                rustStates[id] = state
+                friendMap[id] = SteamFriend(
+                    id, o.optString("name", ""), null, presence, statusText, app, gameName,
+                    o.optString("avatarHash", "").takeIf { it.isNotBlank() && !it.all { c -> c == '0' } }, rp,
+                )
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "persona seed failed", t)
+        }
+        publish()
+        val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+        loadHistoriesFor(selfId)
+        if (selfId != 0L) {
+            var selfName: String? = null
+            var selfHash: String? = null
+            try {
+                s.getSelfPersona()?.let { json ->
+                    val o = org.json.JSONObject(json)
+                    selfName = o.optString("playerName", "").takeIf { it.isNotBlank() }
+                    selfHash = o.optString("avatarHash", "").takeIf { it.isNotBlank() && !it.all { c -> c == '0' } }
+                }
+            } catch (_: Throwable) {}
+            if (selfName == null) selfName = try { repo.displayName.takeIf { it.isNotBlank() } } catch (_: Throwable) { null }
+            _self.value = SteamFriend(selfId, selfName ?: "You", null, Presence.ONLINE, "", 0, null, selfHash)
+        }
+        if (!syncedThisSession) {
+            syncedThisSession = true
+            try { s.setPersonaState(1) } catch (_: Throwable) {}          // EPersonaState.Online
+            try { s.requestUserPersona() } catch (_: Throwable) {}
+            if (ids.isNotEmpty()) try { s.requestFriendPersonas(ids.toLongArray(), RUST_PERSONA_FLAGS) } catch (_: Throwable) {}
+        }
+    }
+
+    /** Engine `CMsgClientFriendsList` (full or incremental) — the FriendsListCallback equivalent. */
+    fun rustOnFriendsList(incremental: Boolean, entries: List<Pair<Long, Int>>) {
+        if (!repo.isRustEngine) return
+        try {
+            if (!incremental) { friendIds.clear(); incomingIds.clear(); outgoingIds.clear() }
+            val newlyKnown = ArrayList<Long>()
+            for ((id, rel) in entries) {
+                when (rel) {
+                    BlSocialFeed.REL_FRIEND -> {
+                        friendIds.add(id); incomingIds.remove(id); outgoingIds.remove(id)
+                        if (friendMap[id] == null) friendMap[id] = placeholder(id)
+                        newlyKnown.add(id)
+                    }
+                    BlSocialFeed.REL_REQUEST_RECIPIENT -> {
+                        incomingIds.add(id); outgoingIds.remove(id); friendIds.remove(id)
+                        if (friendMap[id] == null) friendMap[id] = placeholder(id)
+                        newlyKnown.add(id)
+                    }
+                    BlSocialFeed.REL_REQUEST_INITIATOR -> {
+                        outgoingIds.add(id); incomingIds.remove(id); friendIds.remove(id)
+                        if (friendMap[id] == null) friendMap[id] = placeholder(id)
+                        newlyKnown.add(id)
+                    }
+                    else -> {
+                        friendIds.remove(id); incomingIds.remove(id); outgoingIds.remove(id)
+                        friendMap.remove(id); rustStates.remove(id)
+                    }
+                }
+            }
+            publish()
+            if (newlyKnown.isNotEmpty()) {
+                io.execute {
+                    try { rustSession()?.requestFriendPersonas(newlyKnown.toLongArray(), RUST_PERSONA_FLAGS) } catch (_: Throwable) {}
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "rustOnFriendsList failed", t)
+        }
+    }
+
+    /** Engine `CMsgClientPersonaState` — the PersonaStateCallback equivalent (one entry per friend). */
+    fun rustOnPersonaState(list: List<BlSocialFeed.Persona>) {
+        if (!repo.isRustEngine) return
+        try {
+            val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+            var changed = false
+            for (p in list) {
+                val id = p.steamId
+                if (id == selfId) {
+                    val cur = _self.value
+                    if (cur != null) {
+                        val name = p.playerName.takeIf { it.isNotBlank() } ?: cur.personaName
+                        val hash = if (p.hasAvatar) p.avatarHash else cur.avatarHash
+                        if (name != cur.personaName || hash != cur.avatarHash) _self.value = cur.copy(personaName = name, avatarHash = hash)
+                    }
+                    continue
+                }
+                // Persona updates also arrive for lobby peers / group members — only roster ids count.
+                if (id !in friendIds && id !in incomingIds && id !in outgoingIds) continue
+                val prev = friendMap[id]
+                val name = p.playerName.takeIf { it.isNotBlank() } ?: prev?.personaName ?: ""
+                val state = if (p.hasPersonaState) p.personaState else (rustStates[id] ?: 0)
+                rustStates[id] = state
+                val gameAppId = if (p.hasGame) p.gameAppId else (prev?.gameAppId ?: 0)
+                val gameName = when {
+                    p.gameName.isNotBlank() -> p.gameName
+                    p.hasGame -> null                       // game section present without a name
+                    else -> prev?.gameName                  // partial update: keep what we had
+                }
+                val avatar = if (p.hasAvatar) p.avatarHash else prev?.avatarHash
+                val rp = p.richPresence ?: prev?.richPresence ?: emptyMap()
+                val (presence, statusText) = classifyCode(state, gameAppId, gameName)
+                friendMap[id] = SteamFriend(id, name, null, presence, statusText, gameAppId, gameName, avatar, rp)
+                changed = true
+            }
+            if (changed) publish()
+        } catch (t: Throwable) {
+            Log.w(TAG, "rustOnPersonaState failed", t)
+        }
+    }
+
+    /** Engine `CMsgClientPlayerNicknameList` — the NicknameListCallback equivalent. */
+    fun rustOnNicknameList(removal: Boolean, incremental: Boolean, nicks: List<Pair<Int, String>>) {
+        if (!repo.isRustEngine) return
+        try {
+            if (!incremental) nicknames.clear()
+            for ((account, nick) in nicks) {
+                val id = STEAMID64_BASE + (account.toLong() and 0xFFFFFFFFL)
+                if (removal || nick.isBlank()) nicknames.remove(id) else nicknames[id] = nick
+            }
+            publish()
+        } catch (t: Throwable) {
+            Log.w(TAG, "rustOnNicknameList failed", t)
+        }
+    }
+
+    /** Engine `CMsgClientAddFriendResponse` — the FriendAddedCallback equivalent + the add-flow verdict. */
+    fun rustOnAddFriendResponse(eresult: Int, steamId: Long, personaName: String) {
+        if (!repo.isRustEngine) return
+        try {
+            if (eresult != 1) {
+                _addFeedback.value = "Couldn't send request (${SteamRepository.eresultName(eresult)})"
+                return
+            }
+            if (steamId != 0L) {
+                friendIds.add(steamId)
+                if (friendMap[steamId] == null) {
+                    friendMap[steamId] = SteamFriend(steamId, personaName, null, Presence.OFFLINE, "Offline", 0, null, null)
+                }
+                publish()
+                io.execute { try { rustSession()?.requestFriendPersonas(longArrayOf(steamId), RUST_PERSONA_FLAGS) } catch (_: Throwable) {} }
+            }
+            _addFeedback.value = if (personaName.isNotBlank()) "Friend request sent to $personaName" else "Friend request sent"
+        } catch (t: Throwable) {
+            Log.w(TAG, "rustOnAddFriendResponse failed", t)
+        }
+    }
+
+    /**
+     * The engine queued `FriendMessagesClient.IncomingMessage` notifications (text and typing, own
+     * echoes flagged) — drain them off the pump thread and route exactly like the JavaSteam
+     * FriendMsg / FriendMsgEcho callbacks.
+     */
+    fun rustDrainIncomingMessages() {
+        if (!repo.isRustEngine) return
+        io.execute {
+            try {
+                val s = rustSession() ?: return@execute
+                val arr = org.json.JSONArray(s.drainFriendMessages())
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    val id = o.optLong("friendId", 0L)
+                    if (id == 0L) continue
+                    val type = o.optInt("type", 1)
+                    if (type == 2) { markTyping(id); continue }
+                    if (type != 1) continue
+                    val body = o.optString("message", "")
+                    if (body.isEmpty()) continue
+                    val ts = o.optLong("timestamp", 0L).let { if (it > 0) it else nowSec() }
+                    if (o.optBoolean("fromSelf", false)) {
+                        rustOnEcho(id, body, ts)
+                    } else {
+                        clearTyping(id)
+                        SteamChatDebug.log("RECV $id \"${SteamChatDebug.snip(body)}\" (activeChat=$activeChatId)")
+                        appendMessage(id, ChatMessage(false, body, ts))
+                        if (id != activeChatId) {
+                            bumpUnread(id)
+                            maybeNotify(id, body)
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "rustDrainIncomingMessages failed", t)
+            }
+        }
+    }
+
+    /** Same reconciliation as [onFriendMsgEcho]: an echo of our own optimistic send is dropped. */
+    private fun rustOnEcho(id: Long, body: String, ts: Long) {
+        val existing = histories[id]
+        if (existing != null) {
+            val dup = synchronized(existing) {
+                existing.any { it.fromSelf && it.text == body && kotlin.math.abs(it.timestampSec - ts) < 300 }
+            }
+            if (dup) { SteamChatDebug.log("ECHO $id \"${SteamChatDebug.snip(body)}\" -> DUP, skip (matched optimistic)"); return }
+        }
+        SteamChatDebug.log("ECHO $id \"${SteamChatDebug.snip(body)}\" ts=$ts -> APPEND (no local match — this becomes a 2nd copy if it shouldn't)")
+        appendMessage(id, ChatMessage(true, body, ts))
     }
 
     /** Wipe all cached friend/chat state (sign-out / account switch). */
@@ -279,6 +658,7 @@ object SteamFriendsStore {
         // Privacy: pull down any friend-chat notifications so a signed-out shade shows no one's messages.
         try { appContext?.let { SteamChatNotifier.cancelAll(it) } } catch (_: Throwable) {}
         loadedForAccount = 0L
+        rustStates.clear()
         cachedWebToken = null    // a different account must not reuse the previous user's upload token
         cachedWebTokenAt = 0L
         cachedWebTokenAccount = 0L
@@ -314,12 +694,19 @@ object SteamFriendsStore {
     fun setSocialEnabled(context: android.content.Context, enabled: Boolean) {
         try { SteamPrefs.setSocialEnabled(context, enabled) } catch (_: Throwable) {}
         _socialEnabled.value = enabled
+        if (repo.isRustEngine) BlSteamEngine.setAutoPersonaOnline(enabled)
         if (enabled) {
             refresh() // come online + pull a fresh roster (refresh() now passes the socialEnabled gate)
         } else {
             // Re-arm the one-shot online sync so a later re-enable re-announces online, then go quiet.
             syncedThisSession = false
-            io.execute { try { repo.steamFriends?.setPersonaState(EPersonaState.Offline) } catch (_: Throwable) {} }
+            io.execute {
+                try {
+                    val rs = rustSession()
+                    if (rs != null) rs.setPersonaState(0)                          // EPersonaState.Offline
+                    else repo.steamFriends?.setPersonaState(EPersonaState.Offline)
+                } catch (_: Throwable) {}
+            }
             try { SteamChatNotifier.cancelAll(context) } catch (_: Throwable) {}
         }
     }
@@ -415,6 +802,8 @@ object SteamFriendsStore {
                 // build — "off" must leave no social footprint. Gated at the source (the friends screen
                 // shows its off-state instead of the roster when this is false).
                 if (!_socialEnabled.value) return@execute
+                if (agentRelayActive()) { SteamAgentFriendsBridge.requestRoster(); return@execute }
+                rustSession()?.let { rs -> rustRefresh(rs); return@execute }
                 val sf = repo.steamFriends ?: return@execute
                 if (!repo.isLoggedIn) return@execute
                 val ids: List<SteamID> = try { sf.friendsList } catch (t: Throwable) { emptyList() }
@@ -472,8 +861,17 @@ object SteamFriendsStore {
         if (q.isEmpty()) return
         io.execute {
             try {
-                val sf = repo.steamFriends ?: run { _addFeedback.value = "Not connected to Steam"; return@execute }
                 val id64 = q.toLongOrNull()
+                rustSession()?.let { rs ->
+                    val ok = if (id64 != null && id64 > STEAMID64_BASE) rs.addFriend(id64) else rs.addFriend(0L, q)
+                    _addFeedback.value = when {
+                        !ok -> "Not connected to Steam"
+                        id64 != null && id64 > STEAMID64_BASE -> "Friend request sent"
+                        else -> "Looking up “$q”…"
+                    }
+                    return@execute
+                }
+                val sf = repo.steamFriends ?: run { _addFeedback.value = "Not connected to Steam"; return@execute }
                 if (id64 != null && id64 > STEAMID64_BASE) {
                     sf.addFriend(SteamID(id64)); _addFeedback.value = "Friend request sent"
                 } else {
@@ -498,6 +896,10 @@ object SteamFriendsStore {
         if (id64 <= STEAMID64_BASE) return
         io.execute {
             try {
+                rustSession()?.let { rs ->
+                    _addFeedback.value = if (rs.addFriend(id64)) "Friend request sent" else "Not connected to Steam"
+                    return@execute
+                }
                 repo.steamFriends?.addFriend(SteamID(id64)) ?: run { _addFeedback.value = "Not connected to Steam"; return@execute }
                 _addFeedback.value = "Friend request sent"
             } catch (t: Throwable) {
@@ -521,28 +923,42 @@ object SteamFriendsStore {
     fun acceptRequest(id: Long) {
         incomingIds.remove(id) // optimistic; the FriendsListCallback confirms + moves to Friends
         publish()
-        io.execute { try { repo.steamFriends?.addFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "acceptRequest failed", t) } }
+        io.execute {
+            try { rustSession()?.let { it.addFriend(id); return@execute }; repo.steamFriends?.addFriend(SteamID(id)) }
+            catch (t: Throwable) { Log.w(TAG, "acceptRequest failed", t) }
+        }
     }
 
     /** Decline an incoming friend request. */
     fun declineRequest(id: Long) {
         incomingIds.remove(id)
         publish()
-        io.execute { try { repo.steamFriends?.ignoreFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "declineRequest failed", t) } }
+        io.execute {
+            // Engine: a pending invite is declined by removing the relationship (CMsgClientRemoveFriend —
+            // what the Steam client sends); the JavaSteam path keeps its ignoreFriend call.
+            try { rustSession()?.let { it.removeFriend(id); return@execute }; repo.steamFriends?.ignoreFriend(SteamID(id)) }
+            catch (t: Throwable) { Log.w(TAG, "declineRequest failed", t) }
+        }
     }
 
     /** Cancel an outgoing (pending) friend request we sent. */
     fun cancelRequest(id: Long) {
         outgoingIds.remove(id)
         publish()
-        io.execute { try { repo.steamFriends?.removeFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "cancelRequest failed", t) } }
+        io.execute {
+            try { rustSession()?.let { it.removeFriend(id); return@execute }; repo.steamFriends?.removeFriend(SteamID(id)) }
+            catch (t: Throwable) { Log.w(TAG, "cancelRequest failed", t) }
+        }
     }
 
     /** Remove an existing friend. */
     fun removeFriend(id: Long) {
         friendIds.remove(id); friendMap.remove(id)
         publish()
-        io.execute { try { repo.steamFriends?.removeFriend(SteamID(id)) } catch (t: Throwable) { Log.w(TAG, "removeFriend failed", t) } }
+        io.execute {
+            try { rustSession()?.let { it.removeFriend(id); return@execute }; repo.steamFriends?.removeFriend(SteamID(id)) }
+            catch (t: Throwable) { Log.w(TAG, "removeFriend failed", t) }
+        }
     }
 
     /** FriendsListCallback: full or incremental roster. Populates [friendIds] + placeholder entries. */
@@ -672,7 +1088,23 @@ object SteamFriendsStore {
         val existing = histories[steamId]?.let { synchronized(it) { it.toList() } } ?: emptyList()
         _chat.value = ChatSession(steamId, existing)
         io.execute {
-            try { repo.steamFriends?.requestMessageHistory(SteamID(steamId)) } catch (_: Throwable) {}
+            try {
+                val rs = rustSession()
+                if (rs != null) {
+                    // FriendMessages.GetRecentMessages → the same union the history callback applies.
+                    val arr = org.json.JSONArray(rs.getRecentMessages(steamId, 50))
+                    val server = ArrayList<ChatMessage>(arr.length())
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val text = o.optString("message", "")
+                        if (text.isEmpty()) continue
+                        server.add(ChatMessage(o.optBoolean("fromSelf", false), text, o.optLong("timestamp", 0L)))
+                    }
+                    mergeServerHistory(steamId, server)
+                } else {
+                    repo.steamFriends?.requestMessageHistory(SteamID(steamId))
+                }
+            } catch (_: Throwable) {}
         }
         return chat
     }
@@ -702,7 +1134,17 @@ object SteamFriendsStore {
         appendMessage(steamId, ChatMessage(true, body, nowSec()))
         io.execute {
             try {
-                repo.steamFriends?.sendChatMessage(SteamID(steamId), EChatEntryType.ChatMsg, body)
+                if (agentRelayActive()) {
+                    // The app session is paused for a SteamLite game: the in-game client sends it.
+                    if (!SteamAgentFriendsBridge.sendChat(steamId, body)) SteamChatDebug.log("SEND $steamId -> agent relay refused")
+                    return@execute
+                }
+                val rs = rustSession()
+                if (rs != null) {
+                    if (rs.sendFriendMessage(steamId, body) == null) SteamChatDebug.log("SEND $steamId -> engine reported no response")
+                } else {
+                    repo.steamFriends?.sendChatMessage(SteamID(steamId), EChatEntryType.ChatMsg, body)
+                }
             } catch (t: Throwable) {
                 Log.w(TAG, "sendMessage failed", t)
             }
@@ -795,9 +1237,16 @@ object SteamFriendsStore {
         }
         return try {
             if (!repo.ensureLoggedIn(8_000L)) return null
-            val client = repo.steamClient ?: return null
             val refresh = try { repo.refreshToken } catch (_: Throwable) { null }
             if (refresh.isNullOrEmpty()) return null
+            rustSession()?.let { rs ->
+                val token = rs.generateWebAccessToken(refresh, selfId) ?: return null
+                cachedWebToken = token
+                cachedWebTokenAt = now
+                cachedWebTokenAccount = selfId
+                return token
+            }
+            val client = repo.steamClient ?: return null
             val unified = client.getHandler(SteamUnifiedMessages::class.java) ?: return null
             val auth: Authentication = unified.createService(Authentication::class.java)
             val req = SteammessagesAuthSteamclient.CAuthentication_AccessToken_GenerateForApp_Request
@@ -884,32 +1333,39 @@ object SteamFriendsStore {
                 )
             }.filter { it.text.isNotEmpty() }
 
-            // Steam's classic history call returns only a SHORT recent window — it must NEVER clobber a
-            // fuller local/cached conversation. UNION the server rows into the existing list (dedup by
-            // sender+text+~timestamp), keep chronological. An empty server response leaves local intact.
-            // (This clear-and-replace was the history-wipe: a 2-message server reply wiped older history.)
-            if (server.isEmpty()) { SteamChatDebug.log("HISTORY $id: empty server reply -> local kept"); return }
-            val list = histories.getOrPut(id) { mutableListOf() }
-            var added = 0
-            synchronized(list) {
-                for (sm in server) {
-                    val dup = list.any {
-                        it.fromSelf == sm.fromSelf && it.text == sm.text &&
-                            // Image URLs are globally unique → same URL = same message even if Steam's
-                            // stored timestamp differs from our optimistic send time by more than a few
-                            // seconds; plain text needs a wider time window than exact-tick matching.
-                            (isImageBody(sm.text) || kotlin.math.abs(it.timestampSec - sm.timestampSec) < 120)
-                    }
-                    if (!dup) { list.add(sm); added++ }
-                }
-                list.sortBy { it.timestampSec }
-            }
-            SteamChatDebug.log("HISTORY $id: ${server.size} server rows, +$added new, ${server.size - added} dup; total=${synchronized(list) { list.size }}")
-            if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
-            io.execute { persistHistories() }
+            mergeServerHistory(id, server)
         } catch (t: Throwable) {
             Log.w(TAG, "onFriendMsgHistory failed", t)
         }
+    }
+
+    /**
+     * Steam's history call returns only a SHORT recent window — it must NEVER clobber a fuller
+     * local/cached conversation. UNION the server rows into the existing list (dedup by
+     * sender+text+~timestamp), keep chronological. An empty server response leaves local intact.
+     * (A clear-and-replace was the history-wipe: a 2-message server reply wiped older history.)
+     * Shared by the JavaSteam history callback and the engine's GetRecentMessages path.
+     */
+    private fun mergeServerHistory(id: Long, server: List<ChatMessage>) {
+        if (server.isEmpty()) { SteamChatDebug.log("HISTORY $id: empty server reply -> local kept"); return }
+        val list = histories.getOrPut(id) { mutableListOf() }
+        var added = 0
+        synchronized(list) {
+            for (sm in server) {
+                val dup = list.any {
+                    it.fromSelf == sm.fromSelf && it.text == sm.text &&
+                        // Image URLs are globally unique → same URL = same message even if Steam's
+                        // stored timestamp differs from our optimistic send time by more than a few
+                        // seconds; plain text needs a wider time window than exact-tick matching.
+                        (isImageBody(sm.text) || kotlin.math.abs(it.timestampSec - sm.timestampSec) < 120)
+                }
+                if (!dup) { list.add(sm); added++ }
+            }
+            list.sortBy { it.timestampSec }
+        }
+        SteamChatDebug.log("HISTORY $id: ${server.size} server rows, +$added new, ${server.size - added} dup; total=${synchronized(list) { list.size }}")
+        if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+        io.execute { persistHistories() }
     }
 
     // ── Profile ─────────────────────────────────────────────────────────────────────
@@ -955,7 +1411,21 @@ object SteamFriendsStore {
                 var country: String? = null
                 var memberSince: String? = null
                 var summary: String? = null
-                try {
+                val rs = rustSession()
+                if (rs != null) try {
+                    // Engine: CMsgClientFriendProfileInfo (job-matched) — same fields as the callback.
+                    rs.getFriendProfileInfo(steamId)?.let { json ->
+                        val o = org.json.JSONObject(json)
+                        if (o.optInt("eresult", 0) == 1) {
+                            realName = o.optString("realName", "").takeIf { it.isNotBlank() }
+                            country = o.optString("countryName", "").takeIf { it.isNotBlank() }
+                            summary = o.optString("summary", "").takeIf { it.isNotBlank() }
+                            memberSince = o.optLong("timeCreated", 0L).takeIf { it > 0L }
+                                ?.let { runCatching { "Member since ${PROFILE_YEAR_FMT.format(java.util.Date(it * 1000L))}" }.getOrNull() }
+                        }
+                    }
+                } catch (_: Throwable) {}
+                if (rs == null) try {
                     val info = repo.steamFriends?.requestProfileInfo(sid)
                         ?.toFuture()?.get(10L, TimeUnit.SECONDS)
                     if (info != null && info.result == EResult.OK) {
@@ -972,7 +1442,34 @@ object SteamFriendsStore {
                 var gamesCount: Int? = null
                 var hoursTotal: Double? = null
                 var recent: List<RecentGame> = emptyList()
-                try {
+                if (rs != null) try {
+                    // Engine: Player.GetOwnedGames (include_appinfo + played free games).
+                    rs.getOwnedGames(steamId)?.let { json ->
+                        val arr = org.json.JSONArray(json)
+                        data class G(val appId: Int, val name: String, val forever: Long, val last: Long)
+                        val games = ArrayList<G>(arr.length())
+                        for (i in 0 until arr.length()) {
+                            val o = arr.optJSONObject(i) ?: continue
+                            games.add(G(o.optInt("appId", 0), o.optString("name", ""), o.optLong("playtimeForever", 0L), o.optLong("rtimeLastPlayed", 0L)))
+                        }
+                        if (games.isNotEmpty()) {
+                            gamesCount = games.size
+                            hoursTotal = games.sumOf { it.forever } / 60.0
+                            recent = games
+                                .sortedWith(compareByDescending<G> { it.last }.thenByDescending { it.forever })
+                                .take(12)
+                                .map {
+                                    RecentGame(
+                                        appId = it.appId,
+                                        name = it.name.takeIf { n -> n.isNotBlank() } ?: "App ${it.appId}",
+                                        hours = it.forever / 60.0,
+                                        coverUrl = appHeaderUrl(it.appId),
+                                    )
+                                }
+                        }
+                    }
+                } catch (_: Throwable) {}
+                if (rs == null) try {
                     val client = repo.steamClient
                     val unified = client?.getHandler(SteamUnifiedMessages::class.java)
                     val player: Player? = unified?.createService(Player::class.java)
@@ -1133,7 +1630,10 @@ object SteamFriendsStore {
         lastTypingSent[steamId] = now
         io.execute {
             try {
-                repo.steamFriends?.sendChatMessage(SteamID(steamId), EChatEntryType.Typing, "")
+                if (agentRelayActive()) return@execute   // no typing primitive on the in-game relay
+                val rs = rustSession()
+                if (rs != null) rs.sendFriendTyping(steamId)
+                else repo.steamFriends?.sendChatMessage(SteamID(steamId), EChatEntryType.Typing, "")
             } catch (_: Throwable) {
             }
         }

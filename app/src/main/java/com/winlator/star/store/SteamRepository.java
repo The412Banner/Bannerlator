@@ -9,6 +9,14 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 
+import com.winlator.star.store.blsteam.BlLibraryCrawler;
+import com.winlator.star.store.blsteam.BlSteamEngine;
+import com.winlator.star.store.blsteam.BlSteamEngineLog;
+import com.winlator.star.store.blsteam.BlSteamEngineFlag;
+import com.winlator.star.store.blsteam.BlSteamSession;
+
+import org.json.JSONObject;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -143,8 +151,10 @@ public final class SteamRepository {
     private volatile boolean connected = false;
     private volatile boolean loggedIn  = false;
 
-    public boolean isConnected() { return connected; }
-    public boolean isLoggedIn()  { return loggedIn; }
+    /** Engine-agnostic: the CM channel is up (JavaSteam ConnectedCallback / Rust engine Connected+). */
+    public boolean isConnected() { return rustEngine ? BlSteamEngine.INSTANCE.isConnected() : connected; }
+    /** Engine-agnostic: a logged-on CM session exists right now (JavaSteam LoggedOn / Rust engine LoggedOn). */
+    public boolean isLoggedIn()  { return rustEngine ? BlSteamEngine.INSTANCE.isLoggedOn() : loggedIn; }
 
     // -------------------------------------------------------------------------
     // SharedPreferences (set on initialize)
@@ -163,6 +173,588 @@ public final class SteamRepository {
 
     private boolean isLoggedInPrefs() {
         return !pGet("refresh_token", "").isEmpty() && !pGet("username", "").isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // Native Rust Steam engine (libblsteam.so) — hidden flag, default OFF
+    // -------------------------------------------------------------------------
+    // docs/STEAM_RUST_ENGINE_PLAN.md. When BlSteamEngineFlag is ON (read once in initialize()),
+    // this repository's CM session is driven by BlSteamEngine instead of JavaSteam: connect(),
+    // reconnectNow(), loginWithToken(), ensureLoggedIn() and reconnectAndRelogin() route to the
+    // engine, disconnect()/logout() stop it, and the engine's state feeds the status pill,
+    // isConnected()/isLoggedIn() and steam_prefs (steam_id_64/account_id, display_name, cell_id,
+    // rotated refresh_token) so SteamLite and Goldberg keep reading the same keys. The JavaSteam
+    // objects are still built but never connected, and every JavaSteam handler getter returns null
+    // under the engine so no surface can run against the dead SteamClient. Phase 3a: with the flag
+    // ON the app is a full replacement — auth (credentials / Steam Guard / QR), session
+    // keep-alive + self-heal, social and presence all run on the engine. Flag OFF: none of this runs.
+    private static final String RUST_TAG = "BL_STEAM_REPO";
+    private volatile boolean rustEngine = false;
+
+    /** True when this process runs its Steam CM session on the native Rust engine. */
+    public boolean isRustEngine() { return rustEngine; }
+
+    /** The application context handed to {@link #initialize}, or null before it ran. */
+    public Context appContextOrNull() { return appContext; }
+
+    /** Auto-reconnect budget on the engine (same shape as the JavaSteam MAX_RECONNECT_ATTEMPTS ladder). */
+    private volatile int rustReconnectAttempts = 0;
+    /** Set when another client took the account (LoggedInElsewhere / LogonSessionReplaced) — no tug-back. */
+    private volatile boolean rustSignedInElsewhere = false;
+    private java.util.concurrent.ScheduledExecutorService rustScheduler = null;
+
+    private synchronized java.util.concurrent.ScheduledExecutorService rustScheduler() {
+        if (rustScheduler == null) {
+            rustScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "BlSteamRepoScheduler");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        return rustScheduler;
+    }
+
+    private final BlSteamEngine.Listener rustListener = new BlSteamEngine.Listener() {
+        @Override public void onEngineState(int state, long steamId64) {
+            if (state == BlSteamEngine.STATE_LOGGED_ON) {
+                if (steamId64 != 0L) {
+                    pPut("steam_id_64", steamId64);
+                    pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
+                }
+                rustReconnectAttempts = 0;
+                rustSignedInElsewhere = false;
+                logoffRecoveryAttempts = 0;
+                lastSessionStatus = "LoggedIn";
+                setStatus(SteamStatus.ONLINE, "rust engine logged on");
+                BlSteamEngineLog.log("SESSION", "logged on (steamId known=" + (steamId64 != 0L) + ", cell=" + pGet("cell_id", 0) + ")");
+                Log.i(RUST_TAG, SteamLogRedactor.redact("logged on as " + pGet("username", "") + " steamId=" + steamId64));
+                // Same event the JavaSteam onLoggedOn emits, so the login screens / pill react alike.
+                emit("LoggedIn:" + steamId64);
+                // Phase 1-A: the owned library now comes from the engine — crawl it exactly where the
+                // JavaSteam path would receive its LicenseList push.
+                rustSyncLibrary("logon");
+                // Phase 3a-3: a Goldberg/Raw game still running across the reconnect is re-announced.
+                rustReannounceInGame();
+            } else if (state == BlSteamEngine.STATE_CONNECTING || state == BlSteamEngine.STATE_CONNECTED) {
+                if (state == BlSteamEngine.STATE_CONNECTED) {
+                    rustReconnectAttempts = 0;
+                    emit("Connected");
+                    BlSteamEngineLog.log("SESSION", "connected to CM (encrypted channel up)");
+                }
+                if (realSteamSuspended) return;
+                // Connect-only (no saved sign-in): the channel is up for the login screens; the pill
+                // stays "Signed out" like a signed-out JavaSteam session would show nothing.
+                if (!isLoggedInPrefs()) setStatus(SteamStatus.SIGNED_OUT, "rust engine connected — no saved sign-in");
+                else setStatus(SteamStatus.CONNECTING, "rust engine state " + state);
+            } else {
+                BlSteamEngineLog.log("SESSION", "disconnected"
+                        + (realSteamSuspended ? " (paused for the in-game Steam session)"
+                        : loggingOut ? " (signed out)"
+                        : rustTokenRejected ? " (refresh token rejected)"
+                        : rustSignedInElsewhere ? " (account taken by another client)" : " (will reconnect)"));
+                if (realSteamSuspended)       setStatus(SteamStatus.PAUSED_FOR_GAME, "rust engine down — paused for in-game real-Steam session");
+                else if (loggingOut)          setStatus(SteamStatus.SIGNED_OUT, "rust engine: signed out");
+                else if (rustTokenRejected)   setStatus(SteamStatus.SIGNED_OUT, "rust engine: refresh token rejected — needs re-auth");
+                else if (rustSignedInElsewhere) setStatus(SteamStatus.SIGNED_IN_ELSEWHERE, "rust engine: account owned by another client");
+                else if (!rustScheduleReconnect()) setStatus(SteamStatus.OFFLINE, "rust engine disconnected");
+                emit("Disconnected");
+            }
+        }
+        @Override public void onLogonResult(int emsg, int eresult) {
+            // 751 = ClientLogonResponse (non-OK), 757 = ClientLoggedOff. Mirror onLoggedOn/onLoggedOff:
+            // a dead token → SIGNED_OUT + LoginFailed (user must re-auth); anything else is transient.
+            String name = eresultName(eresult);
+            lastSessionStatus = (emsg == 751 ? "LoginFailed:" : "LoggedOff:") + name;
+            BlSteamEngineLog.log(emsg == 751 ? "AUTH" : "SESSION",
+                    (emsg == 751 ? "token logon failed" : "logged off by Steam") + " eresult=" + eresult + " (" + name + ")");
+            boolean rejected = eresult == 5 || eresult == 15 || eresult == 65 || eresult == 68 || eresult == 87;
+            if (emsg == 751) {
+                Log.w(RUST_TAG, "rust engine: logon failed eresult=" + eresult + " (" + name + ")");
+                if (rejected) {
+                    rustTokenRejected = true;
+                    setStatus(SteamStatus.SIGNED_OUT, "rust engine: login rejected " + name);
+                } else if (!realSteamSuspended) {
+                    setStatus(SteamStatus.CONNECTING, "rust engine: login failed " + name + " (transient)");
+                }
+                emit("LoginFailed:" + name);
+            } else {
+                Log.i(RUST_TAG, "rust engine: logged off eresult=" + eresult + " (" + name + ")");
+                if (realSteamSuspended) return;   // our own teardown for the in-game session
+                if (loggingOut) return;           // user sign-out — status is set by logout()
+                if (eresult == 34 || eresult == 43) {   // LoggedInElsewhere / LogonSessionReplaced
+                    // Another client owns the account: surface it, never tug back (a re-logon would
+                    // start a logon tug-of-war). The user taps the pill once they signed out there.
+                    rustSignedInElsewhere = true;
+                    setStatus(SteamStatus.SIGNED_IN_ELSEWHERE, "rust engine: replaced by another client " + name);
+                    emit("LoggedOut");
+                } else {
+                    // Involuntary logoff (e.g. Expired): the engine re-reports Connected and re-logs on
+                    // from the saved token itself (bounded by its storm guard) — mirror the JavaSteam
+                    // "involuntary logoff recovery" status so the pill shows we're recovering.
+                    setStatus(SteamStatus.CONNECTING, "rust engine: involuntary logoff " + name + " — re-logging on");
+                }
+            }
+        }
+        @Override public void onRefreshTokenRotated(String refreshToken) {
+            SteamLogRedactor.registerSecret(refreshToken);
+            pPut("refresh_token", refreshToken);
+            slog("rust engine: refresh token rotated");
+            BlSteamEngineLog.log("AUTH", "refresh token rotated (persisted)");
+        }
+        @Override public void onCellId(int cellId) {
+            // Same key JavaSteam's onLoggedOn writes (LoggedOnCallback.cellID); the download CDN
+            // pool request and the region picker read it back.
+            pPut("cell_id", cellId);
+        }
+        @Override public void onAccountInfo(String personaName) {
+            // ClientAccountInfo → the account's persona (display) name, the value getDisplayName()
+            // serves and RealSteamLauncher hands to the in-container client.
+            if (personaName != null && !personaName.isEmpty()) pPut("display_name", personaName);
+        }
+        @Override public void onEngineFailure(String reason) {
+            Log.w(RUST_TAG, "engine failure: " + reason);
+            BlSteamEngineLog.log("SESSION", "engine failure: " + reason);
+            if (realSteamSuspended || loggingOut || rustTokenRejected || rustSignedInElsewhere) return;
+            SteamStatus cur = status;
+            if (cur == SteamStatus.SIGNED_OUT || cur == SteamStatus.SIGNED_IN_ELSEWHERE) return;
+            setStatus(SteamStatus.OFFLINE, "rust engine: " + reason);
+        }
+    };
+
+    /**
+     * Rust-engine counterpart of connect()+loginWithToken(): resolve a CM, connect and log on from the
+     * saved token — or, with no saved sign-in, bring the channel up connect-only so the credentials /
+     * QR login screens can run their auth session on it (the JavaSteam client is likewise connected
+     * before a sign-in). Reuses a live session when one is up (logon on it instead of a second
+     * connect). Never runs network I/O on the caller's thread.
+     */
+    private void rustConnect(String source) {
+        if (appContext == null) { Log.e(RUST_TAG, "rustConnect before initialize()"); return; }
+        if (realSteamSuspended) {
+            Log.i(REALSTEAM_TAG, "rustConnect skipped — app session suspended for in-game real-Steam session (" + source + ")");
+            return;
+        }
+        loggingOut = false;
+        rustTokenRejected = false;
+        rustSignedInElsewhere = false;
+        // Background self-heal (idempotent) — on the JavaSteam path startPump() arms it.
+        registerNetworkCallback();
+        final String user = pGet("username", "");
+        final String token = pGet("refresh_token", "");
+        final long sid = pGet("steam_id_64", 0L);
+        final boolean saved = isLoggedInPrefs();
+        if (saved) {
+            SteamLogRedactor.registerSecret(user);
+            SteamLogRedactor.registerSecret(token);
+        }
+        BlSteamEngine eng = BlSteamEngine.INSTANCE;
+        if (eng.isActive() || eng.isStarting()) {
+            int st = eng.state();
+            if (st == BlSteamEngine.STATE_LOGGED_ON) {
+                Log.i(RUST_TAG, "rustConnect skipped — already logged on (" + source + ")");
+                return;
+            }
+            if (saved) {
+                // Channel up (or coming up) without a session: log on to it — the interactive sign-in
+                // and the "connected but logged off" recovery both land here.
+                setStatus(SteamStatus.CONNECTING, "rust engine logon on live channel (" + source + ")");
+                if (eng.logon(user, token, sid)) return;
+                // No handle after all (a teardown raced us) — fall through to a fresh start.
+            } else {
+                Log.i(RUST_TAG, "rustConnect: channel up, no saved sign-in (" + source + ")");
+                return;
+            }
+        }
+        if (saved) setStatus(SteamStatus.CONNECTING, "rust engine connect (" + source + ")");
+        else setStatus(SteamStatus.SIGNED_OUT, "rust engine connect-only — no saved session (" + source + ")");
+        eng.setAutoPersonaOnline(rustSocialEnabled());
+        eng.start(appContext, saved ? user : "", saved ? token : "", saved ? sid : 0L, rustListener);
+    }
+
+    /** The friends/chat opt-in (steam_prefs, default OFF) — gates the engine's Online announce at logon. */
+    private boolean rustSocialEnabled() {
+        return prefs != null && prefs.getBoolean("steam_social_enabled", false);
+    }
+
+    /**
+     * Engine auto-reconnect after an involuntary disconnect: the same 2s·n ladder JavaSteam's
+     * onDisconnected runs (5 attempts), reset by a successful connect / reconnectNow() / the network
+     * self-heal. Returns true when an attempt was scheduled (status is CONNECTING meanwhile).
+     */
+    private boolean rustScheduleReconnect() {
+        if (!rustEngine || appContext == null) return false;
+        if (loggingOut || realSteamSuspended || rustTokenRejected || rustSignedInElsewhere) return false;
+        if (rustReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            Log.w(RUST_TAG, "auto-reconnect budget exhausted (" + MAX_RECONNECT_ATTEMPTS + ") — waiting for network/user");
+            return false;
+        }
+        rustReconnectAttempts++;
+        final int attempt = rustReconnectAttempts;
+        long delayMs = attempt * 2000L;   // 2s, 4s, 6s, 8s, 10s
+        setStatus(SteamStatus.CONNECTING, "rust engine auto-reconnect attempt " + attempt);
+        Log.i(RUST_TAG, "auto-reconnect in " + delayMs + "ms (attempt " + attempt + ")");
+        try {
+            rustScheduler().schedule(() -> {
+                try {
+                    if (!rustEngine || loggingOut || realSteamSuspended || rustTokenRejected || rustSignedInElsewhere) return;
+                    if (BlSteamEngine.INSTANCE.isActive() || BlSteamEngine.INSTANCE.isStarting()) return;
+                    rustConnect("auto-reconnect " + attempt);
+                } catch (Throwable t) {
+                    Log.w(RUST_TAG, "auto-reconnect failed", t);
+                }
+            }, delayMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (Throwable t) {
+            Log.w(RUST_TAG, "auto-reconnect could not be scheduled", t);
+            return false;
+        }
+        return true;
+    }
+
+    /** Block the CALLER (never the UI thread) until the engine is logged on or [timeoutMs] elapsed. */
+    private boolean rustAwaitLoggedOn(long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (!BlSteamEngine.INSTANCE.isLoggedOn() && System.currentTimeMillis() < deadline) {
+            if (rustTokenRejected || rustSignedInElsewhere) break;
+            try { Thread.sleep(150); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+        }
+        return BlSteamEngine.INSTANCE.isLoggedOn();
+    }
+
+    /** Set when Steam rejected the saved refresh token on the Rust engine (cleared by a fresh connect/login). */
+    private volatile boolean rustTokenRejected = false;
+
+    // -------------------------------------------------------------------------
+    // Presence (Phase 3a-3) — engine only; the JavaSteam path never reported presence and is unchanged
+    // -------------------------------------------------------------------------
+    private static final String PRESENCE_TAG = "BL_STEAM_PRESENCE";
+    /** The Steam appId a Goldberg/Raw launch announced as "in game" (0 = none); re-sent after a reconnect. */
+    private volatile int inGameAppId = 0;
+
+    /**
+     * Report the account as playing {@code appId} (CMsgClientGamesPlayed) for a launch that does NOT
+     * run the genuine client (Goldberg / Raw): friends see "playing <game>" and Steam accrues the
+     * playtime, as the real client would. Sticky until {@link #clearInGamePresence()} — a reconnect
+     * re-announces it. Never used for a RealSteam launch (the genuine client reports itself while this
+     * session is paused). Safe from any worker thread. Returns true when the report was sent.
+     */
+    public boolean setInGamePresence(int appId) {
+        if (appId <= 0) return false;
+        inGameAppId = appId;
+        if (!rustEngine) return false;
+        return rustSendGamesPlayed(appId, "launch");
+    }
+
+    /** Clear the in-game report (guest exit / activity teardown). Idempotent. */
+    public void clearInGamePresence() {
+        int prev = inGameAppId;
+        inGameAppId = 0;
+        if (!rustEngine || prev == 0) return;
+        rustSendGamesPlayed(0, "exit");
+    }
+
+    /** The appId currently announced as in-game, or 0. */
+    public int getInGameAppId() { return inGameAppId; }
+
+    private boolean rustSendGamesPlayed(int appId, String why) {
+        if (realSteamSuspended) {
+            Log.i(PRESENCE_TAG, "games-played skipped — app session paused for a real-Steam game (" + why + ")");
+            return false;
+        }
+        BlSteamSession s = BlSteamEngine.INSTANCE.session();
+        if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) {
+            Log.i(PRESENCE_TAG, "games-played skipped — engine not logged on (" + why + ", appId=" + appId + ")");
+            return false;
+        }
+        try {
+            // One entry = "playing appId"; an empty list = "no longer playing". Client OS type 16 =
+            // Windows 10, the same value the engine's logon reports.
+            s.notifyGamesPlayed(appId > 0 ? "[{\"gameId\":" + appId + "}]" : "[]", 16);
+            slog("presence: " + (appId > 0 ? "in game " + appId : "left game") + " (" + why + ")");
+            return true;
+        } catch (Throwable t) {
+            Log.w(PRESENCE_TAG, "games-played failed (" + why + ")", t);
+            return false;
+        }
+    }
+
+    /** After a fresh engine logon: re-announce a game that was running across the reconnect. */
+    private void rustReannounceInGame() {
+        int appId = inGameAppId;
+        if (appId > 0) rustSendGamesPlayed(appId, "reconnect");
+    }
+
+    /**
+     * Set the account's rich presence for {@code appId} (Player.SetRichPresence; an empty map clears
+     * it) — e.g. {@code status} / {@code connect} keys friends' clients render. BLOCKS on the CM
+     * round-trip (call off the main thread). Engine only; false on JavaSteam or without a session.
+     */
+    public boolean setRichPresence(int appId, Map<String, String> kv) {
+        if (!rustEngine || appId <= 0) return false;
+        BlSteamSession s = BlSteamEngine.INSTANCE.session();
+        if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) return false;
+        try {
+            boolean ok = s.setRichPresence(appId, kv != null ? kv : Collections.<String, String>emptyMap());
+            Log.i(PRESENCE_TAG, "rich presence for " + appId + " (" + (kv != null ? kv.size() : 0) + " keys) -> " + ok);
+            return ok;
+        } catch (Throwable t) {
+            Log.w(PRESENCE_TAG, "rich presence failed", t);
+            return false;
+        }
+    }
+
+    /**
+     * Engine-agnostic "is there a live, logged-on CM session right now?" — the JavaSteam
+     * {@code loggedIn} flag, or the Rust engine's LoggedOn state. Since Phase 3a this is exactly
+     * {@link #isLoggedIn()} (kept as an alias for the pre-flight / session-manager call sites).
+     */
+    public boolean isSessionLoggedOn() {
+        return isLoggedIn();
+    }
+
+    /** Human-readable Steam EResult name for the handful we act on (falls back to the number). */
+    static String eresultName(int r) {
+        switch (r) {
+            case 1:  return "OK";
+            case 2:  return "Fail";
+            case 3:  return "NoConnection";
+            case 5:  return "InvalidPassword";
+            case 6:  return "LoggedInElsewhere";
+            case 15: return "AccessDenied";
+            case 20: return "ServiceUnavailable";
+            case 34: return "LoggedInElsewhere";
+            case 43: return "LogonSessionReplaced";
+            case 63: return "AccountLogonDenied";
+            case 65: return "AccountLogonDenied";
+            case 68: return "AccountLoginDeniedNeedTwoFactor";
+            case 84: return "RateLimitExceeded";
+            case 85: return "AccountLoginDeniedThrottle";
+            case 87: return "AccountLoginDeniedVerifiedEmailRequired";
+            default: return "EResult" + r;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Rust engine — owned library / PICS (Phase 1-A)
+    // -------------------------------------------------------------------------
+    // With the flag ON the owned library is crawled through libblsteam.so (BlLibraryCrawler) instead
+    // of the JavaSteam LicenseList → PICS callback chain above. Every result is fed through the SAME
+    // per-app parser (processAppKv) into the SAME SteamDatabase tables and the SAME
+    // LibraryProgress / LibrarySynced events, so the game list, detail page, branch selector, DLC tab
+    // and the RealSteam launcher are engine-blind. The engine's appinfo arrives as JSON (key order
+    // preserved — serde_json preserve_order + Android's insertion-ordered JSONObject) and is rebuilt
+    // into a KeyValue tree, so depot ordering / DLC positional grouping match the VDF the JavaSteam
+    // parser sees. Dev parity proof: see BL_STEAM_PICS below.
+    private static final String PICS_DIFF_TAG = "BL_STEAM_PICS";
+    private final AtomicBoolean rustSyncing = new AtomicBoolean(false);
+    private volatile int rustSyncProcessed = 0;
+
+    /** Crawl the owned library on the Rust engine. Idempotent while a crawl is running. Any thread. */
+    private void rustSyncLibrary(String source) {
+        if (!rustEngine) return;
+        final BlSteamSession s = BlSteamEngine.INSTANCE.session();
+        if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) {
+            Log.i(RUST_TAG, "library sync skipped — engine not logged on (" + source + ")");
+            return;
+        }
+        if (!rustSyncing.compareAndSet(false, true)) {
+            Log.i(RUST_TAG, "library sync already running (" + source + ")");
+            return;
+        }
+        Log.i(RUST_TAG, "library sync starting on the Rust engine (" + source + ")");
+        Thread t = new Thread(() -> {
+            try {
+                final SteamDatabase db = getDatabase();
+                final Map<Integer, String> before = picsDiffSnapshot(db);
+                final String beforeEngine = pGet("last_sync_engine", "");
+                rustSyncProcessed = 0;
+                new BlLibraryCrawler(s).run(new BlLibraryCrawler.Sink() {
+                    private java.util.Set<Integer> licensedApps = null;
+                    private int stored = 0;
+
+                    @Override public void onLicenses(List<BlLibraryCrawler.License> licenses) {
+                        Log.i(RUST_TAG, licenses.size() + " licenses received (rust)");
+                        db.clearLicenses();
+                        for (BlLibraryCrawler.License lic : licenses)
+                            db.upsertLicense(lic.getPackageId(), lic.getTimeCreated(), lic.getFlags(), lic.getLicenseType());
+                        emit("LibraryProgress:0:" + licenses.size());
+                    }
+                    @Override public void onPackagesResolved(Map<Integer, List<Integer>> packageApps, List<Integer> uniqueAppIds) {
+                        for (Map.Entry<Integer, List<Integer>> e : packageApps.entrySet())
+                            for (int appId : e.getValue()) db.linkLicenseApp(e.getKey(), appId);
+                        Log.i(RUST_TAG, "PICS packages resolved " + uniqueAppIds.size() + " unique app IDs (rust)");
+                        emit("LibraryProgress:1:" + uniqueAppIds.size());
+                        licensedApps = new java.util.HashSet<>(db.getLicensedAppIds());
+                    }
+                    @Override public void onAppBatch(List<kotlin.Pair<Integer, JSONObject>> apps, int processed, int total) {
+                        if (licensedApps == null) licensedApps = new java.util.HashSet<>(db.getLicensedAppIds());
+                        int count = 0;
+                        for (kotlin.Pair<Integer, JSONObject> p : apps) {
+                            KeyValue root = jsonToKeyValue("appinfo", p.getSecond());
+                            if (processAppKv(p.getFirst(), root, db, licensedApps)) count++;
+                        }
+                        stored += count;
+                        rustSyncProcessed = processed;
+                        emit("LibraryProgress:2:" + processed + ":" + total);
+                        Log.i(RUST_TAG, "PICS app batch parsed (rust): +" + count + " (" + processed + "/" + total + ")");
+                    }
+                    @Override public void onFinished(int total) {
+                        recordSyncTime();
+                        pPut("last_sync_engine", "rust");
+                        Log.i(RUST_TAG, "Library sync complete (rust): " + stored + " apps stored of " + total);
+                        emit("LibrarySynced:" + stored);
+                        picsDiffReport(db, before, beforeEngine, "rust");
+                    }
+                    @Override public void onFailed(String reason, int processed) {
+                        Log.w(RUST_TAG, "Library sync stopped (rust): " + reason + " after " + processed + " apps");
+                        if (processed > 0) { cachedGameRows = null; emit("LibrarySynced:" + stored); }
+                    }
+                    @Override public boolean isCancelled() {
+                        return !rustEngine || !BlSteamEngine.INSTANCE.isLoggedOn() || BlSteamEngine.INSTANCE.session() != s;
+                    }
+                });
+            } catch (Throwable err) {
+                Log.w(RUST_TAG, "library sync crashed", err);
+            } finally {
+                rustSyncing.set(false);
+            }
+        }, "BlSteamLibrarySync");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /**
+     * Rebuild a JavaSteam {@link KeyValue} tree from the engine's JSON appinfo. Objects become nodes
+     * with children (insertion order preserved), scalars become string leaves — exactly the shape
+     * {@code PICSProductInfo.getKeyValues()} has, so {@link #processAppKv} parses both alike.
+     */
+    static KeyValue jsonToKeyValue(String name, Object json) {
+        if (json instanceof JSONObject) {
+            JSONObject o = (JSONObject) json;
+            KeyValue kv = new KeyValue(name, "");
+            List<KeyValue> children = new ArrayList<>(o.length());
+            java.util.Iterator<String> it = o.keys();
+            while (it.hasNext()) {
+                String k = it.next();
+                children.add(jsonToKeyValue(k, o.opt(k)));
+            }
+            kv.setChildren(children);
+            return kv;
+        }
+        return new KeyValue(name, json == null || json == JSONObject.NULL ? "" : String.valueOf(json));
+    }
+
+    /**
+     * Engine-agnostic single-app product-info read → the app's {@code appinfo} KeyValue root, or null
+     * when not signed in / the app came back empty. BLOCKS (bounded by {@code timeoutMs} on JavaSteam,
+     * the native 30 s per hop on the Rust engine) — call off the main thread and off the pump. Used by
+     * the cloud-support probe ({@code ufs/savefiles}) so it reads the same PICS data on either engine.
+     */
+    public KeyValue fetchAppKeyValues(int appId, long timeoutMs) {
+        if (appId <= 0) return null;
+        return fetchProductInfoKv(Collections.singletonList(appId), timeoutMs).get(appId);
+    }
+
+    /**
+     * Engine-agnostic single-shot product-info fetch for a few apps → KeyValue roots (missing ids
+     * absent). BLOCKS the caller up to {@code timeoutMs} (JavaSteam future) / the native 30 s per hop
+     * (Rust). Never call from the pump thread.
+     */
+    private Map<Integer, KeyValue> fetchProductInfoKv(List<Integer> appIds, long timeoutMs) {
+        Map<Integer, KeyValue> out = new java.util.HashMap<>();
+        if (appIds.isEmpty()) return out;
+        if (rustEngine) {
+            BlSteamSession s = BlSteamEngine.INSTANCE.session();
+            if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) return out;
+            for (kotlin.Pair<Integer, JSONObject> p : new BlLibraryCrawler(s).fetchApps(appIds))
+                out.put(p.getFirst(), jsonToKeyValue("appinfo", p.getSecond()));
+            return out;
+        }
+        SteamApps sa = steamApps;
+        if (sa == null || !loggedIn) return out;
+        try {
+            List<PICSRequest> reqs = new ArrayList<>();
+            for (int id : appIds) reqs.add(new PICSRequest(id));
+            in.dragonbra.javasteam.types.AsyncJobMultiple.ResultSet<PICSProductInfoCallback> rs =
+                    sa.picsGetProductInfo(reqs, Collections.emptyList())
+                            .toFuture().get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+            for (PICSProductInfoCallback cb : rs.getResults()) {
+                for (Map.Entry<Integer, PICSProductInfo> e : cb.getApps().entrySet()) {
+                    KeyValue kv = e.getValue() != null ? e.getValue().getKeyValues() : null;
+                    if (kv != null) out.put(e.getKey(), kv);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "fetchProductInfoKv(" + appIds + ") failed: " + e.getMessage());
+        }
+        return out;
+    }
+
+    // ── BL_STEAM_PICS: dev parity diff ────────────────────────────────────────────────────────────
+    // Proves on-device that the Rust crawl writes the SAME rows the JavaSteam sync wrote: before a
+    // Rust sync we snapshot every game's parsed signature (name|type|size|depot csv|included DLC|
+    // branch build ids|depot manifest ids) as the DB holds it — i.e. the previous engine's output —
+    // and after the sync we diff app-by-app, log the summary + first mismatches under BL_STEAM_PICS,
+    // and write the full report to <externalFiles>/bl_steam_pics_diff.txt. The interesting run is
+    // "previous=javasteam → now=rust" (flip the flag after a JavaSteam sync, restart, sign in).
+
+    private static Map<Integer, String> picsDiffSnapshot(SteamDatabase db) {
+        Map<Integer, String> out = new java.util.TreeMap<>();
+        try {
+            for (SteamDatabase.GameRow g : db.getAllGames()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("name=").append(g.name).append("|type=").append(g.type)
+                  .append("|size=").append(g.sizeBytes).append("|depots=").append(g.depotIds)
+                  .append("|dlc=").append(String.join(",", db.getIncludedDlcNames(g.appId)));
+                sb.append("|branches=");
+                for (SteamDatabase.BranchRow b : db.getBranches(g.appId))
+                    sb.append(b.branchName).append(':').append(b.buildId).append(';');
+                sb.append("|manifests=");
+                for (SteamDatabase.DepotManifestRow m : db.getDepotManifests(g.appId))
+                    sb.append(m.depotId).append(':').append(m.manifestId).append(':').append(m.sizeBytes).append(';');
+                out.put(g.appId, sb.toString());
+            }
+        } catch (Throwable t) {
+            Log.w(PICS_DIFF_TAG, "snapshot failed", t);
+        }
+        return out;
+    }
+
+    private void picsDiffReport(SteamDatabase db, Map<Integer, String> before, String beforeEngine, String nowEngine) {
+        try {
+            Map<Integer, String> after = picsDiffSnapshot(db);
+            int same = 0, changed = 0;
+            List<String> lines = new ArrayList<>();
+            for (Map.Entry<Integer, String> e : after.entrySet()) {
+                String prev = before.get(e.getKey());
+                if (prev == null) { lines.add("ONLY-NOW  app " + e.getKey() + ": " + e.getValue()); continue; }
+                if (prev.equals(e.getValue())) { same++; continue; }
+                changed++;
+                lines.add("CHANGED   app " + e.getKey() + "\n    prev: " + prev + "\n    now:  " + e.getValue());
+            }
+            int onlyPrev = 0;
+            for (Integer id : before.keySet()) if (!after.containsKey(id)) { onlyPrev++; lines.add("ONLY-PREV app " + id + ": " + before.get(id)); }
+            int onlyNow = after.size() - same - changed;
+            String head = "diff previous=" + (beforeEngine.isEmpty() ? "?" : beforeEngine) + " → now=" + nowEngine
+                    + ": prevApps=" + before.size() + " nowApps=" + after.size() + " same=" + same
+                    + " changed=" + changed + " onlyPrev=" + onlyPrev + " onlyNow=" + onlyNow
+                    + (beforeEngine.equals(nowEngine) ? " (same engine both times — not a cross-engine proof)" : "");
+            Log.i(PICS_DIFF_TAG, head);
+            int shown = 0;
+            for (String l : lines) { if (shown++ >= 40) { Log.i(PICS_DIFF_TAG, "… " + (lines.size() - 40) + " more in bl_steam_pics_diff.txt"); break; } Log.i(PICS_DIFF_TAG, l); }
+            if (appContext != null) {
+                File dir = appContext.getExternalFilesDir(null);
+                if (dir != null) {
+                    File f = new File(dir, "bl_steam_pics_diff.txt");
+                    try (BufferedWriter w = new BufferedWriter(new FileWriter(f, false))) {
+                        w.write("[" + new SimpleDateFormat("MM-dd HH:mm:ss", Locale.US).format(new Date()) + "] " + head + "\n");
+                        for (String l : lines) { w.write(l); w.write('\n'); }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(PICS_DIFF_TAG, "diff failed", t);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -257,10 +849,15 @@ public final class SteamRepository {
     // and SteamAppTicket which need them after login)
     // -------------------------------------------------------------------------
 
-    public SteamCloud     getSteamCloud()     { return steamCloud; }
-    public SteamUserStats getSteamUserStats() { return steamUserStats; }
-    public SteamFriends   getSteamFriends()   { return steamFriends; }
-    public CallbackManager getCallbackManager() { return manager; }
+    // Under the Rust engine every JavaSteam handler getter is null: the SteamClient is built but never
+    // connected, so a caller that reached for one would only hang on a dead connection. Every surface
+    // branches on isRustEngine() (or goes through an engine-agnostic seam such as SteamCloudBackend /
+    // fetchAppKeyValues) BEFORE reaching for a handler — since Phase 3b no feature is served by these
+    // getters alone, so a null here is never a refusal, only "not the JavaSteam engine".
+    public SteamCloud     getSteamCloud()     { return rustEngine ? null : steamCloud; }
+    public SteamUserStats getSteamUserStats() { return rustEngine ? null : steamUserStats; }
+    public SteamFriends   getSteamFriends()   { return rustEngine ? null : steamFriends; }
+    public CallbackManager getCallbackManager() { return rustEngine ? null : manager; }
 
     // -------------------------------------------------------------------------
     // Manifest request codes (required since ~2022 to authenticate CDN manifests)
@@ -351,6 +948,14 @@ public final class SteamRepository {
         SteamLogRedactor.registerSecret(pGet("username", ""));
         SteamLogRedactor.registerSecret(pGet("refresh_token", ""));
         SteamDatabase.getInstance(appContext);
+        // Hidden dev flag, read once per process so a live session is never swapped mid-flight.
+        rustEngine = BlSteamEngineFlag.isEnabled(appContext);
+        if (rustEngine) {
+            Log.i(RUST_TAG, "use_rust_steam_engine=ON — CM session will run on libblsteam.so");
+            // The engine's own diagnostic record (steam_engine.txt) — read by the SteamLite log bundle.
+            com.winlator.star.store.blsteam.BlSteamEngineLog.init(appContext);
+            com.winlator.star.store.blsteam.BlSteamEngineLog.log("SESSION", "engine selected (use_rust_steam_engine=ON)");
+        }
         if (steamClient != null) return;
 
         SteamConfiguration config = SteamConfiguration.create(b -> {
@@ -362,6 +967,10 @@ public final class SteamRepository {
             // Without this, if no server list is cached, getNextServerCandidate() returns null
             // and connect() immediately fires DisconnectedCallback without making any connection.
             b.withDirectoryFetch(true);
+            // "Steam connection region" (Settings → Steam): hands JavaSteam the chosen datacenter's
+            // TCP CMs on its first connect; returns nothing (→ the directory fetch above, exactly as
+            // before) in Auto mode or when the directory lists no TCP CM for that datacenter.
+            b.withServerListProvider(SteamRegion.INSTANCE.javaSteamServerListProvider(appContext));
         });
 
         steamClient = new SteamClient(config);
@@ -422,6 +1031,7 @@ public final class SteamRepository {
             refreshFgsStatus();
             return;
         }
+        if (rustEngine) { rustConnect("connect"); return; }
         if (connected) { Log.i(TAG, "connect() skipped — already connected"); return; }
         // Guard against double-connect (e.g. onStartCommand called twice for START_STICKY)
         if (!connecting.compareAndSet(false, true)) {
@@ -496,6 +1106,7 @@ public final class SteamRepository {
     }
 
     public void disconnect() {
+        if (rustEngine) BlSteamEngine.INSTANCE.stop();
         if (steamClient != null) steamClient.disconnect();
         stopPump();
         connected = false;
@@ -697,8 +1308,12 @@ public final class SteamRepository {
         loggingOut = false;
         logoffRecoveryAttempts = 0;
         reconnectAttempts = 0;
+        rustTokenRejected = false;
+        rustSignedInElsewhere = false;
+        rustReconnectAttempts = 0;
         if (!isLoggedInPrefs()) return;
         setStatus(SteamStatus.CONNECTING, "user tapped reconnect");
+        if (rustEngine) { rustConnect("reconnectNow"); return; }
         if (!connected) {
             connect();                                              // onConnected auto-logs-in
         } else if (!loggedIn) {
@@ -733,6 +1348,7 @@ public final class SteamRepository {
             Log.i(REALSTEAM_TAG, "suspendForRealSteam: already suspended");
             return;
         }
+        if (rustEngine) BlSteamEngineLog.log("SESSION", "suspending the app session for the in-game Steam client");
         realSteamSuspended = true;   // set FIRST so every reconnect path sees it before the socket drops
         Log.i(REALSTEAM_TAG, "suspending app CM session for in-game real-Steam session (connected="
                 + connected + " loggedIn=" + loggedIn + " status=" + status + ")");
@@ -759,8 +1375,9 @@ public final class SteamRepository {
      * @return true if the session is logged in when this returns.
      */
     public boolean resumeAfterRealSteam(long awaitLoggedInMs) {
-        if (!realSteamSuspended) return connected && loggedIn;
+        if (!realSteamSuspended) return isConnected() && isLoggedIn();
         realSteamSuspended = false;
+        if (rustEngine) BlSteamEngineLog.log("SESSION", "resuming the app session after the in-game Steam client");
         boolean saved = isLoggedInPrefs();
         Log.i(REALSTEAM_TAG, "resuming app CM session after real-Steam game (savedSession=" + saved + ")");
         if (!saved) {
@@ -770,12 +1387,12 @@ public final class SteamRepository {
         reconnectNow();
         if (awaitLoggedInMs > 0) {
             long deadline = System.currentTimeMillis() + awaitLoggedInMs;
-            while (!loggedIn && System.currentTimeMillis() < deadline) {
+            while (!isLoggedIn() && System.currentTimeMillis() < deadline) {
                 try { Thread.sleep(150); }
                 catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
             }
         }
-        return loggedIn;
+        return isLoggedIn();
     }
 
     /**
@@ -795,6 +1412,9 @@ public final class SteamRepository {
                 if (cm == null) return;
                 ConnectivityManager.NetworkCallback cb = new ConnectivityManager.NetworkCallback() {
                     @Override public void onAvailable(Network network) {
+                        // A new default network (Wi-Fi ↔ hotspot, VPN up/down) = a different NAT:
+                        // drop the cached pre-flight network verdict so the next launch re-tests.
+                        try { NetworkProbe.invalidate("default network " + network); } catch (Throwable ignored) {}
                         onNetworkAvailable("onAvailable");
                     }
                     @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {
@@ -848,6 +1468,20 @@ public final class SteamRepository {
      */
     private void onNetworkAvailable(String source) {
         try {
+            if (rustEngine) {
+                // Same guards as below, against the engine's state: a saved session, not deliberately
+                // signed out / paused / rejected / owned elsewhere, not healthy, nothing in flight.
+                if (realSteamSuspended || loggingOut || rustTokenRejected || rustSignedInElsewhere) return;
+                if (!isLoggedInPrefs()) return;
+                if (BlSteamEngine.INSTANCE.isLoggedOn() || BlSteamEngine.INSTANCE.isStarting()) return;
+                long now = System.currentTimeMillis();
+                if ((now - lastNetworkReconnectAt) < NETWORK_RECONNECT_DEBOUNCE_MS) return;
+                lastNetworkReconnectAt = now;
+                Log.i(RUST_TAG, "Network available (" + source + ") — self-healing Steam session");
+                rustReconnectAttempts = 0;   // clear the auto-reconnect cap so it can't permanently strand us
+                reconnectNow();
+                return;
+            }
             if (!pumping.get()) return;                 // pump down (disconnected/stopped) — nothing to heal
             if (realSteamSuspended) return;             // a real-Steam game holds the account — do not tug
             if (loggingOut) return;                     // respect a deliberate sign-out
@@ -1101,6 +1735,7 @@ public final class SteamRepository {
         pendingApps.clear();
         appSyncPaused = false;
         recordSyncTime();
+        pPut("last_sync_engine", "javasteam");   // BL_STEAM_PICS: labels the next cross-engine diff
         Log.i(TAG, "Library sync complete: " + appSyncProcessed + " apps");
         emit("LibrarySynced:" + appSyncProcessed);
     }
@@ -1240,21 +1875,55 @@ public final class SteamRepository {
                                 java.util.Set<Integer> licensedApps) {
         int count = 0;
         for (PICSProductInfo app : apps) {
+            if (processAppKv(app.getId(), app.getKeyValues(), db, licensedApps)) count++;
+        }
+        return count;
+    }
+
+    /**
+     * WORKER THREAD: parse + store ONE app's PICS product-info KeyValue tree (the per-app body of
+     * {@link #processAppsCore}, extracted verbatim). Engine-agnostic: the JavaSteam path hands it the
+     * {@code PICSProductInfo} KeyValues, the Rust engine path ({@link #rustSyncLibrary}) hands it the
+     * SAME tree rebuilt from the engine's JSON appinfo (see {@link #jsonToKeyValue}) — so both engines
+     * produce byte-identical {@code steam_games} / {@code depot_manifests} / {@code steam_branches} /
+     * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
+     */
+    /**
+     * VAC marker from an app's PICS app-info: {@code common/category/category_8} (store category 8,
+     * "Valve Anti-Cheat enabled") or any {@code extended/vac*} key ({@code vacmodulefilename},
+     * {@code vacmacmodulefilename}, {@code vacmodulecache}, …, present on Source/Valve titles).
+     * Engine-agnostic (both KeyValue trees carry the full sections). Never throws.
+     */
+    static boolean detectVacSecure(KeyValue common, KeyValue root) {
+        try {
+            String cat8 = kvStr(common.get("category").get("category_8")).trim();
+            if (!cat8.isEmpty() && !"0".equals(cat8)) return true;
+            List<KeyValue> ext = root.get("extended").getChildren();
+            if (ext != null) {
+                for (KeyValue e : ext) {
+                    String n = e.getName();
+                    if (n != null && n.toLowerCase().startsWith("vac")) return true;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    boolean processAppKv(int appId, KeyValue root, SteamDatabase db, java.util.Set<Integer> licensedApps) {
                     try {
-                        KeyValue root = app.getKeyValues();
                         KeyValue common = root.get("common");
                         // "type" is absent on some entries (tools, hardware, etc.) — skip those
                         String type = kvStr(common.get("type")).toLowerCase();
                         // Allowlisted appIds bypass the type filter entirely (see LIBRARY_ALLOWLIST).
-                        boolean allowlisted = LIBRARY_ALLOWLIST.contains(app.getId());
+                        boolean allowlisted = LIBRARY_ALLOWLIST.contains(appId);
                         // Skip non-playable app types
                         if (!allowlisted
                                 && ("tool".equals(type) || "hardware".equals(type)
                                 || "music".equals(type) || "video".equals(type)
-                                || "advertising".equals(type))) continue;
+                                || "advertising".equals(type))) return false;
                         // Accept "game", "dlc", "application", "demo", "beta", ""
                         // Empty type means PICS didn't return common section — skip
-                        if (type.isEmpty() && !allowlisted) continue;
+                        if (type.isEmpty() && !allowlisted) return false;
 
                         String name       = kvStr(common.get("name"));
                         String icon       = kvStr(common.get("icon"));
@@ -1341,20 +2010,20 @@ public final class SteamRepository {
                                         if ("windows".equals(os.trim())) { windows = true; break; }
                                     }
                                     if (!windows) {
-                                        Log.d(TAG, "app " + app.getId() + " skip depot " + depotId
+                                        Log.d(TAG, "app " + appId + " skip depot " + depotId
                                                 + " oslist='" + oslist + "' (not windows)");
                                         skippedCount++; continue;
                                     }
                                 }
                                 String lang = kvStr(config.get("language")).trim();
                                 if (!lang.isEmpty() && !"english".equalsIgnoreCase(lang)) {
-                                    Log.d(TAG, "app " + app.getId() + " skip depot " + depotId
+                                    Log.d(TAG, "app " + appId + " skip depot " + depotId
                                             + " language='" + lang + "' (not english)");
                                     skippedCount++; continue;
                                 }
                                 String lv = kvStr(config.get("lowviolence")).trim();
                                 if (lv.equals("1") || lv.equalsIgnoreCase("true")) {
-                                    Log.d(TAG, "app " + app.getId() + " skip depot " + depotId + " lowviolence");
+                                    Log.d(TAG, "app " + appId + " skip depot " + depotId + " lowviolence");
                                     skippedCount++; continue;
                                 }
                                 // DLC handling. Steam does NOT tag a depot's config with dlcappid here;
@@ -1367,7 +2036,7 @@ public final class SteamRepository {
                                 //   - licensed → keep + record for the detail-page "Includes DLC:" line.
                                 if (dlcSet.contains(depotId)) {
                                     if (!licensedApps.contains(depotId)) {
-                                        Log.d(TAG, "app " + app.getId() + " skip DLC depot " + depotId + " (not owned)");
+                                        Log.d(TAG, "app " + appId + " skip DLC depot " + depotId + " (not owned)");
                                         skippedCount++; continue;
                                     }
                                     if (!includedDlcIds.contains(depotId)) includedDlcIds.add(depotId);
@@ -1397,7 +2066,7 @@ public final class SteamRepository {
                                 if (!manifestGid.isEmpty()) {
                                     try {
                                         long manifestId = Long.parseLong(manifestGid);
-                                        db.upsertDepotManifest(app.getId(), depotId, manifestId, depotSize);
+                                        db.upsertDepotManifest(appId, depotId, manifestId, depotSize);
                                     } catch (NumberFormatException ignored) {}
                                 }
                             }
@@ -1408,7 +2077,7 @@ public final class SteamRepository {
                         // sub-keys pwdrequired (0/1), buildid, timeupdated, description. Clear the app's
                         // prior rows first, then upsert each so removed branches don't linger. Drives
                         // the detail-page branch selector.
-                        db.clearBranches(app.getId());
+                        db.clearBranches(appId);
                         List<KeyValue> branchChildren = depotsKv.get("branches").getChildren();
                         if (branchChildren != null) {
                             for (KeyValue b : branchChildren) {
@@ -1420,7 +2089,7 @@ public final class SteamRepository {
                                 catch (NumberFormatException ignored) {}
                                 try { timeUpdated = Long.parseLong(kvStr(b.get("timeupdated")).trim()); }
                                 catch (NumberFormatException ignored) {}
-                                db.upsertBranch(app.getId(), branchName, pwdReq, buildId, timeUpdated,
+                                db.upsertBranch(appId, branchName, pwdReq, buildId, timeUpdated,
                                         kvStr(b.get("description")));
                             }
                         }
@@ -1428,23 +2097,30 @@ public final class SteamRepository {
                         // Stash the compressed (network) total in memory for the dual-color
                         // download/install progress bar. Not persisted (avoids a schema change);
                         // a cache miss on a later session falls back to an estimate.
-                        downloadSizeByApp.put(app.getId(), totalDownload);
-                        Log.i(TAG, "app " + app.getId() + " depots: selected=" + selectedCount
+                        downloadSizeByApp.put(appId, totalDownload);
+                        Log.i(TAG, "app " + appId + " depots: selected=" + selectedCount
                                 + " skipped=" + skippedCount + " install=" + totalSize
                                 + "B download=" + totalDownload + "B");
 
-                        db.upsertGame(app.getId(), name, icon, totalSize, depotSb.toString(), type,
+                        db.upsertGame(appId, name, icon, totalSize, depotSb.toString(), type,
                                 developer, metacriticScore, genreSb.toString());
                         // Drop any depot rows no longer selected (e.g. an unowned DLC depot a
                         // pre-filter sync stored) so the completion guard can't fail on them.
-                        db.pruneDepots(app.getId(), depotSb.toString());
+                        db.pruneDepots(appId, depotSb.toString());
                         // Record owned DLC bundled with the game (for the "Includes DLC:" line).
                         StringBuilder dlcCsv = new StringBuilder();
                         for (int id : includedDlcIds) {
                             if (dlcCsv.length() > 0) dlcCsv.append(',');
                             dlcCsv.append(id);
                         }
-                        db.setIncludedDlc(app.getId(), dlcCsv.toString());
+                        db.setIncludedDlc(appId, dlcCsv.toString());
+                        // VAC marker for the RealSteam launch's secure-launch policy (WN_STEAM_VAC).
+                        // PICS evidence (api.steamcmd.net dumps, 2026-09-02): TF2 (440) has
+                        // common/category/category_8 = "1" (store category 8 = "Valve Anti-Cheat
+                        // enabled") AND extended/vacmodulefilename = "sourceinit.dat" (+ vacmodulecache /
+                        // vacmacmodulecache); Brawlhalla (291550) has neither. There is no literal "vac"
+                        // key. Rule: category_8 OR any extended/vac* key → secured.
+                        db.setVacSecure(appId, detectVacSecure(common, root));
                         // Broadened DLC CATALOGUE for the detail-page DLC TAB: EVERY DLC the game
                         // lists in extended/listofdlc, split owned/unowned. included_dlc above stays
                         // the depot-bundled owned subset that drives the download picker/size — this
@@ -1468,15 +2144,14 @@ public final class SteamRepository {
                                 SteamDatabase.GameRow gr = db.getGame(dlcId);
                                 if (gr != null && gr.name != null) nm = gr.name;
                             } catch (Exception ignored) {}
-                            dlcRows.add(new SteamDatabase.DlcRow(app.getId(), dlcId, nm, owned, kind));
+                            dlcRows.add(new SteamDatabase.DlcRow(appId, dlcId, nm, owned, kind));
                         }
-                        db.replaceDlcSet(app.getId(), dlcRows);
-                        count++;
+                        db.replaceDlcSet(appId, dlcRows);
+                        return true;
                     } catch (Exception e) {
-                        Log.w(TAG, "Skipping app " + app.getId() + ": " + e.getMessage());
+                        Log.w(TAG, "Skipping app " + appId + ": " + e.getMessage());
+                        return false;
                     }
-        }
-        return count;
     }
 
     /** Handle depot decryption key callback. Stores key in memory for SteamDepotDownloader. */
@@ -1496,6 +2171,7 @@ public final class SteamRepository {
 
     /** Trigger a full library re-sync (e.g. from pull-to-refresh). Safe to call from any thread. */
     public void syncLibrary() {
+        if (rustEngine) { rustSyncLibrary("syncLibrary"); return; }
         List<License> copy;
         synchronized (licenses) { copy = new ArrayList<>(licenses); }
         if (copy.isEmpty()) {
@@ -1525,32 +2201,21 @@ public final class SteamRepository {
      * @return true if the app's product info was fetched and stored.
      */
     public boolean refreshAppProductInfo(int appId, long timeoutMs) {
-        SteamApps sa = steamApps;
-        if (sa == null || !loggedIn) {
+        if (!isSessionLoggedOn()) {
             Log.i(TAG, "refreshAppProductInfo(" + appId + "): skipped (not signed in)");
             return false;
         }
         try {
-            in.dragonbra.javasteam.types.AsyncJobMultiple.ResultSet<PICSProductInfoCallback> rs =
-                    sa.picsGetProductInfo(new PICSRequest(appId))
-                            .toFuture().get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-            PICSProductInfo info = null;
-            for (PICSProductInfoCallback cb : rs.getResults()) {
-                PICSProductInfo p = cb.getApps().get(appId);
-                if (p != null) { info = p; break; }
-            }
+            KeyValue root = fetchProductInfoKv(Collections.singletonList(appId), timeoutMs).get(appId);
             // Metadata-only / missing-token response → no depot data to reparse. Leave the DB as-is.
-            if (info == null || info.getKeyValues() == null
-                    || info.getKeyValues().getChildren() == null
-                    || info.getKeyValues().getChildren().isEmpty()) {
+            if (root == null || root.getChildren() == null || root.getChildren().isEmpty()) {
                 Log.w(TAG, "refreshAppProductInfo(" + appId + "): no populated product info");
                 return false;
             }
             SteamDatabase db = SteamDatabase.getInstance();
-            int stored = processAppsCore(Collections.singletonList(info),
-                    db, new java.util.HashSet<>(db.getLicensedAppIds()));
+            boolean stored = processAppKv(appId, root, db, new java.util.HashSet<>(db.getLicensedAppIds()));
             Log.i(TAG, "refreshAppProductInfo(" + appId + "): refreshed product info (stored=" + stored + ")");
-            return stored > 0;
+            return stored;
         } catch (Exception e) {
             Log.w(TAG, "refreshAppProductInfo(" + appId + ") failed: " + e.getMessage());
             return false;
@@ -1607,25 +2272,17 @@ public final class SteamRepository {
      * failure leaves the DB as-is. Returns true if anything was (re)resolved.
      */
     public boolean resolveOwnedDlc(int baseAppId, long timeoutMs) {
-        SteamApps sa = steamApps;
         SteamDatabase db = SteamDatabase.getInstance();
         boolean changed = false;
+        final boolean online = isSessionLoggedOn();
         try {
             java.util.Set<Integer> licensedApps = new java.util.HashSet<>(db.getLicensedAppIds());
 
             // (1) Self-heal an unresolved base from a fresh single-app PICS fetch.
-            if (!db.isDlcResolved(baseAppId) && sa != null && loggedIn) {
+            if (!db.isDlcResolved(baseAppId) && online) {
                 try {
-                    in.dragonbra.javasteam.types.AsyncJobMultiple.ResultSet<PICSProductInfoCallback> rs =
-                            sa.picsGetProductInfo(new PICSRequest(baseAppId))
-                                    .toFuture().get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-                    PICSProductInfo info = null;
-                    for (PICSProductInfoCallback cb : rs.getResults()) {
-                        PICSProductInfo p = cb.getApps().get(baseAppId);
-                        if (p != null) { info = p; break; }
-                    }
-                    if (info != null && info.getKeyValues() != null) {
-                        KeyValue root = info.getKeyValues();
+                    KeyValue root = fetchProductInfoKv(Collections.singletonList(baseAppId), timeoutMs).get(baseAppId);
+                    if (root != null) {
                         java.util.Set<Integer> dlcSet   = parseListOfDlc(root);
                         java.util.Set<Integer> pubDepots = collectPublicDepotIds(root);
                         java.util.List<SteamDatabase.DlcRow> rows = new java.util.ArrayList<>();
@@ -1647,21 +2304,16 @@ public final class SteamRepository {
 
             // (2) Fill display name + app/entitlement kind for owned DLC that still need it.
             java.util.List<SteamDatabase.DlcRow> need = db.getOwnedDlcNeedingResolve(baseAppId);
-            if (!need.isEmpty() && sa != null && loggedIn) {
-                List<PICSRequest> reqs = new ArrayList<>();
-                for (SteamDatabase.DlcRow r : need) reqs.add(new PICSRequest(r.dlcAppId));
+            if (!need.isEmpty() && online) {
+                List<Integer> ids = new ArrayList<>();
+                for (SteamDatabase.DlcRow r : need) ids.add(r.dlcAppId);
                 try {
-                    in.dragonbra.javasteam.types.AsyncJobMultiple.ResultSet<PICSProductInfoCallback> rs =
-                            sa.picsGetProductInfo(reqs, Collections.emptyList())
-                                    .toFuture().get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-                    Map<Integer, PICSProductInfo> got = new java.util.HashMap<>();
-                    for (PICSProductInfoCallback cb : rs.getResults()) got.putAll(cb.getApps());
+                    Map<Integer, KeyValue> got = fetchProductInfoKv(ids, timeoutMs);
                     for (SteamDatabase.DlcRow r : need) {
-                        PICSProductInfo p = got.get(r.dlcAppId);
+                        KeyValue root = got.get(r.dlcAppId);
                         String name = "";
                         String kind = null;   // null → updateDlcResolved leaves the stored kind as-is
-                        if (p != null && p.getKeyValues() != null) {
-                            KeyValue root = p.getKeyValues();
+                        if (root != null) {
                             name = kvStr(root.get("common").get("name"));
                             // Only classify app vs entitlement when the kind isn't already final
                             // ('depot' is set from the base game's depots and must not be overwritten).
@@ -1688,16 +2340,25 @@ public final class SteamRepository {
 
     /** Auto-login using a stored refresh token. Must not be called on the main thread. */
     public void loginWithToken(String username, String refreshToken) {
-        if (steamUser == null) return;
         if (realSteamSuspended) {
             Log.i(REALSTEAM_TAG, "loginWithToken skipped — app session suspended for in-game real-Steam session");
             return;
         }
+        if (rustEngine) {
+            // The login screens call this right after saveSession(); the engine logs on to the
+            // channel the auth session ran on (or connects fresh). Credentials come from prefs.
+            SteamLogRedactor.registerSecret(username);
+            SteamLogRedactor.registerSecret(refreshToken);
+            rustConnect("loginWithToken");
+            return;
+        }
+        if (steamUser == null) return;
         // Re-arm the background self-heal on any login attempt (idempotent) so a re-login after a
         // logout — which unregistered it while the pump kept running — re-attaches the callback.
         registerNetworkCallback();
         SteamLogRedactor.registerSecret(username);
         SteamLogRedactor.registerSecret(refreshToken);
+        if (rustEngine) BlSteamEngineLog.log("AUTH", "token logon requested");
         // Single-flight: a redundant logon while already logged in — or a second concurrent logon
         // — is exactly what triggers LogonSessionReplaced and evicts us. Skip both. Only supersede
         // a STALLED logon (posted but no callback within LOGON_STALL_MS) so we can never lock out.
@@ -1743,6 +2404,12 @@ public final class SteamRepository {
      * @return true if logged in by the time we return.
      */
     public boolean ensureLoggedIn(long timeoutMs) {
+        if (rustEngine) {
+            if (BlSteamEngine.INSTANCE.isLoggedOn()) return true;
+            if (realSteamSuspended || !isLoggedInPrefs()) return false;
+            rustConnect("ensureLoggedIn");
+            return rustAwaitLoggedOn(timeoutMs);
+        }
         if (loggedIn) return true;
         if (steamClient == null || !connected) return false;
         if (!isLoggedInPrefs()) return false;   // no saved token — user must sign in
@@ -1775,12 +2442,24 @@ public final class SteamRepository {
      *         token to recover to, or the fresh logon didn't land within {@code timeoutMs}.
      */
     public boolean reconnectAndRelogin(long timeoutMs) {
-        if (steamClient == null) return false;
         if (realSteamSuspended) {
             Log.i(REALSTEAM_TAG, "reconnectAndRelogin refused — app session suspended for in-game real-Steam session");
             return false;
         }
         if (!isLoggedInPrefs()) return false;   // no saved token — nothing to recover to; caller must re-auth
+        if (rustEngine) {
+            // Tear the engine session down and build a fresh one from the saved token, then wait.
+            Log.i(RUST_TAG, "reconnectAndRelogin: forcing a fresh engine session (timeout " + timeoutMs + "ms)");
+            setStatus(SteamStatus.CONNECTING, "forced reconnect+relogin for retry");
+            loggingOut = false;
+            rustReconnectAttempts = 0;
+            BlSteamEngine.INSTANCE.stop();
+            rustConnect("reconnectAndRelogin");
+            boolean ok = rustAwaitLoggedOn(timeoutMs);
+            Log.i(RUST_TAG, "reconnectAndRelogin: loggedIn=" + ok);
+            return ok;
+        }
+        if (steamClient == null) return false;
         Log.i(TAG, "reconnectAndRelogin: forcing a fresh session (timeout " + timeoutMs + "ms)");
         setStatus(SteamStatus.CONNECTING, "forced reconnect+relogin for retry");
         // Arm the involuntary-logoff recovery path so the client-initiated disconnect below re-logs-in
@@ -1813,12 +2492,28 @@ public final class SteamRepository {
      * (called from Phase 2 auth flow after pollingWaitForResult).
      */
     public void saveSession(String username, String refreshToken) {
+        saveSession(username, refreshToken, 0L);
+    }
+
+    /**
+     * {@link #saveSession(String, String)} plus the account's SteamID64 when the auth flow already
+     * knows it (the Rust credentials session returns it; the QR session's token carries it in its
+     * JWT {@code sub}). 0 leaves the stored id untouched — the logon response writes it anyway.
+     */
+    public void saveSession(String username, String refreshToken, long steamId64) {
         loggingOut = false;
         logoffRecoveryAttempts = 0;
+        rustTokenRejected = false;
+        rustSignedInElsewhere = false;
         SteamLogRedactor.registerSecret(username);
         SteamLogRedactor.registerSecret(refreshToken);
+        if (rustEngine) BlSteamEngineLog.log("AUTH", "session saved (steamId known=" + (steamId64 != 0L) + ")");
         pPut("username", username);
         pPut("refresh_token", refreshToken);
+        if (steamId64 != 0L) {
+            pPut("steam_id_64", steamId64);
+            pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
+        }
     }
 
     /**
@@ -1836,11 +2531,15 @@ public final class SteamRepository {
 
     public void logout() {
         loggingOut = true;            // suppress involuntary-logoff recovery for this intentional sign-out
+        if (rustEngine) BlSteamEngineLog.log("AUTH", "sign-out requested");
         logoffRecoveryAttempts = 0;
         // Detach the background self-heal so it can't fight this deliberate sign-out. (A later
         // re-login re-arms it via loginWithToken(); the isLoggedInPrefs()/loggingOut guards in
         // onNetworkAvailable are a second line of defence in case it is still attached.)
         unregisterNetworkCallback();
+        rustTokenRejected = false;
+        rustSignedInElsewhere = false;
+        if (rustEngine) BlSteamEngine.INSTANCE.stop();   // ClientLogOff + disconnect (the session ends server-side)
         if (steamUser != null) steamUser.logOff();
         if (prefs != null) {
             prefs.edit()
@@ -1855,6 +2554,12 @@ public final class SteamRepository {
         setStatus(SteamStatus.SIGNED_OUT, "user logout");
         Log.i(TAG, "Logged out");
         emit("LoggedOut");
+        if (rustEngine && !realSteamSuspended) {
+            // JavaSteam keeps its CM channel up after logOff so the sign-in screens (which wait for
+            // "Connected") can start an auth session at once — bring a connect-only engine session
+            // back for the same reason (account switch = sign out, sign in as someone else).
+            rustConnect("logout");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1895,13 +2600,14 @@ public final class SteamRepository {
         }
     }
 
-    public SteamClient   getSteamClient() { return steamClient; }
-    public SteamApps     getSteamApps()   { return steamApps; }
+    public SteamClient   getSteamClient() { return rustEngine ? null : steamClient; }
+    public SteamApps     getSteamApps()   { return rustEngine ? null : steamApps; }
 
     /** The SteamContent handler (manifest request codes + CDN server list) — auto-registered on the
-     *  SteamClient. Used by DepotSizeResolver for metadata-only manifest fetches. Null if not connected. */
+     *  SteamClient. Used by DepotSizeResolver for metadata-only manifest fetches. Null if not connected
+     *  (and always null under the Rust engine — see the handler getters above). */
     public SteamContent  getSteamContent() {
-        SteamClient sc = steamClient;
+        SteamClient sc = getSteamClient();
         return sc != null ? sc.getHandler(SteamContent.class) : null;
     }
 
@@ -1952,8 +2658,24 @@ public final class SteamRepository {
      * Ported from GameNative (GPL-3.0): app/gamenative/service/SteamService.checkPrivateBranchPassword.
      */
     public boolean checkBranchPassword(int appId, String password) {
+        if (password == null || password.isEmpty()) return false;
+        if (rustEngine) {
+            // Same round-trip on the engine (ClientCheckAppBetaPassword); the unlocked branch names
+            // are persisted exactly like the JavaSteam path so the selector + installer read them alike.
+            BlSteamSession s = BlSteamEngine.INSTANCE.session();
+            if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) return false;
+            BlSteamSession.BetaPasswordResult r = s.checkAppBetaPassword(appId, password);
+            if (r != null && r.getEresult() == 1 && !r.getBranchKeys().isEmpty()) {
+                SteamDatabase db = getDatabase();
+                for (String branchName : r.getBranchKeys().keySet()) db.insertUnlockedBranch(appId, branchName, password);
+                Log.i(TAG, "checkBranchPassword: app " + appId + " unlocked " + r.getBranchKeys().keySet() + " (rust)");
+                return true;
+            }
+            Log.i(TAG, "checkBranchPassword: app " + appId + " rejected (rust eresult=" + (r != null ? r.getEresult() : "no reply") + ")");
+            return false;
+        }
         SteamApps sa = steamApps;
-        if (sa == null || password == null || password.isEmpty()) return false;
+        if (sa == null) return false;
         try {
             CheckAppBetaPasswordCallback cb = sa.checkAppBetaPassword(appId, password)
                     .toFuture().get(30, java.util.concurrent.TimeUnit.SECONDS);

@@ -33,8 +33,9 @@ object SteamCloudSavePaths {
     private const val TAG = "BH_STEAM_CLOUD"
 
     // ── One UFS root: its `%Token%` placeholder + how to resolve its base dir in a container. ──
-    // `install` = the game's shared Steam install dir (SteamCloudSaveManager passes it through).
-    private class Root(val token: String, val baseDir: (Container, String) -> File)
+    // `install` = the game's shared Steam install dir (SteamCloudSaveManager passes it through);
+    // `appId` = the game (only the per-app Steam remote-storage root needs it; 0 = unknown).
+    private class Root(val token: String, val baseDir: (Container, String, Int) -> File?)
 
     /**
      * The UFS `%Root%` table, ordered MOST-SPECIFIC → LEAST-SPECIFIC. Order matters only for
@@ -45,31 +46,43 @@ object SteamCloudSavePaths {
      */
     private val ROOTS: List<Root> = listOf(
         // Shared Steam install dir — OUTSIDE the profile.
-        Root("%GameInstall%") { _, install -> File(install) },
+        Root("%GameInstall%") { _, install, _ -> File(install) },
         // ProgramData — OUTSIDE the profile (drive_c/ProgramData).
-        Root("%WinProgramData%") { c, _ -> File(c.rootDir, ".wine/drive_c/ProgramData") },
+        Root("%WinProgramData%") { c, _, _ -> File(c.rootDir, ".wine/drive_c/ProgramData") },
+        // Steam's per-app remote storage (files a game writes through ISteamRemoteStorage rather
+        // than to a path — Risk of Rain 2's profiles, for instance). In a Bannerlator container that
+        // store is the Goldberg/gbe_fork `remote` folder, which is where such a game reads them back
+        // from on a Goldberg launch (a SteamLite launch syncs them via the genuine client itself).
+        // Nested under AppData/Roaming, so it must sit ABOVE %WinAppDataRoaming% for Collect.
+        Root("%SteamUserBaseStorage%") { c, _, appId ->
+            if (appId > 0) File(SaveLocator.profileDir(c), "AppData/Roaming/GSE Saves/$appId/remote") else null
+        },
         // Profile-relative roots.
-        Root("%WinSavedGames%") { c, _ -> File(SaveLocator.profileDir(c), "Saved Games") },
-        Root("%WinAppDataLocalLow%") { c, _ -> File(SaveLocator.profileDir(c), "AppData/LocalLow") },
-        Root("%WinAppDataLocal%") { c, _ -> File(SaveLocator.profileDir(c), "AppData/Local") },
-        Root("%WinAppDataRoaming%") { c, _ -> File(SaveLocator.profileDir(c), "AppData/Roaming") },
-        Root("%WinMyDocuments%") { c, _ -> File(SaveLocator.profileDir(c), "Documents") },
+        Root("%WinSavedGames%") { c, _, _ -> File(SaveLocator.profileDir(c), "Saved Games") },
+        Root("%WinAppDataLocalLow%") { c, _, _ -> File(SaveLocator.profileDir(c), "AppData/LocalLow") },
+        Root("%WinAppDataLocal%") { c, _, _ -> File(SaveLocator.profileDir(c), "AppData/Local") },
+        Root("%WinAppDataRoaming%") { c, _, _ -> File(SaveLocator.profileDir(c), "AppData/Roaming") },
+        Root("%WinMyDocuments%") { c, _, _ -> File(SaveLocator.profileDir(c), "Documents") },
         // The Wine user profile itself — LAST (ancestor of every Win* root above).
-        Root("%Root%") { c, _ -> SaveLocator.profileDir(c) },
+        Root("%Root%") { c, _, _ -> SaveLocator.profileDir(c) },
     )
 
     /**
      * Extra spellings the CM may send for a root, keyed by the PERCENT-STRIPPED lowercased token,
      * valued by the percent-stripped canonical token in [ROOTS]. [lookupRoot] strips percents before
      * consulting this, so a token resolves whether it arrives as `%root_mod%`, `ROOT_MOD`, or
-     * `root_mod`. Note: SteamUserData (`SteamUserBaseStorage` — the userdata/remote store) is NOT
-     * mapped (needs the account id we don't have here), so those files are skipped, never guessed.
+     * `root_mod`. `SteamUserBaseStorage` (the per-app userdata/remote store) maps to the container's
+     * Goldberg remote folder (see [ROOTS]); Mac/Linux-only roots (`MacHome`, `LinuxHome`, …) are not
+     * mapped on purpose — a Windows container has no counterpart — so those files are skipped, never
+     * guessed.
      */
     private val ALIASES: Map<String, String> = mapOf(
         "winappdata" to "winappdataroaming",       // legacy short form of Roaming
         "windowshome" to "root",                   // GameNative alias for the profile root
         "root_mod" to "root",                      // GameNative alias for the profile root
         "steamclouddocuments" to "winmydocuments", // GameNative maps this to Documents
+        "steamuserdata" to "steamuserbasestorage", // spelling seen in older ufs blocks
+        "winhome" to "root",                       // %WinHome% = the user profile (Steam's own alias)
     )
 
     // ── Public API ───────────────────────────────────────────────────────────────
@@ -145,9 +158,11 @@ object SteamCloudSavePaths {
      * root token is unknown/unsupported, if the remainder is unsafe (`..`), or if the result would
      * escape its mapped root.
      */
-    fun toContainerPath(libraryRel: String, container: Container, installDir: String): File? {
+    fun toContainerPath(libraryRel: String, container: Container, installDir: String, appId: Int = 0): File? {
         val (root, remainder) = parseRoot(libraryRel) ?: return null
-        val base = root.baseDir(container, installDir)
+        val base = root.baseDir(container, installDir, appId) ?: run {
+            Log.w(TAG, "Root ${root.token} needs an app id to resolve — skipping: $libraryRel"); return null
+        }
         val dest = if (remainder.isEmpty()) base else File(base, remainder.joinToString("/"))
 
         // Escape guard: the canonicalized destination must be the root itself or strictly under it.
@@ -165,11 +180,11 @@ object SteamCloudSavePaths {
      * under no known root. Roots are tested most-specific first so a file in Documents maps to
      * `%WinMyDocuments%`, never `%Root%/Documents/…`.
      */
-    fun toLibraryRel(abs: File, container: Container, installDir: String): String? {
+    fun toLibraryRel(abs: File, container: Container, installDir: String, appId: Int = 0): String? {
         val target = try { abs.canonicalPath } catch (e: Exception) { return null }
         for (root in ROOTS) {
             val base = try {
-                root.baseDir(container, installDir).canonicalPath
+                (root.baseDir(container, installDir, appId) ?: continue).canonicalPath
             } catch (e: Exception) { continue }
             if (target == base) return root.token // the root dir itself
             if (target.startsWith(base + File.separator)) {

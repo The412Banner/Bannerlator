@@ -229,6 +229,62 @@ jobs:
       if: steps.cache-lsfg.outputs.cache-hit != 'true'
       run: ./build-lsfg-android.sh
 
+    # --- bl-steam-client: the native Rust Steam CM engine (libblsteam.so) --------------------
+    # Cross-compiled with cargo for aarch64-linux-android and dropped into jniLibs so it ships in
+    # every flavor exactly like the other prebuilt .so files. rustup/cargo are preinstalled on the
+    # runner image; only the Android target has to be added. The one C-compiling crate (`ring`,
+    # via rustls) needs the NDK clang/llvm-ar exported below — everything else is pure Rust.
+    # Cache = cargo registry + the crate's target/ dir, keyed on rustc version + Cargo.lock, so a
+    # source-only change rebuilds just this crate on top of the cached dependency objects.
+    - name: Rust toolchain (aarch64-linux-android target)
+      id: rust
+      run: |
+        rustup target add aarch64-linux-android
+        echo "rustc=$(rustc -V | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+        rustc -V; cargo -V
+
+    - name: Cache cargo registry + bl-steam-client target
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+          app/src/main/cpp/bl-steam-client/rust/target
+        key: blsteam-${{ steps.rust.outputs.rustc }}-${{ hashFiles('app/src/main/cpp/bl-steam-client/rust/Cargo.lock') }}
+        restore-keys: |
+          blsteam-${{ steps.rust.outputs.rustc }}-
+
+    - name: Build libblsteam.so (cargo, aarch64-linux-android)
+      run: |
+        NDK_BIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+        test -x "$NDK_BIN/aarch64-linux-android26-clang" || { echo "NDK clang missing at $NDK_BIN" >&2; exit 1; }
+        export PATH="$NDK_BIN:$PATH"
+        export CC_aarch64_linux_android="$NDK_BIN/aarch64-linux-android26-clang"
+        export AR_aarch64_linux_android="$NDK_BIN/llvm-ar"
+        export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_BIN/aarch64-linux-android26-clang"
+        cd app/src/main/cpp/bl-steam-client/rust
+        cargo build --locked --release --target aarch64-linux-android --lib
+        SO=target/aarch64-linux-android/release/libblsteam.so
+        test -s "$SO"
+        # Rebrand + packaging assertion: the JNI entry point Kotlin binds at boot must be exported,
+        # otherwise the boot probe (BlSteamClient.probe) fails silently on device.
+        "$NDK_BIN/llvm-nm" -D --defined-only "$SO" \
+          | grep -q ' Java_com_winlator_star_store_blsteam_BlSteamClient_nativeVersion$' \
+          || { echo "libblsteam.so lacks the BlSteamClient_nativeVersion JNI export" >&2; exit 1; }
+        "$NDK_BIN/llvm-readelf" -d "$SO" | grep -i soname
+        ls -la "$SO"
+        mkdir -p ../../../jniLibs/arm64-v8a
+        cp "$SO" ../../../jniLibs/arm64-v8a/libblsteam.so
+
+    - name: bl-steam-client dependency audit (cargo tree + licenses)
+      run: |
+        cd app/src/main/cpp/bl-steam-client/rust
+        echo "== crates linked into libblsteam.so (aarch64-linux-android; normal+build deps) =="
+        cargo tree --locked --target aarch64-linux-android -e normal,build --prefix none --format '{p} {l}' | sort -u
+        echo "== -sys crates =="
+        cargo tree --locked --target aarch64-linux-android -e normal,build --prefix none --format '{p}' | sort -u | grep -- '-sys' || echo "(none)"
+
     - name: Restore Galaxy Performance SDK jar (optional, from secret)
       # Decodes the proprietary Samsung jar from the encrypted secret into the git-ignored
       # drop-point so app/build.gradle bundles it. No secret => no jar => feature dormant.

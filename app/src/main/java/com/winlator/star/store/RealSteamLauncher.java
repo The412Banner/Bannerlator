@@ -7,8 +7,13 @@ import com.winlator.star.container.Shortcut;
 import com.winlator.star.core.FileUtils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * RealSteamLauncher — the launch-orchestration layer for {@code launchMode=RealSteam}
@@ -108,6 +113,26 @@ public final class RealSteamLauncher {
                                String displayName,
                                String hostInstallDir,
                                boolean controllerPassthrough) {
+        return prepare(ctx, driveC, steamLiteInstallDir, shortcut, appId, displayName, hostInstallDir,
+                controllerPassthrough, 0);
+    }
+
+    /**
+     * As {@link #prepare(Context, File, File, Shortcut, int, String, String, boolean)}, plus the live
+     * agent channel: when {@code agentPort > 0} the plan env carries {@code BL_AGENT_PORT} and the
+     * agent streams its login/launch/game events to {@code 127.0.0.1:<port>} (see
+     * {@link SteamAgentChannel}). {@code 0} = no channel; an agent without the feature ignores the var.
+     * The existing {@code WN_*} keys are unchanged.
+     */
+    public static Plan prepare(Context ctx,
+                               File driveC,
+                               File steamLiteInstallDir,
+                               Shortcut shortcut,
+                               int appId,
+                               String displayName,
+                               String hostInstallDir,
+                               boolean controllerPassthrough,
+                               int agentPort) {
         try {
             // ── 0. Validate prerequisites ────────────────────────────────────────────────────────
             if (driveC == null) { Log.w(TAG, "prepare: null driveC — fallback"); return null; }
@@ -176,6 +201,25 @@ public final class RealSteamLauncher {
                 applyControllerPassthrough(steamDir, repo);
             }
 
+            // ── 3a-bis-2. Overlay injection OFF — every RealSteam launch, not only passthrough. The
+            //    genuine client's overlay injection starts the spawned game's thread at an address
+            //    taken from the AGENT's kernel32 (assumes a shared base across processes — not true
+            //    under Wine arm64ec) → intermittent c0000005 at game startup → agent's insecure
+            //    fallback. We never run the overlay anyway. See disableOverlayInjection().
+            disableOverlayInjection(steamDir, repo, appId);
+
+            // ── 3a-ter. Steam connection region for the genuine client (Settings → Steam). Writes a
+            //    GameHub-format cmlist.json ({"datacenter","cm_list":[{"endpoint"}]}) for the chosen /
+            //    remembered datacenter into the prefix Steam dir; the agent seeds the client's CM
+            //    cache from it before LogOn (WN_STEAM_CMLIST) and reports the region over the agent
+            //    socket (BL_STEAM_REGION). No preference → no file, the client discovers CMs itself.
+            //    Best-effort: a failure here never blocks the launch.
+            File cmList = new File(steamDir, "config/cmlist.json");
+            boolean cmListWritten = false;
+            try { cmListWritten = SteamRegion.INSTANCE.writeCmListJson(ctx, cmList); }
+            catch (Throwable t) { Log.w(TAG, "prepare: cmlist.json skipped: " + t.getMessage()); }
+            String regionDesc = SteamRegion.INSTANCE.describe(ctx);
+
             // ── 3b. Register the game so LaunchApp is SECURE: symlink under the canonical name
             //        + write appmanifest_<appid>.acf (StateFlags=4 = installed). The real game dir may
             //        have an odd name, so the symlink NAME is the canonical name, TARGET the real dir.
@@ -233,10 +277,41 @@ public final class RealSteamLauncher {
             // left off by default so the proven VAC launch path (which relies on the refresh) is
             // unchanged until it's re-verified online with the skip on.
             env.put("WN_STEAM_APPINFO_WAIT_MS", "4000");
+            // Live agent↔app channel (additive; the agent is fully functional without it).
+            if (agentPort > 0) env.put("BL_AGENT_PORT", String.valueOf(agentPort));
+            // Agent p3 friends/chat relay over that channel — only when the user opted into
+            // friends/chat (no social footprint otherwise); the agent ignores it without a channel.
+            boolean social = false;
+            try { social = agentPort > 0 && SteamPrefs.INSTANCE.isSocialEnabled(ctx); } catch (Throwable ignored) {}
+            env.put("BL_AGENT_FRIENDS", social ? "1" : "0");
+            // Region seed for the genuine client (additive; an agent without the feature ignores both).
+            env.put("BL_STEAM_REGION", regionDesc);
+            if (cmListWritten) env.put("WN_STEAM_CMLIST", STEAM_DIR_WIN + "\\config\\cmlist.json");
+            // Secure-launch policy (agent p3b): WN_STEAM_VAC=1 → the agent keeps its full ~60 s
+            // Steam-owned (VAC-secure) window before any direct start; 0 → the title never needed a
+            // secure launch, so an accepted-but-never-spawned LaunchApp falls back after ~15 s
+            // instead of a minute of black screen. Per-shortcut override "steamVacLaunch" ("1"/"0",
+            // the launch popup's "Requires secure (VAC) launch" toggle) wins; otherwise the PICS
+            // marker recorded by the library sync (SteamDatabase.vac_secure: category_8 "Valve
+            // Anti-Cheat enabled" or extended/vac*). An older agent ignores the variable.
+            String vacOverride = shortcut.getExtra("steamVacLaunch", "").trim();
+            boolean vacSecure;
+            String vacSource;
+            if ("1".equals(vacOverride) || "0".equals(vacOverride)) {
+                vacSecure = "1".equals(vacOverride);
+                vacSource = "shortcut override";
+            } else {
+                boolean detected = false;
+                try { detected = repo.getDatabase().isVacSecure(appId); } catch (Throwable ignored) {}
+                vacSecure = detected;
+                vacSource = "app-info";
+            }
+            env.put("WN_STEAM_VAC", vacSecure ? "1" : "0");
 
             String specArgWin = "C:\\" + appId + ".spec";
             Log.i(TAG, "prepare: staged appId=" + appId + " canonical=\"" + canonicalName
-                    + "\" relExe=\"" + relExe + "\" (LaunchApp SECURE)");
+                    + "\" relExe=\"" + relExe + "\" (LaunchApp SECURE, vac=" + (vacSecure ? 1 : 0)
+                    + " from " + vacSource + ")");
             return new Plan(env, STEAM_DIR_WIN, STEAM_EXE_NAME, specArgWin, canonicalName, appId);
         } catch (Throwable t) {
             Log.w(TAG, "prepare: errored — fallback", t);
@@ -316,8 +391,15 @@ public final class RealSteamLauncher {
             }
             // Lever 1 — stop Steam Input reserving controller slots (per-account localconfig.vdf).
             File localConfig = resolveLocalConfig(steamDir, repo);
-            if (localConfig != null) disableSteamControllerSupport(localConfig);
-            else Log.w(TAG, "passthrough: no localconfig.vdf resolvable — Steam Input keys skipped");
+            if (localConfig != null) {
+                LinkedHashMap<String, String> off = new LinkedHashMap<>();
+                for (String k : STEAM_INPUT_KEYS) off.put(k, "0");
+                int r = editLocalConfig(localConfig, "passthrough", new VdfEdit(new String[] {"system"}, off));
+                if (r > 0) Log.i(TAG, "passthrough: Steam Input controller support disabled in localconfig.vdf");
+                else if (r == 0) Log.i(TAG, "passthrough: Steam Input already disabled (localconfig.vdf unchanged)");
+            } else {
+                Log.w(TAG, "passthrough: no localconfig.vdf resolvable — Steam Input keys skipped");
+            }
         } catch (Throwable t) {
             Log.w(TAG, "passthrough: apply failed (non-fatal): " + t.getMessage());
         }
@@ -348,129 +430,228 @@ public final class RealSteamLauncher {
         return null;
     }
 
+    // ── Overlay injection OFF (every RealSteam launch) ─────────────────────────────────────────────
+
     /**
-     * Idempotently set the four {@link #STEAM_INPUT_KEYS} to "0" inside {@code localconfig.vdf}'s top-level
-     * {@code UserLocalConfigStore > system} block. Creates the file (with just the system block) when absent,
-     * creates the system block when missing, rewrites an existing key's value in place, and never duplicates a
-     * key. It's a Valve KeyValues/VDF text file; the editor preserves every other key, the file's indentation,
-     * and its line endings, and leaves the file untouched (returning without a write) if the root block isn't
-     * the expected {@code UserLocalConfigStore}.
+     * Turn the genuine client's overlay INJECTION off for this account + app before the guest boots.
+     *
+     * <p><b>Why</b> (device-proven 2026-09-02, Brawlhalla 291550, first {@code +seh,+loaddll} sample):
+     * the game that Steam's {@code LaunchApp} spawned died at startup with an EXECUTE access
+     * violation ({@code c0000005}) at an address that is the <i>agent's</i> kernel32 base
+     * {@code + 0x62600} — Wine reported it as "unknown module" in the child, whose own kernel32 sat
+     * elsewhere. Same arithmetic on the two earlier crashes. So {@code steamclient64.dll} (running in
+     * our {@code steam.exe}) starts the child's thread at a kernel32 address taken from OUR process —
+     * the overlay-injection landing pad — assuming kernel32 shares a base across processes (true on
+     * Windows, not under Wine arm64ec), and the child executes unmapped memory. Intermittent because it
+     * depends on where the child happens to map kernel32. That crash forces the agent's insecure
+     * fallback (black screen, then CreateProcess). We never run the overlay anyway: the renderer DLLs
+     * are not shipped and {@code SteamNoOverlayUIDrawing=1} only stops drawing, not injection.
+     *
+     * <p><b>Levers</b> — traced in {@code steamclient64.dll} build 2026-05-21 from the injection gate
+     * that both LaunchApp-side consumers call (it also reads {@code STEAM_OVERLAY_WINDOW_BLACKLIST} /
+     * sets {@code SteamOverlayGameId=}). The gate reads, from the user-local config store
+     * ({@code k_EConfigStoreUserLocal} = this account's {@code localconfig.vdf}, key =
+     * {@code "<section>\<key>"} with the section name from the client's section table):
+     * <ol>
+     *   <li>section 5 = {@code system}: {@code EnableGameOverlay} (default 1) — the global "Enable the
+     *       Steam Overlay while in-game" checkbox → {@code UserLocalConfigStore/system/EnableGameOverlay "0"};</li>
+     *   <li>section 1 = {@code apps}: {@code "%d\OverlayAppEnable"} (default 1) — the per-game checkbox
+     *       → {@code UserLocalConfigStore/apps/<appid>/OverlayAppEnable "0"} (the {@code apps} block at
+     *       the ROOT of the store, not the {@code Software/Valve/Steam/apps} one).</li>
+     * </ol>
+     * Either "0" makes the gate say no. The neighbouring {@code DisableOverlay},
+     * {@code EnableGameOverlayForApp} and {@code DisableOverlayInjection} strings are app-info
+     * {@code extended/} keys (read through the app-info cache, section 3 = extended) delivered by
+     * PICS — not settable locally, so not used. {@code Plat_IsSteamOS} can force injection on, and is
+     * false under Wine. Both keys are written every launch (idempotent); the passthrough-only removal
+     * of the overlay renderer DLLs is unchanged. Best-effort: any failure is logged and never blocks
+     * the launch.
      */
-    private static void disableSteamControllerSupport(File localConfig) {
+    private static void disableOverlayInjection(File steamDir, SteamRepository repo, int appId) {
         try {
-            File dir = localConfig.getParentFile();
-            if (dir != null && !dir.exists() && !dir.mkdirs()) {
-                Log.w(TAG, "passthrough: could not create localconfig dir — Steam Input keys skipped");
+            File localConfig = resolveLocalConfig(steamDir, repo);
+            if (localConfig == null) {
+                Log.w(TAG, "overlay: no localconfig.vdf resolvable (account id unknown, none on disk) — "
+                        + "overlay injection NOT disabled");
                 return;
             }
-            String content = localConfig.isFile() ? FileUtils.readString(localConfig) : null;
-            String updated = (content == null || content.trim().isEmpty())
-                    ? freshLocalConfig()
-                    : injectSteamInputKeys(content);
-            if (updated == null) {
-                Log.w(TAG, "passthrough: localconfig.vdf shape unexpected — Steam Input keys left as-is");
-                return;
-            }
-            if (!updated.equals(content)) {
-                if (FileUtils.writeString(localConfig, updated))
-                    Log.i(TAG, "passthrough: Steam Input controller support disabled in localconfig.vdf");
-                else
-                    Log.w(TAG, "passthrough: failed writing localconfig.vdf");
-            } else {
-                Log.i(TAG, "passthrough: Steam Input already disabled (localconfig.vdf unchanged)");
+            LinkedHashMap<String, String> global = new LinkedHashMap<>();
+            global.put("EnableGameOverlay", "0");
+            LinkedHashMap<String, String> perApp = new LinkedHashMap<>();
+            perApp.put("OverlayAppEnable", "0");
+            int r = editLocalConfig(localConfig, "overlay",
+                    new VdfEdit(new String[] {"system"}, global),
+                    new VdfEdit(new String[] {"apps", String.valueOf(appId)}, perApp));
+            if (r >= 0) {
+                File cfgDir = localConfig.getParentFile();
+                File acctDir = cfgDir != null ? cfgDir.getParentFile() : null;
+                Log.i(TAG, "overlay injection disabled (keys: UserLocalConfigStore/system/EnableGameOverlay=0, "
+                        + "UserLocalConfigStore/apps/" + appId + "/OverlayAppEnable=0 in userdata/"
+                        + (acctDir != null ? acctDir.getName() : "?") + "/config/localconfig.vdf"
+                        + (r > 0 ? ", written" : ", already set") + ")");
             }
         } catch (Throwable t) {
-            Log.w(TAG, "passthrough: localconfig.vdf edit failed (non-fatal): " + t.getMessage());
+            Log.w(TAG, "overlay: localconfig.vdf edit failed (non-fatal) — overlay injection NOT disabled: "
+                    + t.getMessage());
         }
     }
 
-    /** A minimal but valid localconfig.vdf carrying just the disabled Steam-Input keys (fresh prefix). */
-    private static String freshLocalConfig() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("\"UserLocalConfigStore\"\n{\n\t\"system\"\n\t{\n");
-        for (String k : STEAM_INPUT_KEYS) sb.append("\t\t\"").append(k).append("\"\t\t\"0\"\n");
-        sb.append("\t}\n}\n");
-        return sb.toString();
+    // ── localconfig.vdf editor (shared by passthrough + overlay) ───────────────────────────────────
+
+    /** One edit: force {@code keys} (name → value) inside the block at {@code path} under the root. */
+    private static final class VdfEdit {
+        final String[] path;
+        final Map<String, String> keys;
+        VdfEdit(String[] path, Map<String, String> keys) { this.path = path; this.keys = keys; }
+    }
+
+    /** The skeleton a missing / empty localconfig.vdf starts from (fresh prefix). */
+    private static final String EMPTY_LOCAL_CONFIG = "\"UserLocalConfigStore\"\n{\n}\n";
+
+    /**
+     * Apply {@code edits} to {@code localConfig} idempotently: creates the file (from the empty skeleton)
+     * when absent, synthesizes missing blocks, rewrites an existing key's value in place and never duplicates
+     * a key. Preserves every other key, the file's indentation and its line endings; leaves the file untouched
+     * if the root block isn't {@code UserLocalConfigStore}. Returns 1 = written, 0 = already as requested
+     * (no write), -1 = failed (reason logged under {@code what}). Runs on the launch worker (blocking I/O).
+     */
+    private static int editLocalConfig(File localConfig, String what, VdfEdit... edits) {
+        File dir = localConfig.getParentFile();
+        if (dir != null && !dir.exists() && !dir.mkdirs()) {
+            Log.w(TAG, what + ": could not create localconfig dir — keys skipped");
+            return -1;
+        }
+        String content = localConfig.isFile() ? FileUtils.readString(localConfig) : null;
+        String updated = (content == null || content.trim().isEmpty()) ? EMPTY_LOCAL_CONFIG : content;
+        for (VdfEdit e : edits) {
+            String next = injectVdfKeys(updated, e.path, e.keys);
+            if (next == null) {
+                Log.w(TAG, what + ": localconfig.vdf shape unexpected (no UserLocalConfigStore root) — keys left as-is");
+                return -1;
+            }
+            updated = next;
+        }
+        if (updated.equals(content)) return 0;
+        if (!FileUtils.writeString(localConfig, updated)) {
+            Log.w(TAG, what + ": failed writing localconfig.vdf");
+            return -1;
+        }
+        return 1;
+    }
+
+    /** Back-compat wrapper: the four Steam-Input keys → "0" under {@code UserLocalConfigStore > system}. */
+    static String injectSteamInputKeys(String content) {
+        LinkedHashMap<String, String> off = new LinkedHashMap<>();
+        for (String k : STEAM_INPUT_KEYS) off.put(k, "0");
+        return injectVdfKeys(content, new String[] {"system"}, off);
     }
 
     /**
-     * Return {@code content} with the four Steam-Input keys forced to "0" inside {@code UserLocalConfigStore >
-     * system} — rewriting a present key in place and inserting any missing one before the block's close brace,
-     * synthesizing the {@code system} block when absent. Returns {@code null} (caller skips the write) when the
-     * root isn't {@code UserLocalConfigStore}. A brace-depth + block-name walk over the tab-indented KeyValues;
-     * unit-tested for idempotency, in-place flips, block synthesis, CRLF preservation, and foreign-root safety.
+     * Return {@code content} with {@code keys} forced inside the block {@code UserLocalConfigStore > path[0] >
+     * path[1] > …} — rewriting a present key (case-insensitive, spelling kept) in place and inserting any
+     * missing one before the block's close brace, synthesizing the missing tail of {@code path} as nested
+     * blocks when absent. Returns {@code null} (caller skips the write) when the root isn't
+     * {@code UserLocalConfigStore}. Only leaves at the block's own depth are touched (nested blocks are
+     * skipped). A brace-depth + block-name walk over Valve's tab-indented KeyValues text ({@code {} } on their
+     * own lines, as Steam writes it); idempotent, CRLF-preserving.
      */
-    static String injectSteamInputKeys(String content) {
+    static String injectVdfKeys(String content, String[] path, Map<String, String> keys) {
         String nl = content.contains("\r\n") ? "\r\n" : "\n";
-        java.util.List<String> lines =
-                new java.util.ArrayList<>(java.util.Arrays.asList(content.split("\r\n|\r|\n", -1)));
+        List<String> lines = new ArrayList<>(Arrays.asList(content.split("\r\n|\r|\n", -1)));
 
-        int rootOpen = -1, rootClose = -1, sysOpen = -1, sysClose = -1;
-        java.util.Deque<String> stack = new java.util.ArrayDeque<>();
-        String pendingKey = null;
+        int[] cur = findVdfBlock(lines, 0, lines.size(), "UserLocalConfigStore");
+        if (cur == null) return null;                        // not a localconfig shape — skip safely
         int depth = 0;
-        for (int i = 0; i < lines.size(); i++) {
+        while (depth < path.length) {
+            int[] b = findVdfBlock(lines, cur[0] + 1, cur[1], path[depth]);
+            if (b == null) break;
+            cur = b;
+            depth++;
+        }
+
+        // Indentation of the block's children: first non-empty line inside, else one tab past its brace.
+        String childIndent = null;
+        for (int i = cur[0] + 1; i < cur[1]; i++) {
+            if (!lines.get(i).trim().isEmpty()) { childIndent = leadingWhitespace(lines.get(i)); break; }
+        }
+        if (childIndent == null) childIndent = leadingWhitespace(lines.get(cur[0])) + "\t";
+
+        if (depth == path.length) {
+            // Target block exists: flip present leaves in place (own depth only), append the missing ones.
+            Set<String> present = new HashSet<>();
+            int rel = 0;
+            for (int i = cur[0] + 1; i < cur[1]; i++) {
+                String line = lines.get(i);
+                String t = line.trim();
+                if (t.isEmpty()) continue;
+                if (t.equals("{")) { rel++; continue; }
+                if (t.equals("}")) { rel--; continue; }
+                if (rel != 0) continue;
+                String key = firstQuoted(t);
+                if (key == null || !hasSecondQuoted(t)) continue;   // header / junk — not a leaf
+                for (Map.Entry<String, String> e : keys.entrySet()) {
+                    if (e.getKey().equalsIgnoreCase(key)) {
+                        lines.set(i, leadingWhitespace(line) + "\"" + key + "\"\t\t\"" + e.getValue() + "\"");
+                        present.add(e.getKey());
+                    }
+                }
+            }
+            List<String> insert = new ArrayList<>();
+            for (Map.Entry<String, String> e : keys.entrySet()) {
+                if (!present.contains(e.getKey()))
+                    insert.add(childIndent + "\"" + e.getKey() + "\"\t\t\"" + e.getValue() + "\"");
+            }
+            lines.addAll(cur[1], insert);
+        } else {
+            // Synthesize path[depth..] as nested blocks just before the deepest existing block's close.
+            List<String> block = new ArrayList<>();
+            String ind = childIndent;
+            for (int d = depth; d < path.length; d++) {
+                block.add(ind + "\"" + path[d] + "\"");
+                block.add(ind + "{");
+                ind += "\t";
+            }
+            for (Map.Entry<String, String> e : keys.entrySet())
+                block.add(ind + "\"" + e.getKey() + "\"\t\t\"" + e.getValue() + "\"");
+            for (int d = path.length - 1; d >= depth; d--) {
+                ind = ind.substring(0, ind.length() - 1);
+                block.add(ind + "}");
+            }
+            lines.addAll(cur[1], block);
+        }
+        return String.join(nl, lines);
+    }
+
+    /**
+     * Find the child block named {@code name} (case-insensitive) among the direct children in
+     * {@code lines[from, to)} — a header line holding a single quoted token followed by a {@code {} line.
+     * Returns {@code {openBraceIndex, closeBraceIndex}} or {@code null} when absent / unbalanced.
+     */
+    private static int[] findVdfBlock(List<String> lines, int from, int to, String name) {
+        int rel = 0;
+        String pending = null;
+        for (int i = from; i < to; i++) {
             String t = lines.get(i).trim();
             if (t.isEmpty()) continue;
             if (t.equals("{")) {
-                String parent = stack.peek();
-                depth++;
-                String name = (pendingKey != null) ? pendingKey : "";
-                stack.push(name);
-                pendingKey = null;
-                if (depth == 1 && "UserLocalConfigStore".equalsIgnoreCase(name)) rootOpen = i;
-                if (depth == 2 && "system".equalsIgnoreCase(name)
-                        && "UserLocalConfigStore".equalsIgnoreCase(parent)) sysOpen = i;
-                continue;
-            }
-            if (t.equals("}")) {
-                String name = stack.isEmpty() ? "" : stack.pop();
-                if ("system".equalsIgnoreCase(name) && sysOpen >= 0 && sysClose < 0) sysClose = i;
-                if ("UserLocalConfigStore".equalsIgnoreCase(name) && rootOpen >= 0 && rootClose < 0) rootClose = i;
-                depth--;
-                pendingKey = null;
-                continue;
-            }
-            String key = firstQuoted(t);
-            if (key == null) { pendingKey = null; continue; }
-            pendingKey = hasSecondQuoted(t) ? null : key;   // a lone quoted token is a block header
-        }
-
-        if (rootOpen < 0 || rootClose < 0) return null;     // not a localconfig shape — skip safely
-
-        java.util.Set<String> targets = new java.util.LinkedHashSet<>(java.util.Arrays.asList(STEAM_INPUT_KEYS));
-        if (sysOpen >= 0 && sysClose >= 0 && sysClose > sysOpen) {
-            String leafIndent = null;
-            java.util.Set<String> present = new java.util.HashSet<>();
-            for (int i = sysOpen + 1; i < sysClose; i++) {
-                String line = lines.get(i);
-                if (line.trim().isEmpty()) continue;
-                if (leafIndent == null) leafIndent = leadingWhitespace(line);
-                String key = firstQuoted(line.trim());
-                if (key != null && targets.contains(key)) {
-                    lines.set(i, leadingWhitespace(line) + "\"" + key + "\"\t\t\"0\"");
-                    present.add(key);
+                if (rel == 0 && pending != null && pending.equalsIgnoreCase(name)) {
+                    int d = 0;
+                    for (int j = i; j < to; j++) {
+                        String u = lines.get(j).trim();
+                        if (u.equals("{")) d++;
+                        else if (u.equals("}") && --d == 0) return new int[] {i, j};
+                    }
+                    return null;                              // unbalanced — leave the file alone
                 }
+                rel++;
+                pending = null;
+                continue;
             }
-            if (leafIndent == null) leafIndent = leadingWhitespace(lines.get(sysOpen)) + "\t";
-            java.util.List<String> insert = new java.util.ArrayList<>();
-            for (String k : targets) if (!present.contains(k)) insert.add(leafIndent + "\"" + k + "\"\t\t\"0\"");
-            lines.addAll(sysClose, insert);
-        } else {
-            String childIndent = null;
-            for (int i = rootOpen + 1; i < rootClose; i++) {
-                if (!lines.get(i).trim().isEmpty()) { childIndent = leadingWhitespace(lines.get(i)); break; }
-            }
-            if (childIndent == null) childIndent = leadingWhitespace(lines.get(rootOpen)) + "\t";
-            String keyIndent = childIndent + "\t";
-            java.util.List<String> block = new java.util.ArrayList<>();
-            block.add(childIndent + "\"system\"");
-            block.add(childIndent + "{");
-            for (String k : targets) block.add(keyIndent + "\"" + k + "\"\t\t\"0\"");
-            block.add(childIndent + "}");
-            lines.addAll(rootClose, block);
+            if (t.equals("}")) { rel--; pending = null; continue; }
+            String key = firstQuoted(t);
+            pending = (rel == 0 && key != null && !hasSecondQuoted(t)) ? key : null;
         }
-        return String.join(nl, lines);
+        return null;
     }
 
     private static String firstQuoted(String s) {

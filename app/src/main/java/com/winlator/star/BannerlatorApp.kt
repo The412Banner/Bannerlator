@@ -80,6 +80,10 @@ class BannerlatorApp : Application() {
         try {
             Thread {
                 try {
+                    // Native Rust Steam engine (Phase 0): load libblsteam.so and bind one JNI export
+                    // so a packaging/symbol regression is one loud logcat line ("BL_STEAM: ...") at
+                    // boot. With the hidden use_rust_steam_engine flag off this is its ONLY effect.
+                    com.winlator.star.store.blsteam.BlSteamClient.probe()
                     val repo = com.winlator.star.store.SteamRepository.getInstance()
                     repo.initialize(this)                 // sets appContext + prefs (idempotent, synchronized)
                     if (com.winlator.star.store.SteamPrefs.isLoggedIn) repo.reconnectNow()

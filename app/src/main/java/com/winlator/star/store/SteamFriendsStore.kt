@@ -73,8 +73,10 @@ object SteamFriendsStore {
 
     // ── Data model ────────────────────────────────────────────────────────────────
 
-    /** Coarse presence bucket — drives both the grouping/sort order and the status-dot colour. */
-    enum class Presence { IN_GAME, ONLINE, AWAY, OFFLINE }
+    /** Coarse presence bucket — drives both the grouping/sort order and the status-dot colour.
+     *  [UNKNOWN] is relay-only: a SteamLite game is running, the in-game client listed the friend but
+     *  has not confirmed their presence yet and the app has no earlier state to fall back on. */
+    enum class Presence { IN_GAME, ONLINE, AWAY, OFFLINE, UNKNOWN }
 
     data class SteamFriend(
         val steamId: Long,
@@ -90,6 +92,9 @@ object SteamFriendsStore {
         val avatarHash: String?,
         /** Rich presence key/values Steam pushed for the friend (e.g. `status`, `connect`); empty when none. */
         val richPresence: Map<String, String> = emptyMap(),
+        /** Relay-only: [presence]/[statusText] are the app session's LAST-KNOWN values, not yet confirmed by
+         *  the in-game client (its persona for this friend hasn't arrived). Cleared by the first `persona`. */
+        val stale: Boolean = false,
     ) {
         val displayName: String
             get() = nickname?.takeIf { it.isNotBlank() }
@@ -289,7 +294,13 @@ object SteamFriendsStore {
         repo.isSuspendedForRealSteam && SteamAgentFriendsBridge.isLive()
     } catch (_: Throwable) { false }
 
-    /** Roster snapshot from the in-game client — same buckets/flows as the engine's friends list. */
+    /**
+     * Roster snapshot from the in-game client — MERGED into the retained roster by SteamID (agent p3c).
+     * The relay's list is the client's `k_EFriendFlagImmediate` view and can be smaller than what the app
+     * session had (pending requests, friends the client hasn't listed yet): nothing is ever removed here,
+     * and an entry whose presence the client has not confirmed (`k:0`, state Offline-by-default) never
+     * downgrades a friend — see [agentMergePersona].
+     */
     fun agentOnFriends(entries: List<SteamAgentFriendsBridge.Entry>, selfName: String, selfState: Int) {
         io.execute {
             try {
@@ -300,9 +311,19 @@ object SteamFriendsStore {
                         BlSocialFeed.REL_REQUEST_INITIATOR -> outgoingIds.add(e.steamId)
                         else -> continue
                     }
-                    agentMergePersona(e)
+                    agentMergePersona(e, authoritative = false)
+                }
+                // Friends the in-game client did not list (it sees the immediate-friends view only)
+                // keep the app session's presence, but that session is paused: flag it as last known.
+                val relayed = entries.mapTo(HashSet()) { it.steamId }
+                for (id in friendIds) {
+                    if (id in relayed) continue
+                    val f = friendMap[id] ?: continue
+                    if (f.stale || f.presence == Presence.UNKNOWN || f.personaName.isBlank()) continue
+                    friendMap[id] = f.copy(stale = true, statusText = f.statusText + STALE_SUFFIX)
                 }
                 publish()
+                Log.i(TAG, "relay roster merged: ${entries.size} relayed, ${agentGroupsSummary()}")
                 val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
                 if (selfId != 0L) {
                     val cur = _self.value
@@ -318,34 +339,87 @@ object SteamFriendsStore {
         }
     }
 
-    /** One friend's persona changed inside the in-game client. */
+    /** One friend's persona changed inside the in-game client (p3c: `persona` = confirmed presence). */
     fun agentOnPersona(e: SteamAgentFriendsBridge.Entry) {
         io.execute {
             try {
                 if (e.steamId !in friendIds && e.steamId !in incomingIds && e.steamId !in outgoingIds) {
                     if (e.relationship == BlSocialFeed.REL_FRIEND) friendIds.add(e.steamId) else return@execute
                 }
-                agentMergePersona(e)
+                val before = friendMap[e.steamId]?.presence
+                agentMergePersona(e, authoritative = true)
                 publish()
+                val after = friendMap[e.steamId]?.presence
+                if (before != after) Log.i(TAG, "relay persona moved a friend $before -> $after: ${agentGroupsSummary()}")
             } catch (t: Throwable) {
                 Log.w(TAG, "agentOnPersona failed", t)
             }
         }
     }
 
-    /** Merge a relayed persona over the retained entry (avatar / rich presence / nickname kept). */
-    private fun agentMergePersona(e: SteamAgentFriendsBridge.Entry) {
+    /** Suffix on a last-known status while the relay hasn't confirmed it. */
+    private const val STALE_SUFFIX = " · last known"
+
+    /** One-line "groups: in-game N online N away N offline N unknown N (stale N)" of the roster (diagnostics). */
+    private fun agentGroupsSummary(): String {
+        var inGame = 0; var online = 0; var away = 0; var offline = 0; var unknown = 0; var stale = 0
+        for (id in friendIds) {
+            val f = friendMap[id] ?: continue
+            when (f.presence) {
+                Presence.IN_GAME -> inGame++
+                Presence.ONLINE -> online++
+                Presence.AWAY -> away++
+                Presence.OFFLINE -> offline++
+                Presence.UNKNOWN -> unknown++
+            }
+            if (f.stale) stale++
+        }
+        return "groups: in-game $inGame online $online away $away offline $offline unknown $unknown (stale $stale, total ${friendIds.size})"
+    }
+
+    /**
+     * Merge a relayed entry over the retained one (avatar / rich presence / nickname kept).
+     *
+     * Trust rule (the whole p3c fix): a relayed state is applied only when it is CONFIRMED — a `persona`
+     * event ([authoritative]), a roster entry flagged `k:1`, or any non-Offline state (the client cannot
+     * report Online/Away/In-game by accident). An unconfirmed Offline (`k:0`, state 0 — the client's
+     * post-logon default before it has asked the CM about the friend) must never turn a friend Offline:
+     * the app session's last-known presence is kept and marked [SteamFriend.stale], and a friend the app
+     * never saw goes to [Presence.UNKNOWN] ("Status unknown") until their persona arrives.
+     */
+    private fun agentMergePersona(e: SteamAgentFriendsBridge.Entry, authoritative: Boolean) {
         val prev = friendMap[e.steamId]
+        val confirmed = authoritative || e.known || e.state != 0
+        if (!confirmed) {
+            val hasLastKnown = prev != null && prev.presence != Presence.UNKNOWN && prev.personaName.isNotBlank()
+            if (hasLastKnown) {
+                if (!prev!!.stale) friendMap[e.steamId] = prev.copy(stale = true, statusText = prev.statusText + STALE_SUFFIX)
+            } else {
+                friendMap[e.steamId] = SteamFriend(
+                    e.steamId,
+                    e.name.takeIf { it.isNotBlank() } ?: prev?.personaName ?: "",
+                    null, Presence.UNKNOWN, "Status unknown", 0, null,
+                    prev?.avatarHash, prev?.richPresence ?: emptyMap(),
+                )
+            }
+            return
+        }
         // The relay carries the app id, not the game name: keep the name the engine last saw when
         // the app matches, else fall back to the "In game" label the classifier produces.
         val gameName = if (e.appId != 0 && prev?.gameAppId == e.appId) prev.gameName else null
         val (presence, statusText) = classifyCode(e.state, e.appId, gameName)
         rustStates[e.steamId] = e.state
+        val richStatus = e.richStatus?.takeIf { it.isNotBlank() }
+        val rp: Map<String, String> = when {
+            e.appId == 0 -> emptyMap()
+            richStatus != null -> (prev?.richPresence ?: emptyMap()) + ("status" to richStatus)
+            else -> prev?.richPresence ?: emptyMap()
+        }
         friendMap[e.steamId] = SteamFriend(
             e.steamId,
             e.name.takeIf { it.isNotBlank() } ?: prev?.personaName ?: "",
             null, presence, statusText, e.appId, gameName,
-            prev?.avatarHash, prev?.richPresence ?: emptyMap(),
+            prev?.avatarHash, rp, stale = false,
         )
     }
 
@@ -385,9 +459,25 @@ object SteamFriendsStore {
         }
     }
 
-    /** The relay went away (game exited); the resumed engine session re-syncs the roster. */
+    /** The relay went away (game exited); the resumed engine session re-syncs the roster. Relay-only
+     *  markers are dropped right away so the full screen never shows a "Status unknown" group or a
+     *  "last known" suffix outside a game (the engine's persona refresh then overwrites everything). */
     fun agentDetached() {
         syncedThisSession = false
+        io.execute {
+            try {
+                var changed = false
+                for ((id, f) in friendMap) {
+                    when {
+                        f.presence == Presence.UNKNOWN -> { friendMap[id] = f.copy(presence = Presence.OFFLINE, statusText = "Offline"); changed = true }
+                        f.stale -> { friendMap[id] = f.copy(stale = false, statusText = f.statusText.removeSuffix(STALE_SUFFIX)); changed = true }
+                    }
+                }
+                if (changed) publish()
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentDetached cleanup failed", t)
+            }
+        }
     }
 
     // ── Rust engine backend ───────────────────────────────────────────────────────

@@ -62,6 +62,7 @@ import com.winlator.star.store.InGameFriendsSource
 import com.winlator.star.store.MessageBubble
 import com.winlator.star.store.PRESENCE_ORDER
 import com.winlator.star.store.SectionHeader
+import com.winlator.star.store.SteamAgentFriendsBridge
 import com.winlator.star.store.SteamFriendsStore
 import com.winlator.star.store.dotColor
 import com.winlator.star.ui.theme.LocalAccentDim
@@ -144,6 +145,7 @@ internal fun FriendsContent(state: XServerDrawerState) {
     val src by InGameFriendsSource.state.collectAsState()
     val selectedId by InGameFriendsSource.selectedFriendId.collectAsState()
     val friends by SteamFriendsStore.friends.collectAsState()
+    val relayPresence by SteamAgentFriendsBridge.presence.collectAsState()
     var showHelp by remember { mutableStateOf(false) }
 
     // The source vanished entirely (signed out mid-game): the rail button is gone too, so don't
@@ -170,6 +172,17 @@ internal fun FriendsContent(state: XServerDrawerState) {
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
+            )
+        }
+        // Relay warm-up: the in-game client asks Steam about each friend after the roster arrives
+        // (agent p3c); until every friend is confirmed the unconfirmed ones sit under "Status unknown"
+        // (or keep their last-known state), never "Offline".
+        if (src.kind == InGameFriendsSource.Kind.AGENT_RELAY && !relayPresence.complete) {
+            Text(
+                "presence: ${relayPresence.known} of ${relayPresence.total} known",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                modifier = Modifier.align(Alignment.End),
             )
         }
         Spacer(Modifier.height(8.dp))

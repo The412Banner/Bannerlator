@@ -77,6 +77,18 @@ internal object BlDepotInstaller {
     /** Session-recovery retries (network drop / CM logoff mid-download) before failing to the user. */
     private const val MAX_SESSION_RETRIES = 2
     private val RETRY_BACKOFF_MS = longArrayOf(3_000L, 8_000L)
+    /**
+     * Layer 1 (parity with the JavaSteam path's MAX_DEPOT_RESUME_ATTEMPTS): the engine can
+     * report the pass a success while the journal still shows a selected depot SHORT of its manifest
+     * — a dropped CDN chunk stream that the pass gave up on (Dead Cells' 588651 stalling at ~50%).
+     * Re-enter as a RESUME: the journal + per-chunk Adler re-check means only the missing chunks are
+     * fetched. Bounded, with a no-forward-progress fail-fast so a depot with no reachable chunks
+     * (dead CDN / no key) can never loop.
+     */
+    private const val MAX_DEPOT_RESUME_ATTEMPTS = 3
+    private val DEPOT_RESUME_BACKOFF_MS = longArrayOf(2_000L, 5_000L, 10_000L)
+    private const val MIN_RESUME_PROGRESS_BYTES = 1_048_576L
+
     private const val SESSION_WAIT_MS = 30_000L
     private const val PICS_REFRESH_MS = 15_000L
 
@@ -144,6 +156,8 @@ internal object BlDepotInstaller {
         verify: Boolean,
         control: SteamDepotDownloader.DownloadControl,
         attempt: Int = 0,
+        resumeAttempt: Int = 0,
+        resumeFloorBytes: Long = 0L,
     ) {
         val verbose = BuildConfig.DEBUG || debugLog
         SteamDepotDownloader.activeDownloads[appId] = Unit
@@ -385,6 +399,10 @@ internal object BlDepotInstaller {
         dlog("downloadApp(appId=$appId depots=${specs.size} branch=$selectedBranch fresh=$verify workers=$maxWorkers)")
         var completedNormally = false
         var retryAsResume = false
+        // Layer 1 bookkeeping: a genuinely-short (not Steam-denied) depot asks for a bounded resume.
+        var depotResumeNeeded = false
+        var shortSummary = ""
+        var onDiskAtCompletion = 0L
         try {
             session.downloadApp(
                 appId, specs.map { it.first }.toIntArray(), specs.map { it.second }.toLongArray(),
@@ -411,12 +429,23 @@ internal object BlDepotInstaller {
                 val blocking = short.filter { it.first !in deniedDlc }
                 if (blocking.isNotEmpty()) {
                     completedNormally = true
+                    // A depot Steam denied a key for will never complete on a retry; one that is
+                    // merely SHORT is exactly what an auto-resume fixes (Layer 1).
+                    val resumable = blocking.filter { it.first !in denied }
                     val msg = if (deniedKept.isNotEmpty())
                         "Download incomplete — Steam denied access to depot(s) ${deniedKept.joinToString(",") { it.first.toString() }}"
                     else
                         "Download incomplete — ${blocking.size} depot(s) not validated (${blocking.joinToString(",") { it.first.toString() }})"
                     dlog("INCOMPLETE: $msg")
-                    fail(appId, msg)
+                    if (resumable.isNotEmpty() && !cancelled.get() && !paused.get()) {
+                        depotResumeNeeded = true
+                        shortSummary = resumable.joinToString(", ") { (d, m) ->
+                            "depot $d (journal ${journal[d] ?: "absent"} != $m)"
+                        }
+                        onDiskAtCompletion = SteamDepotDownloader.dirSizeBytes(installDir)
+                    } else {
+                        fail(appId, msg)
+                    }
                 } else {
                     if (deniedDlc.isNotEmpty()) {
                         // Steam refused the key for a DLC depot: this account isn't entitled to it →
@@ -477,6 +506,43 @@ internal object BlDepotInstaller {
             DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.DOWNLOADING) }
             run(appId, ctx, cancelled, paused, speedTier, debugLog, isResume = true, installRoot = null,
                 verify = false, control = control, attempt = attempt + 1)
+            return
+        }
+
+        // ── Layer 1 — AUTO-RESUME a genuinely-short depot (see MAX_DEPOT_RESUME_ATTEMPTS) ──
+        // The engine said the pass succeeded but the journal disagrees, so nothing was marked
+        // installed; re-enter as a resume and let the chunk-level re-check fetch what is missing.
+        // Session recovery above takes precedence (different failure domain).
+        if (depotResumeNeeded && !cancelled.get() && !paused.get()) {
+            val curOnDisk = onDiskAtCompletion.takeIf { it > 0L } ?: SteamDepotDownloader.dirSizeBytes(installDir)
+            val progressed = curOnDisk > resumeFloorBytes + MIN_RESUME_PROGRESS_BYTES
+            when {
+                resumeAttempt >= MAX_DEPOT_RESUME_ATTEMPTS -> {
+                    dlog("Auto-resume exhausted after $MAX_DEPOT_RESUME_ATTEMPTS attempt(s) — still SHORT: $shortSummary")
+                    fail(appId, "Download incomplete after $MAX_DEPOT_RESUME_ATTEMPTS resume attempts — please retry")
+                }
+                resumeAttempt > 0 && !progressed -> {
+                    dlog("Auto-resume made NO forward progress (on-disk ${fmt(curOnDisk)} <= floor " +
+                            "${fmt(resumeFloorBytes)} + ${fmt(MIN_RESUME_PROGRESS_BYTES)}) — a selected depot is " +
+                            "unavailable (no key / dead CDN). Failing fast. SHORT: $shortSummary")
+                    fail(appId, "Download stalled — a depot delivered no new data on resume; please retry")
+                }
+                else -> {
+                    val backoff = DEPOT_RESUME_BACKOFF_MS[resumeAttempt.coerceAtMost(DEPOT_RESUME_BACKOFF_MS.size - 1)]
+                    dlog("Auto-resume attempt ${resumeAttempt + 1}/$MAX_DEPOT_RESUME_ATTEMPTS in ${backoff}ms " +
+                            "(on-disk floor ${fmt(curOnDisk)}) — re-fetching missing chunks for SHORT: $shortSummary")
+                    // Nothing was marked installed, so just re-enter. Re-mark the appId active BEFORE
+                    // the backoff sleep so the UI's stale-row detector doesn't flag the row mid-pause.
+                    SteamDepotDownloader.activeDownloads[appId] = Unit
+                    try { repo.database.markDownloadResuming(appId) } catch (_: Throwable) {}
+                    DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.DOWNLOADING) }
+                    try { Thread.sleep(backoff) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+                    // attempt=0: a short-depot resume gets a fresh session-recovery budget.
+                    run(appId, ctx, cancelled, paused, speedTier, debugLog, isResume = true, installRoot = null,
+                        verify = false, control = control, attempt = 0,
+                        resumeAttempt = resumeAttempt + 1, resumeFloorBytes = curOnDisk)
+                }
+            }
         }
     }
 

@@ -109,6 +109,7 @@ internal val DotInGame = Color(0xFF90BA3C)
 internal val DotOnline = Color(0xFF57CBDE)
 internal val DotAway = Color(0xFFE0A82E)
 internal val DotOffline = Color(0xFF6D7883)
+internal val DotUnknown = Color(0xFF4A525B)     // relay hasn't confirmed this friend's presence yet
 
 // List chrome — thin gray lines, pop-up-menu style, read as subtle grays on the dark surface.
 private val RowDivider = Color(0x1AFFFFFF)      // between friends within a section
@@ -121,15 +122,19 @@ internal fun dotColor(p: SteamFriendsStore.Presence): Color = when (p) {
     SteamFriendsStore.Presence.ONLINE -> DotOnline
     SteamFriendsStore.Presence.AWAY -> DotAway
     SteamFriendsStore.Presence.OFFLINE -> DotOffline
+    SteamFriendsStore.Presence.UNKNOWN -> DotUnknown
 }
 
 // Section order + labels, top to bottom. `internal`: the in-game drawer's Friends tab (ui/XServerFriendsTab.kt)
-// groups the same way, with the row / header / bubble composables below.
+// groups the same way, with the row / header / bubble composables below. "Status unknown" only ever
+// appears during a SteamLite game, for friends the in-game relay hasn't confirmed yet (never Offline
+// by default — see SteamFriendsStore.agentMergePersona).
 internal val PRESENCE_ORDER = listOf(
     SteamFriendsStore.Presence.IN_GAME to "In game",
     SteamFriendsStore.Presence.ONLINE to "Online",
     SteamFriendsStore.Presence.AWAY to "Away",
     SteamFriendsStore.Presence.OFFLINE to "Offline",
+    SteamFriendsStore.Presence.UNKNOWN to "Status unknown",
 )
 
 // ── Friends list ────────────────────────────────────────────────────────────────

@@ -5992,6 +5992,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (realSteamPlan != null) {
                 for (Map.Entry<String, String> e : realSteamPlan.env.entrySet())
                     envVars.put(e.getKey(), e.getValue());
+                // Crash symbolization aid: with the Log Manager's Wine-debug toggle ON, a RealSteam launch
+                // also enables the "seh" channel so a game that dies at startup under the genuine client
+                // (e.g. c0000005 in kernel32 right after LaunchApp) leaves a backtrace in wine_debug.log.
+                // Only when the user already opted into Wine debug output (logging cost is theirs
+                // already) and only when the channels are a "+..." list (a user WINEDEBUG that named
+                // seh, or "-all", is left alone). Non-RealSteam launches are untouched.
+                try {
+                    if (preferences.getBoolean("enable_wine_debug", false)) {
+                        String wd = envVars.has("WINEDEBUG") ? envVars.get("WINEDEBUG") : "";
+                        if (wd != null && wd.startsWith("+") && !wd.contains("seh")) {
+                            envVars.put("WINEDEBUG", wd + ",+seh");
+                        }
+                    }
+                } catch (Throwable ignored) {}
             }
 
             if (!envVars.has("WINEESYNC")) {

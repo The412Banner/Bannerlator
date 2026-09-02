@@ -291,6 +291,15 @@ internal object BlDepotInstaller {
         SteamDepotDownloader.acquireDownloadWakelock(ctx)
         repo.setDownloadActive(true)
 
+        // Depots the engine will skip this pass (journal already at the requested manifest, non-verify
+        // pass) never report progress — count their size as done from the start so a resume's bar
+        // starts where the install really is instead of at zero.
+        val journalBefore: Map<Int, Long> = if (verify) emptyMap() else journalInstalledManifests(installDir)
+        val skippedBase = keptForDenom
+            .filter { r -> specs.any { it.first == r.depotId && journalBefore[r.depotId] == it.second } }
+            .sumOf { maxOf(it.realSizeBytes, it.sizeBytes) }
+        if (skippedBase > 0L) dlog("Journal: ${journalBefore.size} depot(s) recorded; ~${fmt(skippedBase)} already installed at the requested manifests")
+
         // Per-depot (done,total) as reported by the engine; skipped depots never report.
         val depotDone = ConcurrentHashMap<Int, Long>()
         val depotTotal = ConcurrentHashMap<Int, Long>()
@@ -316,7 +325,9 @@ internal object BlDepotInstaller {
                 depotDone[depotId] = maxOf(depotDone[depotId] ?: 0L, depotDoneB)
                 depotTotal[depotId] = maxOf(depotTotal[depotId] ?: 0L, depotTotalB)
                 val sessionSum = depotDone.values.sum()
-                val installDone = maxOf(installBase, sessionSum)
+                // Verified-on-disk chunks count as done, so a resumed depot's bar catches up fast;
+                // the persisted floor only holds until the engine reports its first bytes.
+                val installDone = maxOf(skippedBase + sessionSum, if (sessionSum == 0L) installBase else 0L)
                 lastInstallDone.set(installDone)
                 var iTotal = installTotalRunning.get()
                 val engineTotal = depotTotal.values.sum()

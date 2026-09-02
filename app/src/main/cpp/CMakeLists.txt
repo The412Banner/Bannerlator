@@ -11,6 +11,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function
 add_subdirectory(OpenXR-SDK)
 add_subdirectory(patchelf)
 add_subdirectory(adrenotools)
+# bl-steam-host: the app's genuine Steam session host (launchMode=AppSteam) — a standalone
+# arm64 executable packaged as libblsteamhost.so (exec'd from nativeLibraryDir, crash-isolated).
+add_subdirectory(bl-steam-host)
 # lsfg-vk is built separately by build-lsfg.yml (standalone cmake)
 # and its .so is copied to jniLibs. AGP's cmake integration enables
 # clang-tidy which fails on NDK cross-compile of the lsfg-vk headers.

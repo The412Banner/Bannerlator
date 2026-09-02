@@ -4399,6 +4399,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private com.winlator.star.store.SteamAgentChannel steamAgentChannel = null;
     private volatile boolean agentConnected = false;
     private volatile boolean agentLoginResolved = false;
+    /** WN_STEAM_VAC policy the agent echoed on insecure_fallback (absent/older agent = VAC). Picks the
+     *  game_spawned wording: a non-VAC title's direct start is not an "insecure" outcome. */
+    private volatile boolean agentFallbackVac = true;
     private final android.os.Handler agentWatchdog = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable agentWatchdogRunnable = () -> {
         if (agentLoginResolved || winStarted || exiting) return;
@@ -4462,6 +4465,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     // so), so the direct start is the normal outcome — one reassurance line, no failure
                     // card. Absent field (older agent) = treat as VAC.
                     boolean vac = obj.optBoolean("vac", true);
+                    agentFallbackVac = vac;
                     if (!vac) {
                         preloaderHint("Steam couldn't start the game itself — started it directly (fine for this title)");
                     } else if (!winStarted) {
@@ -4492,7 +4496,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 case "game_spawned": {
                     agentLoginResolved = true;
                     boolean secure = obj.optBoolean("secure", false);
-                    preloaderHint(secure ? "Game running (secure Steam launch)" : "Game running (insecure — no VAC)");
+                    // An insecure spawn after a vac=false fallback (agentFallbackVac, from the
+                    // insecure_fallback event) is the normal outcome for a title without VAC — say
+                    // so, instead of the warning that fits a VAC title's fallback.
+                    preloaderHint(secure ? "Game running (secure Steam launch)"
+                            : agentFallbackVac ? "Game running (insecure — no VAC)"
+                            : "Game running (started directly — this title doesn't need a secure launch)");
                     break;
                 }
                 case "session_lost":

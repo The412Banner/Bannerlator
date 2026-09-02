@@ -176,11 +176,14 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
         /** Bind an ephemeral loopback port and start accepting (one client). Null on failure. */
         fun open(listener: Listener?): SteamAgentChannel? {
             return try {
-                val server = ServerSocket(0, 1, InetAddress.getLoopbackAddress())
+                // Bind the IPv4 loopback explicitly: on Android getLoopbackAddress() is ::1, and the
+                // agent (Wine winsock, AF_INET) connects to 127.0.0.1 — an IPv6-only listener answers
+                // that with ECONNREFUSED (WSAECONNREFUSED 10061).
+                val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
                 val ch = SteamAgentChannel(server)
                 ch.listener = listener
                 Thread({ ch.acceptLoop() }, "steam-agent-channel").apply { isDaemon = true }.start()
-                Log.i(TAG, "listening on 127.0.0.1:${ch.port}")
+                Log.i(TAG, "listening on ${server.inetAddress.hostAddress}:${ch.port}")
                 ch
             } catch (t: Throwable) {
                 Log.w(TAG, "open failed", t)

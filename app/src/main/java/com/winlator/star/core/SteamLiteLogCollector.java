@@ -333,6 +333,11 @@ public final class SteamLiteLogCollector {
             // faulting address, the frames and (with +seh,+loaddll — added automatically on RealSteam
             // launches when Wine debug is on) the module bases needed to resolve module+offset.
             for (String line : crashExcerpt(wineText)) f.add("    | " + line);
+            // Known signature: the Steam client's overlay injection started the game's thread at an
+            // address from the AGENT's kernel32 (not mapped in the game) — recognisable from +seh +
+            // +loaddll + the agent's own module dump.
+            String overlay = overlayInjectionCrash(wineText, launcherLog);
+            if (overlay != null) f.add(overlay);
         }
         appendTeardown(f, wineText);
 
@@ -894,6 +899,72 @@ public final class SteamLiteLogCollector {
     private static String clip(String s) {
         String t = s.trim();
         return t.length() > 220 ? t.substring(0, 220) + "…" : t;
+    }
+
+    // ── Overlay-injection crash attribution ─────────────────────────────────────────────────────
+
+    /** Wine +seh: "trace:seh:dispatch_exception code=c0000005 (EXCEPTION_ACCESS_VIOLATION) flags=0 addr=0000006FFFD92600". */
+    private static final Pattern SEH_AV_ADDR = ci("code=c0000005\\b[^\\n]*\\baddr=(?:0x)?([0-9a-f]{1,16})");
+    /** Wine +seh: "warn:seh:virtual_unwind backtrace: 0000006FFFD92600: unknown module." — the faulting
+     *  address is in NO module of the crashing process. */
+    private static final Pattern SEH_UNKNOWN_MODULE =
+            ci("virtual_unwind backtrace:\\s*(?:0x)?([0-9a-f]{1,16}):\\s*unknown module");
+    /** Wine +loaddll: "trace:loaddll:build_module Loaded L\"C:\\windows\\system32\\kernel32.dll\" at 0000007FDD4D0000: builtin". */
+    private static final Pattern LOADDLL_KERNEL32 =
+            ci(":loaddll:[^\\n]*kernel32\\.dll\"\\s+at\\s+(?:0x)?([0-9a-f]{1,16})");
+    /** The agent's own module dump in wn-launcher.log (agent-src dump_loaded_modules):
+     *  "[wn-launcher] modules(pre-LoadLibrary): base=0000006FFFD30000 size=0x... name=KERNEL32.DLL path=...". */
+    private static final Pattern AGENT_KERNEL32 = ci(
+            "modules\\(pre-LoadLibrary\\):\\s*base=(?:0x)?([0-9a-f]{1,16})\\s+size=(?:0x)?([0-9a-f]{1,16})"
+                    + "\\s+name=kernel32\\.dll");
+
+    /**
+     * Recognise the Steam overlay-injection startup crash (device-proven 2026-09-02): the first access
+     * violation's address lies inside the AGENT's kernel32 (base + size from the agent's
+     * {@code modules(pre-LoadLibrary)} dump in wn-launcher.log) but not inside the game's — Wine's own
+     * {@code virtual_unwind … unknown module} verdict for that address, or failing that a game kernel32
+     * ({@code +loaddll}, last load before the crash) mapped at a different base. steamclient64.dll's
+     * injection starts the child's thread at a kernel32 address taken from the agent process, which
+     * only works when both map kernel32 at the same base. Returns the plain-English line, or
+     * {@code null} when the evidence isn't there (no +seh addr, no agent module dump, or the address
+     * is outside the agent's kernel32 / inside the game's).
+     */
+    static String overlayInjectionCrash(String wineText, String launcherLog) {
+        if (wineText == null || launcherLog == null) return null;
+        Matcher ak = AGENT_KERNEL32.matcher(launcherLog);
+        if (!ak.find()) return null;
+        long agentBase = parseHex(ak.group(1)), agentSize = parseHex(ak.group(2));
+        if (agentBase < 0 || agentSize <= 0) return null;
+
+        Matcher av = SEH_AV_ADDR.matcher(wineText);
+        if (!av.find()) return null;
+        long addr = parseHex(av.group(1));
+        if (addr < agentBase || addr >= agentBase + agentSize) return null;
+
+        boolean unknownModule = false;
+        Matcher um = SEH_UNKNOWN_MODULE.matcher(wineText);
+        while (um.find()) {
+            if (parseHex(um.group(1)) == addr) { unknownModule = true; break; }
+        }
+        long gameKernel32 = -1;
+        Matcher lk = LOADDLL_KERNEL32.matcher(wineText.substring(0, av.start()));
+        while (lk.find()) gameKernel32 = parseHex(lk.group(1));
+        if (!unknownModule && (gameKernel32 < 0 || gameKernel32 == agentBase)) return null;
+
+        return "CRASH CAUSE: Steam overlay injection crash (address belongs to the agent's kernel32, not the "
+                + "game's) — overlay injection should be disabled. Fault address 0x" + Long.toHexString(addr)
+                + " = agent kernel32 0x" + Long.toHexString(agentBase) + " + 0x"
+                + Long.toHexString(addr - agentBase)
+                + (gameKernel32 >= 0 ? "; the game's kernel32 is at 0x" + Long.toHexString(gameKernel32) : "")
+                + (unknownModule ? "; Wine: \"unknown module\" for that address in the game" : "")
+                + ". Fix: RealSteamLauncher writes system/EnableGameOverlay=0 + apps/<appid>/OverlayAppEnable=0 "
+                + "into localconfig.vdf before every RealSteam launch.";
+    }
+
+    /** Unsigned hex (no 0x) → long; -1 when unparsable. */
+    private static long parseHex(String s) {
+        if (s == null || s.isEmpty() || s.length() > 16) return -1;
+        try { return Long.parseUnsignedLong(s, 16); } catch (NumberFormatException e) { return -1; }
     }
 
     /** Like {@link #scan} but only counts lines timestamped at/after {@code since} (this session).

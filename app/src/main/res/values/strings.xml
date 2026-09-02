@@ -238,6 +238,7 @@
     <string name="arch">Arch</string>
     <string name="version">Version</string>
     <string name="dxvk_version">DXVK Version</string>
+    <string name="vegas_config_loglevel_envvar_note">⚠ Log level (DXVK_LOG_LEVEL) must be set as a container environment variable — VEGAS ignores the config-file key as present in file (dxvk.logLevel / DXVK_LOG_LEVEL).</string>
     <string name="vkd3d_version">VKD3D Version</string>
     <string name="unable_to_install_wine">Unable to install Wine</string>
     <string name="unable_to_remove_this_wine_version">Unable to remove this wine version</string>

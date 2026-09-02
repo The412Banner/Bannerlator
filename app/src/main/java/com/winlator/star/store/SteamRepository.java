@@ -2327,7 +2327,7 @@ public final class SteamRepository {
         registerNetworkCallback();
         SteamLogRedactor.registerSecret(username);
         SteamLogRedactor.registerSecret(refreshToken);
-        if (rustEngine) BlSteamEngineLog.log("AUTH", "session saved (steamId known=" + (steamId64 != 0L) + ")");
+        if (rustEngine) BlSteamEngineLog.log("AUTH", "token logon requested");
         // Single-flight: a redundant logon while already logged in — or a second concurrent logon
         // — is exactly what triggers LogonSessionReplaced and evicts us. Skip both. Only supersede
         // a STALLED logon (posted but no callback within LOGON_STALL_MS) so we can never lock out.
@@ -2476,6 +2476,7 @@ public final class SteamRepository {
         rustSignedInElsewhere = false;
         SteamLogRedactor.registerSecret(username);
         SteamLogRedactor.registerSecret(refreshToken);
+        if (rustEngine) BlSteamEngineLog.log("AUTH", "session saved (steamId known=" + (steamId64 != 0L) + ")");
         pPut("username", username);
         pPut("refresh_token", refreshToken);
         if (steamId64 != 0L) {

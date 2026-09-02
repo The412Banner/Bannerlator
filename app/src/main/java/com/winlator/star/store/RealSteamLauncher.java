@@ -270,7 +270,7 @@ public final class RealSteamLauncher {
             // Agent p3 friends/chat relay over that channel — only when the user opted into
             // friends/chat (no social footprint otherwise); the agent ignores it without a channel.
             boolean social = false;
-            try { social = agentPort > 0 && SteamPrefs.isSocialEnabled(ctx); } catch (Throwable ignored) {}
+            try { social = agentPort > 0 && SteamPrefs.INSTANCE.isSocialEnabled(ctx); } catch (Throwable ignored) {}
             env.put("BL_AGENT_FRIENDS", social ? "1" : "0");
             // Region seed for the genuine client (additive; an agent without the feature ignores both).
             env.put("BL_STEAM_REGION", regionDesc);

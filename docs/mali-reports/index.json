@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-09-02T21-28-57-ccabc8",
+    "created": "2026-09-02T21:28:57.788Z",
+    "reporter": "Fenix",
+    "device": "Tecno pova neo LE6H",
+    "gpu": "Mali-G57",
+    "game": "Star Wars battlefront 2 2005",
+    "symptom": "Pantalla negra (sin imagen)",
+    "logs": 1
+  },
+  {
     "id": "2026-09-02T18-48-54-ad33bb",
     "created": "2026-09-02T18:48:54.545Z",
     "reporter": "Ali",

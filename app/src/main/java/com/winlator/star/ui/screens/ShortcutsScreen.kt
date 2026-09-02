@@ -255,6 +255,7 @@ import com.winlator.star.store.GoldbergMode
 import com.winlator.star.store.GoldbergPatcher
 import com.winlator.star.store.SteamDatabase
 import com.winlator.star.store.SteamGameUpdater
+import com.winlator.star.store.SteamHostComponent
 import com.winlator.star.store.SteamLiteComponent
 import com.winlator.star.store.SteamLoginActivity
 import com.winlator.star.store.SteamPrefs
@@ -473,6 +474,27 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             preflightFor = s
         }
     }
+    // App Steam launch (Option B): Valve's client set for the app's session host on demand (from
+    // Valve's CDN), then the same pre-flight dialog — its client step checks Valve's manifest instead
+    // of the SteamLite catalog (PreflightRequest.clientPackage, read off the shortcut's launchMode).
+    fun launchWithAppSteam(s: Shortcut) {
+        if (!SteamHostComponent.isInstalled(context)) {
+            componentDownloadFor = s
+            componentDownloadLabel = "App Steam (Valve Steam client)"
+            componentDownloadProgress = 0f
+            SteamHostComponent.downloadAsync(
+                context,
+                { f -> componentDownloadProgress = f },
+                { ok, msg ->
+                    componentDownloadFor = null
+                    if (ok) preflightFor = s
+                    else Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                },
+            )
+        } else {
+            preflightFor = s
+        }
+    }
     // The single launch choke point for the game grid/list. Every game opens the source-adaptive
     // launch-method popup first (Steam → SteamLite/Goldberg/Raw; Epic/GOG/Custom → Raw-only), UNLESS the
     // user already picked a method AND ticked "Remember" for it — a remembered pick launches DIRECTLY via
@@ -485,6 +507,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         when {
             remembered && shortcut.getExtra("launchMode", "") == "RealSteam" && isSteamOriginShortcut(shortcut) ->
                 launchWithSteamLite(shortcut)
+            remembered && shortcut.getExtra("launchMode", "") == "AppSteam" && isSteamOriginShortcut(shortcut) ->
+                launchWithAppSteam(shortcut)
             remembered -> launchShortcutNow(activity, shortcut)
             else -> launchChoiceFor = shortcut
         }
@@ -497,7 +521,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val pending = SteamSessionManager.takePendingRelaunch(context) ?: return@LaunchedEffect
         val s = shortcuts.firstOrNull { it.file.path == pending.shortcutPath } ?: return@LaunchedEffect
         when (pending.mode) {
-            SteamSessionManager.RelaunchMode.STEAMLITE -> launchWithSteamLite(s)
+            SteamSessionManager.RelaunchMode.STEAMLITE -> {
+                s.putExtra("launchMode", "RealSteam"); s.saveData()
+                launchWithSteamLite(s)
+            }
+            SteamSessionManager.RelaunchMode.APPSTEAM -> launchWithAppSteam(s)
             SteamSessionManager.RelaunchMode.GOLDBERG -> {
                 SteamPrefs.init(context)
                 val gm = SteamPrefs.getGoldbergMode(steamAppIdOf(s)).let { if (it == GoldbergMode.OFF) GoldbergMode.REGULAR else it }
@@ -2852,6 +2880,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 launchChoiceFor = null
                 when (mode) {
                     "Goldberg" -> launchWithGoldberg(s, goldbergMode ?: GoldbergMode.REGULAR)
+                    "AppSteam" -> launchWithAppSteam(s)
                     "Raw" -> {
                         // Raw: run the game's .exe directly with no Steam layer (Epic/GOG/Custom, or a
                         // Steam game the user chose to run raw). The launchMode="Raw" extra is inert to the
@@ -2883,6 +2912,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 installDir = installDir,
                 gameName = s.name,
                 pullCloudSaves = savePrefs.getBoolean("auto_download_steam_on_launch", true),
+                clientPackage = if (s.getExtra("launchMode", "") == "AppSteam") SteamSessionManager.ClientPackage.APP_STEAM
+                                else SteamSessionManager.ClientPackage.STEAMLITE,
             ),
             onLaunch = { preflightFor = null; launchShortcutNow(activity, s, preflightDone = true) },
             onDismiss = { preflightFor = null },

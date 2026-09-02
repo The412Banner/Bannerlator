@@ -302,6 +302,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // real-Steam session (set right after realSteamPlan is armed, cleared by releaseRealSteamSession).
     // Separate from realSteamPlan so the release is idempotent across exit() and onDestroy().
     private volatile boolean realSteamSessionHeld = false;
+    // App Steam (Option B) launch plan. Non-null ONLY for a genuine-Steam shortcut with launchMode=AppSteam
+    // whose prerequisites resolved AND whose session host (bl-steam-host, the app's own genuine Steam
+    // session) started — built by maybeStageAppSteam() on the launch worker. The game exe runs DIRECTLY
+    // under Wine (getWineStartCommand() untouched); the app's own CM session stays UP ("two logons, one
+    // player"): the offline-presence report is gated on this plan, the SteamLite suspend never runs
+    // (realSteamPlan stays null by construction), and the drawer Friends tab uses the app session.
+    private com.winlator.star.store.AppSteamLauncher.Plan appSteamPlan;
+    /** The host reported `host_ready` (logged on + app-info/ownership warm-up done). */
+    private volatile boolean appSteamHostReady = false;
+    /** Bound for the host's sign-in before the guest boots (the fail card offers Retry / SteamLite / Goldberg). */
+    private static final long APPSTEAM_HOST_WAIT_MS = 60_000L;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     // Which Vulkan driver the host compositor/present layer runs on ("system" = Android's own driver,
     // or an installed adrenotools Turnip). Separate from graphicsDriver (which the guest game renders
@@ -4024,6 +4035,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         // window to log on, so the Steam Cloud upload + achievement sync-back below run on a
                         // live session. Worker thread, so the wait never touches the UI. No-op otherwise.
                         if (realSteamPlan != null) releaseRealSteamSession("game exit", 6000L);
+                        // App Steam: the guest is gone — log the session host off (clean Steam_LogOff)
+                        // so the account's "playing" state clears before the cloud/achievement work.
+                        stopAppSteamHost("game exit");
                         clearOfflineSteamPresence("game exit");
                         SharedPreferences savePrefs = getSharedPreferences("save_manager_prefs", MODE_PRIVATE);
                         if (isGenuineSteamShortcut()) {
@@ -4063,7 +4077,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         // collector itself also no-ops when the marker/logs aren't present. Fully guarded —
                         // logging must never break a game exiting.
                         try {
-                            if (realSteamPlan != null
+                            if ((realSteamPlan != null || appSteamPlan != null)
                                     && preferences.getBoolean("enable_steamlite_logs", false)) {
                                 Context appCtx = getApplicationContext();
                                 String gameName = currentLogGameName();
@@ -4080,8 +4094,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                                                 dxwrapperConfig != null ? dxwrapperConfig.get("version") : null,
                                                 dxwrapperConfig != null ? dxwrapperConfig.get("vkd3dVersion") : null);
                                 com.winlator.star.core.SteamLiteLogCollector.collect(
-                                        appCtx, driveC, perGameLogDir, gameName, realSteamPlan.appId, info,
-                                        steamAgentChannel != null ? steamAgentChannel.eventLines() : null);
+                                        appCtx, driveC, perGameLogDir, gameName,
+                                        realSteamPlan != null ? realSteamPlan.appId : appSteamPlan.appId, info,
+                                        steamAgentChannel != null ? steamAgentChannel.eventLines() : null,
+                                        appSteamPlan != null ? appSteamPlan.hostLog : null);
                             }
                         } catch (Throwable t) {
                             Log.w("SteamLiteLogs", "collect on exit errored", t);
@@ -4386,6 +4402,122 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * App Steam (Option B): if this is a genuine-Steam shortcut explicitly set to {@code launchMode=AppSteam},
+     * seed the prefix (genuine PE client DLLs from the SteamLite package when present + the
+     * {@code ActiveProcess} registry), open the agent channel, and START the app's genuine Steam session
+     * host ({@link com.winlator.star.store.SteamHost}) with the engine's refresh token. The plan's env
+     * ({@code WINESTEAMCLIENTPATH64}, {@code Steam3Master}, {@code SteamAppId}…) is merged into the
+     * launch env later; {@code PROTON_DISABLE_LSTEAMCLIENT} is REMOVED so Proton's ntdll hook redirects
+     * the game's {@code steamclient64.dll} to the layer's {@code lsteamclient.dll}, whose unix side talks
+     * to the host over loopback. The game exe is launched directly — no agent, no {@code WN_STEAM_*}.
+     *
+     * <p>Runs on the launch worker (file I/O + Room). Mutually exclusive with {@link #maybeStageRealSteam()}
+     * by {@code launchMode}. Any missing prerequisite (Valve client not downloaded / host binary absent /
+     * no token / appId unresolved) leaves {@code appSteamPlan} null → the NORMAL launch, byte-for-byte.
+     * The host's sign-in is awaited (bounded) by {@link #awaitAppSteamHost()} right before the guest boots.
+     */
+    private void maybeStageAppSteam() {
+        try {
+            if (shortcut == null || container == null) return;
+            if (!com.winlator.star.store.AppSteamLauncher.LAUNCH_MODE.equals(shortcut.getExtra("launchMode"))) return;
+            if (!isGenuineSteamShortcut()) return;
+            if (realSteamPlan != null) { Log.w("BH_APPSTEAM", "RealSteam plan already armed — skipping AppSteam"); return; }
+
+            File driveC = new File(container.getRootDir(), ".wine/drive_c");
+            SteamAppRef ref = resolveSteamAppRef();   // Room lookup — off-main OK on this worker thread
+            if (ref == null) {
+                Log.w("BH_APPSTEAM", "AppSteam requested but appId unresolved — falling back to normal launch");
+                return;
+            }
+            // Wine layer dir (to report whether lsteamclient is present — informational).
+            File wineLibDir = null;
+            try { wineLibDir = new File(imageFs.getWinePath(), "lib/wine"); } catch (Throwable ignored) {}
+            File guestHome = null;
+            try { guestHome = new File(imageFs.home_path); } catch (Throwable ignored) {}
+
+            // The host streams its status over the same loopback channel the SteamLite agent uses.
+            int agentPort = com.winlator.star.store.SteamSessionManager.INSTANCE.openAgentChannel(agentChannelListener);
+            steamAgentChannel = com.winlator.star.store.SteamSessionManager.INSTANCE.agentChannel();
+            appSteamHostReady = false;
+
+            appSteamPlan = com.winlator.star.store.AppSteamLauncher.prepare(
+                    this, driveC, wineLibDir, guestHome, shortcut, ref.appId, agentPort);
+            if (appSteamPlan != null) {
+                Log.i("BH_APPSTEAM", "AppSteam launch armed (appId=" + appSteamPlan.appId
+                        + (agentPort > 0 ? ", agent channel port " + agentPort : ", no agent channel")
+                        + ", layerHasLsteamclient=" + appSteamPlan.layerHasLsteamclient + ")");
+                preloaderHint("Starting the app's Steam session host…");
+                armAgentWatchdog();
+            } else {
+                Log.w("BH_APPSTEAM", "AppSteam prep incomplete — falling back to normal launch");
+                closeAgentChannel();
+            }
+        } catch (Throwable t) {
+            appSteamPlan = null;
+            closeAgentChannel();
+            com.winlator.star.store.SteamHost.INSTANCE.stop("stage errored", 2000L);
+            Log.w("BH_APPSTEAM", "AppSteam setup errored — falling back to normal launch", t);
+        }
+    }
+
+    /**
+     * Block the launch worker (bounded) until the App Steam host reports {@code host_ready} (or at least
+     * {@code logged_in}), so the game's {@code steam_api} finds a logged-on client with a warm ownership
+     * ticket the moment it initialises. On a host failure / exit / timeout show the fail card (Retry /
+     * SteamLite / Goldberg / Keep going) — the guest still boots so "Keep going" is meaningful. No-op
+     * unless {@link #maybeStageAppSteam()} armed a plan.
+     */
+    private void awaitAppSteamHost() {
+        if (appSteamPlan == null) return;
+        long deadline = System.currentTimeMillis() + APPSTEAM_HOST_WAIT_MS;
+        preloaderHint("Signing in to Steam (app session host)…");
+        boolean loggedIn = false;
+        long loggedInAt = 0L;
+        while (System.currentTimeMillis() < deadline && !exiting) {
+            com.winlator.star.store.SteamAgentChannel ch = steamAgentChannel;
+            if (appSteamHostReady) {
+                preloaderHint("Steam session ready — launching the game…");
+                return;
+            }
+            if (ch != null && ch.getLoggedIn() && !loggedIn) { loggedIn = true; loggedInAt = System.currentTimeMillis(); }
+            // logged_in without host_ready for 15 s: the app-info/ownership warm-up is still running —
+            // good enough, the game will ask again itself.
+            if (loggedIn && System.currentTimeMillis() - loggedInAt > 15_000L) {
+                preloaderHint("Signed in to Steam — launching the game…");
+                return;
+            }
+            if (!com.winlator.star.store.SteamHost.INSTANCE.isAlive()) {
+                String why = ch != null && ch.getLastFailure() != null ? ch.getLastFailure() : "the host process exited";
+                showAgentFailure("Steam session host", "The app's Steam session host stopped",
+                        why + ". Retry, launch with SteamLite (in-container Steam), or offline with Goldberg.", true);
+                return;
+            }
+            if (ch != null && ch.getLastFailure() != null && !loggedIn) {
+                showAgentFailure("Steam session host", "Steam rejected the app session's sign-in",
+                        ch.getLastFailure() + " — the saved sign-in did not work for the session host. Retry, or use SteamLite / Goldberg.", true);
+                return;
+            }
+            try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+        }
+        if (!exiting && !appSteamHostReady) {
+            showAgentFailure("Steam session host", "Steam sign-in did not complete",
+                    "The app's Steam session host reported no sign-in within " + (APPSTEAM_HOST_WAIT_MS / 1000)
+                            + "s. Retry, launch with SteamLite, or offline with Goldberg.", true);
+        }
+    }
+
+    /** Stop the App Steam session host (clean logoff); idempotent, never throws. */
+    private void stopAppSteamHost(String why) {
+        if (appSteamPlan == null) return;
+        try {
+            com.winlator.star.store.SteamHost.INSTANCE.stop(why, 6000L);
+        } catch (Throwable t) {
+            Log.w("BH_APPSTEAM", "host stop errored (" + why + ")", t);
+        }
+        closeAgentChannel();
+    }
+
     // ── Live SteamLite agent channel (Phase 1-C) ─────────────────────────────────────────────────
     // The in-container agent streams its login / launch / game events over loopback (see
     // SteamAgentChannel + agent-src/AGENT_CHANNEL.md). They drive the launch overlay's reassurance
@@ -4412,8 +4544,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Log.w(AGENT_TAG, "watchdog: no sign-in result from the agent within " + (AGENT_LOGIN_TIMEOUT_MS / 1000) + "s");
         showAgentFailure("Steam sign-in",
                 "Steam sign-in did not complete",
-                "The Steam client inside the container reported no sign-in result within "
-                        + (AGENT_LOGIN_TIMEOUT_MS / 1000) + "s.");
+                (appSteamPlan != null ? "The app's Steam session host" : "The Steam client inside the container")
+                        + " reported no sign-in result within " + (AGENT_LOGIN_TIMEOUT_MS / 1000) + "s.");
     };
 
     private final com.winlator.star.store.SteamAgentChannel.Listener agentChannelListener =
@@ -4507,6 +4639,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 case "session_lost":
                     preloaderHint("Steam session lost — online features may drop");
                     break;
+                // App Steam session host (bl-steam-host) — same channel, a few extra events.
+                case "host_ready":
+                    agentLoginResolved = true;
+                    appSteamHostReady = true;
+                    preloaderHint("Steam session ready — launching the game…");
+                    break;
+                case "ownership":
+                    preloaderHint(obj.optBoolean("ok", false) ? "Steam ownership ticket ready" : "Steam ownership ticket not confirmed (continuing)");
+                    break;
+                case "port_busy":
+                case "host_failed": {
+                    agentLoginResolved = true;
+                    if (steamAgentChannel != null) steamAgentChannel.setLastFailure(ev + " " + obj.optString("reason", ""));
+                    Log.w(AGENT_TAG, ev + ": " + obj);
+                    break;
+                }
                 case "game_exited":
                 case "shutdown":
                     Log.i(AGENT_TAG, ev + ": " + obj);
@@ -4555,16 +4703,27 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         () -> { try { preloaderDialog.enterGuest("Waiting for the game to render…"); } catch (Throwable ignored) {} }));
             }
             if (sc != null && c != null) {
+                final boolean appSteam = appSteamPlan != null;
                 actions.add(new com.winlator.star.core.FailureAction("Launch with Goldberg", false, () -> {
                     com.winlator.star.store.SteamSessionManager.INSTANCE.setPendingRelaunch(
                             getApplicationContext(), sc.file.getPath(), c.id,
                             com.winlator.star.store.SteamSessionManager.RelaunchMode.GOLDBERG);
                     exit();
                 }));
+                if (appSteam) {
+                    // App Steam failed: the proven in-container path is one tap away.
+                    actions.add(new com.winlator.star.core.FailureAction("Launch with SteamLite", false, () -> {
+                        com.winlator.star.store.SteamSessionManager.INSTANCE.setPendingRelaunch(
+                                getApplicationContext(), sc.file.getPath(), c.id,
+                                com.winlator.star.store.SteamSessionManager.RelaunchMode.STEAMLITE);
+                        exit();
+                    }));
+                }
                 actions.add(new com.winlator.star.core.FailureAction("Retry", true, () -> {
                     com.winlator.star.store.SteamSessionManager.INSTANCE.setPendingRelaunch(
                             getApplicationContext(), sc.file.getPath(), c.id,
-                            com.winlator.star.store.SteamSessionManager.RelaunchMode.STEAMLITE);
+                            appSteam ? com.winlator.star.store.SteamSessionManager.RelaunchMode.APPSTEAM
+                                     : com.winlator.star.store.SteamSessionManager.RelaunchMode.STEAMLITE);
                     exit();
                 }));
             }
@@ -4604,6 +4763,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void announceOfflineSteamPresence() {
         try {
             if (realSteamPlan != null || realSteamSessionHeld) return;
+            // App Steam: the genuine client in the app's session host reports "playing" itself; the
+            // engine must NOT also send ClientGamesPlayed ("two logons, one player" — spike §3 rule 1).
+            if (appSteamPlan != null) {
+                Log.i("BL_STEAM_PRESENCE", "offline presence: skipped — App Steam host reports the game");
+                return;
+            }
             if (shortcut == null || !isGenuineSteamShortcut()) return;
             if (!SteamPrefs.INSTANCE.isOfflinePresenceEnabled(getApplicationContext())) return;
             SteamRepository repo = SteamRepository.getInstance();
@@ -5373,6 +5538,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Non-blocking — the reconnect is posted to the CM pump. No-op unless a real-Steam launch
         // suspended it this session.
         releaseRealSteamSession("activity destroyed", 0L);
+        stopAppSteamHost("activity destroyed");
         clearOfflineSteamPresence("activity destroyed");
         // Hide the drawer's Friends tab source + leave any in-game chat thread (the full Friends
         // screen's own open/close is untouched).
@@ -5905,6 +6071,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // prepare() returns null and realSteamPlan stays null → the NORMAL launch is byte-for-byte
             // unchanged. The refresh token lives ONLY inside the returned env map; nothing here logs it.
             maybeStageRealSteam();
+            // App Steam (Option B): mutually exclusive with the above by launchMode. Starts the app's
+            // genuine Steam session host now so its sign-in overlaps the rest of the launch setup.
+            maybeStageAppSteam();
             // Tell the drawer's Friends tab which source to wait for: the agent relay when the plan is
             // armed, else the app's own session (a fallback to the normal launch never pauses it).
             try { com.winlator.star.store.InGameFriendsSource.INSTANCE.setRealSteamLaunch(realSteamPlan != null); }
@@ -6023,6 +6192,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // PROTON_DISABLE_LSTEAMCLIENT env HERE — after the container (5288) and shortcut/Epic env merges
             // — so the RealSteam env always wins. No-op (realSteamPlan == null) for every non-RealSteam or
             // failed-prep launch. The refresh token lives ONLY inside plan.env; nothing here logs it.
+            // App Steam (Option B) — ENV injection (no secrets in this map). Removes the SteamLite-only
+            // switches (PROTON_DISABLE_LSTEAMCLIENT must be UNSET so ntdll redirects steamclient64.dll
+            // to lsteamclient.dll) and adds WINESTEAMCLIENTPATH64 / Steam3Master / SteamAppId… so the
+            // game's genuine steam_api reaches the app's session host. No-op unless a plan is armed.
+            if (appSteamPlan != null) {
+                for (String k : appSteamPlan.envRemove) envVars.remove(k);
+                for (Map.Entry<String, String> e : appSteamPlan.env.entrySet())
+                    envVars.put(e.getKey(), e.getValue());
+                Log.i("BH_APPSTEAM", "guest env merged (" + appSteamPlan.env.size() + " keys; PROTON_DISABLE_LSTEAMCLIENT unset)");
+            }
             if (realSteamPlan != null) {
                 for (Map.Entry<String, String> e : realSteamPlan.env.entrySet())
                     envVars.put(e.getKey(), e.getValue());
@@ -6220,6 +6399,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // friends see it and playtime counts (Steam parity). No-op for RealSteam (the genuine client
         // reports itself), non-Steam shortcuts, or with the setting off. Cleared on exit / destroy.
         announceOfflineSteamPresence();
+
+        // App Steam: wait (bounded) for the app's session host to be signed in + ready before the guest
+        // boots, so the game's steam_api finds a live client. No-op for every other launch.
+        awaitAppSteamHost();
 
         // Start all environment components (XServer, Audio, Wine, etc.)
         preloaderDialog.step(4, "Launching Windows…");

@@ -79,6 +79,7 @@ import coil.compose.AsyncImage
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.GoldbergMode
 import com.winlator.star.store.SteamGameDetailActivity
+import com.winlator.star.store.SteamHostComponent
 import com.winlator.star.store.SteamLiteComponent
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.SteamRepository
@@ -107,9 +108,27 @@ private class SteamLiteClientUi(
     val gated: Boolean get() = check?.available == true && note == null
 }
 
-// The launch methods. STEAMLITE → "RealSteam", GOLDBERG → "Goldberg", RAW → "Raw" (the launchMode
-// contract literals the launch pipeline + callers already understand).
-private enum class LaunchMethod(val mode: String) { STEAMLITE("RealSteam"), GOLDBERG("Goldberg"), RAW("Raw") }
+/**
+ * The App Steam (Valve client set for the app's session host) status shown under the App Steam chip.
+ * Present only for Steam games with the set already downloaded (a missing set is fetched by the
+ * launch). [check] null = the bounded Valve-manifest check is still running.
+ */
+private class AppSteamClientUi(
+    val check: SteamHostComponent.UpdateCheck?,
+    val updating: Boolean,
+    val progress: Float,
+    val note: String?,
+    val onUpdateAndLaunch: () -> Unit,
+) {
+    /** Valve has a newer build the host can drive, nothing went wrong yet → the footer gates on it. */
+    val gated: Boolean get() = check?.available == true && check.manifestVerified && note == null
+}
+
+// The launch methods. STEAMLITE → "RealSteam", APPSTEAM → "AppSteam", GOLDBERG → "Goldberg", RAW → "Raw"
+// (the launchMode contract literals the launch pipeline + callers already understand).
+private enum class LaunchMethod(val mode: String) {
+    STEAMLITE("RealSteam"), APPSTEAM("AppSteam"), GOLDBERG("Goldberg"), RAW("Raw")
+}
 
 /**
  * Classify a shortcut's store source. Mirrors ShortcutsScreen's per-source gates so this popup offers
@@ -127,8 +146,16 @@ private fun classifySource(shortcut: Shortcut): GameSource = when {
 
 // Plain-terms help copy for the "?" bubbles (kept short: what it is + when to use it).
 private const val HELP_LAUNCH_WITH =
-    "How the game talks to Steam. SteamLite = real Steam (online, VAC, real achievements). Goldberg = " +
-        "fake offline Steam for single-player. Raw = just run the .exe."
+    "How the game talks to Steam. SteamLite = real Steam (online, VAC, real achievements). App Steam = " +
+        "the app's own Steam session (friends & chat stay online; experimental). Goldberg = fake offline " +
+        "Steam for single-player. Raw = just run the .exe."
+private const val HELP_APPSTEAM =
+    "Runs the game on the app's own Steam session — friends, chat and the in-game Friends tab stay " +
+        "online. Experimental; not yet proven for VAC servers, so VAC games default to SteamLite."
+private const val HELP_APPSTEAM_CLIENT =
+    "Valve's own Steam client library set (~18 MB), downloaded from Valve on first launch and run by " +
+        "the app as a separate process on your Steam session. Only builds this app has been verified " +
+        "with are used; a newer Valve build is offered once the app supports it."
 private const val HELP_STEAMLITE =
     "SteamLite — the REAL Steam client, signed into your account. Online on VAC servers, real " +
         "achievements & cloud saves. Needs internet + a game you own on Steam."
@@ -199,7 +226,7 @@ fun LaunchMethodSheet(
     val hasDetails = isSteam && appId > 0
 
     val enabledMethods = remember(shortcut) {
-        if (isSteam) listOf(LaunchMethod.STEAMLITE, LaunchMethod.GOLDBERG, LaunchMethod.RAW)
+        if (isSteam) listOf(LaunchMethod.STEAMLITE, LaunchMethod.APPSTEAM, LaunchMethod.GOLDBERG, LaunchMethod.RAW)
         else listOf(LaunchMethod.RAW)
     }
 
@@ -210,6 +237,8 @@ fun LaunchMethodSheet(
                 "Goldberg" -> LaunchMethod.GOLDBERG
                 "Raw" -> LaunchMethod.RAW
                 "RealSteam" -> LaunchMethod.STEAMLITE
+                "AppSteam" -> LaunchMethod.APPSTEAM
+                // Default stays SteamLite (the proven VAC path); App Steam is offered, never preselected.
                 else -> if (isSteam) LaunchMethod.STEAMLITE else LaunchMethod.RAW
             }.let { if (it in enabledMethods) it else LaunchMethod.RAW },
         )
@@ -302,6 +331,44 @@ fun LaunchMethodSheet(
         SteamLiteClientUi(clientCheck, clientUpdating, clientProgress, clientNote, updateAndLaunch)
     } else null
 
+    // App Steam: Valve client set check (the App Steam chip's status line + "Update & Launch" gate).
+    // Bounded ~5 s against Valve's manifest; a failed check reads "couldn't check" and Launch stays plain.
+    val appSteamInstalled = remember(shortcut) { isSteam && SteamHostComponent.isInstalled(context) }
+    var hostCheck by remember(shortcut) { mutableStateOf<SteamHostComponent.UpdateCheck?>(null) }
+    var hostUpdating by remember(shortcut) { mutableStateOf(false) }
+    var hostProgress by remember(shortcut) { mutableStateOf(0f) }
+    var hostNote by remember(shortcut) { mutableStateOf<String?>(null) }
+    LaunchedEffect(shortcut) {
+        if (appSteamInstalled) SteamHostComponent.checkUpdateAsync(context) { hostCheck = it }
+    }
+    val updateHostAndLaunch: () -> Unit = {
+        val check = hostCheck
+        if (check != null && !hostUpdating) {
+            hostUpdating = true
+            hostProgress = 0f
+            hostNote = null
+            SteamHostComponent.downloadAsync(
+                context,
+                { f -> hostProgress = f },
+                { ok, msg ->
+                    if (alive.get()) {
+                        hostUpdating = false
+                        if (ok) {
+                            hostCheck = check.copy(installed = check.manifest?.version ?: check.installed)
+                        } else {
+                            hostNote = "Update failed — launching installed ${SteamHostComponent.versionLabel(check.installed)}"
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                        doLaunch()
+                    }
+                },
+            )
+        }
+    }
+    val appSteamClient = if (appSteamInstalled) {
+        AppSteamClientUi(hostCheck, hostUpdating, hostProgress, hostNote, updateHostAndLaunch)
+    } else null
+
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -312,7 +379,7 @@ fun LaunchMethodSheet(
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
                 secureLaunch, { secureLaunch = it; vacTouched = true }, detectedVac,
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
-                onVerifyFiles, onUpdateFiles, steamLiteClient,
+                onVerifyFiles, onUpdateFiles, steamLiteClient, appSteamClient,
             )
         } else {
             PortraitCard(
@@ -321,7 +388,7 @@ fun LaunchMethodSheet(
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
                 secureLaunch, { secureLaunch = it; vacTouched = true }, detectedVac,
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
-                onVerifyFiles, onUpdateFiles, steamLiteClient,
+                onVerifyFiles, onUpdateFiles, steamLiteClient, appSteamClient,
             )
         }
     }
@@ -358,6 +425,7 @@ private fun PortraitCard(
     onVerifyFiles: (() -> Unit)?,
     onUpdateFiles: (() -> Unit)?,
     steamLiteClient: SteamLiteClientUi?,
+    appSteamClient: AppSteamClientUi?,
 ) {
     val cs = MaterialTheme.colorScheme
     Surface(
@@ -402,9 +470,12 @@ private fun PortraitCard(
                     Spacer(Modifier.height(7.dp))
                     ChipsRow(method, enabledMethods, accent, compact = false, onMethod, toggleHelp)
                     Spacer(Modifier.height(9.dp))
-                    MethodDesc(method, source)
+                    MethodDesc(method, source, detectedVac == true)
                     if (method == LaunchMethod.STEAMLITE && steamLiteClient != null) {
                         SteamLiteClientBlock(steamLiteClient, accent, compact = false, toggleHelp, doLaunch)
+                    }
+                    if (method == LaunchMethod.APPSTEAM) {
+                        AppSteamClientBlock(appSteamClient, accent, compact = false, toggleHelp)
                     }
 
                     AnimatedVisibility(visible = method == LaunchMethod.GOLDBERG) {
@@ -431,7 +502,7 @@ private fun PortraitCard(
                 }
 
                 HorizontalDivider(color = cs.outline)
-                val footer = footerLaunch(method, steamLiteClient, doLaunch)
+                val footer = footerLaunch(method, steamLiteClient, appSteamClient, doLaunch)
                 FooterRow(accent, onDismiss, footer.second, footer.first, topPad = 10.dp, bottomPad = 12.dp, startPad = 8.dp, endPad = 14.dp)
             }
             if (helpText != null) HelpTip(helpText, dismissHelp)
@@ -470,6 +541,7 @@ private fun LandscapeCard(
     onVerifyFiles: (() -> Unit)?,
     onUpdateFiles: (() -> Unit)?,
     steamLiteClient: SteamLiteClientUi?,
+    appSteamClient: AppSteamClientUi?,
 ) {
     val cs = MaterialTheme.colorScheme
     val cfg = LocalConfiguration.current
@@ -507,9 +579,12 @@ private fun LandscapeCard(
                         Spacer(Modifier.height(6.dp))
                         ChipsRow(method, enabledMethods, accent, compact = true, onMethod, toggleHelp)
                         Spacer(Modifier.height(6.dp))
-                        MethodDesc(method, source)
+                        MethodDesc(method, source, detectedVac == true)
                         if (method == LaunchMethod.STEAMLITE && steamLiteClient != null) {
                             SteamLiteClientBlock(steamLiteClient, accent, compact = true, toggleHelp, doLaunch)
+                        }
+                        if (method == LaunchMethod.APPSTEAM) {
+                            AppSteamClientBlock(appSteamClient, accent, compact = true, toggleHelp)
                         }
 
                         AnimatedVisibility(visible = method == LaunchMethod.GOLDBERG) {
@@ -536,7 +611,7 @@ private fun LandscapeCard(
                     }
                     // Launch/Cancel footer — pinned OUTSIDE the scroll region so it is always visible.
                     HorizontalDivider(color = cs.outline)
-                    val footer = footerLaunch(method, steamLiteClient, doLaunch)
+                    val footer = footerLaunch(method, steamLiteClient, appSteamClient, doLaunch)
                     FooterRow(accent, onDismiss, footer.second, footer.first, topPad = 8.dp, bottomPad = 0.dp, startPad = 0.dp, endPad = 0.dp)
                 }
             }
@@ -547,7 +622,7 @@ private fun LandscapeCard(
 
 // ── Shared content pieces ─────────────────────────────────────────────────────────────────────────
 
-/** The 3-chip "Launch with" segmented selector. */
+/** The 4-chip "Launch with" segmented selector (SteamLite · App Steam · Goldberg · Raw). */
 @Composable
 private fun ChipsRow(
     method: LaunchMethod,
@@ -557,13 +632,17 @@ private fun ChipsRow(
     onMethod: (LaunchMethod) -> Unit,
     toggleHelp: (String) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 6.dp)) {
+    // Four chips share the row: the label steps down to labelSmall so "App Steam" fits without ellipsis.
+    val dense = compact || enabledMethods.size >= 4
+    Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) {
         SegChip("🌐", "SteamLite", method == LaunchMethod.STEAMLITE, LaunchMethod.STEAMLITE in enabledMethods,
-            accent, compact, { onMethod(LaunchMethod.STEAMLITE) }, { toggleHelp(HELP_STEAMLITE) })
+            accent, dense, { onMethod(LaunchMethod.STEAMLITE) }, { toggleHelp(HELP_STEAMLITE) })
+        SegChip("🔗", "App Steam", method == LaunchMethod.APPSTEAM, LaunchMethod.APPSTEAM in enabledMethods,
+            accent, dense, { onMethod(LaunchMethod.APPSTEAM) }, { toggleHelp(HELP_APPSTEAM) })
         SegChip("🛡️", "Goldberg", method == LaunchMethod.GOLDBERG, LaunchMethod.GOLDBERG in enabledMethods,
-            accent, compact, { onMethod(LaunchMethod.GOLDBERG) }, { toggleHelp(HELP_GOLDBERG) })
+            accent, dense, { onMethod(LaunchMethod.GOLDBERG) }, { toggleHelp(HELP_GOLDBERG) })
         SegChip("▶️", "Raw .exe", method == LaunchMethod.RAW, LaunchMethod.RAW in enabledMethods,
-            accent, compact, { onMethod(LaunchMethod.RAW) }, { toggleHelp(HELP_RAW) })
+            accent, dense, { onMethod(LaunchMethod.RAW) }, { toggleHelp(HELP_RAW) })
     }
 }
 
@@ -617,11 +696,12 @@ private fun RowScope.SegChip(
     }
 }
 
-/** The one-line description that updates per selected method. */
+/** The one-line description that updates per selected method ([vacDetected] adds the App Steam caveat). */
 @Composable
-private fun MethodDesc(method: LaunchMethod, source: GameSource) {
+private fun MethodDesc(method: LaunchMethod, source: GameSource, vacDetected: Boolean = false) {
     Text(
-        methodDescription(method, source),
+        methodDescription(method, source) +
+            (if (method == LaunchMethod.APPSTEAM && vacDetected) " This game is VAC-secured — SteamLite is the proven path for it." else ""),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         lineHeight = 15.sp,
@@ -760,13 +840,91 @@ private fun OptionRow(
 private fun footerLaunch(
     method: LaunchMethod,
     client: SteamLiteClientUi?,
+    appSteamClient: AppSteamClientUi?,
     doLaunch: () -> Unit,
 ): Pair<String, (() -> Unit)?> {
+    if (method == LaunchMethod.APPSTEAM && appSteamClient != null) {
+        return when {
+            appSteamClient.updating -> "Updating…" to null
+            appSteamClient.gated -> "Update & Launch" to appSteamClient.onUpdateAndLaunch
+            else -> "Launch" to doLaunch
+        }
+    }
     if (method != LaunchMethod.STEAMLITE || client == null) return "Launch" to doLaunch
     return when {
         client.updating -> "Updating…" to null
         client.gated -> "Update & Launch" to client.onUpdateAndLaunch
         else -> "Launch" to doLaunch
+    }
+}
+
+/**
+ * Under the App Steam chip: the Valve client set's status — not downloaded yet (fetched by the launch,
+ * ~18 MB from Valve) / checking / couldn't check / installed build / "Update available" — with a "?"
+ * bubble. Absent for the other methods.
+ */
+@Composable
+private fun AppSteamClientBlock(
+    ui: AppSteamClientUi?,
+    accent: Color,
+    compact: Boolean,
+    toggleHelp: (String) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val lineStyle = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium
+    Spacer(Modifier.height(if (compact) 6.dp else 8.dp))
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        val check = ui?.check
+        val installed = SteamHostComponent.versionLabel(check?.installed ?: "")
+        when {
+            ui == null -> Text(
+                "Valve's Steam client (~18 MB) downloads from Valve on first launch",
+                style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f),
+            )
+            ui.updating -> Text(
+                "Updating Valve's Steam client… ${(ui.progress.coerceIn(0f, 1f) * 100).toInt()}%",
+                style = lineStyle, color = cs.onSurface, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
+            )
+            ui.note != null -> Text(ui.note, style = lineStyle, color = cs.error, modifier = Modifier.weight(1f))
+            check == null -> Text("Checking Valve's Steam client…", style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f))
+            !check.installedVerified -> Text(
+                "Installed Valve client ($installed) isn't verified for this app",
+                style = lineStyle, color = cs.error, modifier = Modifier.weight(1f),
+            )
+            !check.checked -> Text(
+                "Couldn't check Valve's manifest — using installed $installed",
+                style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f),
+            )
+            check.available && check.manifestVerified -> {
+                val shape = RoundedCornerShape(999.dp)
+                Text(
+                    "Update available ($installed → build ${check.manifest?.version})",
+                    style = lineStyle, color = accent, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(shape)
+                        .background(accent.copy(alpha = 0.14f))
+                        .border(1.dp, accent.copy(alpha = 0.55f), shape)
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                )
+                Spacer(Modifier.weight(1f))
+            }
+            check.available -> Text(
+                "Valve moved to build ${check.manifest?.version}; this app stays on $installed",
+                style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f),
+            )
+            else -> Text("Valve Steam client installed ($installed)", style = lineStyle, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.width(6.dp))
+        HelpDot(accent, highlighted = false, onClick = { toggleHelp(HELP_APPSTEAM_CLIENT) })
+    }
+    if (ui?.updating == true) {
+        Spacer(Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { ui.progress.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().height(4.dp),
+            color = accent,
+            trackColor = cs.surfaceContainerHigh,
+        )
     }
 }
 
@@ -1094,6 +1252,7 @@ private fun sourceSubline(source: GameSource, appId: Int): String = when (source
 
 private fun methodDescription(method: LaunchMethod, source: GameSource): String = when (method) {
     LaunchMethod.STEAMLITE -> "Real Steam — VAC servers, real achievements & cloud saves."
+    LaunchMethod.APPSTEAM -> "App's own Steam session — friends & chat stay online. Experimental; VAC unproven."
     LaunchMethod.GOLDBERG -> "Offline emulator — no login, lightweight, single-player."
     LaunchMethod.RAW -> when (source) {
         GameSource.EPIC -> "Run the game's .exe directly."

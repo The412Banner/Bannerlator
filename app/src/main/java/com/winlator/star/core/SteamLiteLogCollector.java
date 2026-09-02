@@ -124,8 +124,22 @@ public final class SteamLiteLogCollector {
      */
     public static void collect(Context context, File driveC, File perGameLogDir,
                                String gameName, int appId, Info info, List<String> agentEvents) {
+        collect(context, driveC, perGameLogDir, gameName, appId, info, agentEvents, null);
+    }
+
+    /**
+     * As {@link #collect(Context, File, File, String, int, Info, List)}, plus the App Steam session
+     * host's log ({@code bl-steam-host} stdout — {@link com.winlator.star.store.AppSteamLauncher.Plan#hostLog})
+     * for a {@code launchMode=AppSteam} launch. When given, the bundle is written even without a
+     * SteamLite marker in the prefix (App Steam stages no agent), the host log rides along as its own
+     * redacted section, and the host's Valve client logs ({@code <host HOME>/Steam/logs}) are included.
+     */
+    public static void collect(Context context, File driveC, File perGameLogDir,
+                               String gameName, int appId, Info info, List<String> agentEvents,
+                               File appSteamHostLog) {
         try {
             if (driveC == null || perGameLogDir == null) return;
+            final boolean appSteam = appSteamHostLog != null;
 
             // A Steam account NAME isn't pattern-detectable — the scrub can only strip it by exact
             // match against registered secrets. This collector runs on the game-launch path, where
@@ -142,13 +156,19 @@ public final class SteamLiteLogCollector {
             } catch (Throwable ignored) {}
 
             File steamDir = new File(driveC, STEAM_DIR_REL);
-            File logsDir = new File(steamDir, LOGS_SUBDIR);
+            File logsDir = new File(steamDir, LOGS_SUBDIR);   // reassigned for App Steam below
             String steamLiteVersion = readMarkerVersion(steamDir);
 
             // Not a SteamLite launch (or the client left nothing) → collect nothing, don't error.
-            if (!logsDir.isDirectory() && steamLiteVersion == null) {
+            if (!logsDir.isDirectory() && steamLiteVersion == null && !appSteam) {
                 Log.d(TAG, "no SteamLite marker/logs in prefix — skipping");
                 return;
+            }
+            // App Steam: the genuine client ran in the app's session host, so its own logs live under
+            // the host's HOME (<state>/home/Steam/logs), not in the prefix.
+            if (appSteam) {
+                File hostLogs = new File(appSteamHostLog.getParentFile(), "home/Steam/logs");
+                if (hostLogs.isDirectory()) logsDir = hostLogs;
             }
 
             // Read the Steam client logs (redacted for output, raw kept only long enough to scan).
@@ -180,6 +200,8 @@ public final class SteamLiteLogCollector {
 
             StringBuilder out = new StringBuilder(8 * 1024);
             appendSummary(out, context, gameName, appId, info, steamLiteVersion, dxText);
+            if (appSteam) out.append("Launch mode: App Steam — the game ran on the app's own Steam session "
+                    + "(bl-steam-host + Valve androidarm64 libsteamclient.so; no in-container Steam client)\n");
             if (!engineLines.isEmpty()) out.append("Steam engine: Rust (libblsteam.so) — app-side session log included\n");
             // The genuine Steam client logs accumulate across every launch — anchor to THIS run so the
             // diagnostics and raw sections report this session, not days of history. Null = no anchor.
@@ -187,6 +209,7 @@ public final class SteamLiteLogCollector {
             appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog, agentEvents, engineLines);
             appendRawSections(out, steamRedacted, since);
             appendAgentSection(out, agentEvents);
+            if (appSteam) appendAppSteamSection(out, appSteamHostLog);
             appendEngineSection(out, engineLines, sessionTail);
 
             // Belt-and-suspenders: re-scan the finished file for anything a header line carried through.
@@ -640,6 +663,24 @@ public final class SteamLiteLogCollector {
                 out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
             }
         }
+    }
+
+    /** Raw section: the App Steam session host's own log (bl-steam-host stdout), redacted line by line. */
+    private static void appendAppSteamSection(StringBuilder out, File hostLog) {
+        out.append("\n===== App Steam — session host log (bl-steam-host) =====\n");
+        String text = hostLog != null ? readTail(hostLog, LAUNCHER_LOG_TAIL_BYTES) : null;
+        if (text == null || text.trim().isEmpty()) {
+            out.append("(no host log — the host never started, or its log was not written)\n");
+            return;
+        }
+        int cbLines = 0;
+        for (String line : text.split("\n")) {
+            // The host logs every callback id it drains (bounded); keep the bundle readable.
+            if (line.contains("callback id=")) { cbLines++; continue; }
+            if (line.trim().isEmpty()) continue;
+            out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
+        }
+        if (cbLines > 0) out.append("(").append(cbLines).append(" callback-trace lines omitted)\n");
     }
 
     /** Raw section: the agent-channel lines verbatim (already token-free / SteamID-masked). */

@@ -117,6 +117,10 @@ private const val HELP_CLIENT =
     "Bannerlator's small Steam client for online (VAC) launches. Newer versions add features the app " +
         "relies on (live launch status, in-game friends). Update downloads ~18 MB and re-stages it " +
         "into your container."
+private const val HELP_CLIENT_APPSTEAM =
+    "Valve's own Steam client library set, downloaded from Valve for App Steam launches. The app runs " +
+        "it as a separate process on your own Steam session; only builds this app has been verified " +
+        "with are used."
 private const val HELP_CLIENT_OFFER =
     "Update — download the newest SteamLite package, then launch.\n" +
         "Launch anyway — play with the installed SteamLite; newer app features stay off.\n" +
@@ -293,7 +297,8 @@ fun SteamPreflightDialog(
     }
     // Reduced motion: the system "Remove animations" / animator scale 0 → no zoom, instant swaps.
     val motion = remember { ValueAnimator.areAnimatorsEnabled() }
-    val caption = captionFor(shown, states, launching, shortcut.name)
+    val caption = captionFor(shown, states, launching, shortcut.name,
+        appSteam = request.clientPackage == SteamSessionManager.ClientPackage.APP_STEAM)
 
     val fail = failCardFor(
         shortcut, needSignIn, offline, updateOffer, clientOffer, clientUpdating,
@@ -380,6 +385,7 @@ private fun captionFor(
     states: Map<Step, Pair<StepState, String>>,
     launching: Boolean,
     gameName: String,
+    appSteam: Boolean = false,
 ): Caption {
     fun of(label: String, step: Step, help: String, pendingLine: String): Caption {
         val st = states[step]
@@ -396,6 +402,7 @@ private fun captionFor(
         2 -> of("Cloud saves", Step.CLOUD, HELP_CLOUD, "Syncing cloud saves…")
         else -> when {
             launching -> Caption("Ready", "Launching $gameName…", Tone.OK, Trail.CHECK, HELP_PREFLIGHT)
+            states.containsKey(Step.CLIENT) && appSteam -> of("Valve Steam client", Step.CLIENT, HELP_CLIENT_APPSTEAM, "Checking Valve's Steam client…")
             states.containsKey(Step.CLIENT) -> of("SteamLite client", Step.CLIENT, HELP_CLIENT, "Checking for SteamLite updates…")
             else -> of("Game files", Step.UPDATE, HELP_UPDATE, "Checking for updates…")
         }

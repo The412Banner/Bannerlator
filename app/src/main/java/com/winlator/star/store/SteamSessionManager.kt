@@ -178,6 +178,10 @@ object SteamSessionManager {
     /** NOTICE = done, but worth a look (amber): informational, never blocks — the network verdict. */
     enum class StepState { PENDING, RUNNING, DONE, SKIPPED, WARN, NOTICE }
 
+    /** Which client package the pre-flight's last step checks: SteamLite's agent package (RealSteam)
+     *  or Valve's own client set the app's session host runs (AppSteam, [SteamHostComponent]). */
+    enum class ClientPackage { STEAMLITE, APP_STEAM }
+
     /** What the pre-flight should do for one launch. */
     data class PreflightRequest(
         val appId: Int,
@@ -185,6 +189,7 @@ object SteamSessionManager {
         val gameName: String,
         val pullCloudSaves: Boolean = true,
         val checkForUpdates: Boolean = true,
+        val clientPackage: ClientPackage = ClientPackage.STEAMLITE,
     )
 
     /** Callbacks on the MAIN thread. */
@@ -331,12 +336,34 @@ object SteamSessionManager {
                     }
                 }
 
-                // 5. SteamLite client package --------------------------------------------------------
+                // 5. Client package --------------------------------------------------------------------
                 // Safety net for remembered launches that skip the popup (which has its own
                 // "Update & Launch" gate). Bounded catalog fetch; offline / a failed fetch never
                 // blocks — the installed package launches (even below MIN_AGENT_VERSION: the agent
                 // is backwards compatible, newer app features just stay off).
-                if (!SteamLiteComponent.isInstalled(app)) {
+                if (req.clientPackage == ClientPackage.APP_STEAM) {
+                    // App Steam: Valve's client set for the app's session host. Informational only —
+                    // a newer Valve build is never auto-installed here (the host is pinned to verified
+                    // builds; the launch popup offers the update when the app supports it).
+                    if (!SteamHostComponent.isInstalled(app)) {
+                        step(Step.CLIENT, StepState.SKIPPED, "Valve Steam client: downloaded by the launch")
+                    } else {
+                        step(Step.CLIENT, StepState.RUNNING, "Checking Valve's Steam client…")
+                        val check = SteamHostComponent.checkUpdateBlocking(app)
+                        if (handle.isCancelled) { post { listener.onCancelled() }; return@Thread }
+                        val installed = SteamHostComponent.versionLabel(check.installed)
+                        when {
+                            !check.installedVerified ->
+                                step(Step.CLIENT, StepState.WARN, "Installed Valve client ($installed) isn't verified for this app — re-download it")
+                            !check.checked -> step(Step.CLIENT, StepState.DONE, "Couldn't check Valve's manifest — using installed $installed")
+                            check.available && check.manifestVerified ->
+                                step(Step.CLIENT, StepState.NOTICE, "Valve has build ${check.manifest?.version} ($installed installed) — update from the launch popup")
+                            check.available ->
+                                step(Step.CLIENT, StepState.DONE, "Valve moved to build ${check.manifest?.version}; this app stays on $installed")
+                            else -> step(Step.CLIENT, StepState.DONE, "Up to date ($installed)")
+                        }
+                    }
+                } else if (!SteamLiteComponent.isInstalled(app)) {
                     step(Step.CLIENT, StepState.SKIPPED, "SteamLite client: downloaded by the launch")
                 } else {
                     step(Step.CLIENT, StepState.RUNNING, "Checking for SteamLite updates…")
@@ -405,7 +432,7 @@ object SteamSessionManager {
     private const val RELAUNCH_PREFS = "steam_relaunch"
     private const val RELAUNCH_TTL_MS = 3L * 60 * 1000
 
-    enum class RelaunchMode { STEAMLITE, GOLDBERG }
+    enum class RelaunchMode { STEAMLITE, GOLDBERG, APPSTEAM }
 
     data class PendingRelaunch(val shortcutPath: String, val containerId: Int, val mode: RelaunchMode)
 

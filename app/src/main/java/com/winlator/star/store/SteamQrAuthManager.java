@@ -6,6 +6,7 @@ import android.util.Log;
 
 import com.winlator.star.store.blsteam.BlAuthResult;
 import com.winlator.star.store.blsteam.BlSteamEngine;
+import com.winlator.star.store.blsteam.BlSteamEngineLog;
 import com.winlator.star.store.blsteam.BlSteamSession;
 
 import in.dragonbra.javasteam.enums.EOSType;
@@ -164,6 +165,7 @@ public final class SteamQrAuthManager {
         rustQrActive = true;
         final boolean[] shown = { false };
         Log.i(TAG, "QR sign-in starting on the Rust engine");
+        BlSteamEngineLog.log("AUTH", "QR sign-in started");
         try {
             session.startLoginWithQr(
                     url -> {
@@ -195,6 +197,7 @@ public final class SteamQrAuthManager {
             if (sid == 0L) sid = SteamSessionManager.jwtSteamId64(result.getRefreshToken());
             SteamRepository.getInstance().saveSession(finalName, result.getRefreshToken(), sid);
             Log.i(TAG, "QR sign-in OK on the Rust engine (steamId known=" + (sid != 0L) + ")");
+            BlSteamEngineLog.log("AUTH", "QR sign-in OK (steamId known=" + (sid != 0L) + ")");
             mainHandler.post(() -> listener.onSuccess(finalName, result.getRefreshToken()));
             return;
         }
@@ -208,6 +211,8 @@ public final class SteamQrAuthManager {
                 ? SteamRepository.eresultName(result.getErrorCode()) : result.getErrorMessage();
         Log.w(TAG, "QR sign-in failed on the Rust engine: eresult=" + result.getErrorCode()
                 + " " + SteamLogRedactor.redact(msg));
+        BlSteamEngineLog.log("AUTH", "QR sign-in FAILED eresult=" + result.getErrorCode()
+                + " (" + SteamRepository.eresultName(result.getErrorCode()) + ")");
         mainHandler.post(() -> listener.onFailure(msg));
     }
 

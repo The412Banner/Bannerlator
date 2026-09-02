@@ -55,6 +55,8 @@ public final class SteamLiteLogCollector {
     private static final long WINE_SCAN_TAIL_BYTES = 4L * 1024 * 1024;
     /** The agent's own log is small and rewritten each run; a modest tail covers the whole file. */
     private static final long LAUNCHER_LOG_TAIL_BYTES = 256L * 1024;
+    /** Most recent engine-log lines folded into the bundle (Rust engine only). */
+    private static final int ENGINE_LINES_MAX = 400;
     // Exact "watching ... for exit (<path>)" suffixes from the agent's launch log; the "for exit ("
     // prefix keeps the steamservice line ("... will use CreateProcess fallback") from matching.
     private static final String LAUNCHER_SECURE_MARK   = "for exit (LaunchApp path)";
@@ -168,14 +170,24 @@ public final class SteamLiteLogCollector {
             // record of whether Steam's LaunchApp spawned the game or the agent fell back to CreateProcess.
             String launcherLog = readTail(new File(driveC, "wn-launcher.log"), LAUNCHER_LOG_TAIL_BYTES);
 
+            // Rust engine (use_rust_steam_engine ON): the app-side session brain keeps its own
+            // record (steam_engine.txt — AUTH / SESSION / CLOUD / ACHV / DL lines, redacted at the
+            // source). Its lines feed the same AUTH / SESSION / CLOUD / ACHIEVEMENTS diagnostics the
+            // genuine client's logs feed, and ride along as a raw section. The always-on
+            // steam_session.txt (status transitions) is tailed next to it. Empty on JavaSteam.
+            List<String> engineLines = engineLines(context);
+            String sessionTail = engineLines.isEmpty() ? null : readEngineSessionTail(context);
+
             StringBuilder out = new StringBuilder(8 * 1024);
             appendSummary(out, context, gameName, appId, info, steamLiteVersion, dxText);
+            if (!engineLines.isEmpty()) out.append("Steam engine: Rust (libblsteam.so) — app-side session log included\n");
             // The genuine Steam client logs accumulate across every launch — anchor to THIS run so the
             // diagnostics and raw sections report this session, not days of history. Null = no anchor.
             String since = sessionStart(steamRaw.get("gameprocess_log.txt"), appId);
-            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog, agentEvents);
+            appendDiagnostics(out, appId, wineText, dxText, steamRaw, since, launcherLog, agentEvents, engineLines);
             appendRawSections(out, steamRedacted, since);
             appendAgentSection(out, agentEvents);
+            appendEngineSection(out, engineLines, sessionTail);
 
             // Belt-and-suspenders: re-scan the finished file for anything a header line carried through.
             String finished = SteamLogRedactor.auditSteamClientText(out.toString());
@@ -253,7 +265,7 @@ public final class SteamLiteLogCollector {
      *  a reader sees the known-failure summary without reading four logs. */
     private static void appendDiagnostics(StringBuilder out, int appId, String wineText, String dxText,
                                           Map<String, String> steam, String since, String launcherLog,
-                                          List<String> agentEvents) {
+                                          List<String> agentEvents, List<String> engineLines) {
         out.append("\n===== DIAGNOSTICS (auto-scan) =====\n");
         if (since != null)
             out.append("- Session scope: findings below are from THIS run (since ").append(since).append(").\n");
@@ -308,6 +320,9 @@ public final class SteamLiteLogCollector {
             f.add("CONTENT: download/manifest failures (" + dlFail.count + "x)." + when(dlFail));
         appendAchievements(f, stats, since);
         appendCloud(f, cloud, since);
+
+        // ── Rust engine (app-side session): AUTH / SESSION / CLOUD / ACHIEVEMENTS from steam_engine.txt ──
+        appendEngineDiagnostics(f, engineLines);
 
         // ── CRASH / teardown (wine_debug — per-run) ──
         Hit crash = scan(wineText, CRASH);
@@ -460,6 +475,151 @@ public final class SteamLiteLogCollector {
         if (exited != null) f.add("EXIT (agent): game exited " + exited + ".");
         if (shutdown != null) f.add("EXIT (agent): agent shutdown reason " + shutdown + ".");
         return verdict;
+    }
+
+    // ── Rust engine log (Phase 3b-4) ────────────────────────────────────────────────────────────
+
+    /** The engine's recent lines when the Rust engine drives the session; empty otherwise. */
+    private static List<String> engineLines(Context context) {
+        try {
+            android.content.SharedPreferences sp =
+                    context.getSharedPreferences("steam_prefs", Context.MODE_PRIVATE);
+            if (!sp.getBoolean(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, false))
+                return java.util.Collections.emptyList();
+            List<String> lines = com.winlator.star.store.blsteam.BlSteamEngineLog.lines();
+            if (lines.isEmpty()) {
+                // The process may have restarted since the launch — fall back to the file's tail.
+                File f = com.winlator.star.store.blsteam.BlSteamEngineLog.file();
+                if (f == null) {
+                    File dir = context.getExternalFilesDir(null);
+                    if (dir != null) f = new File(dir, com.winlator.star.store.blsteam.BlSteamEngineLog.FILE_NAME);
+                }
+                String tail = f != null ? readTail(f, STEAM_LOG_TAIL_BYTES) : null;
+                if (tail == null) return java.util.Collections.emptyList();
+                lines = new ArrayList<>();
+                for (String l : tail.split("\n")) if (!l.trim().isEmpty()) lines.add(l);
+            }
+            int keep = Math.min(lines.size(), ENGINE_LINES_MAX);
+            return new ArrayList<>(lines.subList(lines.size() - keep, lines.size()));
+        } catch (Throwable t) {
+            Log.w(TAG, "engine log read failed: " + t.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /** Tail of the always-on steam_session.txt (status transitions), or null. */
+    private static String readEngineSessionTail(Context context) {
+        try {
+            File dir = context.getExternalFilesDir(null);
+            if (dir == null) return null;
+            return readTail(new File(dir, "steam_session.txt"), 32L * 1024);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Value of `key=` inside an engine line, or null. */
+    private static String engineField(String line, String key) {
+        Matcher m = Pattern.compile("\\b" + Pattern.quote(key) + "=([^\\s,()]+)").matcher(line);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /**
+     * Diagnostics lines derived from the engine's own record. Only what the engine logged for this
+     * process is used — the lines carry EResults, counts and app ids, never a token or a name.
+     */
+    private static void appendEngineDiagnostics(List<String> f, List<String> lines) {
+        if (lines == null || lines.isEmpty()) return;
+        int loggedOn = 0, logonFail = 0, loggedOff = 0, disconnects = 0, failures = 0, rotated = 0;
+        String lastLogonFail = null, lastLoggedOff = null, lastFailure = null;
+        boolean elsewhere = false, tokenRejected = false, signInOk = false, signInFail = false;
+        int cloudDl = 0, cloudDlFail = 0, cloudUl = 0, cloudUlFail = 0, cloudBatchRefused = 0;
+        String cloudLaunchIntent = null;
+        int achvFetch = 0, achvNoReply = 0, achvStoreOk = 0, achvStoreFail = 0;
+        int dlStarted = 0, dlComplete = 0, dlFailed = 0;
+        String lastDlFail = null;
+        for (String line : lines) {
+            int i = line.indexOf("] ");
+            String body = i >= 0 ? line.substring(i + 2) : line;
+            if (body.startsWith("SESSION: ")) {
+                String s = body.substring(9);
+                if (s.startsWith("logged on")) loggedOn++;
+                else if (s.startsWith("logged off by Steam")) {
+                    loggedOff++; lastLoggedOff = s;
+                    String er = engineField(s, "eresult");
+                    if ("34".equals(er) || "43".equals(er)) elsewhere = true;
+                } else if (s.startsWith("disconnected")) {
+                    disconnects++;
+                    if (s.contains("token rejected")) tokenRejected = true;
+                    if (s.contains("another client")) elsewhere = true;
+                } else if (s.startsWith("engine failure")) { failures++; lastFailure = s; }
+            } else if (body.startsWith("AUTH: ")) {
+                String s = body.substring(6);
+                if (s.startsWith("token logon failed")) { logonFail++; lastLogonFail = s; }
+                else if (s.contains("sign-in OK")) signInOk = true;
+                else if (s.contains("sign-in FAILED")) { signInFail = true; lastLogonFail = s; }
+                else if (s.startsWith("refresh token rotated")) rotated++;
+            } else if (body.startsWith("CLOUD: ")) {
+                String s = body.substring(7);
+                if (s.startsWith("download ")) { if (s.contains("FAILED")) cloudDlFail++; else cloudDl++; }
+                else if (s.startsWith("upload batch") && s.contains("REFUSED")) cloudBatchRefused++;
+                else if (s.startsWith("upload ") && !s.startsWith("upload batch")) { if (s.contains("FAILED")) cloudUlFail++; else cloudUl++; }
+                else if (s.startsWith("app launch intent")) cloudLaunchIntent = s;
+            } else if (body.startsWith("ACHV: ")) {
+                String s = body.substring(6);
+                if (s.startsWith("GetUserStats")) { if (s.contains("no reply")) achvNoReply++; else achvFetch++; }
+                else if (s.startsWith("StoreUserStats")) { if ("1".equals(engineField(s, "eresult"))) achvStoreOk++; else achvStoreFail++; }
+            } else if (body.startsWith("DL: ")) {
+                String s = body.substring(4);
+                if (s.contains(" started ")) dlStarted++;
+                else if (s.startsWith("complete")) dlComplete++;
+                else if (s.startsWith("FAILED")) { dlFailed++; lastDlFail = s; }
+            }
+        }
+        // AUTH (engine)
+        if (signInFail && !signInOk) f.add("AUTH (engine): an interactive sign-in FAILED — " + lastLogonFail + ".");
+        else if (signInOk) f.add("AUTH (engine): interactive sign-in = OK.");
+        if (tokenRejected) f.add("AUTH (engine): the saved sign-in was REJECTED by Steam — the user must sign in again"
+                + (lastLogonFail != null ? " (" + lastLogonFail + ")" : "") + ".");
+        else if (logonFail > 0) f.add("AUTH (engine): token logon failed " + logonFail + "x (transient) — last: " + lastLogonFail + ".");
+        else if (loggedOn > 0) f.add("AUTH (engine): saved-token logon succeeded (" + loggedOn + "x this process).");
+        if (rotated > 0) f.add("AUTH (engine): refresh token rotated " + rotated + "x (value never logged).");
+        // SESSION (engine)
+        if (elsewhere) f.add("SESSION (engine): the account was taken by ANOTHER client (LoggedInElsewhere / "
+                + "LogonSessionReplaced) — expected around a SteamLite game, a conflict otherwise.");
+        if (loggedOff > 0 && !elsewhere) f.add("SESSION (engine): Steam logged the app session off " + loggedOff + "x — last: " + lastLoggedOff + ".");
+        if (disconnects > 1) f.add("SESSION (engine): " + disconnects + " disconnects this process (reconnect ladder engaged).");
+        if (failures > 0) f.add("SESSION (engine): engine failures " + failures + "x — last: " + lastFailure + ".");
+        // CLOUD (engine)
+        if (cloudDl > 0 || cloudDlFail > 0) f.add("CLOUD (engine): " + cloudDl + " save file(s) downloaded"
+                + (cloudDlFail > 0 ? ", " + cloudDlFail + " FAILED" : "") + ".");
+        if (cloudUl > 0 || cloudUlFail > 0) f.add("CLOUD (engine): " + cloudUl + " save file(s) uploaded"
+                + (cloudUlFail > 0 ? ", " + cloudUlFail + " FAILED" : "") + ".");
+        if (cloudBatchRefused > 0) f.add("CLOUD (engine): Steam REFUSED to open an upload batch " + cloudBatchRefused + "x.");
+        if (cloudLaunchIntent != null && cloudLaunchIntent.contains("pending ops"))
+            f.add("CLOUD (engine): Steam reported PENDING cloud operations from another machine at launch (" + cloudLaunchIntent + ").");
+        // ACHIEVEMENTS (engine)
+        if (achvFetch > 0) f.add("ACHIEVEMENTS (engine): achievement state fetched " + achvFetch + "x from Steam.");
+        if (achvNoReply > 0) f.add("ACHIEVEMENTS (engine): GetUserStats got NO reply " + achvNoReply + "x.");
+        if (achvStoreOk > 0 || achvStoreFail > 0) f.add("ACHIEVEMENTS (engine): sync-back to Steam (StoreUserStats) = "
+                + (achvStoreFail > 0 ? achvStoreFail + "x FAILED" + (achvStoreOk > 0 ? ", " + achvStoreOk + "x OK" : "") : "OK") + ".");
+        // DOWNLOADS (engine)
+        if (dlFailed > 0) f.add("CONTENT (engine): " + dlFailed + " download pass(es) FAILED — last: " + lastDlFail + ".");
+        else if (dlStarted > 0) f.add("CONTENT (engine): " + dlComplete + " of " + dlStarted + " download pass(es) completed this process.");
+    }
+
+    /** Raw section: the engine's own lines (redacted at the source) + the session-status tail. */
+    private static void appendEngineSection(StringBuilder out, List<String> lines, String sessionTail) {
+        if (lines == null || lines.isEmpty()) return;
+        out.append("\n===== steam_engine.txt — Rust engine (app-side session) =====\n");
+        for (String line : lines) out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
+        if (sessionTail != null && !sessionTail.trim().isEmpty()) {
+            out.append("\n===== steam_session.txt — app session status transitions =====\n");
+            for (String line : sessionTail.split("\n")) {
+                if (line.trim().isEmpty()) continue;
+                out.append(SteamLogRedactor.redactSteamClientLine(line)).append('\n');
+            }
+        }
     }
 
     /** Raw section: the agent-channel lines verbatim (already token-free / SteamID-masked). */

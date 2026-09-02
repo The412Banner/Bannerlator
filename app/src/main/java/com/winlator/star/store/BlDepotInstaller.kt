@@ -6,6 +6,7 @@ import com.winlator.star.BuildConfig
 import com.winlator.star.store.blsteam.BlDownloadListener
 import com.winlator.star.store.blsteam.BlLibraryCrawler
 import com.winlator.star.store.blsteam.BlSteamEngine
+import com.winlator.star.store.blsteam.BlSteamEngineLog
 import com.winlator.star.store.blsteam.BlSteamSession
 import com.winlator.star.store.blsteam.CaBundleExtractor
 import com.winlator.star.store.download.DownloadEntry
@@ -149,6 +150,7 @@ internal object BlDepotInstaller {
         if (verbose) SteamDepotDownloader.initDebugLog(ctx, truncate = attempt == 0, engine = "Rust engine (libblsteam.so)")
         dlog("=== Starting ${if (verify) "verify" else if (isResume) "resume" else "install"}: appId=$appId " +
                 "(engine=rust attempt=${attempt + 1} verbose=$verbose) ===")
+        BlSteamEngineLog.log("DL", "${if (verify) "verify" else if (isResume) "resume" else "install"} started app=$appId attempt=${attempt + 1}")
 
         val repo = SteamRepository.getInstance()
         val db = repo.database
@@ -429,6 +431,7 @@ internal object BlDepotInstaller {
                     val finalInstall = maxOf(lastInstallDone.get(), onDisk)
                     dlog("=== Download complete: appId=$appId — all ${specs.size - deniedDlc.size} depot(s) validated " +
                             "against their manifests; on-disk ${fmt(onDisk)} ===")
+                    BlSteamEngineLog.log("DL", "complete app=$appId depots=${specs.size - deniedDlc.size} onDisk=${fmt(onDisk)}")
                     emitProgress(iTotal, iTotal, dTotal, dTotal)
                     db.markInstalled(appId, installDir.absolutePath, if (finalInstall > 0L) finalInstall else iTotal)
                     try { SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, selectedBranch) } catch (_: Throwable) {}
@@ -621,6 +624,7 @@ internal object BlDepotInstaller {
     }
 
     private fun fail(appId: Int, reason: String) {
+        BlSteamEngineLog.log("DL", "FAILED app=$appId: $reason")
         SteamDepotDownloader.emitFailed(appId, reason)
         SteamDepotDownloader.activeDownloads.remove(appId)
     }

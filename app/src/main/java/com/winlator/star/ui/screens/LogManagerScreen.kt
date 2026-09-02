@@ -281,12 +281,13 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     onInfo = { info = "Exit reasons" to LogCopy.EXIT_REASONS }) {
                     exitAutosave = it; putBool(ExitReasonReporter.PREF_AUTOSAVE, it)
                 }
-                // Developer switch for the native Rust Steam engine (docs/STEAM_RUST_ENGINE_PLAN.md,
-                // Phase 0). Read once per process by SteamRepository.initialize(), so it takes effect
-                // on the next app start. OFF = JavaSteam as today; ON = CM connect + token logon run on
-                // libblsteam.so (library/downloads/friends still JavaSteam-only in this phase).
+                // Developer switch for the native Rust Steam engine (docs/STEAM_RUST_ENGINE_PLAN.md).
+                // Read once per process by SteamRepository.initialize(), so it takes effect on the
+                // next app start. OFF = JavaSteam as today; ON = the full Steam stack (auth, session,
+                // library, downloads, cloud, achievements, social, presence) runs on libblsteam.so and
+                // the engine's steam_engine.txt is folded into the SteamLite log bundle (Phase 3b-4).
                 LogToggle("Rust Steam engine (developer, restart required)", rustSteamEngine,
-                    hint = "Experimental — CM session on libblsteam.so; store surfaces stay offline in this phase") {
+                    hint = "Experimental — the whole Steam session (sign-in, library, downloads, cloud, achievements, friends) runs on libblsteam.so; its log joins the SteamLite bundle") {
                     rustSteamEngine = it
                     putBool(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, it)
                 }

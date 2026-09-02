@@ -81,6 +81,9 @@ import com.winlator.star.store.GoldbergMode
 import com.winlator.star.store.SteamGameDetailActivity
 import com.winlator.star.store.SteamLiteComponent
 import com.winlator.star.store.SteamPrefs
+import com.winlator.star.store.SteamRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -138,6 +141,11 @@ private const val HELP_RAW =
 private const val HELP_PASS =
     "For classic games (Half-Life 2, CS:S) that ignore a controller in Real-Steam mode. Hands the pad " +
         "straight to the game instead of Steam Input. SteamLite only."
+private const val HELP_VAC =
+    "On: the game must be started by Steam itself (VAC-secure). If Steam can't, you get a warning and " +
+        "up to ~60 s of waiting before a direct start. Off: the game has no VAC, so a direct start after " +
+        "~15 s is fine. Auto-detected from Steam's app info (Valve Anti-Cheat category); flip it if a " +
+        "VAC game is misdetected. SteamLite only."
 private const val HELP_REMEMBER =
     "Saves this launch method for this game and skips the popup next time. You can change it later."
 private const val HELP_DETAILS =
@@ -163,8 +171,10 @@ private const val HELP_GOLDBERG_MODE =
  *    a horizontal segmented outlined menu to fit the shorter height.
  *
  * This composable only REPORTS the choice back via [onLaunch]; the caller persists the shortcut extras
- * (`launchMode` / `launchModeRemembered` / `controllerPassthrough`), stages the picked component, and
- * launches. State is keyed on [shortcut] so reopening for a different game re-seeds from its saved choice.
+ * (`launchMode` / `launchModeRemembered` / `controllerPassthrough` / `steamVacLaunch`), stages the picked
+ * component, and launches. State is keyed on [shortcut] so reopening for a different game re-seeds from
+ * its saved choice. `steamVacLaunch` ("" = follow the app-info VAC detection, "1"/"0" = user override)
+ * feeds the RealSteam launch's WN_STEAM_VAC secure-launch policy (see [RealSteamLauncher.prepare]).
  *
  * [onVerifyFiles] / [onUpdateFiles] drive the slim Steam-only maintenance row (a "Verify files" +
  * "Check for updates" pair, [MaintenanceRow]) shown above the pinned Launch footer — a compact stand-in
@@ -176,7 +186,7 @@ private const val HELP_GOLDBERG_MODE =
 fun LaunchMethodSheet(
     shortcut: Shortcut,
     onDismiss: () -> Unit,
-    onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean, controllerPassthrough: Boolean) -> Unit,
+    onLaunch: (mode: String, goldbergMode: GoldbergMode?, remember: Boolean, controllerPassthrough: Boolean, vacLaunch: String) -> Unit,
     onVerifyFiles: (() -> Unit)? = null,
     onUpdateFiles: (() -> Unit)? = null,
 ) {
@@ -209,6 +219,22 @@ fun LaunchMethodSheet(
     }
     var rememberChoice by remember(shortcut) { mutableStateOf(shortcut.getExtra("launchModeRemembered", "") == "1") }
     var controllerPassthrough by remember(shortcut) { mutableStateOf(shortcut.getExtra("controllerPassthrough", "") == "1") }
+    // "Requires secure (VAC) launch" (SteamLite only). Seeded from the saved override, else from the
+    // VAC marker the library sync recorded from PICS app-info (loaded off-main). Persisted only once the
+    // user touches it, so an untouched toggle keeps following the detection.
+    val vacOverride = remember(shortcut) { shortcut.getExtra("steamVacLaunch", "").trim() }
+    var detectedVac by remember(shortcut) { mutableStateOf<Boolean?>(null) }
+    var secureLaunch by remember(shortcut) { mutableStateOf(vacOverride == "1") }
+    var vacTouched by remember(shortcut) { mutableStateOf(false) }
+    LaunchedEffect(shortcut) {
+        if (isSteam && appId > 0) {
+            val detected = withContext(Dispatchers.IO) {
+                runCatching { SteamRepository.getInstance().getDatabase().isVacSecure(appId) }.getOrDefault(false)
+            }
+            detectedVac = detected
+            if (vacOverride != "1" && vacOverride != "0" && !vacTouched) secureLaunch = detected
+        }
+    }
     // The active "?" help bubble (null = none). Keyed on the shortcut so it resets per game.
     var helpText by remember(shortcut) { mutableStateOf<String?>(null) }
     val toggleHelp: (String) -> Unit = { helpText = if (helpText == it) null else it }
@@ -219,6 +245,7 @@ fun LaunchMethodSheet(
             if (method == LaunchMethod.GOLDBERG) goldbergMode else null,
             rememberChoice,
             if (method == LaunchMethod.STEAMLITE) controllerPassthrough else false,
+            if (vacTouched) (if (secureLaunch) "1" else "0") else vacOverride,
         )
     }
     val openDetails: () -> Unit = {
@@ -283,6 +310,7 @@ fun LaunchMethodSheet(
                 shortcut, source, appId, isSteam, hasDetails, enabledMethods, accent,
                 method, { method = it }, goldbergMode, { goldbergMode = it },
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
+                secureLaunch, { secureLaunch = it; vacTouched = true }, detectedVac,
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
                 onVerifyFiles, onUpdateFiles, steamLiteClient,
             )
@@ -291,6 +319,7 @@ fun LaunchMethodSheet(
                 shortcut, source, appId, isSteam, hasDetails, enabledMethods, accent,
                 method, { method = it }, goldbergMode, { goldbergMode = it },
                 rememberChoice, { rememberChoice = it }, controllerPassthrough, { controllerPassthrough = it },
+                secureLaunch, { secureLaunch = it; vacTouched = true }, detectedVac,
                 helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
                 onVerifyFiles, onUpdateFiles, steamLiteClient,
             )
@@ -317,6 +346,9 @@ private fun PortraitCard(
     onRemember: (Boolean) -> Unit,
     passthrough: Boolean,
     onPassthrough: (Boolean) -> Unit,
+    secureLaunch: Boolean,
+    onSecureLaunch: (Boolean) -> Unit,
+    detectedVac: Boolean?,
     helpText: String?,
     toggleHelp: (String) -> Unit,
     dismissHelp: () -> Unit,
@@ -387,6 +419,7 @@ private fun PortraitCard(
                     Spacer(Modifier.height(2.dp))
                     OptionsBlock(
                         shortcut, isSteam, hasDetails, passthrough, onPassthrough,
+                        secureLaunch, onSecureLaunch, detectedVac,
                         rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = false,
                     )
 
@@ -425,6 +458,9 @@ private fun LandscapeCard(
     onRemember: (Boolean) -> Unit,
     passthrough: Boolean,
     onPassthrough: (Boolean) -> Unit,
+    secureLaunch: Boolean,
+    onSecureLaunch: (Boolean) -> Unit,
+    detectedVac: Boolean?,
     helpText: String?,
     toggleHelp: (String) -> Unit,
     dismissHelp: () -> Unit,
@@ -487,6 +523,7 @@ private fun LandscapeCard(
                         HorizontalDivider(color = cs.outline)
                         OptionsBlock(
                             shortcut, isSteam, hasDetails, passthrough, onPassthrough,
+                            secureLaunch, onSecureLaunch, detectedVac,
                             rememberChoice, onRemember, accent, toggleHelp, openDetails, compact = true,
                         )
 
@@ -591,7 +628,7 @@ private fun MethodDesc(method: LaunchMethod, source: GameSource) {
     )
 }
 
-/** The option rows: Full details (Steam), Controller passthrough (Steam), Remember. */
+/** The option rows: Full details (Steam), Controller passthrough (Steam), Requires secure (VAC) launch (Steam), Remember. */
 @Composable
 private fun ColumnScope.OptionsBlock(
     shortcut: Shortcut,
@@ -599,6 +636,9 @@ private fun ColumnScope.OptionsBlock(
     hasDetails: Boolean,
     passthrough: Boolean,
     onPassthrough: (Boolean) -> Unit,
+    secureLaunch: Boolean,
+    onSecureLaunch: (Boolean) -> Unit,
+    detectedVac: Boolean?,
     rememberChoice: Boolean,
     onRemember: (Boolean) -> Unit,
     accent: Color,
@@ -629,6 +669,19 @@ private fun ColumnScope.OptionsBlock(
             compact = compact,
             onHelp = { toggleHelp(HELP_PASS) },
             trailing = { PillSwitch(passthrough, accent, onPassthrough) },
+        )
+        OptionRow(
+            title = "Requires secure (VAC) launch",
+            badge = "NEW",
+            subtitle = if (compact) null else when (detectedVac) {
+                true -> "Detected: VAC-secured. Steam must start it (up to ~60 s wait)."
+                false -> "Detected: no VAC. Direct start after ~15 s is fine."
+                null -> "Auto-detected from Steam's app info."
+            },
+            accent = accent,
+            compact = compact,
+            onHelp = { toggleHelp(HELP_VAC) },
+            trailing = { PillSwitch(secureLaunch, accent, onSecureLaunch) },
         )
     }
     OptionRow(

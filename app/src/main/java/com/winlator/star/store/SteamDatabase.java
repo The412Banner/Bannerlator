@@ -49,7 +49,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     //     independent of steam_games.included_dlc (the depot-bundled owned subset that drives the
     //     download picker/size): steam_dlc is DISPLAY-ONLY. NEW table only — no existing library
     //     table is touched. It is (re)populated on library sync; empty until the next sync/open.
-    private static final int    DB_VERSION = 10;
+    // v11: steam_games.vac_secure (ADDITIVE column) — VAC marker from PICS app-info, filled on the next
+    //      library sync (processAppKv); 0 until then (= "no secure launch needed" → the RealSteam
+    //      launch's short fallback window). Per-shortcut override lives in the shortcut extras.
+    private static final int    DB_VERSION = 11;
 
     // -------------------------------------------------------------------------
     // DDL
@@ -76,7 +79,11 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  real_disk_bytes INTEGER NOT NULL DEFAULT 0," +
             // CSV of owned DLC appIds whose depots download with this game (for the detail-page
             // "Includes DLC:" line). Empty = no owned DLC bundled.
-            "  included_dlc TEXT NOT NULL DEFAULT ''" +
+            "  included_dlc TEXT NOT NULL DEFAULT ''," +
+            // 1 when the app's PICS app-info marks it VAC-secured (common/category/category_8 "Valve
+            // Anti-Cheat enabled" or any extended/vac* key such as vacmodulefilename); 0 otherwise.
+            // Drives the RealSteam launch's WN_STEAM_VAC policy (secure-launch wait window).
+            "  vac_secure INTEGER NOT NULL DEFAULT 0" +
             ")";
 
     private static final String SQL_LICENSES =
@@ -288,6 +295,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         if (oldVersion < 10) {
             db.execSQL(SQL_DLC);
         }
+        // v10 → v11: ADDITIVE — steam_games.vac_secure (see DB_VERSION comment). No drop of any table.
+        if (oldVersion < 11) {
+            addColumnIfMissing(db, "steam_games", "vac_secure", "INTEGER NOT NULL DEFAULT 0");
+        }
     }
 
     /**
@@ -479,6 +490,25 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         upd.put("genres",           cv.getAsString("genres"));
         upd.put("last_updated",     now);
         db.update("steam_games", upd, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** Record whether PICS app-info marks this app VAC-secured (see the vac_secure column). Separate
+     *  from upsertGame so its signature (and all callers) stay unchanged. */
+    public void setVacSecure(int appId, boolean vac) {
+        ContentValues cv = new ContentValues();
+        cv.put("vac_secure", vac ? 1 : 0);
+        getWritableDatabase().update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** True when the last library sync marked this app VAC-secured; false when not, or unknown. */
+    public boolean isVacSecure(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT vac_secure FROM steam_games WHERE app_id = ?",
+                new String[]{String.valueOf(appId)})) {
+            return c.moveToNext() && c.getInt(0) != 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** Record the owned DLC (appId CSV) whose depots download with this game. Separate from

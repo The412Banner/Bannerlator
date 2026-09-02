@@ -275,10 +275,31 @@ public final class RealSteamLauncher {
             // Region seed for the genuine client (additive; an agent without the feature ignores both).
             env.put("BL_STEAM_REGION", regionDesc);
             if (cmListWritten) env.put("WN_STEAM_CMLIST", STEAM_DIR_WIN + "\\config\\cmlist.json");
+            // Secure-launch policy (agent p3b): WN_STEAM_VAC=1 → the agent keeps its full ~60 s
+            // Steam-owned (VAC-secure) window before any direct start; 0 → the title never needed a
+            // secure launch, so an accepted-but-never-spawned LaunchApp falls back after ~15 s
+            // instead of a minute of black screen. Per-shortcut override "steamVacLaunch" ("1"/"0",
+            // the launch popup's "Requires secure (VAC) launch" toggle) wins; otherwise the PICS
+            // marker recorded by the library sync (SteamDatabase.vac_secure: category_8 "Valve
+            // Anti-Cheat enabled" or extended/vac*). An older agent ignores the variable.
+            String vacOverride = shortcut.getExtra("steamVacLaunch", "").trim();
+            boolean vacSecure;
+            String vacSource;
+            if ("1".equals(vacOverride) || "0".equals(vacOverride)) {
+                vacSecure = "1".equals(vacOverride);
+                vacSource = "shortcut override";
+            } else {
+                boolean detected = false;
+                try { detected = repo.getDatabase().isVacSecure(appId); } catch (Throwable ignored) {}
+                vacSecure = detected;
+                vacSource = "app-info";
+            }
+            env.put("WN_STEAM_VAC", vacSecure ? "1" : "0");
 
             String specArgWin = "C:\\" + appId + ".spec";
             Log.i(TAG, "prepare: staged appId=" + appId + " canonical=\"" + canonicalName
-                    + "\" relExe=\"" + relExe + "\" (LaunchApp SECURE)");
+                    + "\" relExe=\"" + relExe + "\" (LaunchApp SECURE, vac=" + (vacSecure ? 1 : 0)
+                    + " from " + vacSource + ")");
             return new Plan(env, STEAM_DIR_WIN, STEAM_EXE_NAME, specArgWin, canonicalName, appId);
         } catch (Throwable t) {
             Log.w(TAG, "prepare: errored — fallback", t);

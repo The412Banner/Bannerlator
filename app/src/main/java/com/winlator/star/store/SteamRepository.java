@@ -1885,6 +1885,27 @@ public final class SteamRepository {
      * produce byte-identical {@code steam_games} / {@code depot_manifests} / {@code steam_branches} /
      * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
      */
+    /**
+     * VAC marker from an app's PICS app-info: {@code common/category/category_8} (store category 8,
+     * "Valve Anti-Cheat enabled") or any {@code extended/vac*} key ({@code vacmodulefilename},
+     * {@code vacmacmodulefilename}, {@code vacmodulecache}, …, present on Source/Valve titles).
+     * Engine-agnostic (both KeyValue trees carry the full sections). Never throws.
+     */
+    static boolean detectVacSecure(KeyValue common, KeyValue root) {
+        try {
+            String cat8 = kvStr(common.get("category").get("category_8")).trim();
+            if (!cat8.isEmpty() && !"0".equals(cat8)) return true;
+            List<KeyValue> ext = root.get("extended").getChildren();
+            if (ext != null) {
+                for (KeyValue e : ext) {
+                    String n = e.getName();
+                    if (n != null && n.toLowerCase().startsWith("vac")) return true;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
     boolean processAppKv(int appId, KeyValue root, SteamDatabase db, java.util.Set<Integer> licensedApps) {
                     try {
                         KeyValue common = root.get("common");
@@ -2090,6 +2111,13 @@ public final class SteamRepository {
                             dlcCsv.append(id);
                         }
                         db.setIncludedDlc(appId, dlcCsv.toString());
+                        // VAC marker for the RealSteam launch's secure-launch policy (WN_STEAM_VAC).
+                        // PICS evidence (api.steamcmd.net dumps, 2026-09-02): TF2 (440) has
+                        // common/category/category_8 = "1" (store category 8 = "Valve Anti-Cheat
+                        // enabled") AND extended/vacmodulefilename = "sourceinit.dat" (+ vacmodulecache /
+                        // vacmacmodulecache); Brawlhalla (291550) has neither. There is no literal "vac"
+                        // key. Rule: category_8 OR any extended/vac* key → secured.
+                        db.setVacSecure(appId, detectVacSecure(common, root));
                         // Broadened DLC CATALOGUE for the detail-page DLC TAB: EVERY DLC the game
                         // lists in extended/listofdlc, split owned/unowned. included_dlc above stays
                         // the depot-bundled owned subset that drives the download picker/size — this

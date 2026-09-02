@@ -482,9 +482,7 @@ public final class SteamLiteLogCollector {
     /** The engine's recent lines when the Rust engine drives the session; empty otherwise. */
     private static List<String> engineLines(Context context) {
         try {
-            android.content.SharedPreferences sp =
-                    context.getSharedPreferences("steam_prefs", Context.MODE_PRIVATE);
-            if (!sp.getBoolean(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, false))
+            if (!com.winlator.star.store.blsteam.BlSteamEngineFlag.isEnabled(context))
                 return java.util.Collections.emptyList();
             List<String> lines = com.winlator.star.store.blsteam.BlSteamEngineLog.lines();
             if (lines.isEmpty()) {

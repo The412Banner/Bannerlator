@@ -20,7 +20,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  *  agent → app: `started{pid,appid,agent}`, `logged_in{steamid(masked),ms}`,
  *  `login_failed{eresult,reason}`, `appinfo{state}`, `launch_accepted`, `launch_refused{error,reason}`,
- *  `direct_exe{exe}`, `insecure_fallback{exe,reason}`, `game_spawned{exe,pid,secure}`,
+ *  `direct_exe{exe}`, `insecure_fallback{exe,reason,vac}` (p3b: `vac` = the WN_STEAM_VAC policy the
+ *  app sent — false means the direct start costs the title nothing), `game_spawned{exe,pid,secure}`,
+ *  `friends_relay{state:live|off,reason}` (p3b, ~5 s after the game is running),
  *  `session_lost`, `achievement{api}`, `game_exited{code,ms}`, `status{...}`, `shutdown{reason,code}`;
  *  agent p3 friends relay (BL_AGENT_FRIENDS=1): `friends{self,count,list[]}`, `persona{friend}`,
  *  `chat_in{sid,text,ts}`, `chat_typing{sid}`, `chat_sent{sid,ok}` — routed to
@@ -63,6 +65,9 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
     @Volatile var lastFailure: String? = null
     /** Region the agent reported seeding the genuine client with (`started`/`status`, agent ≥ p2). */
     @Volatile var agentRegion: String? = null
+        private set
+    /** Friends-relay verdict from the agent (`friends_relay`, agent ≥ p3b): "live" / "off (<reason>)"; null = not reported. */
+    @Volatile var friendsRelay: String? = null
         private set
     val isConnected: Boolean get() = connectedOnce.get() && client != null
 
@@ -157,7 +162,16 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
             "login_failed" -> lastFailure = "login_failed eresult=${obj.optInt("eresult", 0)} ${obj.optString("reason", "")}"
             "launch_accepted" -> launchAccepted = true
             "launch_refused" -> lastFailure = "launch_refused error=${obj.optInt("error", -1)} ${obj.optString("reason", "")}"
-            "insecure_fallback" -> { secure = false; lastFailure = "insecure_fallback ${obj.optString("reason", "")}" }
+            "insecure_fallback" -> {
+                secure = false
+                // vac:false = the title never needed a Steam-owned launch — a plain direct start, not a failure.
+                val vac = obj.optBoolean("vac", true)
+                lastFailure = if (vac) "insecure_fallback ${obj.optString("reason", "")}" else lastFailure
+            }
+            "friends_relay" -> {
+                val st = obj.optString("state", "")
+                friendsRelay = if (st == "live") "live" else "off (${obj.optString("reason", "")})"
+            }
             "direct_exe" -> secure = false
             "game_spawned" -> { gameSpawned = true; secure = obj.optBoolean("secure", false) }
             "game_exited" -> gameSpawned = false

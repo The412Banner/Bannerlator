@@ -77,6 +77,12 @@ object SteamLiteComponent {
      * launch status, failure cards with Retry) and the in-game friends relay need the v4 agent. An
      * older package still launches — the agent is backwards compatible — those features just stay
      * off, so the launch popup and pre-flight offer "Update & Launch" rather than refusing.
+     *
+     * Deliberately NOT bumped for v5 (agent p3b): v5 only changes agent-internal timing (friends relay
+     * armed after the game is running; WN_STEAM_VAC=0 shortens the never-spawned fallback window)
+     * and adds optional fields/events the app tolerates when absent. A v4 package still launches
+     * correctly — the catalog offers v5 as an ordinary "Update" — so no user is forced through a
+     * download for a launch that already works.
      */
     const val MIN_AGENT_VERSION = 4
 

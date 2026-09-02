@@ -4442,9 +4442,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 case "launch_refused":
                     preloaderHint("Steam refused the launch (" + obj.optString("reason", "") + ") — trying a direct start…");
                     break;
-                case "insecure_fallback":
+                case "insecure_fallback": {
                     agentLoginResolved = true;
-                    if (!winStarted) {
+                    // Agent p3b tags the fallback with the WN_STEAM_VAC policy the app sent: vac=false means
+                    // the title never needed a Steam-owned launch (no VAC marker in its app-info / user said
+                    // so), so the direct start is the normal outcome — one reassurance line, no failure
+                    // card. Absent field (older agent) = treat as VAC.
+                    boolean vac = obj.optBoolean("vac", true);
+                    if (!vac) {
+                        preloaderHint("Steam couldn't start the game itself — started it directly (fine for this title)");
+                    } else if (!winStarted) {
                         showAgentFailure("Steam launch",
                                 "Steam did not start the game — insecure fallback",
                                 "Steam's LaunchApp refused (" + obj.optString("reason", "") + "). The game can still run "
@@ -4454,6 +4461,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     } else {
                         preloaderHint("Running WITHOUT Steam protection (insecure fallback)");
                     }
+                    break;
+                }
+                case "friends_relay":
+                    // Informational (agent p3b): the in-game friends/chat relay verdict, ~5 s after spawn.
+                    Log.i(AGENT_TAG, "friends_relay: " + obj);
                     break;
                 case "direct_exe":
                     agentLoginResolved = true;

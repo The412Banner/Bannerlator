@@ -426,7 +426,9 @@ public final class SteamLiteLogCollector {
                         refused = o.optString("reason", "") + " (error " + o.optInt("error", -1) + ")";
                         break;
                     case "insecure_fallback":
-                        fallback = o.optString("exe", "") + " — " + o.optString("reason", "");
+                        fallback = o.optString("exe", "") + " — " + o.optString("reason", "")
+                                + (o.has("vac") ? (o.optBoolean("vac", true) ? " (VAC title: secure launch LOST)"
+                                                                              : " (non-VAC title: direct start is fine)") : "");
                         break;
                     case "direct_exe":
                         fallback = o.optString("exe", "") + " — direct-exe mode";

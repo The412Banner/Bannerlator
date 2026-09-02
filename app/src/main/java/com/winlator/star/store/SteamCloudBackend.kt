@@ -142,7 +142,7 @@ class JavaSteamCloudBackend(private val sc: SteamCloud) : SteamCloudBackend {
     override fun listFiles(appId: Int): List<SteamCloudBackend.CloudFile> {
         val list: AppFileChangeList = sc.getAppFileListChange(appId).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
         return list.files.map { f ->
-            SteamCloudBackend.CloudFile(remotePathOf(f, list), f.shaFile, f.timestamp.time, f.fileSize.toLong())
+            SteamCloudBackend.CloudFile(remotePathOf(f, list), f.shaFile, f.timestamp.time, f.rawFileSize.toLong())
         }
     }
 

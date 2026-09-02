@@ -4014,6 +4014,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         // window to log on, so the Steam Cloud upload + achievement sync-back below run on a
                         // live session. Worker thread, so the wait never touches the UI. No-op otherwise.
                         if (realSteamPlan != null) releaseRealSteamSession("game exit", 6000L);
+                        clearOfflineSteamPresence("game exit");
                         SharedPreferences savePrefs = getSharedPreferences("save_manager_prefs", MODE_PRIVATE);
                         if (isGenuineSteamShortcut()) {
                             if (savePrefs.getBoolean("auto_collect_steam_on_exit", true)) autoCollectSteamSavesBlocking();
@@ -4546,6 +4547,51 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } catch (Throwable t) {
             Log.w("BH_REALSTEAM", "could not suspend the app's Steam session — the game may hit "
                     + "a session conflict", t);
+        }
+    }
+
+    /** True while this launch announced "in game" for a Goldberg/Raw Steam-origin game (see below). */
+    private volatile boolean offlinePresenceAnnounced = false;
+
+    /**
+     * Steam-parity presence for launches that do NOT run the genuine client: a Steam-origin shortcut
+     * in Goldberg or Raw mode reports {@code CMsgClientGamesPlayed} through the app's own CM session
+     * (friends see "playing <game>", Steam accrues playtime). Strictly gated: never when a RealSteam
+     * plan is armed (the in-guest client reports itself and the app session is paused), never for
+     * non-Steam shortcuts, never while the app session is suspended, and off when the user turned the
+     * "Show me as in-game for offline launches" setting off. Runs on the launch worker (Room lookup).
+     * Never throws; a failure only means no presence.
+     */
+    private void announceOfflineSteamPresence() {
+        try {
+            if (realSteamPlan != null || realSteamSessionHeld) return;
+            if (shortcut == null || !isGenuineSteamShortcut()) return;
+            if (!SteamPrefs.INSTANCE.isOfflinePresenceEnabled(getApplicationContext())) return;
+            SteamRepository repo = SteamRepository.getInstance();
+            if (repo.isSuspendedForRealSteam()) return;
+            SteamAppRef ref = resolveSteamAppRef();
+            if (ref == null || ref.appId <= 0) {
+                Log.i("BL_STEAM_PRESENCE", "offline presence: appId unresolved — skip");
+                return;
+            }
+            boolean sent = repo.setInGamePresence(ref.appId);
+            offlinePresenceAnnounced = true;   // cleared on exit even if the send waits for a reconnect
+            Log.i("BL_STEAM_PRESENCE", "offline presence: in game appId=" + ref.appId + " (sent=" + sent
+                    + ", mode=" + shortcut.getExtra("launchMode", "") + ")");
+        } catch (Throwable t) {
+            Log.w("BL_STEAM_PRESENCE", "offline presence announce failed", t);
+        }
+    }
+
+    /** Inverse of {@link #announceOfflineSteamPresence()}; idempotent, never throws. */
+    private void clearOfflineSteamPresence(String why) {
+        if (!offlinePresenceAnnounced) return;
+        offlinePresenceAnnounced = false;
+        try {
+            SteamRepository.getInstance().clearInGamePresence();
+            Log.i("BL_STEAM_PRESENCE", "offline presence cleared (" + why + ")");
+        } catch (Throwable t) {
+            Log.w("BL_STEAM_PRESENCE", "offline presence clear failed (" + why + ")", t);
         }
     }
 
@@ -5288,6 +5334,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Non-blocking — the reconnect is posted to the CM pump. No-op unless a real-Steam launch
         // suspended it this session.
         releaseRealSteamSession("activity destroyed", 0L);
+        clearOfflineSteamPresence("activity destroyed");
         // Version-A spike: unregister the display listener, dismiss the Presentation, and pull the
         // game back to the phone so nothing leaks a window on the external display.
         if (externalDisplayController != null) {
@@ -6102,6 +6149,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // cloud pull + achievement seed above have used it (suspending earlier made the pre-launch
         // cloud download fail with AsyncJobFailedException). Released on game exit / activity destroy.
         suspendAppSteamSessionForRealSteam();
+
+        // Offline (Goldberg / Raw) launch of a Steam game: the app's own session reports "in game" so
+        // friends see it and playtime counts (Steam parity). No-op for RealSteam (the genuine client
+        // reports itself), non-Steam shortcuts, or with the setting off. Cleared on exit / destroy.
+        announceOfflineSteamPresence();
 
         // Start all environment components (XServer, Audio, Wine, etc.)
         preloaderDialog.step(4, "Launching Windows…");

@@ -228,6 +228,8 @@ public final class SteamRepository {
                 // Phase 1-A: the owned library now comes from the engine — crawl it exactly where the
                 // JavaSteam path would receive its LicenseList push.
                 rustSyncLibrary("logon");
+                // Phase 3a-3: a Goldberg/Raw game still running across the reconnect is re-announced.
+                rustReannounceInGame();
             } else if (state == BlSteamEngine.STATE_CONNECTING || state == BlSteamEngine.STATE_CONNECTED) {
                 if (state == BlSteamEngine.STATE_CONNECTED) {
                     rustReconnectAttempts = 0;
@@ -406,6 +408,85 @@ public final class SteamRepository {
 
     /** Set when Steam rejected the saved refresh token on the Rust engine (cleared by a fresh connect/login). */
     private volatile boolean rustTokenRejected = false;
+
+    // -------------------------------------------------------------------------
+    // Presence (Phase 3a-3) — engine only; the JavaSteam path never reported presence and is unchanged
+    // -------------------------------------------------------------------------
+    private static final String PRESENCE_TAG = "BL_STEAM_PRESENCE";
+    /** The Steam appId a Goldberg/Raw launch announced as "in game" (0 = none); re-sent after a reconnect. */
+    private volatile int inGameAppId = 0;
+
+    /**
+     * Report the account as playing {@code appId} (CMsgClientGamesPlayed) for a launch that does NOT
+     * run the genuine client (Goldberg / Raw): friends see "playing <game>" and Steam accrues the
+     * playtime, as the real client would. Sticky until {@link #clearInGamePresence()} — a reconnect
+     * re-announces it. Never used for a RealSteam launch (the genuine client reports itself while this
+     * session is paused). Safe from any worker thread. Returns true when the report was sent.
+     */
+    public boolean setInGamePresence(int appId) {
+        if (appId <= 0) return false;
+        inGameAppId = appId;
+        if (!rustEngine) return false;
+        return rustSendGamesPlayed(appId, "launch");
+    }
+
+    /** Clear the in-game report (guest exit / activity teardown). Idempotent. */
+    public void clearInGamePresence() {
+        int prev = inGameAppId;
+        inGameAppId = 0;
+        if (!rustEngine || prev == 0) return;
+        rustSendGamesPlayed(0, "exit");
+    }
+
+    /** The appId currently announced as in-game, or 0. */
+    public int getInGameAppId() { return inGameAppId; }
+
+    private boolean rustSendGamesPlayed(int appId, String why) {
+        if (realSteamSuspended) {
+            Log.i(PRESENCE_TAG, "games-played skipped — app session paused for a real-Steam game (" + why + ")");
+            return false;
+        }
+        BlSteamSession s = BlSteamEngine.INSTANCE.session();
+        if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) {
+            Log.i(PRESENCE_TAG, "games-played skipped — engine not logged on (" + why + ", appId=" + appId + ")");
+            return false;
+        }
+        try {
+            // One entry = "playing appId"; an empty list = "no longer playing". Client OS type 16 =
+            // Windows 10, the same value the engine's logon reports.
+            s.notifyGamesPlayed(appId > 0 ? "[{\"gameId\":" + appId + "}]" : "[]", 16);
+            slog("presence: " + (appId > 0 ? "in game " + appId : "left game") + " (" + why + ")");
+            return true;
+        } catch (Throwable t) {
+            Log.w(PRESENCE_TAG, "games-played failed (" + why + ")", t);
+            return false;
+        }
+    }
+
+    /** After a fresh engine logon: re-announce a game that was running across the reconnect. */
+    private void rustReannounceInGame() {
+        int appId = inGameAppId;
+        if (appId > 0) rustSendGamesPlayed(appId, "reconnect");
+    }
+
+    /**
+     * Set the account's rich presence for {@code appId} (Player.SetRichPresence; an empty map clears
+     * it) — e.g. {@code status} / {@code connect} keys friends' clients render. BLOCKS on the CM
+     * round-trip (call off the main thread). Engine only; false on JavaSteam or without a session.
+     */
+    public boolean setRichPresence(int appId, Map<String, String> kv) {
+        if (!rustEngine || appId <= 0) return false;
+        BlSteamSession s = BlSteamEngine.INSTANCE.session();
+        if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) return false;
+        try {
+            boolean ok = s.setRichPresence(appId, kv != null ? kv : Collections.<String, String>emptyMap());
+            Log.i(PRESENCE_TAG, "rich presence for " + appId + " (" + (kv != null ? kv.size() : 0) + " keys) -> " + ok);
+            return ok;
+        } catch (Throwable t) {
+            Log.w(PRESENCE_TAG, "rich presence failed", t);
+            return false;
+        }
+    }
 
     /**
      * Engine-agnostic "is there a live, logged-on CM session right now?" — the JavaSteam

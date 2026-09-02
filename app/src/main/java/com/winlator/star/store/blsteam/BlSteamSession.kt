@@ -504,6 +504,17 @@ class BlSteamSession : AutoCloseable {
         nativeNotifyGamesPlayed(h, gamesJson, clientOsType)
     }
 
+    /**
+     * Blocking `Player.SetRichPresence` for [appId] (an empty map clears it). Call off the main
+     * thread. True when Steam acknowledged the call.
+     */
+    fun setRichPresence(appId: Int, kv: Map<String, String>): Boolean {
+        val h = nativeHandle.get(); if (h == 0L) return false
+        val obj = org.json.JSONObject()
+        for ((k, v) in kv) if (k.isNotEmpty()) obj.put(k, v)
+        return try { nativeSetRichPresence(h, appId, obj.toString()) } catch (_: UnsatisfiedLinkError) { false }
+    }
+
     // Fire-and-forget request to release another active playing session.
     fun kickPlayingSession(onlyStopGame: Boolean = false) {
         val h = nativeHandle.get(); if (h == 0L) return
@@ -825,6 +836,7 @@ class BlSteamSession : AutoCloseable {
         @JvmStatic private external fun nativeGetPicsPackageInfo(handle: Long, packageIds: String, tokens: String): String?
         @JvmStatic private external fun nativeNotifyGamesPlayed(handle: Long, gamesJson: String, clientOsType: Int)
         @JvmStatic private external fun nativeKickPlayingSession(handle: Long, onlyStopGame: Boolean)
+        @JvmStatic private external fun nativeSetRichPresence(handle: Long, appId: Int, kvJson: String): Boolean
         @JvmStatic private external fun nativeIsPlayingBlocked(handle: Long): Boolean
         @JvmStatic private external fun nativeMarkPlayingBlocked(handle: Long)
         @JvmStatic private external fun nativeSetPersonaState(handle: Long, personaState: Int)

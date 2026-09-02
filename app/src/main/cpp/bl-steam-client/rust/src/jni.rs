@@ -2788,6 +2788,50 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     ));
 }
 
+/// Blocking `Player.SetRichPresence#1` for [app_id] with the key/values in [kv_json] (a JSON
+/// object of strings; an empty object clears the presence). True when Steam acknowledged.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeSetRichPresence(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    app_id: jint,
+    kv_json: JString,
+) -> jboolean {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return JNI_FALSE;
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return JNI_FALSE;
+    };
+    let raw = jstring_to_string(&mut env, &kv_json).unwrap_or_default();
+    let kv: Vec<(String, String)> = serde_json::from_str::<serde_json::Value>(&raw)
+        .ok()
+        .and_then(|v| v.as_object().cloned())
+        .map(|obj| {
+            obj.into_iter()
+                .map(|(k, v)| {
+                    let value = match v {
+                        serde_json::Value::String(s) => s,
+                        serde_json::Value::Null => String::new(),
+                        other => other.to_string(),
+                    };
+                    (k, value)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let app_id = if app_id < 0 { 0 } else { app_id as u32 };
+    let ok = request_authed_service_success(&runtime, Duration::from_secs(10), |core, job_id| {
+        core.build_rich_presence_call(app_id, kv, job_id)
+    });
+    if ok {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
+    }
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeKickPlayingSession(
     _env: JNIEnv,

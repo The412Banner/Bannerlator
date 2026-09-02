@@ -131,6 +131,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // Steam friend-chat notifications (default ON). Immediate-write like the update toggles — the store
     // reads SteamPrefs directly, so this isn't part of the Save-FAB snapshot.
     var steamChatNotifs by remember { mutableStateOf(SteamPrefs.isChatNotificationsEnabled(context)) }
+    // "In game" presence for Goldberg / Raw launches of Steam games (default ON; immediate-write).
+    var steamOfflinePresence by remember { mutableStateOf(SteamPrefs.isOfflinePresenceEnabled(context)) }
     // Steam connection region (immediate-write like the toggle above; store/SteamRegion owns it).
     var steamRegionMode by remember { mutableStateOf(SteamRegion.mode(context)) }
     var steamRegionRemembered by remember { mutableStateOf(SteamRegion.rememberedAuto(context)) }
@@ -566,6 +568,19 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
             Text(
                 "Show a notification when a Steam friend messages you while their chat isn't open.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = steamOfflinePresence, onCheckedChange = {
+                    steamOfflinePresence = it
+                    SteamPrefs.setOfflinePresenceEnabled(context, it)
+                })
+                Text("Show me as in-game for offline launches", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            Text(
+                "When a Steam game launches with Goldberg or Raw (not SteamLite), report it to Steam as the game being played — friends see it and playtime counts, like the real client. Off = launch silently.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                 modifier = Modifier.padding(start = 12.dp),
             )

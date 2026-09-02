@@ -252,11 +252,9 @@ object SteamSessionManager {
                     step(Step.CLOUD, StepState.SKIPPED, if (req.appId <= 0) "Cloud saves: game not resolved" else "Cloud saves: off")
                 } else if (skipSession || !isLoggedOn()) {
                     step(Step.CLOUD, StepState.SKIPPED, "Cloud saves: skipped (no Steam session)")
-                } else if (SteamRepository.getInstance().isRustEngine) {
-                    // Cloud moves still ride the JavaSteam SteamCloud handler (Phase 2b moves them).
-                    // The genuine client inside the container syncs Steam Cloud itself on launch.
-                    step(Step.CLOUD, StepState.SKIPPED, "Cloud saves: in-game Steam will sync them")
                 } else {
+                    // Engine-agnostic since Phase 3b-1: the same newest-wins pull runs on the
+                    // JavaSteam handler or the Rust engine's ccloud calls (SteamCloudBackend).
                     step(Step.CLOUD, StepState.RUNNING, "Syncing cloud saves…")
                     val summary = runBounded(CLOUD_WAIT_MS) {
                         SteamCloudSaveManager.syncFromCloudNewestWins(app, req.appId, req.installDir)

@@ -4,12 +4,9 @@ import android.content.Context
 import android.os.Environment
 import android.util.Log
 import com.winlator.star.container.Container
-import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
-import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 
 /**
  * Per-game Steam save STATUS + persistence layer that backs the Save Manager screen.
@@ -46,9 +43,6 @@ data class SaveStatus(
 object SaveSyncStore {
 
     private const val TAG = "BH_SAVE_SYNC"
-
-    /** Blocking timeout for the one JavaSteam CM future we await (manifest fetch). */
-    private const val FUTURE_TIMEOUT_SEC = 60L
 
     /** Sentinel for "no container" persisted in the record. */
     private const val NO_CONTAINER = -1
@@ -430,31 +424,20 @@ object SaveSyncStore {
      * background threads ([refreshFromCloud] + the download/upload hooks, which already run off-main).
      */
     private fun observeCloud(appId: Int): Pair<Int, String>? {
-        val cloud = try { SteamRepository.getInstance().getSteamCloud() } catch (t: Throwable) { null } ?: return null
+        // Engine-agnostic manifest read (JavaSteam handler or Rust engine) — the remote path is the
+        // same `prefix + filename` join on both, so the hash key is stable across engines too.
+        val cloud = try { SteamCloudBackend.current() } catch (t: Throwable) { null } ?: return null
         return try {
-            val list: AppFileChangeList = cloud.getAppFileListChange(appId).get(FUTURE_TIMEOUT_SEC, TimeUnit.SECONDS)
-            val lines = ArrayList<String>(list.files.size)
-            for (f in list.files) {
-                lines.add("${remotePathOf(f, list)}|${toHex(f.shaFile)}")
+            val files = cloud.listFiles(appId)
+            val lines = ArrayList<String>(files.size)
+            for (f in files) {
+                lines.add("${f.remotePath}|${toHex(f.sha)}")
             }
             lines.sort()
-            list.files.size to (if (lines.isEmpty()) sha1Hex("") else sha1Hex(lines.joinToString("\n")))
+            files.size to (if (lines.isEmpty()) sha1Hex("") else sha1Hex(lines.joinToString("\n")))
         } catch (e: Exception) {
             Log.w(TAG, "observeCloud failed for $appId: ${e.javaClass.simpleName}")
             null
-        }
-    }
-
-    /** Remote (Steam-side) path of a manifest entry = its prefix + filename. Mirrors
-     *  [SteamCloudSaveManager]'s private remotePathOf so the hash key is stable across observations. */
-    private fun remotePathOf(f: AppFileInfo, list: AppFileChangeList): String {
-        val prefixes = list.pathPrefixes
-        val idx = f.pathPrefixIndex
-        val prefix = if (idx in prefixes.indices) prefixes[idx] else ""
-        return when {
-            prefix.isEmpty() -> f.filename
-            f.filename.isEmpty() -> prefix
-            else -> prefix.trimEnd('/', '\\') + "/" + f.filename.trimStart('/', '\\')
         }
     }
 

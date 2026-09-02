@@ -242,8 +242,15 @@ class BlSteamSession : AutoCloseable {
         return nativeGetCloudDownloadInfo(h, appId, filename)
     }
 
+    /** One downloaded Steam Cloud file: its decoded bytes + the cloud-side timestamp (unix seconds). */
+    class CloudDownload(val bytes: ByteArray, val timestampSec: Long)
+
     // Blocking Steam Cloud download: request `identity`, then auto-detect/decode the stored wrapper and validate against rawFileSize.
-    fun downloadCloudFile(appId: Int, filename: String): ByteArray? {
+    fun downloadCloudFile(appId: Int, filename: String): ByteArray? =
+        downloadCloudFileDetailed(appId, filename)?.bytes
+
+    /** [downloadCloudFile] plus the file's cloud timestamp (so a caller can preserve the mtime). */
+    fun downloadCloudFileDetailed(appId: Int, filename: String): CloudDownload? {
         val infoJson = getCloudDownloadInfo(appId, filename) ?: return null
         return try {
             val obj = org.json.JSONObject(infoJson)
@@ -251,6 +258,7 @@ class BlSteamSession : AutoCloseable {
             if (host.isEmpty()) return null
             val rawFileSize = obj.optInt("rawFileSize", 0)
             val encrypted = obj.optBoolean("encrypted", false)
+            val timestampSec = obj.optLong("timestamp", 0L)
             // Force https on Android (cleartext is blocked by default; the CDN serves both).
             val url = java.net.URL("https://$host${obj.optString("urlPath")}")
 
@@ -300,7 +308,7 @@ class BlSteamSession : AutoCloseable {
                 )
                 return null
             }
-            body
+            CloudDownload(body, timestampSec)
         } catch (e: Exception) {
             android.util.Log.w("BlSteamSession", "cloud file download failed: $filename", e)
             null
@@ -364,10 +372,11 @@ class BlSteamSession : AutoCloseable {
         fileNames: List<String>,
         filesToDelete: List<String>,
         clientId: Long,
+        machineName: String = "",
     ): CloudUploadBatch? {
         val h = nativeHandle.get(); if (h == 0L) return null
         val json = nativeCloudBeginUploadBatch(
-            h, appId, fileNames.joinToString("\n"), filesToDelete.joinToString("\n"), clientId,
+            h, appId, fileNames.joinToString("\n"), filesToDelete.joinToString("\n"), clientId, machineName,
         ) ?: return null
         return try {
             val obj = org.json.JSONObject(json)
@@ -825,7 +834,7 @@ class BlSteamSession : AutoCloseable {
         @JvmStatic private external fun nativeGetCloudFileList(handle: Long, appId: Int): String?
         @JvmStatic private external fun nativeGetCloudUserQuota(handle: Long): LongArray?
         @JvmStatic private external fun nativeGetCloudDownloadInfo(handle: Long, appId: Int, filename: String): String?
-        @JvmStatic private external fun nativeCloudBeginUploadBatch(handle: Long, appId: Int, files: String, filesToDelete: String, clientId: Long): String?
+        @JvmStatic private external fun nativeCloudBeginUploadBatch(handle: Long, appId: Int, files: String, filesToDelete: String, clientId: Long, machineName: String): String?
         @JvmStatic private external fun nativeCloudBeginFileUpload(handle: Long, appId: Int, filename: String, fileSize: Int, rawFileSize: Int, shaHex: String, timestamp: Long, batchId: Long): String?
         @JvmStatic private external fun nativeCloudCommitFileUpload(handle: Long, transferSucceeded: Boolean, appId: Int, shaHex: String, filename: String): Boolean
         @JvmStatic private external fun nativeCloudCompleteUploadBatch(handle: Long, appId: Int, batchId: Long, batchEresult: Int): Boolean

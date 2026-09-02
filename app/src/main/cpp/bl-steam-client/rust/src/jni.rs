@@ -4219,6 +4219,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     files: JString,
     files_to_delete: JString,
     client_id: jlong,
+    machine_name: JString,
 ) -> jstring {
     let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
         return ptr::null_mut();
@@ -4230,11 +4231,14 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     let files = split_nonempty_lines(&jstring_to_string(&mut env, &files).unwrap_or_default());
     let files_to_delete =
         split_nonempty_lines(&jstring_to_string(&mut env, &files_to_delete).unwrap_or_default());
+    // The batch's machine name shows in Steam's cloud conflict UI ("saved on <machine>"); the
+    // JavaSteam path sends the same "Bannerlator (<model>)" label.
+    let machine_name = jstring_to_string(&mut env, &machine_name).unwrap_or_default();
     let Some(body) =
         request_authed_service_body(&runtime, Duration::from_secs(30), |core, job_id| {
             core.build_cloud_begin_app_upload_batch_call(
                 app_id,
-                String::new(),
+                machine_name,
                 files,
                 files_to_delete,
                 client_id as u64,

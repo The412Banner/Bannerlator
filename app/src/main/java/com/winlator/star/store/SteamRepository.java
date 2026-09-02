@@ -630,6 +630,17 @@ public final class SteamRepository {
     }
 
     /**
+     * Engine-agnostic single-app product-info read → the app's {@code appinfo} KeyValue root, or null
+     * when not signed in / the app came back empty. BLOCKS (bounded by {@code timeoutMs} on JavaSteam,
+     * the native 30 s per hop on the Rust engine) — call off the main thread and off the pump. Used by
+     * the cloud-support probe ({@code ufs/savefiles}) so it reads the same PICS data on either engine.
+     */
+    public KeyValue fetchAppKeyValues(int appId, long timeoutMs) {
+        if (appId <= 0) return null;
+        return fetchProductInfoKv(Collections.singletonList(appId), timeoutMs).get(appId);
+    }
+
+    /**
      * Engine-agnostic single-shot product-info fetch for a few apps → KeyValue roots (missing ids
      * absent). BLOCKS the caller up to {@code timeoutMs} (JavaSteam future) / the native 30 s per hop
      * (Rust). Never call from the pump thread.
@@ -924,7 +935,12 @@ public final class SteamRepository {
         SteamDatabase.getInstance(appContext);
         // Hidden dev flag, read once per process so a live session is never swapped mid-flight.
         rustEngine = BlSteamEngineFlag.isEnabled(appContext);
-        if (rustEngine) Log.i(RUST_TAG, "use_rust_steam_engine=ON — CM session will run on libblsteam.so");
+        if (rustEngine) {
+            Log.i(RUST_TAG, "use_rust_steam_engine=ON — CM session will run on libblsteam.so");
+            // The engine's own diagnostic record (steam_engine.txt) — read by the SteamLite log bundle.
+            com.winlator.star.store.blsteam.BlSteamEngineLog.init(appContext);
+            com.winlator.star.store.blsteam.BlSteamEngineLog.log("SESSION", "engine selected (use_rust_steam_engine=ON)");
+        }
         if (steamClient != null) return;
 
         SteamConfiguration config = SteamConfiguration.create(b -> {

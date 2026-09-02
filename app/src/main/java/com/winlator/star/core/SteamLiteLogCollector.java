@@ -326,9 +326,14 @@ public final class SteamLiteLogCollector {
 
         // ── CRASH / teardown (wine_debug — per-run) ──
         Hit crash = scan(wineText, CRASH);
-        if (crash.count > 0)
+        if (crash.count > 0) {
             f.add("CRASH: native crash detected (" + crash.count + "x — unhandled exception / access "
                     + "violation)." + when(crash));
+            // Quote the exception/backtrace lines around the FIRST crash so the diagnostic carries the
+            // faulting address, the frames and (with +seh,+loaddll — added automatically on RealSteam
+            // launches when Wine debug is on) the module bases needed to resolve module+offset.
+            for (String line : crashExcerpt(wineText)) f.add("    | " + line);
+        }
         appendTeardown(f, wineText);
 
         // Emit. If wine_debug wasn't captured, say so and connect the two toggles.
@@ -847,6 +852,48 @@ public final class SteamLiteLogCollector {
 
     private static boolean matches(String text, Pattern p) {
         return text != null && p.matcher(text).find();
+    }
+
+    /** Lines worth quoting from a crash: Wine's seh channel (dispatch_exception / call_stack_handlers /
+     *  RtlUnwindEx frames), the "Unhandled exception" banner, winedbg "Backtrace:" frames ("=>0 0x…",
+     *  "  1 0x…"), the "Modules:" table, and loaddll lines (module base addresses). */
+    private static final Pattern CRASH_DETAIL = ci(
+            "(?:trace|warn|err|fixme):seh:|unhandled exception|\\bc0000005\\b|EXCEPTION_ACCESS_VIOLATION"
+                    + "|^\\s*backtrace:|^\\s*=>\\s*\\d+\\s+0x|^\\s*\\d+\\s+0x[0-9a-f]+|^\\s*modules:"
+                    + "|^\\s*(?:PE|ELF)\\s+[0-9a-f]+-|:loaddll:|in (?:32|64)-bit code|Exception code");
+    private static final int CRASH_EXCERPT_MAX_LINES = 24;
+    private static final int CRASH_EXCERPT_WINDOW = 120;
+
+    /** Up to {@link #CRASH_EXCERPT_MAX_LINES} matching lines: the 6 last loaddll lines BEFORE the first
+     *  crash line (the faulting module is usually among the latest loads) then the crash line and the
+     *  detail lines within the next {@link #CRASH_EXCERPT_WINDOW} lines. Long lines are clipped. */
+    private static List<String> crashExcerpt(String text) {
+        List<String> out = new ArrayList<>();
+        if (text == null) return out;
+        String[] lines = text.split("\n", -1);
+        int at = -1;
+        for (int i = 0; i < lines.length; i++) {
+            if (CRASH.matcher(lines[i]).find()) { at = i; break; }
+        }
+        if (at < 0) return out;
+        List<String> loads = new ArrayList<>();
+        for (int i = Math.max(0, at - 400); i < at; i++) {
+            if (lines[i].contains(":loaddll:")) {
+                loads.add(lines[i]);
+                if (loads.size() > 6) loads.remove(0);
+            }
+        }
+        for (String l : loads) out.add(clip(l));
+        int end = Math.min(lines.length, at + CRASH_EXCERPT_WINDOW);
+        for (int i = at; i < end && out.size() < CRASH_EXCERPT_MAX_LINES; i++) {
+            if (i == at || CRASH_DETAIL.matcher(lines[i]).find()) out.add(clip(lines[i]));
+        }
+        return out;
+    }
+
+    private static String clip(String s) {
+        String t = s.trim();
+        return t.length() > 220 ? t.substring(0, 220) + "…" : t;
     }
 
     /** Like {@link #scan} but only counts lines timestamped at/after {@code since} (this session).

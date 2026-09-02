@@ -337,7 +337,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // chooser is open (null = closed). A Steam game routes through this before launching UNLESS it
     // already has a remembered choice (launchMode set + launchModeRemembered=="1").
     var launchChoiceFor by remember { mutableStateOf<Shortcut?>(null) }
-    // SteamLite launch pre-flight (session → cloud saves → update check, BEFORE the container opens):
+    // SteamLite launch pre-flight (session → network → cloud saves → update check, BEFORE the container opens):
     // the RealSteam game whose "Getting Steam ready" dialog is up (null = none). Every RealSteam
     // launch — the popup pick and a remembered pick — routes through it; Goldberg/Raw never do.
     var preflightFor by remember { mutableStateOf<Shortcut?>(null) }
@@ -2860,7 +2860,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     }
                     else -> {
                         // RealSteam (SteamLite): SteamLite package on demand, then the pre-flight dialog
-                        // (session → cloud saves → update check) and only then the container. Update/
+                        // (session → network → cloud saves → update check) and only then the container. Update/
                         // verify remain the popup's manual buttons; the pre-flight only OFFERS an update.
                         launchWithSteamLite(s)
                     }

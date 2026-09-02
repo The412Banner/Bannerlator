@@ -237,8 +237,9 @@ object SteamSessionManager {
         Thread({
             try {
                 // Network shape (NetworkProbe) runs beside the session step so its ~1-2.5 s hides
-                // behind the sign-in wait; the row is reported in order, after cloud saves. Cached
-                // for 10 min, so a Retry / Launch-anyway re-run doesn't probe again.
+                // behind the sign-in wait; the step is reported right after sign-in (the pre-flight
+                // slideshow's "signed in" photo carries the network verdict). Cached for 10 min, so
+                // a Retry / Launch-anyway re-run doesn't probe again.
                 val netLatch = CountDownLatch(1)
                 var net: NetworkProbe.Result? = null
                 Thread({
@@ -271,7 +272,22 @@ object SteamSessionManager {
                     }
                 }
 
-                // 2. Cloud saves ---------------------------------------------------------------
+                // 2. Network shape (informational — NEVER blocks the launch) -------------------------
+                // Steam sign-in and downloads work on any NAT; this is for games with their own
+                // servers / P2P (Brawlhalla "Incorrect Version" on a hotspot or VPN), so the user
+                // sees the network verdict up front instead of guessing.
+                step(Step.NETWORK, StepState.RUNNING, "Checking network…")
+                netLatch.await(NETWORK_PROBE_MS + 500L, TimeUnit.MILLISECONDS)
+                val verdict = net
+                if (verdict == null) {
+                    step(Step.NETWORK, StepState.DONE, "Couldn't check")
+                } else {
+                    Log.i(TAG, "network: ${verdict.logLine()}")
+                    step(Step.NETWORK, if (verdict.isWarning) StepState.NOTICE else StepState.DONE, verdict.verdict())
+                }
+                if (handle.isCancelled) { post { listener.onCancelled() }; return@Thread }
+
+                // 3. Cloud saves ---------------------------------------------------------------
                 if (!req.pullCloudSaves || req.appId <= 0 || req.installDir.isEmpty()) {
                     step(Step.CLOUD, StepState.SKIPPED, if (req.appId <= 0) "Cloud saves: game not resolved" else "Cloud saves: off")
                 } else if (skipSession || !isLoggedOn()) {
@@ -285,21 +301,6 @@ object SteamSessionManager {
                     } ?: "Cloud saves: still syncing — launching with local saves"
                     Log.i(TAG, "cloud pull (appId ${req.appId}): $summary")
                     step(Step.CLOUD, StepState.DONE, summary)
-                }
-                if (handle.isCancelled) { post { listener.onCancelled() }; return@Thread }
-
-                // 3. Network shape (informational — NEVER blocks the launch) -------------------------
-                // Steam sign-in and downloads work on any NAT; this is for games with their own
-                // servers / P2P (Brawlhalla "Incorrect Version" on a hotspot or VPN), so the user
-                // sees the network verdict up front instead of guessing.
-                step(Step.NETWORK, StepState.RUNNING, "Checking network…")
-                netLatch.await(NETWORK_PROBE_MS + 500L, TimeUnit.MILLISECONDS)
-                val verdict = net
-                if (verdict == null) {
-                    step(Step.NETWORK, StepState.DONE, "Couldn't check")
-                } else {
-                    Log.i(TAG, "network: ${verdict.logLine()}")
-                    step(Step.NETWORK, if (verdict.isWarning) StepState.NOTICE else StepState.DONE, verdict.verdict())
                 }
                 if (handle.isCancelled) { post { listener.onCancelled() }; return@Thread }
 

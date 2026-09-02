@@ -206,7 +206,7 @@ fun BigPictureScreen(navController: NavController) {
     // Steam launch-method popup (M3), couch UI: the Steam-origin game whose SteamLite-vs-Goldberg
     // chooser is open, plus the download-on-launch progress overlay (shared for both components).
     var launchChoiceFor by remember { mutableStateOf<Shortcut?>(null) }
-    // SteamLite launch pre-flight (session → cloud saves → update check BEFORE the container opens);
+    // SteamLite launch pre-flight (session → network → cloud saves → update check BEFORE the container opens);
     // every RealSteam launch routes through it. Mirrors ShortcutsScreen.
     var preflightFor by remember { mutableStateOf<Shortcut?>(null) }
     var componentDownloadFor by remember { mutableStateOf<Shortcut?>(null) }

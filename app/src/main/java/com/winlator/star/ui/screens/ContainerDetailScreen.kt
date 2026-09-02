@@ -111,9 +111,10 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 // Serializes all native adrenotools probing (isDriverSupported + enumerateExtensions) off the

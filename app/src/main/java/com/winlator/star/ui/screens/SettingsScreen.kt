@@ -92,6 +92,7 @@ import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.midi.MidiManager
 import com.winlator.star.store.SteamPrefs
+import com.winlator.star.store.SteamRegion
 import com.winlator.star.xenvironment.ImageFsInstaller
 import com.winlator.star.MainActivity
 import java.io.File
@@ -130,6 +131,13 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // Steam friend-chat notifications (default ON). Immediate-write like the update toggles — the store
     // reads SteamPrefs directly, so this isn't part of the Save-FAB snapshot.
     var steamChatNotifs by remember { mutableStateOf(SteamPrefs.isChatNotificationsEnabled(context)) }
+    // Steam connection region (immediate-write like the toggle above; store/SteamRegion owns it).
+    var steamRegionMode by remember { mutableStateOf(SteamRegion.mode(context)) }
+    var steamRegionRemembered by remember { mutableStateOf(SteamRegion.rememberedAuto(context)) }
+    var steamRegionChoices by remember { mutableStateOf(SteamRegion.CATALOG) }
+    var steamRegionProbe by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
+    var steamRegionProbing by remember { mutableStateOf(false) }
+    var showSteamRegionDropdown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         UpdateManager.check(context) { info -> activity?.runOnUiThread { updateInfo = info } }
     }
@@ -558,6 +566,80 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
             Text(
                 "Show a notification when a Steam friend messages you while their chat isn't open.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            // ── Steam connection region (store/SteamRegion) — written immediately; consumed by the
+            //    Rust engine's CM pick, JavaSteam's CM pick (next app start), the download CDN
+            //    preference and the in-game genuine client's CM seed.
+            Text("Steam connection region", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Spacer(Modifier.height(6.dp))
+            Box {
+                val regionLabel = if (steamRegionMode == SteamRegion.AUTO) {
+                    val r = steamRegionRemembered
+                    "Auto (nearest by ping" + (if (r != null) " — ${SteamRegion.nameOf(r.dc)} ${r.dc}, ${r.ms} ms" else "") + ")"
+                } else "${SteamRegion.nameOf(steamRegionMode)} ($steamRegionMode)"
+                Button(onClick = { showSteamRegionDropdown = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    modifier = Modifier.fillMaxWidth()) {
+                    Text(regionLabel, color = MaterialTheme.colorScheme.onSurface)
+                }
+                DropdownMenu(
+                    expanded = showSteamRegionDropdown,
+                    onDismissRequest = { showSteamRegionDropdown = false },
+                    modifier = Modifier.outlinedMenuCard()
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Auto (nearest by ping — remembers the winner)") },
+                        onClick = {
+                            steamRegionMode = SteamRegion.AUTO
+                            SteamRegion.setMode(context, SteamRegion.AUTO)
+                            showSteamRegionDropdown = false
+                        }
+                    )
+                    steamRegionChoices.forEach { dc ->
+                        MenuItemDivider()
+                        val ping = steamRegionProbe[dc.code]
+                        DropdownMenuItem(
+                            text = {
+                                Text(dc.name + "  (" + dc.code + ")" +
+                                    (if (ping != null) (if (ping < 0) "  — no response" else "  — $ping ms") else ""))
+                            },
+                            onClick = {
+                                steamRegionMode = dc.code
+                                SteamRegion.setMode(context, dc.code)
+                                showSteamRegionDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    enabled = !steamRegionProbing,
+                    onClick = {
+                        steamRegionProbing = true
+                        Thread({
+                            val res = try { SteamRegion.probeAll(context) } catch (_: Throwable) { emptyList() }
+                            val discovered = try { SteamRegion.datacenters(SteamRegion.fetchDirectory()) } catch (_: Throwable) { SteamRegion.CATALOG }
+                            activity?.runOnUiThread {
+                                steamRegionProbe = res.associate { it.dc to it.ms }
+                                steamRegionChoices = discovered
+                                steamRegionRemembered = SteamRegion.rememberedAuto(context)
+                                steamRegionProbing = false
+                            }
+                        }, "steam-region-probe-ui").start()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                ) { Text(if (steamRegionProbing) "Testing…" else "Test regions", color = MaterialTheme.colorScheme.onSurface) }
+                if (steamRegionProbing) CircularProgressIndicator(modifier = Modifier.size(18.dp))
+            }
+            Text(
+                "Which Steam datacenter to connect to for the store, downloads and the in-game Steam session. " +
+                "Auto pings each datacenter once and remembers the fastest for a day (re-tested after a failed connect). " +
+                "The store session applies it on its next connect.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                 modifier = Modifier.padding(start = 12.dp),
             )

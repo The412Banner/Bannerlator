@@ -44,6 +44,9 @@ object BlSteamEngine {
          * (re-auth vs transient).
          */
         fun onLogonResult(emsg: Int, eresult: Int) {}
+
+        /** Steam's cell id for this account/connection (ClientLogonResponse field 7); persist as `cell_id`. */
+        fun onCellId(cellId: Int) {}
     }
 
     /** EMsg ids we decode on the state observer's message firehose (rust/src/emsg.rs). */
@@ -125,12 +128,17 @@ object BlSteamEngine {
             listener?.onEngineFailure("CA bundle unavailable")
             return
         }
-        val cmUrl = BlSteamSession.pickCmUrl(caPath)
+        // Region-aware pick (Settings → Steam → "Steam connection region"; Auto = remembered
+        // fastest datacenter), falling back to the engine's own directory pick inside.
+        val cmUrl = com.winlator.star.store.SteamRegion.pickEngineCmUrl(app, caPath)
         if (cmUrl.isEmpty()) {
             listener?.onEngineFailure("no CM server resolved")
             return
         }
         Log.i(TAG, "CM picked: $cmUrl")
+        appContext = app
+        currentCmUrl = cmUrl
+        reachedConnected = false
 
         val s = BlSteamSession()
         s.setCaBundlePath(caPath)
@@ -147,7 +155,14 @@ object BlSteamEngine {
                 // server-side logoff, whose EResult (protobuf field 1) tells us whether the saved
                 // token is dead — the native runtime reports both as a plain "Connected" state.
                 if (emsg == EMSG_CLIENT_LOGON_RESPONSE || emsg == EMSG_CLIENT_LOGGED_OFF) {
-                    onLogonMessage(s, emsg, firstVarintField(body, 1, eresult))
+                    val er = firstVarintField(body, 1, eresult)
+                    if (emsg == EMSG_CLIENT_LOGON_RESPONSE && er == 1) {
+                        // Field 7 = cell_id: the account's Steam cell, persisted like JavaSteam's
+                        // LoggedOnCallback.cellID and used for the download CDN pool request.
+                        val cell = firstVarintField(body, 7, 0)
+                        if (cell > 0 && session === s) listener?.onCellId(cell)
+                    }
+                    onLogonMessage(s, emsg, er)
                 }
             }
         })
@@ -158,6 +173,11 @@ object BlSteamEngine {
             listener?.onEngineFailure("native connect refused")
         }
     }
+
+    @Volatile private var appContext: Context? = null
+    @Volatile private var currentCmUrl: String = ""
+    /** True once this session's CM reached the encrypted-channel Connected state. */
+    @Volatile private var reachedConnected = false
 
     /** True once Steam rejected the token this session — no further automatic logons. */
     @Volatile private var logonRejected = false
@@ -188,6 +208,24 @@ object BlSteamEngine {
             else -> "?$state"
         }
         Log.i(TAG, "state -> $name")
+        if (state == STATE_CONNECTED || state == STATE_LOGGED_ON) reachedConnected = true
+        if (state == STATE_DISCONNECTED && !reachedConnected) {
+            // The picked CM never came up: forget an Auto winner / remember the host as bad so the
+            // next start probes again instead of re-picking the same dead host.
+            val host = com.winlator.star.store.SteamRegion.hostOf(currentCmUrl)
+            Log.w(TAG, "CM $currentCmUrl never connected — invalidating the region pick")
+            appContext?.let { com.winlator.star.store.SteamRegion.invalidateAuto(it, host) }
+        }
+        if (state == STATE_LOGGED_ON) {
+            // Download CDN preference (region setting + the account's cell id) for this session.
+            appContext?.let { ctx ->
+                try {
+                    val (cell, dc) = com.winlator.star.store.SteamRegion.cdnPreference(ctx)
+                    s.setCdnPreference(cell, dc)
+                    Log.i(TAG, "CDN preference: cell=$cell dc='${dc}'")
+                } catch (t: Throwable) { Log.w(TAG, "CDN preference failed", t) }
+            }
+        }
         if (state == STATE_CONNECTED) {
             // Encrypted channel is up (or Steam just answered a logon / logged us off — the runtime
             // re-reports Connected for both): queue the token logon unless the token was rejected

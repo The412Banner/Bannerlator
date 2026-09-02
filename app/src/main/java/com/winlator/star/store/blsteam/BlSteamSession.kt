@@ -128,6 +128,17 @@ class BlSteamSession : AutoCloseable {
         nativeCancelDownload(h)
     }
 
+    /**
+     * Region preference for depot downloads: the Steam cell id sent with the CDN pool request
+     * (0 = Steam picks by the connection's location) and the datacenter code whose
+     * `cache<N>-<dc>.steamcontent.com` hosts are moved to the front of the pool ("" = directory
+     * order). Read at the start of each [downloadApp] / [downloadWorkshopItem].
+     */
+    fun setCdnPreference(cellId: Int, preferDc: String) {
+        val h = nativeHandle.get(); if (h == 0L) return
+        try { nativeSetCdnPreference(h, cellId, preferDc) } catch (_: UnsatisfiedLinkError) {}
+    }
+
     fun startWineBridge(steam3Port: Int = 0, clientServicePort: Int = 0): Boolean {
         val h = nativeHandle.get(); if (h == 0L) return false
         return nativeStartWineBridge(h, steam3Port, clientServicePort)
@@ -715,6 +726,7 @@ class BlSteamSession : AutoCloseable {
             listener: BlDownloadListener,
         )
         @JvmStatic private external fun nativeCancelDownload(handle: Long)
+        @JvmStatic private external fun nativeSetCdnPreference(handle: Long, cellId: Int, preferDc: String)
         @JvmStatic private external fun nativeStartWineBridge(
             handle: Long, steam3Port: Int, clientServicePort: Int): Boolean
         @JvmStatic private external fun nativeStopWineBridge(handle: Long)

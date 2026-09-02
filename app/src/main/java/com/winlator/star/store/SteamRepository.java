@@ -245,6 +245,11 @@ public final class SteamRepository {
             pPut("refresh_token", refreshToken);
             slog("rust engine: refresh token rotated");
         }
+        @Override public void onCellId(int cellId) {
+            // Same key JavaSteam's onLoggedOn writes (LoggedOnCallback.cellID); the download CDN
+            // pool request and the region picker read it back.
+            pPut("cell_id", cellId);
+        }
         @Override public void onEngineFailure(String reason) {
             Log.w(RUST_TAG, "engine failure: " + reason);
             if (!realSteamSuspended) setStatus(SteamStatus.OFFLINE, "rust engine: " + reason);
@@ -718,6 +723,10 @@ public final class SteamRepository {
             // Without this, if no server list is cached, getNextServerCandidate() returns null
             // and connect() immediately fires DisconnectedCallback without making any connection.
             b.withDirectoryFetch(true);
+            // "Steam connection region" (Settings → Steam): hands JavaSteam the chosen datacenter's
+            // TCP CMs on its first connect; returns nothing (→ the directory fetch above, exactly as
+            // before) in Auto mode or when the directory lists no TCP CM for that datacenter.
+            b.withServerListProvider(SteamRegion.INSTANCE.javaSteamServerListProvider(appContext));
         });
 
         steamClient = new SteamClient(config);

@@ -161,6 +161,32 @@ pub fn filter_usable_cdn_servers(
         .collect()
 }
 
+/// Region preference for the CDN pool: Valve's own SteamPipe caches are named
+/// `cache<N>-<dc>.steamcontent.com`, so servers whose host (or vhost) carries `-<dc>.` are moved to
+/// the front, keeping the directory's order inside each group. Manifest fetches start at index 0
+/// and chunk workers bias their rotation by index, so this steers most traffic to the chosen
+/// datacenter while every other server stays available for rotation and retries. An empty `dc`
+/// (Auto without a remembered winner) or no matching host leaves the order unchanged.
+pub fn prefer_cdn_servers_for_dc(
+    servers: Vec<CContentServerDirectoryServerInfo>,
+    dc: &str,
+) -> Vec<CContentServerDirectoryServerInfo> {
+    let dc = dc.trim().to_ascii_lowercase();
+    if dc.is_empty() {
+        return servers;
+    }
+    let needle = format!("-{dc}.");
+    let matches = |server: &CContentServerDirectoryServerInfo| {
+        server.host.to_ascii_lowercase().contains(&needle)
+            || server.vhost.to_ascii_lowercase().contains(&needle)
+    };
+    let (preferred, rest): (Vec<_>, Vec<_>) = servers.into_iter().partition(matches);
+    if preferred.is_empty() {
+        return rest;
+    }
+    preferred.into_iter().chain(rest).collect()
+}
+
 pub fn manifest_retry_server_indices(server_count: usize, attempts: usize) -> Vec<usize> {
     if server_count == 0 {
         return Vec::new();
@@ -592,6 +618,35 @@ mod tests {
             }
         );
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn region_preference_moves_matching_hosts_first_and_keeps_order() {
+        let server = |host: &str| CContentServerDirectoryServerInfo {
+            host: host.into(),
+            ..Default::default()
+        };
+        let input = vec![
+            server("cache1-iad1.steamcontent.com"),
+            server("edge.steam-dns.top.comcast.net"),
+            server("cache2-fra2.steamcontent.com"),
+            server("cache9-fra2.steamcontent.com"),
+        ];
+        let out = prefer_cdn_servers_for_dc(input.clone(), "FRA2");
+        let hosts: Vec<&str> = out.iter().map(|s| s.host.as_str()).collect();
+        assert_eq!(
+            hosts,
+            [
+                "cache2-fra2.steamcontent.com",
+                "cache9-fra2.steamcontent.com",
+                "cache1-iad1.steamcontent.com",
+                "edge.steam-dns.top.comcast.net",
+            ]
+        );
+        let unchanged = prefer_cdn_servers_for_dc(input.clone(), "");
+        assert_eq!(unchanged, input);
+        let no_match = prefer_cdn_servers_for_dc(input.clone(), "syd1");
+        assert_eq!(no_match, input);
     }
 
     #[test]

@@ -196,6 +196,18 @@ public final class RealSteamLauncher {
                 applyControllerPassthrough(steamDir, repo);
             }
 
+            // ── 3a-ter. Steam connection region for the genuine client (Settings → Steam). Writes a
+            //    GameHub-format cmlist.json ({"datacenter","cm_list":[{"endpoint"}]}) for the chosen /
+            //    remembered datacenter into the prefix Steam dir; the agent seeds the client's CM
+            //    cache from it before LogOn (WN_STEAM_CMLIST) and reports the region over the agent
+            //    socket (BL_STEAM_REGION). No preference → no file, the client discovers CMs itself.
+            //    Best-effort: a failure here never blocks the launch.
+            File cmList = new File(steamDir, "config/cmlist.json");
+            boolean cmListWritten = false;
+            try { cmListWritten = SteamRegion.INSTANCE.writeCmListJson(ctx, cmList); }
+            catch (Throwable t) { Log.w(TAG, "prepare: cmlist.json skipped: " + t.getMessage()); }
+            String regionDesc = SteamRegion.INSTANCE.describe(ctx);
+
             // ── 3b. Register the game so LaunchApp is SECURE: symlink under the canonical name
             //        + write appmanifest_<appid>.acf (StateFlags=4 = installed). The real game dir may
             //        have an odd name, so the symlink NAME is the canonical name, TARGET the real dir.
@@ -255,6 +267,9 @@ public final class RealSteamLauncher {
             env.put("WN_STEAM_APPINFO_WAIT_MS", "4000");
             // Live agent↔app channel (additive; the agent is fully functional without it).
             if (agentPort > 0) env.put("BL_AGENT_PORT", String.valueOf(agentPort));
+            // Region seed for the genuine client (additive; an agent without the feature ignores both).
+            env.put("BL_STEAM_REGION", regionDesc);
+            if (cmListWritten) env.put("WN_STEAM_CMLIST", STEAM_DIR_WIN + "\\config\\cmlist.json");
 
             String specArgWin = "C:\\" + appId + ".spec";
             Log.i(TAG, "prepare: staged appId=" + appId + " canonical=\"" + canonicalName

@@ -77,6 +77,10 @@ struct BlSteamSessionHandle {
     state_observer: Arc<Mutex<Option<GlobalRef>>>,
     library_observer: Arc<Mutex<Option<GlobalRef>>>,
     library_observer_installed: Mutex<bool>,
+    /// Steam cell id sent with ContentServerDirectory.GetServersForSteamPipe (0 = let Steam pick
+    /// by the connection's location) and the datacenter code whose CDN hosts are preferred
+    /// (empty = directory order). Set from Kotlin (`nativeSetCdnPreference`).
+    cdn_preference: Mutex<(u32, String)>,
 }
 
 impl BlConnectionHandle {
@@ -103,7 +107,15 @@ impl BlSteamSessionHandle {
             state_observer: Arc::new(Mutex::new(None)),
             library_observer: Arc::new(Mutex::new(None)),
             library_observer_installed: Mutex::new(false),
+            cdn_preference: Mutex::new((0, String::new())),
         }
+    }
+
+    fn cdn_preference(&self) -> (u32, String) {
+        self.cdn_preference
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or((0, String::new()))
     }
 
     fn enqueue_proto(&self, message: Option<OutboundProtoMessage>) -> bool {
@@ -1237,15 +1249,36 @@ fn request_app_ownership_ticket(
     Some(response)
 }
 
+/// CDN pool for SteamPipe. `cell_id` 0 lets Steam pick by the connection's location; a non-zero
+/// cell (the logon response's cell id) asks for that region's pool. `prefer_dc` reorders the pool
+/// so `cache<N>-<dc>.steamcontent.com` hosts come first (see `prefer_cdn_servers_for_dc`).
 fn request_cdn_servers(
     runtime: &Arc<CMClientRuntime>,
+    cell_id: u32,
+    prefer_dc: &str,
     timeout: Duration,
 ) -> Option<Vec<crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo>> {
     let body = request_authed_service_body(runtime, timeout, |core, job_id| {
-        core.build_get_cdn_servers_call(0, job_id)
+        core.build_get_cdn_servers_call(cell_id, job_id)
     })?;
-    crate::pb::ccontentserverdirectory::CContentServerDirectoryGetServersForSteamPipeResponse::deserialize(&body)
-        .map(|response| response.servers)
+    let servers =
+        crate::pb::ccontentserverdirectory::CContentServerDirectoryGetServersForSteamPipeResponse::deserialize(&body)
+            .map(|response| response.servers)?;
+    let servers = crate::depot_downloader::prefer_cdn_servers_for_dc(servers, prefer_dc);
+    let preview = servers
+        .iter()
+        .take(4)
+        .map(|s| s.host.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    android_log(
+        "BL_STEAM_DL",
+        &format!(
+            "cdn pool: {} server(s) cell={cell_id} prefer_dc='{prefer_dc}' first=[{preview}]",
+            servers.len()
+        ),
+    );
+    Some(servers)
 }
 
 const ERESULT_OK: i32 = 1;
@@ -3308,6 +3341,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     let max_workers = max_workers.max(1) as u32;
     handle.download_cancel.store(false, Ordering::Relaxed);
     let download_cancel = Arc::clone(&handle.download_cancel);
+    let (cdn_cell_id, cdn_prefer_dc) = handle.cdn_preference();
 
     thread::spawn(move || {
         let timeout = Duration::from_secs(30);
@@ -3318,7 +3352,8 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
             );
             return;
         }
-        let Some(servers) = request_cdn_servers(&runtime, timeout) else {
+        let Some(servers) = request_cdn_servers(&runtime, cdn_cell_id, &cdn_prefer_dc, timeout)
+        else {
             dispatch_download_complete(
                 listener.clone(),
                 crate::depot_downloader::DepotDownloadResult::fail(
@@ -3492,6 +3527,24 @@ fn dispatch_download_progress(
         ],
     );
     clear_pending_exception(&mut env);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeSetCdnPreference(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    cell_id: jint,
+    prefer_dc: JString,
+) {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return;
+    };
+    let prefer_dc = jstring_to_string(&mut env, &prefer_dc).unwrap_or_default();
+    let cell_id = cell_id.max(0) as u32;
+    if let Ok(mut guard) = handle.cdn_preference.lock() {
+        *guard = (cell_id, prefer_dc.trim().to_ascii_lowercase());
+    }
 }
 
 #[no_mangle]
@@ -3724,7 +3777,8 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     let app_id = app_id as u32;
     let manifest_id = manifest_id as u64;
     let timeout = Duration::from_secs(30);
-    let Some(servers) = request_cdn_servers(&runtime, timeout) else {
+    let (cdn_cell_id, cdn_prefer_dc) = handle.cdn_preference();
+    let Some(servers) = request_cdn_servers(&runtime, cdn_cell_id, &cdn_prefer_dc, timeout) else {
         return -1;
     };
     let DepotKeyOutcome::Granted(depot_key) =

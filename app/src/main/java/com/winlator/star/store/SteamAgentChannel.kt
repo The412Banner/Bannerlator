@@ -57,6 +57,8 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
     @Volatile var secure: Boolean? = null
         private set
     @Volatile var lastFailure: String? = null
+    /** Region the agent reported seeding the genuine client with (`started`/`status`, agent ≥ p2). */
+    @Volatile var agentRegion: String? = null
         private set
     val isConnected: Boolean get() = connectedOnce.get() && client != null
 
@@ -133,6 +135,8 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
         }
         val ev = obj.optString("ev", "")
         if (ev.isEmpty()) return
+        // Region the agent seeded the genuine client with (`started` / `status` events, agent ≥ p2).
+        if (obj.has("region")) agentRegion = obj.optString("region", "")
         when (ev) {
             "logged_in" -> loggedIn = true
             "session_lost" -> loggedIn = false

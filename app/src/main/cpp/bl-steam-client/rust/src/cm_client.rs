@@ -745,6 +745,41 @@ impl CMClientCore {
         )
     }
 
+    /// Job-tracked `ClientStoreUserStats2` so the caller can await the
+    /// `ClientStoreUserStatsResponse` (EResult + stats the server refused) — the achievement
+    /// sync-back needs the verdict, the fire-and-forget [`Self::build_store_user_stats`] does not.
+    pub fn build_store_user_stats_job(
+        &self,
+        app_id: u32,
+        steam_id: u64,
+        crc_stats: u32,
+        stats: &[(u32, u32)],
+        job_id: u64,
+    ) -> Option<OutboundProtoMessage> {
+        if app_id == 0 || steam_id == 0 {
+            return None;
+        }
+        self.build_job_proto_message(
+            EMsg::CLIENT_STORE_USER_STATS_2,
+            job_id,
+            CMsgClientStoreUserStats2 {
+                game_id: app_id as u64,
+                settor_steam_id: steam_id,
+                settee_steam_id: steam_id,
+                crc_stats,
+                stats: stats
+                    .iter()
+                    .map(|(stat_id, stat_value)| Stat {
+                        stat_id: *stat_id,
+                        stat_value: *stat_value,
+                    })
+                    .collect(),
+            }
+            .serialize(),
+            app_id,
+        )
+    }
+
     pub fn build_rich_presence_call(
         &self,
         app_id: u32,

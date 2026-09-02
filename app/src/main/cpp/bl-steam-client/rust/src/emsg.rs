@@ -47,6 +47,9 @@ impl EMsg {
     pub const CLIENT_GET_USER_STATS: Self = Self(818);
     pub const CLIENT_GET_USER_STATS_RESPONSE: Self = Self(819);
     pub const CLIENT_STORE_USER_STATS_2: Self = Self(5466);
+    pub const CLIENT_STORE_USER_STATS_RESPONSE: Self = Self(5467);
+    pub const CLIENT_CHECK_APP_BETA_PASSWORD: Self = Self(5426);
+    pub const CLIENT_CHECK_APP_BETA_PASSWORD_RESPONSE: Self = Self(5427);
     pub const SERVICE_METHOD: Self = Self(146);
     pub const SERVICE_METHOD_CALL_FROM_CLIENT: Self = Self(151);
     pub const SERVICE_METHOD_RESPONSE: Self = Self(147);

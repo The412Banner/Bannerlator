@@ -189,6 +189,34 @@ class BlSteamSession : AutoCloseable {
         return nativeGetUserStatsFull(h, appId)
     }
 
+    /**
+     * Blocking `ClientGetUserStats` decoded for the achievement store: `{eresult, crcStats,
+     * schema:{stats:{<id>:{type,bits:{<bit>:{name,display:{name,desc,hidden,icon,icon_gray}}}}},
+     * stats:[{id,value}], achievementBlocks:[{achievementId,unlockTimes:[…]}]}`. Null when the
+     * session is not logged on or Steam did not answer. Call off the main thread.
+     */
+    fun getUserStatsJson(appId: Int): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeGetUserStatsJson(h, appId) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    /**
+     * Blocking `ClientStoreUserStats2` awaiting the server's `ClientStoreUserStatsResponse`.
+     * Returns the EResult (1 = OK); 0 when nothing came back within [timeoutMs].
+     */
+    fun storeUserStatsBlocking(
+        appId: Int,
+        steamId: Long,
+        crcStats: Int,
+        statIds: IntArray,
+        statValues: IntArray,
+        timeoutMs: Int = 20_000,
+    ): Int {
+        val h = nativeHandle.get(); if (h == 0L) return 0
+        return try { nativeStoreUserStatsBlocking(h, appId, steamId, crcStats, statIds, statValues, timeoutMs) }
+               catch (_: UnsatisfiedLinkError) { 0 }
+    }
+
     // Blocking Steam Inventory item-definition archive fetch.
     fun getItemDefArchive(appId: Int, caBundlePath: String): String? {
         val h = nativeHandle.get(); if (h == 0L) return null
@@ -811,6 +839,10 @@ class BlSteamSession : AutoCloseable {
         @JvmStatic private external fun nativeRequestEncryptedAppTicket(handle: Long, appId: Int): ByteArray?
         @JvmStatic private external fun nativeGetUserStatsSchema(handle: Long, appId: Int): ByteArray?
         @JvmStatic private external fun nativeGetUserStatsFull(handle: Long, appId: Int): String?
+        @JvmStatic private external fun nativeGetUserStatsJson(handle: Long, appId: Int): String?
+        @JvmStatic private external fun nativeStoreUserStatsBlocking(
+            handle: Long, appId: Int, steamId: Long, crcStats: Int,
+            statIds: IntArray, statValues: IntArray, timeoutMs: Int): Int
         @JvmStatic private external fun nativeGetItemDefArchive(
             handle: Long,
             appId: Int,

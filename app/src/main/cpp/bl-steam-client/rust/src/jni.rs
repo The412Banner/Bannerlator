@@ -3941,6 +3941,125 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     new_string_or_null(&mut env, &value)
 }
 
+/// `ClientGetUserStats` decoded for the achievement store: the binary `UserGameStatsSchema`
+/// parsed into JSON (`stats/<id>/{type,bits/<bit>/{name,display{name,desc,hidden,icon,icon_gray}}}`,
+/// exactly the KeyValue tree JavaSteam's `schemaKeyValues` exposes), the current stat values
+/// (`stats`, the achievement bitfields) and the per-block unlock timestamps. Null when the
+/// session is not logged on or Steam did not answer within 30 s.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetUserStatsJson(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    app_id: jint,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let Some(response) =
+        request_user_stats_response(&runtime, app_id.max(0) as u32, Duration::from_secs(30))
+    else {
+        return ptr::null_mut();
+    };
+    let schema = if response.schema.is_empty() {
+        serde_json::Value::Null
+    } else {
+        crate::vdf::parse_binary(&response.schema)
+            .map(|root| kvnode_to_json_value(&root))
+            .unwrap_or(serde_json::Value::Null)
+    };
+    let value = json!({
+        "eresult": response.eresult,
+        "crcStats": response.crc_stats,
+        "schema": schema,
+        "stats": response.stats.iter().map(|stat| json!({
+            "id": stat.stat_id,
+            "value": stat.stat_value,
+        })).collect::<Vec<_>>(),
+        "achievementBlocks": response.achievement_blocks.iter().map(|block| json!({
+            "achievementId": block.achievement_id,
+            "unlockTimes": block.unlock_time,
+        })).collect::<Vec<_>>(),
+    })
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
+/// Blocking `ClientStoreUserStats2` awaiting `ClientStoreUserStatsResponse`. Returns the EResult
+/// (1 = OK), 0 when no response arrived in `timeout_ms` (or the session is not logged on). Stat ids
+/// the server refused are logged under `BL_STEAM_ACHV`.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeStoreUserStatsBlocking(
+    env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    app_id: jint,
+    steam_id: jlong,
+    crc_stats: jint,
+    stat_ids: JIntArray,
+    stat_values: JIntArray,
+    timeout_ms: jint,
+) -> jint {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return 0;
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return 0;
+    };
+    let len = env
+        .get_array_length(&stat_ids)
+        .unwrap_or(0)
+        .min(env.get_array_length(&stat_values).unwrap_or(0));
+    if len < 0 {
+        return 0;
+    }
+    let mut ids = vec![0i32; len as usize];
+    let mut values = vec![0i32; len as usize];
+    if env.get_int_array_region(&stat_ids, 0, &mut ids).is_err()
+        || env
+            .get_int_array_region(&stat_values, 0, &mut values)
+            .is_err()
+    {
+        return 0;
+    }
+    let stats = ids
+        .into_iter()
+        .zip(values)
+        .map(|(id, value)| (id as u32, value as u32))
+        .collect::<Vec<_>>();
+    let app_id = app_id.max(0) as u32;
+    let timeout = Duration::from_millis(timeout_ms.max(1_000) as u64);
+    let Some((header_eresult, body)) = request_proto_response(&runtime, timeout, |core, job_id| {
+        core.build_store_user_stats_job(app_id, steam_id as u64, crc_stats as u32, &stats, job_id)
+    }) else {
+        return 0;
+    };
+    match crate::pb::cmsg_client_store_user_stats::CMsgClientStoreUserStatsResponse::deserialize(&body)
+    {
+        Some(response) => {
+            if !response.stats_failed_to_set.is_empty() {
+                android_log(
+                    "BL_STEAM_ACHV",
+                    &format!(
+                        "store user stats app={app_id}: eresult={} refused stat ids {:?}",
+                        response.eresult,
+                        response
+                            .stats_failed_to_set
+                            .iter()
+                            .map(|s| s.stat_id)
+                            .collect::<Vec<_>>()
+                    ),
+                );
+            }
+            response.eresult as jint
+        }
+        None => header_eresult.max(0) as jint,
+    }
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetItemDefArchive(
     mut env: JNIEnv,

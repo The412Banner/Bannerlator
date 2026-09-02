@@ -2,6 +2,8 @@ package com.winlator.star.store
 
 import android.content.Context
 import android.util.Log
+import com.winlator.star.store.blsteam.BlSteamEngine
+import com.winlator.star.store.blsteam.BlSteamEngineLog
 import com.winlator.star.ui.XServerDialogState
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.Stats
@@ -66,6 +68,7 @@ object SteamAchievementStore {
     fun fetch(ctx: Context, appId: Int): List<SteamAchievement> {
         return try {
             val repo = SteamRepository.getInstance()
+            if (repo.isRustEngine) return fetchRust(ctx, appId, repo)
             val stats = repo.steamUserStats ?: run {
                 Log.i(TAG, "fetch($appId): SteamUserStats handler not bound (not connected)")
                 return emptyList()
@@ -129,6 +132,161 @@ object SteamAchievementStore {
             Log.w(TAG, "fetch($appId) failed", e)
             emptyList()
         }
+    }
+
+    // ── Rust engine (Phase 3b-2) ──────────────────────────────────────────────────
+
+    /**
+     * One achievement expanded from the engine's `ClientGetUserStats` JSON — the same merge JavaSteam's
+     * `getExpandedAchievements()` performs: schema `stats/<id>` entries of type 4 (achievement
+     * bitfields) × their `bits/<bit>` children (apiName + english display strings + icons), joined
+     * with the per-block `unlockTimes[bit]` (0 = locked).
+     */
+    private class RustAchievement(
+        val apiName: String, val displayName: String, val description: String, val hidden: Boolean,
+        val icon: String, val iconGray: String, val unlocked: Boolean, val unlockTimeSec: Long,
+    )
+
+    /** The parts of the engine's user-stats reply both the grid fetch and the sync-back need. */
+    private class RustUserStats(
+        val eresult: Int,
+        val crcStats: Int,
+        /** apiName → (statId, bitIndex) from the schema. */
+        val bitOf: Map<String, Pair<Int, Int>>,
+        /** statId → current value (the achievement bitfields). */
+        val current: Map<Int, Int>,
+        val expanded: List<RustAchievement>,
+    )
+
+    /** Fetch + decode the engine's user stats for [appId]; null when not logged on / no reply. */
+    private fun rustUserStats(appId: Int): RustUserStats? {
+        val s = BlSteamEngine.session() ?: return null
+        val json = s.getUserStatsJson(appId) ?: return null
+        return try { decodeRustUserStats(JSONObject(json)) } catch (e: Exception) {
+            Log.w(TAG, "user stats decode failed for $appId", e); null
+        }
+    }
+
+    /** Pure decoder (unit-testable): the engine JSON → schema map + current values + expanded list. */
+    internal fun decodeRustUserStatsForTest(json: String): List<Triple<String, Boolean, Long>> =
+        decodeRustUserStats(JSONObject(json)).expanded.map { Triple(it.apiName, it.unlocked, it.unlockTimeSec) }
+
+    private fun decodeRustUserStats(root: JSONObject): RustUserStats {
+        val eresult = root.optInt("eresult", 2)
+        val crc = root.optInt("crcStats", 0)
+        val current = HashMap<Int, Int>()
+        root.optJSONArray("stats")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                current[o.optInt("id", -1)] = o.optInt("value", 0)
+            }
+        }
+        val unlockTimes = HashMap<Int, JSONArray>()
+        root.optJSONArray("achievementBlocks")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                o.optJSONArray("unlockTimes")?.let { unlockTimes[o.optInt("achievementId", -1)] = it }
+            }
+        }
+        val bitOf = HashMap<String, Pair<Int, Int>>()
+        val expanded = ArrayList<RustAchievement>()
+        val schema = root.optJSONObject("schema")
+        val stats = schema?.let { it.optJSONObject("stats") ?: it.optJSONObject("Stats") }
+        if (stats != null) for (statKey in stats.keys()) {
+            val stat = stats.optJSONObject(statKey) ?: continue
+            val statId = statKey.toIntOrNull() ?: continue
+            val bits = stat.optJSONObject("bits") ?: continue
+            // Type 4 = achievement bitfield; an entry with a `bits` block is one even when the type
+            // string is missing/odd, exactly what the fork's expander accepts.
+            val type = stat.optString("type", "")
+            if (type.isNotEmpty() && type != "4" && !type.equals("ACHIEVEMENTS", ignoreCase = true)) continue
+            val times = unlockTimes[statId]
+            for (bitKey in bits.keys()) {
+                val bitIndex = bitKey.toIntOrNull() ?: continue
+                val bit = bits.optJSONObject(bitKey) ?: continue
+                val apiName = bit.optString("name", "")
+                if (apiName.isEmpty()) continue
+                bitOf[apiName] = statId to bitIndex
+                val display = bit.optJSONObject("display")
+                val name = langString(display?.opt("name")) ?: apiName
+                val desc = langString(display?.opt("desc")) ?: ""
+                val hidden = (display?.optString("hidden", "") ?: "") == "1"
+                val icon = display?.optString("icon", "")?.takeIf { it.isNotEmpty() } ?: bit.optString("icon", "")
+                val iconGray = display?.optString("icon_gray", "")?.takeIf { it.isNotEmpty() } ?: bit.optString("icon_gray", "")
+                val ts = if (times != null && bitIndex >= 0 && bitIndex < times.length()) times.optLong(bitIndex, 0L) else 0L
+                expanded.add(RustAchievement(apiName, name, desc, hidden, icon, iconGray, ts != 0L, ts))
+            }
+        }
+        return RustUserStats(eresult, crc, bitOf, current, expanded)
+    }
+
+    /** A schema display value is either a plain string or a per-language object → english (or first). */
+    private fun langString(v: Any?): String? = when (v) {
+        null -> null
+        is JSONObject -> v.optString("english", "").takeIf { it.isNotEmpty() }
+            ?: v.keys().asSequence().firstOrNull()?.let { k -> v.optString(k, "") }?.takeIf { it.isNotEmpty() }
+        else -> v.toString().takeIf { it.isNotEmpty() }
+    }
+
+    /** [fetch] on libblsteam.so: same DB upsert, icon cache and model as the JavaSteam branch. */
+    private fun fetchRust(ctx: Context, appId: Int, repo: SteamRepository): List<SteamAchievement> {
+        if (!repo.ensureLoggedIn(LOGIN_TIMEOUT_MS)) {
+            Log.i(TAG, "fetch($appId): not logged in (rust)")
+            return emptyList()
+        }
+        if (repo.steamId64 == 0L) return emptyList()
+        val us = rustUserStats(appId) ?: run {
+            Log.i(TAG, "fetch($appId): no user-stats reply from the engine")
+            BlSteamEngineLog.log("ACHV", "GetUserStats app=$appId: no reply")
+            return emptyList()
+        }
+        if (us.eresult != 1) Log.i(TAG, "fetch($appId): getUserStats eresult=${us.eresult}")
+        BlSteamEngineLog.log("ACHV", "GetUserStats app=$appId eresult=${us.eresult} achievements=${us.expanded.size} " +
+            "unlocked=${us.expanded.count { it.unlocked }}")
+        if (us.expanded.isEmpty()) return emptyList()
+
+        val db = repo.database
+        val rows = us.expanded.map { a ->
+            SteamDatabase.AchievementRow(
+                appId, a.apiName, a.displayName, a.description, a.hidden, a.icon, a.iconGray,
+                a.unlocked, a.unlockTimeSec.coerceAtLeast(0L),
+            )
+        }
+        db.upsertAchievements(appId, rows)
+        val iconDir = iconDir(ctx, appId)
+        iconDir.mkdirs()
+        return rows.map { r ->
+            toModel(r, cacheIcon(iconDir, appId, r.icon), cacheIcon(iconDir, appId, r.iconGray))
+        }
+    }
+
+    /** [flushPendingSyncBack]'s per-app push on the engine. Returns the apiNames actually stored. */
+    private fun syncBackRust(appId: Int, apiNames: Set<String>, steamId64: Long): Set<String> {
+        val us = rustUserStats(appId) ?: return emptySet()
+        val changed = HashMap<Int, Int>()
+        var matched = 0
+        for (apiName in apiNames) {
+            val (statId, bitIndex) = us.bitOf[apiName] ?: continue
+            if (bitIndex < 0 || bitIndex > 31) continue
+            val base = changed[statId] ?: us.current[statId] ?: 0
+            changed[statId] = base or (1 shl bitIndex)
+            matched++
+        }
+        if (matched == 0 || changed.isEmpty()) {
+            Log.i(TAG, "syncBack($appId): no queued achievements resolved in schema — leaving queued (rust)")
+            return emptySet()
+        }
+        val s = BlSteamEngine.session() ?: return emptySet()
+        val ids = changed.keys.toIntArray()
+        val values = ids.map { changed[it] ?: 0 }.toIntArray()
+        val er = s.storeUserStatsBlocking(appId, steamId64, us.crcStats, ids, values, (JOB_TIMEOUT_SEC * 1000L).toInt())
+        BlSteamEngineLog.log("ACHV", "StoreUserStats app=$appId stats=${ids.size} achievements=$matched eresult=$er")
+        if (er != 1) {
+            Log.i(TAG, "syncBack($appId): storeUserStats eresult=$er — leaving queued (rust)")
+            return emptySet()
+        }
+        Log.i(TAG, "syncBack($appId): stored $matched achievement(s) (rust)")
+        return apiNames.filter { us.bitOf.containsKey(it) }.toSet()
     }
 
     /** Offline read from the steam_achievements table; localIconPath filled iff the file exists. */
@@ -466,7 +624,7 @@ object SteamAchievementStore {
             if (lines.isEmpty()) return
 
             val repo = SteamRepository.getInstance()
-            val stats = repo.steamUserStats ?: return
+            val stats = if (repo.isRustEngine) null else (repo.steamUserStats ?: return)
             if (!repo.ensureLoggedIn(LOGIN_TIMEOUT_MS)) return
             val steamId64 = repo.steamId64
             if (steamId64 == 0L) return
@@ -484,6 +642,13 @@ object SteamAchievementStore {
 
             val syncedLines = HashSet<String>()
             for ((appId, apiNames) in byApp) {
+                if (stats == null) {
+                    // Rust engine: same bit-math over the engine's decoded schema/stats, awaiting the
+                    // StoreUserStatsResponse verdict before a line is considered synced.
+                    try { for (n in syncBackRust(appId, apiNames, steamId64)) syncedLines.add("$appId:$n") }
+                    catch (e: Exception) { Log.w(TAG, "syncBack($appId) failed — leaving queued (rust)", e) }
+                    continue
+                }
                 try {
                     val cb = stats.getUserStats(appId, self)
                         .toFuture().get(JOB_TIMEOUT_SEC, TimeUnit.SECONDS) ?: continue

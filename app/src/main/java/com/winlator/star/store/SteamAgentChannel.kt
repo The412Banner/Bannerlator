@@ -21,7 +21,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  *  agent → app: `started{pid,appid,agent}`, `logged_in{steamid(masked),ms}`,
  *  `login_failed{eresult,reason}`, `appinfo{state}`, `launch_accepted`, `launch_refused{error,reason}`,
  *  `direct_exe{exe}`, `insecure_fallback{exe,reason}`, `game_spawned{exe,pid,secure}`,
- *  `session_lost`, `achievement{api}`, `game_exited{code,ms}`, `status{...}`, `shutdown{reason,code}`.
+ *  `session_lost`, `achievement{api}`, `game_exited{code,ms}`, `status{...}`, `shutdown{reason,code}`;
+ *  agent p3 friends relay (BL_AGENT_FRIENDS=1): `friends{self,count,list[]}`, `persona{friend}`,
+ *  `chat_in{sid,text,ts}`, `chat_typing{sid}`, `chat_sent{sid,ok}` — routed to
+ *  [SteamAgentFriendsBridge], never logged and never kept in the event log (chat privacy);
+ *  app → agent: `{"cmd":"chat_send","sid","text"}`, `{"cmd":"friends_refresh"}`.
  *
  * One channel per launch: [open] binds an ephemeral loopback port BEFORE the guest boots, the agent
  * connects once, [close] tears it down. Everything is best-effort — a shipped agent without the
@@ -126,15 +130,25 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
     }
 
     private fun handleLine(line: String) {
-        synchronized(eventLog) {
-            eventLog.addLast(line)
-            while (eventLog.size > MAX_EVENTS) eventLog.removeFirst()
-        }
         val obj = try { JSONObject(line) } catch (_: Throwable) {
             Log.w(TAG, "unparseable line (${line.length} chars)"); return
         }
         val ev = obj.optString("ev", "")
         if (ev.isEmpty()) return
+        // Friends relay events carry friend SteamIDs and chat bodies: hand them to the bridge and
+        // keep only a body-free marker in the event log (the SteamLite bundle reads that log).
+        if (ev in FRIENDS_EVENTS) {
+            synchronized(eventLog) {
+                eventLog.addLast("{\"ev\":\"$ev\"}")
+                while (eventLog.size > MAX_EVENTS) eventLog.removeFirst()
+            }
+            try { SteamAgentFriendsBridge.onEvent(ev, obj) } catch (t: Throwable) { Log.w(TAG, "friends bridge threw", t) }
+            return
+        }
+        synchronized(eventLog) {
+            eventLog.addLast(line)
+            while (eventLog.size > MAX_EVENTS) eventLog.removeFirst()
+        }
         // Region the agent seeded the genuine client with (`started` / `status` events, agent ≥ p2).
         if (obj.has("region")) agentRegion = obj.optString("region", "")
         when (ev) {
@@ -156,6 +170,8 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
     companion object {
         private const val TAG = "BH_STEAM_AGENT"
         private const val MAX_EVENTS = 400
+        /** Agent p3 friends-relay events (see [SteamAgentFriendsBridge]); never logged verbatim. */
+        private val FRIENDS_EVENTS = setOf("friends", "persona", "chat_in", "chat_typing", "chat_sent")
 
         /** Bind an ephemeral loopback port and start accepting (one client). Null on failure. */
         fun open(listener: Listener?): SteamAgentChannel? {

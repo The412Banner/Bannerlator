@@ -274,11 +274,120 @@ object SteamFriendsStore {
 
     // ── Availability ──────────────────────────────────────────────────────────────
 
-    /** True when the live CM session can serve friends (logged in AND a social backend is bound). */
+    /** True when the live CM session can serve friends (logged in AND a social backend is bound),
+     *  or the in-game client is relaying them through the agent while the app session is paused. */
     fun isAvailable(): Boolean = try {
-        repo.isLoggedIn && (repo.isRustEngine || repo.steamFriends != null)
+        (repo.isLoggedIn && (repo.isRustEngine || repo.steamFriends != null)) || agentRelayActive()
     } catch (t: Throwable) {
         false
+    }
+
+    // ── Agent relay (Phase 3b-5): friends/chat during a SteamLite game ────────────
+
+    /** The app session is paused for a real-Steam game AND the agent relay is live. */
+    private fun agentRelayActive(): Boolean = try {
+        repo.isSuspendedForRealSteam && SteamAgentFriendsBridge.isLive()
+    } catch (_: Throwable) { false }
+
+    /** Roster snapshot from the in-game client — same buckets/flows as the engine's friends list. */
+    fun agentOnFriends(entries: List<SteamAgentFriendsBridge.Entry>, selfName: String, selfState: Int) {
+        io.execute {
+            try {
+                for (e in entries) {
+                    when (e.relationship) {
+                        BlSocialFeed.REL_FRIEND -> { friendIds.add(e.steamId); incomingIds.remove(e.steamId); outgoingIds.remove(e.steamId) }
+                        BlSocialFeed.REL_REQUEST_RECIPIENT -> incomingIds.add(e.steamId)
+                        BlSocialFeed.REL_REQUEST_INITIATOR -> outgoingIds.add(e.steamId)
+                        else -> continue
+                    }
+                    agentMergePersona(e)
+                }
+                publish()
+                val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+                if (selfId != 0L) {
+                    val cur = _self.value
+                    _self.value = SteamFriend(
+                        selfId, selfName.takeIf { it.isNotBlank() } ?: cur?.personaName ?: "You", null,
+                        classifyCode(selfState, 0, null).first, "", 0, null, cur?.avatarHash,
+                    )
+                }
+                loadHistoriesFor(selfId)
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnFriends failed", t)
+            }
+        }
+    }
+
+    /** One friend's persona changed inside the in-game client. */
+    fun agentOnPersona(e: SteamAgentFriendsBridge.Entry) {
+        io.execute {
+            try {
+                if (e.steamId !in friendIds && e.steamId !in incomingIds && e.steamId !in outgoingIds) {
+                    if (e.relationship == BlSocialFeed.REL_FRIEND) friendIds.add(e.steamId) else return@execute
+                }
+                agentMergePersona(e)
+                publish()
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnPersona failed", t)
+            }
+        }
+    }
+
+    /** Merge a relayed persona over the retained entry (avatar / rich presence / nickname kept). */
+    private fun agentMergePersona(e: SteamAgentFriendsBridge.Entry) {
+        val prev = friendMap[e.steamId]
+        // The relay carries the app id, not the game name: keep the name the engine last saw when
+        // the app matches, else fall back to the "In game" label the classifier produces.
+        val gameName = if (e.appId != 0 && prev?.gameAppId == e.appId) prev.gameName else null
+        val (presence, statusText) = classifyCode(e.state, e.appId, gameName)
+        rustStates[e.steamId] = e.state
+        friendMap[e.steamId] = SteamFriend(
+            e.steamId,
+            e.name.takeIf { it.isNotBlank() } ?: prev?.personaName ?: "",
+            null, presence, statusText, e.appId, gameName,
+            prev?.avatarHash, prev?.richPresence ?: emptyMap(),
+        )
+    }
+
+    /** Incoming 1:1 message relayed from the in-game client — same path as an engine push. */
+    fun agentOnChatIn(id: Long, body: String, tsSec: Long) {
+        io.execute {
+            try {
+                clearTyping(id)
+                val ts = if (tsSec > 0L) tsSec else nowSec()
+                SteamChatDebug.log("RECV(agent) $id \"${SteamChatDebug.snip(body)}\" (activeChat=$activeChatId)")
+                appendMessage(id, ChatMessage(false, body, ts))
+                if (id != activeChatId) {
+                    bumpUnread(id)
+                    maybeNotify(id, body)
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnChatIn failed", t)
+            }
+        }
+    }
+
+    fun agentOnTyping(id: Long) {
+        try { markTyping(id) } catch (_: Throwable) {}
+    }
+
+    /** The in-game client's verdict on a relayed send; a refusal turns the optimistic bubble into a note. */
+    fun agentOnChatSent(id: Long, ok: Boolean) {
+        if (ok || id == 0L) return
+        io.execute {
+            try {
+                val list = histories[id] ?: return@execute
+                val last = synchronized(list) { list.lastOrNull { it.fromSelf } } ?: return@execute
+                replaceMessageText(id, last, last.text + "  (not sent — the in-game Steam client refused it)")
+            } catch (t: Throwable) {
+                Log.w(TAG, "agentOnChatSent failed", t)
+            }
+        }
+    }
+
+    /** The relay went away (game exited); the resumed engine session re-syncs the roster. */
+    fun agentDetached() {
+        syncedThisSession = false
     }
 
     // ── Rust engine backend ───────────────────────────────────────────────────────
@@ -693,6 +802,7 @@ object SteamFriendsStore {
                 // build — "off" must leave no social footprint. Gated at the source (the friends screen
                 // shows its off-state instead of the roster when this is false).
                 if (!_socialEnabled.value) return@execute
+                if (agentRelayActive()) { SteamAgentFriendsBridge.requestRoster(); return@execute }
                 rustSession()?.let { rs -> rustRefresh(rs); return@execute }
                 val sf = repo.steamFriends ?: return@execute
                 if (!repo.isLoggedIn) return@execute
@@ -1024,6 +1134,11 @@ object SteamFriendsStore {
         appendMessage(steamId, ChatMessage(true, body, nowSec()))
         io.execute {
             try {
+                if (agentRelayActive()) {
+                    // The app session is paused for a SteamLite game: the in-game client sends it.
+                    if (!SteamAgentFriendsBridge.sendChat(steamId, body)) SteamChatDebug.log("SEND $steamId -> agent relay refused")
+                    return@execute
+                }
                 val rs = rustSession()
                 if (rs != null) {
                     if (rs.sendFriendMessage(steamId, body) == null) SteamChatDebug.log("SEND $steamId -> engine reported no response")
@@ -1515,6 +1630,7 @@ object SteamFriendsStore {
         lastTypingSent[steamId] = now
         io.execute {
             try {
+                if (agentRelayActive()) return@execute   // no typing primitive on the in-game relay
                 val rs = rustSession()
                 if (rs != null) rs.sendFriendTyping(steamId)
                 else repo.steamFriends?.sendChatMessage(SteamID(steamId), EChatEntryType.Typing, "")

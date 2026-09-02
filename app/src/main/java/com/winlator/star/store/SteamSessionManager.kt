@@ -315,12 +315,16 @@ object SteamSessionManager {
         closeAgentChannel()
         val ch = SteamAgentChannel.open(listener) ?: return 0
         agentChannel = ch
+        // Friends/chat relay (agent p3): the bridge consumes the channel's friends events while the
+        // app session is paused for the game.
+        SteamAgentFriendsBridge.attach(ch)
         return ch.port
     }
 
     fun closeAgentChannel() {
         val ch = agentChannel ?: return
         agentChannel = null
+        SteamAgentFriendsBridge.detach(ch)
         ch.close()
     }
 

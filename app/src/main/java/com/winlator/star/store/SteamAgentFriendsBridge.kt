@@ -20,12 +20,15 @@ import java.util.concurrent.atomic.AtomicReference
  * `chat_in` / `chat_typing` / `chat_sent` events, feeds [SteamFriendsStore] (same StateFlows, same
  * notifier), and sends `chat_send` / `friends_refresh` back.
  *
- * Presence (agent p3c): a headless client answers Offline for every friend until it has asked the CM
- * about them, so the agent now subscribes (`RequestUserInformation` per friend) and reports per entry
- * whether the presence is CONFIRMED (`k:1` on roster entries; every `persona` event is confirmed). The
- * store merges by SteamID and never downgrades a friend on an unconfirmed Offline; [presence] tells the
- * in-game tab how many of the relayed friends are confirmed so it can show a "presence: N of M known"
- * hint until the roster is complete.
+ * Presence (agent p3c/p3d): a headless client answers Offline for every friend until the CM streams
+ * their presence, and the CM only does that once the session has announced a persona state — agent
+ * p3d announces Online (ISteamFriends002::SetPersonaState) when the relay arms, then confirms each
+ * friend from a PersonaStateChange_t / a non-Offline read (p3c's RequestUserInformation "already
+ * cached" answer only covered the NAME and produced 19 confirmed-Offline persona events on device).
+ * Entries report whether the presence is CONFIRMED (`k:1` on roster entries; every `persona` event is
+ * confirmed). The store merges by SteamID and never downgrades a friend on an unconfirmed Offline;
+ * [presence] tells the in-game tab how many of the relayed friends are confirmed so it can show a
+ * "presence: N of M known" hint until the roster is complete.
  *
  * Source switch: [SteamFriendsStore] routes a send here whenever the app session is suspended for
  * a real-Steam game AND the relay is live ([isLive]); otherwise the engine / JavaSteam path is used

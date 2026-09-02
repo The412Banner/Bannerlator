@@ -313,7 +313,17 @@ object SteamFriendsStore {
                     }
                     agentMergePersona(e, authoritative = false)
                 }
+                // Friends the in-game client did not list (it sees the immediate-friends view only)
+                // keep the app session's presence, but that session is paused: flag it as last known.
+                val relayed = entries.mapTo(HashSet()) { it.steamId }
+                for (id in friendIds) {
+                    if (id in relayed) continue
+                    val f = friendMap[id] ?: continue
+                    if (f.stale || f.presence == Presence.UNKNOWN || f.personaName.isBlank()) continue
+                    friendMap[id] = f.copy(stale = true, statusText = f.statusText + STALE_SUFFIX)
+                }
                 publish()
+                Log.i(TAG, "relay roster merged: ${entries.size} relayed, ${agentGroupsSummary()}")
                 val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
                 if (selfId != 0L) {
                     val cur = _self.value
@@ -336,8 +346,11 @@ object SteamFriendsStore {
                 if (e.steamId !in friendIds && e.steamId !in incomingIds && e.steamId !in outgoingIds) {
                     if (e.relationship == BlSocialFeed.REL_FRIEND) friendIds.add(e.steamId) else return@execute
                 }
+                val before = friendMap[e.steamId]?.presence
                 agentMergePersona(e, authoritative = true)
                 publish()
+                val after = friendMap[e.steamId]?.presence
+                if (before != after) Log.i(TAG, "relay persona moved a friend $before -> $after: ${agentGroupsSummary()}")
             } catch (t: Throwable) {
                 Log.w(TAG, "agentOnPersona failed", t)
             }
@@ -346,6 +359,23 @@ object SteamFriendsStore {
 
     /** Suffix on a last-known status while the relay hasn't confirmed it. */
     private const val STALE_SUFFIX = " · last known"
+
+    /** One-line "groups: in-game N online N away N offline N unknown N (stale N)" of the roster (diagnostics). */
+    private fun agentGroupsSummary(): String {
+        var inGame = 0; var online = 0; var away = 0; var offline = 0; var unknown = 0; var stale = 0
+        for (id in friendIds) {
+            val f = friendMap[id] ?: continue
+            when (f.presence) {
+                Presence.IN_GAME -> inGame++
+                Presence.ONLINE -> online++
+                Presence.AWAY -> away++
+                Presence.OFFLINE -> offline++
+                Presence.UNKNOWN -> unknown++
+            }
+            if (f.stale) stale++
+        }
+        return "groups: in-game $inGame online $online away $away offline $offline unknown $unknown (stale $stale, total ${friendIds.size})"
+    }
 
     /**
      * Merge a relayed entry over the retained one (avatar / rich presence / nickname kept).

@@ -139,6 +139,41 @@ class BlSteamSession : AutoCloseable {
         nativeCancelDownload(h)
     }
 
+    /** Result of [checkAppBetaPassword]: the CM's EResult + branch name → hex AES-256 manifest key. */
+    class BetaPasswordResult(val eresult: Int, val branchKeys: Map<String, String>)
+
+    /**
+     * Blocking `ClientCheckAppBetaPassword`: every password-protected branch of [appId] the access
+     * code unlocks, with the key that decrypts its `encryptedmanifests/<branch>/gid`. Null when the
+     * session is not logged on or Steam did not answer. The password is never logged.
+     */
+    fun checkAppBetaPassword(appId: Int, password: String): BetaPasswordResult? {
+        if (password.isEmpty()) return null
+        val h = nativeHandle.get(); if (h == 0L) return null
+        val json = try { nativeCheckAppBetaPassword(h, appId, password) } catch (_: UnsatisfiedLinkError) { null }
+            ?: return null
+        return try {
+            val obj = org.json.JSONObject(json)
+            val keys = LinkedHashMap<String, String>()
+            obj.optJSONObject("betas")?.let { b -> for (k in b.keys()) keys[k] = b.optString(k, "") }
+            BetaPasswordResult(obj.optInt("eresult", 0), keys)
+        } catch (_: Exception) { null }
+    }
+
+    /** Declared totals of one depot manifest (metadata-only fetch — no chunk data, no depot key). */
+    class ManifestSizes(val uncompressed: Long, val compressed: Long, val disk: Long, val files: Int)
+
+    /** Blocking manifest-only size resolve for one depot; null on any failure. Off the main thread. */
+    fun fetchManifestSizes(appId: Int, depotId: Int, manifestId: Long, branch: String, caBundlePath: String): ManifestSizes? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        val json = try { nativeFetchManifestSizes(h, appId, depotId, manifestId, branch, caBundlePath) }
+                   catch (_: UnsatisfiedLinkError) { null } ?: return null
+        return try {
+            val o = org.json.JSONObject(json)
+            ManifestSizes(o.optLong("uncompressed", 0L), o.optLong("compressed", 0L), o.optLong("disk", 0L), o.optInt("files", 0))
+        } catch (_: Exception) { null }
+    }
+
     /**
      * Region preference for depot downloads: the Steam cell id sent with the CDN pool request
      * (0 = Steam picks by the connection's location) and the datacenter code whose
@@ -831,6 +866,9 @@ class BlSteamSession : AutoCloseable {
         )
         @JvmStatic private external fun nativeCancelDownload(handle: Long)
         @JvmStatic private external fun nativeSetCdnPreference(handle: Long, cellId: Int, preferDc: String)
+        @JvmStatic private external fun nativeCheckAppBetaPassword(handle: Long, appId: Int, password: String): String?
+        @JvmStatic private external fun nativeFetchManifestSizes(
+            handle: Long, appId: Int, depotId: Int, manifestId: Long, branch: String, caBundlePath: String): String?
         @JvmStatic private external fun nativeStartWineBridge(
             handle: Long, steam3Port: Int, clientServicePort: Int): Boolean
         @JvmStatic private external fun nativeStopWineBridge(handle: Long)

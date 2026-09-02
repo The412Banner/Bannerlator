@@ -17,6 +17,7 @@ use crate::pb::ccontentserverdirectory::{
 use crate::pb::cfamilygroups::CFamilyGroupsGetFamilyGroupRequest;
 use crate::pb::cinventory::CInventoryGetItemDefMetaRequest;
 use crate::pb::cmsg_client_change_status::CMsgClientChangeStatus;
+use crate::pb::cmsg_client_check_app_beta_password::CMsgClientCheckAppBetaPassword;
 use crate::pb::cmsg_client_friends_list::CMsgClientFriendsList;
 use crate::pb::cmsg_client_friends_ops::{
     CMsgClientAddFriend, CMsgClientFriendProfileInfo, CMsgClientRemoveFriend,
@@ -829,6 +830,29 @@ impl CMClientCore {
             }
             .serialize(),
             // Match the legacy C++ client: this request is not app-routed.
+            0,
+        )
+    }
+
+    /// Job-tracked `ClientCheckAppBetaPassword`: which password-protected beta branches of
+    /// `app_id` the access code unlocks (the response carries each branch's manifest key).
+    pub fn build_check_app_beta_password(
+        &self,
+        app_id: u32,
+        password: &str,
+        job_id: u64,
+    ) -> Option<OutboundProtoMessage> {
+        if app_id == 0 || password.is_empty() {
+            return None;
+        }
+        self.build_job_proto_message(
+            EMsg::CLIENT_CHECK_APP_BETA_PASSWORD,
+            job_id,
+            CMsgClientCheckAppBetaPassword {
+                app_id,
+                betapassword: password.to_string(),
+            }
+            .serialize(),
             0,
         )
     }

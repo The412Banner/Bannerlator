@@ -5,6 +5,7 @@ pub mod cfamilygroups;
 pub mod cfriendmessages;
 pub mod cinventory;
 pub mod cmsg_client_change_status;
+pub mod cmsg_client_check_app_beta_password;
 pub mod cmsg_client_friends_list;
 pub mod cmsg_client_friends_ops;
 pub mod cmsg_client_games_played;

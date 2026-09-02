@@ -3802,6 +3802,146 @@ fn dispatch_download_progress(
     clear_pending_exception(&mut env);
 }
 
+/// `ClientCheckAppBetaPassword` for a password-protected beta branch. Returns JSON
+/// `{"eresult":n,"betas":{"<branch>":"<hex AES-256 key>"}}` (`eresult` 0 = no reply); the key
+/// decrypts `depots/<id>/encryptedmanifests/<branch>/gid` (AES-256-ECB, PKCS7) into the manifest id.
+/// The password itself is never logged.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeCheckAppBetaPassword(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    app_id: jint,
+    password: JString,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let Some(password) = jstring_to_string(&mut env, &password) else {
+        return ptr::null_mut();
+    };
+    let app_id = app_id.max(0) as u32;
+    let Some((header_eresult, body)) =
+        request_proto_response(&runtime, Duration::from_secs(30), |core, job_id| {
+            core.build_check_app_beta_password(app_id, &password, job_id)
+        })
+    else {
+        return ptr::null_mut();
+    };
+    let (eresult, betas) =
+        match crate::pb::cmsg_client_check_app_beta_password::CMsgClientCheckAppBetaPasswordResponse::deserialize(&body) {
+            Some(response) => {
+                let mut map = serde_json::Map::new();
+                for beta in response.betapasswords {
+                    if !beta.betaname.is_empty() {
+                        map.insert(beta.betaname, json!(beta.betapassword));
+                    }
+                }
+                (response.eresult, serde_json::Value::Object(map))
+            }
+            None => (header_eresult, json!({})),
+        };
+    android_log(
+        "BL_STEAM_DL",
+        &format!(
+            "check beta password app={app_id}: eresult={eresult} branches={}",
+            betas.as_object().map(|m| m.len()).unwrap_or(0)
+        ),
+    );
+    let value = json!({ "eresult": eresult, "betas": betas }).to_string();
+    new_string_or_null(&mut env, &value)
+}
+
+/// Metadata-only manifest fetch for one depot (no chunk data, no depot key): the manifest's
+/// declared totals + a block-rounded on-disk estimate over its regular files. Returns JSON
+/// `{"uncompressed":u64,"compressed":u64,"disk":u64,"files":n}` or null (not logged on, request
+/// code refused, CDN failure). Blocking; call off the main thread.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeFetchManifestSizes(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    app_id: jint,
+    depot_id: jint,
+    manifest_id: jlong,
+    branch: JString,
+    ca_bundle_path: JString,
+) -> jstring {
+    const BLOCK_BYTES: u64 = 4096;
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let app_id = app_id.max(0) as u32;
+    let depot_id = depot_id.max(0) as u32;
+    let manifest_id = manifest_id as u64;
+    if app_id == 0 || depot_id == 0 || manifest_id == 0 {
+        return ptr::null_mut();
+    }
+    let branch = jstring_to_string(&mut env, &branch).unwrap_or_else(|| "public".to_string());
+    let ca_bundle_path = jstring_to_string(&mut env, &ca_bundle_path).unwrap_or_default();
+    let timeout = Duration::from_secs(30);
+    let (cdn_cell_id, cdn_prefer_dc) = handle.cdn_preference();
+    let Some(servers) = request_cdn_servers(&runtime, cdn_cell_id, &cdn_prefer_dc, timeout) else {
+        return ptr::null_mut();
+    };
+    let servers = crate::depot_downloader::filter_usable_cdn_servers(servers);
+    let cancel = AtomicBool::new(false);
+    let request_code = match resolve_manifest_code_with_retry(
+        &runtime, app_id, depot_id, manifest_id, &branch, timeout, &cancel,
+    ) {
+        CodeResolution::Code(code) => code,
+        _ => return ptr::null_mut(),
+    };
+    let cdn = crate::cdn_client::CdnClient::new(ca_bundle_path);
+    let fetched = crate::depot_downloader::fetch_manifest_with_retry(
+        &cdn,
+        &servers,
+        depot_id,
+        manifest_id,
+        request_code,
+        "",
+        crate::cdn_client::CdnClient::default_timeout(),
+    );
+    if !fetched.ok() {
+        android_log(
+            "BL_STEAM_DL",
+            &format!("manifest sizes depot={depot_id}: fetch failed ({})", fetched.error),
+        );
+        return ptr::null_mut();
+    }
+    let Some(manifest) = crate::content_manifest::ContentManifest::parse(&fetched.raw_manifest)
+    else {
+        return ptr::null_mut();
+    };
+    // Same rule as the JavaSteam resolver: symlinks and empty entries occupy no data blocks;
+    // degrade to the raw uncompressed total when the file list carries no sizes.
+    let mut disk = 0u64;
+    for file in &manifest.files {
+        if !file.linktarget.is_empty() || file.size == 0 {
+            continue;
+        }
+        disk += file.size.div_ceil(BLOCK_BYTES) * BLOCK_BYTES;
+    }
+    let uncompressed = manifest.metadata.cb_disk_original;
+    if disk == 0 {
+        disk = uncompressed;
+    }
+    let value = json!({
+        "uncompressed": uncompressed,
+        "compressed": manifest.metadata.cb_disk_compressed,
+        "disk": disk,
+        "files": manifest.files.len(),
+    })
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeSetCdnPreference(
     mut env: JNIEnv,

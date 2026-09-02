@@ -206,10 +206,10 @@ internal object BlDepotInstaller {
         val specs: List<Pair<Int, Long>> = if (selectedBranch == "public") {
             keptRows.filter { it.manifestId != 0L }.map { it.depotId to it.manifestId }
         } else {
-            val r = resolveBranchManifests(session, appId, selectedBranch, keptRows.map { it.depotId })
+            val r = resolveBranchManifests(session, appId, selectedBranch, keptRows.map { it.depotId }, db)
             if (r == null) {
-                fail(appId, "Beta branch \"$selectedBranch\" isn't available on the Rust engine yet " +
-                        "(password-protected or unresolved) — pick the public branch or turn the engine off")
+                fail(appId, "Beta branch \"$selectedBranch\" could not be resolved — if it is " +
+                        "password-protected, enter its access code on the game page, then retry")
                 return
             }
             r
@@ -492,15 +492,22 @@ internal object BlDepotInstaller {
 
     /**
      * `depots/<id>/manifests/<branch>/gid` from a fresh engine PICS read, for a non-public branch.
-     * Null when the branch is password-protected (`encryptedmanifests`) or nothing resolved —
-     * the caller refuses honestly instead of silently downloading the public build.
+     * A password-protected branch carries `depots/<id>/encryptedmanifests/<branch>/gid` instead: the
+     * access code the user verified on the game page (persisted by `checkBranchPassword`) is checked
+     * again with Steam (`ClientCheckAppBetaPassword`) to obtain the branch's AES-256 key, and the gid
+     * is decrypted with it (AES-256-ECB, PKCS7 — the DepotDownloader/GameNative scheme). Null when a
+     * protected branch has no verified code or nothing resolved — the caller fails honestly instead of
+     * silently downloading the public build.
      */
-    private fun resolveBranchManifests(session: BlSteamSession, appId: Int, branch: String, depotIds: List<Int>): List<Pair<Int, Long>>? {
+    private fun resolveBranchManifests(
+        session: BlSteamSession, appId: Int, branch: String, depotIds: List<Int>, db: SteamDatabase,
+    ): List<Pair<Int, Long>>? {
         val info = try { BlLibraryCrawler(session).fetchApps(listOf(appId)).firstOrNull()?.second } catch (t: Throwable) { null }
             ?: return null
         val depots = info.optJSONObject("depots") ?: return null
         val out = ArrayList<Pair<Int, Long>>()
-        var encrypted = false
+        var branchKey: ByteArray? = null
+        var keyResolved = false
         for (d in depotIds) {
             val depot = depots.optJSONObject(d.toString()) ?: continue
             val gid = depot.optJSONObject("manifests")?.optJSONObject(branch)?.let { m ->
@@ -508,12 +515,64 @@ internal object BlDepotInstaller {
             } ?: depot.optJSONObject("manifests")?.optString(branch, "")
             if (!gid.isNullOrEmpty()) {
                 gid.toULongOrNull()?.toLong()?.let { out.add(d to it) }
-            } else if (depot.optJSONObject("encryptedmanifests")?.has(branch) == true) {
-                encrypted = true
+                continue
             }
+            val enc = depot.optJSONObject("encryptedmanifests")?.optJSONObject(branch) ?: continue
+            val encGidHex = enc.optString("gid", "").ifEmpty { enc.optString("encrypted_gid_2", "") }
+            if (encGidHex.isEmpty()) continue
+            if (!keyResolved) {
+                keyResolved = true
+                branchKey = resolveBranchKey(session, appId, branch, db)
+            }
+            val key = branchKey ?: run {
+                dlog("Branch '$branch' is password-protected and no verified access code unlocks it")
+                return null
+            }
+            val manifestId = decryptBetaGid(encGidHex, key)
+            if (manifestId == null) {
+                dlog("Branch '$branch': could not decrypt the manifest gid for depot $d")
+                continue
+            }
+            dlog("Branch '$branch': depot $d encrypted gid → manifest $manifestId")
+            out.add(d to manifestId)
         }
-        if (encrypted && out.isEmpty()) return null
         return out
+    }
+
+    /** The AES-256 key for [branch] from the persisted access code, re-verified with Steam. */
+    private fun resolveBranchKey(session: BlSteamSession, appId: Int, branch: String, db: SteamDatabase): ByteArray? {
+        val password = try { db.getUnlockedBranchPassword(appId, branch) } catch (_: Throwable) { null }
+        if (password.isNullOrEmpty()) return null
+        val r = session.checkAppBetaPassword(appId, password)
+        if (r == null || r.eresult != 1) {
+            dlog("CheckAppBetaPassword for branch '$branch' → " + (r?.eresult?.let { "eresult $it" } ?: "no reply"))
+            return null
+        }
+        val hex = r.branchKeys[branch] ?: r.branchKeys.entries.firstOrNull { it.key.equals(branch, ignoreCase = true) }?.value
+        if (hex.isNullOrEmpty()) { dlog("Access code does not unlock branch '$branch' (unlocks ${r.branchKeys.keys})"); return null }
+        val key = SteamCloudBackend.unhex(hex)
+        return if (key.size == 32) key else { dlog("Branch key for '$branch' has ${key.size} bytes, expected 32"); null }
+    }
+
+    /**
+     * `encryptedmanifests/<branch>/gid` → manifest id: AES-256-ECB/PKCS7 decrypt of the hex blob with
+     * the branch key, first 8 bytes little-endian (DepotDownloader `SymmetricDecryptECB` +
+     * `BitConverter.ToUInt64`). Null on a padding/format error (wrong key).
+     */
+    internal fun decryptBetaGid(encGidHex: String, key: ByteArray): Long? {
+        return try {
+            val input = SteamCloudBackend.unhex(encGidHex)
+            if (input.isEmpty() || input.size % 16 != 0) return null
+            val cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding")
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, javax.crypto.spec.SecretKeySpec(key, "AES"))
+            val plain = cipher.doFinal(input)
+            if (plain.size < 8) return null
+            var v = 0L
+            for (i in 7 downTo 0) v = (v shl 8) or (plain[i].toLong() and 0xFF)
+            if (v == 0L) null else v
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /** depotId → manifest id recorded as installed in `<installDir>/.bl_depot/depot.config`. */

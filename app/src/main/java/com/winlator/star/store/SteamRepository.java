@@ -193,6 +193,9 @@ public final class SteamRepository {
     /** True when this process runs its Steam CM session on the native Rust engine. */
     public boolean isRustEngine() { return rustEngine; }
 
+    /** The application context handed to {@link #initialize}, or null before it ran. */
+    public Context appContextOrNull() { return appContext; }
+
     /** Auto-reconnect budget on the engine (same shape as the JavaSteam MAX_RECONNECT_ATTEMPTS ladder). */
     private volatile int rustReconnectAttempts = 0;
     /** Set when another client took the account (LoggedInElsewhere / LogonSessionReplaced) — no tug-back. */
@@ -835,10 +838,10 @@ public final class SteamRepository {
     // -------------------------------------------------------------------------
 
     // Under the Rust engine every JavaSteam handler getter is null: the SteamClient is built but never
-    // connected, so a caller that reached for one would only hang on a dead connection. Surfaces the
-    // engine serves (auth, session, social, presence, library, downloads) branch on isRustEngine()
-    // before they get here; the rest (cloud, achievements, beta passwords, depot-size resolve) refuse
-    // fast until their engine port lands.
+    // connected, so a caller that reached for one would only hang on a dead connection. Every surface
+    // branches on isRustEngine() (or goes through an engine-agnostic seam such as SteamCloudBackend /
+    // fetchAppKeyValues) BEFORE reaching for a handler — since Phase 3b no feature is served by these
+    // getters alone, so a null here is never a refusal, only "not the JavaSteam engine".
     public SteamCloud     getSteamCloud()     { return rustEngine ? null : steamCloud; }
     public SteamUserStats getSteamUserStats() { return rustEngine ? null : steamUserStats; }
     public SteamFriends   getSteamFriends()   { return rustEngine ? null : steamFriends; }
@@ -2607,8 +2610,24 @@ public final class SteamRepository {
      * Ported from GameNative (GPL-3.0): app/gamenative/service/SteamService.checkPrivateBranchPassword.
      */
     public boolean checkBranchPassword(int appId, String password) {
+        if (password == null || password.isEmpty()) return false;
+        if (rustEngine) {
+            // Same round-trip on the engine (ClientCheckAppBetaPassword); the unlocked branch names
+            // are persisted exactly like the JavaSteam path so the selector + installer read them alike.
+            BlSteamSession s = BlSteamEngine.INSTANCE.session();
+            if (s == null || !BlSteamEngine.INSTANCE.isLoggedOn()) return false;
+            BlSteamSession.BetaPasswordResult r = s.checkAppBetaPassword(appId, password);
+            if (r != null && r.getEresult() == 1 && !r.getBranchKeys().isEmpty()) {
+                SteamDatabase db = getDatabase();
+                for (String branchName : r.getBranchKeys().keySet()) db.insertUnlockedBranch(appId, branchName, password);
+                Log.i(TAG, "checkBranchPassword: app " + appId + " unlocked " + r.getBranchKeys().keySet() + " (rust)");
+                return true;
+            }
+            Log.i(TAG, "checkBranchPassword: app " + appId + " rejected (rust eresult=" + (r != null ? r.getEresult() : "no reply") + ")");
+            return false;
+        }
         SteamApps sa = steamApps;
-        if (sa == null || password == null || password.isEmpty()) return false;
+        if (sa == null) return false;
         try {
             CheckAppBetaPasswordCallback cb = sa.checkAppBetaPassword(appId, password)
                     .toFuture().get(30, java.util.concurrent.TimeUnit.SECONDS);

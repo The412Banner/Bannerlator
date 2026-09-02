@@ -113,7 +113,7 @@ object SteamHostComponent {
      */
     internal fun parseManifest(text: String): Manifest? {
         val root = KeyValues.parse(text) ?: return null
-        val body = root.values.firstOrNull { it is KeyValues.Node } as? KeyValues.Node ?: return null
+        val body = root.values.values.firstOrNull { it is KeyValues.Node } as? KeyValues.Node ?: return null
         val version = (body.values["version"] as? String)?.trim().orEmpty()
         val pkg = body.values[PACKAGE_KEY] as? KeyValues.Node ?: return null
         val file = (pkg.values["file"] as? String)?.trim().orEmpty()

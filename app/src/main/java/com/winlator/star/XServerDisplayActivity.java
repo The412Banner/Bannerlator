@@ -2131,7 +2131,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.d("XServerDisplayActivity", "XInput Disabled from Shortcut: " + xinputDisabledFromShortcut);
         }
 
-        // DirectAudio's winedirectaudio.drv only loads on the four supported arm64ec Proton builds; on
+        // DirectAudio's winedirectaudio.drv only loads on the arm64ec Proton builds listed in
+        // DirectAudioSupport.SUPPORTED_BUILD_TOKENS (7 as of driver v1.3.2); on
         // any other layer it does nothing / breaks audio. The editors grey it out and coerce it on save,
         // but a container/shortcut written before this gate (or whose layer was swapped elsewhere) can
         // still arrive here as "directaudio" — the last place it could be applied to the guest registry.
@@ -3472,7 +3473,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     // Deliver the bundled, BUILD-MATCHED DirectAudio driver into the shared Proton layer at launch, so a
-    // user's dormant/old winedirectaudio.drv auto-upgrades to the APK's v1.3.1 before the guest loads it.
+    // user's dormant/old winedirectaudio.drv auto-upgrades to the APK's bundled driver before the guest
+    // loads it (version = assets/directaudio/<build>/version.txt, v1.3.2 at time of writing).
     // The shared-layer copy is the one Wine actually loads, so overlaying it upgrades EVERY container on
     // that layer. Per-build dispatch (wine11 for any 11.0-x, wine10 for 10.0-4; arm64ec only), version-gated
     // by a per-layer marker, page-size aware (4KB -> sdk28, 16KB -> sdk35). Copies the COMPLETE 3-file set -
@@ -3500,8 +3502,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (want == null) return;
             want = want.trim();
             // Per-layer marker records "<build> <version>"; re-overlay if either changes. The pre-existing
-            // "1.3.1" marker (old aarch64-only overlay) mismatches "wine11 1.3.1", so P11-5 layers get a
-            // one-time re-overlay that finally delivers the i386 PE.
+            // bare-version marker (old aarch64-only overlay, e.g. "1.3.1") can never match the newer
+            // "<build> <version>" tag, so those layers get a one-time re-overlay that finally
+            // delivers the i386 PE.
             java.io.File marker = new java.io.File(unixDir, ".directaudio_bundled");
             String tag = build + " " + want;
             String have = marker.isFile() ? FileUtils.readString(marker) : null;

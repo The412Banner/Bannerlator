@@ -11,7 +11,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 enum class TabType {
-    GRAPHICS, HUD, RESHADE, CONTROLS, ADVANCED, TASK_MANAGER, TV, AUDIO
+    GRAPHICS, HUD, RESHADE, CONTROLS, ADVANCED, TASK_MANAGER, TV, AUDIO,
+    // Steam friends + chat while playing. Only in the rail while InGameFriendsSource says a live
+    // source exists (see ui/XServerFriendsTab.kt).
+    FRIENDS
 }
 
 object XServerDrawerState {

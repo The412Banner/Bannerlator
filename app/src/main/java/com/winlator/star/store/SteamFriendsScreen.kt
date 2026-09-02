@@ -123,8 +123,9 @@ internal fun dotColor(p: SteamFriendsStore.Presence): Color = when (p) {
     SteamFriendsStore.Presence.OFFLINE -> DotOffline
 }
 
-// Section order + labels, top to bottom.
-private val PRESENCE_ORDER = listOf(
+// Section order + labels, top to bottom. `internal`: the in-game drawer's Friends tab (ui/XServerFriendsTab.kt)
+// groups the same way, with the row / header / bubble composables below.
+internal val PRESENCE_ORDER = listOf(
     SteamFriendsStore.Presence.IN_GAME to "In game",
     SteamFriendsStore.Presence.ONLINE to "Online",
     SteamFriendsStore.Presence.AWAY to "Away",
@@ -1079,7 +1080,7 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun SectionHeader(
+internal fun SectionHeader(
     label: String,
     count: Int,
     collapsed: Boolean,
@@ -1118,7 +1119,7 @@ private fun SectionHeader(
 
 /** Thin gray line between friends within a section (pop-up-menu style, inset from the edges). */
 @Composable
-private fun FriendDivider() {
+internal fun FriendDivider() {
     HorizontalDivider(
         thickness = 0.7.dp,
         color = RowDivider,
@@ -1128,7 +1129,7 @@ private fun FriendDivider() {
 
 /** Unread-count pill (e.g. a friend has sent messages you haven't opened). */
 @Composable
-private fun UnreadBadge(count: Int) {
+internal fun UnreadBadge(count: Int) {
     Box(
         modifier = Modifier
             .widthIn(min = 20.dp)
@@ -1149,7 +1150,7 @@ private fun UnreadBadge(count: Int) {
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-private fun FriendRow(
+internal fun FriendRow(
     friend: SteamFriendsStore.SteamFriend,
     unread: Int,
     onClick: () -> Unit,
@@ -1523,7 +1524,7 @@ private val EMOJIS = listOf(
 )
 
 @Composable
-private fun MessageBubble(
+internal fun MessageBubble(
     msg: SteamFriendsStore.ChatMessage,
     friend: SteamFriendsStore.SteamFriend,
     self: SteamFriendsStore.SteamFriend?,

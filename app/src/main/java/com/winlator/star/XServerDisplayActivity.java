@@ -1953,6 +1953,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             shortcut = new Shortcut(container, new File(shortcutPath));
         }
 
+        // In-game Friends tab (drawer): read the friends/chat opt-in once for this launch and start
+        // watching for a live source. The RealSteam hint keeps the app-session source from flashing up
+        // before maybeStageRealSteam() arms the plan (which confirms or withdraws it); disarmed in onDestroy.
+        try {
+            com.winlator.star.store.InGameFriendsSource.INSTANCE.arm(getApplicationContext(),
+                    shortcut != null && "RealSteam".equals(shortcut.getExtra("launchMode")));
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "InGameFriendsSource arm failed", t);
+        }
+
         // Sync the in-game frame-generation controls. bionicFgActive = is a frame-gen layer actually
         // loaded this session? Live FG tuning only works when it is; the drawer uses this to gate the
         // FG multiplier row. The engine honors per-game overrides (resolvedFrameGenEngine), else the
@@ -4409,7 +4419,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             agentConnected = true;
             preloaderHint("Steam client started — signing in…");
         }
-        @Override public void onAgentDisconnected() { /* game_exited / shutdown already said why */ }
+        @Override public void onAgentDisconnected() {
+            // game_exited / shutdown already said why; the Friends tab swaps to its "relay stopped" line.
+            try { com.winlator.star.store.InGameFriendsSource.INSTANCE.onRelayDropped(); } catch (Throwable ignored) {}
+        }
         @Override public void onAgentEvent(String ev, org.json.JSONObject obj) {
             switch (ev) {
                 case "started":
@@ -4464,8 +4477,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     break;
                 }
                 case "friends_relay":
-                    // Informational (agent p3b): the in-game friends/chat relay verdict, ~5 s after spawn.
+                    // Agent p3b: the in-game friends/chat relay verdict, ~5 s after spawn. Drives the
+                    // drawer's Friends tab (live = tab appears; off after live = "relay stopped" line).
                     Log.i(AGENT_TAG, "friends_relay: " + obj);
+                    try {
+                        com.winlator.star.store.InGameFriendsSource.INSTANCE.onRelayVerdict(
+                                "live".equals(obj.optString("state", "")));
+                    } catch (Throwable ignored) {}
                     break;
                 case "direct_exe":
                     agentLoginResolved = true;
@@ -5347,6 +5365,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // suspended it this session.
         releaseRealSteamSession("activity destroyed", 0L);
         clearOfflineSteamPresence("activity destroyed");
+        // Hide the drawer's Friends tab source + leave any in-game chat thread (the full Friends
+        // screen's own open/close is untouched).
+        try { com.winlator.star.store.InGameFriendsSource.INSTANCE.disarm(); } catch (Throwable ignored) {}
         // Version-A spike: unregister the display listener, dismiss the Presentation, and pull the
         // game back to the phone so nothing leaks a window on the external display.
         if (externalDisplayController != null) {
@@ -5875,6 +5896,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // prepare() returns null and realSteamPlan stays null → the NORMAL launch is byte-for-byte
             // unchanged. The refresh token lives ONLY inside the returned env map; nothing here logs it.
             maybeStageRealSteam();
+            // Tell the drawer's Friends tab which source to wait for: the agent relay when the plan is
+            // armed, else the app's own session (a fallback to the normal launch never pauses it).
+            try { com.winlator.star.store.InGameFriendsSource.INSTANCE.setRealSteamLaunch(realSteamPlan != null); }
+            catch (Throwable ignored) {}
 
             String guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " + getWineStartCommand();
 

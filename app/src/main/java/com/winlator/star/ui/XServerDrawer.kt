@@ -153,6 +153,14 @@ fun XServerDrawer() {
     val isPaused by state.isPaused.collectAsState()
     val tvConnected by state.tvConnected.collectAsState()
     val castSupported by state.castSupported.collectAsState()
+    // Friends tab: present only while a live friends source exists for this launch (agent relay during
+    // a SteamLite game, else the app's own session); unread dot = a message landed while the thread
+    // wasn't open. See XServerFriendsTab.kt.
+    val friendsSource by com.winlator.star.store.InGameFriendsSource.state.collectAsState()
+    val friendsUnread by com.winlator.star.store.SteamFriendsStore.unread.collectAsState()
+    // Re-check the friends source on every drawer open (its liveness isn't all flow-driven).
+    val menuOpen by XServerDialogState.menuOpen.collectAsState()
+    LaunchedEffect(menuOpen) { if (menuOpen) com.winlator.star.store.InGameFriendsSource.poke() }
     val pauseIcon = if (isPaused) R.drawable.icon_play else R.drawable.icon_pause
     val accent = MaterialTheme.colorScheme.primary
     val surface = MaterialTheme.colorScheme.surface
@@ -217,6 +225,15 @@ fun XServerDrawer() {
                         TabIconButton(R.drawable.icon_debug, selectedTab == TabType.ADVANCED) {
                             handleTabClick(TabType.ADVANCED, state)
                         }
+                        if (friendsSource.tabVisible) {
+                            Spacer(Modifier.height(6.dp))
+                            FriendsTabButton(
+                                isSelected = selectedTab == TabType.FRIENDS,
+                                unread = friendsUnread.values.any { it > 0 },
+                            ) {
+                                handleTabClick(TabType.FRIENDS, state)
+                            }
+                        }
                         // TV / Cast tab: shown while a TV is wired-connected OR wireless casting is
                         // available (so the "Cast to a TV" button is always reachable). Gated behind
                         // FeatureFlags.TV_OUTPUT_ENABLED so the whole tab disappears while the feature
@@ -267,11 +284,14 @@ fun XServerDrawer() {
                 .background(accent)
         )
 
+        // The Friends tab owns its own scrolling (a LazyColumn roster / thread with the send box
+        // pinned at the bottom) — nesting that inside the pane's verticalScroll is illegal in
+        // Compose, so that one tab gets the pane without it.
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .verticalScroll(rememberScrollState())
+                .then(if (selectedTab == TabType.FRIENDS) Modifier else Modifier.verticalScroll(rememberScrollState()))
                 .padding(14.dp),
         ) {
             when (selectedTab) {
@@ -283,6 +303,7 @@ fun XServerDrawer() {
                 TabType.TASK_MANAGER -> TmContent()
                 TabType.TV -> TvContent(state)
                 TabType.AUDIO -> AudioContent(state)
+                TabType.FRIENDS -> FriendsContent(state)
             }
         }
     }

@@ -169,7 +169,7 @@ object SteamSessionManager {
 
     // ── Pre-flight ────────────────────────────────────────────────────────────────────────────
 
-    enum class Step { SESSION, CLOUD, UPDATE }
+    enum class Step { SESSION, CLOUD, UPDATE, CLIENT }
     enum class StepState { PENDING, RUNNING, DONE, SKIPPED, WARN }
 
     /** What the pre-flight should do for one launch. */
@@ -190,6 +190,12 @@ object SteamSessionManager {
         fun onOffline(reason: String)
         /** Game files are behind (or unknown); offer Update / Launch anyway. */
         fun onUpdateAvailable(status: SteamGameUpdater.UpdateStatus)
+        /**
+         * The catalog has a newer SteamLite package; offer Update / Launch anyway (the latter only
+         * when [SteamLiteComponent.UpdateCheck.required] is false). Terminal: every other step is
+         * already done, so the caller launches directly once it has its answer.
+         */
+        fun onClientUpdateAvailable(check: SteamLiteComponent.UpdateCheck)
         /** Every step is done — start the activity. */
         fun onReady()
         fun onCancelled()
@@ -204,8 +210,10 @@ object SteamSessionManager {
     /**
      * Run the launch pre-flight on a worker thread. Returns immediately with a cancel handle. The
      * flow stops at the first blocking outcome ([PreflightListener.onNeedSignIn] /
-     * [PreflightListener.onOffline] / [PreflightListener.onUpdateAvailable]) and it is the caller's
-     * job to continue (e.g. re-run with `skipSession`/`skipUpdate` after "Launch anyway").
+     * [PreflightListener.onOffline] / [PreflightListener.onUpdateAvailable] /
+     * [PreflightListener.onClientUpdateAvailable]) and it is the caller's job to continue (e.g.
+     * re-run with `skipSession`/`skipUpdate` after "Launch anyway"; the client offer is the last
+     * step, so the caller launches directly after it).
      */
     fun preflightAsync(
         ctx: Context,
@@ -288,6 +296,32 @@ object SteamSessionManager {
                         }
                         SteamGameUpdater.State.UNKNOWN, null ->
                             step(Step.UPDATE, StepState.DONE, "Couldn't check for updates — launching this build")
+                    }
+                }
+
+                // 4. SteamLite client package --------------------------------------------------------
+                // Safety net for remembered launches that skip the popup (which has its own
+                // "Update & Launch" gate). Bounded catalog fetch; offline / a failed fetch never
+                // blocks — the installed package launches (even below MIN_AGENT_VERSION: the agent
+                // is backwards compatible, newer app features just stay off).
+                if (!SteamLiteComponent.isInstalled(app)) {
+                    step(Step.CLIENT, StepState.SKIPPED, "SteamLite client: downloaded by the launch")
+                } else {
+                    step(Step.CLIENT, StepState.RUNNING, "Checking for SteamLite updates…")
+                    val check = SteamLiteComponent.checkUpdateBlocking(app)
+                    if (handle.isCancelled) { post { listener.onCancelled() }; return@Thread }
+                    val installed = SteamLiteComponent.versionLabel(check.installed)
+                    when {
+                        !check.checked ->
+                            step(Step.CLIENT, StepState.DONE, "Couldn't check for SteamLite updates — using installed $installed")
+                        check.available -> {
+                            step(Step.CLIENT, StepState.WARN,
+                                (if (check.required) "Update required" else "Update available") +
+                                    " ($installed → v${check.latestVersion})")
+                            post { listener.onClientUpdateAvailable(check) }
+                            return@Thread
+                        }
+                        else -> step(Step.CLIENT, StepState.DONE, "Up to date ($installed)")
                     }
                 }
                 post { listener.onReady() }

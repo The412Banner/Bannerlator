@@ -1,5 +1,6 @@
 package com.winlator.star.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,14 +41,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.SteamGameUpdater
+import com.winlator.star.store.SteamLiteComponent
 import com.winlator.star.store.SteamSessionManager
 import com.winlator.star.store.SteamSessionManager.Step
 import com.winlator.star.store.SteamSessionManager.StepState
+import java.util.concurrent.atomic.AtomicBoolean
 
 // Plain-terms help copy for the "?" bubbles (same idea as LaunchMethodSheet's: what it is, one breath).
 private const val HELP_PREFLIGHT =
-    "Three quick checks before the game opens, so it starts with a working Steam login, your latest " +
-        "saves and the current build. Cancel stops it at any point."
+    "Four quick checks before the game opens, so it starts with a working Steam login, your latest " +
+        "saves, the current build and an up-to-date SteamLite client. Cancel stops it at any point."
 private const val HELP_SESSION =
     "Makes sure you're signed in to Steam (and refreshes your login if it's about to expire) before " +
         "the game starts."
@@ -69,18 +72,30 @@ private const val HELP_UPDATE_OFFER =
     "Update — download the newer build now; launch again when it's done.\n" +
         "Launch anyway — play the build you have (real Steam may refuse it online).\n" +
         "Cancel — go back without launching."
+private const val HELP_CLIENT =
+    "Bannerlator's small Steam client for online (VAC) launches. Newer versions add features the app " +
+        "relies on (live launch status, in-game friends). Update downloads ~18 MB and re-stages it " +
+        "into your container."
+private const val HELP_CLIENT_OFFER =
+    "Update — download the newest SteamLite package, then launch.\n" +
+        "Launch anyway — play with the installed SteamLite; newer app features stay off.\n" +
+        "Cancel — go back without launching."
 
 /**
  * The SteamLite launch pre-flight ("Getting Steam ready") — a small modal that runs
  * [SteamSessionManager.preflightAsync] for [shortcut] BEFORE the container opens: Steam sign-in →
- * cloud saves → update check, each as a live row with a status, plus a Cancel that always works.
+ * cloud saves → update check → SteamLite client check, each as a live row with a status, plus a
+ * Cancel that always works.
  *
  * Outcomes:
  *  - all green → [onLaunch] (the caller starts `XServerDisplayActivity` with `preflightDone=1`);
  *  - unusable sign-in → "Steam isn't ready" with **Sign in** / **Launch with Goldberg (offline)** /
  *    **Cancel** ([onSignIn] / [onGoldberg] / [onDismiss]);
  *  - no session in time → **Retry** / **Launch anyway** / **Launch with Goldberg** / **Cancel**;
- *  - update available → **Update** ([onUpdate], the existing manual Update pass) / **Launch anyway**.
+ *  - update available → **Update** ([onUpdate], the existing manual Update pass) / **Launch anyway**;
+ *  - newer SteamLite package → **Update** (downloads in the row, then [onLaunch]) / **Launch anyway**
+ *    (hidden when the installed package predates [SteamLiteComponent.MIN_AGENT_VERSION]). A failed
+ *    download never blocks: a toast says so and the installed package launches.
  *
  * Non-Steam / Goldberg / Raw launches never open this dialog — only the RealSteam pick and
  * remembered RealSteam launches route through it.
@@ -102,7 +117,14 @@ fun SteamPreflightDialog(
     var needSignIn by remember(shortcut) { mutableStateOf<String?>(null) }
     var offline by remember(shortcut) { mutableStateOf<String?>(null) }
     var updateOffer by remember(shortcut) { mutableStateOf<SteamGameUpdater.UpdateStatus?>(null) }
+    // SteamLite package offer (terminal — every other step is done) + its in-row download.
+    var clientOffer by remember(shortcut) { mutableStateOf<SteamLiteComponent.UpdateCheck?>(null) }
+    var clientUpdating by remember(shortcut) { mutableStateOf(false) }
+    var clientProgress by remember(shortcut) { mutableStateOf(0f) }
     var launching by remember(shortcut) { mutableStateOf(false) }
+    // Cleared when the dialog goes away so a download that finishes after Cancel never launches.
+    val alive = remember(shortcut) { AtomicBoolean(true) }
+    DisposableEffect(shortcut) { onDispose { alive.set(false) } }
     // Re-run generation: bumps when the user picks Retry / Launch anyway so a fresh pass starts.
     var run by remember(shortcut) { mutableStateOf(0) }
     var skipSession by remember(shortcut) { mutableStateOf(false) }
@@ -112,7 +134,7 @@ fun SteamPreflightDialog(
     val toggleHelp: (String) -> Unit = { helpText = if (helpText == it) null else it }
 
     DisposableEffect(shortcut, run) {
-        needSignIn = null; offline = null; updateOffer = null
+        needSignIn = null; offline = null; updateOffer = null; clientOffer = null
         val handle = SteamSessionManager.preflightAsync(
             context, request,
             object : SteamSessionManager.PreflightListener {
@@ -120,6 +142,7 @@ fun SteamPreflightDialog(
                 override fun onNeedSignIn(reason: String) { needSignIn = reason }
                 override fun onOffline(reason: String) { offline = reason }
                 override fun onUpdateAvailable(status: SteamGameUpdater.UpdateStatus) { updateOffer = status }
+                override fun onClientUpdateAvailable(check: SteamLiteComponent.UpdateCheck) { clientOffer = check }
                 override fun onReady() { launching = true; onLaunch() }
                 override fun onCancelled() {}
             },
@@ -129,7 +152,37 @@ fun SteamPreflightDialog(
         onDispose { handle.cancel() }
     }
 
-    val blocked = needSignIn != null || offline != null || updateOffer != null
+    // "Update" on the SteamLite offer: download into the row, then launch. A failure is one toast
+    // and the launch goes ahead on the installed package (the pre-flight never blocks on it).
+    val updateClientThenLaunch: () -> Unit = {
+        val offer = clientOffer
+        if (offer != null && !clientUpdating) {
+            clientUpdating = true
+            clientProgress = 0f
+            states[Step.CLIENT] = StepState.RUNNING to "Downloading SteamLite v${offer.latestVersion}…"
+            SteamLiteComponent.downloadAsync(
+                context,
+                { f -> clientProgress = f },
+                { ok, _ ->
+                    if (alive.get()) {
+                        clientUpdating = false
+                        if (ok) {
+                            states[Step.CLIENT] = StepState.DONE to "Updated to v${offer.latestVersion}"
+                        } else {
+                            val installed = SteamLiteComponent.versionLabel(offer.installed)
+                            states[Step.CLIENT] = StepState.WARN to "Update failed — launching installed $installed"
+                            Toast.makeText(context, "SteamLite update failed — launching installed $installed", Toast.LENGTH_LONG).show()
+                        }
+                        clientOffer = null
+                        launching = true
+                        onLaunch()
+                    }
+                },
+            )
+        }
+    }
+
+    val blocked = needSignIn != null || offline != null || updateOffer != null || clientOffer != null
     OutlinedAlertDialog(
         onDismissRequest = { /* modal — Cancel / a choice closes it */ },
         containerColor = cs.surfaceContainerHigh,
@@ -141,6 +194,7 @@ fun SteamPreflightDialog(
                 needSignIn != null -> HELP_NEED_SIGN_IN
                 offline != null -> HELP_OFFLINE
                 updateOffer != null -> HELP_UPDATE_OFFER
+                clientOffer != null -> HELP_CLIENT_OFFER
                 else -> HELP_PREFLIGHT
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -149,6 +203,9 @@ fun SteamPreflightDialog(
                         needSignIn != null -> "Steam isn't ready"
                         offline != null -> "Steam is unreachable"
                         updateOffer != null -> "Update available"
+                        clientUpdating -> "Updating SteamLite…"
+                        clientOffer?.required == true -> "SteamLite update required"
+                        clientOffer != null -> "SteamLite update available"
                         launching -> "Launching ${shortcut.name}…"
                         else -> "Getting Steam ready"
                     },
@@ -171,11 +228,15 @@ fun SteamPreflightDialog(
                 StepRow("Steam sign-in", states[Step.SESSION], helpText == HELP_SESSION) { toggleHelp(HELP_SESSION) }
                 StepRow("Cloud saves", states[Step.CLOUD], helpText == HELP_CLOUD) { toggleHelp(HELP_CLOUD) }
                 StepRow("Game files", states[Step.UPDATE], helpText == HELP_UPDATE) { toggleHelp(HELP_UPDATE) }
+                StepRow(
+                    "SteamLite client", states[Step.CLIENT], helpText == HELP_CLIENT,
+                    progress = if (clientUpdating) clientProgress else null,
+                ) { toggleHelp(HELP_CLIENT) }
                 helpText?.let { tip ->
                     Spacer(Modifier.height(8.dp))
                     PreflightHelpTip(tip) { helpText = null }
                 }
-                if (!blocked) {
+                if (!blocked && !clientUpdating) {
                     Spacer(Modifier.height(10.dp))
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
@@ -205,6 +266,21 @@ fun SteamPreflightDialog(
                         color = cs.onSurfaceVariant,
                     )
                 }
+                clientOffer?.takeIf { !clientUpdating }?.let { c ->
+                    Spacer(Modifier.height(10.dp))
+                    val size = if (c.downloadMb > 0) " (~${c.downloadMb} MB)" else ""
+                    Text(
+                        if (c.required)
+                            "This version of Bannerlator needs SteamLite v${c.latestVersion} for live launch " +
+                                "status and in-game friends. Update now$size; if the download fails, the " +
+                                "installed ${SteamLiteComponent.versionLabel(c.installed)} launches instead."
+                        else
+                            "A newer SteamLite (v${c.latestVersion}) is available$size. Update now, or launch " +
+                                "with the installed ${SteamLiteComponent.versionLabel(c.installed)}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                    )
+                }
             }
         },
         confirmButton = {
@@ -222,6 +298,15 @@ fun SteamPreflightDialog(
                     TextButton(onClick = { skipUpdate = true; skipSession = true; run++ }) { Text("Launch anyway", color = cs.onSurfaceVariant) }
                     TextButton(onClick = { onUpdate(updateOffer!!) }) { Text("Update", color = cs.primary) }
                 }
+                clientUpdating -> {}
+                clientOffer != null -> Row {
+                    // Below MIN_AGENT_VERSION the only offered action is Update (a failed download
+                    // still launches the installed package — see updateClientThenLaunch).
+                    if (clientOffer?.required != true) {
+                        TextButton(onClick = { launching = true; onLaunch() }) { Text("Launch anyway", color = cs.onSurfaceVariant) }
+                    }
+                    TextButton(onClick = updateClientThenLaunch) { Text("Update", color = cs.primary) }
+                }
                 else -> {}
             }
         },
@@ -236,6 +321,7 @@ private fun StepRow(
     label: String,
     state: Pair<StepState, String>?,
     helpOpen: Boolean,
+    progress: Float? = null,   // non-null = a determinate bar under the status (in-row download)
     onHelp: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -255,6 +341,15 @@ private fun StepRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = if (state?.first == StepState.WARN) cs.error else cs.onSurfaceVariant,
             )
+            if (progress != null) {
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { progress.coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = cs.primary,
+                    trackColor = cs.surface,
+                )
+            }
         }
         Spacer(Modifier.width(8.dp))
         PreflightHelpDot(highlighted = helpOpen, onClick = onHelp)

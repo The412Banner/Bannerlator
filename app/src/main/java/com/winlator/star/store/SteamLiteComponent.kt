@@ -9,6 +9,8 @@ import com.winlator.star.core.TarCompressorUtils
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * SteamLite — the Real-Steam (VAC) launch client, delivered download-on-demand
@@ -70,6 +72,17 @@ object SteamLiteComponent {
      */
     private const val VERSION_MARKER_REL = ".steamlite_version"
 
+    /**
+     * The lowest package version this build of the app fully works with: the agent channel (live
+     * launch status, failure cards with Retry) and the in-game friends relay need the v4 agent. An
+     * older package still launches — the agent is backwards compatible — those features just stay
+     * off, so the launch popup and pre-flight offer "Update & Launch" rather than refusing.
+     */
+    const val MIN_AGENT_VERSION = 4
+
+    /** Bound for a catalog fetch on the launch path — a slow CDN must never hold the popup. */
+    const val UPDATE_CHECK_TIMEOUT_MS = 5_000L
+
     /** Delivered on the main thread as the download progresses (0..1). */
     fun interface ProgressCallback {
         fun onProgress(fraction: Float)
@@ -117,6 +130,58 @@ object SteamLiteComponent {
      */
     fun isOutdated(context: Context, catalogVersion: Int): Boolean =
         isInstalled(context) && catalogVersion > installedVersion(context)
+
+    /** "v4" for a stamped install, "an older build" for a pre-versioning one (marker absent → 0). */
+    fun versionLabel(version: Int): String = if (version > 0) "v$version" else "an older build"
+
+    /**
+     * What's installed vs what the catalog offers. [catalog] is null when the package isn't
+     * installed or the fetch failed / timed out — callers treat that as "couldn't check" and
+     * launch with what's on disk (never a block).
+     */
+    data class UpdateCheck(val installed: Int, val catalog: Catalog?) {
+        /** The catalog was reached (an answer, even if "up to date"). */
+        val checked: Boolean get() = catalog != null
+        /** The catalog offers a newer package than the installed one. */
+        val available: Boolean get() = catalog != null && catalog.version > installed
+        /** Newer package available AND the installed one predates what this app relies on. */
+        val required: Boolean get() = available && installed < MIN_AGENT_VERSION
+        val latestVersion: Int get() = catalog?.version ?: installed
+        /** Download size in whole MB for copy ("~18 MB"); 0 when the catalog didn't say. */
+        val downloadMb: Long get() = ((catalog?.fileSize ?: 0L) + 512 * 1024) / (1024 * 1024)
+    }
+
+    /**
+     * Compare the installed package with the catalog, waiting at most [timeoutMs] for the fetch
+     * (the fetch itself keeps running on its own daemon thread; a late answer is dropped). Call
+     * off the main thread.
+     */
+    fun checkUpdateBlocking(context: Context, timeoutMs: Long = UPDATE_CHECK_TIMEOUT_MS): UpdateCheck {
+        val installed = installedVersion(context)
+        if (!isInstalled(context)) return UpdateCheck(installed, null)
+        val latch = CountDownLatch(1)
+        var catalog: Catalog? = null
+        Thread({
+            try { catalog = loadCatalog() } catch (t: Throwable) { Log.w(TAG, "catalog check failed", t) }
+            finally { latch.countDown() }
+        }, "steamlite-catalog-check").apply { isDaemon = true }.start()
+        val inTime = latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+        return UpdateCheck(installed, if (inTime) catalog else null)
+    }
+
+    /** [checkUpdateBlocking] on a worker; result on the main thread. */
+    fun checkUpdateAsync(
+        context: Context,
+        timeoutMs: Long = UPDATE_CHECK_TIMEOUT_MS,
+        onResult: (UpdateCheck) -> Unit,
+    ) {
+        val appContext = context.applicationContext
+        val main = Handler(Looper.getMainLooper())
+        Thread({
+            val r = checkUpdateBlocking(appContext, timeoutMs)
+            main.post { onResult(r) }
+        }, "steamlite-update-check").apply { isDaemon = true }.start()
+    }
 
     /** Fetch + parse steamlite.json (network only). Null on failure. */
     fun loadCatalog(): Catalog? {

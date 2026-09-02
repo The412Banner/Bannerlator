@@ -27,7 +27,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -41,6 +44,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -477,6 +483,39 @@ private fun GuestProgress(tailLabel: String) {
     }
 }
 
+/**
+ * One-line help for the failure card's extra actions, keyed on the label the activity sends
+ * ([com.winlator.star.core.FailureAction] carries no copy of its own). Unknown labels get a
+ * neutral line rather than nothing, so a new action is never left unexplained.
+ */
+private fun actionHelp(label: String): String = when (label) {
+    "Retry" -> "runs the Steam checks again and relaunches the game through SteamLite."
+    "Launch with Goldberg" -> "relaunches offline with the stand-in Steam — no online play, no VAC."
+    "Keep going" -> "ignores this and keeps waiting for the game; online features may not work."
+    else -> "does what it says; the log folder has the details if it doesn't help."
+}
+
+/** The launch popup's corner "?" (LaunchMethodSheet.HelpDot), on the card's primary accent. */
+@Composable
+private fun ActionHelpDot(highlighted: Boolean, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Box(
+        Modifier.size(16.dp).clip(CircleShape)
+            .background(if (highlighted) cs.primary.copy(alpha = 0.16f) else cs.surfaceVariant)
+            .border(1.dp, if (highlighted) cs.primary.copy(alpha = 0.55f) else cs.outline, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "?",
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 10.sp,
+            color = if (highlighted) cs.primary else cs.onSurfaceVariant,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
 @Composable
 private fun FailureCard(failure: Failure?) {
     failure ?: return
@@ -517,13 +556,38 @@ private fun FailureCard(failure: Failure?) {
             }
             Spacer(Modifier.height(14.dp))
             // Extra actions (SteamLite: "Retry" / "Launch with Goldberg") sit on their own row so
-            // the standard Close / Open-log pair below never reflows.
+            // the standard Close / Open-log pair below never reflows. A "?" at the row's start
+            // toggles a one-line-per-button explainer (keyed on this failure so it resets per card).
             if (failure.actions.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                var showActionHelp by remember(failure) { mutableStateOf(false) }
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    ActionHelpDot(highlighted = showActionHelp) { showActionHelp = !showActionHelp }
+                    Spacer(Modifier.weight(1f))
                     failure.actions.forEachIndexed { i, a ->
                         if (i > 0) Spacer(Modifier.width(8.dp))
                         if (a.primary) Button(onClick = { a.run.run() }) { Text(a.label) }
                         else OutlinedButton(onClick = { a.run.run() }) { Text(a.label) }
+                    }
+                }
+                if (showActionHelp) {
+                    Spacer(Modifier.height(8.dp))
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                            .clickable { showActionHelp = false }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                    ) {
+                        Text(
+                            text = failure.actions.joinToString("\n") { "${it.label} — ${actionHelp(it.label)}" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
                 Spacer(Modifier.height(10.dp))

@@ -131,6 +131,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // Steam friend-chat notifications (default ON). Immediate-write like the update toggles — the store
     // reads SteamPrefs directly, so this isn't part of the Save-FAB snapshot.
     var steamChatNotifs by remember { mutableStateOf(SteamPrefs.isChatNotificationsEnabled(context)) }
+    // The Steam section's "?" help dialog: title to body (null = closed). One state for every row.
+    var steamHelp by remember { mutableStateOf<Pair<String, String>?>(null) }
     // "In game" presence for Goldberg / Raw launches of Steam games (default ON; immediate-write).
     var steamOfflinePresence by remember { mutableStateOf(SteamPrefs.isOfflinePresenceEnabled(context)) }
     // Steam connection region (immediate-write like the toggle above; store/SteamRegion owns it).
@@ -565,6 +567,13 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     SteamPrefs.setChatNotificationsEnabled(context, it)
                 })
                 Text("Steam chat notifications", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Steam chat notifications" to
+                        "Shows an Android notification when a Steam friend messages you and their chat " +
+                        "isn't open in the app. Tap it to open the chat. Off = messages still arrive, you " +
+                        "just aren't told until you open Friends."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Text(
                 "Show a notification when a Steam friend messages you while their chat isn't open.",
@@ -578,6 +587,13 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     SteamPrefs.setOfflinePresenceEnabled(context, it)
                 })
                 Text("Show me as in-game for offline launches", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Show me as in-game" to
+                        "When you launch a Steam game with Goldberg or Raw, tell Steam you're playing it so " +
+                        "friends see it and your playtime counts — like the real Steam client. " +
+                        "Off = launch silently. SteamLite launches always show as in-game."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Text(
                 "When a Steam game launches with Goldberg or Raw (not SteamLite), report it to Steam as the game being played — friends see it and playtime counts, like the real client. Off = launch silently.",
@@ -588,8 +604,16 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             // ── Steam connection region (store/SteamRegion) — written immediately; consumed by the
             //    Rust engine's CM pick, JavaSteam's CM pick (next app start), the download CDN
             //    preference and the in-game genuine client's CM seed.
-            Text("Steam connection region", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Steam connection region", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Steam connection region" to
+                        "Which Steam datacenter to connect to. Auto pings each one and keeps the fastest " +
+                        "for a day, re-testing after a failed connect. Pick a specific one only if Auto " +
+                        "keeps choosing badly — the store applies it on its next connect."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
             Box {
                 val regionLabel = if (steamRegionMode == SteamRegion.AUTO) {
                     val r = steamRegionRemembered
@@ -650,6 +674,12 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 ) { Text(if (steamRegionProbing) "Testing…" else "Test regions", color = MaterialTheme.colorScheme.onSurface) }
                 if (steamRegionProbing) CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    steamHelp = "Test regions" to
+                        "Pings every Steam datacenter now and shows each one's response time in the " +
+                        "list above. Auto also remembers the fastest as its pick. Nothing else changes."
+                }) { Icon(Icons.Default.Help, "Help", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Text(
                 "Which Steam datacenter to connect to for the store, downloads and the in-game Steam session. " +
@@ -1316,6 +1346,18 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             },
             dismissButton = {
                 TextButton(onClick = { showCaptureConsent = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // ── Steam section "?" help (one dialog, the tapped row picks the copy) ──
+    steamHelp?.let { (title, body) ->
+        AlertDialog(
+            onDismissRequest = { steamHelp = null },
+            title = { Text(title) },
+            text = { Text(body, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp) },
+            confirmButton = {
+                TextButton(onClick = { steamHelp = null }) { Text("Close") }
             }
         )
     }

@@ -287,7 +287,8 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 // library, downloads, cloud, achievements, social, presence) runs on libblsteam.so and
                 // the engine's steam_engine.txt is folded into the SteamLite log bundle (Phase 3b-4).
                 LogToggle("Rust Steam engine (developer, restart required)", rustSteamEngine,
-                    hint = "Experimental — the whole Steam session (sign-in, library, downloads, cloud, achievements, friends) runs on libblsteam.so; its log joins the SteamLite bundle") {
+                    hint = "Experimental — the whole Steam session (sign-in, library, downloads, cloud, achievements, friends) runs on libblsteam.so; its log joins the SteamLite bundle",
+                    onInfo = { info = "Rust Steam engine" to LogCopy.RUST_ENGINE }) {
                     rustSteamEngine = it
                     putBool(com.winlator.star.store.blsteam.BlSteamEngineFlag.PREF_KEY, it)
                 }
@@ -1220,6 +1221,14 @@ private object LogCopy {
         "run's files keep their normal names, so the newest log is always the obvious one.\n\n" +
         "Set it to 0 to keep no history at all."
 
+    const val RUST_ENGINE =
+        "Experimental — no performance cost in game.\n\n" +
+        "Runs the whole Steam side of Bannerlator (sign-in, library, downloads, cloud saves, " +
+        "achievements, friends) on the app's new native engine instead of the older Java one. " +
+        "Needs an app restart to take effect.\n\n" +
+        "Turn it off to go back to the old engine — nothing is lost. While it's on, the engine's " +
+        "own log is added to the SteamLite bundle so a problem can be traced."
+
     fun explainAll(): String = buildString {
         append("Costs performance while on\n\n")
         append("• Wine debug\n$WINE\n\n")
@@ -1231,6 +1240,8 @@ private object LogCopy {
         append("• Crash reports\n$CRASH\n\n")
         append("\nOrganisation\n\n")
         append("• Folder for each game\n$PER_GAME\n\n")
-        append("• Keep last runs\n$KEEP_LAST\n")
+        append("• Keep last runs\n$KEEP_LAST\n\n")
+        append("\nDeveloper\n\n")
+        append("• Rust Steam engine\n$RUST_ENGINE\n")
     }
 }

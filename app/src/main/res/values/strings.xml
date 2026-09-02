@@ -15,10 +15,6 @@
     <string name="no_items_to_display">No items to display</string>
     <string name="new_container">New Container</string>
     <string name="edit_container">Edit Container</string>
-    <string name="new_container_defaults">New Container Defaults</string>
-    <string name="new_container_defaults_saved">New-container defaults saved</string>
-    <string name="new_container_defaults_save_failed">Could not save defaults</string>
-    <string name="reset_to_app_defaults">Reset to app defaults</string>
     <string name="creating_container">Creating Container…</string>
     <string name="removing_container">Removing Container…</string>
     <string name="duplicating_container">Duplicating Container…</string>
@@ -27,16 +23,10 @@
     <string name="starting_up">Starting up…</string>
     <string name="unable_to_install_system_files">Unable to install system files</string>
     <string name="keyboard">Keyboard</string>
-    <string name="mouse">Mouse</string>
-    <string name="binding_filter_all">All</string>
-    <string name="binding_filter_keyboard">Keyboard</string>
-    <string name="binding_filter_mouse">Mouse</string>
-    <string name="binding_filter_gamepad">Gamepad</string>
     <string name="toggle_fullscreen">Toggle Fullscreen</string>
     <string name="exit">Exit</string>
     <string name="no_control_element_selected">No control element selected</string>
     <string name="scale">Scale</string>
-    <string name="dead_zone">Dead Zone</string>
     <string name="shape">Shape</string>
     <string name="type">Type</string>
     <string name="binding">Binding</string>
@@ -44,108 +34,18 @@
     <string name="binding_right">Binding Right</string>
     <string name="binding_down">Binding Down</string>
     <string name="binding_left">Binding Left</string>
-    <string name="detection_area">Detection Area</string>
-    <string name="area_width">Area Width</string>
-    <string name="area_height">Area Height</string>
-    <string name="stick_radius">Stick Radius</string>
-    <string name="mouse_sensitivity">Mouse Sensitivity</string>
-    <string name="area_appearance">Area Appearance</string>
-    <string name="independent_area_appearance">Use independent color and opacity</string>
-    <string name="area_color">Area Color</string>
-    <string name="area_opacity">Area Opacity</string>
-    <string name="grid_rows">Rows</string>
-    <string name="grid_cols">Columns</string>
     <string name="overlay_opacity">Overlay Opacity</string>
-    <string name="editing_in_game">Editing in game</string>
-    <string name="save_and_close">Save and close</string>
-    <string name="control_type_android_keyboard">Android Keyboard</string>
-    <string name="change_control_type">Change control type?</string>
-    <string name="change_control_type_warning">Changing type resets bindings, combos, text, icon, and type-specific settings.</string>
-    <string name="confirm_change">Change</string>
+    <string name="controls_follow_app_theme">Follow app theme</string>
     <string name="controls_accent_color">Controls accent color</string>
     <string name="profile">Profile</string>
+    <string name="select_profile">Select Profile</string>
+    <string name="profile_name">Profile Name</string>
     <string name="name">Name</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="untitled">Untitled</string>
     <string name="no_profile_selected">No profile selected</string>
     <string name="no_profile_found">No profile found</string>
-    <string name="select_control_type">Select Control Type</string>
-    <string name="control_type_button">Button</string>
-    <string name="control_type_d_pad">D-Pad</string>
-    <string name="control_type_range_button">Range Button</string>
-    <string name="control_type_stick">Stick</string>
-    <string name="control_type_trackpad">Trackpad</string>
-    <string name="control_type_dynamic_stick">Dynamic Stick</string>
-    <string name="control_type_mouse_area">Mouse Area</string>
-    <string name="control_type_button_grid">Button Grid</string>
-    <string name="control_type_expandable_button">Expandable Button</string>
-    <string name="expandable_button_settings">Expandable button</string>
-    <string name="expandable_layout">Layout</string>
-    <string name="expandable_layout_radial">Radial</string>
-    <string name="expandable_layout_list">List</string>
-    <string name="expandable_direction">List direction</string>
-    <string name="child_button_count">Child buttons</string>
-    <string name="child_button_label">Button %1$d</string>
-    <string name="direction_up">Up</string>
-    <string name="direction_right">Right</string>
-    <string name="direction_down">Down</string>
-    <string name="direction_left">Left</string>
-    <string name="control_shape_circle">Circle</string>
-    <string name="control_shape_rectangle">Rectangle</string>
-    <string name="control_shape_rounded_rectangle">Rounded rectangle</string>
-    <string name="control_shape_square">Square</string>
-    <string name="control_range_a_z">A to Z</string>
-    <string name="control_range_0_9">0 to 9</string>
-    <string name="control_range_f1_f12">F1 to F12</string>
-    <string name="control_range_numpad_0_9">Numpad 0 to 9</string>
-    <string name="set_background_image">Set Background Image</string>
-    <string name="select_background_image">Select background image</string>
-    <string name="select_icon_image">Select icon image</string>
-    <string name="clear_background">Clear background</string>
-    <string name="browse_files">Browse files</string>
-    <string name="pick_via_system">Pick via system…</string>
-    <string name="background_image_set">Background image set</string>
-    <string name="background_cleared">Background cleared</string>
-    <string name="unable_to_load_image">Unable to load image</string>
-    <string name="opacity_percent">Opacity: %1$d%%</string>
-    <string name="binding_setup_title">Binding — %1$s</string>
-    <string name="binding_text_value">Character or number</string>
-    <string name="binding_selector">Action selector</string>
-    <string name="set_binding">Set</string>
-    <string name="add_to_combo">Add to combo</string>
-    <string name="combo_bindings">Combo Bindings</string>
-    <string name="mouse_binding_priority">Prioritize mouse binding</string>
-    <string name="mouse_binding_priority_description">Disable the matching touchscreen click while this control is visible.</string>
-    <string name="binding_grid_cell_label">R%1$dC%2$d</string>
-    <string name="binding_slot_label">Binding %1$d</string>
-    <string name="fill_qwerty">Fill: QWERTY</string>
-    <string name="fill_function_keys">Fill: F1–F12</string>
-    <string name="fill_numpad">Fill: NumPad</string>
-    <string name="hold_key">Hold Key (pressed while active)</string>
-    <string name="button_grid">Button Grid</string>
-    <string name="cell_shape">Cell Shape</string>
-    <string name="grid_spacing">Button spacing</string>
-    <string name="grid_multitouch">Multitouch</string>
-    <string name="custom_icons">Custom Icons</string>
-    <string name="tint_custom_icon">Tint custom icon with accent</string>
-    <string name="use_custom_icon_as_button">Use custom icon as button</string>
-    <string name="icon_content_description">Icon %1$d</string>
-    <string name="long_press_custom_icon_to_delete">Long-press an unused custom icon to delete it.</string>
-    <string name="delete_custom_icon">Delete custom icon</string>
-    <string name="delete_custom_icon_confirmation">Custom icons are shared across control profiles. Delete this unused icon?</string>
-    <string name="custom_icon_not_deleted">Custom icon not deleted</string>
-    <string name="unable_to_check_custom_icon_usage">Unable to verify whether this icon is in use. No changes were made.</string>
-    <string name="unable_to_delete_custom_icon">The icon could not be deleted. It may have been used or removed elsewhere.</string>
-    <plurals name="custom_icon_in_use">
-        <item quantity="one">This icon is used by %1$d control. Reassign it before deleting the icon.</item>
-        <item quantity="other">This icon is used by %1$d controls. Reassign them before deleting the icon.</item>
-    </plurals>
-    <plurals name="custom_icon_profiles_in_use">
-        <item quantity="one">Used in %1$d profile:</item>
-        <item quantity="other">Used in %1$d profiles:</item>
-    </plurals>
-    <string name="clear">Clear</string>
     <string name="no_items_to_display_saves">Register a save file directory from one of your containers to get started!</string>
     <string name="do_you_want_to_remove_this_profile">Do you want to remove this profile?</string>
     <string name="do_you_want_to_duplicate_this_profile">Do you want to duplicate this profile?</string>
@@ -157,6 +57,7 @@
     <string name="do_you_want_to_remove_this_wine_version">Do you want to remove this wine version?</string>
     <string name="do_you_want_to_remove_this_preset">Do you want to remove this preset?</string>
     <string name="do_you_want_to_end_this_process">Do you want to end this process?</string>
+    <string name="controls_editor">Controls Editor</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="container">Container</string>
@@ -171,15 +72,6 @@
     <string name="toggle_switch">Toggle Switch</string>
     <string name="profile_exported_to">Profile exported to</string>
     <string name="unable_to_import_profile">Unable to import profile</string>
-    <string name="import_control_profile">Import ICP / ICpx</string>
-    <string name="export_control_profile_icpx">Export ICpx</string>
-    <string name="export_control_profile_icp_legacy">Export legacy ICP</string>
-    <string name="export_control_profile_icp_tooltip">Legacy ICP is best effort. New commands, groups, combos, and custom icons may be ignored or lost in older apps.</string>
-    <string name="select_control_profile">Select ICP or ICpx profile</string>
-    <plurals name="profiles_not_imported">
-        <item quantity="one">%1$d profile could not be imported</item>
-        <item quantity="other">%1$d profiles could not be imported</item>
-    </plurals>
     <string name="wine_configuration">Wine Configuration</string>
     <string name="registry_keys">Registry Keys</string>
     <string name="csmt">CSMT (Command Stream Multi-Thread)</string>
@@ -191,6 +83,8 @@
     <string name="none">None</string>
     <string name="custom_text">Custom Text</string>
     <string name="icon">Icon</string>
+    <string name="import_profile">Import Profile</string>
+    <string name="export_profile">Export Profile</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="touchpad_help_mouse_left_click_title">Mouse Left-Click</string>
     <string name="touchpad_help_mouse_left_click_description">Short tap with one finger</string>
@@ -203,11 +97,13 @@
     <string name="duplicate">Duplicate</string>
     <string name="about">About</string>
     <string name="credits_and_third_party_apps">Credits and Third-party apps</string>
+    <string name="external_controllers">External Controllers</string>
     <string name="graphics_driver">Graphics Driver</string>
     <string name="audio_driver">Audio Driver</string>
     <string name="loading">Loading…</string>
     <string name="press_any_button_on_your_controller">Press any button on your controller</string>
     <string name="bindings">bindings</string>
+    <string name="show_touchscreen_controls">Show Touchscreen Controls</string>
     <string name="dxwrapper">DX Wrapper</string>
     <string name="mouse_warp_override">Mouse Warp Override</string>
     <string name="direct3d">Direct3D</string>
@@ -476,7 +372,6 @@
         <b>Gyro Target</b><br /><br />
         What the phone\'s tilt actually controls. <b>Right stick</b> (the usual choice) aims like the right analog stick; <b>Left stick</b> moves like the left stick; <b>Mouse</b> drives the pointer for mouse-aim games. The Mouse target always uses Rate mode.
     ]]></string>
-
     <string name="box64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
@@ -563,6 +458,7 @@
     <string name="max_device_memory">Max Device Memory</string>
     <string name="frame_rate">Frame Rate</string>
     <string name="configuration">Configuration</string>
+    <string name="vegas_config_loglevel_envvar_note">⚠ Log level (DXVK_LOG_LEVEL) must be set as a container environment variable — VEGAS ignores the config-file key as present in file (dxvk.logLevel / DXVK_LOG_LEVEL).</string>
     <string name="browse">Browse</string>
     <string name="magnifier">Magnifier</string>
     <string name="bring_to_front">Bring to Front</string>
@@ -580,60 +476,6 @@
     <string name="game_controller">Game Controller</string>
     <string name="vibration">Vibration</string>
     <string name="vibration_slot">Slot %1$d</string>
-    <string name="vibration_mode_label">Rumble Target</string>
-    <string name="vibration_mode_off">Off</string>
-    <string name="vibration_mode_controller">Controller</string>
-    <string name="vibration_mode_device">Device</string>
-    <string name="vibration_mode_both">Both</string>
-    <string name="vibration_intensity_label">Rumble Intensity</string>
-
-    <string name="gyro">Gyro (Motion Aim)</string>
-    <string name="gyro_enabled">Enable Motion Aim</string>
-    <string name="gyro_mode_label">Motion Mode</string>
-    <string name="gyro_mode_rate">Rate</string>
-    <string name="gyro_mode_orientation">Tilt to Aim</string>
-    <string name="gyro_target_label">Motion Target</string>
-    <string name="gyro_target_right_stick">Right Stick</string>
-    <string name="gyro_target_left_stick">Left Stick</string>
-    <string name="gyro_target_mouse">Mouse</string>
-    <string name="gyro_activator_label">Activator Button</string>
-    <!-- The button itself no longer says "Hold": whether it's held or tapped is the activation
-         mode below, so baking "Hold" into the button name would contradict Toggle. -->
-    <string name="gyro_activator_l1">L1</string>
-    <string name="gyro_activator_l2">L2</string>
-    <string name="gyro_activator_r1">R1</string>
-    <string name="gyro_activator_r3">R3</string>
-    <string name="gyro_activator_always">Always On</string>
-    <string name="gyro_activation_mode_label">Activation</string>
-    <string name="gyro_activation_hold">Hold</string>
-    <string name="gyro_activation_toggle">Toggle</string>
-    <string name="gyro_sensitivity_label">Sensitivity</string>
-    <string name="gyro_deadzone_label">Deadzone</string>
-    <string name="gyro_smoothing_label">Smoothing</string>
-    <string name="gyro_invert_x">Invert X</string>
-    <string name="gyro_invert_y">Invert Y</string>
-
-    <!-- In-game drawer (Controls tab) gyro section. Separate from the editor strings above because
-         the drawer is a cramped overlay: short chip-sized labels, no "Enable Motion Aim" sentences. -->
-    <string name="gyro_drawer_title">Gyro</string>
-    <string name="gyro_drawer_enabled">Enabled</string>
-    <string name="gyro_drawer_mode">Motion mode</string>
-    <string name="gyro_drawer_mode_rate">Rate</string>
-    <string name="gyro_drawer_mode_orientation">Tilt to aim</string>
-    <string name="gyro_drawer_orientation_hint">The stick follows the angle you hold the device at, so a held tilt keeps aiming.</string>
-    <string name="gyro_drawer_orientation_unsupported">Not available — this device has no rotation-vector sensor.</string>
-    <string name="gyro_drawer_orientation_mouse_hint">Not available with the Mouse target — pick a stick first.</string>
-    <string name="gyro_drawer_recenter">Recenter</string>
-    <string name="gyro_drawer_recenter_hint">Makes the pose you are holding now the centre.</string>
-    <string name="gyro_drawer_mouse_unavailable_hint">Mouse is not available in Tilt to aim — a held tilt would run the pointer off screen.</string>
-    <string name="gyro_drawer_apply_to">Apply gyro to</string>
-    <string name="gyro_drawer_target_right_stick">Right stick</string>
-    <string name="gyro_drawer_target_left_stick">Left stick</string>
-    <string name="gyro_drawer_target_mouse">Mouse</string>
-    <string name="gyro_drawer_mouse_hint">Moves the pointer instead of a stick — use for the desktop and mouse-look games.</string>
-    <string name="gyro_drawer_activation">Activation</string>
-    <string name="gyro_drawer_activator_always">Always</string>
-    <string name="gyro_drawer_toggle_hint">Tap the button to turn the gyro on, tap again to turn it off.</string>
 
     <string name="experimental">Experimental</string>
     <string name="glibc_exp_edition">Based On</string>
@@ -643,13 +485,6 @@
     <string name="filter">Filter</string>
     <string name="all">All</string>
     <string name="group">Group</string>
-    <string name="groups">Groups</string>
-    <string name="group_label">Group</string>
-    <string name="create_new_group">Create New Group</string>
-    <string name="create">Create</string>
-    <string name="group_visibility">Group Visibility</string>
-    <string name="group_element_count">%1$d elements</string>
-    <string name="no_groups">No groups</string>
     <string name="new_group">New Group</string>
     <string name="import_group">Import Group</string>
     <string name="new_file">New File</string>
@@ -770,6 +605,7 @@
     ]]></string>
     <string name="help_exclusive_xinput">Certain games like Rayman Origins and Need for Speed: Most Wanted 2005 when using DInput require this to be disabled.</string>
     <string name="enable_xinput_and_dinput_same_time">Some games may support both APIs. Enabling both XInput and DInput simultaneously in such games may cause control issues, as seen in titles like The Binding of Isaac and the Resident Evil series.</string>
+    <string name="warning_gamepad_mouse_mix">Warning: Mixing gamepad and mouse bindings on the same controller may cause unexpected behavior in games. It is recommended to use only gamepad bindings or only mouse/keyboard bindings.</string>
     <string name="startup_normal">Normal (Load all services)</string>
     <string name="startup_essential">Essential (Load only essential services)</string>
     <string name="startup_aggressive">Aggressive (Stop services on startup)</string>
@@ -807,6 +643,8 @@
     <string name="pip_mode">PiP Mode</string>
     <string name="configure">Configure</string>
     <string name="enable_sendinput_mode">Use Windows SendInput Mode</string>
+    <string name="enable_touchscreen_timeout">Touchscreen Timeout (Requires Restart)</string>
+    <string name="enable_touchscreen_haptics">Enable Touchscreen Haptic Feedback</string>
     <string name="help_steamgrid">SteamGrid API Key</string>
     <string name="disable_xinput_for_shortcut">Disable Xinput (For Exclusive M/KB Control)</string>
     <string name="num_controllers">Number of Controllers</string>
@@ -826,25 +664,12 @@
     <string name="fullscreen_mode_integer_short">Integer</string>
     <string name="frame_generation">Frame Generation (AI)</string>
     <string name="frame_generation_off">Off</string>
-    <string name="frame_generation_bionic">win-fg</string>
+    <string name="frame_generation_bionic">bionic-fg</string>
     <string name="frame_generation_lsfg">lsfg-vk (Lossless Scaling)</string>
     <string name="frame_generation_multiplier">Multiplier</string>
     <string name="frame_generation_lsfg_needs_dll">lsfg-vk is unavailable — import a Lossless.dll at the bottom of Settings to enable it.</string>
-    <string name="frame_generation_requires_vulkan">Frame generation requires the Vulkan renderer.</string>
-    <string name="present_mode_fg_locked">Mailbox is required while frame generation is on.</string>
     <string name="frame_generation_ingame_hint">Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
-    <string name="frame_generation_model">Interpolation model</string>
-    <string name="frame_generation_model_default">Optical flow</string>
-    <string name="frame_generation_model_traced">Optical flow</string>
-    <string name="frame_generation_model_v2">Optical flow</string>
-    <string name="frame_generation_model_fsr3">Optical flow</string>
-    <string name="frame_generation_model_fsr3_v2">Optical flow · bidirectional</string>
-    <string name="frame_generation_model_experimental_hint">Experimental model — may render incorrectly or cost more performance than it gains. Switch back to Default if a game misbehaves.</string>
     <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
-    <string name="fg_performance_mode">Performance mode</string>
-    <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>
-    <string name="lsfg_auto_enable">Auto-enable at launch</string>
-    <string name="lsfg_auto_enable_hint">Starts frame generation live at your saved multiplier from launch, instead of off. Leave off to load the layer but enable it per session from the in-game side menu.</string>
     <string name="fps_limiter">FPS Limiter</string>
     <string name="fps_limiter_ingame_hint">Loads the limiter; set the cap (10–200) live from the in-game FPS menu.</string>
     <string name="match_refresh_rate">Match refresh rate to FPS</string>
@@ -853,13 +678,6 @@
     <string name="auto_match_fps">Auto (match FPS)</string>
     <string name="manual_refresh_rate">Manual refresh rate</string>
     <string name="manual_refresh_rate_hint">When Auto is off, lock the display panel to a chosen rate (independent of the FPS cap). Off = panel runs free.</string>
-    <string name="max_game_refresh_rate_unlimited">Unlimited</string>
-    <string name="in_game_refresh_rate">In-game refresh rate</string>
-    <string name="in_game_refresh_locked">Locked (60)</string>
-    <string name="in_game_refresh_rate_hint">Highest rate the game may pick in its own display menu. Locked keeps games at 60 Hz; a rate or Unlimited unlocks them (needs a Proton layer with refresh-rate support). Most games only read this at startup.</string>
-    <string name="refresh_unlock_needs_compatible_layer">In-game refresh unlock needs a Proton layer with refresh-rate support — install the Refreshed Proton 10.0-4 / 11.0-1 build.</string>
-    <string name="refresh_unlock_layer_incompatible_hint">The selected Proton for this container has no refresh-rate support — install the Refreshed Proton 10.0-4 / 11.0-1 build for this to take effect.</string>
-    <string name="use_container_default">Use container default</string>
     <string name="export_container">Export Container</string>
     <string name="exporting_container">Exporting Container...</string>
     <string name="importing_container">Importing Container...</string>
@@ -1041,10 +859,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="bcn_layer_image_view_hint">On: storage image (default). Off: staging buffer.</string>
     <string name="bcn_layer_debug_log">BCn debug log</string>
     <string name="bcn_layer_debug_log_hint">Logs the BCn layer to the Wine debug log (enable Settings &#8250; Logs &#8250; Wine Debug to capture it).</string>
-    <string name="bcn_compat_sparse">Emulate sparse binding (DX12)</string>
-    <string name="bcn_compat_sparse_hint">For D3D12 games that use tiled/sparse resources. Leave off unless a DX12 title needs it.</string>
-    <string name="compat_use_gamenative">Use GameNative engine (DX12)</string>
-    <string name="compat_use_gamenative_hint">Required for DX12 games. Runs this driver on the GameNative wrapper (Vulkan 1.3 + built-in BCn) instead of the leegao layers. Off = BCn textures only (default). Valhall Mali (r32p1+) only.</string>
     <string name="opengl_version">OpenGL Version</string>
     <string name="disableVertexArrayBGRA">Disable "Vertex array BGRA"</string>
     <string name="disableKHRdebug">Disable "KHR debug"</string>
@@ -1065,7 +879,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="renderer_driver_id">Renderer Driver</string>
     <string name="renderer_filter_mode">Filter Mode</string>
     <string name="renderer_swap_rb">Swap R/B</string>
-    <string name="renderer_colors">Colors</string>
     <string name="renderer_sf_compat">Correct SurfaceFlinger colours</string>
     <string name="renderer_sf_compat_hint">Fixes swapped red/blue on the SurfaceFlinger renderer (BGRA→RGBA). Turn off only if colours look correct without it.</string>
     <string name="renderer_present_mode_fifo">FIFO</string>
@@ -1114,67 +927,240 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="save_backup_format_winlator_sub">Sibling Winlator / WinNative builds</string>
     <string name="save_backup_next">Next</string>
 
-    <!-- Wrapper Version Manager (Step 1, issue #132) -->
-    <string name="wrapper_manager_title">Manage Wrappers</string>
-    <string name="wrapper_manager_header">Replace a bundled graphics wrapper with a newer file; updates are stored on-device and used instead of the built-in one.</string>
-    <string name="wrapper_update">Update</string>
-    <string name="wrapper_update_from_file">From file</string>
-    <string name="wrapper_update_from_catalog">From catalog</string>
-    <string name="wrapper_reset">Reset</string>
-    <string name="wrapper_reset_all">Reset all</string>
-    <string name="wrapper_reset_all_confirm_title">Reset all wrappers?</string>
-    <string name="wrapper_reset_all_confirm_message">Remove every wrapper update and go back to the built-in versions?</string>
-    <string name="wrapper_select_title">Select wrapper .tzst</string>
-    <string name="wrapper_bundled">Bundled</string>
-    <string name="wrapper_updated_label">Updated</string>
-    <string name="wrapper_updated_toast">Wrapper updated</string>
-    <string name="wrapper_reset_toast">Reverted to the built-in wrapper</string>
-    <string name="wrapper_invalid_toast">That file isn\'t a valid wrapper (.tzst)</string>
-    <string name="wrapper_manager_open">Manage wrappers</string>
-    <string name="wrapper_manager_close">Close</string>
-    <!-- Step 2: free-form imported wrappers -->
-    <string name="wrapper_imported_label">Imported</string>
-    <string name="wrapper_import_title">Import wrapper…</string>
-    <string name="wrapper_import_subtitle">Add your own wrapper (.tzst). It appears in the Graphics Driver menu.</string>
-    <string name="wrapper_import_name_title">Name this wrapper</string>
-    <string name="wrapper_import_name_message">This name shows up in the Graphics Driver menu.</string>
-    <string name="wrapper_import_name_empty_toast">Enter a name for the wrapper</string>
-    <string name="wrapper_import_reserved_toast">That name is reserved for a built-in wrapper — pick another</string>
-    <string name="wrapper_imported_toast">Wrapper imported</string>
-    <string name="wrapper_delete">Delete</string>
-    <string name="wrapper_delete_confirm_title">Delete this wrapper?</string>
-    <string name="wrapper_delete_confirm_message">Remove this imported wrapper. Any container or game using it goes back to the default wrapper.</string>
-    <!-- #132: per-card overflow menu + per-wrapper Edit settings -->
-    <string name="wrapper_more_actions">More actions</string>
-    <string name="wrapper_details">Details</string>
-    <string name="wrapper_edit_settings">Edit settings</string>
-    <string name="wrapper_edit_settings_title">Edit detected settings</string>
-    <string name="wrapper_edit_settings_message">Choose which detected settings appear in this wrapper\'s Graphics Driver options. Unchecked settings are hidden.</string>
-    <string name="wrapper_edit_settings_empty">No detected settings to configure.</string>
-    <!-- #132: a catalog-installed wrapper has a newer version available in the catalog -->
-    <string name="wrapper_update_available">Update available</string>
-    <!-- #132: shown on a wrapper card while its in-place catalog update downloads (%1$d = percent) -->
-    <string name="wrapper_updating_progress">Updating… %1$d%%</string>
-    <!-- #132: persistent "Installed" state for catalog entries + "From catalog" provenance chip -->
-    <string name="wrapper_installed">Installed</string>
-    <string name="wrapper_from_catalog">From catalog</string>
-
-    <!-- Step 5 (#132): curated, downloadable wrapper catalog -->
-    <string name="wrapper_catalog_title">Download wrappers…</string>
-    <string name="wrapper_catalog_subtitle">Browse curated wrappers from other projects and download them straight into the manager.</string>
-    <string name="wrapper_catalog_dialog_title">Wrapper Catalog</string>
-    <string name="wrapper_catalog_empty">No wrappers available yet.</string>
-    <string name="wrapper_catalog_offline">Offline — connect to browse and download the catalog.</string>
-    <string name="wrapper_catalog_offline_cache">Offline — showing a cached list. Connect to download.</string>
-    <string name="wrapper_catalog_needs_connection">Needs a connection to download</string>
-    <string name="wrapper_catalog_download">Download</string>
-    <string name="wrapper_catalog_downloading">Downloading</string>
-    <string name="wrapper_catalog_installing">Installing</string>
-    <string name="wrapper_catalog_download_ok">%1$s added</string>
-    <string name="wrapper_catalog_download_failed">Couldn\'t download %1$s</string>
-    <string name="wrapper_catalog_close">Done</string>
-    <string name="no_wine_version_installed">No Wine version installed — download a Proton from the in-app catalog first (Containers → download icon).</string>
-    <string name="help_player_slots"><![CDATA[
+    <!-- Merged from upstream (sync): keys our fork lacked -->
+<string name="new_container_defaults">New Container Defaults</string>
+<string name="new_container_defaults_saved">New-container defaults saved</string>
+<string name="new_container_defaults_save_failed">Could not save defaults</string>
+<string name="reset_to_app_defaults">Reset to app defaults</string>
+<string name="mouse">Mouse</string>
+<string name="binding_filter_all">All</string>
+<string name="binding_filter_keyboard">Keyboard</string>
+<string name="binding_filter_mouse">Mouse</string>
+<string name="binding_filter_gamepad">Gamepad</string>
+<string name="dead_zone">Dead Zone</string>
+<string name="detection_area">Detection Area</string>
+<string name="area_width">Area Width</string>
+<string name="area_height">Area Height</string>
+<string name="stick_radius">Stick Radius</string>
+<string name="mouse_sensitivity">Mouse Sensitivity</string>
+<string name="area_appearance">Area Appearance</string>
+<string name="independent_area_appearance">Use independent color and opacity</string>
+<string name="area_color">Area Color</string>
+<string name="area_opacity">Area Opacity</string>
+<string name="grid_rows">Rows</string>
+<string name="grid_cols">Columns</string>
+<string name="editing_in_game">Editing in game</string>
+<string name="save_and_close">Save and close</string>
+<string name="control_type_android_keyboard">Android Keyboard</string>
+<string name="change_control_type">Change control type?</string>
+<string name="change_control_type_warning">Changing type resets bindings, combos, text, icon, and type-specific settings.</string>
+<string name="confirm_change">Change</string>
+<string name="select_control_type">Select Control Type</string>
+<string name="control_type_button">Button</string>
+<string name="control_type_d_pad">D-Pad</string>
+<string name="control_type_range_button">Range Button</string>
+<string name="control_type_stick">Stick</string>
+<string name="control_type_trackpad">Trackpad</string>
+<string name="control_type_dynamic_stick">Dynamic Stick</string>
+<string name="control_type_mouse_area">Mouse Area</string>
+<string name="control_type_button_grid">Button Grid</string>
+<string name="control_type_expandable_button">Expandable Button</string>
+<string name="expandable_button_settings">Expandable button</string>
+<string name="expandable_layout">Layout</string>
+<string name="expandable_layout_radial">Radial</string>
+<string name="expandable_layout_list">List</string>
+<string name="expandable_direction">List direction</string>
+<string name="child_button_count">Child buttons</string>
+<string name="child_button_label">Button %1$d</string>
+<string name="direction_up">Up</string>
+<string name="direction_right">Right</string>
+<string name="direction_down">Down</string>
+<string name="direction_left">Left</string>
+<string name="control_shape_circle">Circle</string>
+<string name="control_shape_rectangle">Rectangle</string>
+<string name="control_shape_rounded_rectangle">Rounded rectangle</string>
+<string name="control_shape_square">Square</string>
+<string name="control_range_a_z">A to Z</string>
+<string name="control_range_0_9">0 to 9</string>
+<string name="control_range_f1_f12">F1 to F12</string>
+<string name="control_range_numpad_0_9">Numpad 0 to 9</string>
+<string name="set_background_image">Set Background Image</string>
+<string name="select_background_image">Select background image</string>
+<string name="select_icon_image">Select icon image</string>
+<string name="clear_background">Clear background</string>
+<string name="browse_files">Browse files</string>
+<string name="pick_via_system">Pick via system…</string>
+<string name="background_image_set">Background image set</string>
+<string name="background_cleared">Background cleared</string>
+<string name="unable_to_load_image">Unable to load image</string>
+<string name="opacity_percent">Opacity: %1$d%%</string>
+<string name="binding_setup_title">Binding — %1$s</string>
+<string name="binding_text_value">Character or number</string>
+<string name="binding_selector">Action selector</string>
+<string name="set_binding">Set</string>
+<string name="add_to_combo">Add to combo</string>
+<string name="combo_bindings">Combo Bindings</string>
+<string name="mouse_binding_priority">Prioritize mouse binding</string>
+<string name="mouse_binding_priority_description">Disable the matching touchscreen click while this control is visible.</string>
+<string name="binding_grid_cell_label">R%1$dC%2$d</string>
+<string name="binding_slot_label">Binding %1$d</string>
+<string name="fill_qwerty">Fill: QWERTY</string>
+<string name="fill_function_keys">Fill: F1–F12</string>
+<string name="fill_numpad">Fill: NumPad</string>
+<string name="hold_key">Hold Key (pressed while active)</string>
+<string name="button_grid">Button Grid</string>
+<string name="cell_shape">Cell Shape</string>
+<string name="grid_spacing">Button spacing</string>
+<string name="grid_multitouch">Multitouch</string>
+<string name="custom_icons">Custom Icons</string>
+<string name="tint_custom_icon">Tint custom icon with accent</string>
+<string name="use_custom_icon_as_button">Use custom icon as button</string>
+<string name="icon_content_description">Icon %1$d</string>
+<string name="long_press_custom_icon_to_delete">Long-press an unused custom icon to delete it.</string>
+<string name="delete_custom_icon">Delete custom icon</string>
+<string name="delete_custom_icon_confirmation">Custom icons are shared across control profiles. Delete this unused icon?</string>
+<string name="custom_icon_not_deleted">Custom icon not deleted</string>
+<string name="unable_to_check_custom_icon_usage">Unable to verify whether this icon is in use. No changes were made.</string>
+<string name="unable_to_delete_custom_icon">The icon could not be deleted. It may have been used or removed elsewhere.</string>
+<string name="clear">Clear</string>
+<string name="import_control_profile">Import ICP / ICpx</string>
+<string name="export_control_profile_icpx">Export ICpx</string>
+<string name="export_control_profile_icp_legacy">Export legacy ICP</string>
+<string name="export_control_profile_icp_tooltip">Legacy ICP is best effort. New commands, groups, combos, and custom icons may be ignored or lost in older apps.</string>
+<string name="select_control_profile">Select ICP or ICpx profile</string>
+<string name="vibration_mode_label">Rumble Target</string>
+<string name="vibration_mode_off">Off</string>
+<string name="vibration_mode_controller">Controller</string>
+<string name="vibration_mode_device">Device</string>
+<string name="vibration_mode_both">Both</string>
+<string name="vibration_intensity_label">Rumble Intensity</string>
+<string name="gyro">Gyro (Motion Aim)</string>
+<string name="gyro_enabled">Enable Motion Aim</string>
+<string name="gyro_mode_label">Motion Mode</string>
+<string name="gyro_mode_rate">Rate</string>
+<string name="gyro_mode_orientation">Tilt to Aim</string>
+<string name="gyro_target_label">Motion Target</string>
+<string name="gyro_target_right_stick">Right Stick</string>
+<string name="gyro_target_left_stick">Left Stick</string>
+<string name="gyro_target_mouse">Mouse</string>
+<string name="gyro_activator_label">Activator Button</string>
+<string name="gyro_activator_l1">L1</string>
+<string name="gyro_activator_l2">L2</string>
+<string name="gyro_activator_r1">R1</string>
+<string name="gyro_activator_r3">R3</string>
+<string name="gyro_activator_always">Always On</string>
+<string name="gyro_activation_mode_label">Activation</string>
+<string name="gyro_activation_hold">Hold</string>
+<string name="gyro_activation_toggle">Toggle</string>
+<string name="gyro_sensitivity_label">Sensitivity</string>
+<string name="gyro_deadzone_label">Deadzone</string>
+<string name="gyro_smoothing_label">Smoothing</string>
+<string name="gyro_invert_x">Invert X</string>
+<string name="gyro_invert_y">Invert Y</string>
+<string name="gyro_drawer_title">Gyro</string>
+<string name="gyro_drawer_enabled">Enabled</string>
+<string name="gyro_drawer_mode">Motion mode</string>
+<string name="gyro_drawer_mode_rate">Rate</string>
+<string name="gyro_drawer_mode_orientation">Tilt to aim</string>
+<string name="gyro_drawer_orientation_hint">The stick follows the angle you hold the device at, so a held tilt keeps aiming.</string>
+<string name="gyro_drawer_orientation_unsupported">Not available — this device has no rotation-vector sensor.</string>
+<string name="gyro_drawer_orientation_mouse_hint">Not available with the Mouse target — pick a stick first.</string>
+<string name="gyro_drawer_recenter">Recenter</string>
+<string name="gyro_drawer_recenter_hint">Makes the pose you are holding now the centre.</string>
+<string name="gyro_drawer_mouse_unavailable_hint">Mouse is not available in Tilt to aim — a held tilt would run the pointer off screen.</string>
+<string name="gyro_drawer_apply_to">Apply gyro to</string>
+<string name="gyro_drawer_target_right_stick">Right stick</string>
+<string name="gyro_drawer_target_left_stick">Left stick</string>
+<string name="gyro_drawer_target_mouse">Mouse</string>
+<string name="gyro_drawer_mouse_hint">Moves the pointer instead of a stick — use for the desktop and mouse-look games.</string>
+<string name="gyro_drawer_activation">Activation</string>
+<string name="gyro_drawer_activator_always">Always</string>
+<string name="gyro_drawer_toggle_hint">Tap the button to turn the gyro on, tap again to turn it off.</string>
+<string name="groups">Groups</string>
+<string name="group_label">Group</string>
+<string name="create_new_group">Create New Group</string>
+<string name="create">Create</string>
+<string name="group_visibility">Group Visibility</string>
+<string name="group_element_count">%1$d elements</string>
+<string name="no_groups">No groups</string>
+<string name="frame_generation_requires_vulkan">Frame generation requires the Vulkan renderer.</string>
+<string name="present_mode_fg_locked">Mailbox is required while frame generation is on.</string>
+<string name="frame_generation_model">Interpolation model</string>
+<string name="frame_generation_model_default">Optical flow</string>
+<string name="frame_generation_model_traced">Optical flow</string>
+<string name="frame_generation_model_v2">Optical flow</string>
+<string name="frame_generation_model_fsr3">Optical flow</string>
+<string name="frame_generation_model_fsr3_v2">Optical flow · bidirectional</string>
+<string name="frame_generation_model_experimental_hint">Experimental model — may render incorrectly or cost more performance than it gains. Switch back to Default if a game misbehaves.</string>
+<string name="fg_performance_mode">Performance mode</string>
+<string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>
+<string name="lsfg_auto_enable">Auto-enable at launch</string>
+<string name="lsfg_auto_enable_hint">Starts frame generation live at your saved multiplier from launch, instead of off. Leave off to load the layer but enable it per session from the in-game side menu.</string>
+<string name="max_game_refresh_rate_unlimited">Unlimited</string>
+<string name="in_game_refresh_rate">In-game refresh rate</string>
+<string name="in_game_refresh_locked">Locked (60)</string>
+<string name="in_game_refresh_rate_hint">Highest rate the game may pick in its own display menu. Locked keeps games at 60 Hz; a rate or Unlimited unlocks them (needs a Proton layer with refresh-rate support). Most games only read this at startup.</string>
+<string name="refresh_unlock_needs_compatible_layer">In-game refresh unlock needs a Proton layer with refresh-rate support — install the Refreshed Proton 10.0-4 / 11.0-1 build.</string>
+<string name="refresh_unlock_layer_incompatible_hint">The selected Proton for this container has no refresh-rate support — install the Refreshed Proton 10.0-4 / 11.0-1 build for this to take effect.</string>
+<string name="use_container_default">Use container default</string>
+<string name="bcn_compat_sparse">Emulate sparse binding (DX12)</string>
+<string name="bcn_compat_sparse_hint">For D3D12 games that use tiled/sparse resources. Leave off unless a DX12 title needs it.</string>
+<string name="compat_use_gamenative">Use GameNative engine (DX12)</string>
+<string name="compat_use_gamenative_hint">Required for DX12 games. Runs this driver on the GameNative wrapper (Vulkan 1.3 + built-in BCn) instead of the leegao layers. Off = BCn textures only (default). Valhall Mali (r32p1+) only.</string>
+<string name="renderer_colors">Colors</string>
+<string name="wrapper_manager_title">Manage Wrappers</string>
+<string name="wrapper_manager_header">Replace a bundled graphics wrapper with a newer file; updates are stored on-device and used instead of the built-in one.</string>
+<string name="wrapper_update">Update</string>
+<string name="wrapper_update_from_file">From file</string>
+<string name="wrapper_update_from_catalog">From catalog</string>
+<string name="wrapper_reset">Reset</string>
+<string name="wrapper_reset_all">Reset all</string>
+<string name="wrapper_reset_all_confirm_title">Reset all wrappers?</string>
+<string name="wrapper_reset_all_confirm_message">Remove every wrapper update and go back to the built-in versions?</string>
+<string name="wrapper_select_title">Select wrapper .tzst</string>
+<string name="wrapper_bundled">Bundled</string>
+<string name="wrapper_updated_label">Updated</string>
+<string name="wrapper_updated_toast">Wrapper updated</string>
+<string name="wrapper_reset_toast">Reverted to the built-in wrapper</string>
+<string name="wrapper_invalid_toast">That file isn\'t a valid wrapper (.tzst)</string>
+<string name="wrapper_manager_open">Manage wrappers</string>
+<string name="wrapper_manager_close">Close</string>
+<string name="wrapper_imported_label">Imported</string>
+<string name="wrapper_import_title">Import wrapper…</string>
+<string name="wrapper_import_subtitle">Add your own wrapper (.tzst). It appears in the Graphics Driver menu.</string>
+<string name="wrapper_import_name_title">Name this wrapper</string>
+<string name="wrapper_import_name_message">This name shows up in the Graphics Driver menu.</string>
+<string name="wrapper_import_name_empty_toast">Enter a name for the wrapper</string>
+<string name="wrapper_import_reserved_toast">That name is reserved for a built-in wrapper — pick another</string>
+<string name="wrapper_imported_toast">Wrapper imported</string>
+<string name="wrapper_delete">Delete</string>
+<string name="wrapper_delete_confirm_title">Delete this wrapper?</string>
+<string name="wrapper_delete_confirm_message">Remove this imported wrapper. Any container or game using it goes back to the default wrapper.</string>
+<string name="wrapper_more_actions">More actions</string>
+<string name="wrapper_details">Details</string>
+<string name="wrapper_edit_settings">Edit settings</string>
+<string name="wrapper_edit_settings_title">Edit detected settings</string>
+<string name="wrapper_edit_settings_message">Choose which detected settings appear in this wrapper\'s Graphics Driver options. Unchecked settings are hidden.</string>
+<string name="wrapper_edit_settings_empty">No detected settings to configure.</string>
+<string name="wrapper_update_available">Update available</string>
+<string name="wrapper_updating_progress">Updating… %1$d%%</string>
+<string name="wrapper_installed">Installed</string>
+<string name="wrapper_from_catalog">From catalog</string>
+<string name="wrapper_catalog_title">Download wrappers…</string>
+<string name="wrapper_catalog_subtitle">Browse curated wrappers from other projects and download them straight into the manager.</string>
+<string name="wrapper_catalog_dialog_title">Wrapper Catalog</string>
+<string name="wrapper_catalog_empty">No wrappers available yet.</string>
+<string name="wrapper_catalog_offline">Offline — connect to browse and download the catalog.</string>
+<string name="wrapper_catalog_offline_cache">Offline — showing a cached list. Connect to download.</string>
+<string name="wrapper_catalog_needs_connection">Needs a connection to download</string>
+<string name="wrapper_catalog_download">Download</string>
+<string name="wrapper_catalog_downloading">Downloading</string>
+<string name="wrapper_catalog_installing">Installing</string>
+<string name="wrapper_catalog_download_ok">%1$s added</string>
+<string name="wrapper_catalog_download_failed">Couldn\'t download %1$s</string>
+<string name="wrapper_catalog_close">Done</string>
+<string name="no_wine_version_installed">No Wine version installed — download a Proton from the in-app catalog first (Containers → download icon).</string>
+<string name="help_player_slots"><![CDATA[
         <b>Player Slots</b><br /><br />
         Decides which XInput <b>player</b> each controller becomes in the game. <b>Player 1</b> is slot 0, Player 2 is slot 1, and so on.<br /><br />
         <b>Auto</b> — the controller takes the next free player in the order pads connect (the normal behaviour).<br />
@@ -1185,10 +1171,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
         <b>Reset Input</b> (in-game side menu) rebuilds the controller connection without restarting the game.<br /><br />
         Changes made here (out of game) apply on the game\'s <b>next launch</b>; the in-game side menu changes players live. The app-drawer Input Controls copy of this sets the default for <b>newly-created</b> containers.
     ]]></string>
-    <!-- ── Audio settings: per-preset and per-row "?" help ────────────────────────────────────
-         Latency figures are TOTALS (driver buffer + Android's fixed ~21 ms mixer/HAL cost), because
-         the total is what a player hears; a bare buffer number is not comparable to it. -->
-    <string name="help_audio_preset_auto"><![CDATA[
+<string name="help_audio_preset_auto"><![CDATA[
         <b>Auto / Smart</b> — the recommended setting.<br /><br />
         Starts at a low delay and only adds more if it actually hears crackling. On DirectAudio that is a
         576-frame buffer, about <b>33 ms total</b>.<br /><br />
@@ -1196,7 +1179,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
         while this one grows just enough to stop that and no further.<br /><br />
         Pick this unless you have a reason not to.
     ]]></string>
-    <string name="help_audio_preset_low"><![CDATA[
+<string name="help_audio_preset_low"><![CDATA[
         <b>Low latency</b> — the floor.<br /><br />
         One hardware burst: about <b>25 ms total</b> on DirectAudio, which is as low as anything on Android
         goes. Adaptive stays on, so a title that cannot hold it grows a step rather than crackling all
@@ -1204,25 +1187,25 @@ E.g. <b>META</b> for <i>META key</i>, \n
         Measured across three games, one held this comfortably and two needed a step up. Nothing breaks
         either way — but if you hear anything, Auto is the setting to return to.
     ]]></string>
-    <string name="help_audio_preset_balanced"><![CDATA[
+<string name="help_audio_preset_balanced"><![CDATA[
         <b>Balanced</b> — a calmer buffer that still adapts.<br /><br />
         About <b>47 ms total</b> on DirectAudio (1248 frames). Noticeably later than Auto, and noticeably
         safer on a device that struggles.<br /><br />
         Worth trying if Auto crackles during loading screens or busy scenes.
     ]]></string>
-    <string name="help_audio_preset_stable"><![CDATA[
+<string name="help_audio_preset_stable"><![CDATA[
         <b>Stable</b> — biggest safety margin, most delay.<br /><br />
         About <b>83 ms total</b> on DirectAudio (3000 frames). Sound lags visibly behind the picture in
         fast games, which is the trade you are making.<br /><br />
         For weak devices, very demanding games, or anything that crackles on every other setting.
     ]]></string>
-    <string name="help_audio_preset_custom"><![CDATA[
+<string name="help_audio_preset_custom"><![CDATA[
         <b>Custom</b> — unlocks the fine-tune rows below.<br /><br />
         Every other preset fills those rows in for you and greys them out; they still <i>show</i> what the
         preset applies, so you can read them before switching.<br /><br />
         Only choose this if you want to set the buffer yourself. The "?" on each row explains what it does.
     ]]></string>
-    <string name="help_audio_perf_mode"><![CDATA[
+<string name="help_audio_perf_mode"><![CDATA[
         <b>Output mode</b> — which Android audio path is requested.<br /><br />
         <b>Low latency</b> asks for the fast path with a high-priority audio thread. On this emulator that
         is the tested choice: under box64/FEX a normal-priority thread gets preempted by the game and the
@@ -1232,7 +1215,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
         DirectAudio forces <b>Low latency</b> for every named preset regardless of this row; it only takes
         effect on Custom.
     ]]></string>
-    <string name="help_audio_adaptive"><![CDATA[
+<string name="help_audio_adaptive"><![CDATA[
         <b>Adaptive buffer</b> — grow only when something actually goes wrong.<br /><br />
         The buffer starts small. Each time the audio underruns, a little is added, so it settles at the
         lowest delay <i>this</i> game can hold on <i>your</i> device rather than a number someone guessed.<br /><br />
@@ -1241,7 +1224,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
         Every preset now leaves this on, so switching it off is a deliberate choice you make here, on Custom.
         Do that only when you are testing a fixed size and want no interference.
     ]]></string>
-    <string name="help_audio_direct_buffer"><![CDATA[
+<string name="help_audio_direct_buffer"><![CDATA[
         <b>Audio buffer</b> — how much sound DirectAudio keeps ready, in milliseconds.<br /><br />
         Smaller is tighter but more fragile; larger rides out stutters at the cost of delay.<br /><br />
         The row shows the <b>total</b>, because Android adds a fixed <b>21 ms</b> of its own that no
@@ -1250,31 +1233,51 @@ E.g. <b>META</b> for <i>META key</i>, \n
         With adaptive on, this is a starting point <i>and</i> the level the buffer returns to once things
         are calm again — it never drops below what you set here.
     ]]></string>
-    <string name="help_audio_guest_buffer"><![CDATA[
+<string name="help_audio_guest_buffer"><![CDATA[
         <b>Guest buffer</b> — how much sound Windows hands to PulseAudio at a time.<br /><br />
         This is the guest side of the delay, separate from the sink buffer below. It is fixed when the game
         connects, so a change takes effect on the <b>next launch</b>.<br /><br />
         Lower means tighter sync and more work per second; higher is steadier.
     ]]></string>
-    <string name="help_audio_buffer_frames"><![CDATA[
+<string name="help_audio_buffer_frames"><![CDATA[
         <b>Initial buffer</b> — the starting size, in audio frames rather than milliseconds.<br /><br />
         48 frames is 1 ms, so 576 frames is a 12 ms buffer (33 ms total). <b>auto</b> lets the engine
         choose.<br /><br />
         This is the advanced form of the millisecond row above. If you set both, <b>frames win</b> — clear
         it back to auto to go by milliseconds again.
     ]]></string>
-    <string name="help_audio_max_buffer_frames"><![CDATA[
+<string name="help_audio_max_buffer_frames"><![CDATA[
         <b>Max buffer</b> — how far adaptive growth is allowed to go.<br /><br />
         A ceiling, not a target: the buffer only reaches it if the game repeatedly underruns. It stops a bad
         patch from inflating the delay without limit.<br /><br />
         <b>device max</b> uses the driver default (100 ms). Setting it too low means a struggling game runs
         out of room and keeps crackling.
     ]]></string>
-    <string name="help_audio_latency_unused"><![CDATA[
+<string name="help_audio_latency_unused"><![CDATA[
         <b>Not used by ALSA.</b><br /><br />
         This row sets the guest-side buffer, which only PulseAudio has. ALSA reaches Android through the
         app\'s own sound server, and that takes its sizing from the <b>Initial buffer</b> and <b>Max
         buffer</b> rows below instead.<br /><br />
         Change those to adjust ALSA\'s delay. This slider is greyed out here because nothing reads it.
     ]]></string>
+
+    <!-- Plurals merged from upstream (sync) -->
+<plurals name="custom_icon_in_use">
+        <item quantity="one">This icon is used by %1$d control. Reassign it before deleting the icon.</item>
+        <item quantity="other">This icon is used by %1$d controls. Reassign them before deleting the icon.</item>
+    </plurals>
+<plurals name="custom_icon_profiles_in_use">
+        <item quantity="one">Used in %1$d profile:</item>
+        <item quantity="other">Used in %1$d profiles:</item>
+    </plurals>
+<plurals name="profiles_not_imported">
+        <item quantity="one">%1$d profile could not be imported</item>
+        <item quantity="other">%1$d profiles could not be imported</item>
+    </plurals>
 </resources>
+
+
+
+
+
+

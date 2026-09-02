@@ -551,6 +551,14 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             FileUtils.chmod(box64File, 0755);
         }
 
+        // Diagnostic: dump every env var the Wine process actually receives.
+        // Log individually to stay under Android's ~4KB per-message truncation limit.
+        String[] finalEnv = envVars.toStringArray();
+        Log.d("GuestProgramLauncherComponent", "=== FINAL ENV VARS (" + finalEnv.length + " entries) ===");
+        for (String entry : finalEnv) {
+            Log.d("GuestProgramLauncherComponent", "  " + entry);
+        }
+
         return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {
             synchronized (lock) {
                 pid = -1;

@@ -118,6 +118,14 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         connectWaitListener = null
         super.onDestroy()
         SteamAuthManager.getInstance().cancelAuth()
+        // SteamMainActivity starts the foreground service BEFORE the sign-in check (the sign-in
+        // flow needs the CM channel — it waits on the "Connected" event), so leaving this screen
+        // without a session used to strand an ongoing Steam notification with nothing in the app
+        // able to stop it. Tear it down on the way out unless a download owns the session.
+        val signedIn = try { SteamPrefs.isLoggedIn } catch (t: Throwable) { false }
+        if (isFinishing && !isChangingConfigurations && !signedIn) {
+            SteamForegroundService.stopIfIdle(applicationContext)
+        }
     }
 
     private fun onLoginClicked() {

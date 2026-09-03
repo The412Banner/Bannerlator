@@ -166,6 +166,7 @@ import androidx.compose.runtime.SideEffect
 import com.winlator.star.ui.AccountAvatar
 import com.winlator.star.ui.AccountUiBus
 import com.winlator.star.ui.ComponentReturnBus
+import com.winlator.star.ui.EmulatorLabels
 import com.winlator.star.ui.LocalTopBarActions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -5943,6 +5944,9 @@ internal fun ShortcutSettingsDialogScreen(
 
     // Async-loaded state
     var isArm64EC by remember { mutableStateOf(false) }
+    // isArm64EC is resolved asynchronously (WineInfo load below). Until it lands we must not
+    // relabel the Emulator field, or an arm64ec container would flash "Box64" on first frame.
+    var archLoaded by remember { mutableStateOf(false) }
     var box64Versions by remember { mutableStateOf(listOf<String>()) }
     var box64Presets by remember { mutableStateOf(listOf<Box64Preset>()) }
     var fexCoreVersions by remember { mutableStateOf(listOf<String>()) }
@@ -6402,6 +6406,7 @@ internal fun ShortcutSettingsDialogScreen(
 
             withContext(Dispatchers.Main) {
                 isArm64EC = arm64ec
+                archLoaded = true
                 box64Versions = b64Arr
                 fexCoreVersions = fexList
                 box64Presets = b64Presets
@@ -7377,13 +7382,21 @@ internal fun ShortcutSettingsDialogScreen(
                         }
                     }
 
-                    // Emulator
+                    // Emulator — display-only relabel (see EmulatorLabels). On arm64ec the non-FEX
+                    // backend is wowbox64, and on an x86_64 container this picker is inert (the
+                    // launcher always runs bin/box64) so the disabled field must read Box64 instead
+                    // of the stored "FEXCore" default. What save() persists is unchanged.
+                    val emulatorShown =
+                        if (archLoaded && !isArm64EC) EmulatorLabels.box64EntryOf(emulatorEntries)
+                        else EmulatorLabels.display(selectedEmulator, isArm64EC)
                     DpDrop(
                         dp, "emulator",
                         label = "Emulator",
-                        options = emulatorEntries,
-                        selected = selectedEmulator,
-                        onSelect = { selectedEmulator = it },
+                        options = EmulatorLabels.options(emulatorEntries, isArm64EC),
+                        selected = emulatorShown,
+                        onSelect = {
+                            selectedEmulator = EmulatorLabels.fromDisplay(it, emulatorEntries, isArm64EC)
+                        },
                         enabled = isArm64EC
                     )
 

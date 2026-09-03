@@ -411,8 +411,13 @@ impl BandwidthMeter {
             .collect();
         per.sort_by(|a, b| b.1.cmp(&a.1));
 
+        // `used` = how many of the pool's servers actually carried bytes. With a small window the
+        // speed ranking piles onto one host, so this is the quick read on whether the fetch is
+        // spread across the CDN pool or has degenerated to a single server.
+        let used = per.len();
+        let pool = self.per_server_bytes.len();
         let mut servers = String::new();
-        for (i, bytes) in per.iter().take(4) {
+        for (i, bytes) in per.iter().take(6) {
             let host = self.hosts.get(*i).map(String::as_str).unwrap_or("?");
             servers.push_str(&format!(
                 " [{host} {:.1}MB/s {:.0}MB]",
@@ -421,7 +426,7 @@ impl BandwidthMeter {
             ));
         }
         format!(
-            "throughput depot={depot_id} overall={overall_mbps:.2}MB/s total={:.0}MB elapsed={secs:.0}s servers:{servers}",
+            "throughput depot={depot_id} overall={overall_mbps:.2}MB/s total={:.0}MB elapsed={secs:.0}s used={used}/{pool} servers:{servers}",
             mb(total)
         )
     }
@@ -664,6 +669,14 @@ struct AdaptiveWindow {
     plateau_rearm_ms: u64,
     ok_count: u32,
     err_count: u32,
+    /// Dispatch attempts since the last probe that WANTED another slot but could not take one: the
+    /// byte budget was full, or every CDN host was at its per-host cap / cooling down. These say
+    /// whether the window is the binding constraint at all — a big window with a high `budget_stalls`
+    /// is bounded by the 24 MiB budget, and a high `host_stalls` is bounded by hosts × per-host cap.
+    budget_stalls: u32,
+    host_stalls: u32,
+    last_budget_stalls: u32,
+    last_host_stalls: u32,
     latency_ewma_ms: f64,
     cooldown_until: Option<Instant>,
     last_reason: WindowReason,
@@ -690,12 +703,26 @@ impl AdaptiveWindow {
             plateau_rearm_ms: WINDOW_PLATEAU_REARM_MS,
             ok_count: 0,
             err_count: 0,
+            budget_stalls: 0,
+            host_stalls: 0,
+            last_budget_stalls: 0,
+            last_host_stalls: 0,
             latency_ewma_ms: 0.0,
             cooldown_until: None,
             last_reason: WindowReason::Start,
             last_err_rate: 0.0,
             probes_since_log: 0,
         }
+    }
+
+    /// The dispatch loop wanted another in-flight slot but the byte budget was full.
+    fn note_budget_stall(&mut self) {
+        self.budget_stalls = self.budget_stalls.saturating_add(1);
+    }
+
+    /// The dispatch loop wanted another in-flight slot but every host was at cap or cooling.
+    fn note_host_stall(&mut self) {
+        self.host_stalls = self.host_stalls.saturating_add(1);
     }
 
     fn record_ok(&mut self, latency_ms: f64) {
@@ -838,6 +865,10 @@ impl AdaptiveWindow {
         self.last_err_rate = err_rate;
         self.ok_count = 0;
         self.err_count = 0;
+        self.last_budget_stalls = self.budget_stalls;
+        self.last_host_stalls = self.host_stalls;
+        self.budget_stalls = 0;
+        self.host_stalls = 0;
         self.probes_since_log = self.probes_since_log.saturating_add(1);
         let changed = before != self.current;
         if changed || self.probes_since_log >= WINDOW_LOG_EVERY_PROBES {
@@ -859,7 +890,7 @@ impl AdaptiveWindow {
         format!(
             "fetch-window depot={depot_id} window={} (min={} max={}) in_flight={in_flight_requests} \
 last={:.2}MB/s ewma={:.2}MB/s best={:.2}MB/s reason={} cooldown={}ms err_rate={:.1}% \
-phase={} rtt={:.0}ms",
+phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
             self.current,
             self.min,
             self.max,
@@ -870,7 +901,9 @@ phase={} rtt={:.0}ms",
             self.cooldown_left_ms(now),
             self.last_err_rate * 100.0,
             if self.slow_start { "slow-start" } else { "steady" },
-            self.latency_ewma_ms
+            self.latency_ewma_ms,
+            self.last_budget_stalls,
+            self.last_host_stalls
         )
     }
 }
@@ -1626,16 +1659,23 @@ async fn run_async_fetch_driver(
             // admits when nothing is in flight, so a chunk bigger than the whole budget can't deadlock.
             let reserve = reserve_bytes(manifest, job);
             if !budget_admits(in_flight.load(Ordering::Relaxed), reserve, budget) {
+                // Diagnostic only: the window wanted this slot, the memory budget refused it.
+                window.note_budget_stall();
                 break; // wait for a completion to free budget
             }
 
             // Speed-ranked, per-host-capped server pick.
             let Some(server_idx) = sched.pick(now) else {
+                // Diagnostic only: the window wanted this slot, hosts × per-host-cap refused it.
+                window.note_host_stall();
                 break; // every host at cap or cooling → wait for a completion
             };
             let permit = match sched.host_sem(server_idx).clone().try_acquire_owned() {
                 Ok(permit) => permit,
-                Err(_) => break, // raced to the cap; wait
+                Err(_) => {
+                    window.note_host_stall();
+                    break; // raced to the cap; wait
+                }
             };
 
             let chunk_sha = match manifest
@@ -2912,6 +2952,11 @@ mod tests {
     fn window_summary_line_carries_the_decision_reason() {
         let t = Instant::now();
         let mut w = AdaptiveWindow::new(8, 2, 30, t);
+        // Two dispatch attempts were refused by the byte budget before this probe: the line must say
+        // so, otherwise a window that looks healthy but is memory-bound reads as a mystery on device.
+        w.note_budget_stall();
+        w.note_budget_stall();
+        w.note_host_stall();
         run_probes(&mut w, t, 1, 1, 10, 0, 0, |_| 20_000_000);
         let line = w.summary_line(49521, 12, t + Duration::from_millis(2_010));
         assert!(line.starts_with("fetch-window depot=49521 window=16 (min=2 max=30) in_flight=12"));
@@ -2919,6 +2964,8 @@ mod tests {
         assert!(line.contains("cooldown=0ms"), "{line}");
         assert!(line.contains("err_rate=0.0%"), "{line}");
         assert!(line.contains("phase=slow-start"), "{line}");
+        assert!(line.contains("budget_stalls=2"), "{line}");
+        assert!(line.contains("host_stalls=1"), "{line}");
     }
 
     #[test]

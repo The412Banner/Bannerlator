@@ -225,7 +225,7 @@ object SteamStoreCatalog {
         val term = query.trim()
         if (term.length < 2) return emptyList()
         val cc = SteamRegion.storeCountryCode(ctx)
-        val key = "$cc ${term.lowercase(Locale.ROOT)}"
+        val key = "$cc\u0000${term.lowercase(Locale.ROOT)}"
         searchCache[key]?.let {
             if (System.currentTimeMillis() - it.at < SEARCH_TTL_MS) {
                 StorefrontLog.i(TAG, "search($cc, \"$term\"): cache hit, ${it.value.size} hit(s)")
@@ -638,7 +638,11 @@ object SteamStoreCatalog {
         for (i in 0 until arr.length()) {
             parseFeaturedItem(arr.optJSONObject(i) ?: continue)?.let(out::add)
         }
-        return out
+        // featuredcategories can list the same appId twice inside one category, and the
+        // rails key their LazyRow items by appId - a duplicate crashes Compose outright
+        // with IllegalArgumentException: Key "<appId>" was already used. Deduping in the
+        // shared parser covers every category at once, so a new rail cannot reintroduce it.
+        return out.distinctBy { it.appId }
     }
 
     /**

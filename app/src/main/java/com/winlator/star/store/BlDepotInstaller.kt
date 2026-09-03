@@ -19,7 +19,6 @@ import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -63,9 +62,11 @@ import java.util.concurrent.atomic.AtomicLong
  * at the new id → delta by chunk hash. "Verify integrity" = `fresh = true`: forget the journal for
  * these depots so every chunk of every depot is re-validated against the live manifest.
  *
- * One native download runs at a time (the engine's cancel flag is per session) — a second
- * request waits in a queue and shows as DOWNLOADING with a "Waiting for another download…" status.
- * Blocking work runs on a worker thread; listener callbacks arrive on native threads.
+ * One native download runs at a time (the engine's cancel flag is per session). Serialization is
+ * enforced ABOVE this class by the engine-agnostic [DownloadQueue]: a worker is spawned only when
+ * its appId owns the queue slot, so there is no in-worker gate/park here — queued requests are data
+ * (a QUEUED registry row), not parked threads. Blocking work runs on a worker thread; listener
+ * callbacks arrive on native threads.
  */
 internal object BlDepotInstaller {
 
@@ -92,10 +93,9 @@ internal object BlDepotInstaller {
     private const val SESSION_WAIT_MS = 30_000L
     private const val PICS_REFRESH_MS = 15_000L
 
-    /** One native download at a time (shared cancel flag on the engine session). */
-    private val gate = Semaphore(1, true)
-
-    /** The appId whose download currently owns [gate] (and therefore the engine's cancel flag). */
+    /** The appId whose download currently owns the engine session (and therefore its cancel flag);
+     *  -1 when idle. Set by [run] once it owns the queue slot; only one is ever non-idle at a time
+     *  because [DownloadQueue] serializes starts. Used by [cancelNativeIfOwner]. */
     @Volatile private var activeAppId: Int = -1
 
     /** Cancel the native download only if it is OURS; a queued request just sets its flags. */
@@ -289,21 +289,20 @@ internal object BlDepotInstaller {
         }
         emitProgress(installBase, installTotalSeed, 0L, downloadTotalSeed)
 
-        // ── Queue: one native download at a time ──────────────────────────────────────────────
-        if (!gate.tryAcquire()) {
-            dlog("Another Rust-engine download is running — queued")
-            try { SteamForegroundService.setStatusText("Waiting to download ${row.name}…") } catch (_: Throwable) {}
-            while (!gate.tryAcquire(500, TimeUnit.MILLISECONDS)) {
-                if (cancelled.get()) { finishCancelled(appId, db); return }
-                if (paused.get()) { finishPaused(appId, db, installBase); return }
-            }
-        }
+        // ── One native download at a time ─────────────────────────────────────────────────────
+        // DownloadQueue already guarantees this worker only runs when it owns the slot, so there is
+        // no gate/park here (queued requests never reach run()). Just claim engine-session ownership.
         activeAppId = appId
-        // A pause/cancel that landed while we were queued: honour it now that we own the engine.
-        if (cancelled.get()) { activeAppId = -1; gate.release(); finishCancelled(appId, db); return }
-        if (paused.get()) { activeAppId = -1; gate.release(); finishPaused(appId, db, installBase); return }
+        // A pause/cancel that landed between enqueue and here: honour it before touching the engine.
+        if (cancelled.get()) { activeAppId = -1; finishCancelled(appId, db); return }
+        if (paused.get()) { activeAppId = -1; finishPaused(appId, db, installBase); return }
         val caPath = CaBundleExtractor.ensureBundle(ctx)
-        val maxWorkers = DownloadSpeedConfig(speedTier).maxDownloads.coerceIn(1, 32)
+        val speedConfig = DownloadSpeedConfig(speedTier)
+        val maxWorkers = speedConfig.maxDownloads.coerceIn(1, 32)
+        // Fetch pool = maxDownloads (network), process pool = maxDecompress (decrypt+decompress+
+        // write): the engine now runs a decoupled 2-stage pipeline so the socket never idles while
+        // a worker decompresses, matching the JavaSteam engine's tier semantics.
+        val maxDecompress = speedConfig.maxDecompress.coerceIn(1, 32)
         SteamDepotDownloader.acquireDownloadWakelock(ctx)
         repo.setDownloadActive(true)
 
@@ -378,7 +377,7 @@ internal object BlDepotInstaller {
                         if (eta >= 0L) append(" · ${formatEta(eta)}")
                     }
                     val verb = if (verify) "Verifying" else "Downloading"
-                    try { SteamForegroundService.setStatusText("$verb ${row.name} — $pct%$extra") } catch (_: Throwable) {}
+                    try { SteamForegroundService.setStatusText("$verb ${row.name} — $pct%$extra${DownloadQueue.fgsSuffix()}") } catch (_: Throwable) {}
                 }
                 emitProgress(installDone, iTotal, downloadDone, dTotal, eta, bps)
                 db.updateDownloadProgress(appId, installDone)
@@ -396,7 +395,7 @@ internal object BlDepotInstaller {
             }
         }
 
-        dlog("downloadApp(appId=$appId depots=${specs.size} branch=$selectedBranch fresh=$verify workers=$maxWorkers)")
+        dlog("downloadApp(appId=$appId depots=${specs.size} branch=$selectedBranch fresh=$verify workers=$maxWorkers decompress=$maxDecompress)")
         var completedNormally = false
         var retryAsResume = false
         // Layer 1 bookkeeping: a genuinely-short (not Steam-denied) depot asks for a bounded resume.
@@ -406,7 +405,7 @@ internal object BlDepotInstaller {
         try {
             session.downloadApp(
                 appId, specs.map { it.first }.toIntArray(), specs.map { it.second }.toLongArray(),
-                selectedBranch, installDir.absolutePath, verify, caPath, maxWorkers, listener,
+                selectedBranch, installDir.absolutePath, verify, caPath, maxWorkers, maxDecompress, listener,
             )
             done.await()
             dlog("downloadApp finished: success=$success error='${error}' written=${fmt(bytesWritten)} " +
@@ -416,59 +415,85 @@ internal object BlDepotInstaller {
                 val journal = journalInstalledManifests(installDir)
                 val denied = deniedDepots(installDir)
                 val short = specs.filter { (d, m) -> journal[d] != m }
-                val deniedKept = short.filter { it.first in denied }
-                val deniedDlc = deniedKept.map { it.first }.filter { it in dlcDepotIds(db, appId) }
+                // Depots the account can NEVER download: Steam refused the depot key
+                // (`.bl_depot/denied.depots`). A denied key never becomes a completed depot on any
+                // retry, so these must NOT block the verdict — whether or not the depot is a
+                // recognized DLC. (Hades' soundtrack depot 1145362, real_size=0 / not entitled, is
+                // the device-confirmed case: the owned depots were complete but this one denial
+                // failed the whole install.)
+                val deniedSkipped = short.filter { it.first in denied }
+                val completed = specs.filter { (d, m) -> journal[d] == m }
                 specs.forEach { (d, m) ->
                     val st = when {
                         journal[d] == m -> "COMPLETE (journal manifest $m)"
-                        d in denied -> "DENIED by Steam (no depot key)"
+                        d in denied -> "DENIED by Steam — skipped (not owned on this account)"
                         else -> "SHORT (journal ${journal[d] ?: "absent"} ≠ $m)"
                     }
                     dlog("Depot $d: $st")
                 }
-                val blocking = short.filter { it.first !in deniedDlc }
+                // Only a genuinely-SHORT (NOT denied) depot blocks — that is the auto-resume/fail
+                // domain (Layer 1). Denied depots are tolerated in the branches below.
+                val blocking = short.filter { it.first !in denied }
                 if (blocking.isNotEmpty()) {
                     completedNormally = true
-                    // A depot Steam denied a key for will never complete on a retry; one that is
-                    // merely SHORT is exactly what an auto-resume fixes (Layer 1).
-                    val resumable = blocking.filter { it.first !in denied }
-                    val msg = if (deniedKept.isNotEmpty())
-                        "Download incomplete — Steam denied access to depot(s) ${deniedKept.joinToString(",") { it.first.toString() }}"
-                    else
-                        "Download incomplete — ${blocking.size} depot(s) not validated (${blocking.joinToString(",") { it.first.toString() }})"
+                    // Every blocking depot here is non-denied (Steam granted the key but the chunk
+                    // stream fell short), which is exactly what a bounded auto-resume fixes (Layer 1).
+                    val msg = "Download incomplete — ${blocking.size} depot(s) not validated " +
+                            "(${blocking.joinToString(",") { it.first.toString() }})"
                     dlog("INCOMPLETE: $msg")
-                    if (resumable.isNotEmpty() && !cancelled.get() && !paused.get()) {
+                    if (!cancelled.get() && !paused.get()) {
                         depotResumeNeeded = true
-                        shortSummary = resumable.joinToString(", ") { (d, m) ->
+                        shortSummary = blocking.joinToString(", ") { (d, m) ->
                             "depot $d (journal ${journal[d] ?: "absent"} != $m)"
                         }
                         onDiskAtCompletion = SteamDepotDownloader.dirSizeBytes(installDir)
                     } else {
                         fail(appId, msg)
                     }
+                } else if (completed.isEmpty()) {
+                    // No genuinely-short depot remains, but NOTHING completed either — every selected
+                    // depot was denied. The account owns none of this game: fail honestly rather than
+                    // let "tolerate denied" turn a fully-unowned game into a false success.
+                    completedNormally = true
+                    val msg = "Steam denied access to every depot of this game (not owned on this account?)"
+                    dlog("NOT OWNED: all ${specs.size} selected depot(s) denied — $msg")
+                    BlSteamEngineLog.log("DL", "not-owned app=$appId all=${specs.size} denied")
+                    fail(appId, msg)
                 } else {
-                    if (deniedDlc.isNotEmpty()) {
-                        // Steam refused the key for a DLC depot: this account isn't entitled to it →
-                        // remember the opt-out so later passes stop asking for it.
-                        dlog("DLC depot(s) ${deniedDlc.joinToString(",")} denied — recorded as excluded DLC")
-                        try { SteamPrefs.setExcludedDlc(appId, excludedDlc + deniedDlc) } catch (_: Throwable) {}
+                    // At least one selected depot completed; any remaining depot was denied (not owned).
+                    // Remember ALL denied depots as excluded so a later re-download/update never
+                    // re-selects and re-denies them, then mark the game installed.
+                    if (deniedSkipped.isNotEmpty()) {
+                        val deniedIds = deniedSkipped.map { it.first }
+                        deniedIds.forEach { dlog("Depot $it: skipped — not owned on this account (Steam denied the depot key)") }
+                        try { SteamPrefs.setExcludedDlc(appId, excludedDlc + deniedIds) } catch (_: Throwable) {}
+                        dlog("Recorded ${deniedIds.size} denied depot(s) as excluded so a re-download won't re-select them: ${deniedIds.joinToString(",")}")
                     }
                     completedNormally = true
                     val iTotal = installTotalRunning.get()
                     val dTotal = downloadTotalRunning.get()
                     val onDisk = SteamDepotDownloader.dirSizeBytes(installDir)
                     val finalInstall = maxOf(lastInstallDone.get(), onDisk)
-                    dlog("=== Download complete: appId=$appId — all ${specs.size - deniedDlc.size} depot(s) validated " +
-                            "against their manifests; on-disk ${fmt(onDisk)} ===")
-                    BlSteamEngineLog.log("DL", "complete app=$appId depots=${specs.size - deniedDlc.size} onDisk=${fmt(onDisk)}")
+                    dlog("=== Download complete: appId=$appId — ${completed.size} owned depot(s) validated " +
+                            "against their manifests" +
+                            (if (deniedSkipped.isNotEmpty()) ", ${deniedSkipped.size} denied depot(s) skipped" else "") +
+                            "; on-disk ${fmt(onDisk)} ===")
+                    BlSteamEngineLog.log("DL", "complete app=$appId depots=${completed.size} skipped=${deniedSkipped.size} onDisk=${fmt(onDisk)}")
                     emitProgress(iTotal, iTotal, dTotal, dTotal)
                     db.markInstalled(appId, installDir.absolutePath, if (finalInstall > 0L) finalInstall else iTotal)
+                    // Success → the download is done; clear its steam_downloads row so nothing keeps
+                    // rendering a stale "downloading" state. The game now lives in steam_games
+                    // (is_installed=1) and is represented by the INSTALLED DownloadRegistry entry +
+                    // the Library section below. Only clear on SUCCESS — paused/failed/cancelled keep
+                    // their row (finishPaused/fail/finishCancelled) so Resume/retry still works.
+                    db.deleteDownload(appId)
                     try { SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, selectedBranch) } catch (_: Throwable) {}
                     repo.emit("DownloadComplete:$appId")
                     DownloadRegistry.update(dmKey) {
                         it.copy(state = DownloadState.INSTALLED, pct = 100, installPath = installDir.absolutePath,
                             installDone = if (finalInstall > 0L) finalInstall else iTotal, installTotal = iTotal)
                     }
+                    // Terminal success — the queue is advanced at the END of run() (after teardown).
                 }
             }
         } catch (t: Throwable) {
@@ -478,7 +503,6 @@ internal object BlDepotInstaller {
             repo.setDownloadActive(false)
             SteamDepotDownloader.releaseDownloadWakelock()
             activeAppId = -1
-            gate.release()
             try { repo.refreshFgsStatus() } catch (_: Throwable) {}
             SteamDepotDownloader.activeDownloads.remove(appId)
             if (!completedNormally) {
@@ -544,6 +568,15 @@ internal object BlDepotInstaller {
                 }
             }
         }
+
+        // Worker done for good → free the queue slot and start the next queued download. Placed HERE,
+        // after the finally's setDownloadActive(false)/wakelock teardown, so the next download never
+        // overlaps this one's teardown. Idempotent — onActiveTerminal no-ops when this appId is no
+        // longer the active slot (early-return terminals already advanced via finishPaused /
+        // finishCancelled / emitFailed). The re-entry paths never reach here: retryAsResume returns
+        // above, and a depot-resume re-enters run() synchronously (that inner pass advances; this
+        // outer call then no-ops).
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────────────────────
@@ -669,9 +702,6 @@ internal object BlDepotInstaller {
         return try { f.readLines().mapNotNull { it.trim().toIntOrNull() }.toSet() } catch (_: Throwable) { emptySet() }
     }
 
-    private fun dlcDepotIds(db: SteamDatabase, appId: Int): Set<Int> =
-        try { db.getIncludedDlcEntries(appId).keys } catch (_: Throwable) { emptySet() }
-
     private fun isRecoverable(error: String): Boolean {
         val e = error.lowercase()
         if (e == "cancelled") return false
@@ -700,6 +730,8 @@ internal object BlDepotInstaller {
         db.markDownloadPaused(appId, installDone)
         SteamRepository.getInstance().emit("DownloadPaused:$appId")
         DownloadRegistry.update("${Store.STEAM}:$appId") { it.copy(state = DownloadState.PAUSED) }
+        // Pausing the active download frees the slot → advance the queue.
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     private fun finishCancelled(appId: Int, db: SteamDatabase) {
@@ -710,6 +742,8 @@ internal object BlDepotInstaller {
         DownloadRegistry.update(key) { it.copy(state = DownloadState.CANCELLED) }
         DownloadRegistry.remove(key)
         SteamDepotDownloader.activeDownloads.remove(appId)
+        // Active slot freed → advance the queue.
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     private fun <T> runBounded(boundMs: Long, block: () -> T): T? {

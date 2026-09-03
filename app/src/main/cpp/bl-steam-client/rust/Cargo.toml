@@ -15,6 +15,9 @@ cbc = { version = "0.1", features = ["alloc", "block-padding"] }
 crc32fast = "1"
 hmac = "0.12"
 jni = "0.21"
+# Direct dep for pwrite/fallocate/statvfs on the download write path (already present transitively
+# via rustls/ring, pinned to the same version in Cargo.lock — no new fetch).
+libc = "0.2"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 lzma-rs = { version = "0.3", features = ["raw_decoder"] }
 rand = "0.8"

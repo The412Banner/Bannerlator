@@ -111,6 +111,15 @@ data class DownloadEntry(
      * installPath/cover) — it is re-derived on each seed, and a fresh install/update clears it.
      */
     val updateAvailable: Boolean = false,
+    /**
+     * 1-based position in the managed download queue while [state] is [DownloadState.QUEUED]
+     * (1 = next to start); 0 for everything else (active / installed / terminal). Set and kept
+     * current by [com.winlator.star.store.DownloadQueue] as items enqueue, dequeue, cancel or
+     * reorder. Transient — never persisted (only INSTALLED rows hit prefs). The Download Manager's
+     * Queued section renders "#n" from it and orders its list by it (the registry's default sort is
+     * by name, which is meaningless for a FIFO).
+     */
+    val queuePosition: Int = 0,
     // ── Transient action handles — held live by the registry, NEVER persisted ──
     val pause: (() -> Unit)? = null,
     val cancel: (() -> Unit)? = null,

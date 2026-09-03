@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -128,6 +129,9 @@ class DownloadManagerActivity : ComponentActivity() {
                     onCancel = { cancelEntry(it) },
                     onPauseResume = { it.pause?.invoke() },
                     onDismiss = { DownloadRegistry.remove(it.key) },
+                    // Queue reorder (Steam-only; a no-op for any id that isn't a live queued Steam appId).
+                    onMoveUp = { it.id.toIntOrNull()?.let { id -> DownloadQueue.moveUp(id) } },
+                    onMoveToTop = { it.id.toIntOrNull()?.let { id -> DownloadQueue.moveToTop(id) } },
                 )
 
                 showExePicker?.let { data ->
@@ -379,6 +383,8 @@ private fun DownloadManagerScreen(
     onCancel: (DownloadEntry) -> Unit,
     onPauseResume: (DownloadEntry) -> Unit,
     onDismiss: (DownloadEntry) -> Unit,
+    onMoveUp: (DownloadEntry) -> Unit,
+    onMoveToTop: (DownloadEntry) -> Unit,
 ) {
     val entries by DownloadRegistry.entries.collectAsStateWithLifecycle()
 
@@ -420,26 +426,47 @@ private fun DownloadManagerScreen(
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
             } else {
-                // Registry is pre-sorted downloads-first then library. Split by isActive so
-                // in-flight downloads and the installed library each get a light header —
-                // only when both groups are present (a pure library list stays header-less).
-                val active = entries.filter { it.isActive }
+                // Three sections, top to bottom: the ACTIVE download (downloading/paused), the
+                // managed QUEUE (waiting downloads, in FIFO/position order), then the installed
+                // Library (+ any failed/cancelled rows). Headers only appear when a later group
+                // follows, so a pure library list stays header-less.
+                val downloading = entries.filter {
+                    it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PAUSED
+                }
+                // Registry's default sort is by name; a FIFO must order by queue position instead.
+                val queued = entries.filter { it.state == DownloadState.QUEUED }
+                    .sortedBy { it.queuePosition }
                 val rest = entries.filterNot { it.isActive }
+                val hasHeaders = downloading.isNotEmpty() || queued.isNotEmpty()
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 6.dp),
                 ) {
-                    if (active.isNotEmpty()) {
+                    if (downloading.isNotEmpty()) {
                         item(key = "hdr_downloading") { SectionHeader("Downloading") }
-                        items(active, key = { it.key }) { entry ->
+                        items(downloading, key = { it.key }) { entry ->
                             DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
                         }
-                        if (rest.isNotEmpty()) {
-                            item(key = "hdr_library") { SectionHeader("Library") }
+                    }
+                    if (queued.isNotEmpty()) {
+                        item(key = "hdr_queued") { SectionHeader("Queued") }
+                        itemsIndexed(queued, key = { _, e -> e.key }) { idx, entry ->
+                            QueuedCard(
+                                entry = entry,
+                                position = idx + 1,
+                                canMoveUp = idx > 0,
+                                onClick = onEntryClick,
+                                onCancel = onCancel,
+                                onMoveUp = onMoveUp,
+                                onMoveToTop = onMoveToTop,
+                            )
                         }
                     }
-                    items(rest, key = { it.key }) { entry ->
-                        DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
+                    if (rest.isNotEmpty()) {
+                        if (hasHeaders) item(key = "hdr_library") { SectionHeader("Library") }
+                        items(rest, key = { it.key }) { entry ->
+                            DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
+                        }
                     }
                 }
             }
@@ -677,6 +704,93 @@ private fun ActiveContent(
                     text = if (entry.state == DownloadState.PAUSED) "Resume" else "Pause",
                     style = MaterialTheme.typography.labelSmall,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * A waiting (QUEUED) download's card — same floating-card idiom as [DownloadCard], but its body shows
+ * the queue position and offers Move-up / Start-next (reorder) + Cancel instead of a progress bar. A
+ * queued item holds no worker thread and reports no bytes yet, so there is nothing to render as a bar.
+ */
+@Composable
+private fun QueuedCard(
+    entry: DownloadEntry,
+    position: Int,
+    canMoveUp: Boolean,
+    onClick: (DownloadEntry) -> Unit,
+    onCancel: (DownloadEntry) -> Unit,
+    onMoveUp: (DownloadEntry) -> Unit,
+    onMoveToTop: (DownloadEntry) -> Unit,
+) {
+    Card(
+        onClick = { onClick(entry) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+        ) {
+            DownloadCoverArt(
+                entry = entry,
+                modifier = Modifier
+                    .size(width = 60.dp, height = 80.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+            )
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                StoreBadge(entry.store)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = entry.name.ifEmpty { "${entry.store} ${entry.id}" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Queued · #$position",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canMoveUp) {
+                        OutlinedButton(
+                            onClick = { onMoveToTop(entry) },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                        ) { Text("Start next", style = MaterialTheme.typography.labelSmall) }
+                        OutlinedButton(
+                            onClick = { onMoveUp(entry) },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                        ) { Text("↑ Up", style = MaterialTheme.typography.labelSmall) }
+                    }
+                    OutlinedButton(
+                        onClick = { onCancel(entry) },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                    ) { Text("✕ Cancel", style = MaterialTheme.typography.labelSmall) }
+                }
             }
         }
     }

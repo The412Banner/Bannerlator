@@ -37,6 +37,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Help
+import com.winlator.star.R
+import com.winlator.star.ui.screens.HelpDialog
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.outlinedMenuCard
@@ -587,6 +590,22 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 pauseBtnText = "Resume"
                 pauseAction = PauseAction.RESUME
             }
+            event.startsWith("DownloadQueued:") -> {
+                val id = event.substringAfter("DownloadQueued:").toIntOrNull() ?: return
+                if (id != appId) return
+                // Waiting behind the active download (managed queue). Keep the facade in downloadHandle
+                // so Cancel still works (it removes the item from the queue); pause/resume is
+                // meaningless while queued. Auto-advances to the DownloadProgress: handler once it starts.
+                progressVisible = true
+                progressValue = 0
+                downloadProgressValue = 0
+                progressTextVisible = true
+                progressText = "Queued…"
+                installBtnEnabled = true
+                installBtnText = "Cancel"
+                installAction = InstallAction.CANCEL
+                resetPauseBtn()
+            }
             event.startsWith("DownloadComplete:") -> {
                 val id = event.substringAfter("DownloadComplete:").toIntOrNull() ?: return
                 if (id != appId) return
@@ -826,6 +845,21 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         refreshUI()
 
         val dlRow = SteamRepository.getInstance().database.getDownload(appId)
+        // Installed-first reconciliation (MUST precede the "no live worker → PAUSED" flip below):
+        // a finished download can leave a stale steam_downloads row behind (e.g. a zero-work
+        // re-download that completed with no progress events, or a completion that predates
+        // row-clearing). If the game is already installed AND no worker is live for it, that row is
+        // meaningless — the install lives in steam_games (is_installed=1) and refreshUI() has
+        // already painted Installed — so clear it and keep that state instead of flipping to a
+        // phantom downloading/paused UI. The liveness check (isDownloading/isQueued) is what keeps
+        // a genuine in-place update/verify of an installed game (SteamGameUpdater still holds a live
+        // worker + row, is_installed stays 1) from being wiped — that falls through to the live
+        // DL_DOWNLOADING branch. The PAUSED reconciliation below stays for the NOT-installed case.
+        if (dlRow != null && game?.isInstalled == true &&
+            !SteamDepotDownloader.isDownloading(appId) && !DownloadQueue.isQueued(appId)) {
+            SteamRepository.getInstance().database.deleteDownload(appId)
+            return
+        }
         if (dlRow != null) {
             val pct = if (dlRow.bytesTotal > 0) (dlRow.bytesDownloaded * 100 / dlRow.bytesTotal).toInt().coerceIn(0, 100) else 0
             // DB restore only has install bytes — mirror them onto the download fill.
@@ -844,7 +878,24 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         pauseBtnText = "Pause"
                         pauseAction = PauseAction.PAUSE
                     } else {
-                        SteamRepository.getInstance().database.deleteDownload(appId)
+                        // Interrupted download: the DB says "downloading" but no live worker exists — the
+                        // process was killed mid-download (e.g. a backgrounded WiFi-throttle stall the OEM
+                        // task-killer later reaped; the worker never ran its terminal, so no fail/cancel).
+                        // Do NOT delete the row — that discards resumable partial progress and leaves
+                        // nothing to resume on foreground. Flip it to PAUSED so the partial files + install
+                        // dir survive and the user can Resume (resumeApp) from where it stopped.
+                        SteamRepository.getInstance().database.markDownloadPaused(appId, dlRow.bytesDownloaded)
+                        progressVisible = true
+                        progressValue = pct
+                        downloadProgressValue = pct
+                        progressTextVisible = true
+                        progressText = "Paused — $pct%  (${fmtSize(dlRow.bytesDownloaded)} / ${fmtSize(dlRow.bytesTotal)})"
+                        installBtnEnabled = true
+                        installBtnText = "Cancel"
+                        installAction = InstallAction.CANCEL
+                        pauseBtnEnabled = true
+                        pauseBtnText = "Resume"
+                        pauseAction = PauseAction.RESUME
                     }
                 }
                 SteamDatabase.DL_PAUSED -> {
@@ -859,6 +910,39 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     pauseBtnEnabled = true
                     pauseBtnText = "Resume"
                     pauseAction = PauseAction.RESUME
+                }
+                SteamDatabase.DL_QUEUED -> {
+                    // Waiting in the managed queue. Mirror the DL_DOWNLOADING liveness check with
+                    // isQueued: a `queued` row that isn't actually in the live queue is stale (process
+                    // died) — keep it as a resumable PAUSED row rather than dropping it (see else).
+                    if (DownloadQueue.isQueued(appId)) {
+                        progressVisible = true
+                        progressValue = 0
+                        downloadProgressValue = 0
+                        progressTextVisible = true
+                        progressText = "Queued…"
+                        installBtnEnabled = true
+                        installBtnText = "Cancel"
+                        installAction = InstallAction.CANCEL
+                        resetPauseBtn()
+                    } else {
+                        // Stale queued row: the DB says "queued" but it isn't in the live queue — the
+                        // process died before it started (or while it waited). Keep it resumable instead
+                        // of deleting: flip to PAUSED so a Resume re-enqueues it (any partial bytes + the
+                        // install dir are preserved; a fresh 0-byte row just restarts).
+                        SteamRepository.getInstance().database.markDownloadPaused(appId, dlRow.bytesDownloaded)
+                        progressVisible = true
+                        progressValue = pct
+                        downloadProgressValue = pct
+                        progressTextVisible = true
+                        progressText = "Paused — $pct%  (${fmtSize(dlRow.bytesDownloaded)} / ${fmtSize(dlRow.bytesTotal)})"
+                        installBtnEnabled = true
+                        installBtnText = "Cancel"
+                        installAction = InstallAction.CANCEL
+                        pauseBtnEnabled = true
+                        pauseBtnText = "Resume"
+                        pauseAction = PauseAction.RESUME
+                    }
                 }
             }
         }
@@ -943,6 +1027,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         val db = SteamRepository.getInstance().database
         val dlRow = db.getDownload(appId)
         if (dlRow != null && dlRow.status == SteamDatabase.DL_PAUSED) { showCancelDeleteConfirm = true; return }
+        // A still-queued download (page reopened onto it, so no facade in downloadHandle): pull it
+        // from the queue directly — no files to wipe, so skip the destructive delete-and-reset confirm.
+        // The DownloadCancelled: event it emits settles the UI back to Install.
+        if (dlRow != null && dlRow.status == SteamDatabase.DL_QUEUED && DownloadQueue.isQueued(appId)) {
+            DownloadQueue.cancel(appId); return
+        }
 
         if (g.isInstalled) {
             uninstallingName = g.name
@@ -3190,6 +3280,18 @@ private fun DownloadSpeedPickerDialog(
     // SD-card install opt-in — off by default; only offered when a removable card is present.
     var installToSd by remember { mutableStateOf(false) }
 
+    // Per-"?" help — a general one on the header plus one per speed tier. Reuses the shared
+    // HelpDialog (a centered, scrollable Compose dialog); it layers on top of whichever layout
+    // is showing, so it's rendered once here before the landscape/portrait branch.
+    var helpRes by remember { mutableStateOf<Int?>(null) }
+    helpRes?.let { HelpDialog(it) { helpRes = null } }
+    fun tierHelpRes(tier: Int): Int = when (tier) {
+        DownloadSpeedConfig.TIER_SLOW -> R.string.help_download_speed_slow
+        DownloadSpeedConfig.TIER_MEDIUM -> R.string.help_download_speed_medium
+        DownloadSpeedConfig.TIER_FAST -> R.string.help_download_speed_fast
+        else -> R.string.help_download_speed_blazing
+    }
+
     // Landscape gets a WIDE two-column variant. In landscape the portrait Column (4 radios +
     // debug checkbox +warning + SD checkbox +warning) stacks past the short screen height and
     // clips the action buttons with no scroll, so split it into two scrollable columns under a
@@ -3218,16 +3320,29 @@ private fun DownloadSpeedPickerDialog(
                 Column(Modifier.heightIn(max = maxH)) {
                     // Header — no download-size/on-disk values are in scope in this composable, so
                     // per the mock's subline we keep the header to the title only rather than
-                    // inventing numbers (portrait shows the same title).
-                    Text(
-                        text = "Download speed",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = cs.onSurface,
-                        modifier = Modifier.padding(
-                            start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp,
-                        ),
-                    )
+                    // inventing numbers (portrait shows the same title). A general "?" sits at the
+                    // end of the header row.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 6.dp),
+                    ) {
+                        Text(
+                            text = "Download speed",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = cs.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { helpRes = R.string.help_download_speed }) {
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = "What is this?",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -3328,6 +3443,15 @@ private fun DownloadSpeedPickerDialog(
                                             text = hint,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = cs.onSurfaceVariant,
+                                        )
+                                    }
+                                    // Per-tier "?" — has its own onClick, so tapping it opens
+                                    // help without selecting the row.
+                                    IconButton(onClick = { helpRes = tierHelpRes(tier) }) {
+                                        Icon(
+                                            Icons.Default.Help,
+                                            contentDescription = "What is this?",
+                                            modifier = Modifier.size(18.dp),
                                         )
                                     }
                                 }
@@ -3463,10 +3587,21 @@ private fun DownloadSpeedPickerDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Download speed") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("Download speed", modifier = Modifier.weight(1f))
+                IconButton(onClick = { helpRes = R.string.help_download_speed }) {
+                    Icon(
+                        Icons.Default.Help,
+                        contentDescription = "What is this?",
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        },
         text = {
             Column {
-                options.forEachIndexed { index, (label, _) ->
+                options.forEachIndexed { index, (label, tier) ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -3484,6 +3619,14 @@ private fun DownloadSpeedPickerDialog(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
+                        // Per-tier "?" — its own onClick opens help without changing selection.
+                        IconButton(onClick = { helpRes = tierHelpRes(tier) }) {
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = "What is this?",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
 

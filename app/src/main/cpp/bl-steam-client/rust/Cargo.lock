@@ -71,6 +71,7 @@ dependencies = [
  "flate2",
  "hmac",
  "jni",
+ "libc",
  "lzma-rs",
  "rand 0.8.6",
  "reqwest",

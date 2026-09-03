@@ -322,6 +322,28 @@
     ]]></string>
     <string name="renderer_present_mode_fg_note">Frame generation temporarily switches this to Mailbox while it\'s running, then restores your choice.</string>
 
+    <!-- Download-speed picker — general "?" plus per-tier plain-language help -->
+    <string name="help_download_speed"><![CDATA[
+        <b>Download speed</b><br /><br />
+        Download speed sets how many pieces of the game download at once. Higher = faster, up to the limit of your internet connection and Steam\'s servers — it doesn\'t cap your speed. Lower settings use fewer connections to stay gentle on your device and network. Downloads run one at a time; extra games wait in the queue.
+    ]]></string>
+    <string name="help_download_speed_slow"><![CDATA[
+        <b>Slow</b><br /><br />
+        Fewest pieces at once. Lightest on your device and bandwidth, slowest overall. Good for downloading in the background while you play or use your phone.
+    ]]></string>
+    <string name="help_download_speed_medium"><![CDATA[
+        <b>Medium</b><br /><br />
+        A moderate number at once — a balance between speed and staying light.
+    ]]></string>
+    <string name="help_download_speed_fast"><![CDATA[
+        <b>Fast (default)</b><br /><br />
+        Lots of pieces at once for strong speed on most connections. Recommended.
+    ]]></string>
+    <string name="help_download_speed_blazing"><![CDATA[
+        <b>Blazing</b><br /><br />
+        The most pieces at once — fastest, uses the most bandwidth and device resources. Best for big games on a fast connection.
+    ]]></string>
+
     <!-- Turnip / Wrapper Driver Configuration — per-option plain-language help -->
     <string name="help_turnip_gmem"><![CDATA[
         <b>GMEM (tiled rendering)</b><br /><br />

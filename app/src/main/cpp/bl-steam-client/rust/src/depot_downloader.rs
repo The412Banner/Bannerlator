@@ -298,6 +298,7 @@ pub fn download_resolved_depots(
     ca_bundle_path: &str,
     fresh: bool,
     max_workers: u32,
+    max_process_workers: u32,
 ) -> DepotDownloadResult {
     download_resolved_depots_with_cancel_progress(
         install_dir,
@@ -306,12 +307,15 @@ pub fn download_resolved_depots(
         ca_bundle_path,
         fresh,
         max_workers,
+        max_process_workers,
+        None,
         None,
         None,
         None,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn download_resolved_depots_with_cancel(
     install_dir: &str,
     depots: &[ResolvedDepotSpec],
@@ -319,6 +323,7 @@ pub fn download_resolved_depots_with_cancel(
     ca_bundle_path: &str,
     fresh: bool,
     max_workers: u32,
+    max_process_workers: u32,
     cancel: Option<&AtomicBool>,
 ) -> DepotDownloadResult {
     download_resolved_depots_with_cancel_progress(
@@ -328,12 +333,15 @@ pub fn download_resolved_depots_with_cancel(
         ca_bundle_path,
         fresh,
         max_workers,
+        max_process_workers,
         cancel,
+        None,
         None,
         None,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn download_resolved_depots_with_cancel_progress(
     install_dir: &str,
     depots: &[ResolvedDepotSpec],
@@ -341,9 +349,11 @@ pub fn download_resolved_depots_with_cancel_progress(
     ca_bundle_path: &str,
     fresh: bool,
     max_workers: u32,
+    max_process_workers: u32,
     cancel: Option<&AtomicBool>,
     on_progress: Option<DepotProgressCallback<'_>>,
     code_refresher: Option<ManifestCodeRefresher<'_>>,
+    log: Option<crate::depot_writer::DepotLogCallback<'_>>,
 ) -> DepotDownloadResult {
     if let Err(error) = validate_resolved_download_inputs(install_dir, depots, servers) {
         return error;
@@ -491,8 +501,10 @@ pub fn download_resolved_depots_with_cancel_progress(
             install_dir,
             DepotWriteOptions {
                 max_workers,
+                max_process_workers,
                 cancel,
                 on_progress: Some(chunk_progress),
+                log,
                 ..Default::default()
             },
         );
@@ -731,6 +743,7 @@ mod tests {
             "",
             false,
             4,
+            4,
         );
 
         assert!(result.success, "{}", result.error);
@@ -755,6 +768,7 @@ mod tests {
             }],
             "",
             false,
+            4,
             4,
         );
         assert!(skipped.success);

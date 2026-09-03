@@ -1151,6 +1151,20 @@ public final class SteamDatabase extends SQLiteOpenHelper {
                 "steam_downloads", cv, "app_id = ?", new String[]{String.valueOf(appId)});
     }
 
+    /**
+     * Flip an EXISTING download row to {@code queued} without touching bytes_downloaded / install_dir
+     * (status-only, like {@link #markDownloadResuming}). Used by the managed download queue when a
+     * paused/failed download is re-enqueued behind an active one — it must keep its partial-progress
+     * bytes + install dir so the eventual resume lands in the same place. A brand-new (fresh) queued
+     * download has no row yet and is created with {@link #queueDownload} instead.
+     */
+    public void markDownloadQueued(int appId) {
+        ContentValues cv = new ContentValues();
+        cv.put("status", DL_QUEUED);
+        getWritableDatabase().update(
+                "steam_downloads", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
     public void markDownloadFailed(int appId, String reason) {
         ContentValues cv = new ContentValues();
         cv.put("status",    DL_FAILED);

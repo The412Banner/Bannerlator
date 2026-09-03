@@ -110,6 +110,8 @@ class BlSteamSession : AutoCloseable {
     }
 
     // Start an async native depot download; [listener] runs on a worker thread.
+    // [maxWorkers] sizes the network fetch pool, [decompressWorkers] the decrypt+decompress+write
+    // pool (the tier's maxDownloads / maxDecompress) — see the engine's decoupled 2-stage pipeline.
     fun downloadApp(
         appId: Int,
         depotIds: IntArray,
@@ -119,6 +121,7 @@ class BlSteamSession : AutoCloseable {
         fresh: Boolean,
         caBundlePath: String,
         maxWorkers: Int,
+        decompressWorkers: Int,
         listener: BlDownloadListener,
     ) {
         require(depotIds.size == manifestIds.size) {
@@ -130,7 +133,7 @@ class BlSteamSession : AutoCloseable {
             return
         }
         nativeDownloadApp(h, appId, depotIds, manifestIds, branch, installDir,
-                          fresh, caBundlePath, maxWorkers, listener)
+                          fresh, caBundlePath, maxWorkers, decompressWorkers, listener)
     }
 
     // Abort the current depot download.
@@ -272,9 +275,10 @@ class BlSteamSession : AutoCloseable {
         installDir: String,
         caBundlePath: String,
         maxWorkers: Int = 8,
+        decompressWorkers: Int = maxWorkers,
     ): Long {
         val h = nativeHandle.get(); if (h == 0L) return -1L
-        return nativeDownloadWorkshopItem(h, appId, manifestId, installDir, caBundlePath, maxWorkers)
+        return nativeDownloadWorkshopItem(h, appId, manifestId, installDir, caBundlePath, maxWorkers, decompressWorkers)
     }
 
     // Fire-and-forget stat or achievement write-back.
@@ -862,6 +866,7 @@ class BlSteamSession : AutoCloseable {
             fresh: Boolean,
             caBundlePath: String,
             maxWorkers: Int,
+            decompressWorkers: Int,
             listener: BlDownloadListener,
         )
         @JvmStatic private external fun nativeCancelDownload(handle: Long)
@@ -897,6 +902,7 @@ class BlSteamSession : AutoCloseable {
             installDir: String,
             caBundlePath: String,
             maxWorkers: Int,
+            decompressWorkers: Int,
         ): Long
         @JvmStatic private external fun nativeStoreUserStats(
             handle: Long, appId: Int, steamId: Long, crcStats: Int,

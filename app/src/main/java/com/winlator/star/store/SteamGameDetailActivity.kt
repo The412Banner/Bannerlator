@@ -845,6 +845,21 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         refreshUI()
 
         val dlRow = SteamRepository.getInstance().database.getDownload(appId)
+        // Installed-first reconciliation (MUST precede the "no live worker → PAUSED" flip below):
+        // a finished download can leave a stale steam_downloads row behind (e.g. a zero-work
+        // re-download that completed with no progress events, or a completion that predates
+        // row-clearing). If the game is already installed AND no worker is live for it, that row is
+        // meaningless — the install lives in steam_games (is_installed=1) and refreshUI() has
+        // already painted Installed — so clear it and keep that state instead of flipping to a
+        // phantom downloading/paused UI. The liveness check (isDownloading/isQueued) is what keeps
+        // a genuine in-place update/verify of an installed game (SteamGameUpdater still holds a live
+        // worker + row, is_installed stays 1) from being wiped — that falls through to the live
+        // DL_DOWNLOADING branch. The PAUSED reconciliation below stays for the NOT-installed case.
+        if (dlRow != null && game?.isInstalled == true &&
+            !SteamDepotDownloader.isDownloading(appId) && !DownloadQueue.isQueued(appId)) {
+            SteamRepository.getInstance().database.deleteDownload(appId)
+            return
+        }
         if (dlRow != null) {
             val pct = if (dlRow.bytesTotal > 0) (dlRow.bytesDownloaded * 100 / dlRow.bytesTotal).toInt().coerceIn(0, 100) else 0
             // DB restore only has install bytes — mirror them onto the download fill.

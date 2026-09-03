@@ -1006,6 +1006,12 @@ object SteamDepotDownloader {
                 // Both bars reach 100% before switching to installed state.
                 emitProgress(iTotal, iTotal, dTotal, dTotal)
                 db.markInstalled(appId, installDir.absolutePath, if (finalInstall > 0L) finalInstall else iTotal)
+                // Success → the download is done; clear its steam_downloads row so nothing keeps
+                // rendering a stale "downloading" state. The game now lives in steam_games
+                // (is_installed=1) and is represented by the INSTALLED DownloadRegistry entry +
+                // the Library section. Only clear on SUCCESS — paused/failed/cancelled keep their
+                // row (finishPaused/fail/finishCancelled) so Resume/retry still works.
+                db.deleteDownload(appId)
                 // Stamp the build we just installed so the RealSteam update-on-launch gate
                 // (SteamGameUpdater) can cheaply detect this game is current next time — it compares
                 // this marker against the live steam_branches build id. Resolved independently of the

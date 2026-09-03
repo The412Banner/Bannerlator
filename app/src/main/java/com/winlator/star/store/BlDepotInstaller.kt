@@ -481,6 +481,12 @@ internal object BlDepotInstaller {
                     BlSteamEngineLog.log("DL", "complete app=$appId depots=${completed.size} skipped=${deniedSkipped.size} onDisk=${fmt(onDisk)}")
                     emitProgress(iTotal, iTotal, dTotal, dTotal)
                     db.markInstalled(appId, installDir.absolutePath, if (finalInstall > 0L) finalInstall else iTotal)
+                    // Success → the download is done; clear its steam_downloads row so nothing keeps
+                    // rendering a stale "downloading" state. The game now lives in steam_games
+                    // (is_installed=1) and is represented by the INSTALLED DownloadRegistry entry +
+                    // the Library section below. Only clear on SUCCESS — paused/failed/cancelled keep
+                    // their row (finishPaused/fail/finishCancelled) so Resume/retry still works.
+                    db.deleteDownload(appId)
                     try { SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, selectedBranch) } catch (_: Throwable) {}
                     repo.emit("DownloadComplete:$appId")
                     DownloadRegistry.update(dmKey) {

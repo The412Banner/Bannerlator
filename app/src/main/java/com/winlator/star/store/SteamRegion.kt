@@ -120,7 +120,7 @@ object SteamRegion {
     )
 
     /**
-     * Two-letter store country for the `cc=` parameter of `store.steampowered.com/api/*`.
+     * Two-letter store country for the `cc=` parameter of `store.steampowered.com/api/` calls.
      * Resolution order: the explicit/remembered datacenter's country → the device locale's country
      * → "US". Never probes (so it is safe on the main thread) and never throws.
      */

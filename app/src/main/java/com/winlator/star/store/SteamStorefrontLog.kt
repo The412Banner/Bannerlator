@@ -6,7 +6,7 @@ import android.util.Log
  * Diagnostic logging for the Steam storefront (Store / Library / Friends / Profile).
  *
  * The storefront leans on two things that are neither documented nor device-proven — Steam's
- * undocumented `store.steampowered.com/api/*` endpoints and the engine's brand-new player-profile
+ * undocumented `store.steampowered.com/api/` endpoints and the engine's brand-new player-profile
  * and free-license natives — so a blank tab must always leave a trail saying *which* of them gave
  * up. Everything here is failure-first: every network miss, every native returning null, and every
  * empty/error state a user can actually see gets a line.

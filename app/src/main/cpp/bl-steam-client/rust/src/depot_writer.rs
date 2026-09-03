@@ -40,33 +40,63 @@ const BANDWIDTH_LOG_INTERVAL_MS: u64 = 5_000;
 const FREE_SPACE_MARGIN_BYTES: u64 = 64 * 1024 * 1024;
 
 // ─── B2b async-fetch tuning ────────────────────────────────────────────────────────────────────
-// The window/host/back-off knobs for the adaptive concurrency fetch driver. All are starting points
-// ("calibrate later"); the important behaviours are structural (bootstrap → ramp-only-if-it-helps →
-// back-off-on-errors, per-host cap, hard byte budget), not the exact numbers.
+// The window/host/back-off knobs for the adaptive concurrency fetch driver. The important behaviours
+// are structural (slow-start ramp → hold at plateau → back off on REAL errors, per-host cap, hard
+// byte budget), not the exact numbers.
+//
+// r3 retune: the first device run pinned the window at the floor on a 1 Gbps link. The B2b controller
+// shrank on throughput dips and latency jitter (normal CDN noise) as well as on errors, shrank a flat
+// −6 on every single error, and only grew when throughput rose >10% in a 700 ms sample. The shrinks
+// dominated, so the window ratcheted to the floor and stayed there. r3 makes growth eager and makes
+// ERRORS the only shrink signal.
 
 /// Max concurrent requests to any single CDN host. Steam throttles/resets per host, so a big window
 /// is reached by spreading across MORE hosts, never by piling onto one. (Refinement #3.)
 pub const PER_HOST_CAP: usize = 6;
-/// Initial in-flight window: start gentle and let it earn a bigger window only if throughput rises.
-pub const BOOTSTRAP_WINDOW: usize = 4;
+/// Initial in-flight window. Slow-start doubles from here, so this only sets how fast the first
+/// couple of probes get useful — the ceiling still comes from the tier × hosts clamp.
+pub const BOOTSTRAP_WINDOW: usize = 8;
 /// Hard safety ceiling on the window regardless of tier (also clamped to distinct-hosts × per-host).
 pub const WINDOW_HARD_CAP: usize = 256;
 /// The window never shrinks below this (keeps a little pipelining even on a rough link).
 pub const WINDOW_MIN_FLOOR: usize = 2;
-/// Grow/shrink steps. Shrink is larger than grow — retreat fast, advance cautiously (safety).
+/// Additive growth step once slow-start has ended (after the first real back-off).
 pub const WINDOW_STEP_UP: usize = 4;
-pub const WINDOW_STEP_DOWN: usize = 6;
-/// How often the adaptive window re-evaluates throughput/error/latency.
-pub const WINDOW_PROBE_INTERVAL_MS: u64 = 700;
+/// Slow-start multiplier: until the first back-off the window DOUBLES each healthy probe, so a fast
+/// link reaches a useful window in seconds instead of never.
+pub const WINDOW_SLOW_START_FACTOR: usize = 2;
+/// Proportional shrink on a real error signal (never a flat step: a flat −6 slammed a small window
+/// straight to the floor). Always at least −1 while above the floor.
+pub const WINDOW_SHRINK_FACTOR: f64 = 0.75;
+/// How often the adaptive window re-evaluates. Long enough (vs B2b's 700 ms) that one jittery sample
+/// cannot drive a decision; decisions use the EWMA, not the raw sample.
+pub const WINDOW_PROBE_INTERVAL_MS: u64 = 2_000;
 /// After a back-off, hold the window (no growth) for this long — hysteresis against oscillation.
-pub const WINDOW_COOLDOWN_MS: u64 = 2_500;
-/// Throughput must rise by at least this fraction over the last probe to justify growing.
-pub const WINDOW_IMPROVE_EPS: f64 = 0.10;
-/// Error-rate thresholds over one probe window: above HIGH shrinks; growth needs below LOW.
-pub const WINDOW_ERR_RATE_HIGH: f64 = 0.15;
+pub const WINDOW_COOLDOWN_MS: u64 = 3_000;
+/// EWMA smoothing for the measured throughput samples (higher = more responsive).
+pub const WINDOW_BPS_EWMA_ALPHA: f64 = 0.4;
+/// Throughput above `best × (1 + this)` counts as a genuine improvement (keeps slow-start climbing).
+pub const WINDOW_IMPROVE_EPS: f64 = 0.05;
+/// Throughput below `best × (1 − this)` counts as falling — growth STOPS (hold). It never shrinks:
+/// only real errors shrink.
+pub const WINDOW_DECLINE_EPS: f64 = 0.15;
+/// Error-rate thresholds over one probe window: above HIGH shrinks; growth needs at/below LOW
+/// (in between = hold).
+pub const WINDOW_ERR_RATE_HIGH: f64 = 0.10;
 pub const WINDOW_ERR_RATE_LOW: f64 = 0.05;
-/// Latency EWMA above (min-latency × this) is treated as congestion — a shrink signal.
-pub const WINDOW_LATENCY_SPIKE_FACTOR: f64 = 2.0;
+/// Errors inside ONE probe interval that trigger an immediate (don't-wait-for-the-probe) shrink. A
+/// single stray timeout no longer moves the window; a burst does. A 429 always shrinks immediately.
+pub const WINDOW_ERR_BURST_IMMEDIATE: u32 = 3;
+/// Consecutive non-improving probes still allowed to grow before declaring a plateau — throughput
+/// lags a window change by a probe or two, so one flat sample must not stop the ramp.
+pub const WINDOW_PLATEAU_PATIENCE: u32 = 2;
+/// Once plateaued, re-arm the ramp this long later (doubling, capped) to re-probe for headroom if the
+/// link improved. Bounded re-probing, not a creep: a weak link answers with errors and shrinks back.
+pub const WINDOW_PLATEAU_REARM_MS: u64 = 30_000;
+pub const WINDOW_PLATEAU_REARM_MAX_MS: u64 = 300_000;
+/// Even when the window does not change, emit one `fetch-window` line every N probes so a stuck
+/// window explains itself in the log (`reason=` says why it is not moving).
+pub const WINDOW_LOG_EVERY_PROBES: u32 = 5;
 /// Every Nth exploit dispatch is instead an exploration pick (epsilon-greedy ≈ 1/N) so a
 /// demoted-but-recovered host is retried rather than starved forever. (Refinement #5.)
 pub const SERVER_EXPLORE_EVERY: u64 = 8;
@@ -548,11 +578,70 @@ impl FetchScheduler {
     }
 }
 
-/// Adaptive in-flight window. Starts at a small bootstrap and ramps toward `max` ONLY while measured
-/// throughput keeps rising and the error/latency signal stays clean; any error or a throughput/latency
-/// regression shrinks it. On a weak/thin connection throughput plateaus early and errors/latency rise,
-/// so it naturally settles low and never floods the pipe. `max` is the tier ceiling (already clamped
-/// to distinct-hosts × per-host-cap).
+/// Why the window last moved (or refused to). Logged on every `fetch-window` line so the next device
+/// run is self-diagnosing: a window sitting still now says whether it is at the ceiling, plateaued,
+/// cooling down after an error, or being held back by errors.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WindowReason {
+    Start,
+    GrowSlowStart,
+    GrowThroughputUp,
+    GrowProbe,
+    HoldPlateau,
+    HoldCooldown,
+    HoldCeiling,
+    HoldErrors,
+    HoldThroughputDown,
+    ShrinkRateLimited,
+    ShrinkTimeout,
+    ShrinkReset,
+    ShrinkServerFault,
+    ShrinkErrorRate,
+    ShrinkErrorBurst,
+}
+
+impl WindowReason {
+    fn code(self) -> &'static str {
+        match self {
+            WindowReason::Start => "start",
+            WindowReason::GrowSlowStart => "grow:slow-start",
+            WindowReason::GrowThroughputUp => "grow:throughput-up",
+            WindowReason::GrowProbe => "grow:probe",
+            WindowReason::HoldPlateau => "hold:plateau",
+            WindowReason::HoldCooldown => "hold:cooldown",
+            WindowReason::HoldCeiling => "hold:ceiling",
+            WindowReason::HoldErrors => "hold:errors",
+            WindowReason::HoldThroughputDown => "hold:throughput-down",
+            WindowReason::ShrinkRateLimited => "shrink:429",
+            WindowReason::ShrinkTimeout => "shrink:timeout",
+            WindowReason::ShrinkReset => "shrink:reset",
+            WindowReason::ShrinkServerFault => "shrink:5xx",
+            WindowReason::ShrinkErrorRate => "shrink:err-rate",
+            WindowReason::ShrinkErrorBurst => "shrink:err-burst",
+        }
+    }
+
+    fn from_fail_kind(kind: FetchFailKind) -> Self {
+        match kind {
+            FetchFailKind::RateLimited => WindowReason::ShrinkRateLimited,
+            FetchFailKind::Timeout => WindowReason::ShrinkTimeout,
+            FetchFailKind::Connect => WindowReason::ShrinkReset,
+            FetchFailKind::ServerFault => WindowReason::ShrinkServerFault,
+            FetchFailKind::Other => WindowReason::ShrinkErrorBurst,
+        }
+    }
+}
+
+/// Adaptive in-flight window (r3). Slow-start doubles the window every healthy probe until the first
+/// real back-off, then grows additively; it keeps growing while the error rate is low and throughput
+/// is not falling, HOLDS once throughput plateaus, and shrinks PROPORTIONALLY only on real errors
+/// (429 / timeout / connection reset / server fault). Throughput dips and latency jitter never shrink
+/// it — that noise is exactly what pinned B2b at the floor.
+///
+/// Slow-connection safety is unchanged in kind: a thin pipe saturates and answers with timeouts and
+/// resets (real errors → shrink + cooldown), plateaus early (→ hold, so growth simply stops), and is
+/// still bounded by the per-host cap, the floor/ceiling, and the 24 MiB in-flight byte budget.
+/// `max` is the tier ceiling (already clamped to distinct-hosts × per-host-cap).
 #[derive(Clone, Debug)]
 struct AdaptiveWindow {
     current: usize,
@@ -560,12 +649,26 @@ struct AdaptiveWindow {
     max: usize,
     last_probe: Instant,
     last_bytes: u64,
+    /// Raw throughput of the last probe sample (logged as `last=`).
     last_bps: f64,
+    /// Smoothed throughput — the ONLY throughput signal decisions use.
+    bps_ewma: f64,
+    /// High-water smoothed throughput at the current regime (reset on a shrink).
+    best_bps: f64,
+    /// True until the first real back-off: growth is multiplicative.
+    slow_start: bool,
+    /// Consecutive non-improving probes that still grew (plateau patience).
+    plateau_streak: u32,
+    /// When the plateau hold started, and how long to hold before re-probing for headroom.
+    plateau_since: Option<Instant>,
+    plateau_rearm_ms: u64,
     ok_count: u32,
     err_count: u32,
-    min_latency_ms: f64,
     latency_ewma_ms: f64,
     cooldown_until: Option<Instant>,
+    last_reason: WindowReason,
+    last_err_rate: f64,
+    probes_since_log: u32,
 }
 
 impl AdaptiveWindow {
@@ -579,11 +682,19 @@ impl AdaptiveWindow {
             last_probe: now,
             last_bytes: 0,
             last_bps: 0.0,
+            bps_ewma: 0.0,
+            best_bps: 0.0,
+            slow_start: true,
+            plateau_streak: 0,
+            plateau_since: None,
+            plateau_rearm_ms: WINDOW_PLATEAU_REARM_MS,
             ok_count: 0,
             err_count: 0,
-            min_latency_ms: f64::INFINITY,
             latency_ewma_ms: 0.0,
             cooldown_until: None,
+            last_reason: WindowReason::Start,
+            last_err_rate: 0.0,
+            probes_since_log: 0,
         }
     }
 
@@ -594,63 +705,172 @@ impl AdaptiveWindow {
         } else {
             0.8 * self.latency_ewma_ms + 0.2 * latency_ms
         };
-        if latency_ms < self.min_latency_ms {
-            self.min_latency_ms = latency_ms;
+    }
+
+    /// Proportional shrink (never a flat step) + hysteresis cooldown, and slow-start ends here: from
+    /// now on the window advances additively.
+    fn shrink(&mut self, now: Instant, reason: WindowReason) {
+        let scaled = (self.current as f64 * WINDOW_SHRINK_FACTOR).floor() as usize;
+        // Always give up at least one slot while above the floor, so a factor that rounds to the same
+        // value still makes progress.
+        let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.current = next.max(self.min);
+        self.cooldown_until = Some(now + Duration::from_millis(WINDOW_COOLDOWN_MS));
+        self.slow_start = false;
+        // The old high-water mark was measured at a bigger window; keep it and we would read
+        // "falling" forever and never recover. Re-baseline to what we are actually seeing.
+        self.best_bps = self.bps_ewma;
+        self.plateau_streak = 0;
+        self.plateau_since = None;
+        self.plateau_rearm_ms = WINDOW_PLATEAU_REARM_MS;
+        self.last_reason = reason;
+    }
+
+    fn grow(&mut self, reason: WindowReason) {
+        let next = if self.slow_start {
+            self.current.saturating_mul(WINDOW_SLOW_START_FACTOR)
+        } else {
+            self.current + WINDOW_STEP_UP
+        };
+        self.current = next.min(self.max).max(self.min);
+        self.last_reason = reason;
+    }
+
+    /// Record a fetch error. Back-off is REAL-ERROR-ONLY, and a single stray failure no longer moves
+    /// the window: a rate-limit (429) shrinks immediately, otherwise it takes a burst inside one probe
+    /// interval (the probe's error-rate check catches slower error storms). Returns `true` if the
+    /// window changed, so the caller can log the back-off as it happens.
+    fn record_err(&mut self, now: Instant, kind: FetchFailKind) -> bool {
+        self.err_count = self.err_count.saturating_add(1);
+        let immediate = kind == FetchFailKind::RateLimited
+            || self.err_count >= WINDOW_ERR_BURST_IMMEDIATE;
+        if !immediate {
+            return false;
+        }
+        let before = self.current;
+        self.shrink(now, WindowReason::from_fail_kind(kind));
+        if before != self.current {
+            self.probes_since_log = 0;
+            true
+        } else {
+            false
         }
     }
 
-    /// Immediate back-off on a fetch error (429/timeout/reset): shrink now and start a hysteresis
-    /// cooldown so the very next probe cannot re-grow straight back into the trouble.
-    fn record_err(&mut self, now: Instant) {
-        self.err_count = self.err_count.saturating_add(1);
-        self.current = self.current.saturating_sub(WINDOW_STEP_DOWN).max(self.min);
-        self.cooldown_until = Some(now + Duration::from_millis(WINDOW_COOLDOWN_MS));
-    }
-
-    /// Re-evaluate on the probe interval. Returns `true` if the window size changed (for logging).
+    /// Re-evaluate on the probe interval. Returns `true` when the caller should log (the window moved,
+    /// or the heartbeat is due so a stuck window keeps explaining itself).
     fn maybe_probe(&mut self, now: Instant, total_bytes: u64) -> bool {
         let dt = now.duration_since(self.last_probe);
         if dt < Duration::from_millis(WINDOW_PROBE_INTERVAL_MS) {
             return false;
         }
         let secs = dt.as_secs_f64().max(0.001);
-        let bps = total_bytes.saturating_sub(self.last_bytes) as f64 / secs;
-        let events = (self.ok_count + self.err_count).max(1) as f64;
-        let err_rate = self.err_count as f64 / events;
-        let latency_spike = self.min_latency_ms.is_finite()
-            && self.latency_ewma_ms > self.min_latency_ms * WINDOW_LATENCY_SPIKE_FACTOR;
+        let sample_bps = total_bytes.saturating_sub(self.last_bytes) as f64 / secs;
+        self.bps_ewma = if self.bps_ewma == 0.0 {
+            sample_bps
+        } else {
+            WINDOW_BPS_EWMA_ALPHA * sample_bps + (1.0 - WINDOW_BPS_EWMA_ALPHA) * self.bps_ewma
+        };
+        let events = self.ok_count + self.err_count;
+        let err_rate = if events == 0 {
+            0.0
+        } else {
+            self.err_count as f64 / events as f64
+        };
         let before = self.current;
+        let cooling = self.cooldown_until.is_some_and(|t| now < t);
 
         if err_rate > WINDOW_ERR_RATE_HIGH {
-            self.current = self.current.saturating_sub(WINDOW_STEP_DOWN).max(self.min);
-            self.cooldown_until = Some(now + Duration::from_millis(WINDOW_COOLDOWN_MS));
-        } else if self.cooldown_until.map_or(false, |t| now < t) {
-            // Hysteresis: hold — do not grow right after a back-off.
-        } else if bps > self.last_bps * (1.0 + WINDOW_IMPROVE_EPS)
-            && err_rate < WINDOW_ERR_RATE_LOW
-            && !latency_spike
-        {
-            self.current = (self.current + WINDOW_STEP_UP).min(self.max);
-        } else if bps < self.last_bps * (1.0 - WINDOW_IMPROVE_EPS) || latency_spike {
-            self.current = self.current.saturating_sub(1).max(self.min);
+            // A sustained error storm: the one and only shrink signal at probe time.
+            self.shrink(now, WindowReason::ShrinkErrorRate);
+        } else if cooling {
+            self.last_reason = WindowReason::HoldCooldown;
+        } else if self.current >= self.max {
+            self.last_reason = WindowReason::HoldCeiling;
+        } else if err_rate > WINDOW_ERR_RATE_LOW {
+            // Errors present but not a storm: stop growing, but do NOT shrink.
+            self.last_reason = WindowReason::HoldErrors;
+        } else {
+            let improving = self.bps_ewma > self.best_bps * (1.0 + WINDOW_IMPROVE_EPS);
+            let falling = self.bps_ewma < self.best_bps * (1.0 - WINDOW_DECLINE_EPS);
+            if improving {
+                self.best_bps = self.bps_ewma;
+                self.plateau_streak = 0;
+                self.plateau_since = None;
+                self.plateau_rearm_ms = WINDOW_PLATEAU_REARM_MS;
+                let reason = if self.slow_start {
+                    WindowReason::GrowSlowStart
+                } else {
+                    WindowReason::GrowThroughputUp
+                };
+                self.grow(reason);
+            } else if falling {
+                // Throughput dropped without errors (a CDN slowed, or we are past the useful
+                // concurrency): HOLD. Shrinking here is what collapsed B2b to the floor.
+                self.last_reason = WindowReason::HoldThroughputDown;
+            } else if self.plateau_streak < WINDOW_PLATEAU_PATIENCE {
+                // Flat, but throughput lags a window change — spend a little patience before calling
+                // it a plateau.
+                self.plateau_streak += 1;
+                let reason = if self.slow_start {
+                    WindowReason::GrowSlowStart
+                } else {
+                    WindowReason::GrowProbe
+                };
+                self.grow(reason);
+            } else {
+                // Plateau: more concurrency stopped helping. HOLD (correct behaviour on a slow link),
+                // and re-arm the ramp later — with a doubling interval — in case the link improves.
+                let since = *self.plateau_since.get_or_insert(now);
+                if now.duration_since(since) >= Duration::from_millis(self.plateau_rearm_ms) {
+                    self.plateau_streak = 0;
+                    self.plateau_since = None;
+                    self.plateau_rearm_ms =
+                        (self.plateau_rearm_ms * 2).min(WINDOW_PLATEAU_REARM_MAX_MS);
+                }
+                self.last_reason = WindowReason::HoldPlateau;
+            }
         }
-        // else: plateau → hold.
 
         self.last_bytes = total_bytes;
-        self.last_bps = bps;
+        self.last_bps = sample_bps;
         self.last_probe = now;
+        self.last_err_rate = err_rate;
         self.ok_count = 0;
         self.err_count = 0;
-        before != self.current
+        self.probes_since_log = self.probes_since_log.saturating_add(1);
+        let changed = before != self.current;
+        if changed || self.probes_since_log >= WINDOW_LOG_EVERY_PROBES {
+            self.probes_since_log = 0;
+            true
+        } else {
+            false
+        }
     }
 
-    fn summary_line(&self, depot_id: u32, in_flight_requests: usize) -> String {
+    fn cooldown_left_ms(&self, now: Instant) -> u64 {
+        self.cooldown_until
+            .map(|t| t.saturating_duration_since(now).as_millis() as u64)
+            .unwrap_or(0)
+    }
+
+    fn summary_line(&self, depot_id: u32, in_flight_requests: usize, now: Instant) -> String {
+        let mbps = |bps: f64| bps / (1024.0 * 1024.0);
         format!(
-            "fetch-window depot={depot_id} window={} (min={} max={}) in_flight={in_flight_requests} last={:.2}MB/s",
+            "fetch-window depot={depot_id} window={} (min={} max={}) in_flight={in_flight_requests} \
+last={:.2}MB/s ewma={:.2}MB/s best={:.2}MB/s reason={} cooldown={}ms err_rate={:.1}% \
+phase={} rtt={:.0}ms",
             self.current,
             self.min,
             self.max,
-            self.last_bps / (1024.0 * 1024.0)
+            mbps(self.last_bps),
+            mbps(self.bps_ewma),
+            mbps(self.best_bps),
+            self.last_reason.code(),
+            self.cooldown_left_ms(now),
+            self.last_err_rate * 100.0,
+            if self.slow_start { "slow-start" } else { "steady" },
+            self.latency_ewma_ms
         )
     }
 }
@@ -1041,9 +1261,10 @@ fn write_depot_single(
 /// file exactly once as its last chunk lands. Decode/write stay sync; only the fetch mechanism is
 /// async.
 ///
-/// Slow-connection safety is structural: the window bootstraps small and grows only while throughput
-/// keeps rising with a clean error/latency signal, backs off on 429/timeout/reset, never exceeds the
-/// per-host cap or tier ceiling, and the byte budget hard-bounds raw memory regardless of window.
+/// Slow-connection safety is structural: growth stops the moment throughput plateaus (a thin link
+/// plateaus almost immediately), the window shrinks proportionally on REAL errors (429 / timeout /
+/// connection reset / 5xx) with a cooldown, it never exceeds the per-host cap or tier ceiling, and the
+/// byte budget hard-bounds raw memory regardless of window.
 #[allow(clippy::too_many_arguments)]
 fn write_depot_parallel(
     manifest: &ContentManifest,
@@ -1072,11 +1293,21 @@ fn write_depot_parallel(
     let depot_id = manifest.metadata.depot_id;
 
     // Tier ceiling → adaptive window bounds (clamped to distinct-hosts × per-host-cap).
-    let (bootstrap, win_min, win_max) = window_bounds(
-        options.max_workers as usize,
-        distinct_host_count(servers),
-        PER_HOST_CAP,
-    );
+    let distinct_hosts = distinct_host_count(servers);
+    let (bootstrap, win_min, win_max) =
+        window_bounds(options.max_workers as usize, distinct_hosts, PER_HOST_CAP);
+    if let Some(log) = log {
+        // One line per depot showing exactly how the ceiling was derived, so a low ceiling is
+        // attributable to the tier or to the host count without guessing.
+        log(&format!(
+            "fetch-window depot={depot_id} init window={bootstrap} (min={win_min} max={win_max}) \
+tier_max={} servers={} distinct_hosts={distinct_hosts} per_host_cap={PER_HOST_CAP} \
+host_ceiling={} reason=start",
+            options.max_workers,
+            servers.len(),
+            distinct_hosts.saturating_mul(PER_HOST_CAP),
+        ));
+    }
 
     let scope_result = thread::scope(|scope| -> DepotWriteResult {
         // Async(fetch) → sync(process) hand-off: a tokio unbounded mpsc. The fetch side uses the
@@ -1306,9 +1537,10 @@ async fn run_async_fetch_driver(
         {
             break;
         }
-        if window.maybe_probe(Instant::now(), meter.total_bytes()) {
+        let probe_now = Instant::now();
+        if window.maybe_probe(probe_now, meter.total_bytes()) {
             if let Some(log) = log {
-                log(&window.summary_line(depot_id, inflight.len()));
+                log(&window.summary_line(depot_id, inflight.len(), probe_now));
             }
         }
 
@@ -1493,7 +1725,11 @@ async fn run_async_fetch_driver(
             Err(err) => {
                 in_flight.fetch_sub(done.reserve, Ordering::Relaxed);
                 sched.on_error(done.server_idx, now, err.kind);
-                window.record_err(now);
+                if window.record_err(now, err.kind) {
+                    if let Some(log) = log {
+                        log(&window.summary_line(depot_id, inflight.len(), now));
+                    }
+                }
                 // Preserve the existing per-chunk retry/rotation as fallback: up to
                 // MAX_CHUNK_ATTEMPTS, each re-dispatch rotates to a different (non-cooling) host with
                 // the same exponential backoff.
@@ -2454,12 +2690,12 @@ mod tests {
 
     #[test]
     fn window_bounds_clamps_tier_ceiling_to_hosts() {
-        // Fast tier ceiling 32, 10 hosts × cap 6 = 60 → 32; bootstrap 4, floor 2.
-        assert_eq!(window_bounds(32, 10, 6), (4, 2, 32));
+        // Fast tier ceiling 32, 10 hosts × cap 6 = 60 → 32; bootstrap 8, floor 2.
+        assert_eq!(window_bounds(32, 10, 6), (8, 2, 32));
         // Blazing 96 but only 4 hosts × 6 = 24 → clamped to 24.
-        assert_eq!(window_bounds(96, 4, 6), (4, 2, 24));
-        // Slow 6 with plenty of hosts stays 6 (deliberately gentle).
-        assert_eq!(window_bounds(6, 10, 6), (4, 2, 6));
+        assert_eq!(window_bounds(96, 4, 6), (8, 2, 24));
+        // Slow 6 with plenty of hosts stays 6 (deliberately gentle) and clamps the bootstrap down.
+        assert_eq!(window_bounds(6, 10, 6), (6, 2, 6));
         // Tiny ceiling < bootstrap: bootstrap clamps down to max.
         assert_eq!(window_bounds(3, 1, 6), (3, 2, 3));
         // Degenerate single-host single-permit: everything collapses to 1.
@@ -2523,72 +2759,166 @@ mod tests {
         assert!(budget_admits(0, 100 * 1024 * 1024, budget));
     }
 
-    #[test]
-    fn adaptive_window_ramps_up_on_rising_throughput() {
-        let t = Instant::now();
-        let mut w = AdaptiveWindow::new(4, 2, 64, t);
-        assert_eq!(w.current, 4);
-        // Clean successes (low latency, no errors) with super-linearly rising bytes → each probe
-        // sees throughput up >10% → grow.
-        for i in 1..=3u64 {
-            for _ in 0..10 {
+    /// Drive `probes` probe intervals starting at interval `first_probe`, each delivering `delta(i)`
+    /// bytes, `oks` clean completions and `errs` timeouts. `start_total` continues a previous run's
+    /// cumulative byte counter (the window reads a monotonic total); returns the new total.
+    #[allow(clippy::too_many_arguments)]
+    fn run_probes(
+        w: &mut AdaptiveWindow,
+        t: Instant,
+        first_probe: u64,
+        probes: u64,
+        oks: u32,
+        errs: u32,
+        start_total: u64,
+        mut delta: impl FnMut(u64) -> u64,
+    ) -> u64 {
+        let mut total = start_total;
+        for i in first_probe..first_probe + probes {
+            for _ in 0..oks {
                 w.record_ok(20.0);
             }
             let now = t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10);
-            w.maybe_probe(now, 10_000_000 * i * i);
+            for _ in 0..errs {
+                w.record_err(now, FetchFailKind::Timeout);
+            }
+            total += delta(i);
+            w.maybe_probe(now, total);
         }
-        assert!(w.current > 4, "window should have grown, got {}", w.current);
-        assert!(w.current <= 64);
+        total
+    }
+
+    #[test]
+    fn adaptive_window_ramps_up_fast_under_healthy_conditions() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 64, t);
+        assert_eq!(w.current, 8);
+        // Clean successes with rising throughput → slow-start doubles every probe: 8→16→32→64 in
+        // three probes (~6 s), not "never" like the pre-r3 >10%-per-700ms gate.
+        run_probes(&mut w, t, 1, 3, 20, 0, 0, |i| 10_000_000 * (1u64 << i));
+        assert_eq!(w.current, 64, "slow-start should reach the ceiling fast");
+        assert_eq!(w.last_reason, WindowReason::GrowSlowStart);
+    }
+
+    #[test]
+    fn adaptive_window_grows_on_flat_healthy_throughput() {
+        // The r3 regression guard: B2b required a >10% RISE every probe, so ordinary flat-but-fine
+        // CDN throughput never grew the window (and the noise shrank it). Flat + clean must GROW.
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t);
+        run_probes(&mut w, t, 1, 3, 20, 0, 0, |_| 20_000_000);
+        assert!(
+            w.current > 8,
+            "flat healthy throughput must still ramp, got {}",
+            w.current
+        );
+    }
+
+    #[test]
+    fn adaptive_window_holds_at_plateau_and_never_shrinks() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t);
+        // Steady, identical throughput forever: grow through the patience budget, then HOLD — never
+        // shrink, because there are no errors. (Correct slow-link behaviour.)
+        let total = run_probes(&mut w, t, 1, 4, 20, 0, 0, |_| 20_000_000);
+        let plateau_at = w.current;
+        assert!(plateau_at > 8);
+        run_probes(&mut w, t, 5, 6, 20, 0, total, |_| 20_000_000);
+        assert_eq!(w.current, plateau_at, "plateau must hold, not grow or shrink");
+        assert_eq!(w.last_reason, WindowReason::HoldPlateau);
+    }
+
+    #[test]
+    fn adaptive_window_does_not_shrink_on_throughput_dips_or_jitter() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(16, 2, 256, t);
+        // One good probe to establish a baseline, then throughput halves each probe with ZERO errors
+        // (exactly the CDN noise that pinned B2b at the floor). The window must hold, never shrink.
+        let total = run_probes(&mut w, t, 1, 1, 20, 0, 0, |_| 40_000_000);
+        let after_ramp = w.current;
+        run_probes(&mut w, t, 2, 5, 20, 0, total, |i| {
+            40_000_000u64 >> (i - 1).min(20)
+        });
+        assert_eq!(
+            w.current, after_ramp,
+            "throughput dips alone must not shrink the window"
+        );
+        assert_eq!(w.last_reason, WindowReason::HoldThroughputDown);
     }
 
     #[test]
     fn adaptive_window_never_exceeds_tier_ceiling() {
         let t = Instant::now();
         let mut w = AdaptiveWindow::new(4, 2, 8, t); // ceiling 8
-        for i in 1..=20u64 {
-            for _ in 0..10 {
-                w.record_ok(10.0);
-            }
-            w.maybe_probe(
-                t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10),
-                10_000_000 * i * i,
-            );
-        }
+        run_probes(&mut w, t, 1, 20, 10, 0, 0, |i| 10_000_000 * i * i);
         assert_eq!(w.current, 8);
+        assert_eq!(w.last_reason, WindowReason::HoldCeiling);
     }
 
     #[test]
-    fn adaptive_window_backs_off_on_errors_and_holds_floor() {
+    fn adaptive_window_ignores_a_single_error_but_shrinks_on_a_burst() {
         let t = Instant::now();
         let mut w = AdaptiveWindow::new(32, 2, 64, t);
-        // Immediate back-off on a single error (429/timeout/reset) shrinks now.
-        w.record_err(t);
-        assert!(w.current < 32, "immediate error should shrink, got {}", w.current);
-        // A probe window dominated by errors keeps shrinking, never below the floor.
-        for _ in 0..20 {
-            w.record_err(t);
-        }
-        w.record_ok(20.0);
-        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 1_000);
-        assert_eq!(w.current, 2, "errors should drive the window to its floor");
+        // A lone timeout is noise, not a signal: the window must not move (B2b shrank a flat −6).
+        assert!(!w.record_err(t, FetchFailKind::Timeout));
+        assert_eq!(w.current, 32);
+        assert!(!w.record_err(t, FetchFailKind::Timeout));
+        assert_eq!(w.current, 32);
+        // A burst inside one probe interval is real: shrink PROPORTIONALLY (32 → 24), not to floor.
+        assert!(w.record_err(t, FetchFailKind::Timeout));
+        assert_eq!(w.current, 24);
+        assert_eq!(w.last_reason, WindowReason::ShrinkTimeout);
+        assert!(w.cooldown_left_ms(t) > 0);
     }
 
     #[test]
-    fn adaptive_window_holds_on_plateau() {
+    fn adaptive_window_shrinks_immediately_on_rate_limit() {
         let t = Instant::now();
-        let mut w = AdaptiveWindow::new(8, 2, 64, t);
-        // First probe establishes a throughput baseline (grows once off zero).
-        for _ in 0..10 {
-            w.record_ok(20.0);
-        }
-        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 20_000_000);
-        let after_first = w.current;
-        // Identical throughput next probe (same delta) → no >10% rise → hold, do not grow.
-        for _ in 0..10 {
-            w.record_ok(20.0);
-        }
-        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 2 + 20), 40_000_000);
-        assert_eq!(w.current, after_first, "plateau must not grow the window");
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        // 429 is unambiguous back-pressure: shrink on the first one, no burst needed.
+        assert!(w.record_err(t, FetchFailKind::RateLimited));
+        assert_eq!(w.current, 24);
+        assert_eq!(w.last_reason, WindowReason::ShrinkRateLimited);
+        assert!(!w.slow_start, "a real back-off ends slow-start");
+    }
+
+    #[test]
+    fn adaptive_window_error_storm_walks_down_to_the_floor() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        // 1 error per 5 successes = 16% > HIGH: the probe shrinks every time (below the immediate
+        // burst threshold, so this exercises the probe path) until the floor stops it.
+        run_probes(&mut w, t, 1, 30, 5, 1, 0, |_| 1_000_000);
+        assert_eq!(w.current, 2, "a sustained error storm must reach the floor");
+        assert_eq!(w.min, 2, "and stop there");
+    }
+
+    #[test]
+    fn adaptive_window_recovers_after_the_error_storm_stops() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        let total = run_probes(&mut w, t, 1, 10, 5, 1, 0, |_| 1_000_000);
+        let bottom = w.current;
+        // Clean probes after the cooldown expires must climb again (additively — slow-start is over).
+        run_probes(&mut w, t, 11, 6, 20, 0, total, |_| 20_000_000);
+        assert!(
+            w.current > bottom,
+            "window must recover once errors stop, got {} from {bottom}",
+            w.current
+        );
+    }
+
+    #[test]
+    fn window_summary_line_carries_the_decision_reason() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 30, t);
+        run_probes(&mut w, t, 1, 1, 10, 0, 0, |_| 20_000_000);
+        let line = w.summary_line(49521, 12, t + Duration::from_millis(2_010));
+        assert!(line.starts_with("fetch-window depot=49521 window=16 (min=2 max=30) in_flight=12"));
+        assert!(line.contains("reason=grow:slow-start"), "{line}");
+        assert!(line.contains("cooldown=0ms"), "{line}");
+        assert!(line.contains("err_rate=0.0%"), "{line}");
+        assert!(line.contains("phase=slow-start"), "{line}");
     }
 
     #[test]

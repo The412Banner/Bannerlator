@@ -55,6 +55,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.MainActivity
 import com.winlator.star.R
+import com.winlator.star.ui.EmulatorLabels
 import com.winlator.star.ui.findActivity
 import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.WineD3DConfigDialog
@@ -1093,14 +1094,19 @@ private fun TopLevelFields(
         }
         Spacer(Modifier.height(8.dp))
 
-        // Emulator (arm64ec only)
+        // Emulator (arm64ec only) — the non-FEX backend here is wowbox64.dll, not box64, so the
+        // entry is relabelled for display; selectedEmulator keeps the canonical "Box64" value that
+        // StringUtils.parseIdentifier() persists as "box64". See EmulatorLabels.
         if (viewModel.isArm64EC) {
             LabeledDropdown(
                 label = "Emulator",
-                options = viewModel.emulatorEntries,
-                selectedOption = viewModel.selectedEmulator,
+                options = EmulatorLabels.options(viewModel.emulatorEntries, true),
+                selectedOption = EmulatorLabels.display(viewModel.selectedEmulator, true),
                 enabled = viewModel.emulatorEnabled,
-                onSelect = { viewModel.selectedEmulator = it }
+                onSelect = {
+                    viewModel.selectedEmulator =
+                        EmulatorLabels.fromDisplay(it, viewModel.emulatorEntries, true)
+                }
             )
             Spacer(Modifier.height(8.dp))
         }

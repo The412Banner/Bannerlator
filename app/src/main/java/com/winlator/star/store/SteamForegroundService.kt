@@ -61,6 +61,21 @@ class SteamForegroundService : Service() {
         fun stop(ctx: Context) {
             ctx.stopService(Intent(ctx, SteamForegroundService::class.java))
         }
+
+        /**
+         * Stop unless a download still needs the CM session. Nothing in the app used to call
+         * stop() at all, so the service — started unconditionally by SteamMainActivity, before the
+         * sign-in check — became permanent the moment the store was opened once.
+         */
+        @JvmStatic
+        fun stopIfIdle(ctx: Context) {
+            val busy = try { DownloadRegistry.activeCount.value > 0 } catch (t: Throwable) { false }
+            if (busy) {
+                Log.i(TAG, "stopIfIdle skipped — download in flight")
+                return
+            }
+            stop(ctx)
+        }
     }
 
     override fun onCreate() {
@@ -71,8 +86,13 @@ class SteamForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        instance = this        // re-publish on every (re)start — START_STICKY may recreate us
-        startForeground(NOTIFICATION_ID, buildNotification("Connecting to Steam…"))
+        instance = this        // re-publish on every (re)start
+        // Seed from the LIVE connection state, never a constant. setStatus() only pushes text on a
+        // TRANSITION, so a hardcoded "Connecting to Steam…" here survived forever on every restart
+        // that produced none — a process restart, or the extra start() calls from
+        // SteamGameDetailActivity / SteamSaveManagerActivity / SteamSessionManager on a session
+        // that is already up (connect() below then early-returns without touching the status).
+        startForeground(NOTIFICATION_ID, buildNotification(currentStatusText()))
         Log.i(TAG, "Service started")
 
         SteamRepository.getInstance().initialize(this)
@@ -84,8 +104,30 @@ class SteamForegroundService : Service() {
         SteamLibrarySync.seed(this)
 
         SteamRepository.getInstance().connect()
+        // connect() may have short-circuited (already connected / already logged on) without a
+        // transition — re-assert the real state so the seeded text can never be left stale.
+        SteamRepository.getInstance().refreshFgsStatus()
 
-        return START_STICKY   // restart if killed by OS
+        // NOT START_STICKY: a Steam CM session is not worth resurrecting behind the user's back.
+        // Sticky restarts were re-running this method (and re-showing the notification) after the
+        // app was gone, which is half of why the notification looked impossible to get rid of.
+        return START_NOT_STICKY
+    }
+
+    /**
+     * Recents-swipe. A started foreground service is not bound to the task, and the manifest entry
+     * sets no android:stopWithTask, so without this the service and its ongoing notification
+     * outlived the app until a force-stop. Stay up only while a download is actually using the CM
+     * session this service owns — onDestroy() disconnects it.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (hasActiveDownload()) {
+            Log.i(TAG, "Task removed — staying up for an active download")
+            return
+        }
+        Log.i(TAG, "Task removed — stopping")
+        stopSelf()
     }
 
     override fun onDestroy() {
@@ -96,6 +138,13 @@ class SteamForegroundService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /** The live connection state as a notification line; falls back if the repository isn't up. */
+    private fun currentStatusText(): String =
+        try { SteamRepository.getInstance().currentFgsText() } catch (t: Throwable) { "Offline" }
+
+    private fun hasActiveDownload(): Boolean =
+        try { DownloadRegistry.activeCount.value > 0 } catch (t: Throwable) { false }
 
     // -------------------------------------------------------------------------
     // Notification

@@ -361,6 +361,10 @@ public final class SteamRepository {
                 if (eng.logon(user, token, sid)) return;
                 // No handle after all (a teardown raced us) — fall through to a fresh start.
             } else {
+                // Return WITH a status: bailing out silently left whatever the FGS notification
+                // was last seeded with (the hardcoded "Connecting to Steam…") standing forever.
+                setStatus(SteamStatus.SIGNED_OUT, "rust engine: channel up, no saved sign-in (" + source + ")");
+                refreshFgsStatus();
                 Log.i(RUST_TAG, "rustConnect: channel up, no saved sign-in (" + source + ")");
                 return;
             }
@@ -1172,7 +1176,13 @@ public final class SteamRepository {
         connecting.set(false);
         reconnectAttempts = 0;
         emit("Connected");
-        setStatus(loggedIn ? SteamStatus.ONLINE : SteamStatus.CONNECTING, "CM connected");
+        // A CM channel with no saved sign-in is SIGNED_OUT, not CONNECTING: nothing below will
+        // attempt a logon, so CONNECTING would never be left again and the notification stuck on
+        // "Connecting to Steam…" forever (the reported symptom of opening the login page and
+        // backing out). Only claim CONNECTING when a token logon is actually about to run.
+        setStatus(loggedIn ? SteamStatus.ONLINE
+                           : (isLoggedInPrefs() ? SteamStatus.CONNECTING : SteamStatus.SIGNED_OUT),
+                  "CM connected");
 
         if (isLoggedInPrefs()) {
             Log.i(TAG, SteamLogRedactor.redact("Auto-login as " + pGet("username", "")));
@@ -1270,6 +1280,15 @@ public final class SteamRepository {
         try { SteamForegroundService.setStatusText(fgsTextFor(status)); }
         catch (Throwable ignored) {}
     }
+
+    /**
+     * The honest one-liner for the CURRENT connection state. SteamForegroundService seeds its
+     * notification from this on every onStartCommand — a hardcoded "Connecting to Steam…" there
+     * was permanently wrong whenever the (re)start produced no status TRANSITION for setStatus()
+     * to push: a START_STICKY restart, or any of the extra start() calls made by
+     * SteamGameDetailActivity / SteamSaveManagerActivity / SteamSessionManager on a live session.
+     */
+    public String currentFgsText() { return fgsTextFor(status); }
 
     /** Persistent, append-only session log so a mid/between-download LogonSessionReplaced is never lost. */
     private File sessionLogFile = null;

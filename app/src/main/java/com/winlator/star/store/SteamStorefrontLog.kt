@@ -86,21 +86,25 @@ internal object StorefrontLog {
         Log.d(STORE, safe(msg))
     }
 
-    /** appIds whose SteamGridDB last-resort outcome has already been reported this session. */
-    private val reportedSgdb: MutableSet<Int> =
+    /** appIds whose fallback-art outcome has already been reported this session. */
+    private val reportedArtOutcome: MutableSet<Int> =
         Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
 
     /**
-     * The ONE line per artless app saying whether SteamGridDB rescued it or also came up empty —
-     * this is how we measure what the fallback actually buys. A rescue is info, a miss is warn, and
-     * repeats (a card re-entering composition on scroll) drop to debug so this can't flood.
+     * The ONE line per app whose Steam CDN candidates all failed, naming which fallback rescued it
+     * ([source]) or recording that none did ([source] == null).
+     *
+     * [source] is what makes the fallbacks measurable against each other — grep one run for
+     * "RESCUED by appdetails" vs "RESCUED by SteamGridDB" to see what each rung actually buys.
+     * A rescue is info, a total miss is warn, and repeats (a card re-entering composition on
+     * scroll) drop to debug so this can't flood.
      */
-    fun sgdbOutcome(appId: Int, rescued: Boolean, msg: String) {
-        if (!reportedSgdb.add(appId)) {
+    fun artOutcome(appId: Int, source: String?, msg: String) {
+        if (!reportedArtOutcome.add(appId)) {
             Log.d(STORE, safe(msg))
             return
         }
-        if (rescued) Log.i(STORE, safe(msg)) else Log.w(STORE, safe(msg))
+        if (source != null) Log.i(STORE, safe(msg)) else Log.w(STORE, safe(msg))
     }
 
     private fun safe(msg: String): String =

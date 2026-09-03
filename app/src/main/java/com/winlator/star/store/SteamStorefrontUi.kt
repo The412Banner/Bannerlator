@@ -232,10 +232,16 @@ fun StoreNotice(
  *  3. `shared.fastly.steamstatic.com` — the other modern edge, for when Cloudflare misses.
  *  4. The legacy akamai URL, last, so anything only present on the old host still resolves.
  *
- * SteamGridDB is a FIFTH, last-resort step, but it cannot live in this list: it is community art
- * behind an API call, so its URL isn't knowable without a network round-trip. [StoreCapsule] runs it
- * as a separate phase AFTER every entry here has failed — Steam's own art always wins, and an app
- * whose capsule resolves normally never touches SteamGridDB.
+ * Anything that needs a NETWORK ROUND-TRIP to learn its URL cannot live in this list — it would
+ * have to block to build it. Those run as ordered async phases after every entry here has failed;
+ * see [CAPSULE_RESOLVERS].
+ *
+ * ## Where PICS art will slot in
+ * The genuinely correct source is the app's published asset list from PICS appinfo, which the
+ * engine already downloads for every owned game. That arrives WITH the library snapshot, so it
+ * needs no round-trip: when it lands it becomes [apiUrl] at the call site — candidate #1, ahead of
+ * every constructed guess — and nothing in this chain has to change. That is why the parameter is a
+ * generic "the URL Steam gave us" rather than anything named after `featuredcategories`.
  */
 internal fun capsuleCandidates(appId: Int, apiUrl: String? = null): List<String> = buildList {
     apiUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
@@ -245,6 +251,31 @@ internal fun capsuleCandidates(appId: Int, apiUrl: String? = null): List<String>
         add(SteamStoreSearch.headerUrl(appId))
     }
 }.distinct()
+
+/**
+ * One async capsule-art source: a name for the log and a suspending lookup returning a URL or null.
+ */
+internal class CapsuleResolver(
+    val source: String,
+    val resolve: suspend (android.content.Context, Int) -> String?,
+)
+
+/**
+ * Async art sources, tried IN ORDER after every static [capsuleCandidates] entry has failed.
+ *
+ * Order is the whole point and is deliberately Steam-first:
+ *  1. `appdetails` — Steam's OWN canonical `header_image` for the app. Authoritative, and the only
+ *     real answer for Library items, which never receive an `apiUrl` and so have nothing but
+ *     constructed guesses. Heavily rate-limited, hence batched + paced in [SteamStoreCatalog].
+ *  2. SteamGridDB — community art. Correct-ish and often the only thing left, but never allowed to
+ *     pre-empt Steam's own answer.
+ *
+ * Adding a rung means adding an entry here; nothing else changes.
+ */
+internal val CAPSULE_RESOLVERS: List<CapsuleResolver> = listOf(
+    CapsuleResolver("appdetails") { _, appId -> SteamStoreCatalog.appDetailsHeader(appId) },
+    CapsuleResolver("SteamGridDB") { ctx, appId -> SteamStoreCatalog.sgdbCapsule(ctx, appId) },
+)
 
 /**
  * The 92:43 store capsule for [appId]. Walks [capsuleCandidates] on each load failure and settles on
@@ -263,30 +294,47 @@ fun StoreCapsule(
 ) {
     val ctx = LocalContext.current
     val candidates = remember(appId, apiUrl) { capsuleCandidates(appId, apiUrl) }
-    // Index into `candidates`; == size means every Steam CDN candidate failed and the SteamGridDB
-    // phase below takes over.
+    // Phase 1 cursor. == candidates.size means every static candidate failed.
     var attempt by remember(candidates) { mutableStateOf(0) }
-    // The SteamGridDB result: null + resolved == it has nothing either, so the placeholder stands.
-    var sgdbUrl by remember(appId) { mutableStateOf<String?>(null) }
-    var sgdbResolved by remember(appId) { mutableStateOf(false) }
+    // Phase 2 cursor: index into CAPSULE_RESOLVERS. == size means they all came up empty.
+    var resolverIndex by remember(appId) { mutableStateOf(0) }
+    // The URL the current resolver produced, if any.
+    var resolvedUrl by remember(appId) { mutableStateOf<String?>(null) }
 
-    // Fires ONLY once the Steam chain is exhausted, so the common case never pays for it. The
-    // lookup is cached (hits AND misses) in SteamStoreCatalog, so a card scrolling back into view
-    // costs a map lookup rather than a request.
-    LaunchedEffect(appId, attempt >= candidates.size) {
-        if (attempt < candidates.size || sgdbResolved) return@LaunchedEffect
-        val found = runCatching { SteamStoreCatalog.sgdbCapsule(ctx, appId) }.getOrNull()
-        sgdbUrl = found
-        sgdbResolved = true
-        StorefrontLog.sgdbOutcome(
-            appId,
-            rescued = found != null,
-            msg = if (found != null)
-                "app $appId: no Steam capsule art — RESCUED by SteamGridDB"
-            else
-                "app $appId: NO capsule art — all ${candidates.size} Steam candidate(s) and " +
-                    "SteamGridDB came up empty; showing the placeholder",
-        )
+    val staticsExhausted = attempt >= candidates.size
+
+    // Runs ONLY after the static chain fails, one resolver at a time, in order. Every lookup is
+    // cached (hits AND misses) in SteamStoreCatalog, so a card scrolling back into view costs a map
+    // lookup rather than a request — which is what keeps a rail of art-less cards from stampeding
+    // the rate-limited appdetails endpoint.
+    LaunchedEffect(appId, staticsExhausted, resolverIndex) {
+        if (!staticsExhausted || resolvedUrl != null) return@LaunchedEffect
+        if (resolverIndex >= CAPSULE_RESOLVERS.size) {
+            StorefrontLog.artOutcome(
+                appId,
+                source = null,
+                msg = "app $appId: NO capsule art — ${candidates.size} Steam CDN candidate(s) plus " +
+                    CAPSULE_RESOLVERS.joinToString("/") { it.source } +
+                    " all came up empty; showing the placeholder",
+            )
+            return@LaunchedEffect
+        }
+        val resolver = CAPSULE_RESOLVERS[resolverIndex]
+        val found = runCatching { resolver.resolve(ctx, appId) }.getOrNull()
+        if (found != null) {
+            resolvedUrl = found
+            StorefrontLog.artOutcome(
+                appId,
+                source = resolver.source,
+                msg = "app $appId: no Steam CDN capsule — RESCUED by ${resolver.source}",
+            )
+        } else {
+            // Advance; the effect re-runs on the new index and tries the next source.
+            StorefrontLog.artCandidateFailed(
+                "app $appId: ${resolver.source} had no capsule art — trying the next source",
+            )
+            resolverIndex += 1
+        }
     }
 
     Box(
@@ -320,10 +368,10 @@ fun StoreCapsule(
             )
         }
 
-        val sgdb = sgdbUrl
+        val resolved = resolvedUrl
         when {
             // Phase 1 — Steam's own CDNs, in order.
-            attempt < candidates.size -> {
+            !staticsExhausted -> {
                 val url = candidates[attempt]
                 AsyncImage(
                     model = url,
@@ -333,13 +381,14 @@ fun StoreCapsule(
                     onError = {
                         val next = attempt + 1
                         if (next < candidates.size) {
-                            // Expected and uninteresting: a miss on one host with others still to try.
+                            // Expected and uninteresting: a miss on one host with others to try.
                             StorefrontLog.artCandidateFailed(
                                 "app $appId: capsule candidate ${attempt + 1}/${candidates.size} missed ($url)",
                             )
                         } else {
                             StorefrontLog.artCandidateFailed(
-                                "app $appId: all ${candidates.size} Steam candidate(s) failed — trying SteamGridDB",
+                                "app $appId: all ${candidates.size} Steam CDN candidate(s) failed — " +
+                                    "starting the async resolvers",
                             )
                         }
                         attempt = next
@@ -347,19 +396,21 @@ fun StoreCapsule(
                 )
             }
 
-            // Phase 2 — SteamGridDB's landscape grid, if it had one.
-            sgdb != null -> AsyncImage(
-                model = sgdb,
+            // Phase 2 — whichever resolver answered.
+            resolved != null -> AsyncImage(
+                model = resolved,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                // Even the rescue can fail to decode; drop back to the placeholder rather than
-                // leaving a broken image.
+                // Even a resolved URL can fail to decode; drop it and let the NEXT resolver try,
+                // rather than leaving a broken image.
                 onError = {
                     StorefrontLog.artCandidateFailed(
-                        "app $appId: SteamGridDB art failed to load — falling back to the placeholder",
+                        "app $appId: art from ${CAPSULE_RESOLVERS.getOrNull(resolverIndex)?.source} " +
+                            "failed to load — trying the next source",
                     )
-                    sgdbUrl = null
+                    resolvedUrl = null
+                    resolverIndex += 1
                 },
             )
 

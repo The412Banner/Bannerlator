@@ -1,7 +1,15 @@
 package com.winlator.star.store
 
 import android.content.Context
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -307,6 +315,204 @@ object SteamStoreCatalog {
 
     /** `…/apps/<appid>/…` — the only place a store-search result exposes its appId. */
     private val APP_ID_IN_URL = Regex("""/apps/(\d+)/""")
+
+    // ── appdetails header_image ───────────────────────────────────────────────────────────────
+    //
+    // Steam's OWN answer for "what is this app's capsule?", and the rung that matters most for the
+    // Library: `capsuleCandidates(appId, apiUrl)` only ever receives an apiUrl for items that came
+    // from `featuredcategories`, so owned games have never had an authoritative URL at all — only
+    // constructed guesses at a hard-coded CDN host.
+    //
+    // `appdetails` is FAR more aggressively rate-limited than anything else here (~200 requests per
+    // 5 minutes per IP), so this path is coalesced and paced rather than fired per card:
+    //  - a short debounce collects every card that misses at once into ONE request,
+    //  - batches are capped at [APPDETAILS_MAX_BATCH] ids,
+    //  - consecutive batches are spaced by [APPDETAILS_INTER_BATCH_MS],
+    //  - hits AND misses are cached, so a card scrolling back is a map lookup.
+    // A rail full of art-less cards therefore costs one or two requests, not one per card.
+
+    /** A resolved URL is stable; a daily re-check is plenty. */
+    private const val APPDETAILS_TTL_HIT_MS = 24 * 60 * 60 * 1000L
+
+    /** A genuine "this app has no header_image" — re-check occasionally in case the store changes. */
+    private const val APPDETAILS_TTL_MISS_MS = 6 * 60 * 60 * 1000L
+
+    /**
+     * A TRANSPORT failure (429, timeout, 5xx) is NOT "no art" — caching it for hours would blind us
+     * to art that exists. Cached only long enough to stop an immediate stampede.
+     */
+    private const val APPDETAILS_TTL_ERROR_MS = 2 * 60 * 1000L
+
+    /** Ids per request. Kept modest because `filters=basic` carries description blobs per app. */
+    private const val APPDETAILS_MAX_BATCH = 10
+
+    /** Debounce window that lets a whole rail's misses coalesce into one request. */
+    private const val APPDETAILS_DEBOUNCE_MS = 180L
+
+    /** Spacing between consecutive batches — comfortably inside ~200 requests / 5 minutes. */
+    private const val APPDETAILS_INTER_BATCH_MS = 1_500L
+
+    private val headerCache = ConcurrentHashMap<Int, Cached<String?>>()
+    private val headerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val headerMutex = Mutex()
+    private val headerWaiters = LinkedHashMap<Int, MutableList<CompletableDeferred<String?>>>()
+    private var headerFlush: Job? = null
+
+    /**
+     * The canonical `header_image` for [appId] from Steam's `appdetails`, or null when Steam has
+     * none / the request failed.
+     *
+     * Only called once the static candidates have failed, so it never delays the common case.
+     * Requests coalesce: callers join the pending batch and suspend until it resolves. Never throws.
+     */
+    suspend fun appDetailsHeader(appId: Int): String? {
+        if (appId <= 0) return null
+        headerCache[appId]?.let {
+            val ttl = if (it.value != null) APPDETAILS_TTL_HIT_MS else APPDETAILS_TTL_MISS_MS
+            if (System.currentTimeMillis() - it.at < ttl) return it.value
+        }
+        val waiter = CompletableDeferred<String?>()
+        headerMutex.withLock {
+            headerWaiters.getOrPut(appId) { mutableListOf() }.add(waiter)
+            if (headerFlush?.isActive != true) {
+                headerFlush = headerScope.launch {
+                    delay(APPDETAILS_DEBOUNCE_MS)
+                    flushHeaderBatches()
+                }
+            }
+        }
+        return try { waiter.await() } catch (_: Throwable) { null }
+    }
+
+    /**
+     * Drain [headerWaiters] a batch at a time until empty, pacing between batches. EVERY waiter is
+     * completed on every path — a waiter that never completes would hang that card's resolve chain
+     * forever, so the whole loop is wrapped and any escape completes the stragglers with null.
+     */
+    private suspend fun flushHeaderBatches() {
+        try {
+            while (true) {
+                val batch: Map<Int, List<CompletableDeferred<String?>>>
+                headerMutex.withLock {
+                    if (headerWaiters.isEmpty()) { headerFlush = null; return }
+                    val ids = headerWaiters.keys.take(APPDETAILS_MAX_BATCH).toList()
+                    batch = ids.associateWith { headerWaiters.remove(it).orEmpty().toList() }
+                }
+                val results = fetchHeaderImages(batch.keys.toList())
+                val now = System.currentTimeMillis()
+                for ((id, waiters) in batch) {
+                    val url = results?.get(id)
+                    headerCache[id] = if (results == null) {
+                        // TRANSPORT failure (429/timeout/5xx), not "this app has no art". It still
+                        // gets a cache entry so a scrolling rail can't stampede the rate limit, but
+                        // it must expire in minutes rather than hours.
+                        //
+                        // The read path picks its TTL from the VALUE (null -> the long miss TTL), so
+                        // the only way to give this entry a shorter life is to back-date its
+                        // timestamp: `now - MISS + ERROR` makes `now - at >= MISS` come true exactly
+                        // APPDETAILS_TTL_ERROR_MS from now.
+                        Cached(now - APPDETAILS_TTL_MISS_MS + APPDETAILS_TTL_ERROR_MS, null)
+                    } else {
+                        Cached(now, url)
+                    }
+                    waiters.forEach { it.complete(url) }
+                }
+                headerMutex.withLock {
+                    if (headerWaiters.isEmpty()) { headerFlush = null; return }
+                }
+                delay(APPDETAILS_INTER_BATCH_MS)
+            }
+        } catch (t: Throwable) {
+            StorefrontLog.w(TAG, "appdetails flush aborted — releasing waiters", t)
+            headerMutex.withLock {
+                headerWaiters.values.flatten().forEach { it.complete(null) }
+                headerWaiters.clear()
+                headerFlush = null
+            }
+        }
+    }
+
+    /**
+     * One `appdetails` request for [ids]. Returns appId -> header_image (null per id = Steam has
+     * none), or NULL FOR THE WHOLE MAP when the request itself failed — the caller uses that
+     * distinction to pick the cache TTL.
+     *
+     * Multi-id `appdetails` requires a `filters` value; `basic` is the one attested to work with a
+     * comma-separated list and it contains `header_image`. If a multi-id response comes back with
+     * nothing parseable, we assume the batch shape was rejected and retry those ids ONE AT A TIME
+     * (paced) rather than writing off a whole rail — so an unexpected API shape degrades to slower,
+     * not to broken.
+     */
+    private suspend fun fetchHeaderImages(ids: List<Int>): Map<Int, String?>? {
+        if (ids.isEmpty()) return emptyMap()
+        val url = "https://store.steampowered.com/api/appdetails?appids=" +
+            ids.joinToString(",") + "&filters=basic&l=english"
+        val t0 = System.currentTimeMillis()
+        val json = withContext(Dispatchers.IO) { SteamStoreSearch.httpGet(url) }
+        val ms = System.currentTimeMillis() - t0
+
+        if (json.isNullOrBlank()) {
+            // Includes HTTP 429. Never treated as "no art" — the caller falls straight through to
+            // SteamGridDB this pass and re-checks in a couple of minutes.
+            StorefrontLog.w(
+                TAG,
+                "appdetails: NO RESPONSE after ${ms}ms for ${ids.size} id(s) " +
+                    "(rate limit or transport) — falling through to SteamGridDB",
+            )
+            return null
+        }
+
+        val parsed = parseHeaderImages(json, ids)
+        if (parsed.isNotEmpty()) {
+            val hits = parsed.values.count { it != null }
+            StorefrontLog.i(
+                TAG,
+                "appdetails: ${ids.size} id(s) in ${ms}ms — $hits with header_image, " +
+                    "${parsed.size - hits} without",
+            )
+            return parsed
+        }
+
+        if (ids.size == 1) return emptyMap()
+
+        // Nothing parsed from a multi-id request: assume this filter doesn't batch here and fall
+        // back to single-id requests, paced so the retry can't become the stampede we avoided.
+        StorefrontLog.w(
+            TAG,
+            "appdetails: batched request for ${ids.size} id(s) returned nothing parseable — " +
+                "retrying individually",
+        )
+        val out = HashMap<Int, String?>(ids.size)
+        for ((index, id) in ids.withIndex()) {
+            if (index > 0) delay(APPDETAILS_INTER_BATCH_MS)
+            val single = withContext(Dispatchers.IO) {
+                SteamStoreSearch.httpGet(
+                    "https://store.steampowered.com/api/appdetails?appids=$id&filters=basic&l=english",
+                )
+            } ?: continue
+            out.putAll(parseHeaderImages(single, listOf(id)))
+        }
+        return out.ifEmpty { null }
+    }
+
+    /** `{ "<appid>": { success, data: { header_image } } }` -> appId -> url (null = none). */
+    private fun parseHeaderImages(json: String, ids: List<Int>): Map<Int, String?> {
+        return try {
+            val root = JSONObject(json)
+            val out = HashMap<Int, String?>(ids.size)
+            for (id in ids) {
+                val entry = root.optJSONObject(id.toString()) ?: continue
+                if (!entry.optBoolean("success", false)) { out[id] = null; continue }
+                out[id] = entry.optJSONObject("data")
+                    ?.optString("header_image", "")
+                    ?.takeIf { it.isNotBlank() }
+            }
+            out
+        } catch (e: Exception) {
+            StorefrontLog.w(TAG, "appdetails: MALFORMED JSON (${json.length} bytes) — ${e.javaClass.simpleName}")
+            emptyMap()
+        }
+    }
 
     /**
      * LAST-RESORT capsule art for [appId] from SteamGridDB, or null when it has none.

@@ -20,18 +20,61 @@ pub const MAX_CHUNK_ATTEMPTS: u32 = 5;
 pub const SLOW_CHUNK_ROTATE_THRESHOLD_SECS: u64 = 8;
 pub const SLOW_CHUNK_ROTATE_CONSECUTIVE_LIMIT: u32 = 3;
 
-/// Byte budget for the *compressed* chunk bytes buffered in the fetch→process channel.
+/// Floor for the in-flight byte budget — the pre-r4 fixed value, so no depot ever gets *less*
+/// buffered memory than it had before the budget started scaling. See [`inflight_budget_bytes`].
+pub const FETCH_INFLIGHT_BUDGET_FLOOR_BYTES: u64 = 24 * 1024 * 1024;
+
+/// Hard ceiling for the in-flight byte budget. This is THE OOM guard (the #408 class): whatever the
+/// tier, the host count or the chunk size, the RAW bytes in memory for one depot can never exceed
+/// this. 96 MiB = 4× the old fixed budget and still a small fraction of the heap an Android game
+/// installer runs in — and it is only ever reached by a Blazing-tier depot whose CDN pool is large
+/// enough to support a 64+ window (the observed 7-host pool tops out at a 63 MiB budget). Raising
+/// this is the one change in the fetch layer that can reintroduce OOM, so it stays fixed and small.
+pub const FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES: u64 = 96 * 1024 * 1024;
+
+/// Assumed RAW (on-the-wire, still-compressed) size of one chunk when sizing the budget. Steam
+/// chunks are ~1 MiB; this is the same nominal [`NOMINAL_CHUNK_RESERVE_BYTES`] uses at dispatch.
+pub const TYPICAL_CHUNK_BYTES: u64 = NOMINAL_CHUNK_RESERVE_BYTES;
+
+/// Headroom the budget carries over "one chunk per window slot" (3/2 = 1.5×), as a rational so the
+/// arithmetic stays integer. The window is a count of concurrent *requests*; a slot's bytes are held
+/// from DISPATCH until its WRITE completes, so at any instant some slots hold a fetched-but-not-yet-
+/// written chunk while others hold a reservation for a fetch still on the wire. 1.5× covers that
+/// overlap (and the occasional above-nominal chunk) without doubling the memory bound.
+pub const BUDGET_HEADROOM_NUM: u64 = 3;
+pub const BUDGET_HEADROOM_DEN: u64 = 2;
+
+/// Byte budget for the *compressed* chunk bytes buffered in the fetch→process channel, scaled to the
+/// window ceiling this depot can actually reach.
 ///
 /// The decouple channel is bounded by BYTES, not chunk count: a count cap makes in-flight memory
 /// swing wildly with chunk size (a 4-chunk cap is ~4 MB for 1 MB chunks but ~120 MB for 30 MB
-/// chunks). Budgeting bytes keeps the heap fixed regardless of game size (the #408 OOM class) while
+/// chunks). Budgeting bytes keeps the heap bounded regardless of game size (the #408 OOM class) while
 /// giving the fetch pool bandwidth-delay-product headroom so the socket stays busy while process
-/// workers decompress+write. Raw Steam chunks are ~1 MB, so ~24 MB ≈ ~24 chunks in flight.
+/// workers decompress+write.
 ///
-/// Budget only the RAW bytes actually queued (incremented on ENQUEUE, decremented on WRITE-COMPLETE);
-/// the decoded expansion is transient inside a process worker and never accumulates. See
+/// r4: the r3 device run proved a fixed 24 MiB budget becomes the binding constraint the moment the
+/// adaptive window works — a Blazing depot on a 1 Gbps line grew the window to 42 but the budget
+/// admitted only ~24 chunks, so `in_flight` stalled at 23–28 with `budget_stalls` in the hundreds
+/// and `host_stalls=0`. A budget that refuses slots the window has already decided are safe is not a
+/// memory guard, it is a throttle. So the budget now scales WITH the same effective ceiling
+/// [`window_bounds`] computes (tier ∧ hosts×per-host-cap ∧ hard cap) and is clamped between the old
+/// fixed value and a hard cap. Low tiers are unaffected (Slow/Medium land on the floor); a fast link
+/// gets a budget that stops binding before the window does.
+///
+/// Budget only the RAW bytes actually queued (reserved at DISPATCH, released on WRITE-COMPLETE); the
+/// decoded expansion is transient inside a process worker and never accumulates. See
 /// [`budget_admits`] for the single-chunk deadlock guard.
-pub const FETCH_INFLIGHT_BUDGET_BYTES: u64 = 24 * 1024 * 1024;
+pub fn inflight_budget_bytes(effective_ceiling: usize) -> u64 {
+    (effective_ceiling as u64)
+        .saturating_mul(TYPICAL_CHUNK_BYTES)
+        .saturating_mul(BUDGET_HEADROOM_NUM)
+        .saturating_div(BUDGET_HEADROOM_DEN)
+        .clamp(
+            FETCH_INFLIGHT_BUDGET_FLOOR_BYTES,
+            FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES,
+        )
+}
 
 /// How often the parallel writer emits a per-server throughput line to the debug log.
 const BANDWIDTH_LOG_INTERVAL_MS: u64 = 5_000;
@@ -645,7 +688,8 @@ impl WindowReason {
 ///
 /// Slow-connection safety is unchanged in kind: a thin pipe saturates and answers with timeouts and
 /// resets (real errors → shrink + cooldown), plateaus early (→ hold, so growth simply stops), and is
-/// still bounded by the per-host cap, the floor/ceiling, and the 24 MiB in-flight byte budget.
+/// still bounded by the per-host cap, the floor/ceiling, and the in-flight byte budget (which on a
+/// thin link stays at its 24 MiB floor, since that budget is sized from the same effective ceiling).
 /// `max` is the tier ceiling (already clamped to distinct-hosts × per-host-cap).
 #[derive(Clone, Debug)]
 struct AdaptiveWindow {
@@ -672,7 +716,9 @@ struct AdaptiveWindow {
     /// Dispatch attempts since the last probe that WANTED another slot but could not take one: the
     /// byte budget was full, or every CDN host was at its per-host cap / cooling down. These say
     /// whether the window is the binding constraint at all — a big window with a high `budget_stalls`
-    /// is bounded by the 24 MiB budget, and a high `host_stalls` is bounded by hosts × per-host cap.
+    /// is bounded by the byte budget, and a high `host_stalls` is bounded by hosts × per-host cap.
+    /// Since r4 the budget is sized from the window ceiling, so `budget_stalls` should stay near zero
+    /// — a spike means the budget is binding again and the headroom/hard cap needs revisiting.
     budget_stalls: u32,
     host_stalls: u32,
     last_budget_stalls: u32,
@@ -1318,7 +1364,6 @@ fn write_depot_parallel(
     let jobs = &plan.chunk_jobs;
 
     let proc_count = (options.max_process_workers as usize).max(1).min(jobs.len());
-    let budget = FETCH_INFLIGHT_BUDGET_BYTES;
     let cdn_auth_token = options.cdn_auth_token;
     let timeout = options.timeout;
     let cancel = options.cancel;
@@ -1330,16 +1375,21 @@ fn write_depot_parallel(
     let distinct_hosts = distinct_host_count(servers);
     let (bootstrap, win_min, win_max) =
         window_bounds(options.max_workers as usize, distinct_hosts, PER_HOST_CAP);
+    // The in-flight byte budget is sized from the SAME effective ceiling the window is bounded by, so
+    // memory stops being the thing that refuses a slot the window already decided is safe.
+    let budget = inflight_budget_bytes(win_max);
     if let Some(log) = log {
         // One line per depot showing exactly how the ceiling was derived, so a low ceiling is
-        // attributable to the tier or to the host count without guessing.
+        // attributable to the tier or to the host count without guessing — and what byte budget that
+        // ceiling bought, so a future `budget_stalls` spike is attributable too.
         log(&format!(
             "fetch-window depot={depot_id} init window={bootstrap} (min={win_min} max={win_max}) \
 tier_max={} servers={} distinct_hosts={distinct_hosts} per_host_cap={PER_HOST_CAP} \
-host_ceiling={} reason=start",
+host_ceiling={} budget={}MiB reason=start",
             options.max_workers,
             servers.len(),
             distinct_hosts.saturating_mul(PER_HOST_CAP),
+            budget / (1024 * 1024),
         ));
     }
 
@@ -2743,6 +2793,106 @@ mod tests {
         assert_eq!(window_bounds(10, 1, 1), (1, 1, 1));
     }
 
+    const MIB: u64 = 1024 * 1024;
+
+    #[test]
+    fn inflight_budget_scales_with_the_window_ceiling() {
+        // r4's whole point: the budget must not refuse a slot the window already granted. At the
+        // ceilings a 7-host CDN pool (the observed real pool) produces per tier:
+        //   Slow    ceiling min(6, 42)  =  6 →   9 MiB → floor 24 MiB
+        //   Medium  ceiling min(16, 42) = 16 →  24 MiB → exactly the floor
+        //   Fast    ceiling min(32, 42) = 32 →  48 MiB
+        //   Blazing ceiling min(96, 42) = 42 →  63 MiB  (the r3 device run's ceiling)
+        let hosts_7 = window_bounds(6, 7, PER_HOST_CAP).2;
+        assert_eq!(hosts_7, 6);
+        assert_eq!(inflight_budget_bytes(hosts_7), 24 * MIB);
+        assert_eq!(inflight_budget_bytes(window_bounds(16, 7, PER_HOST_CAP).2), 24 * MIB);
+        assert_eq!(inflight_budget_bytes(window_bounds(32, 7, PER_HOST_CAP).2), 48 * MIB);
+        assert_eq!(inflight_budget_bytes(window_bounds(96, 7, PER_HOST_CAP).2), 63 * MIB);
+
+        // Monotonic in the ceiling, and always ≥ one chunk per slot (never a budget that would stall
+        // a window it was sized for).
+        let mut prev = 0u64;
+        for ceiling in 1..=WINDOW_HARD_CAP {
+            let budget = inflight_budget_bytes(ceiling);
+            assert!(budget >= prev, "budget shrank at ceiling {ceiling}");
+            assert!(
+                budget >= (ceiling as u64) * TYPICAL_CHUNK_BYTES
+                    || budget == FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES,
+                "ceiling {ceiling} would stall on its own budget"
+            );
+            prev = budget;
+        }
+    }
+
+    #[test]
+    fn inflight_budget_respects_floor_and_hard_cap() {
+        // Floor: nothing ever gets less than the pre-r4 fixed budget, however small the ceiling.
+        assert_eq!(inflight_budget_bytes(0), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        assert_eq!(inflight_budget_bytes(1), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        assert_eq!(inflight_budget_bytes(15), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        // 16 slots × 1 MiB × 1.5 = 24 MiB — the first ceiling that meets the floor exactly.
+        assert_eq!(inflight_budget_bytes(16), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        assert!(inflight_budget_bytes(17) > FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+
+        // Hard cap: the OOM guard. 64 slots × 1.5 MiB = 96 MiB is the last uncapped ceiling; every
+        // ceiling above it — up to the window hard cap and beyond — pins at 96 MiB.
+        assert_eq!(inflight_budget_bytes(64), FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES);
+        assert_eq!(inflight_budget_bytes(65), FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES);
+        assert_eq!(
+            inflight_budget_bytes(WINDOW_HARD_CAP),
+            FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES
+        );
+        assert_eq!(
+            inflight_budget_bytes(usize::MAX),
+            FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES
+        );
+        // And the cap really is a bound, not a suggestion.
+        for ceiling in [0usize, 1, 42, 96, 1_000, usize::MAX] {
+            assert!(inflight_budget_bytes(ceiling) <= FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES);
+            assert!(inflight_budget_bytes(ceiling) >= FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        }
+    }
+
+    #[test]
+    fn scaled_budget_keeps_the_single_chunk_admit_guard() {
+        // The deadlock guard is independent of how the budget is sized: at ANY budget the scaler can
+        // produce, a chunk larger than the whole budget still admits when nothing is in flight.
+        for ceiling in [0usize, 6, 16, 32, 42, 96, WINDOW_HARD_CAP] {
+            let budget = inflight_budget_bytes(ceiling);
+            assert!(
+                budget_admits(0, 512 * MIB, budget),
+                "oversized chunk deadlocked at ceiling {ceiling}"
+            );
+            // …and still refuses that chunk once anything at all is queued.
+            assert!(!budget_admits(1, 512 * MIB, budget));
+        }
+    }
+
+    #[test]
+    fn scaled_budget_admits_a_full_blazing_window_of_nominal_chunks() {
+        // The r3 device failure in one assertion: at the 42-slot ceiling a 7-host Blazing pool
+        // reached, the OLD fixed budget admitted only 24 of the 42 slots the window granted (hence
+        // budget_stalls=102..176). The scaled budget admits all 42, with headroom to spare.
+        let ceiling = window_bounds(96, 7, PER_HOST_CAP).2;
+        assert_eq!(ceiling, 42);
+
+        let admitted = |budget: u64| {
+            let mut in_flight = 0u64;
+            let mut n = 0usize;
+            while n < 10_000 && budget_admits(in_flight, NOMINAL_CHUNK_RESERVE_BYTES, budget) {
+                in_flight += NOMINAL_CHUNK_RESERVE_BYTES;
+                n += 1;
+            }
+            n
+        };
+        assert_eq!(admitted(FETCH_INFLIGHT_BUDGET_FLOOR_BYTES), 24);
+        assert!(
+            admitted(inflight_budget_bytes(ceiling)) >= ceiling,
+            "scaled budget still binds before the window"
+        );
+    }
+
     #[test]
     fn reserve_bytes_uses_compressed_or_nominal() {
         let manifest = ContentManifest {
@@ -2782,8 +2932,9 @@ mod tests {
     #[test]
     fn dispatch_reservation_never_exceeds_budget_except_single_chunk_guard() {
         // Reserving compressed bytes at DISPATCH means total raw bytes in flight can never exceed
-        // the budget — 24 MiB / 1 MiB = 24 chunks, then the gate closes until a write frees space.
-        let budget = FETCH_INFLIGHT_BUDGET_BYTES;
+        // the budget — at the floor, 24 MiB / 1 MiB = 24 chunks, then the gate closes until a write
+        // frees space.
+        let budget = FETCH_INFLIGHT_BUDGET_FLOOR_BYTES;
         let reserve = 1024 * 1024u64;
         let mut in_flight = 0u64;
         let mut admitted = 0u64;

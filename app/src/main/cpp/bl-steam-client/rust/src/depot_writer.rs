@@ -753,8 +753,12 @@ impl AdaptiveWindow {
         self.last_reason = reason;
     }
 
-    fn grow(&mut self, reason: WindowReason) {
-        let next = if self.slow_start {
+    /// `multiplicative` doubles (slow-start); otherwise a single additive step. Doubling is reserved
+    /// for probes where throughput actually ROSE — a link that is already saturated reports FLAT
+    /// throughput, and doubling into a saturated thin pipe is exactly the flood the window exists to
+    /// prevent. Flat-but-clean probes advance one step at a time.
+    fn grow(&mut self, reason: WindowReason, multiplicative: bool) {
+        let next = if multiplicative {
             self.current.saturating_mul(WINDOW_SLOW_START_FACTOR)
         } else {
             self.current + WINDOW_STEP_UP
@@ -825,12 +829,13 @@ impl AdaptiveWindow {
                 self.plateau_streak = 0;
                 self.plateau_since = None;
                 self.plateau_rearm_ms = WINDOW_PLATEAU_REARM_MS;
-                let reason = if self.slow_start {
+                let doubling = self.slow_start;
+                let reason = if doubling {
                     WindowReason::GrowSlowStart
                 } else {
                     WindowReason::GrowThroughputUp
                 };
-                self.grow(reason);
+                self.grow(reason, doubling);
             } else if falling {
                 // Throughput dropped without errors (a CDN slowed, or we are past the useful
                 // concurrency): HOLD. Shrinking here is what collapsed B2b to the floor.
@@ -839,12 +844,8 @@ impl AdaptiveWindow {
                 // Flat, but throughput lags a window change — spend a little patience before calling
                 // it a plateau.
                 self.plateau_streak += 1;
-                let reason = if self.slow_start {
-                    WindowReason::GrowSlowStart
-                } else {
-                    WindowReason::GrowProbe
-                };
-                self.grow(reason);
+                // Additive even during slow-start: flat throughput can mean "already saturated".
+                self.grow(WindowReason::GrowProbe, false);
             } else {
                 // Plateau: more concurrency stopped helping. HOLD (correct behaviour on a slow link),
                 // and re-arm the ramp later — with a doubling interval — in case the link improves.
@@ -2852,6 +2853,24 @@ mod tests {
             "flat healthy throughput must still ramp, got {}",
             w.current
         );
+    }
+
+    #[test]
+    fn adaptive_window_does_not_double_into_a_saturated_link() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t);
+        // Probe 1 sees throughput appear from nothing — a genuine rise — so slow-start doubles.
+        let total = run_probes(&mut w, t, 1, 1, 20, 0, 0, |_| 20_000_000);
+        assert_eq!(w.current, 16);
+        // From here throughput is FLAT, which is what an already-saturated link reports. Growth must
+        // continue (no errors) but ONE additive step at a time — doubling into a saturated thin pipe
+        // is the flood the window exists to prevent.
+        run_probes(&mut w, t, 2, 1, 20, 0, total, |_| 20_000_000);
+        assert_eq!(
+            w.current, 20,
+            "flat throughput must grow additively, never double"
+        );
+        assert_eq!(w.last_reason, WindowReason::GrowProbe);
     }
 
     #[test]

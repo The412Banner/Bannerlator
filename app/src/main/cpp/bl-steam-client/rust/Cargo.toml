@@ -24,6 +24,14 @@ rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 rsa = "0.9"
 ruzstd = "0.7"
+# B2b async fetch layer ONLY (depot chunk downloads). tokio drives many lightweight concurrent
+# requests on ONE current-thread runtime that feeds the existing (sync) decode+write process pool;
+# decode/write/JobManager stay sync and the rest of the .so is async-free. Both crates are already
+# resolved transitively (via reqwest/hyper) at the pinned versions in Cargo.lock — declaring them
+# direct adds NO new package, only a dependency edge (features `sync`/`rt`/`net`/`time` pull no new
+# crate; `futures-util` uses only its already-resolved `std` feature — no `futures-macro`).
+tokio = { version = "1", default-features = false, features = ["rt", "net", "time", "sync"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 # preserve_order keeps JSON object keys in source order. The Kotlin appinfo
 # decoder groups DLC content depots positionally (a marker depot followed by
 # its content), so reordering depots (BTreeMap's default key sort) misgroups

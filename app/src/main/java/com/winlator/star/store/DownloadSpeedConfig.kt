@@ -57,4 +57,31 @@ class DownloadSpeedConfig(private val tier: Int) {
 
     val maxDecompress: Int
         get() = (cpuCores * ratios.decompress).toInt().coerceAtLeast(1)
+
+    /**
+     * B2b async-fetch adaptive-window **ceiling** = the max number of concurrent in-flight chunk
+     * requests the tier permits. The Rust engine bootstraps far below this and ramps toward it ONLY
+     * while measured throughput keeps rising and errors/timeouts stay low, clamped to
+     * distinct-CDN-hosts × per-host-cap; a weak/thin connection naturally settles well below it and
+     * never floods. Unlike [maxDownloads] (which was an OS-thread count, so it scaled with CPU cores
+     * and was capped at 32), this is a per-tier network-parallelism ceiling independent of cores:
+     * async requests are cheap, so a fast link can hold many more in flight than there are cores.
+     *
+     *   Slow    = 6    (deliberately gentle for weak connections)
+     *   Medium  = 16
+     *   Fast    = 32   (default)
+     *   Blazing = 96
+     *
+     * The engine still hard-bounds RAW in-flight memory with its byte budget regardless of this
+     * ceiling, so a high tier costs concurrency, not unbounded heap.
+     */
+    val maxNetworkWindow: Int
+        get() = when (tier) {
+            TIER_SLOW -> 6
+            TIER_MEDIUM -> 16
+            TIER_FAST -> 32
+            TIER_BLAZING -> 96
+            // Unknown/corrupt value → app default (Fast), matching the ratio fallback above.
+            else -> 32
+        }
 }

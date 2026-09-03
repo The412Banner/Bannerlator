@@ -86,6 +86,23 @@ internal object StorefrontLog {
         Log.d(STORE, safe(msg))
     }
 
+    /** appIds whose SteamGridDB last-resort outcome has already been reported this session. */
+    private val reportedSgdb: MutableSet<Int> =
+        Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
+
+    /**
+     * The ONE line per artless app saying whether SteamGridDB rescued it or also came up empty —
+     * this is how we measure what the fallback actually buys. A rescue is info, a miss is warn, and
+     * repeats (a card re-entering composition on scroll) drop to debug so this can't flood.
+     */
+    fun sgdbOutcome(appId: Int, rescued: Boolean, msg: String) {
+        if (!reportedSgdb.add(appId)) {
+            Log.d(STORE, safe(msg))
+            return
+        }
+        if (rescued) Log.i(STORE, safe(msg)) else Log.w(STORE, safe(msg))
+    }
+
     private fun safe(msg: String): String =
         try { SteamLogRedactor.redact(msg) } catch (_: Throwable) { msg }
 }

@@ -109,6 +109,20 @@ object SteamStoreCatalog {
     private val freeCache = ConcurrentHashMap<String, Cached<List<StoreItem>>>()
 
     /**
+     * SteamGridDB last-resort capsule art, keyed by appId. The value is nullable ON PURPOSE: null is
+     * a NEGATIVE cache entry ("SteamGridDB has nothing for this app"), which matters as much as a
+     * hit here — the device run had 36 artless apps, and without negative caching every one of them
+     * would re-hit SteamGridDB on each scroll and each recomposition.
+     */
+    private val sgdbCache = ConcurrentHashMap<Int, Cached<String?>>()
+
+    /** A found URL is stable; re-checking it daily is plenty. */
+    private const val SGDB_HIT_TTL_MS = 24 * 60 * 60 * 1000L
+
+    /** A miss expires sooner: SteamGridDB is community-contributed, so art appears over time. */
+    private const val SGDB_MISS_TTL_MS = 6 * 60 * 60 * 1000L
+
+    /**
      * The three rails for [cc]. Served from the in-process cache while fresh; otherwise fetched.
      * Returns null when the endpoint could not be read at all AND nothing is cached — the caller
      * shows an inline retry. [force] bypasses the TTL (the retry button).
@@ -293,6 +307,37 @@ object SteamStoreCatalog {
 
     /** `…/apps/<appid>/…` — the only place a store-search result exposes its appId. */
     private val APP_ID_IN_URL = Regex("""/apps/(\d+)/""")
+
+    /**
+     * LAST-RESORT capsule art for [appId] from SteamGridDB, or null when it has none.
+     *
+     * Only ever called once every Steam CDN candidate has already failed — see `capsuleCandidates`
+     * and `StoreCapsule`. It therefore adds NO latency to the common case: an app whose Steam art
+     * resolves never reaches this function.
+     *
+     * Delegates to [StarLaunchBridge.sgdbFetchCapsuleBySteamAppId], which is the app's single
+     * SteamGridDB HTTP path and holds the only copy of the key — nothing about the token crosses
+     * into Kotlin. Both hits and misses are cached ([sgdbCache]); failure is always null, never an
+     * exception, so the caller falls through to the themed placeholder exactly as before.
+     */
+    suspend fun sgdbCapsule(ctx: Context, appId: Int): String? {
+        if (appId <= 0) return null
+        sgdbCache[appId]?.let {
+            val ttl = if (it.value != null) SGDB_HIT_TTL_MS else SGDB_MISS_TTL_MS
+            if (System.currentTimeMillis() - it.at < ttl) return it.value
+        }
+        return withContext(Dispatchers.IO) {
+            val url = try {
+                StarLaunchBridge.sgdbFetchCapsuleBySteamAppId(ctx.applicationContext, appId)
+                    ?.takeIf { it.isNotBlank() }
+            } catch (t: Throwable) {
+                StorefrontLog.w(TAG, "sgdbCapsule($appId) threw — treating as no art", t)
+                null
+            }
+            sgdbCache[appId] = Cached(System.currentTimeMillis(), url)
+            url
+        }
+    }
 
     // ── parsing ───────────────────────────────────────────────────────────────────────────────
 

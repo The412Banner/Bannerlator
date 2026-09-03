@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -230,6 +231,11 @@ fun StoreNotice(
  *     already uses successfully for owned games.
  *  3. `shared.fastly.steamstatic.com` — the other modern edge, for when Cloudflare misses.
  *  4. The legacy akamai URL, last, so anything only present on the old host still resolves.
+ *
+ * SteamGridDB is a FIFTH, last-resort step, but it cannot live in this list: it is community art
+ * behind an API call, so its URL isn't knowable without a network round-trip. [StoreCapsule] runs it
+ * as a separate phase AFTER every entry here has failed — Steam's own art always wins, and an app
+ * whose capsule resolves normally never touches SteamGridDB.
  */
 internal fun capsuleCandidates(appId: Int, apiUrl: String? = null): List<String> = buildList {
     apiUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
@@ -255,9 +261,33 @@ fun StoreCapsule(
     shape: Shape = RoundedCornerShape(0.dp),
     apiUrl: String? = null,
 ) {
+    val ctx = LocalContext.current
     val candidates = remember(appId, apiUrl) { capsuleCandidates(appId, apiUrl) }
-    // Index into `candidates`; == size means every one failed and only the placeholder remains.
+    // Index into `candidates`; == size means every Steam CDN candidate failed and the SteamGridDB
+    // phase below takes over.
     var attempt by remember(candidates) { mutableStateOf(0) }
+    // The SteamGridDB result: null + resolved == it has nothing either, so the placeholder stands.
+    var sgdbUrl by remember(appId) { mutableStateOf<String?>(null) }
+    var sgdbResolved by remember(appId) { mutableStateOf(false) }
+
+    // Fires ONLY once the Steam chain is exhausted, so the common case never pays for it. The
+    // lookup is cached (hits AND misses) in SteamStoreCatalog, so a card scrolling back into view
+    // costs a map lookup rather than a request.
+    LaunchedEffect(appId, attempt >= candidates.size) {
+        if (attempt < candidates.size || sgdbResolved) return@LaunchedEffect
+        val found = runCatching { SteamStoreCatalog.sgdbCapsule(ctx, appId) }.getOrNull()
+        sgdbUrl = found
+        sgdbResolved = true
+        StorefrontLog.sgdbOutcome(
+            appId,
+            rescued = found != null,
+            msg = if (found != null)
+                "app $appId: no Steam capsule art — RESCUED by SteamGridDB"
+            else
+                "app $appId: NO capsule art — all ${candidates.size} Steam candidate(s) and " +
+                    "SteamGridDB came up empty; showing the placeholder",
+        )
+    }
 
     Box(
         modifier = modifier
@@ -266,7 +296,9 @@ fun StoreCapsule(
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        // Placeholder underneath: shows through until (and if) a capsule loads.
+        // Placeholder underneath: shows through until (and if) a capsule loads, and is what remains
+        // when every source has failed. Nothing below ever replaces it with a spinner or a broken
+        // image — each stage either renders art or falls through to this.
         Column(
             modifier = Modifier.padding(horizontal = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -287,33 +319,52 @@ fun StoreCapsule(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
-        if (attempt < candidates.size) {
-            val url = candidates[attempt]
-            AsyncImage(
-                model = url,
+
+        val sgdb = sgdbUrl
+        when {
+            // Phase 1 — Steam's own CDNs, in order.
+            attempt < candidates.size -> {
+                val url = candidates[attempt]
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    onError = {
+                        val next = attempt + 1
+                        if (next < candidates.size) {
+                            // Expected and uninteresting: a miss on one host with others still to try.
+                            StorefrontLog.artCandidateFailed(
+                                "app $appId: capsule candidate ${attempt + 1}/${candidates.size} missed ($url)",
+                            )
+                        } else {
+                            StorefrontLog.artCandidateFailed(
+                                "app $appId: all ${candidates.size} Steam candidate(s) failed — trying SteamGridDB",
+                            )
+                        }
+                        attempt = next
+                    },
+                )
+            }
+
+            // Phase 2 — SteamGridDB's landscape grid, if it had one.
+            sgdb != null -> AsyncImage(
+                model = sgdb,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
+                // Even the rescue can fail to decode; drop back to the placeholder rather than
+                // leaving a broken image.
                 onError = {
-                    val next = attempt + 1
-                    if (next < candidates.size) {
-                        // Expected and uninteresting: a miss on one host with others still to try.
-                        StorefrontLog.artCandidateFailed(
-                            "app $appId: capsule candidate ${attempt + 1}/${candidates.size} missed ($url)",
-                        )
-                    } else {
-                        // Genuinely out of options — throttled to one warn per appId per session so
-                        // a CDN-wide miss can't flood logcat and evict other diagnostics.
-                        StorefrontLog.artFailed(
-                            appId,
-                            "app $appId: NO capsule art — all ${candidates.size} candidate(s) failed; " +
-                                "showing the placeholder. Last: ${it.result.throwable.javaClass.simpleName}: " +
-                                "${it.result.throwable.message}",
-                        )
-                    }
-                    attempt = next
+                    StorefrontLog.artCandidateFailed(
+                        "app $appId: SteamGridDB art failed to load — falling back to the placeholder",
+                    )
+                    sgdbUrl = null
                 },
             )
+
+            // Phase 3 — nothing left; the placeholder above stands on its own.
+            else -> Unit
         }
     }
 }

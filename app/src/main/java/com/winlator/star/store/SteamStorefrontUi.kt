@@ -170,6 +170,42 @@ fun StoreSectionHeader(title: String, sub: String? = null, modifier: Modifier = 
     }
 }
 
+/**
+ * A selectable filter chip — the storefront's ONE chip style.
+ *
+ * Started life as the Friends tab's All / Online / In-Game chips and moved here when the Library
+ * grew its own All / Games / Demos row, so both read and focus identically rather than drifting
+ * into two lookalike implementations.
+ *
+ * Selected = filled accent with on-accent ink; unselected = raised container with an outline. Both
+ * states carry [steamFocusRing], so a D-pad user can see where they are.
+ */
+@Composable
+fun StoreFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = if (selected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .steamFocusRing(shape)
+            .clip(shape)
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceContainer,
+            )
+            .border(
+                1.dp,
+                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                shape,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 5.dp),
+    )
+}
+
 /** Centered empty/error block with an optional retry — the storefront's graceful-degrade surface. */
 @Composable
 fun StoreNotice(

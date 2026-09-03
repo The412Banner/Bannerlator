@@ -74,6 +74,14 @@ private fun SteamLibraryScreen(onBack: () -> Unit) {
     val layout = rememberStorefrontLayout()
     val ctx = LocalContext.current
     var viewMode by remember { mutableStateOf("grid") }
+    // Shares the persisted preference with the storefront's Library tab, so the chip is the same
+    // wherever the library is opened from.
+    var typeFilter by remember {
+        mutableStateOf(
+            runCatching { LibraryTypeFilter.fromName(SteamPrefs.getLibraryTypeFilter(ctx)) }
+                .getOrDefault(LibraryTypeFilter.GAMES),
+        )
+    }
     var message by remember { mutableStateOf<String?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -136,6 +144,11 @@ private fun SteamLibraryScreen(onBack: () -> Unit) {
                 state = library,
                 wide = layout.wide,
                 viewMode = viewMode,
+                typeFilter = typeFilter,
+                onTypeFilter = { f ->
+                    typeFilter = f
+                    runCatching { SteamPrefs.setLibraryTypeFilter(ctx, f.name) }
+                },
                 onOpenApp = { openSteamGameDetail(ctx, it) },
                 onMessage = { message = it },
                 modifier = Modifier.weight(1f).fillMaxWidth(),

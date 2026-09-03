@@ -244,6 +244,14 @@ fun SteamStorefrontHost(
     // Tab transitions at info level: enough to reconstruct a session from the log.
     LaunchedEffect(tab) { StorefrontLog.i(StorefrontLog.HOST, "tab -> ${tab.name}") }
     var libraryViewMode by remember { mutableStateOf("grid") }
+    // Persisted (unlike libraryViewMode, which is composition-only) so the chip survives a restart.
+    // Defaults to GAMES, so an existing user's library looks exactly as it did before this feature.
+    var libraryTypeFilter by remember {
+        mutableStateOf(
+            runCatching { LibraryTypeFilter.fromName(SteamPrefs.getLibraryTypeFilter(ctx)) }
+                .getOrDefault(LibraryTypeFilter.GAMES),
+        )
+    }
     var message by remember { mutableStateOf<String?>(null) }
     var showSignOut by remember { mutableStateOf(false) }
 
@@ -252,8 +260,13 @@ fun SteamStorefrontHost(
     val contentFocus = remember { FocusRequester() }
 
     val onlineFriends = friends.count { it.presence != SteamFriendsStore.Presence.OFFLINE }
+    // The badge counts what the Library tab is actually SHOWING. Leaving it at the unfiltered total
+    // would read "Library (113)" above a grid of four demos.
+    val visibleLibraryCount = remember(library.games, libraryTypeFilter) {
+        libraryTypeFilter.filter(library.games).size
+    }
     val counts = mapOf(
-        SteamTab.LIBRARY to library.games.size,
+        SteamTab.LIBRARY to visibleLibraryCount,
         SteamTab.FRIENDS to onlineFriends,
     )
 
@@ -277,6 +290,12 @@ fun SteamStorefrontHost(
                 state = library,
                 wide = layout.wide,
                 viewMode = libraryViewMode,
+                typeFilter = libraryTypeFilter,
+                onTypeFilter = { f ->
+                    libraryTypeFilter = f
+                    runCatching { SteamPrefs.setLibraryTypeFilter(ctx, f.name) }
+                    StorefrontLog.i(StorefrontLog.LIBRARY, "library type filter -> ${f.name}")
+                },
                 onOpenApp = { openSteamGameDetail(ctx, it) },
                 onMessage = { message = it },
                 modifier = mod,

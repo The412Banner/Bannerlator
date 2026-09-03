@@ -78,6 +78,57 @@ import com.winlator.star.ui.screens.OutlinedAlertDialog
  *  - `list` — the detailed row (developer / genres / size / Metacritic / Launch + Uninstall).
  */
 
+/**
+ * The Library tab's type chips.
+ *
+ * [GAMES] is the DEFAULT and reproduces the behaviour the tab has always had, so an update never
+ * silently drops demos into someone's library — seeing them is opt-in.
+ *
+ * [ALL] is deliberately Games ∪ Demos and NOT "every app type". The library rows also carry `dlc`,
+ * `config`, `tool`, `music` and `video` entries, which are infrastructure the user never launches;
+ * surfacing them would make the tab worse, not more complete.
+ */
+enum class LibraryTypeFilter(val label: String) {
+    ALL("All"),
+    GAMES("Games"),
+    DEMOS("Demos"),
+    ;
+
+    /**
+     * Whether [game] belongs under this chip.
+     *
+     * The allowlist check is not incidental: a handful of appIds (Lossless Scaling and friends) are
+     * not `type == "game"` but are deliberately surfaced anyway — see `SteamRepository`'s
+     * LIBRARY_ALLOWLIST. They belong under Games, and therefore under All.
+     */
+    fun accepts(game: SteamGame): Boolean = when (this) {
+        GAMES -> isGame(game)
+        DEMOS -> game.type == TYPE_DEMO
+        ALL -> isGame(game) || game.type == TYPE_DEMO
+    }
+
+    fun filter(games: List<SteamGame>): List<SteamGame> = games.filter { accepts(it) }
+
+    /** Copy shown when this chip matches nothing. */
+    fun emptyMessage(): String = when (this) {
+        GAMES -> "No games in your library"
+        DEMOS -> "No demos in your library"
+        ALL -> "No games yet"
+    }
+
+    companion object {
+        const val TYPE_GAME = "game"
+        const val TYPE_DEMO = "demo"
+
+        private fun isGame(game: SteamGame): Boolean =
+            game.type == TYPE_GAME || SteamRepository.LIBRARY_ALLOWLIST.contains(game.appId)
+
+        /** Parse a persisted name, falling back to the opt-in-safe default. */
+        fun fromName(name: String?): LibraryTypeFilter =
+            entries.firstOrNull { it.name == name } ?: GAMES
+    }
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────────────────────
 
 /** Everything the Library tab and the Store tab's ownership check need, from one source of truth. */
@@ -86,7 +137,16 @@ class SteamLibraryState internal constructor(
     val isLoading: Boolean,
     val statusText: String,
     val steamStatus: SteamRepository.SteamStatus,
-    /** Fast membership test for the Store tab's Download/Add/Not-owned decision. */
+    /**
+     * Fast membership test for the Store tab's Download / Add to Library / Not-owned decision.
+     *
+     * Built from the FULL [games] list and NEVER from the type-filtered display list. If this
+     * followed the chip, selecting "Demos" would tell the Store tab the account owns nothing but
+     * demos and every owned game in a rail would read "Not owned".
+     *
+     * Including demos here also fixes a pre-existing bug: an owned demo used to be filtered out of
+     * the library entirely, so it showed as "Not owned" in Store rails.
+     */
     val ownedAppIds: Set<Int>,
     val refresh: () -> Unit,
     val reload: () -> Unit,
@@ -114,16 +174,23 @@ fun rememberSteamLibrary(): SteamLibraryState {
     val load: () -> Unit = load@{
         val repo = runCatching { SteamRepository.getInstance() }.getOrNull() ?: return@load
         val rows = runCatching { repo.getCachedGameRows() }.getOrDefault(emptyList())
+        // The FULL launchable set — games (plus allowlisted appIds) AND demos. The type chip narrows
+        // what is DISPLAYED; it must never narrow what is OWNED. Everything past this point,
+        // ownedAppIds especially, is computed from this list.
+        //
+        // Demos have always arrived here with type == "demo" (the engine parses common.type from
+        // appinfo); the old filter simply discarded them on this line.
         games = rows
-            // Only true "game" apps, plus the allowlisted non-"game" appIds worth surfacing.
-            .filter { it.type == "game" || SteamRepository.LIBRARY_ALLOWLIST.contains(it.appId) }
             .map { SteamGame.fromGameRow(it) }
+            .filter { LibraryTypeFilter.ALL.accepts(it) }
             .sortedBy { it.name.lowercase() }
         isLoading = false
-        if (games.isNotEmpty()) statusText = "${games.size} games in library"
+        val demoCount = games.count { it.type == LibraryTypeFilter.TYPE_DEMO }
+        if (games.isNotEmpty()) statusText = "${games.size - demoCount} games in library"
         StorefrontLog.i(
             StorefrontLog.LIBRARY,
-            "loaded ${games.size} game(s) from ${rows.size} cached row(s), " +
+            "loaded ${games.size} entry(s) from ${rows.size} cached row(s) — " +
+                "${games.size - demoCount} game(s), $demoCount demo(s), " +
                 "${games.count { it.isInstalled }} installed",
         )
     }
@@ -210,6 +277,7 @@ fun rememberSteamLibrary(): SteamLibraryState {
         isLoading = isLoading,
         statusText = statusText,
         steamStatus = steamStatus,
+        // From `games` (the full launchable set), not from any filtered view — see the field doc.
         ownedAppIds = remember(games) { games.mapTo(HashSet(games.size)) { it.appId } },
         refresh = {
             StorefrontLog.i(StorefrontLog.LIBRARY, "manual library refresh requested")
@@ -235,11 +303,15 @@ fun SteamLibraryTab(
     state: SteamLibraryState,
     wide: Boolean,
     viewMode: String,
+    typeFilter: LibraryTypeFilter,
+    onTypeFilter: (LibraryTypeFilter) -> Unit,
     onOpenApp: (Int) -> Unit,
     onMessage: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val ctx = LocalContext.current
+    // The chip narrows only what is drawn. state.ownedAppIds stays the full set — see its doc.
+    val shown = remember(state.games, typeFilter) { typeFilter.filter(state.games) }
     val activity = ctx as? Activity
 
     var showExePicker by remember { mutableStateOf<SteamExePickerData?>(null) }
@@ -304,100 +376,139 @@ fun SteamLibraryTab(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        when {
-            state.games.isEmpty() && !state.isLoading -> StoreNotice(
-                title = "No games yet",
-                body = "Nothing in this account's Steam library has synced yet. Pull a fresh sync " +
-                    "with Refresh, or add a free game from the Store tab.",
-                actionLabel = "Refresh",
-                onAction = state.refresh,
-                modifier = Modifier.align(Alignment.Center),
-            )
-
-            viewMode == "list" -> LazyColumn(
-                modifier = Modifier.fillMaxSize().focusGroup(),
-                contentPadding = PaddingValues(vertical = 4.dp),
-            ) {
-                items(state.games, key = { it.appId }) { game ->
-                    LibraryDetailRow(
-                        game = game,
-                        onClick = { onOpenApp(game.appId) },
-                        onLaunch = { launchInstalled(game) },
-                        onUninstall = { uninstall(game) },
-                    )
-                }
-            }
-
-            else -> LazyVerticalGrid(
-                // Adaptive rather than a fixed count: 2 columns on a portrait phone, 4-6 across a
-                // handheld in landscape, from one declaration.
-                columns = GridCells.Adaptive(minSize = if (wide) 190.dp else 165.dp),
-                modifier = Modifier.fillMaxSize().focusGroup(),
-                contentPadding = PaddingValues(14.dp),
-                horizontalArrangement = Arrangement.spacedBy(11.dp),
-                verticalArrangement = Arrangement.spacedBy(11.dp),
-            ) {
-                items(state.games, key = { it.appId }) { game ->
-                    LibraryCapsuleCard(
-                        game = game,
-                        onOpen = { onOpenApp(game.appId) },
-                        onAction = {
-                            if (game.isInstalled) launchInstalled(game) else onOpenApp(game.appId)
-                        },
-                    )
-                }
+    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // Type chips. Same row in both orientations — they are one short line either way, and the
+        // grid below is what reflows.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .focusGroup(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            LibraryTypeFilter.entries.forEach { f ->
+                StoreFilterChip(
+                    label = f.label,
+                    selected = typeFilter == f,
+                    onClick = { onTypeFilter(f) },
+                )
             }
         }
 
-        if (state.isLoading && state.games.isEmpty()) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                state.games.isEmpty() && !state.isLoading -> StoreNotice(
+                    title = "No games yet",
+                    body = "Nothing in this account's Steam library has synced yet. Pull a fresh sync " +
+                        "with Refresh, or add a free game from the Store tab.",
+                    actionLabel = "Refresh",
+                    onAction = state.refresh,
+                    modifier = Modifier.align(Alignment.Center),
+                )
 
-        showExePicker?.let { data ->
-            ExePickerDialog(
-                title = "Select executable for \"${data.gameName}\"",
-                candidates = data.candidates,
-                onDismiss = { showExePicker = null },
-                onSelected = { chosen ->
-                    showExePicker = null
-                    startAddToShortcuts(data.gameName, chosen, data.coverUrl)
-                },
-            )
-        }
+                // The library HAS entries, this chip just matches none of them — say which, rather
+                // than showing an empty grid that looks like a failure.
+                shown.isEmpty() && !state.isLoading -> StoreNotice(
+                    title = typeFilter.emptyMessage(),
+                    body = when (typeFilter) {
+                        LibraryTypeFilter.DEMOS ->
+                            "Demos you have installed from the Steam store will appear here."
+                        else ->
+                            "Nothing in your library matches this filter."
+                    },
+                    actionLabel = if (typeFilter != LibraryTypeFilter.ALL) "Show all" else null,
+                    onAction = if (typeFilter != LibraryTypeFilter.ALL) {
+                        { onTypeFilter(LibraryTypeFilter.ALL) }
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.align(Alignment.Center),
+                )
 
-        addToShortcuts?.let { req ->
-            ContainerPickerDialog(
-                gameName = req.gameName,
-                containers = req.containers,
-                onDismiss = { addToShortcuts = null },
-                onSelected = { container ->
-                    addToShortcuts = null
-                    val a = activity ?: return@ContainerPickerDialog
-                    StarLaunchBridge.writeShortcutAsync(
-                        a, container, req.gameName, req.exePath, req.coverUrl,
-                    ) { success, message ->
-                        addResult = AddShortcutResult(req.gameName, success, message)
+                viewMode == "list" -> LazyColumn(
+                    modifier = Modifier.fillMaxSize().focusGroup(),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                ) {
+                    items(shown, key = { it.appId }) { game ->
+                        LibraryDetailRow(
+                            game = game,
+                            onClick = { onOpenApp(game.appId) },
+                            onLaunch = { launchInstalled(game) },
+                            onUninstall = { uninstall(game) },
+                        )
                     }
-                },
-            )
-        }
+                }
 
-        addResult?.let { result ->
-            AddResultDialog(
-                result = result,
-                onOpenShortcuts = {
-                    addResult = null
-                    activity?.let { openShortcutsScreen(it) }
-                },
-                onDismiss = { addResult = null },
-            )
-        }
+                else -> LazyVerticalGrid(
+                    // Adaptive rather than a fixed count: 2 columns on a portrait phone, 4-6 across a
+                    // handheld in landscape, from one declaration.
+                    columns = GridCells.Adaptive(minSize = if (wide) 190.dp else 165.dp),
+                    modifier = Modifier.fillMaxSize().focusGroup(),
+                    contentPadding = PaddingValues(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(11.dp),
+                    verticalArrangement = Arrangement.spacedBy(11.dp),
+                ) {
+                    items(shown, key = { it.appId }) { game ->
+                        LibraryCapsuleCard(
+                            game = game,
+                            onOpen = { onOpenApp(game.appId) },
+                            onAction = {
+                                if (game.isInstalled) launchInstalled(game) else onOpenApp(game.appId)
+                            },
+                        )
+                    }
+                }
+            }
 
-        uninstallingName?.let { UninstallProgressDialog(it) }
+            if (state.isLoading && state.games.isEmpty()) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            showExePicker?.let { data ->
+                ExePickerDialog(
+                    title = "Select executable for \"${data.gameName}\"",
+                    candidates = data.candidates,
+                    onDismiss = { showExePicker = null },
+                    onSelected = { chosen ->
+                        showExePicker = null
+                        startAddToShortcuts(data.gameName, chosen, data.coverUrl)
+                    },
+                )
+            }
+
+            addToShortcuts?.let { req ->
+                ContainerPickerDialog(
+                    gameName = req.gameName,
+                    containers = req.containers,
+                    onDismiss = { addToShortcuts = null },
+                    onSelected = { container ->
+                        addToShortcuts = null
+                        val a = activity ?: return@ContainerPickerDialog
+                        StarLaunchBridge.writeShortcutAsync(
+                            a, container, req.gameName, req.exePath, req.coverUrl,
+                        ) { success, message ->
+                            addResult = AddShortcutResult(req.gameName, success, message)
+                        }
+                    },
+                )
+            }
+
+            addResult?.let { result ->
+                AddResultDialog(
+                    result = result,
+                    onOpenShortcuts = {
+                        addResult = null
+                        activity?.let { openShortcutsScreen(it) }
+                    },
+                    onDismiss = { addResult = null },
+                )
+            }
+
+            uninstallingName?.let { UninstallProgressDialog(it) }
+        }
     }
 }
 

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -83,6 +84,17 @@ fun FriendProfileScreen(
     onInvite: () -> Unit,
     onRemove: () -> Unit,
     onViewOnSteam: () -> Unit,
+    /**
+     * Force the single-column layout regardless of device orientation.
+     *
+     * REQUIRED when this screen is embedded in a pane that is already a fraction of the window —
+     * the storefront's Friends tab renders it in a ~70% right pane. Without it the screen re-derives
+     * "landscape" from [LocalConfiguration] (which still reports the whole DEVICE as landscape) and
+     * splits itself a second time, producing three columns and a dead half-panel with the loading
+     * spinner marooned in it. Any screen embedded in a pane needs the same treatment: decide the
+     * layout from the space you were GIVEN, never from the device.
+     */
+    forceSingleColumn: Boolean = false,
 ) {
     var profile by remember(friend.steamId) { mutableStateOf<SteamFriendsStore.FriendProfile?>(null) }
     var loading by remember(friend.steamId) { mutableStateOf(true) }
@@ -93,7 +105,8 @@ fun FriendProfileScreen(
     }
 
     val configuration = LocalConfiguration.current
-    val landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
+    val landscape = !forceSingleColumn &&
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
         configuration.screenWidthDp >= 600
 
     Column(
@@ -407,20 +420,40 @@ private fun ActionsRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Button(onClick = onMessage, modifier = Modifier.weight(1f)) { Text("Message") }
+        // Narrow content padding + softWrap=false: inside the Friends tab's right pane these
+        // buttons are only ~110dp wide, and the defaults wrapped "Message" to "Messag / e".
+        // They now shrink their padding and ellipsize instead of ever breaking a word.
+        Button(
+            onClick = onMessage,
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+        ) { ActionLabel("Message") }
         Button(
             onClick = onInvite,
             modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
-        ) { Text("Invite") }
+        ) { ActionLabel("Invite") }
         ProfileMoreButton(onViewOnSteam, onRemove, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+/** A button label that ellipsizes rather than wrapping — see [ActionsRow]. */
+@Composable
+private fun ActionLabel(text: String) {
+    Text(
+        text = text,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+        style = MaterialTheme.typography.labelLarge,
+    )
 }
 
 // ── Sections ────────────────────────────────────────────────────────────────────────
@@ -584,11 +617,15 @@ private fun PrivacyNote() {
 
 @Composable
 private fun LoadingBlock() {
+    // heightIn, not just padding: this is the only thing in the pane while the profile loads, so it
+    // takes enough height to read as centred instead of hugging the top under the hero.
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 48.dp),
+            .heightIn(min = 220.dp)
+            .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(14.dp))

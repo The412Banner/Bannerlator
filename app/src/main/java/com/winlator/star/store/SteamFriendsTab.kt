@@ -44,14 +44,20 @@ import androidx.compose.ui.unit.dp
  * pieces under the storefront's chrome and adds the prototype's All / Online / In-Game chips, which
  * the standalone screen never had.
  *
- * Portrait mirrors the standalone flow: roster → profile → chat, each a full-screen push with back
- * stepping down one level.
+ * **Tap opens the chat; the profile is opt-in from the long-press menu.** Messaging is the primary
+ * thing anyone comes to a friends list to do, so it gets the tap; reading a profile is the rarer
+ * act and costs a long-press → View profile.
  *
- * Landscape is the master-detail the requirement asks for: the roster docks to a ~30% left pane and
- * the selected friend's **profile** fills the right — a friend profile is a read, and reading it
- * shouldn't cost you the list. Tapping Message inside it swaps the right pane to the chat, and back
- * returns to the profile. (`SteamFriendsActivity`'s own [FriendsTwoPane] stays as it was, chat-first;
- * it is a chat screen, this is a browse screen.)
+ * Portrait pushes that detail full-screen, so back returns to the roster you came from.
+ *
+ * Landscape is master-detail: the roster docks to a ~32% left pane and the detail fills the right.
+ * That pane has exactly **two** states — [FriendPane.CHAT] (default) and [FriendPane.PROFILE] — and
+ * never a third column. Backing out of the profile returns to that friend's chat rather than
+ * dropping the selection, so the profile can't strand you away from the conversation; backing out
+ * of the chat leaves the detail entirely. The embedded [FriendProfileScreen] is passed
+ * `forceSingleColumn` because it lives in a pane, not on a device — a screen must lay itself out
+ * from the space it was *given*, never from the device orientation, or it re-splits an already
+ * split pane. (`SteamFriendsActivity`'s own [FriendsTwoPane] is unchanged.)
  */
 @Composable
 fun SteamFriendsTab(
@@ -65,8 +71,12 @@ fun SteamFriendsTab(
 
     var filter by remember { mutableStateOf(FriendPresenceFilter.ALL) }
     LaunchedEffect(filter) { StorefrontLog.i(StorefrontLog.FRIENDS, "presence filter -> ${filter.name}") }
+
+    // The right pane (landscape) / the pushed screen (portrait) has exactly TWO states, never three
+    // columns: CHAT is the default because messaging is the primary action, and PROFILE is opt-in
+    // from the long-press menu. `selected == null` means neither is showing.
     var selected by remember { mutableStateOf<SteamFriendsStore.SteamFriend?>(null) }
-    var chatting by remember { mutableStateOf(false) }
+    var pane by remember { mutableStateOf(FriendPane.CHAT) }
 
     // Pull a fresh roster whenever the session goes live AND the feature is on — the same trigger
     // SteamFriendsRoot uses, so opening this tab behaves exactly like opening the standalone screen.
@@ -87,46 +97,71 @@ fun SteamFriendsTab(
         return
     }
 
-    val closeChat = {
-        SteamFriendsStore.closeChat()
-        chatting = false
+    // TAP = chat. This is the whole point of the tab: FriendRow's onClick already routes to
+    // onOpenChat and its long-press to the actions menu (which offers View profile), so the roster
+    // needed no change — only these two handlers, which previously both landed on the profile.
+    val openChat: (SteamFriendsStore.SteamFriend) -> Unit = {
+        selected = it
+        pane = FriendPane.CHAT
+        StorefrontLog.i(StorefrontLog.FRIENDS, "open CHAT with ${StorefrontLog.sid(it.steamId)}")
     }
+    val openProfile: (SteamFriendsStore.SteamFriend) -> Unit = {
+        selected = it
+        pane = FriendPane.PROFILE
+        // The chat stops being visible, so let unread counting resume for this friend.
+        SteamFriendsStore.closeChat()
+        StorefrontLog.i(StorefrontLog.FRIENDS, "open PROFILE of ${StorefrontLog.sid(it.steamId)}")
+    }
+    /** Leave the detail entirely (clears the roster selection and the active chat). */
+    val clearSelection = {
+        SteamFriendsStore.closeChat()
+        selected = null
+        pane = FriendPane.CHAT
+    }
+    /** From the profile, back to that friend's chat — the "clear way back" in the same pane. */
+    val backToChat = { pane = FriendPane.CHAT }
 
     if (wide) {
-        // Back closes the chat first (returning to the profile), then clears the selection.
-        BackHandler(enabled = chatting || selected != null) {
-            if (chatting) closeChat() else selected = null
+        // PROFILE steps back to CHAT (same pane); CHAT steps out of the detail altogether.
+        BackHandler(enabled = selected != null) {
+            if (pane == FriendPane.PROFILE) backToChat() else clearSelection()
         }
         Row(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             Column(
-                modifier = Modifier.weight(0.30f).fillMaxHeight().focusGroup(),
+                modifier = Modifier.weight(0.32f).fillMaxHeight().focusGroup(),
             ) {
                 FriendsTabHeader(total = friends.size, filter = filter, onFilter = { filter = it })
                 FriendsListBody(
                     available = available,
                     selectedFriendId = selected?.steamId,
                     showFilter = true,
-                    onOpenChat = { selected = it; chatting = false },
-                    onOpenProfile = { selected = it; chatting = false },
+                    onOpenChat = openChat,
+                    onOpenProfile = openProfile,
                     modifier = Modifier.fillMaxSize(),
                     presenceFilter = filter,
                 )
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
-            Box(modifier = Modifier.weight(0.70f).fillMaxHeight().focusGroup()) {
+            Box(modifier = Modifier.weight(0.68f).fillMaxHeight().focusGroup()) {
                 val friend = selected
                 when {
                     friend == null -> EmptyDetailPane()
-                    chatting -> ChatScreen(friend = friend, onBack = closeChat, showBackButton = true)
-                    else -> FriendDetail(friend, onOpenChat = { chatting = true }, onMessage = onMessage)
+                    pane == FriendPane.PROFILE -> FriendDetail(
+                        friend = friend,
+                        // Both the back arrow and Message return to the chat, so the profile can
+                        // never strand the user away from the conversation.
+                        onBack = backToChat,
+                        onOpenChat = backToChat,
+                        onMessage = onMessage,
+                    )
+                    else -> ChatScreen(friend = friend, onBack = clearSelection, showBackButton = true)
                 }
             }
         }
     } else {
         val friend = selected
-        BackHandler(enabled = friend != null) {
-            if (chatting) closeChat() else selected = null
-        }
+        // Portrait pushes full-screen, so back from EITHER state returns to the roster.
+        BackHandler(enabled = friend != null) { clearSelection() }
         Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             when {
                 friend == null -> {
@@ -135,23 +170,26 @@ fun SteamFriendsTab(
                         available = available,
                         selectedFriendId = null,
                         showFilter = false,
-                        onOpenChat = { selected = it; chatting = true },
-                        onOpenProfile = { selected = it; chatting = false },
+                        onOpenChat = openChat,
+                        onOpenProfile = openProfile,
                         modifier = Modifier.fillMaxSize().focusGroup(),
                         presenceFilter = filter,
                     )
                 }
-                chatting -> ChatScreen(friend = friend, onBack = closeChat, showBackButton = true)
-                else -> FriendDetail(
+                pane == FriendPane.PROFILE -> FriendDetail(
                     friend = friend,
-                    onOpenChat = { chatting = true },
+                    onBack = clearSelection,
+                    onOpenChat = backToChat,
                     onMessage = onMessage,
-                    onBack = { selected = null },
                 )
+                else -> ChatScreen(friend = friend, onBack = clearSelection, showBackButton = true)
             }
         }
     }
 }
+
+/** The two states the friend detail can be in. Deliberately not a third column — see [SteamFriendsTab]. */
+private enum class FriendPane { CHAT, PROFILE }
 
 /**
  * The existing [FriendProfileScreen], wired to this tab's navigation. Its own back arrow is
@@ -169,6 +207,9 @@ private fun FriendDetail(
         friend = friend,
         onBack = onBack,
         onMessage = onOpenChat,
+        // We are ALREADY inside a pane. Without this the screen reads the device orientation, still
+        // sees "landscape", and splits itself again — three columns and a dead half-panel.
+        forceSingleColumn = true,
         // Game/lobby invites still aren't wired to the CM — same honest stub the standalone
         // screen shows, routed through the storefront's message bar instead of a Toast.
         onInvite = { onMessage("Game invites are coming soon") },

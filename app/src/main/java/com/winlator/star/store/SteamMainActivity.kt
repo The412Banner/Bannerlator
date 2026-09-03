@@ -518,41 +518,79 @@ private fun StorefrontRail(
  *  content pane the rest of a 821dp landscape screen. */
 private val RAIL_WIDTH = 96.dp
 
-/** Colour-only connection state for the rail; taps through to reconnect when the state allows. */
+/**
+ * Connection state for the rail: a colour dot over a SHORT word.
+ *
+ * A bare dot tested badly — at a glance it doesn't read as "Steam connection". The full
+ * [SteamStatusPill] is the other extreme: its longest label ("Signed in elsewhere") wraps to three
+ * lines inside a 96dp rail, which is why the rail dropped it in the first place. So the label here
+ * is a deliberately short synonym that fits on one line at [RAIL_WIDTH], while the untruncated
+ * wording stays in the content description for accessibility and for the tap target's tooltip.
+ */
 @Composable
 private fun RailStatusDot(status: SteamRepository.SteamStatus, onReconnect: () -> Unit) {
-    val (color, label, tappable) = when (status) {
+    // short = fits 96dp on one line; spoken = what a screen reader / long-press announces.
+    val (color, short, spoken, tappable) = when (status) {
         SteamRepository.SteamStatus.ONLINE ->
-            Triple(MaterialTheme.colorScheme.primary, "Steam: online", false)
+            RailStatus(MaterialTheme.colorScheme.primary, "Online", "Steam: online", false)
         SteamRepository.SteamStatus.CONNECTING ->
-            Triple(MaterialTheme.colorScheme.onSurfaceVariant, "Steam: connecting", false)
+            RailStatus(MaterialTheme.colorScheme.onSurfaceVariant, "Connecting", "Steam: connecting", false)
         SteamRepository.SteamStatus.PAUSED_FOR_GAME ->
-            Triple(MaterialTheme.colorScheme.onSurfaceVariant, "Steam: paused for a game", false)
+            RailStatus(MaterialTheme.colorScheme.onSurfaceVariant, "Paused", "Steam: paused while a game holds the session", false)
         SteamRepository.SteamStatus.SIGNED_IN_ELSEWHERE ->
-            Triple(MaterialTheme.colorScheme.error, "Steam: signed in elsewhere — tap to reconnect", true)
+            RailStatus(MaterialTheme.colorScheme.error, "Elsewhere", "Steam: signed in elsewhere — tap to reconnect", true)
         SteamRepository.SteamStatus.OFFLINE ->
-            Triple(MaterialTheme.colorScheme.error, "Steam: offline — tap to reconnect", true)
+            RailStatus(MaterialTheme.colorScheme.error, "Offline", "Steam: offline — tap to reconnect", true)
         SteamRepository.SteamStatus.SIGNED_OUT ->
-            Triple(MaterialTheme.colorScheme.onSurfaceVariant, "Steam: signed out", false)
+            RailStatus(MaterialTheme.colorScheme.onSurfaceVariant, "Signed out", "Steam: signed out", false)
     }
+
+    val shape = RoundedCornerShape(10.dp)
     val base = Modifier
-        .steamFocusRing(CircleShape)
-        .size(22.dp)
-        .clip(CircleShape)
+        .steamFocusRing(shape)
+        .clip(shape)
         .background(MaterialTheme.colorScheme.surfaceContainer)
-    Box(
+    Column(
         modifier = (if (tappable) base.clickable(onClick = onReconnect) else base)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .semantics { contentDescription = spoken },
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
-                .size(10.dp)
+                .size(9.dp)
                 .clip(CircleShape)
                 .background(color),
         )
+        Text(
+            text = short,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 3.dp),
+        )
+        if (tappable) {
+            Text(
+                text = "Reconnect",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
+
+/** Destructurable carrier for [RailStatusDot]'s per-state values (a Triple ran out of slots). */
+private data class RailStatus(
+    val color: androidx.compose.ui.graphics.Color,
+    val short: String,
+    val spoken: String,
+    val tappable: Boolean,
+)
 
 /**
  * The rail's tail: view toggle, Save Manager, friends-and-chat settings and Sign out behind one

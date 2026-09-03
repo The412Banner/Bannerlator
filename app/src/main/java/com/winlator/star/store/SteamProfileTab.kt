@@ -35,6 +35,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -252,35 +253,41 @@ private fun ProfileTabPortrait(c: ProfileTabContent) {
 }
 
 /**
- * Landscape: the two-column split the requirement asks for and `ProfileLandscape` already models —
- * identity + status on the left (the things you *change*), stats + badges + recently played on the
- * right (the things you *read*). Both panes scroll independently and are separate focus groups, so
- * a D-pad moves within a pane and crosses over with LEFT/RIGHT.
+ * Landscape: two columns that both carry their weight.
+ *
+ * The first cut put only the identity card and the status chips on the left, which left roughly
+ * 600px of dead space under them at 821x390dp while the right column did all the work. The tiles
+ * moved across: everything that describes WHO you are — identity, status, the four stat tiles, and
+ * the showcase when it has art — now groups on the left, and Recently Played owns the right column
+ * at full height, which is the one section that genuinely scrolls.
  */
 @Composable
 private fun ProfileTabLandscape(c: ProfileTabContent) {
     Row(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .weight(0.40f)
+                .weight(0.46f)
                 .fillMaxHeight()
                 .verticalScroll(rememberScrollState())
                 .focusGroup(),
         ) {
             IdentityCard(c)
             StatusChips(c)
+            StatTiles(c)
+            // Hidden when nothing resolves art (see BadgesRail) — which is exactly why this column
+            // looked empty before the stat tiles moved over.
+            BadgesRail(c)
             Spacer(Modifier.height(16.dp))
         }
+        VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
         Column(
             modifier = Modifier
-                .weight(0.60f)
+                .weight(0.54f)
                 .fillMaxHeight()
                 .verticalScroll(rememberScrollState())
                 .focusGroup(),
         ) {
-            StatTiles(c)
-            BadgesRail(c)
-            RecentlyPlayedList(c)
+            RecentlyPlayedList(c, fillsPane = true)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -800,16 +807,32 @@ private fun BadgeTile(
  * not drawn rather than claiming anything.
  */
 @Composable
-private fun RecentlyPlayedList(c: ProfileTabContent) {
+private fun RecentlyPlayedList(c: ProfileTabContent, fillsPane: Boolean = false) {
+    // In landscape this section IS the right column, so its loading and empty states have to fill
+    // the pane rather than collapsing to nothing and leaving a blank half-screen.
+    val paneBox = if (fillsPane) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+
     if (c.loading && c.profile == null) {
         Box(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+            modifier = paneBox.padding(vertical = 32.dp),
             contentAlignment = Alignment.Center,
         ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         return
     }
     val games = c.profile?.recentGames.orEmpty()
-    if (games.isEmpty()) return
+    if (games.isEmpty()) {
+        if (!fillsPane) return
+        // `gamesPublic == false` is indistinguishable from "owns nothing" over the wire, so the
+        // copy commits to neither.
+        Box(modifier = paneBox, contentAlignment = Alignment.Center) {
+            StoreNotice(
+                title = "No recent play data",
+                body = "Steam only shares playtime when your game details are public. " +
+                    "Anything you've played recently will show up here once it does.",
+            )
+        }
+        return
+    }
 
     StoreSectionHeader("Recently Played", "By playtime")
     Column(

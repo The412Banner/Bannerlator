@@ -191,6 +191,23 @@ object SteamPrefs {
         prefs.edit().putBoolean(K_CHAT_SOUND, v).apply()
     }
 
+    // ── Library type filter (All / Games / Demos) ─────────────────────────────
+    private const val K_LIBRARY_TYPE_FILTER = "steam_library_type_filter"
+
+    /**
+     * The Library tab's type chip, as a [LibraryTypeFilter] name. Default "GAMES" so an update
+     * never silently adds demos to an existing user's library — the filter is opt-in.
+     */
+    fun getLibraryTypeFilter(ctx: Context): String {
+        init(ctx)
+        return prefs.getString(K_LIBRARY_TYPE_FILTER, "GAMES") ?: "GAMES"
+    }
+
+    fun setLibraryTypeFilter(ctx: Context, v: String) {
+        init(ctx)
+        prefs.edit().putString(K_LIBRARY_TYPE_FILTER, v).apply()
+    }
+
     // ── Master opt-in for the whole friends/chat feature (default OFF) ────────
     // The friends list, presence sharing and chat are OFF until the user opts in. Default FALSE so a
     // brand-new sign-in shows the store working with the social side dormant (no online status shared)

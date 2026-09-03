@@ -214,8 +214,38 @@ fun StoreNotice(
 // ── Capsule art ───────────────────────────────────────────────────────────────────────────────
 
 /**
- * The 92:43 store capsule (`header.jpg`) for [appId]. Falls back to a themed placeholder with the
- * title so a delisted / art-less app still reads, exactly as the prototype's `.ph` fallback does.
+ * Ordered capsule-art candidates for [appId], best first.
+ *
+ * ## Why a chain and not one URL
+ * [SteamStoreSearch.headerUrl] builds `cdn.akamai.steamstatic.com/steam/apps/<id>/header.jpg` —
+ * Steam's LEGACY host. It resolves for older titles and 404s for recent ones (device log: ~20
+ * misses, every one a 3-5M appId, i.e. a 2024+ release). That helper is SHARED with
+ * `GameFolderScanner` and `ShortcutsScreen`, so its semantics are deliberately left alone; the
+ * storefront layers a chain on top instead.
+ *
+ * Order:
+ *  1. [apiUrl] — the image URL Steam's own `featuredcategories` / search response handed us. Always
+ *     correct when present, because Steam built it.
+ *  2. `shared.cloudflare.steamstatic.com` — the modern host, same path shape [SteamGame.headerUrl]
+ *     already uses successfully for owned games.
+ *  3. `shared.fastly.steamstatic.com` — the other modern edge, for when Cloudflare misses.
+ *  4. The legacy akamai URL, last, so anything only present on the old host still resolves.
+ */
+internal fun capsuleCandidates(appId: Int, apiUrl: String? = null): List<String> = buildList {
+    apiUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
+    if (appId > 0) {
+        add("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg")
+        add("https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg")
+        add(SteamStoreSearch.headerUrl(appId))
+    }
+}.distinct()
+
+/**
+ * The 92:43 store capsule for [appId]. Walks [capsuleCandidates] on each load failure and settles on
+ * the themed placeholder (icon + title) only once every candidate is exhausted — so a delisted or
+ * art-less app still reads, exactly as the prototype's `.ph` fallback does.
+ *
+ * [apiUrl] is the image URL Steam's own API returned for this item, when the caller has one.
  */
 @Composable
 fun StoreCapsule(
@@ -223,7 +253,12 @@ fun StoreCapsule(
     title: String,
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(0.dp),
+    apiUrl: String? = null,
 ) {
+    val candidates = remember(appId, apiUrl) { capsuleCandidates(appId, apiUrl) }
+    // Index into `candidates`; == size means every one failed and only the placeholder remains.
+    var attempt by remember(candidates) { mutableStateOf(0) }
+
     Box(
         modifier = modifier
             .aspectRatio(92f / 43f)
@@ -231,7 +266,7 @@ fun StoreCapsule(
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        // Placeholder underneath: shows through until (and if) the capsule loads.
+        // Placeholder underneath: shows through until (and if) a capsule loads.
         Column(
             modifier = Modifier.padding(horizontal = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -252,21 +287,34 @@ fun StoreCapsule(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
-        AsyncImage(
-            model = SteamStoreSearch.headerUrl(appId),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-            // The themed placeholder underneath already covers the failure visually; this line is
-            // so a "why is half the store grey?" report has an answer. Fires only on a failed load.
-            onError = {
-                StorefrontLog.w(
-                    StorefrontLog.STORE,
-                    "capsule art failed for app $appId — ${it.result.throwable.javaClass.simpleName}: " +
-                        "${it.result.throwable.message}",
-                )
-            },
-        )
+        if (attempt < candidates.size) {
+            val url = candidates[attempt]
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                onError = {
+                    val next = attempt + 1
+                    if (next < candidates.size) {
+                        // Expected and uninteresting: a miss on one host with others still to try.
+                        StorefrontLog.artCandidateFailed(
+                            "app $appId: capsule candidate ${attempt + 1}/${candidates.size} missed ($url)",
+                        )
+                    } else {
+                        // Genuinely out of options — throttled to one warn per appId per session so
+                        // a CDN-wide miss can't flood logcat and evict other diagnostics.
+                        StorefrontLog.artFailed(
+                            appId,
+                            "app $appId: NO capsule art — all ${candidates.size} candidate(s) failed; " +
+                                "showing the placeholder. Last: ${it.result.throwable.javaClass.simpleName}: " +
+                                "${it.result.throwable.message}",
+                        )
+                    }
+                    attempt = next
+                },
+            )
+        }
     }
 }
 
@@ -447,7 +495,12 @@ fun StoreRailCard(
             .border(1.dp, MaterialTheme.colorScheme.outline, shape)
             .clickable(onClick = onOpen),
     ) {
-        StoreCapsule(appId = item.appId, title = item.name, modifier = Modifier.fillMaxWidth())
+        StoreCapsule(
+            appId = item.appId,
+            title = item.name,
+            modifier = Modifier.fillMaxWidth(),
+            apiUrl = item.artUrl,
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -503,6 +556,7 @@ fun StoreResultRow(
             title = item.name,
             modifier = Modifier.width(104.dp),
             shape = RoundedCornerShape(6.dp),
+            apiUrl = item.artUrl,
         )
         Column(
             modifier = Modifier.weight(1f),
@@ -559,7 +613,12 @@ fun StoreHeroCard(
             .border(1.dp, MaterialTheme.colorScheme.outline, shape)
             .clickable(onClick = onOpen),
     ) {
-        StoreCapsule(appId = item.appId, title = item.name, modifier = Modifier.fillMaxWidth())
+        StoreCapsule(
+            appId = item.appId,
+            title = item.name,
+            modifier = Modifier.fillMaxWidth(),
+            apiUrl = item.artUrl,
+        )
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)

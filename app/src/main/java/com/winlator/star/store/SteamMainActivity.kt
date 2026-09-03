@@ -9,12 +9,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,8 +22,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -38,11 +41,12 @@ import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Tab
@@ -61,9 +65,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.ui.theme.LocalAccentDim
@@ -400,13 +408,26 @@ private fun StorefrontTabRow(
 }
 
 /**
- * Landscape: a Material [NavigationRail] on the left. Selected item = accent icon/label over the
- * dim-accent indicator ([LocalAccentDim]), so the whole rail follows a user-picked accent.
+ * Landscape: the left navigation rail.
  *
- * The rail is one focus group, and `focusProperties { right = contentFocus }` is set on it so a
- * D-pad RIGHT anywhere in the rail enters the content pane instead of dead-ending. Coming back is
- * left to the default 2D focus search, which finds the rail without an explicit override that
- * could trap focus inside a pane.
+ * ## Why this is a bounded Column and not a bare [NavigationRail]
+ * Material3's `NavigationRail` sizes itself `widthIn(min = 80.dp)` — a MINIMUM, not a fixed width.
+ * Placed unweighted in a `Row`, it is measured against the FULL available width, so ANY
+ * `fillMaxWidth()` descendant expands it to the whole screen. A `HorizontalDivider` (which defaults
+ * to `fillMaxWidth()`) did exactly that on device: the rail took all 821dp, the `weight(1f)` content
+ * pane got zero, and the symptom was a full-width divider with centred items and no content — with
+ * no crash and no exception to point at.
+ *
+ * So the rail gets an EXPLICIT [RAIL_WIDTH]. `Modifier.width` sets exact constraints, which makes
+ * the whole class of bug impossible: nothing inside can inflate it, today or after a later edit.
+ *
+ * ## Why it scrolls
+ * A handheld in landscape is ~390dp tall. Status + four tabs + a divider + the action icons do not
+ * fit in that, so the rail scrolls as a whole and the secondary actions fold into an overflow menu
+ * ([RailOverflow]) — otherwise the tail is simply unreachable.
+ *
+ * The rail is one focus group, and `focusProperties { right = contentFocus }` sends a D-pad RIGHT
+ * into the content pane instead of dead-ending. Coming back is left to the default 2D focus search.
  */
 @Composable
 private fun StorefrontRail(
@@ -419,32 +440,36 @@ private fun StorefrontRail(
     onSignOut: () -> Unit,
     contentFocus: FocusRequester,
 ) {
-    NavigationRail(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        // The host root already applies systemBars + displayCutout padding; NavigationRail's
-        // default windowInsets would inset a second time and shove the rail down the screen.
-        windowInsets = WindowInsets(0),
+    Column(
         modifier = Modifier
+            // EXACT width — see the note above. Do not replace with widthIn/wrapContentWidth.
+            .width(RAIL_WIDTH)
             .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .focusGroup()
             .focusProperties { right = contentFocus },
-        header = {
-            Spacer(Modifier.height(4.dp))
-            SteamStatusPill(status = library.steamStatus, onReconnect = library.reconnect)
-        },
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(6.dp))
+        // A compact status dot, not the full SteamStatusPill: the pill's label ("Signed in
+        // elsewhere") would wrap to three lines inside a 96dp rail. The pill still carries the
+        // wording in portrait's top bar; here the dot keeps the colour and the reconnect tap.
+        RailStatusDot(status = library.steamStatus, onReconnect = library.reconnect)
+        Spacer(Modifier.height(8.dp))
+
         SteamTab.values().forEach { t ->
+            val n = counts[t]?.takeIf { it > 0 }
             NavigationRailItem(
                 selected = tab == t,
                 onClick = { onSelect(t) },
                 icon = { Icon(t.icon, contentDescription = t.label) },
                 label = {
-                    val n = counts[t]?.takeIf { it > 0 }
                     Text(
                         text = if (n != null) "${t.label} ($n)" else t.label,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
@@ -460,26 +485,143 @@ private fun StorefrontRail(
             )
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         HorizontalDivider(
+            // Explicit width rather than the fillMaxWidth() default. Belt-and-braces: the Column's
+            // exact width already contains it, but this is the modifier that caused the bug.
+            modifier = Modifier.width(RAIL_WIDTH - 24.dp),
             thickness = 1.dp,
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.padding(horizontal = 12.dp),
         )
-        // The action icons the old Steam Library header carried, stacked into the rail's tail so
-        // landscape keeps every one of them without a second bar eating vertical space.
-        Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            StorefrontActions(
-                library = library,
-                viewMode = viewMode,
-                onToggleView = onToggleView,
-                onSignOut = onSignOut,
-                vertical = true,
+        Spacer(Modifier.height(4.dp))
+
+        // The two actions worth a permanent slot; everything else is one tap deeper in the
+        // overflow, which is what buys back the vertical space on a 390dp-tall screen.
+        IconButton(onClick = library.refresh, modifier = Modifier.steamFocusRing()) {
+            Icon(
+                Icons.Filled.Refresh,
+                contentDescription = "Refresh library",
+                tint = MaterialTheme.colorScheme.primary,
             )
         }
+        DownloadsButton()
+        RailOverflow(
+            viewMode = viewMode,
+            onToggleView = onToggleView,
+            onSignOut = onSignOut,
+        )
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Fixed rail width. Wide enough for "Library (12)" at labelSmall, narrow enough to leave the
+ *  content pane the rest of a 821dp landscape screen. */
+private val RAIL_WIDTH = 96.dp
+
+/** Colour-only connection state for the rail; taps through to reconnect when the state allows. */
+@Composable
+private fun RailStatusDot(status: SteamRepository.SteamStatus, onReconnect: () -> Unit) {
+    val (color, label, tappable) = when (status) {
+        SteamRepository.SteamStatus.ONLINE ->
+            Triple(MaterialTheme.colorScheme.primary, "Steam: online", false)
+        SteamRepository.SteamStatus.CONNECTING ->
+            Triple(MaterialTheme.colorScheme.onSurfaceVariant, "Steam: connecting", false)
+        SteamRepository.SteamStatus.PAUSED_FOR_GAME ->
+            Triple(MaterialTheme.colorScheme.onSurfaceVariant, "Steam: paused for a game", false)
+        SteamRepository.SteamStatus.SIGNED_IN_ELSEWHERE ->
+            Triple(MaterialTheme.colorScheme.error, "Steam: signed in elsewhere — tap to reconnect", true)
+        SteamRepository.SteamStatus.OFFLINE ->
+            Triple(MaterialTheme.colorScheme.error, "Steam: offline — tap to reconnect", true)
+        SteamRepository.SteamStatus.SIGNED_OUT ->
+            Triple(MaterialTheme.colorScheme.onSurfaceVariant, "Steam: signed out", false)
+    }
+    val base = Modifier
+        .steamFocusRing(CircleShape)
+        .size(22.dp)
+        .clip(CircleShape)
+        .background(MaterialTheme.colorScheme.surfaceContainer)
+    Box(
+        modifier = (if (tappable) base.clickable(onClick = onReconnect) else base)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+    }
+}
+
+/**
+ * The rail's tail: view toggle, Save Manager, friends-and-chat settings and Sign out behind one
+ * overflow. Six stacked 48dp icons cost ~288dp of a ~390dp landscape screen; this costs 48dp.
+ */
+@Composable
+private fun RailOverflow(
+    viewMode: String,
+    onToggleView: () -> Unit,
+    onSignOut: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    var showSocialSettings by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.steamFocusRing()) {
+            Icon(
+                Icons.Filled.MoreVert,
+                contentDescription = "More Steam actions",
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(if (viewMode == "grid") "Library list view" else "Library grid view") },
+                leadingIcon = {
+                    Icon(
+                        if (viewMode == "grid") Icons.Filled.ViewList else Icons.Filled.GridView,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                onClick = { expanded = false; onToggleView() },
+            )
+            DropdownMenuItem(
+                text = { Text("Save Manager") },
+                leadingIcon = {
+                    Icon(Icons.Filled.CloudSync, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                },
+                onClick = {
+                    expanded = false
+                    runCatching { ctx.startActivity(Intent(ctx, SteamSaveManagerActivity::class.java)) }
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Friends & chat settings") },
+                leadingIcon = {
+                    Icon(Icons.Filled.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                },
+                onClick = { expanded = false; showSocialSettings = true },
+            )
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
+            DropdownMenuItem(
+                text = { Text("Sign out", color = MaterialTheme.colorScheme.error) },
+                leadingIcon = {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                },
+                onClick = { expanded = false; onSignOut() },
+            )
+        }
+    }
+
+    if (showSocialSettings) {
+        SteamSocialSettingsSheet(onDismiss = { showSocialSettings = false })
     }
 }
 
@@ -509,14 +651,14 @@ private fun StorefrontTopBar(
             viewMode = viewMode,
             onToggleView = onToggleView,
             onSignOut = onSignOut,
-            vertical = false,
         )
     }
 }
 
 /**
- * Refresh / Save Manager / Downloads / Friends-and-chat settings / Sign out — the five actions the
- * old header had, laid out horizontally in portrait and stacked in the rail in landscape.
+ * PORTRAIT ONLY: the action strip the old Steam Library header carried, laid out horizontally.
+ * Landscape has its own arrangement (two icons plus [RailOverflow]) because six stacked 48dp icons
+ * do not fit a ~390dp-tall rail.
  */
 @Composable
 private fun StorefrontActions(
@@ -524,7 +666,6 @@ private fun StorefrontActions(
     viewMode: String,
     onToggleView: () -> Unit,
     onSignOut: () -> Unit,
-    vertical: Boolean,
 ) {
     val ctx = LocalContext.current
     var showSocialSettings by remember { mutableStateOf(false) }
@@ -556,11 +697,7 @@ private fun StorefrontActions(
         }
     }
 
-    if (vertical) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { items() }
-    } else {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) { items() }
-    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) { items() }
 
     if (showSocialSettings) {
         SteamSocialSettingsSheet(onDismiss = { showSocialSettings = false })

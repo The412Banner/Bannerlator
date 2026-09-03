@@ -53,6 +53,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -446,7 +448,14 @@ private fun PersonaNameField(
     )
 }
 
-/** The accent-ringed level pill from the prototype. Accent, never a baked gold/blue. */
+/**
+ * The accent-ringed level pill from the prototype — the STEAM ACCOUNT level. Accent, never a baked
+ * gold/blue.
+ *
+ * Deliberately carries a spelled-out content description: the Badges rail shows a per-badge level
+ * that is a different number, and on device the bare "22" beside an account level of 12 read as a
+ * contradiction. The badge tile says "Badge level N"; this one announces "Steam account level N".
+ */
 @Composable
 private fun LevelChip(level: Int) {
     Box(
@@ -454,7 +463,8 @@ private fun LevelChip(level: Int) {
             .clip(CircleShape)
             .background(LocalAccentDim.current)
             .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-            .padding(horizontal = 7.dp, vertical = 2.dp),
+            .padding(horizontal = 7.dp, vertical = 2.dp)
+            .semantics { contentDescription = "Steam account level $level" },
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -673,7 +683,23 @@ private fun BadgesRail(c: ProfileTabContent) {
         equipped.profileModifier?.let { it to "Profile modifier" },
         equipped.steamDeckKeyboardSkin?.let { it to "Keyboard skin" },
     )
-    if (badge == null && equippedTiles.isEmpty()) return
+
+    // A showcased badge only earns a tile when we can actually draw something.
+    //
+    // The badge payload is badgeId / communityItemId / appId / level — it does NOT carry an icon
+    // URL, and real badge art lives at a per-item hash we have no RPC to resolve. For a GAME badge
+    // (appId > 0) the game's own capsule is honest art for it, labelled as the game's badge. For a
+    // non-game badge (Years of Service, sale badges — appId == 0) there is nothing truthful to
+    // draw, so the tile is omitted instead of rendering the empty box the device build showed.
+    val badgeArt = if (badge != null && badge.appId > 0) capsuleCandidates(badge.appId) else emptyList()
+    if (badge != null && badgeArt.isEmpty()) {
+        StorefrontLog.i(
+            StorefrontLog.PROFILE,
+            "showcased badge present (badgeId=${badge.badgeId}, level=${badge.level}) but appId=0 — " +
+                "no resolvable art, tile omitted",
+        )
+    }
+    if (badgeArt.isEmpty() && equippedTiles.isEmpty()) return
 
     StoreSectionHeader("Badges & Showcase", "Showcased on your profile")
     LazyRow(
@@ -681,27 +707,46 @@ private fun BadgesRail(c: ProfileTabContent) {
         contentPadding = PaddingValues(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        if (badge != null) {
+        if (badge != null && badgeArt.isNotEmpty()) {
             item(key = "favorite_badge") {
                 BadgeTile(
-                    imageUrl = if (badge.appId > 0) SteamStoreSearch.headerUrl(badge.appId) else null,
-                    caption = if (badge.level > 0) "Badge · Level ${badge.level}" else "Showcased badge",
-                    onClick = if (badge.appId > 0) ({ c.onOpenApp(badge.appId) }) else null,
+                    candidates = badgeArt,
+                    caption = "Game badge",
+                    // Explicitly "Badge level": this is the level of THIS badge, which is a
+                    // different number from the account level in the chip beside the persona name.
+                    // The device build showed "Level 22" here next to an account level of 12 and
+                    // read as a contradiction.
+                    sub = if (badge.level > 0) "Badge level ${badge.level}" else null,
+                    onClick = { c.onOpenApp(badge.appId) },
                 )
             }
         }
         items(equippedTiles, key = { it.second }) { (item, label) ->
             BadgeTile(
-                imageUrl = item.imageUrl(large = false),
+                candidates = listOfNotNull(item.imageUrl(large = false), item.imageUrl(large = true)),
                 caption = item.itemTitle ?: item.name ?: label,
+                sub = null,
                 onClick = null,
             )
         }
     }
 }
 
+/**
+ * One showcase tile. Walks [candidates] on load failure and — once they are all exhausted — removes
+ * ITSELF rather than leaving the empty bordered square the device build rendered. A tile that can't
+ * show its art has nothing to say.
+ */
 @Composable
-private fun BadgeTile(imageUrl: String?, caption: String, onClick: (() -> Unit)?) {
+private fun BadgeTile(
+    candidates: List<String>,
+    caption: String,
+    sub: String?,
+    onClick: (() -> Unit)?,
+) {
+    var attempt by remember(candidates) { mutableStateOf(0) }
+    if (candidates.isEmpty() || attempt >= candidates.size) return
+
     val shape = RoundedCornerShape(10.dp)
     Column(
         modifier = Modifier
@@ -717,14 +762,13 @@ private fun BadgeTile(imageUrl: String?, caption: String, onClick: (() -> Unit)?
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 .border(1.dp, MaterialTheme.colorScheme.outline, shape),
         ) {
-            if (imageUrl != null) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(shape),
-                )
-            }
+            AsyncImage(
+                model = candidates[attempt],
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(shape),
+                onError = { attempt += 1 },
+            )
         }
         Text(
             text = caption,
@@ -735,6 +779,16 @@ private fun BadgeTile(imageUrl: String?, caption: String, onClick: (() -> Unit)?
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 5.dp),
         )
+        if (sub != null) {
+            Text(
+                text = sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

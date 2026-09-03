@@ -57,9 +57,14 @@ object SteamStoreCatalog {
         val isFree: Boolean,
         /** Short "Genre · Genre" line for the search rows; blank when we never fetched details. */
         val tags: String = "",
+        /**
+         * The capsule image URL Steam's OWN response carried for this item, or null when the
+         * response had none. Always preferred over building one from [appId]: the app-id route
+         * hard-codes a CDN host, and the legacy host 404s for recent releases. See
+         * `capsuleCandidates` for the full fallback order.
+         */
+        val artUrl: String? = null,
     ) {
-        /** 460x215 store capsule — the 92:43 art the cards are laid out around. */
-        val capsuleUrl: String get() = SteamStoreSearch.headerUrl(appId)
 
         val hasPrice: Boolean get() = finalCents != PRICE_UNKNOWN
         val isDiscounted: Boolean get() = discountPercent > 0 && originalCents > finalCents
@@ -71,9 +76,10 @@ object SteamStoreCatalog {
      *
      * Rail sourcing (honest mapping, since `featuredcategories` has no "free" category):
      *  - [newReleases] ← `new_releases`
-     *  - [topFree]     ← every zero-priced item across `top_sellers` + `new_releases` + `specials`
-     *                    (CS2, Dota 2, Apex … are perennial top sellers), de-duplicated. Empty is
-     *                    a normal outcome and simply hides the rail.
+     *  - [topFree]     ← a dedicated `maxprice=free` store-search query ([freeGames]). Harvesting
+     *                    zero-priced items out of the other categories was tried first and returned
+     *                    exactly ONE title on device — `featuredcategories` has no free category
+     *                    worth the name. The harvest survives only as the fallback.
      *  - [specials]    ← `specials`
      *  - [hero]        ← the deepest discount in `specials`, else the first new release.
      */
@@ -89,10 +95,18 @@ object SteamStoreCatalog {
             get() = newReleases.isEmpty() && topFree.isEmpty() && specials.isEmpty()
     }
 
+    /**
+     * Below this, the "Top Free Games" rail is hidden rather than shipped as a one- or two-item row.
+     * The device build shipped a single-item rail; a rail that thin reads as broken, and an honest
+     * absence is better than a token one.
+     */
+    private const val MIN_FREE_RAIL = 4
+
     private data class Cached<T>(val at: Long, val value: T)
 
     private val featuredCache = ConcurrentHashMap<String, Cached<Featured>>()
     private val searchCache = ConcurrentHashMap<String, Cached<List<StoreItem>>>()
+    private val freeCache = ConcurrentHashMap<String, Cached<List<StoreItem>>>()
 
     /**
      * The three rails for [cc]. Served from the in-process cache while fresh; otherwise fetched.
@@ -135,12 +149,24 @@ object SteamStoreCatalog {
                 val newReleases = itemsOf(root, "new_releases")
                 val specials = itemsOf(root, "specials")
                 val topSellers = itemsOf(root, "top_sellers")
-                val free = (topSellers + newReleases + specials)
+                // The real free-games source. Falls back to harvesting zero-priced items out of
+                // the other categories, which is what produced the one-item rail on device.
+                val queried = freeGames(cc)
+                val harvested = (topSellers + newReleases + specials)
                     .filter { it.isFree }
                     .distinctBy { it.appId }
+                val free = (queried + harvested).distinctBy { it.appId }
+                if (free.size < MIN_FREE_RAIL) {
+                    StorefrontLog.i(
+                        TAG,
+                        "featured($cc): only ${free.size} free title(s) " +
+                            "(query=${queried.size}, harvest=${harvested.size}) — below the " +
+                            "$MIN_FREE_RAIL minimum, hiding the Top Free rail rather than shipping a stub",
+                    )
+                }
                 val result = Featured(
                     newReleases = newReleases.filterNot { it.isFree }.ifEmpty { newReleases },
-                    topFree = free,
+                    topFree = if (free.size >= MIN_FREE_RAIL) free else emptyList(),
                     specials = specials.filter { it.isDiscounted },
                 )
                 // An all-empty parse means Steam answered with something we don't understand —
@@ -210,6 +236,64 @@ object SteamStoreCatalog {
         }
     }
 
+    /**
+     * Top free-to-play games for [cc] via Steam's store-search backend with `maxprice=free`.
+     *
+     * `featuredcategories` genuinely has no free category — on device it yielded ONE title — so this
+     * is the rail's real source. Undocumented like the rest, hence the same contract: empty list on
+     * ANY failure, never an exception, and the Store tab stays usable without it.
+     *
+     * `category1=998` is Steam's "Games" category (excludes DLC/software/soundtracks). The response
+     * items carry no explicit appId, but `logo` is always `…/apps/<appid>/<file>`, so the id comes
+     * from there and doubles as proof of which CDN host serves that app's art.
+     */
+    private fun freeGames(cc: String): List<StoreItem> {
+        freeCache[cc]?.let { if (System.currentTimeMillis() - it.at < FEATURED_TTL_MS) return it.value }
+        val url = "https://store.steampowered.com/search/results/?query&start=0&count=30" +
+            "&maxprice=free&category1=998&supportedlang=english&cc=$cc&l=english&json=1"
+        val t0 = System.currentTimeMillis()
+        val json = SteamStoreSearch.httpGet(url)
+        val ms = System.currentTimeMillis() - t0
+        if (json.isNullOrBlank()) {
+            StorefrontLog.w(TAG, "freeGames($cc): NO RESPONSE after ${ms}ms — url=$url")
+            return emptyList()
+        }
+        return try {
+            val items = JSONObject(json).optJSONArray("items") ?: return emptyList()
+            val out = ArrayList<StoreItem>(items.length())
+            for (i in 0 until items.length()) {
+                val o = items.optJSONObject(i) ?: continue
+                val name = o.optString("name", "").takeIf { it.isNotBlank() } ?: continue
+                val logo = o.optString("logo", "")
+                val appId = APP_ID_IN_URL.find(logo)?.groupValues?.get(1)?.toIntOrNull() ?: continue
+                out.add(
+                    StoreItem(
+                        appId = appId,
+                        name = name,
+                        currency = "",
+                        // The query itself constrained this to free titles, so the price is known
+                        // without trusting the response's price shape (which varies by region).
+                        finalCents = 0,
+                        originalCents = 0,
+                        discountPercent = 0,
+                        isFree = true,
+                        artUrl = headerFromThumb(logo),
+                    ),
+                )
+            }
+            val deduped = out.distinctBy { it.appId }
+            freeCache[cc] = Cached(System.currentTimeMillis(), deduped)
+            StorefrontLog.i(TAG, "freeGames($cc): OK in ${ms}ms — ${deduped.size} free title(s)")
+            deduped
+        } catch (e: Exception) {
+            StorefrontLog.w(TAG, "freeGames($cc): MALFORMED JSON (${json.length} bytes) — ${e.javaClass.simpleName}: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /** `…/apps/<appid>/…` — the only place a store-search result exposes its appId. */
+    private val APP_ID_IN_URL = Regex("""/apps/(\d+)/""")
+
     // ── parsing ───────────────────────────────────────────────────────────────────────────────
 
     /** `featuredcategories` puts each rail under `<key>.items`; a missing/odd shape yields []. */
@@ -235,6 +319,11 @@ object SteamStoreCatalog {
         val hasPrice = o.has("final_price")
         val finalCents = if (hasPrice) o.optInt("final_price", 0) else PRICE_UNKNOWN
         val originalCents = if (o.has("original_price")) o.optInt("original_price", finalCents) else finalCents
+        // Steam hands us the art. Prefer the widest capsule (closest to the card's 92:43) and fall
+        // back through the narrower ones before letting the UI construct anything from the appId.
+        val art = sequenceOf("header_image", "large_capsule_image", "small_capsule_image", "capsule_image")
+            .map { o.optString(it, "") }
+            .firstOrNull { it.isNotBlank() }
         return StoreItem(
             appId = appId,
             name = name,
@@ -243,6 +332,7 @@ object SteamStoreCatalog {
             originalCents = originalCents,
             discountPercent = o.optInt("discount_percent", 0),
             isFree = hasPrice && finalCents == 0,
+            artUrl = art,
         )
     }
 
@@ -276,7 +366,24 @@ object SteamStoreCatalog {
             discountPercent = discount,
             isFree = free,
             tags = platformTags(o),
+            artUrl = headerFromThumb(o.optString("tiny_image", "")),
         )
+    }
+
+    /**
+     * Turn a Steam thumbnail URL into the full-size `header.jpg` on the SAME host.
+     *
+     * Search responses only carry a small capsule (`tiny_image` / `capsule_sm_120.jpg`), which is
+     * far too low-res for a 176dp card — but the URL proves which CDN host actually serves this
+     * app's art, which is exactly the fact the app-id route gets wrong. Swapping the filename keeps
+     * the good host. Null when the input doesn't look like a Steam app-art URL.
+     */
+    private fun headerFromThumb(thumb: String): String? {
+        if (thumb.isBlank()) return null
+        val base = thumb.substringBefore('?')
+        val slash = base.lastIndexOf('/')
+        if (slash <= 0) return null
+        return base.substring(0, slash + 1) + "header.jpg"
     }
 
     /** "Windows · Controller"-style hint line for a search row; blank when nothing is known. */

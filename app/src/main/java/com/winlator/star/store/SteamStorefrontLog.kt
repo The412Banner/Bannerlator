@@ -1,6 +1,8 @@
 package com.winlator.star.store
 
 import android.util.Log
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Diagnostic logging for the Steam storefront (Store / Library / Friends / Profile).
@@ -61,6 +63,28 @@ internal object StorefrontLog {
 
     /** Describe a nullable as present/absent without ever printing its contents. */
     fun has(value: Any?): String = if (value == null) "absent" else "present"
+
+    // appIds whose capsule art has already been reported this session. Steam's CDN 404s for a whole
+    // class of titles at once (see artFailed), so an un-throttled warn per card flooded logcat hard
+    // enough to EVICT the layout and license lines needed to diagnose an unrelated bug. First
+    // failure per appId stays at warn — that is what identified the wrong-CDN-host bug in the first
+    // place — and every repeat drops to debug.
+    private val reportedArtFailures: MutableSet<Int> =
+        Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
+
+    /**
+     * Report that every capsule-art candidate for [appId] failed. Warn once per appId per session,
+     * debug thereafter.
+     */
+    fun artFailed(appId: Int, msg: String) {
+        if (reportedArtFailures.add(appId)) Log.w(STORE, safe(msg))
+        else Log.d(STORE, safe(msg))
+    }
+
+    /** A single candidate URL failed but others remain — never worth a warn. */
+    fun artCandidateFailed(msg: String) {
+        Log.d(STORE, safe(msg))
+    }
 
     private fun safe(msg: String): String =
         try { SteamLogRedactor.redact(msg) } catch (_: Throwable) { msg }

@@ -254,9 +254,9 @@
         <meta-data
             android:name="android.allow_multiple_resumed_activities"
             android:value="true" />
-        <activity android:name="com.winlator.star.store.SteamMainActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity android:name="com.winlator.star.store.SteamMainActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme" android:launchMode="singleTop" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation" android:windowSoftInputMode="adjustResize"/>
         <activity android:name="com.winlator.star.store.SteamLoginActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
-        <activity android:name="com.winlator.star.store.SteamGamesActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
+        <activity android:name="com.winlator.star.store.SteamGamesActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"/>
         <activity android:name="com.winlator.star.store.SteamGameDetailActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <activity android:name="com.winlator.star.store.DownloadManagerActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme"/>
         <activity android:name="com.winlator.star.store.SteamSaveManagerActivity" android:exported="false" android:screenOrientation="fullSensor" android:theme="@style/AppTheme" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"/>

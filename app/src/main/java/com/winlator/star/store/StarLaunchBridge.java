@@ -563,6 +563,63 @@ public final class StarLaunchBridge {
     }
 
     /**
+     * The SteamGridDB token to use: the user's own key when they have enabled one in Settings
+     * ("enable_custom_api_key" / "custom_api_key", written by both SettingsFragment and
+     * SettingsScreen), otherwise the bundled {@link #SGDB_KEY}.
+     *
+     * NOTE: at the time of writing this is the ONLY reader of that preference — the setting is
+     * offered in two settings screens and saved, but the two older SteamGridDB call sites still use
+     * the bundled key unconditionally. Routing them through here too is a separate change.
+     *
+     * Never logged, and never returned to Kotlin — callers pass it straight to {@link #httpGet}.
+     */
+    private static String sgdbKey(Context ctx) {
+        if (ctx == null) return SGDB_KEY;
+        try {
+            android.content.SharedPreferences p =
+                    androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx);
+            if (p.getBoolean("enable_custom_api_key", false)) {
+                String custom = p.getString("custom_api_key", "");
+                if (custom != null && !custom.trim().isEmpty()) return custom.trim();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "custom SteamGridDB key unreadable, using the bundled one");
+        }
+        return SGDB_KEY;
+    }
+
+    /**
+     * LAST-RESORT capsule art for a Steam {@code appId}, in the store's 92:43 LANDSCAPE shape.
+     *
+     * Sibling of {@link #sgdbFetchCoverBySteamAppId}, which asks for the 600x900 PORTRAIT cover
+     * used by the games wall. The storefront's capsules are 92:43, and 460x215 (Steam's own header
+     * size) is exactly that ratio — a portrait cover stretched into a capsule slot looks worse than
+     * the themed placeholder it would replace, so the dimensions filter here is deliberately
+     * landscape-only and must stay that way.
+     *
+     * Queried by Steam appId through SteamGridDB's by-platform endpoint, so there is no fuzzy
+     * name-matching and no wrong-game hits. BLOCKING — call off the main thread. Returns the image
+     * URL, or "" for "no art" / any failure, which the caller treats as a negative result.
+     */
+    public static String sgdbFetchCapsuleBySteamAppId(Context ctx, int appId) {
+        if (appId <= 0) return "";
+        try {
+            String gridsJson = httpGet(
+                    "https://www.steamgriddb.com/api/v2/grids/steam/" + appId
+                            + "?dimensions=460x215,920x430"
+                            + "&types=static&nsfw=false&mimes=image/jpeg,image/png&limit=1",
+                    sgdbKey(ctx));
+            if (gridsJson == null) return "";
+            JSONArray grids = new JSONObject(gridsJson).optJSONArray("data");
+            if (grids == null || grids.length() == 0) return "";
+            return grids.getJSONObject(0).optString("url", "");
+        } catch (Exception e) {
+            Log.w(TAG, "sgdbFetchCapsuleBySteamAppId failed for " + appId + ": " + e.getMessage());
+            return "";
+        }
+    }
+
+    /**
      * Searches SteamGridDB for all available covers matching {@code title}
      * and returns a JSON array of {thumb, url} objects, or "[]" on failure.
      */
@@ -600,11 +657,22 @@ public final class StarLaunchBridge {
     }
 
     private static String httpGet(String url) {
+        return httpGet(url, SGDB_KEY);
+    }
+
+    /**
+     * Same request, with an explicit SteamGridDB bearer token so a caller that has a Context can
+     * pass the user's own key (see {@link #sgdbKey}). Split out rather than duplicated so there is
+     * still exactly ONE SteamGridDB HTTP path in the app.
+     *
+     * The token is never logged, here or anywhere else.
+     */
+    private static String httpGet(String url, String bearer) {
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setConnectTimeout(15_000);
             conn.setReadTimeout(15_000);
-            conn.setRequestProperty("Authorization", "Bearer " + SGDB_KEY);
+            conn.setRequestProperty("Authorization", "Bearer " + bearer);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             if (conn.getResponseCode() != 200) { conn.disconnect(); return null; }
             StringBuilder sb = new StringBuilder();

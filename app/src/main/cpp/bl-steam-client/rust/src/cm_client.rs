@@ -22,6 +22,7 @@ use crate::pb::cmsg_client_friends_list::CMsgClientFriendsList;
 use crate::pb::cmsg_client_friends_ops::{
     CMsgClientAddFriend, CMsgClientFriendProfileInfo, CMsgClientRemoveFriend,
 };
+use crate::pb::cmsg_client_fs_get_friends_steam_levels::CMsgClientFSGetFriendsSteamLevels;
 use crate::pb::cmsg_client_games_played::{
     CMsgClientGamesPlayed, GamePlayedEntry, GamePlayedProcessInfo,
 };
@@ -43,13 +44,15 @@ use crate::pb::cmsg_client_pics::{
     CMsgClientPICSProductInfoRequest, PicsAppInfoReq, PicsPackageInfoReq,
 };
 use crate::pb::cmsg_client_playing_session_state::CMsgClientPlayingSessionState;
+use crate::pb::cmsg_client_request_free_license::CMsgClientRequestFreeLicense;
 use crate::pb::cmsg_client_store_user_stats::{CMsgClientStoreUserStats2, Stat};
 use crate::pb::cmsg_clientserver_login::{
     CMsgClientHeartBeat, CMsgClientHello, CMsgClientLogOff, CMsgClientLogon,
     CMsgClientLogonResponse,
 };
 use crate::pb::cplayer::{
-    CPlayerGetOwnedGamesRequest, CPlayerSetRichPresenceKv, CPlayerSetRichPresenceRequest,
+    CPlayerGetFavoriteBadgeRequest, CPlayerGetOwnedGamesRequest,
+    CPlayerGetProfileItemsEquippedRequest, CPlayerSetRichPresenceKv, CPlayerSetRichPresenceRequest,
 };
 use crate::pb::cpublishedfile::CPublishedFileGetUserFilesRequest;
 use crate::pb::cuseraccount::CUserAccountCreateFriendInviteTokenRequest;
@@ -1049,6 +1052,94 @@ impl CMClientCore {
         )
     }
 
+    /// `Player.GetProfileItemsEquipped#1` — the equipped avatar frame, profile background,
+    /// mini-profile background, animated avatar, profile modifier and Deck keyboard skin.
+    ///
+    /// Works for an arbitrary SteamID (the request carries one), so it backs both the signed-in
+    /// user's profile and a friend's. The reference Rust engine we cross-checked against uses
+    /// `LoyaltyRewards.GetEquippedProfileItems#1` for the same data; we use the `IPlayerService`
+    /// twin because its message shape is the one with a verifiable protobuf definition.
+    pub fn build_profile_items_equipped_call(
+        &self,
+        steam_id: u64,
+        language: &str,
+        job_id: u64,
+    ) -> Option<OutboundServiceCall> {
+        if steam_id == 0 {
+            return None;
+        }
+        self.build_authed_service_call(
+            "Player.GetProfileItemsEquipped#1",
+            job_id,
+            CPlayerGetProfileItemsEquippedRequest {
+                steamid: steam_id,
+                language: language.to_string(),
+            }
+            .serialize(),
+        )
+    }
+
+    /// `Player.GetFavoriteBadge#1` — the badge showcased on a profile (level, border, app).
+    pub fn build_favorite_badge_call(
+        &self,
+        steam_id: u64,
+        job_id: u64,
+    ) -> Option<OutboundServiceCall> {
+        if steam_id == 0 {
+            return None;
+        }
+        self.build_authed_service_call(
+            "Player.GetFavoriteBadge#1",
+            job_id,
+            CPlayerGetFavoriteBadgeRequest { steamid: steam_id }.serialize(),
+        )
+    }
+
+    /// `CMsgClientRequestFreeLicense` (EMsg 5572; job-matched, the 5573 response is delivered to
+    /// the job) — the legitimate "add this free/F2P/demo app to my library" grant.
+    ///
+    /// Succeeds only for apps Steam actually gives away; a paid unowned app comes back with a
+    /// non-OK EResult in the response body, which the caller must surface rather than flatten.
+    pub fn build_request_free_license(
+        &self,
+        app_ids: &[u32],
+        job_id: u64,
+    ) -> Option<OutboundProtoMessage> {
+        if app_ids.is_empty() {
+            return None;
+        }
+        self.build_job_proto_message(
+            EMsg::CLIENT_REQUEST_FREE_LICENSE,
+            job_id,
+            CMsgClientRequestFreeLicense {
+                appids: app_ids.to_vec(),
+            }
+            .serialize(),
+            0,
+        )
+    }
+
+    /// `CMsgClientFSGetFriendsSteamLevels` (EMsg 7528; job-matched, the 7529 response is
+    /// delivered to the job). Takes *account* ids, not SteamID64s.
+    pub fn build_friends_steam_levels(
+        &self,
+        account_ids: &[u32],
+        job_id: u64,
+    ) -> Option<OutboundProtoMessage> {
+        if account_ids.is_empty() {
+            return None;
+        }
+        self.build_job_proto_message(
+            EMsg::CLIENT_FS_GET_FRIENDS_STEAM_LEVELS,
+            job_id,
+            CMsgClientFSGetFriendsSteamLevels {
+                accountids: account_ids.to_vec(),
+            }
+            .serialize(),
+            0,
+        )
+    }
+
     pub fn build_inventory_item_def_meta_call(
         &self,
         app_id: u32,
@@ -1470,6 +1561,10 @@ impl CMClientCore {
             | EMsg::CLIENT_GET_USER_STATS_RESPONSE
             | EMsg::CLIENT_GET_DEPOT_DECRYPTION_KEY_RESPONSE
             | EMsg::CLIENT_FRIEND_PROFILE_INFO_RESPONSE
+            | EMsg::CLIENT_FS_GET_FRIENDS_STEAM_LEVELS_RESPONSE
+            // 5573 carries its own EResult in the *body*; the job only reports transport health,
+            // so the caller must read the body eresult rather than trusting the header.
+            | EMsg::CLIENT_REQUEST_FREE_LICENSE_RESPONSE
             | EMsg::CLIENT_MMS_CREATE_LOBBY_RESPONSE
             | EMsg::CLIENT_MMS_JOIN_LOBBY_RESPONSE
             | EMsg::CLIENT_MMS_LEAVE_LOBBY_RESPONSE
@@ -2299,6 +2394,58 @@ mod tests {
             .unwrap();
         assert_eq!(product.emsg, EMsg::CLIENT_PICS_PRODUCT_INFO_REQUEST);
         assert!(product.body.windows(2).any(|w| w == [0x18, 1]));
+    }
+
+    #[test]
+    fn profile_surface_builders_use_the_expected_methods() {
+        let core = logged_on_core();
+
+        let equipped = core
+            .build_profile_items_equipped_call(76561197960287930, "english", 40)
+            .unwrap();
+        assert_eq!(equipped.method_name, "Player.GetProfileItemsEquipped#1");
+        // steamid is field 1 as a *varint* uint64, not the fixed64 used by clientserver msgs.
+        assert_eq!(equipped.request_body[0], 0x08);
+        assert!(equipped
+            .request_body
+            .windows("english".len())
+            .any(|w| w == b"english"));
+
+        let badge = core.build_favorite_badge_call(76561197960287930, 41).unwrap();
+        assert_eq!(badge.method_name, "Player.GetFavoriteBadge#1");
+        assert_eq!(badge.request_body[0], 0x08);
+
+        let levels = core.build_friends_steam_levels(&[1, 2, 3], 42).unwrap();
+        assert_eq!(levels.emsg, EMsg::CLIENT_FS_GET_FRIENDS_STEAM_LEVELS);
+        assert_eq!(levels.body, [0x08, 1, 0x08, 2, 0x08, 3]);
+
+        // Guard rails: no addressable id means no request at all.
+        assert!(core.build_profile_items_equipped_call(0, "english", 43).is_none());
+        assert!(core.build_favorite_badge_call(0, 44).is_none());
+        assert!(core.build_friends_steam_levels(&[], 45).is_none());
+    }
+
+    #[test]
+    fn free_license_builder_targets_emsg_5572_field_two() {
+        let core = logged_on_core();
+        let free = core.build_request_free_license(&[440], 50).unwrap();
+        assert_eq!(free.emsg, EMsg::CLIENT_REQUEST_FREE_LICENSE);
+        // appids is field 2 -> tag 0x10; 440 = varint [0xb8, 0x03].
+        assert_eq!(free.body, [0x10, 0xb8, 0x03]);
+        assert!(core.build_request_free_license(&[], 51).is_none());
+    }
+
+    #[test]
+    fn free_license_response_is_delivered_to_its_job() {
+        let core = logged_on_core();
+        let header = CMsgProtoBufHeader {
+            jobid_target: 50,
+            ..Default::default()
+        };
+        assert!(matches!(
+            core.route_inbound(EMsg::CLIENT_REQUEST_FREE_LICENSE_RESPONSE, &header, &[]),
+            InboundAction::DeliverJob(_)
+        ));
     }
 
     #[test]

@@ -28,10 +28,16 @@ impl EMsg {
     pub const CLIENT_FRIEND_PROFILE_INFO: Self = Self(5330);
     pub const CLIENT_FRIEND_PROFILE_INFO_RESPONSE: Self = Self(5331);
     pub const CLIENT_PLAYER_NICKNAME_LIST: Self = Self(5587);
+    /// Steam level lookup for any set of account ids (verified against JavaSteam `EMsg.java`).
+    pub const CLIENT_FS_GET_FRIENDS_STEAM_LEVELS: Self = Self(7528);
+    pub const CLIENT_FS_GET_FRIENDS_STEAM_LEVELS_RESPONSE: Self = Self(7529);
     pub const CLIENT_PLAYING_SESSION_STATE: Self = Self(9600);
     pub const CLIENT_ACCOUNT_INFO: Self = Self(768);
     pub const CLIENT_EMAIL_ADDR_INFO: Self = Self(779);
     pub const CLIENT_LICENSE_LIST: Self = Self(780);
+    /// Free/F2P/demo license grant (verified against JavaSteam `EMsg.java`).
+    pub const CLIENT_REQUEST_FREE_LICENSE: Self = Self(5572);
+    pub const CLIENT_REQUEST_FREE_LICENSE_RESPONSE: Self = Self(5573);
     pub const CLIENT_PICS_CHANGES_SINCE_REQUEST: Self = Self(8901);
     pub const CLIENT_PICS_CHANGES_SINCE_RESPONSE: Self = Self(8902);
     pub const CLIENT_PICS_PRODUCT_INFO_REQUEST: Self = Self(8903);
@@ -138,5 +144,19 @@ mod tests {
         assert_eq!(EUniverse::Max as u32, 5);
         assert!(!EUniverse::Max.is_valid_universe());
         assert!(EUniverse::Public.is_valid_universe());
+    }
+
+    #[test]
+    fn friends_steam_levels_emsgs_match_steamkit() {
+        // JavaSteam EMsg.java: ClientFSGetFriendsSteamLevels(7528) / ...Response(7529).
+        assert_eq!(EMsg::CLIENT_FS_GET_FRIENDS_STEAM_LEVELS.0, 7528);
+        assert_eq!(EMsg::CLIENT_FS_GET_FRIENDS_STEAM_LEVELS_RESPONSE.0, 7529);
+    }
+
+    #[test]
+    fn free_license_emsgs_match_steamkit() {
+        // JavaSteam EMsg.java: ClientRequestFreeLicense(5572) / ...Response(5573).
+        assert_eq!(EMsg::CLIENT_REQUEST_FREE_LICENSE.0, 5572);
+        assert_eq!(EMsg::CLIENT_REQUEST_FREE_LICENSE_RESPONSE.0, 5573);
     }
 }

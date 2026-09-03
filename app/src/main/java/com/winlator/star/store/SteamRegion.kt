@@ -103,6 +103,34 @@ object SteamRegion {
 
     fun nameOf(code: String): String = CATALOG.firstOrNull { it.code == code }?.name ?: code.uppercase()
 
+    /**
+     * ISO-3166 country for each datacenter in [CATALOG] — the `cc=` the Steam *store* endpoints
+     * want. The store prices in the account's country, and the connection region is the only
+     * country-ish signal the app already has (nothing in `steam_prefs` records the account's real
+     * store country), so this maps the resolved datacenter to its country and lets the device
+     * locale fill in for Auto-with-no-winner. Purely a pricing hint: a wrong `cc` costs a wrong
+     * currency on the store rails, never a broken screen.
+     */
+    private val DC_COUNTRY: Map<String, String> = mapOf(
+        "iad1" to "US", "ord1" to "US", "atl3" to "US", "dfw2" to "US", "lax1" to "US", "sea1" to "US",
+        "lhr1" to "GB", "fra1" to "DE", "fra2" to "DE", "par1" to "FR", "ams1" to "NL", "mad1" to "ES",
+        "sto2" to "SE", "vie1" to "AT", "waw1" to "PL", "gru1" to "BR", "lim1" to "PE", "scl1" to "CL",
+        "syd1" to "AU", "sgp1" to "SG", "hkg1" to "HK", "tyo1" to "JP", "seo1" to "KR", "bom1" to "IN",
+        "maa1" to "IN", "jnb1" to "ZA", "dxb1" to "AE",
+    )
+
+    /**
+     * Two-letter store country for the `cc=` parameter of `store.steampowered.com/api/` calls.
+     * Resolution order: the explicit/remembered datacenter's country → the device locale's country
+     * → "US". Never probes (so it is safe on the main thread) and never throws.
+     */
+    fun storeCountryCode(ctx: Context): String {
+        val fromDc = try { resolveDc(ctx, allowProbe = false)?.let { DC_COUNTRY[it] } } catch (_: Throwable) { null }
+        if (!fromDc.isNullOrBlank()) return fromDc
+        val locale = try { java.util.Locale.getDefault().country } catch (_: Throwable) { "" }
+        return locale.takeIf { it.length == 2 }?.uppercase() ?: "US"
+    }
+
     /** One CM directory entry. `type` = "websockets" (host:443/27018/27019) or "netfilter" (TCP). */
     data class CmServer(val endpoint: String, val host: String, val port: Int, val dc: String, val type: String,
                         val load: Int, val wtdLoad: Double)

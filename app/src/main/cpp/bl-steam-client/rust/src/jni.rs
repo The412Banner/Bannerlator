@@ -5022,6 +5022,605 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
     new_string_or_null(&mut env, &value)
 }
 
+// ---------------------------------------------------------------------------
+// Profile surface (signed-in user and friends)
+//
+// Every call below takes an explicit SteamID64, so the same JNI entry point serves "my profile"
+// and "a friend's profile". Which fields actually come back for another account depends on that
+// account's privacy settings — see the per-function notes.
+// ---------------------------------------------------------------------------
+
+/// Steam's default profile language when the caller does not supply one.
+const DEFAULT_PROFILE_LANGUAGE: &str = "english";
+
+/// Low 32 bits of a SteamID64 — the account id the CM level lookup addresses.
+fn account_id_of(steam_id: u64) -> u32 {
+    (steam_id & 0xffff_ffff) as u32
+}
+
+/// `CMsgClientFSGetFriendsSteamLevels` (EMsg 7528) for a batch of SteamID64s; returns
+/// `(accountid, level)` pairs. Accounts the CM declines to answer for are simply absent.
+fn fetch_steam_levels(
+    runtime: &Arc<CMClientRuntime>,
+    steam_ids: &[u64],
+    timeout: Duration,
+) -> Option<Vec<(u32, u32)>> {
+    let account_ids = steam_ids
+        .iter()
+        .copied()
+        .filter(|sid| *sid != 0)
+        .map(account_id_of)
+        .collect::<Vec<_>>();
+    if account_ids.is_empty() {
+        return None;
+    }
+    let body = request_proto_body(runtime, timeout, |core, job_id| {
+        core.build_friends_steam_levels(&account_ids, job_id)
+    })?;
+    let response =
+        crate::pb::cmsg_client_fs_get_friends_steam_levels::CMsgClientFSGetFriendsSteamLevelsResponse::deserialize(&body)?;
+    Some(
+        response
+            .friends
+            .into_iter()
+            .map(|friend| (friend.accountid, friend.level))
+            .collect(),
+    )
+}
+
+/// `Player.GetProfileItemsEquipped#1` for one SteamID64.
+fn fetch_equipped_profile_items(
+    runtime: &Arc<CMClientRuntime>,
+    steam_id: u64,
+    language: &str,
+    timeout: Duration,
+) -> Option<crate::pb::cplayer::CPlayerGetProfileItemsEquippedResponse> {
+    let body = request_authed_service_body(runtime, timeout, |core, job_id| {
+        core.build_profile_items_equipped_call(steam_id, language, job_id)
+    })?;
+    crate::pb::cplayer::CPlayerGetProfileItemsEquippedResponse::deserialize(&body)
+}
+
+/// `Player.GetFavoriteBadge#1` for one SteamID64.
+fn fetch_favorite_badge(
+    runtime: &Arc<CMClientRuntime>,
+    steam_id: u64,
+    timeout: Duration,
+) -> Option<crate::pb::cplayer::CPlayerGetFavoriteBadgeResponse> {
+    let body = request_authed_service_body(runtime, timeout, |core, job_id| {
+        core.build_favorite_badge_call(steam_id, job_id)
+    })?;
+    crate::pb::cplayer::CPlayerGetFavoriteBadgeResponse::deserialize(&body)
+}
+
+/// `Player.GetOwnedGames#1` for one SteamID64. Empty for a private "game details" profile.
+fn fetch_owned_games(
+    runtime: &Arc<CMClientRuntime>,
+    steam_id: u64,
+    timeout: Duration,
+) -> Option<crate::pb::cplayer::CPlayerGetOwnedGamesResponse> {
+    let body = request_authed_service_body(runtime, timeout, |core, job_id| {
+        core.build_owned_games_call(steam_id, job_id)
+    })?;
+    crate::pb::cplayer::CPlayerGetOwnedGamesResponse::deserialize(&body)
+}
+
+fn profile_item_json(item: Option<&crate::pb::cplayer::CPlayerProfileItem>) -> serde_json::Value {
+    let Some(item) = item.filter(|item| !item.is_empty()) else {
+        return serde_json::Value::Null;
+    };
+    json!({
+        "communityItemId": item.communityitemid.to_string(),
+        "imageSmall": item.image_small,
+        "imageLarge": item.image_large,
+        "name": item.name,
+        "itemTitle": item.item_title,
+        "itemDescription": item.item_description,
+        "appId": item.appid,
+        "itemType": item.item_type,
+        "itemClass": item.item_class,
+        "movieWebm": item.movie_webm,
+        "movieMp4": item.movie_mp4,
+        "movieWebmSmall": item.movie_webm_small,
+        "movieMp4Small": item.movie_mp4_small,
+        "equippedFlags": item.equipped_flags,
+        "tiled": item.tiled,
+        "profileColors": item
+            .profile_colors
+            .iter()
+            .map(|color| json!({ "styleName": color.style_name, "color": color.color }))
+            .collect::<Vec<_>>(),
+    })
+}
+
+fn equipped_items_json(
+    response: &crate::pb::cplayer::CPlayerGetProfileItemsEquippedResponse,
+) -> serde_json::Value {
+    json!({
+        "avatarFrame": profile_item_json(response.avatar_frame.as_ref()),
+        "profileBackground": profile_item_json(response.profile_background.as_ref()),
+        "miniProfileBackground": profile_item_json(response.mini_profile_background.as_ref()),
+        "animatedAvatar": profile_item_json(response.animated_avatar.as_ref()),
+        "profileModifier": profile_item_json(response.profile_modifier.as_ref()),
+        "steamDeckKeyboardSkin": profile_item_json(response.steam_deck_keyboard_skin.as_ref()),
+    })
+}
+
+fn favorite_badge_json(
+    badge: &crate::pb::cplayer::CPlayerGetFavoriteBadgeResponse,
+) -> serde_json::Value {
+    if !badge.has_favorite_badge {
+        return serde_json::Value::Null;
+    }
+    json!({
+        "badgeId": badge.badgeid,
+        "communityItemId": badge.communityitemid.to_string(),
+        "itemType": badge.item_type,
+        "borderColor": badge.border_color,
+        "appId": badge.appid,
+        "level": badge.level,
+    })
+}
+
+fn owned_game_json(game: &crate::pb::cplayer::CPlayerOwnedGame) -> serde_json::Value {
+    json!({
+        "appId": game.appid,
+        "name": game.name,
+        "playtimeTwoWeeks": game.playtime_2weeks,
+        "playtimeForever": game.playtime_forever,
+        "imgIconUrl": game.img_icon_url,
+        "sortAs": game.sort_as,
+        "rtimeLastPlayed": game.rtime_last_played,
+    })
+}
+
+/// The "recently played" slice of an owned-games response.
+///
+/// Deliberately derived rather than fetched: `Player.GetOwnedGames#1` already carries
+/// `playtime_2weeks` (field 3) and `rtime_last_played` (field 11), so
+/// `IPlayerService/GetRecentlyPlayedGames#1` would be a redundant round trip.
+/// Primary ordering is Steam's own "last two weeks" bucket; when nothing was played in that
+/// window we fall back to the most recently launched games so the row is not simply blank.
+fn recently_played_games(
+    response: &crate::pb::cplayer::CPlayerGetOwnedGamesResponse,
+    max_count: usize,
+) -> Vec<&crate::pb::cplayer::CPlayerOwnedGame> {
+    let mut recent = response
+        .games
+        .iter()
+        .filter(|game| game.playtime_2weeks > 0)
+        .collect::<Vec<_>>();
+    if recent.is_empty() {
+        recent = response
+            .games
+            .iter()
+            .filter(|game| game.rtime_last_played > 0)
+            .collect();
+        recent.sort_by(|a, b| b.rtime_last_played.cmp(&a.rtime_last_played));
+    } else {
+        recent.sort_by(|a, b| {
+            b.playtime_2weeks
+                .cmp(&a.playtime_2weeks)
+                .then_with(|| b.rtime_last_played.cmp(&a.rtime_last_played))
+        });
+    }
+    recent.truncate(max_count);
+    recent
+}
+
+/// Blocking Steam-level lookup for a batch of SteamID64s (`CMsgClientFSGetFriendsSteamLevels`,
+/// EMsg 7528). JSON `[{"steamId","accountId","level"}]`, or null when the request never landed.
+///
+/// Works for the signed-in user's own id as well as friends'. Ids the CM will not answer for are
+/// omitted from the array rather than reported as level 0.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetSteamLevels(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_ids: JLongArray,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let len = env.get_array_length(&steam_ids).unwrap_or(0);
+    if len <= 0 {
+        return new_string_or_null(&mut env, "[]");
+    }
+    let mut ids = vec![0i64; len as usize];
+    if env.get_long_array_region(&steam_ids, 0, &mut ids).is_err() {
+        return ptr::null_mut();
+    }
+    let ids = ids.into_iter().map(|id| id as u64).collect::<Vec<_>>();
+    let Some(levels) = fetch_steam_levels(&runtime, &ids, Duration::from_secs(15)) else {
+        return ptr::null_mut();
+    };
+    // Map account ids back onto the SteamID64s the caller asked about.
+    let value = json!(ids
+        .iter()
+        .filter_map(|sid| {
+            let account_id = account_id_of(*sid);
+            levels
+                .iter()
+                .find(|(id, _)| *id == account_id)
+                .map(|(_, level)| json!({
+                    "steamId": *sid as i64,
+                    "accountId": account_id,
+                    "level": level,
+                }))
+        })
+        .collect::<Vec<_>>())
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
+/// Blocking `Player.GetProfileItemsEquipped#1` for any SteamID64; JSON or null.
+///
+/// Slots with nothing equipped come back as JSON null. Equipped items are public profile
+/// decoration, so this resolves for friends as well as for the signed-in user.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetEquippedProfileItems(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+    language: JString,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let language = jstring_to_string(&mut env, &language)
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_PROFILE_LANGUAGE.to_string());
+    let Some(response) = fetch_equipped_profile_items(
+        &runtime,
+        steam_id as u64,
+        &language,
+        Duration::from_secs(15),
+    ) else {
+        return ptr::null_mut();
+    };
+    new_string_or_null(&mut env, &equipped_items_json(&response).to_string())
+}
+
+/// Blocking `Player.GetFavoriteBadge#1` for any SteamID64; JSON, `null` when no badge is
+/// showcased, or null when the request never landed.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetFavoriteBadge(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let Some(badge) = fetch_favorite_badge(&runtime, steam_id as u64, Duration::from_secs(15))
+    else {
+        return ptr::null_mut();
+    };
+    new_string_or_null(&mut env, &favorite_badge_json(&badge).to_string())
+}
+
+/// Recently played games for any SteamID64, derived from `Player.GetOwnedGames#1`
+/// (no extra round trip). JSON array of owned-game objects, newest/most-played first.
+///
+/// Empty for an account whose game details are private.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetRecentlyPlayedGames(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+    max_count: jint,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let Some(response) = fetch_owned_games(&runtime, steam_id as u64, Duration::from_secs(30))
+    else {
+        return ptr::null_mut();
+    };
+    let max_count = if max_count <= 0 {
+        usize::MAX
+    } else {
+        max_count as usize
+    };
+    let value = json!(recently_played_games(&response, max_count)
+        .into_iter()
+        .map(owned_game_json)
+        .collect::<Vec<_>>())
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
+/// One blocking aggregate read backing a full profile screen for any SteamID64 — the signed-in
+/// user or a friend.
+///
+/// Fires, in order: `CMsgClientFriendProfileInfo` (EMsg 5330), `CMsgClientFSGetFriendsSteamLevels`
+/// (EMsg 7528), `Player.GetFavoriteBadge#1`, `Player.GetProfileItemsEquipped#1` and
+/// `Player.GetOwnedGames#1`. Each part is independently optional: a section that does not resolve
+/// comes back as JSON null rather than failing the whole call, so a partly-private profile still
+/// renders. Returns null only when there is no logged-on session at all.
+///
+/// Privacy: `level`, `favoriteBadge` and `equipped` are public profile data. `profileInfo` needs a
+/// public profile. `ownedGameCount` / `playtime*` / `recentlyPlayed` need the account's *game
+/// details* to be public — `gamesPublic` says whether they were.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeGetPlayerProfile(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    steam_id: jlong,
+    language: JString,
+    max_recent: jint,
+) -> jstring {
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let steam_id = steam_id as u64;
+    if steam_id == 0 {
+        return ptr::null_mut();
+    }
+    let language = jstring_to_string(&mut env, &language)
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_PROFILE_LANGUAGE.to_string());
+    let max_recent = if max_recent <= 0 {
+        usize::MAX
+    } else {
+        max_recent as usize
+    };
+    let timeout = Duration::from_secs(15);
+
+    let profile_info = request_proto_body(&runtime, timeout, |core, job_id| {
+        core.build_friend_profile_info(steam_id, job_id)
+    })
+    .and_then(|body| {
+        crate::pb::cmsg_client_friends_ops::CMsgClientFriendProfileInfoResponse::deserialize(&body)
+    })
+    .map(|resp| {
+        json!({
+            "eresult": resp.eresult,
+            "timeCreated": resp.time_created,
+            "realName": resp.real_name,
+            "cityName": resp.city_name,
+            "stateName": resp.state_name,
+            "countryName": resp.country_name,
+            "headline": resp.headline,
+            "summary": resp.summary,
+        })
+    })
+    .unwrap_or(serde_json::Value::Null);
+
+    let level = fetch_steam_levels(&runtime, &[steam_id], timeout)
+        .and_then(|levels| {
+            let account_id = account_id_of(steam_id);
+            levels
+                .into_iter()
+                .find(|(id, _)| *id == account_id)
+                .map(|(_, level)| level)
+        })
+        .map(serde_json::Value::from)
+        .unwrap_or(serde_json::Value::Null);
+
+    let favorite_badge = fetch_favorite_badge(&runtime, steam_id, timeout)
+        .map(|badge| favorite_badge_json(&badge))
+        .unwrap_or(serde_json::Value::Null);
+
+    let equipped = fetch_equipped_profile_items(&runtime, steam_id, &language, timeout)
+        .map(|response| equipped_items_json(&response))
+        .unwrap_or(serde_json::Value::Null);
+
+    let owned = fetch_owned_games(&runtime, steam_id, Duration::from_secs(30));
+    let games_public = owned
+        .as_ref()
+        .is_some_and(|response| response.game_count > 0 || !response.games.is_empty());
+    let (owned_count, playtime_forever, playtime_two_weeks, recently_played) = match owned
+        .as_ref()
+        .filter(|_| games_public)
+    {
+        Some(response) => {
+            let forever: i64 = response
+                .games
+                .iter()
+                .map(|game| i64::from(game.playtime_forever))
+                .sum();
+            let two_weeks: i64 = response
+                .games
+                .iter()
+                .map(|game| i64::from(game.playtime_2weeks))
+                .sum();
+            let recent = json!(recently_played_games(response, max_recent)
+                .into_iter()
+                .map(owned_game_json)
+                .collect::<Vec<_>>());
+            (
+                serde_json::Value::from(response.game_count.max(response.games.len() as u32)),
+                serde_json::Value::from(forever),
+                serde_json::Value::from(two_weeks),
+                recent,
+            )
+        }
+        None => (
+            serde_json::Value::Null,
+            serde_json::Value::Null,
+            serde_json::Value::Null,
+            serde_json::Value::Null,
+        ),
+    };
+
+    let value = json!({
+        "steamId": steam_id as i64,
+        "accountId": account_id_of(steam_id),
+        "isSelf": steam_id == handle.core.steam_id(),
+        "level": level,
+        "favoriteBadge": favorite_badge,
+        "equipped": equipped,
+        "profileInfo": profile_info,
+        "gamesPublic": games_public,
+        "ownedGameCount": owned_count,
+        "playtimeForeverMinutes": playtime_forever,
+        "playtimeTwoWeeksMinutes": playtime_two_weeks,
+        "recentlyPlayed": recently_played,
+    })
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
+/// How long to wait for the CM's post-grant `CMsgClientLicenseList` push before reporting that
+/// the new package is not visible yet. Steam pushes it unprompted within a second or so; there is
+/// no client-initiated "re-send my licenses" request to fall back on.
+const FREE_LICENSE_LIST_SETTLE_TIMEOUT: Duration = Duration::from_secs(8);
+
+/// Block until every `package_ids` entry shows up in the CM license list, or the timeout expires.
+///
+/// The runtime's inbound pump ingests `CMsgClientLicenseList` (EMsg 780) into the same
+/// `library_store` the download path reads, so once this returns true the granted app is owned
+/// as far as the rest of the engine is concerned — no re-login needed.
+fn await_license_visibility(
+    runtime: &Arc<CMClientRuntime>,
+    package_ids: &[u32],
+    timeout: Duration,
+) -> bool {
+    if package_ids.is_empty() {
+        return false;
+    }
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        let licenses = runtime.core().license_list();
+        let all_present = package_ids.iter().all(|package_id| {
+            licenses
+                .iter()
+                .any(|license| license.package_id == *package_id)
+        });
+        if all_present {
+            return true;
+        }
+        if std::time::Instant::now() >= deadline {
+            return false;
+        }
+        thread::sleep(Duration::from_millis(150));
+    }
+}
+
+/// Blocking `CMsgClientRequestFreeLicense` (EMsg 5572) — add free/F2P/demo apps to the signed-in
+/// account's library. Always returns JSON when there is a live session; null only when there is
+/// no session at all.
+///
+/// This is a *grant request*, not a purchase: Steam refuses it for paid unowned apps. The real
+/// EResult from the response body is passed through verbatim so the UI can tell "granted" from
+/// "Steam refused this app" from "the request never landed". Nothing here fakes success — an
+/// absent `eresult` field decodes to the protobuf's own default of 2 (Fail), and `granted` is
+/// true only when Steam reported OK *and* actually handed over a package or app id.
+///
+/// JSON:
+/// ```text
+/// {
+///   "status": "granted" | "denied" | "no_response" | "bad_response" | "invalid_request",
+///   "granted": bool,
+///   "eresult": int,            // response-body EResult; 2 (Fail) when Steam omitted it
+///   "headerEresult": int,      // transport/job-level EResult, for diagnostics only
+///   "requestedAppIds": [int],
+///   "grantedPackageIds": [int],
+///   "grantedAppIds": [int],
+///   "libraryUpdated": bool     // granted packages are now in the CM license list
+/// }
+/// ```
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeRequestFreeLicense(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    app_ids: JIntArray,
+) -> jstring {
+    use crate::pb::cmsg_client_request_free_license::{
+        CMsgClientRequestFreeLicenseResponse, FREE_LICENSE_DEFAULT_ERESULT,
+    };
+
+    let Some(handle) = (unsafe { from_session_handle_mut(handle) }) else {
+        return ptr::null_mut();
+    };
+    let Some(runtime) = handle.connected_runtime() else {
+        return ptr::null_mut();
+    };
+    let app_ids = int_array_to_u32_vec(&env, &app_ids);
+
+    // Defaults describe a NON-grant: eresult starts at the protobuf's own default of 2 (Fail),
+    // so every early exit below reports failure rather than an empty success.
+    let mut status = "invalid_request";
+    let mut eresult = FREE_LICENSE_DEFAULT_ERESULT;
+    let mut header_eresult = 0i32;
+    let mut granted = false;
+    let mut granted_packages: Vec<u32> = Vec::new();
+    let mut granted_apps: Vec<u32> = Vec::new();
+    let mut library_updated = false;
+
+    if !app_ids.is_empty() {
+        match request_proto_response(&runtime, Duration::from_secs(20), |core, job_id| {
+            core.build_request_free_license(&app_ids, job_id)
+        }) {
+            // Nothing came back: session dropped or the CM never answered. NOT a refusal.
+            None => status = "no_response",
+            Some((header, body)) => {
+                header_eresult = header;
+                match CMsgClientRequestFreeLicenseResponse::deserialize(&body) {
+                    None => status = "bad_response",
+                    Some(response) => {
+                        eresult = response.eresult;
+                        granted = response.is_granted();
+                        granted_packages = response.granted_packageids;
+                        granted_apps = response.granted_appids;
+                        // Only wait on the license list when Steam actually granted something.
+                        library_updated = granted
+                            && await_license_visibility(
+                                &runtime,
+                                &granted_packages,
+                                FREE_LICENSE_LIST_SETTLE_TIMEOUT,
+                            );
+                        status = if granted { "granted" } else { "denied" };
+                    }
+                }
+            }
+        }
+    }
+
+    android_log(
+        "BL_STEAM_LICENSE",
+        &format!(
+            "free license apps={app_ids:?} status={status} eresult={eresult} \
+             packages={granted_packages:?} apps={granted_apps:?} library_updated={library_updated}"
+        ),
+    );
+
+    let value = json!({
+        "status": status,
+        "granted": granted,
+        "eresult": eresult,
+        "headerEresult": header_eresult,
+        "requestedAppIds": app_ids,
+        "grantedPackageIds": granted_packages,
+        "grantedAppIds": granted_apps,
+        "libraryUpdated": library_updated,
+    })
+    .to_string();
+    new_string_or_null(&mut env, &value)
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativeSignalAppLaunchIntent(
     mut env: JNIEnv,

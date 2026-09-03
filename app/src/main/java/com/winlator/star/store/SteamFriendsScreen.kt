@@ -149,6 +149,9 @@ private fun FriendsTopBar(
     onSettings: () -> Unit,
     onAdd: (() -> Unit)? = null,
     onRefresh: (() -> Unit)? = null,
+    // Off when this bar is hosted inside the storefront's Friends tab, where the tab strip / rail
+    // is the way out and a back arrow would be dead chrome.
+    showBackButton: Boolean = true,
 ) {
     Row(
         modifier = Modifier
@@ -156,12 +159,16 @@ private fun FriendsTopBar(
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground,
-            )
+        if (showBackButton) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+        } else {
+            Spacer(Modifier.width(8.dp))
         }
         Text(
             text = "Friends",
@@ -311,7 +318,7 @@ fun FriendsTwoPane(
  * actions are omitted here — there's nothing to add to or refresh while dormant.
  */
 @Composable
-internal fun FriendsOffState(onBack: () -> Unit) {
+internal fun FriendsOffState(onBack: () -> Unit, showBackButton: Boolean = true) {
     val ctx = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     Column(
@@ -319,7 +326,7 @@ internal fun FriendsOffState(onBack: () -> Unit) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        FriendsTopBar(onBack = onBack, onSettings = { showSettings = true })
+        FriendsTopBar(onBack = onBack, onSettings = { showSettings = true }, showBackButton = showBackButton)
         if (showSettings) {
             SteamSocialSettingsSheet(onDismiss = { showSettings = false })
         }
@@ -379,19 +386,45 @@ private fun EmptyChatState() {
 }
 
 /**
+ * All / Online / In-Game — the storefront Friends tab's filter chips, applied on top of the
+ * existing presence grouping rather than replacing it (a friend still lands in their In game /
+ * Online / Away / Offline section; the chips just narrow which sections have anything in them).
+ */
+enum class FriendPresenceFilter(val label: String) {
+    ALL("All"),
+    ONLINE("Online"),
+    IN_GAME("In-Game"),
+    ;
+
+    fun accepts(p: SteamFriendsStore.Presence): Boolean = when (this) {
+        ALL -> true
+        // "Online" means reachable — in-game and away count, offline and unconfirmed don't.
+        ONLINE -> p == SteamFriendsStore.Presence.IN_GAME ||
+            p == SteamFriendsStore.Presence.ONLINE ||
+            p == SteamFriendsStore.Presence.AWAY
+        IN_GAME -> p == SteamFriendsStore.Presence.IN_GAME
+    }
+}
+
+/**
  * The roster body: connect / loading states and the grouped, collapsible friend list with the pinned
  * friend-requests block, long-press menu, and unread badges. Extracted so the single-pane and the
  * landscape two-pane layouts share one implementation. [selectedFriendId] highlights the open chat's
- * row (two-pane only); [showFilter] adds a client-side "Search friends" box atop the list.
+ * row (two-pane only); [showFilter] adds a client-side "Search friends" box atop the list;
+ * [presenceFilter] applies the storefront tab's All/Online/In-Game chips.
+ *
+ * `internal` (was private) so the storefront's Friends tab composes this exact roster instead of
+ * growing a second one — it wants its own header/chips above it, not [FriendsListScreen]'s app bar.
  */
 @Composable
-private fun FriendsListBody(
+internal fun FriendsListBody(
     available: Boolean,
     selectedFriendId: Long?,
     showFilter: Boolean,
     onOpenChat: (SteamFriendsStore.SteamFriend) -> Unit,
     onOpenProfile: (SteamFriendsStore.SteamFriend) -> Unit,
     modifier: Modifier = Modifier,
+    presenceFilter: FriendPresenceFilter = FriendPresenceFilter.ALL,
 ) {
     val friends by SteamFriendsStore.friends.collectAsState()
     val incomingReq by SteamFriendsStore.incomingRequests.collectAsState()
@@ -456,8 +489,12 @@ private fun FriendsListBody(
                 // The filter (landscape-only; always blank in single-pane) narrows the roster by name.
                 // The pinned request block is hidden while a filter is active so search focuses on friends.
                 val q = filter.trim()
-                val shownFriends = if (q.isEmpty()) friends
-                    else friends.filter { it.displayName.contains(q, ignoreCase = true) }
+                val shownFriends = friends
+                    .filter { presenceFilter.accepts(it.presence) }
+                    .let { list ->
+                        if (q.isEmpty()) list
+                        else list.filter { it.displayName.contains(q, ignoreCase = true) }
+                    }
                 val grouped = shownFriends.groupBy { it.presence }
                 val unread by SteamFriendsStore.unread.collectAsState()
                 // Per-section collapse (arrow folds a group away); persisted so it's remembered.
@@ -484,6 +521,19 @@ private fun FriendsListBody(
                         items(outgoingReq, key = { "out_${it.steamId}" }) { f ->
                             OutgoingRequestRow(friend = f, onCancel = { SteamFriendsStore.cancelRequest(f.steamId) })
                             FriendDivider()
+                        }
+                    }
+                    // Filtered/searched down to nothing: say so, rather than showing a blank column.
+                    if (shownFriends.isEmpty()) {
+                        item(key = "no_match") {
+                            Text(
+                                text = if (q.isNotEmpty()) "No friends match “$q”."
+                                else "Nobody is ${presenceFilter.label.lowercase()} right now.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 40.dp),
+                            )
                         }
                     }
                     var firstSection = q.isNotEmpty() || (incomingReq.isEmpty() && outgoingReq.isEmpty())

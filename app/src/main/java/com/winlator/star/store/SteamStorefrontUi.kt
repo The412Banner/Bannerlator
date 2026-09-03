@@ -236,15 +236,19 @@ fun StoreNotice(
  * have to block to build it. Those run as ordered async phases after every entry here has failed;
  * see [CAPSULE_RESOLVERS].
  *
- * ## Where PICS art will slot in
- * The genuinely correct source is the app's published asset list from PICS appinfo, which the
- * engine already downloads for every owned game. That arrives WITH the library snapshot, so it
- * needs no round-trip: when it lands it becomes [apiUrl] at the call site — candidate #1, ahead of
- * every constructed guess — and nothing in this chain has to change. That is why the parameter is a
- * generic "the URL Steam gave us" rather than anything named after `featuredcategories`.
+ * ## PICS art (now live)
+ * [SteamLibraryArt.header] is the app's PUBLISHED capsule from PICS appinfo — the same list Steam's
+ * own client reads, which is why it resolves for legacy titles whose `header.jpg` doesn't exist at
+ * the constructed path and for newer titles on content-hashed asset paths. It costs nothing (the
+ * engine already downloaded it) and is inserted right after an explicit [apiUrl].
  */
 internal fun capsuleCandidates(appId: Int, apiUrl: String? = null): List<String> = buildList {
     apiUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
+    // Steam's OWN published asset list, straight from PICS appinfo via the engine's library
+    // snapshot. No network call, no rate limit, no region dependency — so for an owned game this
+    // outranks every constructed guess below and is why the Library needs no fallback at all.
+    // Null for anything not owned, in which case the chain is unchanged.
+    SteamLibraryArt.header(appId)?.let { add(it) }
     if (appId > 0) {
         add("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg")
         add("https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg")
@@ -273,7 +277,7 @@ internal class CapsuleResolver(
  * Adding a rung means adding an entry here; nothing else changes.
  */
 internal val CAPSULE_RESOLVERS: List<CapsuleResolver> = listOf(
-    CapsuleResolver("appdetails") { _, appId -> SteamStoreCatalog.appDetailsHeader(appId) },
+    CapsuleResolver("appdetails") { ctx, appId -> SteamStoreCatalog.appDetailsHeader(ctx, appId) },
     CapsuleResolver("SteamGridDB") { ctx, appId -> SteamStoreCatalog.sgdbCapsule(ctx, appId) },
 )
 
@@ -291,6 +295,12 @@ fun StoreCapsule(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(0.dp),
     apiUrl: String? = null,
+    /**
+     * Aspect ratio to force, or null to fill whatever [modifier] gives instead. Cards want the
+     * 92:43 capsule shape; the game-detail hero is a fixed-height band and sizes itself, so it
+     * passes null rather than fighting the ratio.
+     */
+    aspectRatio: Float? = 92f / 43f,
 ) {
     val ctx = LocalContext.current
     val candidates = remember(appId, apiUrl) { capsuleCandidates(appId, apiUrl) }
@@ -339,7 +349,7 @@ fun StoreCapsule(
 
     Box(
         modifier = modifier
-            .aspectRatio(92f / 43f)
+            .then(if (aspectRatio != null) Modifier.aspectRatio(aspectRatio) else Modifier)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,

@@ -131,10 +131,37 @@ object SteamStoreSearch {
             s
         }
 
+    /**
+     * Why a request didn't produce a body. A caller that only wants the body uses [httpGet]; a
+     * caller that must tell a rate limit from a timeout from an empty answer uses
+     * [httpGetDetailed]. There is still exactly ONE request implementation underneath.
+     */
+    internal sealed interface HttpOutcome {
+        data class Ok(val body: String) : HttpOutcome
+
+        /** A completed request with a non-2xx status. [code] 429 is Steam's rate limiter. */
+        data class HttpError(val code: Int) : HttpOutcome
+
+        /** The request never completed — timeout, DNS, TLS, no route. [kind] is the exception class. */
+        data class Transport(val kind: String, val message: String?) : HttpOutcome
+
+        /** 2xx with an empty body. */
+        data object EmptyBody : HttpOutcome
+    }
+
     /** GET [urlStr] as a UTF-8 string, or null on any non-2xx / failure.
      *  `internal` so [SteamStoreCatalog] — the storefront's rails + priced search — rides the exact
      *  same timeouts/headers/failure semantics instead of growing a second HTTP style. */
-    internal fun httpGet(urlStr: String): String? {
+    internal fun httpGet(urlStr: String): String? =
+        (httpGetDetailed(urlStr) as? HttpOutcome.Ok)?.body
+
+    /**
+     * The same request as [httpGet], reporting the OUTCOME rather than collapsing every failure to
+     * null. Added because the storefront's `appdetails` rung could not tell "Steam rate-limited us"
+     * from "this app genuinely has no art" — four very different findings that all printed the same
+     * line. Callers that don't care keep using [httpGet].
+     */
+    internal fun httpGetDetailed(urlStr: String): HttpOutcome {
         return try {
             val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 8_000
@@ -146,14 +173,14 @@ object SteamStoreSearch {
             if (code < 200 || code >= 300) {
                 conn.disconnect()
                 Log.w(TAG, "HTTP $code for $urlStr")
-                return null
+                return HttpOutcome.HttpError(code)
             }
             val text = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
             conn.disconnect()
-            text
+            if (text.isBlank()) HttpOutcome.EmptyBody else HttpOutcome.Ok(text)
         } catch (e: Exception) {
             Log.w(TAG, "httpGet failed: ${e.message}")
-            null
+            HttpOutcome.Transport(e.javaClass.simpleName, e.message)
         }
     }
 }

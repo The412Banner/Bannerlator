@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -126,6 +128,8 @@ fun rememberSteamLibrary(): SteamLibraryState {
         )
     }
 
+    val appCtx = LocalContext.current.applicationContext
+
     DisposableEffect(Unit) {
         val repo = runCatching { SteamRepository.getInstance() }.getOrNull()
         val listener = SteamRepository.SteamEventListener { event ->
@@ -143,6 +147,10 @@ fun rememberSteamLibrary(): SteamLibraryState {
                 }
                 event.startsWith("LibrarySynced:") -> {
                     StorefrontLog.i(StorefrontLog.LIBRARY, "library sync COMPLETED — re-reading cached rows")
+                    // The snapshot's published artwork lands with the sync. Parsing it is a JSON
+                    // walk over every owned app, so it goes on a worker rather than the event thread.
+                    Thread({ SteamLibraryArt.refreshFromSnapshot(appCtx) }, "SteamArtRefresh")
+                        .apply { isDaemon = true }.start()
                     load()
                 }
                 event.startsWith("SteamStatus:") -> {
@@ -176,6 +184,12 @@ fun rememberSteamLibrary(): SteamLibraryState {
     }
 
     LaunchedEffect(Unit) {
+        // Restore the on-disk art mirror first so owned games render immediately (and offline),
+        // then pull a fresh snapshot if the engine happens to be logged on.
+        withContext(Dispatchers.IO) {
+            SteamLibraryArt.init(appCtx)
+            SteamLibraryArt.refreshFromSnapshot(appCtx)
+        }
         load()
         val repo = runCatching { SteamRepository.getInstance() }.getOrNull() ?: return@LaunchedEffect
         if (!repo.isLoggedIn) return@LaunchedEffect
@@ -251,7 +265,10 @@ fun SteamLibraryTab(
         Thread {
             val exeFiles = mutableListOf<java.io.File>()
             AmazonLaunchHelper.collectExe(installDir, exeFiles)
-            val coverUrl = "https://shared.steamstatic.com/store_item_assets/steam/apps/${game.appId}/library_600x900.jpg"
+            // Prefer the app's PUBLISHED portrait cover; the constructed URL is the fallback for
+            // anything the snapshot doesn't carry.
+            val coverUrl = SteamLibraryArt.libraryCapsule(game.appId)
+                ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/${game.appId}/library_600x900.jpg"
             val lowerTitle = game.name.lowercase()
             exeFiles.sortWith { a, b ->
                 AmazonLaunchHelper.scoreExe(b, lowerTitle) - AmazonLaunchHelper.scoreExe(a, lowerTitle)

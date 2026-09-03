@@ -346,8 +346,19 @@ object SteamStoreCatalog {
     /** Ids per request. Kept modest because `filters=basic` carries description blobs per app. */
     private const val APPDETAILS_MAX_BATCH = 10
 
-    /** Debounce window that lets a whole rail's misses coalesce into one request. */
-    private const val APPDETAILS_DEBOUNCE_MS = 180L
+    /**
+     * Debounce window that lets a rail's misses coalesce into one request.
+     *
+     * 180ms was far too short and produced batches of ONE on device. A card only reaches this rung
+     * after its whole static chain has failed — up to four sequential HTTP 404s with independent
+     * latency — so sibling cards arrive HUNDREDS of milliseconds apart, not tens. 900ms is still
+     * imperceptible (this is already fallback art on a card showing a placeholder) and is wide
+     * enough to gather a screenful.
+     *
+     * Coalescing can never be perfect: cards whose static chains fail seconds apart legitimately
+     * land in different batches. The batch size is logged so this stays measurable.
+     */
+    private const val APPDETAILS_DEBOUNCE_MS = 900L
 
     /** Spacing between consecutive batches — comfortably inside ~200 requests / 5 minutes. */
     private const val APPDETAILS_INTER_BATCH_MS = 1_500L
@@ -359,14 +370,21 @@ object SteamStoreCatalog {
     private var headerFlush: Job? = null
 
     /**
+     * Application Context for the batcher, captured from the first caller. The flush loop runs
+     * outside any single caller's scope but still needs a Context to resolve the store region.
+     */
+    @Volatile private var headerContext: Context? = null
+
+    /**
      * The canonical `header_image` for [appId] from Steam's `appdetails`, or null when Steam has
      * none / the request failed.
      *
      * Only called once the static candidates have failed, so it never delays the common case.
      * Requests coalesce: callers join the pending batch and suspend until it resolves. Never throws.
      */
-    suspend fun appDetailsHeader(appId: Int): String? {
+    suspend fun appDetailsHeader(ctx: Context, appId: Int): String? {
         if (appId <= 0) return null
+        if (headerContext == null) headerContext = ctx.applicationContext
         headerCache[appId]?.let {
             val ttl = if (it.value != null) APPDETAILS_TTL_HIT_MS else APPDETAILS_TTL_MISS_MS
             if (System.currentTimeMillis() - it.at < ttl) return it.value
@@ -401,8 +419,16 @@ object SteamStoreCatalog {
                 val results = fetchHeaderImages(batch.keys.toList())
                 val now = System.currentTimeMillis()
                 for ((id, waiters) in batch) {
-                    val url = results?.get(id)
-                    headerCache[id] = if (results == null) {
+                    val result = results[id]
+                    val url = result?.url
+                    // A TRANSPORT-class miss (rate limit, timeout, HTTP error) is not evidence the
+                    // app lacks art, so it gets the short TTL and will be re-asked. A parsed miss
+                    // (no header_image / not in this store region) gets the normal miss TTL.
+                    val transient = result?.miss == HeaderMiss.RATE_LIMITED ||
+                        result?.miss == HeaderMiss.HTTP_ERROR ||
+                        result?.miss == HeaderMiss.TRANSPORT ||
+                        result == null
+                    headerCache[id] = if (url == null && transient) {
                         // TRANSPORT failure (429/timeout/5xx), not "this app has no art". It still
                         // gets a cache entry so a scrolling rail can't stampede the rate limit, but
                         // it must expire in minutes rather than hours.
@@ -443,37 +469,64 @@ object SteamStoreCatalog {
      * (paced) rather than writing off a whole rail — so an unexpected API shape degrades to slower,
      * not to broken.
      */
-    private suspend fun fetchHeaderImages(ids: List<Int>): Map<Int, String?>? {
+    private suspend fun fetchHeaderImages(ids: List<Int>): Map<Int, HeaderResult> {
         if (ids.isEmpty()) return emptyMap()
+        // Region matters: a title absent from the user's store region answers success:false, which
+        // is a DIFFERENT finding from "no art" and is logged as such.
+        val ctx = headerContext ?: return ids.associateWith { HeaderResult(null, HeaderMiss.TRANSPORT) }
+        val cc = SteamRegion.storeCountryCode(ctx)
         val url = "https://store.steampowered.com/api/appdetails?appids=" +
-            ids.joinToString(",") + "&filters=basic&l=english"
+            ids.joinToString(",") + "&filters=basic&cc=$cc&l=english"
         val t0 = System.currentTimeMillis()
-        val json = withContext(Dispatchers.IO) { SteamStoreSearch.httpGet(url) }
+        val outcome = withContext(Dispatchers.IO) { SteamStoreSearch.httpGetDetailed(url) }
         val ms = System.currentTimeMillis() - t0
 
-        if (json.isNullOrBlank()) {
-            // Includes HTTP 429. Never treated as "no art" — the caller falls straight through to
-            // SteamGridDB this pass and re-checks in a couple of minutes.
-            StorefrontLog.w(
-                TAG,
-                "appdetails: NO RESPONSE after ${ms}ms for ${ids.size} id(s) " +
-                    "(rate limit or transport) — falling through to SteamGridDB",
-            )
-            return null
+        // Batch size is logged so the coalescing stays measurable — "1 id(s)" repeatedly means the
+        // debounce isn't gathering and we're burning the rate limit one card at a time.
+        when (outcome) {
+            is SteamStoreSearch.HttpOutcome.HttpError -> {
+                val miss = if (outcome.code == 429) HeaderMiss.RATE_LIMITED else HeaderMiss.HTTP_ERROR
+                StorefrontLog.w(
+                    TAG,
+                    if (outcome.code == 429)
+                        "appdetails: RATE LIMITED (HTTP 429) on a batch of ${ids.size} id(s) after ${ms}ms — " +
+                            "these apps may well HAVE art; falling through to SteamGridDB and retrying shortly"
+                    else
+                        "appdetails: HTTP ${outcome.code} on a batch of ${ids.size} id(s) after ${ms}ms",
+                )
+                return ids.associateWith { HeaderResult(null, miss) }
+            }
+            is SteamStoreSearch.HttpOutcome.Transport -> {
+                StorefrontLog.w(
+                    TAG,
+                    "appdetails: TRANSPORT FAILURE on a batch of ${ids.size} id(s) after ${ms}ms — " +
+                        "${outcome.kind}: ${outcome.message}",
+                )
+                return ids.associateWith { HeaderResult(null, HeaderMiss.TRANSPORT) }
+            }
+            is SteamStoreSearch.HttpOutcome.EmptyBody -> {
+                StorefrontLog.w(TAG, "appdetails: EMPTY BODY (HTTP 200) for ${ids.size} id(s) after ${ms}ms")
+                return ids.associateWith { HeaderResult(null, HeaderMiss.TRANSPORT) }
+            }
+            is SteamStoreSearch.HttpOutcome.Ok -> Unit
         }
 
-        val parsed = parseHeaderImages(json, ids)
+        val body = (outcome as SteamStoreSearch.HttpOutcome.Ok).body
+        val parsed = parseHeaderImages(body, ids)
         if (parsed.isNotEmpty()) {
-            val hits = parsed.values.count { it != null }
+            val hits = parsed.values.count { it.url != null }
+            val reasons = parsed.values.mapNotNull { it.miss }
+                .groupingBy { it }.eachCount()
+                .entries.joinToString(", ") { "${it.key}=${it.value}" }
             StorefrontLog.i(
                 TAG,
-                "appdetails: ${ids.size} id(s) in ${ms}ms — $hits with header_image, " +
-                    "${parsed.size - hits} without",
+                "appdetails: batch of ${ids.size} id(s) (cc=$cc) in ${ms}ms — $hits with header_image" +
+                    if (reasons.isNotEmpty()) "; misses: $reasons" else "",
             )
             return parsed
         }
 
-        if (ids.size == 1) return emptyMap()
+        if (ids.size == 1) return ids.associateWith { HeaderResult(null, HeaderMiss.ABSENT_FROM_RESPONSE) }
 
         // Nothing parsed from a multi-id request: assume this filter doesn't batch here and fall
         // back to single-id requests, paced so the retry can't become the stampede we avoided.
@@ -482,30 +535,59 @@ object SteamStoreCatalog {
             "appdetails: batched request for ${ids.size} id(s) returned nothing parseable — " +
                 "retrying individually",
         )
-        val out = HashMap<Int, String?>(ids.size)
+        val out = HashMap<Int, HeaderResult>(ids.size)
         for ((index, id) in ids.withIndex()) {
             if (index > 0) delay(APPDETAILS_INTER_BATCH_MS)
-            val single = withContext(Dispatchers.IO) {
-                SteamStoreSearch.httpGet(
-                    "https://store.steampowered.com/api/appdetails?appids=$id&filters=basic&l=english",
-                )
-            } ?: continue
-            out.putAll(parseHeaderImages(single, listOf(id)))
+            out.putAll(fetchHeaderImages(listOf(id)))
         }
-        return out.ifEmpty { null }
+        return out
     }
 
-    /** `{ "<appid>": { success, data: { header_image } } }` -> appId -> url (null = none). */
-    private fun parseHeaderImages(json: String, ids: List<Int>): Map<Int, String?> {
+    /**
+     * Why one appId produced no `header_image`. These were all printing as "had no capsule art",
+     * which made a rate-limit casualty indistinguishable from a genuinely artless app — the exact
+     * ambiguity that left app 3908260 unexplained when a direct US fetch returned valid art.
+     */
+    internal enum class HeaderMiss {
+        /** Steam answered `success:false`: delisted, or not in the store region we asked with. */
+        NOT_IN_REGION,
+
+        /** Steam answered `success:true` but the app publishes no `header_image`. Genuinely artless. */
+        NO_HEADER_IMAGE,
+
+        /** The app wasn't in the response at all — batch shape or an unexpected payload. */
+        ABSENT_FROM_RESPONSE,
+
+        /** HTTP 429. We were rate-limited; says NOTHING about whether art exists. */
+        RATE_LIMITED,
+
+        /** Any other non-2xx. */
+        HTTP_ERROR,
+
+        /** Timeout / DNS / TLS — the request never completed. */
+        TRANSPORT,
+    }
+
+    /** One id's result: a URL, or the reason there isn't one. */
+    private data class HeaderResult(val url: String?, val miss: HeaderMiss?)
+
+    /** `{ "<appid>": { success, data: { header_image } } }` -> appId -> [HeaderResult]. */
+    private fun parseHeaderImages(json: String, ids: List<Int>): Map<Int, HeaderResult> {
         return try {
             val root = JSONObject(json)
-            val out = HashMap<Int, String?>(ids.size)
+            val out = HashMap<Int, HeaderResult>(ids.size)
             for (id in ids) {
-                val entry = root.optJSONObject(id.toString()) ?: continue
-                if (!entry.optBoolean("success", false)) { out[id] = null; continue }
-                out[id] = entry.optJSONObject("data")
+                val entry = root.optJSONObject(id.toString())
+                if (entry == null) {
+                    out[id] = HeaderResult(null, HeaderMiss.ABSENT_FROM_RESPONSE); continue
+                }
+                if (!entry.optBoolean("success", false)) {
+                    out[id] = HeaderResult(null, HeaderMiss.NOT_IN_REGION); continue
+                }
+                val url = entry.optJSONObject("data")
                     ?.optString("header_image", "")
                     ?.takeIf { it.isNotBlank() }
+                out[id] = HeaderResult(url, if (url == null) HeaderMiss.NO_HEADER_IMAGE else null)
             }
             out
         } catch (e: Exception) {

@@ -2,14 +2,11 @@ package com.winlator.star.store
 
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -80,7 +77,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.SpanStyle
@@ -191,7 +187,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var lastSpeedTier = DownloadSpeedConfig.DEFAULT_TIER  // 24 = Fast
 
     // UI state
-    private var headerBitmap by mutableStateOf<Bitmap?>(null)
     private var nameText by mutableStateOf("Loading…")
     private var typeText by mutableStateOf("GAME")
     // Headline chip = on-disk footprint (estimate with "~", or the real measured size once installed).
@@ -290,6 +285,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
         SteamPrefs.init(this)
         SteamRepository.getInstance().initialize(this)
+        // This page can be entered cold (drawer -> Save Manager -> a card) without the Library tab
+        // ever having run, so point the PICS art store at a Context here too. init() only restores
+        // the on-disk mirror — no snapshot read, no network — so it's safe on the main thread.
+        SteamLibraryArt.init(this)
         // Lazy-connect: opening a detail page directly (e.g. drawer → Save Manager → tap a card) skips
         // the store home that starts SteamForegroundService, so the CM connection would stay down and
         // the status badge read offline. Ensure it here when signed in — idempotent (start/connect
@@ -301,7 +300,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 SteamGameDetailScreen(
                     appId = appId,
                     signedIn = SteamPrefs.isLoggedIn,
-                    headerBitmap = headerBitmap,
                     steamStatus = steamStatus,
                     onReconnect = { SteamRepository.getInstance().reconnectNow() },
                     nameText = nameText,
@@ -526,7 +524,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
         SteamRepository.getInstance().addListener(this)
         loadGame()
-        loadHeaderImage()
     }
 
     override fun onDestroy() {
@@ -1003,17 +1000,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         }
     }
 
-    private fun loadHeaderImage() {
-        val g = game ?: return
-        val url = g.headerUrl ?: return
-        Thread {
-            try {
-                val bmp = BitmapFactory.decodeStream(URL(url).openStream())
-                headerBitmap = bmp
-            } catch (_: Exception) {}
-        }.start()
-    }
-
     private fun onInstallClicked() {
         val g = game ?: return
 
@@ -1211,7 +1197,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             exeFiles.sortWith { a, b ->
                 AmazonLaunchHelper.scoreExe(b, lowerTitle) - AmazonLaunchHelper.scoreExe(a, lowerTitle)
             }
-            val coverUrl = "https://shared.steamstatic.com/store_item_assets/steam/apps/${g.appId}/library_600x900.jpg"
+            // Prefer the app's PUBLISHED portrait cover from PICS; the constructed URL is the
+            // fallback for anything the library snapshot doesn't carry.
+            val coverUrl = SteamLibraryArt.libraryCapsule(g.appId)
+                ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/${g.appId}/library_600x900.jpg"
 
             if (exeFiles.size == 1) {
                 runOnUiThread { startAddToShortcuts(g.name, exeFiles[0].absolutePath, coverUrl) }
@@ -1446,7 +1435,6 @@ private val AchvPillOnBorder    = Color(0x66E8B652) // rgba(232,182,82,.40)
 private fun SteamGameDetailScreen(
     appId: Int,
     signedIn: Boolean,
-    headerBitmap: Bitmap?,
     steamStatus: SteamRepository.SteamStatus,
     onReconnect: () -> Unit,
     nameText: String,
@@ -1610,25 +1598,19 @@ private fun SteamGameDetailScreen(
             modifier = Modifier.fillMaxWidth().height(180.dp),
             contentAlignment = Alignment.Center,
         ) {
-            if (headerBitmap != null) {
-                Image(
-                    bitmap = headerBitmap!!.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp,
-                    )
-                }
-            }
+            // The SAME resolve chain the storefront cards use: PICS published art -> constructed
+            // CDN hosts -> appdetails -> SteamGridDB -> themed placeholder.
+            //
+            // Previously this page built ONE constructed URL of its own, so a game that showed art
+            // in the Library showed nothing here — and when that URL 404'd the `else` branch left a
+            // spinner running forever, which is the one failure mode the chain must never produce.
+            // aspectRatio = null because this hero is a fixed-height band, not a 92:43 card.
+            StoreCapsule(
+                appId = appId,
+                title = nameText,
+                modifier = Modifier.fillMaxSize(),
+                aspectRatio = null,
+            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

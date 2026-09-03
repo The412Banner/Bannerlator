@@ -900,7 +900,22 @@ private fun TopLevelFields(
                     label = stringResource(R.string.dxwrapper),
                     options = viewModel.dxWrapperEntries,
                     selectedOption = viewModel.selectedDXWrapper,
-                    onSelect = { viewModel.selectedDXWrapper = it },
+                    onSelect = { newWrapper ->
+                        val wasVegas = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "").contains("vegas")
+                        val isVegas = StringUtils.parseIdentifier(newWrapper).contains("vegas")
+                        viewModel.selectedDXWrapper = newWrapper
+                        // Strip dxvkConfigFile when leaving VEGAS — prevents stale
+                        // VEGAS config path from leaking into plain DXVK+VKD3D.
+                        if (wasVegas && !isVegas) {
+                            val raw = viewModel.dxWrapperConfig
+                            val cfg = DXVKConfigDialog.parseConfig(raw)
+                            val path = cfg.get("dxvkConfigFile")
+                            if (path.isNotEmpty()) {
+                                val stripped = raw.split(",").filter { !it.startsWith("dxvkConfigFile=") }.joinToString(",")
+                                viewModel.dxWrapperConfig = stripped
+                            }
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { helpRes = R.string.dxwrapper_help_content }) {

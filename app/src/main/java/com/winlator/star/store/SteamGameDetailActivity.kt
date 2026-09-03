@@ -280,6 +280,11 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Honour the user's App-orientation preference (Appearance -> AUTO / PORTRAIT / LANDSCAPE).
+        // The whole Steam section previously ignored it: these activities pinned themselves in the
+        // manifest and never asked. Applied before any content so the first frame is already in the
+        // requested orientation. The game's XServerDisplayActivity is deliberately NOT touched.
+        com.winlator.star.core.AppOrientation.apply(this)
         appId = intent.getIntExtra(EXTRA_APP_ID, 0)
         if (appId == 0) { finish(); return }
 

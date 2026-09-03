@@ -24,7 +24,10 @@ import com.winlator.star.store.blsteam.BlPlayerProfile
 import com.winlator.star.store.blsteam.BlSocialFeed
 import com.winlator.star.store.blsteam.BlSteamEngine
 import com.winlator.star.store.blsteam.BlSteamSession
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -205,6 +208,36 @@ object SteamFriendsStore {
     /** The local user's own persona (name + avatar) — used to render our own chat bubbles. */
     private val _self = MutableStateFlow<SteamFriend?>(null)
     val self: StateFlow<SteamFriend?> = _self.asStateFlow()
+
+    // ── The signed-in user's OWN profile, hoisted out of composition ──────────────────────────
+    //
+    // The Profile tab used to hold this in `remember(steamId) { mutableStateOf(null) }`, which is
+    // composition-scoped: leaving the tab threw it away, so every single return rendered the blank
+    // + spinner state before asking — even on a guaranteed cache hit. Holding it here (the same
+    // shape as [self] above) means a tab switch costs nothing.
+    //
+    // Stale-while-revalidate: whatever we last knew is published immediately (from memory, or from
+    // the per-account disk mirror on a cold start), a refresh runs behind it, and a FAILED refresh
+    // leaves the stale value alone rather than blanking the tab.
+    private val _selfProfile = MutableStateFlow<FriendProfile?>(null)
+    val selfProfile: StateFlow<FriendProfile?> = _selfProfile.asStateFlow()
+
+    /** True while a self-profile refresh is in flight. The tab shows a spinner ONLY when this is
+     *  true AND [selfProfile] is still null — i.e. the genuine first-ever load. */
+    private val _selfProfileLoading = MutableStateFlow(false)
+    val selfProfileLoading: StateFlow<Boolean> = _selfProfileLoading.asStateFlow()
+
+    /** Background scope for the self-profile refresh; outlives any composition. */
+    private val profileScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Which account [_selfProfile] currently holds, so an account switch can't show the wrong one. */
+    @Volatile private var selfProfileAccount = 0L
+
+    /** When the last SUCCESSFUL self-profile fetch landed, for the revalidate-interval check. */
+    @Volatile private var selfProfileFetchedAt = 0L
+
+    /** Guards against two refreshes racing (tab open + a session event arriving together). */
+    @Volatile private var selfProfileRefreshing = false
 
     // One-shot user feedback for the Add-a-friend flow (snackbar text); UI clears it after showing.
     private val _addFeedback = MutableStateFlow<String?>(null)
@@ -763,6 +796,14 @@ object SteamFriendsStore {
         // shown; live changes still arrive via onPersonaState. Only session/chat state is cleared here.
         histories.clear()       // privacy: don't let a different account read cached chat from memory
         profileCache.clear()    // privacy: a different account must not read the previous user's profiles
+        // Same rule for the hoisted self-profile and its disk mirror. The mirror is keyed per
+        // account (SteamSelfProfileCache uses p_<steamId>) so a different sign-in can never read
+        // this one's record, but the in-memory copy still has to go NOW rather than lingering in a
+        // StateFlow the Profile tab is collecting.
+        _selfProfile.value = null
+        _selfProfileLoading.value = false
+        selfProfileAccount = 0L
+        selfProfileFetchedAt = 0L
         // Privacy: pull down any friend-chat notifications so a signed-out shade shows no one's messages.
         try { appContext?.let { SteamChatNotifier.cancelAll(it) } } catch (_: Throwable) {}
         loadedForAccount = 0L
@@ -1483,6 +1524,83 @@ object SteamFriendsStore {
     /** Steam store header art for an app — same CDN the rest of the app uses (see SteamGame.headerUrl). */
     private fun appHeaderUrl(appId: Int): String? =
         if (appId > 0) "https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/header.jpg" else null
+
+    /**
+     * Refresh the signed-in user's own profile, stale-while-revalidate.
+     *
+     * Safe to call on every Profile-tab open: it does NOT hit the network on every glance. It
+     * publishes what it already knows first, then revalidates only when the data is older than
+     * [PROFILE_TTL_MS] (or [force] is set, e.g. an explicit pull-to-refresh or a session event).
+     *
+     * Order of operations, and why each matters:
+     *  1. An account switch drops the previous user's profile before anything else — privacy.
+     *  2. On a cold start the per-account disk mirror is published immediately, so the tab paints
+     *     real content on its FIRST frame instead of a spinner. The avatar URL comes with it, so
+     *     the image starts downloading straight away rather than waiting on the whole aggregate.
+     *  3. A refresh runs only if the data is stale. A FAILED refresh keeps the stale value —
+     *     [fetchProfile] returning null (no live session) must never blank a populated tab.
+     *
+     * Never throws; returns immediately (the work runs on [profileScope]).
+     */
+    fun refreshSelfProfile(force: Boolean = false) {
+        val selfId = try { repo.steamId64 } catch (_: Throwable) { 0L }
+        if (selfId == 0L) return
+
+        // (1) Account switch — never let one account see another's profile.
+        if (selfProfileAccount != selfId) {
+            _selfProfile.value = null
+            selfProfileAccount = selfId
+            selfProfileFetchedAt = 0L
+        }
+
+        if (selfProfileRefreshing) return
+
+        // (2) Cold start: publish the mirrored profile before any network work.
+        if (_selfProfile.value == null) {
+            val ctx = appContext
+            if (ctx != null) {
+                val mirrored = SteamSelfProfileCache.load(ctx, selfId)
+                if (mirrored != null) {
+                    _selfProfile.value = mirrored
+                    StorefrontLog.i(
+                        StorefrontLog.PROFILE,
+                        "${StorefrontLog.sid(selfId)}: painted from the on-disk mirror — " +
+                            "revalidating in the background",
+                    )
+                }
+            }
+        }
+
+        // (3) Fresh enough? Then this open costs nothing at all.
+        val age = System.currentTimeMillis() - selfProfileFetchedAt
+        if (!force && _selfProfile.value != null && age < PROFILE_TTL_MS) return
+
+        selfProfileRefreshing = true
+        _selfProfileLoading.value = true
+        profileScope.launch {
+            try {
+                val fresh = runCatching { fetchProfile(selfId) }.getOrNull()
+                // Guard against an account switch completing while we were away.
+                if (selfProfileAccount != selfId) return@launch
+                if (fresh != null) {
+                    _selfProfile.value = fresh
+                    selfProfileFetchedAt = System.currentTimeMillis()
+                    appContext?.let { SteamSelfProfileCache.save(it, selfId, fresh) }
+                } else {
+                    // Keep whatever is on screen. A null here means "no live session", which is a
+                    // reason to show stale data, not to erase it.
+                    StorefrontLog.i(
+                        StorefrontLog.PROFILE,
+                        "${StorefrontLog.sid(selfId)}: refresh returned nothing — keeping the " +
+                            (if (_selfProfile.value != null) "cached profile" else "empty state"),
+                    )
+                }
+            } finally {
+                selfProfileRefreshing = false
+                _selfProfileLoading.value = false
+            }
+        }
+    }
 
     /**
      * Fetch a friend's enriched public [FriendProfile], best-effort and NEVER throwing. Blocking pieces

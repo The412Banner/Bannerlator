@@ -860,7 +860,24 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         pauseBtnText = "Pause"
                         pauseAction = PauseAction.PAUSE
                     } else {
-                        SteamRepository.getInstance().database.deleteDownload(appId)
+                        // Interrupted download: the DB says "downloading" but no live worker exists — the
+                        // process was killed mid-download (e.g. a backgrounded WiFi-throttle stall the OEM
+                        // task-killer later reaped; the worker never ran its terminal, so no fail/cancel).
+                        // Do NOT delete the row — that discards resumable partial progress and leaves
+                        // nothing to resume on foreground. Flip it to PAUSED so the partial files + install
+                        // dir survive and the user can Resume (resumeApp) from where it stopped.
+                        SteamRepository.getInstance().database.markDownloadPaused(appId, dlRow.bytesDownloaded)
+                        progressVisible = true
+                        progressValue = pct
+                        downloadProgressValue = pct
+                        progressTextVisible = true
+                        progressText = "Paused — $pct%  (${fmtSize(dlRow.bytesDownloaded)} / ${fmtSize(dlRow.bytesTotal)})"
+                        installBtnEnabled = true
+                        installBtnText = "Cancel"
+                        installAction = InstallAction.CANCEL
+                        pauseBtnEnabled = true
+                        pauseBtnText = "Resume"
+                        pauseAction = PauseAction.RESUME
                     }
                 }
                 SteamDatabase.DL_PAUSED -> {
@@ -879,7 +896,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 SteamDatabase.DL_QUEUED -> {
                     // Waiting in the managed queue. Mirror the DL_DOWNLOADING liveness check with
                     // isQueued: a `queued` row that isn't actually in the live queue is stale (process
-                    // died) — drop it so the page falls back to Install.
+                    // died) — keep it as a resumable PAUSED row rather than dropping it (see else).
                     if (DownloadQueue.isQueued(appId)) {
                         progressVisible = true
                         progressValue = 0
@@ -891,7 +908,22 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         installAction = InstallAction.CANCEL
                         resetPauseBtn()
                     } else {
-                        SteamRepository.getInstance().database.deleteDownload(appId)
+                        // Stale queued row: the DB says "queued" but it isn't in the live queue — the
+                        // process died before it started (or while it waited). Keep it resumable instead
+                        // of deleting: flip to PAUSED so a Resume re-enqueues it (any partial bytes + the
+                        // install dir are preserved; a fresh 0-byte row just restarts).
+                        SteamRepository.getInstance().database.markDownloadPaused(appId, dlRow.bytesDownloaded)
+                        progressVisible = true
+                        progressValue = pct
+                        downloadProgressValue = pct
+                        progressTextVisible = true
+                        progressText = "Paused — $pct%  (${fmtSize(dlRow.bytesDownloaded)} / ${fmtSize(dlRow.bytesTotal)})"
+                        installBtnEnabled = true
+                        installBtnText = "Cancel"
+                        installAction = InstallAction.CANCEL
+                        pauseBtnEnabled = true
+                        pauseBtnText = "Resume"
+                        pauseAction = PauseAction.RESUME
                     }
                 }
             }

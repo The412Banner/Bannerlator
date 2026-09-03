@@ -1,6 +1,7 @@
 package com.winlator.star.store
 
 import android.content.Context
+import android.net.wifi.WifiManager
 import android.os.PowerManager
 import android.util.Log
 import com.winlator.star.BuildConfig
@@ -113,34 +114,76 @@ object SteamDepotDownloader {
     // safety cap so a crash can never pin it forever.
     @Volatile private var wakeLock: PowerManager.WakeLock? = null
 
-    /** Lazily create (once) and acquire the shared partial wakelock. Null/exception-safe: a device
-     *  without POWER_SERVICE (universal in practice) must not break the download. */
+    // A partial wakelock keeps the CPU (and process) alive, but it does NOT stop WiFi power-save from
+    // throttling the bulk CDN transfer to ~0 once the app leaves the foreground: the process stays
+    // ALIVE (State: S), the FGS stays up and the CM session survives (the tiny heartbeat still slips
+    // through), yet download RX + disk writes fall to zero and the download stalls at a fixed %/byte
+    // count (device-confirmed: Hades frozen at 3%/401 MB, never resuming). A high-perf WifiManager
+    // WifiLock keeps the radio out of power-save for the duration of a background download and cures
+    // it. Held in EXACT lockstep with [wakeLock] — same reference-counting, acquired/released at the
+    // same points — so it can never leak or drop while another download still holds it. No manifest
+    // permission is required for a WifiLock (ACCESS_WIFI_STATE is already declared for other reasons).
+    @Volatile private var wifiLock: WifiManager.WifiLock? = null
+
+    /** Lazily create (once) and acquire BOTH the shared partial wakelock and the high-perf WifiLock.
+     *  Each is independently null/exception-safe: a device missing POWER_SERVICE or WIFI_SERVICE (both
+     *  universal in practice) must not break the download, and a failure of one must not skip the other. */
     @Synchronized
     internal fun acquireDownloadWakelock(ctx: Context) {
+        val appCtx = ctx.applicationContext   // application context — never leak an Activity
+        // Partial CPU wakelock — keeps the process/CPU alive (OEM task-killer churn).
         try {
             var wl = wakeLock
             if (wl == null) {
-                val pm = ctx.applicationContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
-                if (pm == null) { dlog("WAKELOCK: POWER_SERVICE unavailable — continuing without it"); return }
-                wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Bannerlator:steam-download")
-                wl.setReferenceCounted(true)   // multiple concurrent downloads acquire/release safely
-                wakeLock = wl
+                val pm = appCtx.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                if (pm == null) dlog("WAKELOCK: POWER_SERVICE unavailable — continuing without it")
+                else {
+                    wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Bannerlator:steam-download")
+                    wl.setReferenceCounted(true)   // multiple concurrent downloads acquire/release safely
+                    wakeLock = wl
+                }
             }
-            wl.acquire(6L * 60L * 60L * 1000L)   // 6h cap — a crash can't pin the lock forever
-            dlog("WAKELOCK: acquired (partial, held=${wl.isHeld})")
+            wl?.let { it.acquire(6L * 60L * 60L * 1000L); dlog("WAKELOCK: acquired (partial, held=${it.isHeld})") }
+            // 6h cap above — a crash can't pin the lock forever.
         } catch (t: Throwable) {
             dlog("WAKELOCK: acquire failed (${t.message}) — continuing without it")
         }
+        // High-perf WiFi lock — keeps the radio out of power-save so a BACKGROUNDED download's bulk CDN
+        // transfer isn't throttled to ~0. WifiLock.acquire() has no timeout arg; it is released in exact
+        // lockstep with the wakelock on every terminal path, so no cap is needed.
+        try {
+            var wf = wifiLock
+            if (wf == null) {
+                val wm = appCtx.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                if (wm == null) dlog("WIFILOCK: WIFI_SERVICE unavailable — continuing without it")
+                else {
+                    @Suppress("DEPRECATION")   // WIFI_MODE_FULL_HIGH_PERF is deprecated on API 29+ but still honoured; targetSdk is 28
+                    val created = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Bannerlator:steam-download-wifi")
+                    created.setReferenceCounted(true)   // ref-counted in lockstep with the wakelock
+                    wifiLock = created
+                    wf = created
+                }
+            }
+            wf?.let { it.acquire(); dlog("WIFILOCK: acquired (high-perf, held=${it.isHeld})") }
+        } catch (t: Throwable) {
+            dlog("WIFILOCK: acquire failed (${t.message}) — continuing without it")
+        }
     }
 
-    /** Release one acquire of the shared wakelock. Guarded: a reference-counted release throws if the
-     *  count already hit zero, which is benign — we just want it dropped on every terminal path. */
+    /** Release one acquire of BOTH shared locks. Guarded: a reference-counted release throws if the
+     *  count already hit zero, which is benign — we just want them dropped on every terminal path. */
     internal fun releaseDownloadWakelock() {
         try {
-            val wl = wakeLock ?: return
-            if (wl.isHeld) { wl.release(); dlog("WAKELOCK: released (held=${wl.isHeld})") }
+            val wl = wakeLock
+            if (wl != null && wl.isHeld) { wl.release(); dlog("WAKELOCK: released (held=${wl.isHeld})") }
         } catch (t: Throwable) {
             dlog("WAKELOCK: release skipped (${t.message})")
+        }
+        try {
+            val wf = wifiLock
+            if (wf != null && wf.isHeld) { wf.release(); dlog("WIFILOCK: released (held=${wf.isHeld})") }
+        } catch (t: Throwable) {
+            dlog("WIFILOCK: release skipped (${t.message})")
         }
     }
 

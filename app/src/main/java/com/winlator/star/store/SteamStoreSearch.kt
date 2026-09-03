@@ -131,8 +131,10 @@ object SteamStoreSearch {
             s
         }
 
-    /** GET [urlStr] as a UTF-8 string, or null on any non-2xx / failure. */
-    private fun httpGet(urlStr: String): String? {
+    /** GET [urlStr] as a UTF-8 string, or null on any non-2xx / failure.
+     *  `internal` so [SteamStoreCatalog] — the storefront's rails + priced search — rides the exact
+     *  same timeouts/headers/failure semantics instead of growing a second HTTP style. */
+    internal fun httpGet(urlStr: String): String? {
         return try {
             val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 8_000

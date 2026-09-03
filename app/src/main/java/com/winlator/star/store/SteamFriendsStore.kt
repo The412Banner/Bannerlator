@@ -20,6 +20,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.FriendsList
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.NicknameListCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.callback.PersonaStateCallback
 import `in`.dragonbra.javasteam.types.SteamID
+import com.winlator.star.store.blsteam.BlPlayerProfile
 import com.winlator.star.store.blsteam.BlSocialFeed
 import com.winlator.star.store.blsteam.BlSteamEngine
 import com.winlator.star.store.blsteam.BlSteamSession
@@ -125,8 +126,13 @@ object SteamFriendsStore {
      * privacy hides fields (a private "game details" setting returns no owned-games; a limited profile
      * returns no real name / summary / member-since), and this JavaSteam fork simply doesn't expose some
      * RPCs (see [fetchProfile]). The screen hides any null/empty section the same way the Steam client
-     * does. [level], [badges] and [mutualFriends] are always null in this build — the per-friend RPCs
-     * for them (GetSteamLevel / GetBadges / a general GetMutualFriends) are not present in this fork.
+     * does.
+     *
+     * [level] and [favoriteBadge] now come from the Rust engine's player-profile read
+     * ([BlSteamSession.getPlayerProfile]) and are public data — present even for a limited profile —
+     * but still null on the JavaSteam path and whenever the CM declines. [badges] (a *count*) and
+     * [mutualFriends] remain permanently null: there is no verifiable badge-collection or
+     * mutual-friends RPC, only the single showcased badge, so nothing is invented for them.
      */
     data class FriendProfile(
         val steamId: Long,
@@ -144,12 +150,20 @@ object SteamFriendsStore {
         val mutualFriends: Int?,
         val currentGameAppId: Int,
         val currentGameName: String?,
+        /** The single showcased badge, when the account has one equipped. Public data. */
+        val favoriteBadge: BlPlayerProfile.FavoriteBadge? = null,
+        /** Equipped profile decoration (avatar frame / background). Public data; never null-checked
+         *  as a group — each slot inside may independently be null. */
+        val equipped: BlPlayerProfile.EquippedItems = BlPlayerProfile.EquippedItems.NONE,
+        /** Hours in the last two weeks, when game details are public. */
+        val hoursTwoWeeks: Double? = null,
     ) {
         /** True when nothing beyond identity is visible (privacy-locked) — the screen shows a note. */
         val isEssentiallyEmpty: Boolean
             get() = realName.isNullOrBlank() && summary.isNullOrBlank() && memberSince == null &&
                 gamesCount == null && hoursTotal == null && recentGames.isEmpty() &&
-                level == null && badges == null && mutualFriends == null
+                level == null && badges == null && mutualFriends == null &&
+                favoriteBadge == null && equipped.isEmpty
     }
 
     // ── State ─────────────────────────────────────────────────────────────────────
@@ -178,6 +192,10 @@ object SteamFriendsStore {
     private data class CachedProfile(val at: Long, val profile: FriendProfile)
     private val profileCache = ConcurrentHashMap<Long, CachedProfile>()
     private const val PROFILE_TTL_MS = 5 * 60 * 1000L
+
+    /** Recently-played entries to ask the engine's player-profile read for. The profile screen and
+     *  the storefront's Profile tab both show at most 12, so anything beyond that is wasted wire. */
+    private const val PROFILE_RECENT_LIMIT = 12
 
     @Volatile private var activeChatId = 0L
 
@@ -1502,7 +1520,77 @@ object SteamFriendsStore {
                 var memberSince: String? = null
                 var summary: String? = null
                 val rs = rustSession()
-                if (rs != null) try {
+
+                // 0) Engine-only one-call player profile: Steam level, showcased badge, equipped
+                //    decoration, and (when the account's game details are public) counts + playtime +
+                //    recently-played. EVERY section of it fails independently to null, so this only
+                //    ever *fills in* — the steps below still run and remain the JavaSteam fallback.
+                //    Not compile-verified against a running engine yet, hence the blanket guard.
+                //    Logged in detail: none of this is compile- or device-verified, so a null has to
+                //    say WHICH stage produced it (no engine / no session / bad JSON) — see
+                //    StorefrontLog for the shared `SteamUI.` tag prefix and the SteamID masking.
+                val pTag = StorefrontLog.PROFILE
+                val pSid = StorefrontLog.sid(steamId)
+                val playerProfile: BlPlayerProfile? = if (rs == null) {
+                    StorefrontLog.i(pTag, "$pSid: JavaSteam path — nativeGetPlayerProfile not called")
+                    null
+                } else try {
+                    val raw = rs.getPlayerProfile(steamId, null, PROFILE_RECENT_LIMIT)
+                    if (raw == null) {
+                        StorefrontLog.w(
+                            pTag,
+                            "$pSid: nativeGetPlayerProfile returned NULL — no logged-on session, or the " +
+                                "request never landed at the CM. Level/badge/playtime will be absent.",
+                        )
+                        null
+                    } else {
+                        val parsed = BlPlayerProfile.parse(raw)
+                        if (parsed == null) {
+                            StorefrontLog.w(
+                                pTag,
+                                "$pSid: nativeGetPlayerProfile returned ${raw.length} bytes that failed to " +
+                                    "parse — treating the whole profile as absent",
+                            )
+                        } else {
+                            // Every section fails independently, so record which ones actually arrived.
+                            StorefrontLog.i(
+                                pTag,
+                                "$pSid: player profile OK — level=${parsed.level ?: "absent"} " +
+                                    "favoriteBadge=${StorefrontLog.has(parsed.favoriteBadge)} " +
+                                    "equipped=${if (parsed.equipped.isEmpty) "none" else "some"} " +
+                                    "profileInfo=${if (parsed.profileInfo?.isBlank != false) "blank/absent" else "present"} " +
+                                    "gamesPublic=${parsed.gamesPublic} " +
+                                    "ownedGameCount=${parsed.ownedGameCount ?: "absent"} " +
+                                    "recentlyPlayed=${parsed.recentlyPlayed.size}",
+                            )
+                            if (!parsed.gamesPublic) {
+                                // NOT necessarily private — an account with genuinely zero games looks
+                                // identical over the wire. Never rendered as "private" on that alone.
+                                StorefrontLog.i(
+                                    pTag,
+                                    "$pSid: gamesPublic=false — game details are private OR the account " +
+                                        "owns nothing; the two are indistinguishable, so counts stay absent",
+                                )
+                            }
+                        }
+                        parsed
+                    }
+                } catch (t: Throwable) {
+                    StorefrontLog.w(pTag, "$pSid: nativeGetPlayerProfile THREW", t)
+                    null
+                }
+                playerProfile?.profileInfo?.takeIf { !it.isBlank }?.let { pi ->
+                    realName = pi.realName
+                    country = pi.countryName
+                    summary = pi.summary ?: pi.headline
+                    memberSince = pi.timeCreated.takeIf { it > 0L }
+                        ?.let { runCatching { "Member since ${PROFILE_YEAR_FMT.format(java.util.Date(it * 1000L))}" }.getOrNull() }
+                }
+
+                // Kept as the engine fallback for step 0's profileInfo section: it can be null (older
+                // .so, or the request never landed) while this older job-matched read still answers.
+                // Only fills what is still blank, so a good step-0 read is never clobbered.
+                if (rs != null && (realName == null && country == null && summary == null && memberSince == null)) try {
                     // Engine: CMsgClientFriendProfileInfo (job-matched) — same fields as the callback.
                     rs.getFriendProfileInfo(steamId)?.let { json ->
                         val o = org.json.JSONObject(json)
@@ -1532,7 +1620,27 @@ object SteamFriendsStore {
                 var gamesCount: Int? = null
                 var hoursTotal: Double? = null
                 var recent: List<RecentGame> = emptyList()
-                if (rs != null) try {
+
+                // 2a) Step 0 already carries all of this WHEN the account's game details are public.
+                //     `gamesPublic == false` means either private OR genuinely zero games — the two
+                //     are indistinguishable over the wire, so it is never rendered as "private",
+                //     it just leaves these null and lets the owned-games call below try anyway.
+                if (playerProfile != null && playerProfile.gamesPublic) {
+                    gamesCount = playerProfile.ownedGameCount
+                    hoursTotal = playerProfile.hoursForever
+                    if (playerProfile.recentlyPlayed.isNotEmpty()) {
+                        recent = playerProfile.recentlyPlayed.take(12).map {
+                            RecentGame(
+                                appId = it.appId,
+                                name = it.name,
+                                hours = it.playtimeForever / 60.0,
+                                coverUrl = appHeaderUrl(it.appId),
+                            )
+                        }
+                    }
+                }
+
+                if (rs != null && gamesCount == null && recent.isEmpty()) try {
                     // Engine: Player.GetOwnedGames (include_appinfo + played free games).
                     rs.getOwnedGames(steamId)?.let { json ->
                         val arr = org.json.JSONArray(json)
@@ -1602,17 +1710,24 @@ object SteamFriendsStore {
                         ?: base?.displayName ?: "Friend",
                     realName = realName,
                     avatarUrl = base?.avatarUrl,
-                    level = null, // no per-friend level RPC in this JavaSteam fork
+                    // Engine player-profile read; null on the JavaSteam path or when the CM declined.
+                    // Absent is NOT level 0 — BlPlayerProfile keeps the distinction.
+                    level = playerProfile?.level,
                     country = country,
                     memberSince = memberSince,
                     summary = summary,
                     gamesCount = gamesCount,
                     hoursTotal = hoursTotal,
                     recentGames = recent,
-                    badges = null, // no per-friend GetBadges RPC in this fork
+                    // Still null everywhere: there is no verifiable badge-COLLECTION or XP RPC, only
+                    // the single showcased badge below. Nothing is invented to fill this in.
+                    badges = null,
                     mutualFriends = null, // no general GetMutualFriends RPC in this fork
                     currentGameAppId = base?.gameAppId ?: 0,
                     currentGameName = base?.gameName,
+                    favoriteBadge = playerProfile?.favoriteBadge,
+                    equipped = playerProfile?.equipped ?: BlPlayerProfile.EquippedItems.NONE,
+                    hoursTwoWeeks = playerProfile?.hoursTwoWeeks,
                 )
                 profileCache[steamId] = CachedProfile(System.currentTimeMillis(), profile)
                 profile

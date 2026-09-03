@@ -198,7 +198,12 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         statusText = "Signed in!"
         isStatusError = false
         isLoading = false
-        startActivity(Intent(this, SteamGamesActivity::class.java))
+        // Back to the store-first host (singleTop + CLEAR_TOP reuses the instance that launched
+        // us, so its onNewIntent/onResume picks up the fresh login without a second copy).
+        startActivity(
+            Intent(this, SteamMainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
         finish()
     }
 

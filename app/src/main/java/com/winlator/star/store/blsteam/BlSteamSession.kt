@@ -741,6 +741,77 @@ class BlSteamSession : AutoCloseable {
         return nativeGetOwnedGames(h, steamId)
     }
 
+    /**
+     * Ask Steam to grant free licenses for [appIds] (a BATCH — the wire message takes a list).
+     *
+     * BLOCKING. Returns null ONLY when there is no live session; every other outcome — including a
+     * refusal — comes back as the JSON documented on [com.winlator.star.store.SteamFreeLicense],
+     * which owns the decode and the user-facing mapping.
+     *
+     * The native side also waits (bounded) for the CM to push the updated license list and reports
+     * that as `libraryUpdated`. That is a PACKAGE-level fact: turning the granted packages into
+     * downloadable apps is a PICS crawl driven from Kotlin, so a caller must still kick a library
+     * sync on success.
+     */
+    fun requestFreeLicense(appIds: IntArray): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        if (appIds.isEmpty()) return null
+        return try { nativeRequestFreeLicense(h, appIds) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    // ── Player profile (level / showcased badge / equipped items / recently played) ────────────
+    // Every one of these is BLOCKING and returns null when there is no logged-on session OR the
+    // request never landed. They are also newer than the rest of this file, so each is wrapped in
+    // the same UnsatisfiedLinkError guard the other late additions use — an app built against a
+    // .so that predates them must degrade, not die.
+
+    /**
+     * Steam levels for [steamIds] as `[{"steamId","accountId","level"}]`.
+     *
+     * NOTE: ids the CM declines are **omitted from the array** — a missing id means "unknown",
+     * NOT level 0. Callers must key off presence, not off a defaulted zero.
+     */
+    fun getSteamLevels(steamIds: LongArray): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        if (steamIds.isEmpty()) return "[]"
+        return try { nativeGetSteamLevels(h, steamIds) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    /**
+     * Equipped profile decoration for [steamId], keyed `avatarFrame` / `profileBackground` /
+     * `miniProfileBackground` / `animatedAvatar` / `profileModifier` / `steamDeckKeyboardSkin`;
+     * each slot is null or an item object. Public data — available even for a limited profile.
+     * [language] null = "english".
+     */
+    fun getEquippedProfileItems(steamId: Long, language: String? = null): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeGetEquippedProfileItems(h, steamId, language) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    /** The single showcased ("favorite") badge for [steamId], or null when none is set. */
+    fun getFavoriteBadge(steamId: Long): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeGetFavoriteBadge(h, steamId) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    /**
+     * Recently-played games for [steamId], same element shape as [getOwnedGames].
+     * [maxCount] <= 0 means unlimited. Requires the account's *game details* to be public.
+     */
+    fun getRecentlyPlayedGames(steamId: Long, maxCount: Int = 0): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeGetRecentlyPlayedGames(h, steamId, maxCount) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
+    /**
+     * One-call profile read for [steamId] (self or a friend) — see [BlPlayerProfile] for the
+     * decoded shape and its privacy semantics. [maxRecent] <= 0 means unlimited.
+     */
+    fun getPlayerProfile(steamId: Long, language: String? = null, maxRecent: Int = 0): String? {
+        val h = nativeHandle.get(); if (h == 0L) return null
+        return try { nativeGetPlayerProfile(h, steamId, language, maxRecent) } catch (_: UnsatisfiedLinkError) { null }
+    }
+
     // Blocking launch-intent signal; empty pending-op list means clear to launch.
     fun signalAppLaunchIntent(
         appId: Int,
@@ -948,6 +1019,15 @@ class BlSteamSession : AutoCloseable {
         @JvmStatic private external fun nativeSendChatImage(handle: Long, steamId: Long, refreshToken: String, image: ByteArray, fileName: String): String?
         @JvmStatic private external fun nativeGetOwnedGames(
             handle: Long, steamId: Long): String?
+        @JvmStatic private external fun nativeRequestFreeLicense(handle: Long, appIds: IntArray): String?
+        @JvmStatic private external fun nativeGetSteamLevels(handle: Long, steamIds: LongArray): String?
+        @JvmStatic private external fun nativeGetEquippedProfileItems(
+            handle: Long, steamId: Long, language: String?): String?
+        @JvmStatic private external fun nativeGetFavoriteBadge(handle: Long, steamId: Long): String?
+        @JvmStatic private external fun nativeGetRecentlyPlayedGames(
+            handle: Long, steamId: Long, maxCount: Int): String?
+        @JvmStatic private external fun nativeGetPlayerProfile(
+            handle: Long, steamId: Long, language: String?, maxRecent: Int): String?
         @JvmStatic private external fun nativeSignalAppLaunchIntent(handle: Long, appId: Int, clientId: Long, machineName: String, ignorePending: Boolean, osType: Int): String?
         @JvmStatic private external fun nativeSignalAppExitSyncDone(handle: Long, appId: Int, clientId: Long, uploadsCompleted: Boolean, uploadsRequired: Boolean)
         @JvmStatic private external fun nativeGetLibrarySnapshot(handle: Long): String

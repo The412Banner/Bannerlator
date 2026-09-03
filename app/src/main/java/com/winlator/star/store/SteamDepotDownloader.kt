@@ -73,6 +73,14 @@ object SteamDepotDownloader {
     private const val COMPLETE_PCT = 90L
 
     /**
+     * Per-depot completion verdict (Layer 2). COMPLETE = validated on disk; SHORT = the account owns
+     * it but its content is incomplete → Layer-1 auto-resume; DENIED = the account is not entitled
+     * (Steam refused the depot key so the engine skipped it) → tolerated/skipped, never blocks the
+     * install. Parity with the Rust engine's `.bl_depot/denied.depots` handling in [BlDepotInstaller].
+     */
+    private enum class DepotVerdict { COMPLETE, SHORT, DENIED }
+
+    /**
      * Overlapping-depot fix. A few Steam apps ship two+ content depots that carry the SAME file
      * PATHS but DIFFERENT content — one maintained, one a stale leftover. JavaSteam's DepotDownloader
      * de-dupes files by path across an app's depots; the first-processed depot wins, so a stale twin
@@ -892,9 +900,10 @@ object SteamDepotDownloader {
                 // PICS). De-duped twins collapse to ~one copy on disk ≈ this value.
                 val largestKept = keptRows.maxOfOrNull { maxOf(it.realSizeBytes, it.sizeBytes) } ?: 0L
 
-                // Verdict for one depot → (complete, note). Order matters: engine-truth first, then the
-                // footprint escape for verify/resume/de-dup passes, then genuine-short, then last-resort.
-                fun verifyDepot(row: SteamDatabase.DepotManifestRow): Pair<Boolean, String> {
+                // Verdict for one depot → (verdict, note). Order matters: engine-truth first, then the
+                // footprint escape for verify/resume/de-dup passes, then genuine-short, then the
+                // denied/not-owned catch. See [DepotVerdict].
+                fun verifyDepot(row: SteamDatabase.DepotManifestRow): Pair<DepotVerdict, String> {
                     val d         = row.depotId
                     val pct       = lastDepotPct[d]                 // engine manifest %, or null (no transfer)
                     val delivered = installByDepot[d] ?: 0L         // uncompressed, THIS session
@@ -903,32 +912,38 @@ object SteamDepotDownloader {
                     return when {
                         // 1. Engine says this depot's needed file set finished this session.
                         pct != null && pct >= DEPOT_PCT_COMPLETE ->
-                            true to "engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp"
+                            DepotVerdict.COMPLETE to "engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp"
                         // 2. Whole install footprint already covers the manifest-true total (verify pass,
                         //    a finished resume, or de-dup) → every present depot's content is on disk.
                         onDiskCoversManifest ->
-                            true to "no/partial transfer but on-disk ${fmtSize(onDisk)} covers manifest-true ${fmtSize(manifestSum)}"
+                            DepotVerdict.COMPLETE to "no/partial transfer but on-disk ${fmtSize(onDisk)} covers manifest-true ${fmtSize(manifestSum)}"
                         // 3. Engine actively transferred this depot but left it below 1.0 → genuinely SHORT
-                        //    (the Dead Cells case: 588651 stalled at ~50% of its own manifest).
+                        //    (the Dead Cells case: 588651 stalled at ~50% of its own manifest). The account
+                        //    OWNS it (chunks were flowing) → Layer-1 auto-resume territory.
                         pct != null -> {
                             val by = if (expected > 0L) " (short by ~${fmtSize((expected - delivered).coerceAtLeast(0L))})" else ""
-                            false to "SHORT engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp$by"
+                            DepotVerdict.SHORT to "SHORT engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp$by"
                         }
-                        // 4. No transfer this session AND footprint short of the manifest total:
-                        //    (a) overlapping/de-duplicated twin — on disk ≈ largest single depot, no empties.
+                        // 4a. No transfer this session but on disk ≈ the largest single kept depot with no
+                        //     empty files → overlapping/de-duplicated twin, complete.
                         !hasEmpty && largestKept > 0L && onDisk >= (largestKept * COMPLETE_PCT / 100L) ->
-                            true to "no transfer; on-disk ${fmtSize(onDisk)} ≥ largest depot ${fmtSize(largestKept)} — overlapping/de-duped"
-                        //    (b) we have a manifest total for this depot but the footprint doesn't cover it
-                        //        → content missing (a short sibling depot also drags the footprint down).
-                        expected > 0L ->
-                            false to "SHORT no transfer · on-disk ${fmtSize(onDisk)} < manifest-true ${fmtSize(manifestSum)} (depot expected $exp)"
-                        //    (c) no manifest truth at all for this depot → engine-trust: only fail if it
-                        //        delivered nothing (a hard skip); otherwise accept (never false-fail on the
-                        //        unreliable PICS number, matching the prior relaxed behaviour).
+                            DepotVerdict.COMPLETE to "no transfer; on-disk ${fmtSize(onDisk)} ≥ largest depot ${fmtSize(largestKept)} — overlapping/de-duped"
+                        // 4b. Bytes delivered but no engine % and no manifest cover (defensive) → trust the
+                        //     engine rather than fail; a depot that moved bytes is owned, not denied.
                         delivered > 0L ->
-                            true to "delivered ${fmtSize(delivered)} (no manifest total — trusting engine)"
+                            DepotVerdict.COMPLETE to "delivered ${fmtSize(delivered)} (no manifest total — trusting engine)"
+                        // 4c. ZERO transfer this session AND not present on disk. The engine finished the
+                        //     app download without ever fetching a chunk for this selected depot → it
+                        //     skipped it because the account is NOT ENTITLED (Steam refused the depot key).
+                        //     An OWNED depot that still needs content is never left at zero transfer when the
+                        //     app reports complete — it shows engine progress (case 3). So this is DENIED
+                        //     (not-owned), tolerated/skipped, never a blocking SHORT. Parity with the Rust
+                        //     engine tolerating `.bl_depot/denied.depots` (Hades' soundtrack depot 1145362).
                         else ->
-                            false to "SHORT nothing delivered and no manifest total"
+                            DepotVerdict.DENIED to (if (expected > 0L)
+                                "DENIED not owned · no transfer, on-disk ${fmtSize(onDisk)} < manifest-true ${fmtSize(manifestSum)} (depot expected $exp)"
+                            else
+                                "DENIED not owned · nothing delivered and no manifest content for this account")
                     }
                 }
 
@@ -941,9 +956,19 @@ object SteamDepotDownloader {
                     val checks = keptRows.map { it.depotId to verifyDepot(it) }
                     // Layer 3 — per-depot diagnosis line for every selected depot.
                     checks.forEach { (id, cn) ->
-                        dlog("Depot $id: ${if (cn.first) "COMPLETE" else "SHORT"} — ${cn.second}")
+                        val label = when (cn.first) {
+                            DepotVerdict.COMPLETE -> "COMPLETE"
+                            DepotVerdict.SHORT    -> "SHORT"
+                            DepotVerdict.DENIED   -> "DENIED (skipped — not owned on this account)"
+                        }
+                        dlog("Depot $id: $label — ${cn.second}")
                     }
-                    val shorts = checks.filter { !it.second.first }
+                    val shorts   = checks.filter { it.second.first == DepotVerdict.SHORT }
+                    val denied   = checks.filter { it.second.first == DepotVerdict.DENIED }
+                    val complete = checks.filter { it.second.first == DepotVerdict.COMPLETE }
+                    // A genuinely-SHORT (owned) depot still blocks → Layer-1 auto-resume, unchanged.
+                    // Denied depots are handled only once nothing is short, so a mixed pass never
+                    // persists a depot as excluded while owned content is still being fetched.
                     if (shorts.isNotEmpty()) {
                         val summary = shorts.joinToString("; ") { "depot ${it.first} [${it.second.second}]" }
                         depotShortSummary.set(summary)
@@ -954,8 +979,27 @@ object SteamDepotDownloader {
                         dlog("Deferring to bounded auto-resume (Layer 1) — NOT marking installed this pass.")
                         return   // do NOT markInstalled; the tail decides resume-vs-fail (bounded + backoff)
                     }
-                    dlog("Per-depot verify PASS: all ${checks.size} selected depot(s) COMPLETE — on-disk " +
-                            "${fmtSize(onDisk)}, manifest-true ${fmtSize(manifestSum)} → INSTALLED " +
+                    // No genuinely-short depot remains. GUARD: if NOTHING completed (every selected depot
+                    // was denied), the account owns none of this game — fail honestly instead of letting
+                    // "tolerate denied" turn a fully-unowned game into a false success.
+                    if (complete.isEmpty()) {
+                        val msg = "Steam denied access to every depot of this game (not owned on this account?)"
+                        dlog("NOT OWNED: all ${checks.size} selected depot(s) denied — $msg")
+                        emitFailed(appId, msg)   // marks DB/registry failed + advances the queue
+                        return                    // do NOT markInstalled
+                    }
+                    // Owned content is complete; any remaining depots were denied (not owned). Remember
+                    // ALL denied depots as excluded so a later re-download/update never re-selects and
+                    // re-denies them, then fall through to markInstalled.
+                    if (denied.isNotEmpty()) {
+                        val deniedIds = denied.map { it.first }
+                        deniedIds.forEach { dlog("Depot $it: skipped — not owned on this account (Steam refused the depot key)") }
+                        try { SteamPrefs.setExcludedDlc(appId, excluded + deniedIds) } catch (_: Throwable) {}
+                        dlog("Recorded ${deniedIds.size} denied depot(s) as excluded so a re-download won't re-select them: ${deniedIds.joinToString(",")}")
+                    }
+                    dlog("Per-depot verify PASS: ${complete.size}/${checks.size} selected depot(s) COMPLETE" +
+                            (if (denied.isNotEmpty()) ", ${denied.size} denied depot(s) skipped" else "") +
+                            " — on-disk ${fmtSize(onDisk)}, manifest-true ${fmtSize(manifestSum)} → INSTALLED " +
                             "(whole-app PICS estimate ${fmtSize(iTotal)} ignored — it over-counts shared/redist depots)")
                 }
 

@@ -6700,3 +6700,36 @@ runs its own pipeline. NOT B2b, no ruzstd→C-zstd swap, no speed-ranked CDN pic
 deadlock guard, prealloc→write→finalize exact size, verify accounting, cancel. No local Rust
 toolchain — CI `cargo build --lib` is the compile gate (tests not compiled by `--lib`);
 NOT device-tested (user drives the device). Other worktree `/home/claude-user/bannerlators` untouched.
+
+## Steam downloads — denied-depot tolerance (Hades false-fail fix), both engines
+Bug (device-confirmed 2026-09-02, Hades appId 1145360): a download whose OWNED content fully
+completed was marked FAILED because a NON-ENTITLED depot blocked the verdict. Depots 1145361
+(11.4 GB) + 1145363 (492 MB) COMPLETE (journal recorded, game playable) but 1145362 (~2.1 GB
+soundtrack DLC, real_size=0 = account not entitled; Steam DENIED the key) was treated as blocking
+→ steam_downloads.status=failed, is_installed=0. A denied key never becomes a completed depot on any
+retry, so blocking the install forever is wrong once the owned depots are complete.
+
+Rust path (primary) `BlDepotInstaller.kt` completion verdict:
+- `blocking = short.filter { it.first !in denied }` (was `!in deniedDlc`) → ANY Steam-denied depot
+  is tolerated, not only depots already recognized as DLC. Genuinely-SHORT (non-denied) depots STILL
+  block (auto-resume/fail path, Layer 1 A) — untouched.
+- GUARD: mark installed only if at least one selected depot COMPLETED (`completed = specs.filter
+  journal[d]==m`). If nothing completed → `fail(appId, "Steam denied access to every depot of this
+  game (not owned on this account?)")` so "tolerate denied" can't false-succeed a fully-unowned game.
+- Persist ALL denied depots (not just DLC-recognized) via `SteamPrefs.setExcludedDlc(appId,
+  excludedDlc + deniedSkipped)` so a re-download/update never re-selects and re-denies them.
+- dlog/BlSteamEngineLog narrative kept (each denied depot logged skipped-not-owned; final verdict =
+  complete-with-N-skipped, or not-owned). Removed now-unused `dlcDepotIds` helper.
+
+JavaSteam path (fallback, parity) `SteamDepotDownloader.kt` onDownloadCompleted per-depot verdict:
+- `verifyDepot` now returns `DepotVerdict {COMPLETE, SHORT, DENIED}`. A selected depot with ZERO
+  transfer this session (pct==null && delivered==0) AND not covered by the footprint/overlap escapes
+  = DENIED (the engine finished the app without ever fetching a chunk for it → account not entitled;
+  an owned-but-incomplete depot always shows engine progress → stays SHORT). Was: those cases were
+  SHORT (blocking).
+- Aggregation: SHORT → Layer-1 auto-resume (unchanged); if none complete → `emitFailed` not-owned
+  guard; else persist denied as excluded + markInstalled. DENIED handled only when nothing is SHORT,
+  so a mixed pass never excludes a depot while owned content is still fetching.
+
+A/B/Q/B2a/WifiLock intact (no queue/native/DownloadSpeedConfig/depot_writer.rs changes). Kotlin-only.
+Other worktree /home/claude-user/bannerlators untouched. CI compile gate only; NOT device-tested.

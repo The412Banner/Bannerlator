@@ -415,51 +415,70 @@ internal object BlDepotInstaller {
                 val journal = journalInstalledManifests(installDir)
                 val denied = deniedDepots(installDir)
                 val short = specs.filter { (d, m) -> journal[d] != m }
-                val deniedKept = short.filter { it.first in denied }
-                val deniedDlc = deniedKept.map { it.first }.filter { it in dlcDepotIds(db, appId) }
+                // Depots the account can NEVER download: Steam refused the depot key
+                // (`.bl_depot/denied.depots`). A denied key never becomes a completed depot on any
+                // retry, so these must NOT block the verdict — whether or not the depot is a
+                // recognized DLC. (Hades' soundtrack depot 1145362, real_size=0 / not entitled, is
+                // the device-confirmed case: the owned depots were complete but this one denial
+                // failed the whole install.)
+                val deniedSkipped = short.filter { it.first in denied }
+                val completed = specs.filter { (d, m) -> journal[d] == m }
                 specs.forEach { (d, m) ->
                     val st = when {
                         journal[d] == m -> "COMPLETE (journal manifest $m)"
-                        d in denied -> "DENIED by Steam (no depot key)"
+                        d in denied -> "DENIED by Steam — skipped (not owned on this account)"
                         else -> "SHORT (journal ${journal[d] ?: "absent"} ≠ $m)"
                     }
                     dlog("Depot $d: $st")
                 }
-                val blocking = short.filter { it.first !in deniedDlc }
+                // Only a genuinely-SHORT (NOT denied) depot blocks — that is the auto-resume/fail
+                // domain (Layer 1). Denied depots are tolerated in the branches below.
+                val blocking = short.filter { it.first !in denied }
                 if (blocking.isNotEmpty()) {
                     completedNormally = true
-                    // A depot Steam denied a key for will never complete on a retry; one that is
-                    // merely SHORT is exactly what an auto-resume fixes (Layer 1).
-                    val resumable = blocking.filter { it.first !in denied }
-                    val msg = if (deniedKept.isNotEmpty())
-                        "Download incomplete — Steam denied access to depot(s) ${deniedKept.joinToString(",") { it.first.toString() }}"
-                    else
-                        "Download incomplete — ${blocking.size} depot(s) not validated (${blocking.joinToString(",") { it.first.toString() }})"
+                    // Every blocking depot here is non-denied (Steam granted the key but the chunk
+                    // stream fell short), which is exactly what a bounded auto-resume fixes (Layer 1).
+                    val msg = "Download incomplete — ${blocking.size} depot(s) not validated " +
+                            "(${blocking.joinToString(",") { it.first.toString() }})"
                     dlog("INCOMPLETE: $msg")
-                    if (resumable.isNotEmpty() && !cancelled.get() && !paused.get()) {
+                    if (!cancelled.get() && !paused.get()) {
                         depotResumeNeeded = true
-                        shortSummary = resumable.joinToString(", ") { (d, m) ->
+                        shortSummary = blocking.joinToString(", ") { (d, m) ->
                             "depot $d (journal ${journal[d] ?: "absent"} != $m)"
                         }
                         onDiskAtCompletion = SteamDepotDownloader.dirSizeBytes(installDir)
                     } else {
                         fail(appId, msg)
                     }
+                } else if (completed.isEmpty()) {
+                    // No genuinely-short depot remains, but NOTHING completed either — every selected
+                    // depot was denied. The account owns none of this game: fail honestly rather than
+                    // let "tolerate denied" turn a fully-unowned game into a false success.
+                    completedNormally = true
+                    val msg = "Steam denied access to every depot of this game (not owned on this account?)"
+                    dlog("NOT OWNED: all ${specs.size} selected depot(s) denied — $msg")
+                    BlSteamEngineLog.log("DL", "not-owned app=$appId all=${specs.size} denied")
+                    fail(appId, msg)
                 } else {
-                    if (deniedDlc.isNotEmpty()) {
-                        // Steam refused the key for a DLC depot: this account isn't entitled to it →
-                        // remember the opt-out so later passes stop asking for it.
-                        dlog("DLC depot(s) ${deniedDlc.joinToString(",")} denied — recorded as excluded DLC")
-                        try { SteamPrefs.setExcludedDlc(appId, excludedDlc + deniedDlc) } catch (_: Throwable) {}
+                    // At least one selected depot completed; any remaining depot was denied (not owned).
+                    // Remember ALL denied depots as excluded so a later re-download/update never
+                    // re-selects and re-denies them, then mark the game installed.
+                    if (deniedSkipped.isNotEmpty()) {
+                        val deniedIds = deniedSkipped.map { it.first }
+                        deniedIds.forEach { dlog("Depot $it: skipped — not owned on this account (Steam denied the depot key)") }
+                        try { SteamPrefs.setExcludedDlc(appId, excludedDlc + deniedIds) } catch (_: Throwable) {}
+                        dlog("Recorded ${deniedIds.size} denied depot(s) as excluded so a re-download won't re-select them: ${deniedIds.joinToString(",")}")
                     }
                     completedNormally = true
                     val iTotal = installTotalRunning.get()
                     val dTotal = downloadTotalRunning.get()
                     val onDisk = SteamDepotDownloader.dirSizeBytes(installDir)
                     val finalInstall = maxOf(lastInstallDone.get(), onDisk)
-                    dlog("=== Download complete: appId=$appId — all ${specs.size - deniedDlc.size} depot(s) validated " +
-                            "against their manifests; on-disk ${fmt(onDisk)} ===")
-                    BlSteamEngineLog.log("DL", "complete app=$appId depots=${specs.size - deniedDlc.size} onDisk=${fmt(onDisk)}")
+                    dlog("=== Download complete: appId=$appId — ${completed.size} owned depot(s) validated " +
+                            "against their manifests" +
+                            (if (deniedSkipped.isNotEmpty()) ", ${deniedSkipped.size} denied depot(s) skipped" else "") +
+                            "; on-disk ${fmt(onDisk)} ===")
+                    BlSteamEngineLog.log("DL", "complete app=$appId depots=${completed.size} skipped=${deniedSkipped.size} onDisk=${fmt(onDisk)}")
                     emitProgress(iTotal, iTotal, dTotal, dTotal)
                     db.markInstalled(appId, installDir.absolutePath, if (finalInstall > 0L) finalInstall else iTotal)
                     try { SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, selectedBranch) } catch (_: Throwable) {}
@@ -676,9 +695,6 @@ internal object BlDepotInstaller {
         if (!f.isFile) return emptySet()
         return try { f.readLines().mapNotNull { it.trim().toIntOrNull() }.toSet() } catch (_: Throwable) { emptySet() }
     }
-
-    private fun dlcDepotIds(db: SteamDatabase, appId: Int): Set<Int> =
-        try { db.getIncludedDlcEntries(appId).keys } catch (_: Throwable) { emptySet() }
 
     private fun isRecoverable(error: String): Boolean {
         val e = error.lowercase()

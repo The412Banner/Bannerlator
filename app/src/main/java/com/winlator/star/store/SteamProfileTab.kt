@@ -117,39 +117,43 @@ fun SteamProfileTab(
                     )
                     steamId = fresh
                 }
+                // Revalidate on SESSION events rather than on every glance at the tab. A session
+                // coming up is the moment stale data can actually be improved; opening the tab is
+                // not. Forced, because a reconnect is exactly when the TTL should be ignored.
+                if (ev.startsWith("LoggedIn") || ev == "Connected") {
+                    SteamFriendsStore.refreshSelfProfile(force = true)
+                }
             }
         }
         repo?.addListener(listener)
         steamId = readSelfSteamId()
         onDispose { repo?.removeListener(listener) }
     }
-    var profile by remember(steamId) { mutableStateOf<SteamFriendsStore.FriendProfile?>(null) }
-    var loading by remember(steamId) { mutableStateOf(true) }
+    // Collected from the STORE, not held in composition. `remember(steamId) { ... }` here meant
+    // leaving the tab threw the profile away, so every return re-rendered blank + spinner before
+    // asking — even when the answer was already cached. The store keeps it across tab switches and
+    // across process death (per-account disk mirror), so a revisit paints instantly.
+    val profile by SteamFriendsStore.selfProfile.collectAsState()
+    val refreshing by SteamFriendsStore.selfProfileLoading.collectAsState()
+    // A spinner is for the genuine first-ever load ONLY. With anything cached we show it and
+    // revalidate silently behind it.
+    val loading = refreshing && profile == null
 
     // Local echo of the persona state so the chips respond instantly; the CM has no read-back for
     // our own chosen state that arrives fast enough to drive a toggle.
     var personaState by remember { mutableStateOf(EPersonaState.Online) }
 
+    // Ask the store to revalidate. It publishes what it already knows first and only hits the
+    // network when that is stale, so this is cheap to call on every tab open.
     LaunchedEffect(steamId) {
         if (steamId == 0L) {
             StorefrontLog.w(StorefrontLog.PROFILE, "no SteamID64 on record — showing the signed-out state")
-            loading = false
             return@LaunchedEffect
         }
-        loading = true
-        profile = runCatching { SteamFriendsStore.fetchProfile(steamId) }
-            .onFailure { StorefrontLog.w(StorefrontLog.PROFILE, "fetchProfile(${StorefrontLog.sid(steamId)}) threw", it) }
-            .getOrNull()
-        loading = false
-        if (profile == null) {
-            StorefrontLog.w(
-                StorefrontLog.PROFILE,
-                "${StorefrontLog.sid(steamId)}: fetchProfile returned NULL — no live session; " +
-                    "the tab renders identity only",
-            )
-        }
+        SteamFriendsStore.refreshSelfProfile()
     }
 
+    // Cached profile is a first-class source here too, so the name doesn't pop in late either.
     val displayName = self?.displayName ?: profile?.personaName
         ?: runCatching { SteamRepository.getInstance().displayName }.getOrNull()?.takeIf { it.isNotBlank() }
         ?: "Steam user"
@@ -343,10 +347,25 @@ private fun IdentityCard(c: ProfileTabContent) {
             // our face renders identically to everyone else's.
             Box {
                 val me = c.self
-                if (me != null) {
-                    FriendAvatar(friend = me, size = 62.dp)
-                } else {
-                    Box(
+                val cachedAvatar = c.profile?.avatarUrl
+                when {
+                    // Live persona — the richest source (nickname, presence-aware).
+                    me != null -> FriendAvatar(friend = me, size = 62.dp)
+
+                    // No persona yet, but the cached profile carries an avatar URL. This is the
+                    // whole point of painting from cache: the image starts downloading on the first
+                    // frame instead of waiting for the persona round-trip that used to gate it.
+                    cachedAvatar != null -> AsyncImage(
+                        model = cachedAvatar,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(62.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    )
+
+                    else -> Box(
                         modifier = Modifier
                             .size(62.dp)
                             .clip(RoundedCornerShape(9.dp))

@@ -291,14 +291,46 @@ object SteamDepotDownloader {
 
     private fun buildControl(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean, isResume: Boolean,
                              installRoot: String? = null, verify: Boolean = false): DownloadControl {
-        // Phase 2-A (docs/STEAM_RUST_ENGINE_PLAN.md): with use_rust_steam_engine ON the whole
-        // install/resume/update/verify runs on libblsteam.so's journaled downloader. Same public
-        // surface (this DownloadControl, the DownloadProgress:/DownloadComplete: events, the
-        // DownloadRegistry row, the DB rows, the .bannerlator_build marker). Flag OFF: the JavaSteam
-        // path below is untouched.
-        if (SteamRepository.getInstance().isRustEngine) {
-            return BlDepotInstaller.start(appId, ctx, speedTier, debugLog, isResume, installRoot, verify)
+        // Managed one-at-a-time queue (docs: DownloadQueue). Both engines funnel through the
+        // coordinator BEFORE the Rust-vs-JavaSteam choice, so the one-at-a-time rule governs whichever
+        // engine is active. The coordinator returns a facade DownloadControl synchronously (its
+        // cancel/pause work whether the request is queued or active); when this appId reaches the
+        // front it calls back into startEngine() to launch the real engine. Application context so a
+        // queued request can be held safely until it's its turn.
+        return DownloadQueue.enqueue(
+            DownloadQueue.Request(
+                appId = appId, ctx = ctx.applicationContext, speedTier = speedTier,
+                debugLog = debugLog, isResume = isResume, installRoot = installRoot, verify = verify,
+            ),
+        )
+    }
+
+    /**
+     * Launch the active download on whichever engine is enabled — called by [DownloadQueue] once the
+     * request reaches the front of the queue. Returns the engine's REAL [DownloadControl]; the facade
+     * the caller holds delegates to it. The Rust-vs-JavaSteam choice lives here, BELOW the queue, so
+     * one-at-a-time behaves consistently across both engines.
+     *
+     * Phase 2-A (docs/STEAM_RUST_ENGINE_PLAN.md): with use_rust_steam_engine ON the whole
+     * install/resume/update/verify runs on libblsteam.so's journaled downloader. Same public surface
+     * (this DownloadControl, the DownloadProgress:/DownloadComplete: events, the DownloadRegistry row,
+     * the DB rows, the .bannerlator_build marker). Flag OFF: the JavaSteam path is untouched.
+     */
+    internal fun startEngine(r: DownloadQueue.Request): DownloadControl {
+        return if (SteamRepository.getInstance().isRustEngine) {
+            BlDepotInstaller.start(r.appId, r.ctx, r.speedTier, r.debugLog, r.isResume, r.installRoot, r.verify)
+        } else {
+            startJavaEngine(r.appId, r.ctx, r.speedTier, r.debugLog, r.isResume, r.installRoot)
         }
+    }
+
+    /**
+     * JavaSteam (deprecated fallback) engine launch — the former `buildControl` body, unchanged.
+     * `verify` is a Rust-engine-only mode (the JavaSteam path clears its `.DepotDownloader/` resume
+     * state up front in [SteamGameUpdater.verifyFiles] instead), so it is not a parameter here.
+     */
+    private fun startJavaEngine(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean,
+                               isResume: Boolean, installRoot: String?): DownloadControl {
         val cancelled     = AtomicBoolean(false)
         val paused        = AtomicBoolean(false)
         val downloaderRef = AtomicReference<DepotDownloader?>(null)
@@ -742,7 +774,7 @@ object SteamDepotDownloader {
                         if (speedBps > 0L)    append(" · ${formatDownloadSpeed(speedBps)}")
                         if (etaSeconds >= 0L) append(" · ${formatEta(etaSeconds)}")
                     }
-                    try { SteamForegroundService.setStatusText("Downloading ${row.name} — $pct%$extra") }
+                    try { SteamForegroundService.setStatusText("Downloading ${row.name} — $pct%$extra${DownloadQueue.fgsSuffix()}") }
                     catch (_: Throwable) {}
                 }
             }
@@ -907,6 +939,7 @@ object SteamDepotDownloader {
                         installTotal = iTotal,
                     )
                 }
+                // Terminal success — the queue is advanced at the END of runInstall (after teardown).
             }
 
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
@@ -1049,6 +1082,8 @@ object SteamDepotDownloader {
                         db.markDownloadPaused(appId, lastInstallDone.get())
                         repo.emit("DownloadPaused:$appId")
                         DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.PAUSED) }
+                        // Pausing the active download frees the slot → advance the queue.
+                        DownloadQueue.onActiveTerminal(appId)
                     }
                     cancelled.get() -> {
                         // Cancel path: delete files + row
@@ -1059,6 +1094,8 @@ object SteamDepotDownloader {
                         // any collector sees the CANCELLED transition before it disappears).
                         DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.CANCELLED) }
                         DownloadRegistry.remove(dmKey)
+                        // Active slot freed → advance the queue.
+                        DownloadQueue.onActiveTerminal(appId)
                     }
                     else -> {
                         // Genuine failure. Before surfacing it, give the session a chance to come back
@@ -1150,6 +1187,14 @@ object SteamDepotDownloader {
                 }
             }
         }
+
+        // Worker done for good → free the queue slot and start the next queued download. Placed HERE,
+        // after the finally's setDownloadActive(false)/wakelock teardown, so the next download never
+        // overlaps this one's teardown. Idempotent — onActiveTerminal no-ops when this appId is no
+        // longer the active slot (early-return terminals already advanced via the finally / emitFailed).
+        // The re-entry paths never reach here: retryAsResume returns above, and a depot-resume re-enters
+        // runInstall synchronously (that inner pass advances; this outer call then no-ops).
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     // -------------------------------------------------------------------------
@@ -1161,9 +1206,12 @@ object SteamDepotDownloader {
         SteamRepository.getInstance().emit("DownloadFailed:$appId:$reason")
         Log.e(TAG, "DownloadFailed $appId: $reason")
         // Central failure sink — covers the pre-flight checks, the false-complete guard, and
-        // the finally's genuine-failure path. No-op if no registry entry exists yet (early
-        // pre-flight failures fire before the entry is upserted).
+        // the finally's genuine-failure path (BOTH engines). No-op if no registry entry exists yet
+        // (early pre-flight failures fire before the entry is upserted).
         DownloadRegistry.update("${Store.STEAM}:$appId") { it.copy(state = DownloadState.FAILED, error = reason) }
+        // Terminal for the active download → free the queue slot and start the next queued item.
+        // No-op if this appId isn't the active download (e.g. a pre-flight failure of a queued item).
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     internal fun fmtSize(bytes: Long): String = when {

@@ -587,6 +587,22 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 pauseBtnText = "Resume"
                 pauseAction = PauseAction.RESUME
             }
+            event.startsWith("DownloadQueued:") -> {
+                val id = event.substringAfter("DownloadQueued:").toIntOrNull() ?: return
+                if (id != appId) return
+                // Waiting behind the active download (managed queue). Keep the facade in downloadHandle
+                // so Cancel still works (it removes the item from the queue); pause/resume is
+                // meaningless while queued. Auto-advances to the DownloadProgress: handler once it starts.
+                progressVisible = true
+                progressValue = 0
+                downloadProgressValue = 0
+                progressTextVisible = true
+                progressText = "Queued…"
+                installBtnEnabled = true
+                installBtnText = "Cancel"
+                installAction = InstallAction.CANCEL
+                resetPauseBtn()
+            }
             event.startsWith("DownloadComplete:") -> {
                 val id = event.substringAfter("DownloadComplete:").toIntOrNull() ?: return
                 if (id != appId) return
@@ -860,6 +876,24 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     pauseBtnText = "Resume"
                     pauseAction = PauseAction.RESUME
                 }
+                SteamDatabase.DL_QUEUED -> {
+                    // Waiting in the managed queue. Mirror the DL_DOWNLOADING liveness check with
+                    // isQueued: a `queued` row that isn't actually in the live queue is stale (process
+                    // died) — drop it so the page falls back to Install.
+                    if (DownloadQueue.isQueued(appId)) {
+                        progressVisible = true
+                        progressValue = 0
+                        downloadProgressValue = 0
+                        progressTextVisible = true
+                        progressText = "Queued…"
+                        installBtnEnabled = true
+                        installBtnText = "Cancel"
+                        installAction = InstallAction.CANCEL
+                        resetPauseBtn()
+                    } else {
+                        SteamRepository.getInstance().database.deleteDownload(appId)
+                    }
+                }
             }
         }
     }
@@ -943,6 +977,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         val db = SteamRepository.getInstance().database
         val dlRow = db.getDownload(appId)
         if (dlRow != null && dlRow.status == SteamDatabase.DL_PAUSED) { showCancelDeleteConfirm = true; return }
+        // A still-queued download (page reopened onto it, so no facade in downloadHandle): pull it
+        // from the queue directly — no files to wipe, so skip the destructive delete-and-reset confirm.
+        // The DownloadCancelled: event it emits settles the UI back to Install.
+        if (dlRow != null && dlRow.status == SteamDatabase.DL_QUEUED && DownloadQueue.isQueued(appId)) {
+            DownloadQueue.cancel(appId); return
+        }
 
         if (g.isInstalled) {
             uninstallingName = g.name

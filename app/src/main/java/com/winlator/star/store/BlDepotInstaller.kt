@@ -19,7 +19,6 @@ import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -63,9 +62,11 @@ import java.util.concurrent.atomic.AtomicLong
  * at the new id → delta by chunk hash. "Verify integrity" = `fresh = true`: forget the journal for
  * these depots so every chunk of every depot is re-validated against the live manifest.
  *
- * One native download runs at a time (the engine's cancel flag is per session) — a second
- * request waits in a queue and shows as DOWNLOADING with a "Waiting for another download…" status.
- * Blocking work runs on a worker thread; listener callbacks arrive on native threads.
+ * One native download runs at a time (the engine's cancel flag is per session). Serialization is
+ * enforced ABOVE this class by the engine-agnostic [DownloadQueue]: a worker is spawned only when
+ * its appId owns the queue slot, so there is no in-worker gate/park here — queued requests are data
+ * (a QUEUED registry row), not parked threads. Blocking work runs on a worker thread; listener
+ * callbacks arrive on native threads.
  */
 internal object BlDepotInstaller {
 
@@ -92,10 +93,9 @@ internal object BlDepotInstaller {
     private const val SESSION_WAIT_MS = 30_000L
     private const val PICS_REFRESH_MS = 15_000L
 
-    /** One native download at a time (shared cancel flag on the engine session). */
-    private val gate = Semaphore(1, true)
-
-    /** The appId whose download currently owns [gate] (and therefore the engine's cancel flag). */
+    /** The appId whose download currently owns the engine session (and therefore its cancel flag);
+     *  -1 when idle. Set by [run] once it owns the queue slot; only one is ever non-idle at a time
+     *  because [DownloadQueue] serializes starts. Used by [cancelNativeIfOwner]. */
     @Volatile private var activeAppId: Int = -1
 
     /** Cancel the native download only if it is OURS; a queued request just sets its flags. */
@@ -289,19 +289,13 @@ internal object BlDepotInstaller {
         }
         emitProgress(installBase, installTotalSeed, 0L, downloadTotalSeed)
 
-        // ── Queue: one native download at a time ──────────────────────────────────────────────
-        if (!gate.tryAcquire()) {
-            dlog("Another Rust-engine download is running — queued")
-            try { SteamForegroundService.setStatusText("Waiting to download ${row.name}…") } catch (_: Throwable) {}
-            while (!gate.tryAcquire(500, TimeUnit.MILLISECONDS)) {
-                if (cancelled.get()) { finishCancelled(appId, db); return }
-                if (paused.get()) { finishPaused(appId, db, installBase); return }
-            }
-        }
+        // ── One native download at a time ─────────────────────────────────────────────────────
+        // DownloadQueue already guarantees this worker only runs when it owns the slot, so there is
+        // no gate/park here (queued requests never reach run()). Just claim engine-session ownership.
         activeAppId = appId
-        // A pause/cancel that landed while we were queued: honour it now that we own the engine.
-        if (cancelled.get()) { activeAppId = -1; gate.release(); finishCancelled(appId, db); return }
-        if (paused.get()) { activeAppId = -1; gate.release(); finishPaused(appId, db, installBase); return }
+        // A pause/cancel that landed between enqueue and here: honour it before touching the engine.
+        if (cancelled.get()) { activeAppId = -1; finishCancelled(appId, db); return }
+        if (paused.get()) { activeAppId = -1; finishPaused(appId, db, installBase); return }
         val caPath = CaBundleExtractor.ensureBundle(ctx)
         val speedConfig = DownloadSpeedConfig(speedTier)
         val maxWorkers = speedConfig.maxDownloads.coerceIn(1, 32)
@@ -383,7 +377,7 @@ internal object BlDepotInstaller {
                         if (eta >= 0L) append(" · ${formatEta(eta)}")
                     }
                     val verb = if (verify) "Verifying" else "Downloading"
-                    try { SteamForegroundService.setStatusText("$verb ${row.name} — $pct%$extra") } catch (_: Throwable) {}
+                    try { SteamForegroundService.setStatusText("$verb ${row.name} — $pct%$extra${DownloadQueue.fgsSuffix()}") } catch (_: Throwable) {}
                 }
                 emitProgress(installDone, iTotal, downloadDone, dTotal, eta, bps)
                 db.updateDownloadProgress(appId, installDone)
@@ -474,6 +468,7 @@ internal object BlDepotInstaller {
                         it.copy(state = DownloadState.INSTALLED, pct = 100, installPath = installDir.absolutePath,
                             installDone = if (finalInstall > 0L) finalInstall else iTotal, installTotal = iTotal)
                     }
+                    // Terminal success — the queue is advanced at the END of run() (after teardown).
                 }
             }
         } catch (t: Throwable) {
@@ -483,7 +478,6 @@ internal object BlDepotInstaller {
             repo.setDownloadActive(false)
             SteamDepotDownloader.releaseDownloadWakelock()
             activeAppId = -1
-            gate.release()
             try { repo.refreshFgsStatus() } catch (_: Throwable) {}
             SteamDepotDownloader.activeDownloads.remove(appId)
             if (!completedNormally) {
@@ -549,6 +543,15 @@ internal object BlDepotInstaller {
                 }
             }
         }
+
+        // Worker done for good → free the queue slot and start the next queued download. Placed HERE,
+        // after the finally's setDownloadActive(false)/wakelock teardown, so the next download never
+        // overlaps this one's teardown. Idempotent — onActiveTerminal no-ops when this appId is no
+        // longer the active slot (early-return terminals already advanced via finishPaused /
+        // finishCancelled / emitFailed). The re-entry paths never reach here: retryAsResume returns
+        // above, and a depot-resume re-enters run() synchronously (that inner pass advances; this
+        // outer call then no-ops).
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────────────────────
@@ -705,6 +708,8 @@ internal object BlDepotInstaller {
         db.markDownloadPaused(appId, installDone)
         SteamRepository.getInstance().emit("DownloadPaused:$appId")
         DownloadRegistry.update("${Store.STEAM}:$appId") { it.copy(state = DownloadState.PAUSED) }
+        // Pausing the active download frees the slot → advance the queue.
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     private fun finishCancelled(appId: Int, db: SteamDatabase) {
@@ -715,6 +720,8 @@ internal object BlDepotInstaller {
         DownloadRegistry.update(key) { it.copy(state = DownloadState.CANCELLED) }
         DownloadRegistry.remove(key)
         SteamDepotDownloader.activeDownloads.remove(appId)
+        // Active slot freed → advance the queue.
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     private fun <T> runBounded(boundMs: Long, block: () -> T): T? {

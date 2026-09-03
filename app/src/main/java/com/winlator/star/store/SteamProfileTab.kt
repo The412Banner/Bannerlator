@@ -273,9 +273,9 @@ private fun ProfileTabLandscape(c: ProfileTabContent) {
         ) {
             IdentityCard(c)
             StatusChips(c)
-            StatTiles(c)
-            // Hidden when nothing resolves art (see BadgesRail) — which is exactly why this column
-            // looked empty before the stat tiles moved over.
+            // 2x2 here, not 1x4: see StatTiles. The showcase below is hidden whenever no badge art
+            // resolves, so this block has to carry the column on its own.
+            StatTiles(c, columns = 2)
             BadgesRail(c)
             Spacer(Modifier.height(16.dp))
         }
@@ -598,39 +598,65 @@ private fun StatusChip(label: String, selected: Boolean, onClick: () -> Unit) {
  * source in this build ([SteamAchievementStore] is per-app), so it is honestly "—".
  */
 @Composable
-private fun StatTiles(c: ProfileTabContent) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-            .focusGroup(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        StatTile(
+private fun StatTiles(c: ProfileTabContent, columns: Int = 4) {
+    // [columns] shapes the same four tiles to the space available: one 1x4 strip across a portrait
+    // screen, a 2x2 block in the landscape LEFT column. The 2x2 exists because that column's other
+    // vertical filler — the showcase rail — hides itself whenever no badge art resolves (an
+    // appId==0 showcased badge, which is the common case), and a 1x4 strip left roughly a third of
+    // the column empty. 2x2 costs ~72dp more height and still reads fine at ~377dp wide, so the
+    // column holds up both with and without the showcase.
+    val stats = listOf(
+        ProfileStat(
             value = (c.profile?.gamesCount ?: c.libraryCount.takeIf { it > 0 })?.let { fmtCount(it) } ?: "—",
             label = "Games",
-            modifier = Modifier.weight(1f),
-        )
-        StatTile(
+        ),
+        ProfileStat(
             value = c.profile?.hoursTotal?.let { "${fmtCount(it.roundToInt())}h" } ?: "—",
             label = "Played",
-            modifier = Modifier.weight(1f),
-        )
-        StatTile(
+        ),
+        ProfileStat(
             // No global achievement total is exposed anywhere in this build — SteamAchievementStore
             // is per-app. An honest dash beats an invented number.
             value = "—",
             label = "Achiev.",
-            modifier = Modifier.weight(1f),
-        )
-        StatTile(
+        ),
+        ProfileStat(
             value = if (c.friendsCount > 0) fmtCount(c.friendsCount) else "—",
             label = "Friends",
-            modifier = Modifier.weight(1f),
             onClick = c.onOpenFriends,
-        )
+        ),
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        stats.chunked(columns).forEach { rowStats ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowStats.forEach { stat ->
+                    StatTile(
+                        value = stat.value,
+                        label = stat.label,
+                        modifier = Modifier.weight(1f),
+                        onClick = stat.onClick,
+                    )
+                }
+                // Pad a short final row so tiles keep their column width instead of stretching.
+                repeat(columns - rowStats.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
     }
 }
+
+/** One stat tile's content, so [StatTiles] can re-flow the same four into any column count. */
+private data class ProfileStat(
+    val value: String,
+    val label: String,
+    val onClick: (() -> Unit)? = null,
+)
 
 @Composable
 private fun StatTile(

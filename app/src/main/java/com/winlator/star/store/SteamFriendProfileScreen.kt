@@ -479,8 +479,19 @@ private fun AboutSection(summary: String?) {
 @Composable
 private fun OverviewGrid(profile: SteamFriendsStore.FriendProfile?) {
     profile ?: return
+    // Level is deliberately NOT a tile: the hero already shows it as the "★ Level N" chip, and a
+    // second copy in this row is pure duplication. It mattered most on a limited profile, where
+    // games/hours are private and the level tile was the ONLY cell — a lonely "0 LEVEL" beside an
+    // otherwise-empty OVERVIEW row, which read as a rendering fault rather than as data.
+    //
+    // To be clear about that zero: level 0 is REAL for a brand-new account, not a missing value.
+    // FriendProfile.level stays nullable precisely so absent and zero can't be confused, and the
+    // chip renders the 0 honestly. This row simply isn't the place to say it twice.
+    //
+    // badges/mutualFriends are permanently null (no verifiable RPC), so in practice this row is
+    // games + hours: per-account facts that are genuinely absent on a private profile, and it then
+    // hides entirely rather than rendering a sparse row.
     val stats = buildList {
-        profile.level?.let { add("Level" to fmtInt(it)) }
         profile.gamesCount?.let { add("Games" to fmtInt(it)) }
         profile.hoursTotal?.let { add("Hours" to fmtInt(it.roundToInt())) }
         profile.badges?.let { add("Badges" to fmtInt(it)) }

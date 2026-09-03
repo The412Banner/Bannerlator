@@ -113,6 +113,10 @@ struct VkTable {
 // Included after SCANOUT_LOG is defined above; its own definition is guarded.
 #include "../scanout/ScanoutContext.h"
 
+// Engine-agnostic compositor-side frame-generation slot (pacer + interface).
+#include "FrameGenSlot.h"
+#include <deque>
+
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 struct WindowPushConstants { float ndcX0, ndcY0, ndcX1, ndcY1; int useTexAlpha; };
@@ -261,6 +265,17 @@ public:
     void setSwapRB(bool enabled);
     void setPresentMode(VkPresentModeKHR mode);
     std::vector<int> getSupportedPresentModes() const;
+
+    // ---- Frame-generation slot (see FrameGenSlot.h) ----
+    // Enable/disable the compositor-side frame-gen slot and set the guest layer's
+    // multiplier (2..4; <2 = passthrough) and the panel refresh (Hz, for pacer
+    // headroom). When disabled — or off the native Vulkan compositor / non-FIFO /
+    // scanout paths — every present path stays byte-identical to today.
+    void setFrameGenSlot(bool enabled, int multiplier, float refreshHz);
+    // Monotonic count of distinct guest source frames delivered to the primary
+    // frame-gen window (the diagnostic/pacer signal; readable via JNI for tests).
+    uint64_t getFrameGenSourceFrames() const { return fgSourceFrames_.load(std::memory_order_relaxed); }
+    uint64_t getFrameGenPresentedFrames() const { return fgPresentedFrames_.load(std::memory_order_relaxed); }
 
 private:
     struct WinTex {
@@ -518,6 +533,30 @@ private:
     std::mutex        dirtyMutex;
     std::condition_variable dirtyCV;
     std::shared_mutex frameMutex;
+
+    // ---- Frame-generation slot state (see FrameGenSlot.h). ----
+    // fgSlotEnabled_ is the master gate, set from the app when a guest frame-gen
+    // engine (win-fg) is generating. Everything else stays under renderMutex
+    // (shared with updateWindowContentAHB + the render-thread drain).
+    std::atomic<bool>     fgSlotEnabled_{false};
+    std::atomic<uint64_t> fgSourceFrames_{0};      // distinct guest deliveries (primary window)
+    std::atomic<uint64_t> fgPresentedFrames_{0};   // compositor presents while the slot is active
+    framegen::Pacer       fgPacer_;                // renderMutex
+    int                   fgMultiplier_ = 0;       // renderMutex (2..4; <2 = passthrough)
+    float                 fgRefreshHz_  = 0.0f;    // renderMutex (panel refresh for headroom)
+    int64_t               fgPrimaryWindow_ = 0;    // renderMutex; window driving the source rate
+    uint64_t              fgLogTick_ = 0;          // renderMutex; telemetry throttle
+    // Per-window queue of distinct AHB deliveries awaiting their own present. Only
+    // filled while the slot is active; drained one-per-present by the render loop
+    // so each guest frame reaches its own vblank instead of being coalesced.
+    std::unordered_map<int64_t, std::deque<AHardwareBuffer*>> frameGenQueue_;
+    // True when the slot should actually engage: enabled + native-Vulkan compositor
+    // (implicit here) + FIFO/FIFO_RELAXED host present (the back-pressure the pacer
+    // rides) + not direct-scanout + a multiplying pacer. Call under renderMutex.
+    bool frameGenSlotActive() const;
+    // Drain step, called under renderMutex from renderFrame: advance each queued
+    // window by one frame (pop front -> texMap), report if more remain pending.
+    bool drainFrameGenQueues();
 
     void createInstance();
     void createSurface();

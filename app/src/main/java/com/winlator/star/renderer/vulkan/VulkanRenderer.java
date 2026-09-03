@@ -127,6 +127,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetSwapRB(long handle, boolean enabled);
     private native void nativeSetPresentMode(long handle, int mode);
     private native int[] nativeGetSupportedPresentModes(long handle);
+    private native void nativeSetFrameGenSlot(long handle, boolean enabled, int multiplier, float refreshHz);
+    private native long nativeGetFrameGenSourceFrames(long handle);
+    private native long nativeGetFrameGenPresentedFrames(long handle);
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -171,6 +174,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetNtsc(nativeHandle, pendingNtscEnabled);
                     nativeSetColorGrade(nativeHandle, pendingColorBrightness, pendingColorContrast, pendingColorGamma);
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
+                    nativeSetFrameGenSlot(nativeHandle, pendingFgSlotEnabled, pendingFgMultiplier, pendingFgRefreshHz);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
                     if (nativeMode) {
@@ -864,6 +868,32 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     public void setVkPresentMode(int mode) {
         pendingPresentMode = mode;
         synchronized (lock) { if (nativeHandle != 0) nativeSetPresentMode(nativeHandle, mode); }
+    }
+
+    // Compositor-side frame-generation slot (see native FrameGenSlot.h). Enable when a
+    // guest frame-gen engine (win-fg) is actively multiplying (multiplier >= 2) so the
+    // distinct generated-frame AHB deliveries are paced onto their own vblanks instead
+    // of being coalesced to the latest. refreshHz feeds the pacer's headroom. The native
+    // side hard-gates this to the native Vulkan compositor + FIFO + non-scanout; it is a
+    // no-op (byte-identical legacy path) otherwise, so it is safe to call unconditionally.
+    private boolean pendingFgSlotEnabled = false;
+    private int     pendingFgMultiplier  = 0;
+    private float   pendingFgRefreshHz   = 0f;
+    public void setFrameGenSlot(boolean enabled, int multiplier, float refreshHz) {
+        pendingFgSlotEnabled = enabled;
+        pendingFgMultiplier  = multiplier;
+        pendingFgRefreshHz   = refreshHz;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetFrameGenSlot(nativeHandle, enabled, multiplier, refreshHz);
+        }
+    }
+    // Diagnostic cross-check (the panel-side proof is SurfaceFlinger). Distinct guest
+    // deliveries vs actual host presents while the slot is active.
+    public long getFrameGenSourceFrames() {
+        synchronized (lock) { return nativeHandle != 0 ? nativeGetFrameGenSourceFrames(nativeHandle) : 0; }
+    }
+    public long getFrameGenPresentedFrames() {
+        synchronized (lock) { return nativeHandle != 0 ? nativeGetFrameGenPresentedFrames(nativeHandle) : 0; }
     }
 
     public int[] getSupportedPresentModes() {

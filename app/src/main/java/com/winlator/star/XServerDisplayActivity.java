@@ -9126,6 +9126,33 @@ return true;
             XServerDrawerState.INSTANCE.setPresentMode(pm);
             XServerDrawerState.INSTANCE.setPresentModeLocked(false);
         }
+        // The slot's FIFO gate depends on the just-applied present mode — refresh it.
+        applyFrameGenSlot();
+    }
+
+    // Compositor-side frame-generation slot (native FrameGenSlot.h). Enable the host
+    // de-coalescing/pacing slot ONLY for the guest bionic (win-fg) engine while it is
+    // actively multiplying (mult >= 2): win-fg emits its generated frame as a separate,
+    // UNPACED present, so the host must pace the distinct AHB deliveries onto their own
+    // vblanks or they coalesce to the base rate. lsfg-vk paces itself against our vsync
+    // clock, so it must NOT go through the slot (left disabled). No-op on non-Vulkan
+    // renderers; the native side further hard-gates to FIFO + non-scanout, so calling
+    // this from every FG / present-mode change is safe and idempotent.
+    private void applyFrameGenSlot() {
+        if (xServerView == null) return;
+        HostRenderer r = xServerView.getRenderer();
+        if (!(r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer)) return;
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        boolean bionic = "bionic".equals(resolvedFrameGenEngine());
+        int mult = s.getFrameGenMultiplier().getValue();
+        boolean generating = bionic && s.getFrameGenEnabled().getValue() && mult >= 2;
+        float refreshHz = 60f;
+        try {
+            android.view.Display d = xServerView.getDisplay();
+            if (d != null && d.getRefreshRate() > 1f) refreshHz = d.getRefreshRate();
+        } catch (Exception ignored) {}
+        ((com.winlator.star.renderer.vulkan.VulkanRenderer) r)
+            .setFrameGenSlot(generating, generating ? mult : 0, refreshHz);
     }
 
     // ── Power-user performance toggles (non-root). LOCKED two-level resolution chain:

@@ -331,6 +331,28 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetPresentMode(JNIEn
     if (r) r->setPresentMode((VkPresentModeKHR)mode);
 }
 
+// Frame-generation slot (see FrameGenSlot.h). enabled+multiplier come from the
+// app's win-fg toggle/multiplier; refreshHz is the panel refresh for pacer headroom.
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenSlot(
+    JNIEnv*, jobject, jlong handle, jboolean enabled, jint multiplier, jfloat refreshHz) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenSlot(enabled == JNI_TRUE, (int)multiplier, (float)refreshHz);
+}
+
+// Diagnostic counters (SurfaceFlinger is the panel-side proof; these are a
+// compositor-side cross-check: distinct guest deliveries vs actual host presents).
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeGetFrameGenSourceFrames(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->getFrameGenSourceFrames() : 0;
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeGetFrameGenPresentedFrames(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->getFrameGenPresentedFrames() : 0;
+}
+
 extern "C" JNIEXPORT jintArray JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeGetSupportedPresentModes(JNIEnv* env, jobject, jlong handle) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);

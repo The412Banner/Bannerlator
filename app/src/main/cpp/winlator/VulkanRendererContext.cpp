@@ -339,6 +339,14 @@ void VulkanRendererContext::createSwapchain() {
     std::vector<VkSurfaceFormatKHR> fmts(fmtN); vk_.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,&fmtN,fmts.data());
     swapchainFmt = VK_FORMAT_R8G8B8A8_UNORM;
     uint32_t imgCount=caps.minImageCount+1;
+    // Frame-gen slot: request extra swapchain images so the FIFO present loop can
+    // keep several paced presents in flight (base + up to FGS_MAX_PRESENTABLE-1
+    // generated) without stalling on AcquireNextImageKHR. Harmless when unused
+    // (more images cost only memory); clamped to the surface max below.
+    if (fgSlotEnabled_.load(std::memory_order_relaxed)) {
+        uint32_t want = caps.minImageCount + (uint32_t)framegen::FGS_MAX_PRESENTABLE; // ~5-6
+        if (want > imgCount) imgCount = want;
+    }
     if (caps.maxImageCount>0&&imgCount>caps.maxImageCount) imgCount=caps.maxImageCount;
 
     uint32_t pmCount=0;
@@ -1581,9 +1589,16 @@ ok=true;}catch(...){}
     float ox,oy,sx,sy,cw,ch;
     short ptrX,ptrY,curHotX,curHotY,curW,curH; bool curVis;
     VkBuffer curUpload=VK_NULL_HANDLE; bool hasCurUpload=false;
+    bool fgMorePending=false;   // frame-gen slot: queued frames still awaiting a present
 
     {
         std::lock_guard<std::mutex> lk(renderMutex);
+
+        // Frame-gen slot: before compositing, advance each queued window by one
+        // delivery (pop front -> texMap) so this present shows the NEXT distinct
+        // guest frame rather than the coalesced latest. FIFO then paces the next
+        // one onto the following vblank (see drainFrameGenQueues / renderLoop).
+        if (frameGenSlotActive()) fgMorePending = drainFrameGenQueues();
 
 
         if (!deleteQueue.empty()) {
@@ -1661,6 +1676,27 @@ ok=true;}catch(...){}
     res=vk_.QueuePresentKHR(graphicsQueue,&pi);
     if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
+
+    // Frame-gen slot: record the present in the pacer and, if more queued frames are
+    // pending, immediately re-arm the render loop so the next one lands on the
+    // following vblank (FIFO's back-pressure paces it — no busy loop: the next
+    // renderFrame blocks in AcquireNextImageKHR until the vblank frees an image).
+    if (fgSlotEnabled_.load(std::memory_order_relaxed)) {
+        {
+            std::lock_guard<std::mutex> lk(renderMutex);
+            fgPacer_.onLoopTick(framegen::FgClock::now());
+            if ((fgLogTick_++ % 120u) == 0u) {
+                RLOG("framegen slot: guest=%.1ffps loop=%.1ffps refresh=%.1f mult=%d budget=%d "
+                     "src=%llu presented=%llu",
+                     fgPacer_.sourceRate(), fgPacer_.loopRate(), fgRefreshHz_, fgMultiplier_,
+                     fgPacer_.budget(),
+                     (unsigned long long)fgSourceFrames_.load(std::memory_order_relaxed),
+                     (unsigned long long)fgPresentedFrames_.load(std::memory_order_relaxed));
+            }
+        }
+        fgPresentedFrames_.fetch_add(1, std::memory_order_relaxed);
+        if (fgMorePending) { needsRender.store(true, std::memory_order_relaxed); dirtyCV.notify_one(); }
+    }
 }
 
 void VulkanRendererContext::onSurfaceResized(int w, int h) {
@@ -1809,9 +1845,18 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
         // (same one used for whole-window teardown, drained under renderMutex each frame).
         // The just-imported AHB is newest (at back) so it is never the one evicted, keeping cit valid.
         auto& list = windowAhbs[id];
-        constexpr size_t kMaxTrackedPerWindow = 4;
+        // The frame-gen slot may hold several distinct AHBs pending (one per queued
+        // present), so retain more per window while it is enabled; and NEVER evict
+        // an AHB still queued for presentation — that would destroy a VkImage we are
+        // about to scan out (use-after-free / black frame).
+        const size_t kMaxTrackedPerWindow =
+            fgSlotEnabled_.load(std::memory_order_relaxed) ? 8u : 4u;
         while (list.size() > kMaxTrackedPerWindow) {
             AHardwareBuffer* stale = list.front();
+            auto qit = frameGenQueue_.find(id);
+            const bool stillQueued = qit != frameGenQueue_.end() &&
+                std::find(qit->second.begin(), qit->second.end(), stale) != qit->second.end();
+            if (stillQueued) break;   // oldest tracked is still pending; stop evicting this pass
             list.erase(list.begin());
             auto sit = ahbImportCache.find(stale);
             if (sit != ahbImportCache.end()) {
@@ -1825,20 +1870,38 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
     }
 
 
-    WinTex& src = cit->second;
-    WinTex& wt  = texMap[id];
-    wt.img  = src.img;
-    wt.mem  = src.mem;
-    wt.view = src.view;
-    wt.ds   = src.ds;
-    wt.isAHB = true;
-    wt.ahb  = ahb;
-    wt.w    = src.w;
-    wt.h    = src.h;
+    if (frameGenSlotActive()) {
+        // De-coalesce: hand this DISTINCT delivery to the slot's per-window queue so
+        // it gets its OWN present/vblank instead of overwriting the previous frame in
+        // texMap[id] (the latest-wins overwrite is exactly what dropped win-fg's
+        // generated frames). texMap[id] is advanced by the render-thread drain
+        // (drainFrameGenQueues); the AHB stays alive via ahbImportCache (eviction
+        // above skips still-queued buffers).
+        auto& q = frameGenQueue_[id];
+        q.push_back(ahb);
+        const int cap = std::clamp(fgMultiplier_, 1, framegen::FGS_MAX_PRESENTABLE);
+        while ((int)q.size() > cap) q.pop_front();   // bound added latency; drop oldest
+        fgSourceFrames_.fetch_add(1, std::memory_order_relaxed);
+        fgPacer_.onSourceFrame(framegen::FgClock::now());
+        fgPrimaryWindow_ = id;
+    } else {
+        // Legacy latest-wins path — byte-identical to the pre-slot behaviour.
+        if (!frameGenQueue_.empty()) frameGenQueue_.clear();  // flush stale slot state on resume
+        WinTex& src = cit->second;
+        WinTex& wt  = texMap[id];
+        wt.img  = src.img;
+        wt.mem  = src.mem;
+        wt.view = src.view;
+        wt.ds   = src.ds;
+        wt.isAHB = true;
+        wt.ahb  = ahb;
+        wt.w    = src.w;
+        wt.h    = src.h;
 
-    if (src.needsTransition) {
-        wt.needsTransition  = true;
-        src.needsTransition = false;
+        if (src.needsTransition) {
+            wt.needsTransition  = true;
+            src.needsTransition = false;
+        }
     }
     needsRender.store(true); dirtyCV.notify_one();
 }
@@ -1877,6 +1940,7 @@ void VulkanRendererContext::removeWindow(int64_t id) {
         }
         windowAhbs.erase(wit);
     }
+    frameGenQueue_.erase(id);   // frame-gen slot: drop any pending deliveries for this window
 
     renderList.erase(std::remove_if(renderList.begin(),renderList.end(),
         [id](const RenderEntry& e){return e.id==id;}),renderList.end());
@@ -1893,6 +1957,7 @@ void VulkanRendererContext::cleanupAllAHBCache() {
     }
     ahbImportCache.clear();
     windowAhbs.clear();
+    frameGenQueue_.clear();   // frame-gen slot: references only; the cache owned the lifetime
 }
 
 
@@ -2067,6 +2132,89 @@ std::vector<int> VulkanRendererContext::getSupportedPresentModes() const {
     std::vector<int> out;
     for (auto pm:availablePresentModes) out.push_back((int)pm);
     return out;
+}
+
+// ================================ Frame-gen slot ================================
+// See FrameGenSlot.h for the full rationale. The slot de-coalesces the distinct
+// AHB deliveries a guest frame-gen layer (win-fg) produces and lets the FIFO
+// present loop drain them one-per-vblank, so every generated frame reaches its
+// own QueuePresentKHR (the HUD counted them 2x, but the panel only ever got the
+// coalesced latest frame). Engine-agnostic: a native LSFG producer plugs in at
+// the produce(k,N) seam documented in FrameGenSlot.h without touching this path.
+
+bool VulkanRendererContext::frameGenSlotActive() const {
+    // Call under renderMutex. Every gate must hold or we fall back to the exact
+    // legacy latest-wins path (zero behavioural change / zero black-screen surface).
+    if (!fgSlotEnabled_.load(std::memory_order_relaxed)) return false;
+    if (scanoutActive.load()) return false;          // direct-scanout bypasses the compositor entirely
+    if (fgMultiplier_ < 2) return false;             // passthrough / off
+    // FIFO (or FIFO_RELAXED) only: the pacing rides FIFO's vblank back-pressure.
+    // Under MAILBOX / IMMEDIATE the driver coalesces to the latest image per vblank
+    // regardless, so the slot cannot help there — bypass it.
+    return requestedPresentMode == VK_PRESENT_MODE_FIFO_KHR
+        || requestedPresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+}
+
+bool VulkanRendererContext::drainFrameGenQueues() {
+    // renderMutex held by caller. Advance each queued window by exactly one delivery
+    // so THIS present shows the next distinct frame; report whether any queue still
+    // has frames pending (-> the loop re-arms and paces the next onto the next vblank).
+    bool morePending = false;
+    for (auto& kv : frameGenQueue_) {
+        const int64_t id = kv.first;
+        auto& q = kv.second;
+        if (q.empty()) continue;
+        AHardwareBuffer* ahb = q.front();
+        q.pop_front();
+        auto cit = ahbImportCache.find(ahb);
+        if (cit != ahbImportCache.end()) {
+            WinTex& src = cit->second;
+            WinTex& wt  = texMap[id];
+            wt.img  = src.img;  wt.mem = src.mem;  wt.view = src.view;  wt.ds = src.ds;
+            wt.isAHB = true;    wt.ahb = ahb;      wt.w = src.w;        wt.h = src.h;
+            if (src.needsTransition) { wt.needsTransition = true; src.needsTransition = false; }
+        } else if ((fgLogTick_ % 240u) == 0u) {
+            RLOG_E("drainFrameGenQueues: queued AHB %p missing from cache (skipped)", (void*)ahb);
+        }
+        if (!q.empty()) morePending = true;
+    }
+    return morePending;
+}
+
+void VulkanRendererContext::setFrameGenSlot(bool enabled, int multiplier, float refreshHz) {
+    bool wasEnabled;
+    {
+        std::lock_guard<std::mutex> lk(renderMutex);
+        wasEnabled    = fgSlotEnabled_.load(std::memory_order_relaxed);
+        fgMultiplier_ = multiplier;
+        fgRefreshHz_  = refreshHz;
+        fgPacer_.configure(multiplier, refreshHz);
+        if (!enabled || multiplier < 2) {
+            // Resume the legacy path cleanly: collapse any queued frames back to the
+            // newest (latest-wins) so nothing is stuck, then drop the queues.
+            for (auto& kv : frameGenQueue_) {
+                auto& q = kv.second;
+                if (q.empty()) continue;
+                AHardwareBuffer* ahb = q.back();   // newest
+                auto cit = ahbImportCache.find(ahb);
+                if (cit != ahbImportCache.end()) {
+                    WinTex& src = cit->second;
+                    WinTex& wt  = texMap[kv.first];
+                    wt.img  = src.img;  wt.mem = src.mem;  wt.view = src.view;  wt.ds = src.ds;
+                    wt.isAHB = true;    wt.ahb = ahb;      wt.w = src.w;        wt.h = src.h;
+                    if (src.needsTransition) { wt.needsTransition = true; src.needsTransition = false; }
+                }
+            }
+            frameGenQueue_.clear();
+            fgPacer_.reset();
+        }
+        fgSlotEnabled_.store(enabled, std::memory_order_relaxed);
+    }
+    RLOG("setFrameGenSlot: enabled=%d mult=%d refreshHz=%.1f (was=%d)",
+        (int)enabled, multiplier, refreshHz, (int)wasEnabled);
+    // Enabling/disabling changes the desired swapchain image count -> rebuild.
+    if (enabled != wasEnabled) fbResized.store(true);
+    needsRender.store(true); dirtyCV.notify_one();
 }
 
 #pragma GCC diagnostic pop

@@ -277,6 +277,25 @@ jobs:
         mkdir -p ../../../jniLibs/arm64-v8a
         cp "$SO" ../../../jniLibs/arm64-v8a/libblsteam.so
 
+    - name: bl-steam-client host unit tests (informational, non-blocking)
+      # The crate carries 224 #[test] functions that have never executed ANYWHERE. The build
+      # step above cross-compiles for the device, and `cargo build` excludes #[cfg(test)] code
+      # by design - so today those tests are neither run NOR compiled, and every one of them
+      # could be broken without turning this workflow red.
+      #
+      # They are pure host-side logic (wire encoding, protobuf field numbers, EMsg values), so
+      # they need no device, no NDK and no Steam session - hence a plain `cargo test` with no
+      # --target, which compiles and runs for the runner's own architecture.
+      #
+      # Deliberately non-blocking on this first run: the point is to LEARN whether they pass,
+      # and a failure must not cost us the APK. Note the crate has cfg(target_os = "android")
+      # blocks in jni.rs and depot_writer.rs, so a host build may not even compile - that
+      # outcome is itself the answer we are after. Make this blocking once it is known-green.
+      continue-on-error: true
+      run: |
+        cd app/src/main/cpp/bl-steam-client/rust
+        cargo test --locked
+
     - name: bl-steam-client dependency audit (cargo tree + licenses)
       run: |
         cd app/src/main/cpp/bl-steam-client/rust

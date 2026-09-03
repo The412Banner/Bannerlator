@@ -3762,6 +3762,9 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
             }
         };
         let code_refresher_cb: crate::depot_downloader::ManifestCodeRefresher = &code_refresher;
+        // Engine-side download diagnostics (throughput lines, fallocate fallback) → logcat.
+        let download_log = |msg: &str| android_log("BL_STEAM_DL", msg);
+        let download_log_cb: crate::depot_writer::DepotLogCallback = &download_log;
         let result =
             crate::depot_downloader::download_resolved_depots_with_cancel_progress(
                 &install_dir,
@@ -3774,6 +3777,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
                 Some(download_cancel.as_ref()),
                 Some(progress_cb),
                 Some(code_refresher_cb),
+                Some(download_log_cb),
             );
         dispatch_download_complete(listener, result);
     });

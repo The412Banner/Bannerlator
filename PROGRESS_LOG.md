@@ -6645,3 +6645,46 @@ Branch `feat/rust-download-java-parity` (off main; already carries Fix A = short
 - **Kept unchanged:** `plan_depot_write`, layout creation, per-file finalize/truncate, the single-worker sequential fallback (workers==1 or ≤1 chunk), all `depot_downloader.rs` journaling, and the `Semaphore(1)`/single per-session cancel model (Fix C territory — left alone).
 - **Tests:** new `depot_writer` tests for the 2-pool path (existing-chunk verify accounting + finalize, cancel verdict) + default-options field; updated the two `download_resolved_depots` test call sites for the new arg. (No local Rust toolchain in the worktree — CI `cargo build` validates production code; `cargo test` deferred to a toolchain host.)
 - Confidence: reviewed-by-inspection; CI compile gate; NOT device-tested (user drives the device). Other worktree `/home/claude-user/bannerlators` untouched.
+
+## 2026-09-02 (later) — 📥⚡ Rust downloader B2a: structural throughput wins + per-server measurement
+
+Branch `feat/rust-download-java-parity` (on top of A short-depot auto-resume + B decoupled pipeline
++ Q managed queue). Device-proven problem: on 1 Gbps FiOS the Rust engine under-drove the pipe
+(Fast ~24 Mbps, Blazing ~44 Mbps sustained) with CPU 70% idle + disk idle — bottleneck = in-flight
+network concurrency + per-chunk file-reopen stalls, NOT decode. This is the cheap/low-risk half
+(B2a); the tokio async fetch client (B2b) is a separate measured follow-up. Decode untouched.
+
+All five levers land in `app/src/main/cpp/bl-steam-client/rust/src/` (mainly `depot_writer.rs`):
+- **1. One held handle per file + positioned writes.** `write_chunk_at`/`process_and_write_chunk`
+  now take an already-open `&File` and write with `FileExt::write_at`/`write_all_at` (pwrite, no
+  shared seek cursor) — race-free when the work-stealing pool writes different chunks of the SAME
+  file concurrently. New `DepotFiles` table opens one handle per file lazily and closes it as the
+  file's LAST chunk lands (per-file `remaining` counter → set_len(exact)+fsync fires EXACTLY once,
+  never per-chunk); peak open fds bounded by worker concurrency, not file count. Removed the old
+  per-chunk open+seek+write+close and the whole per-file reopen finalize pass.
+- **2. Pre-allocate files to the EXACT manifest size** (`file.size`, ground truth) at first open via
+  `libc::fallocate`; on **EOPNOTSUPP/ENOSYS** (FUSE/sdcardfs) branch on the errno and fall back to
+  `set_len`, logged ONCE per download. Skipped entirely on resume of a file already ≥ its size.
+- **3. Byte-budget the fetch→process channel.** Replaced the chunk-COUNT `sync_channel` bound with
+  an unbounded channel gated by an in-flight **byte** budget on the RAW compressed bytes
+  (`FETCH_INFLIGHT_BUDGET_BYTES = 24 MiB`): incremented on ENQUEUE, decremented on WRITE-COMPLETE.
+  Deadlock guard (`budget_admits`): always admits ≥1 chunk when nothing is in flight, so a chunk
+  bigger than the whole budget can't wedge. Heap stays fixed regardless of game size (#408 class).
+- **4. Per-server bytes/sec measurement.** New lock-free `BandwidthMeter` (atomic counters only, off
+  the hot path); fetch workers `record()` the winning server's bytes; a reporter thread emits
+  `throughput depot=… overall=…MB/s … per-server` to `BL_STEAM_DL` every 5 s + a final line. Wired
+  through a new `DepotLogCallback` on `DepotWriteOptions` → `download_resolved_depots*` →
+  `jni.rs` `android_log("BL_STEAM_DL", …)`.
+- **5. Free-space guard → exact manifest sizes.** Before writing a depot, `statvfs` the target vs the
+  summed EXACT manifest sizes minus what's already on disk; conservative (skips on statvfs failure /
+  zero, 64 MiB margin) so a wonky FS never false-fails.
+- **libc** added as a direct dep (already transitive via ring/rustls, pinned same 0.2.186 in
+  Cargo.lock — no new fetch). `write_at`/`fallocate`/`statvfs` unix-gated with non-unix stubs.
+
+A/B/Q intact: fetch/process decouple preserved (only backpressure mechanism changed count→bytes),
+short-depot auto-resume and the managed one-at-a-time queue untouched; each active download still
+runs its own pipeline. NOT B2b, no ruzstd→C-zstd swap, no speed-ranked CDN pick, no adaptive window;
+`.so` stays async-free. New/updated `depot_writer` tests: concurrent pwrite race-free, byte-budget
+deadlock guard, prealloc→write→finalize exact size, verify accounting, cancel. No local Rust
+toolchain — CI `cargo build --lib` is the compile gate (tests not compiled by `--lib`);
+NOT device-tested (user drives the device). Other worktree `/home/claude-user/bannerlators` untouched.

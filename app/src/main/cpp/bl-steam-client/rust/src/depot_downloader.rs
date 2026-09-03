@@ -311,6 +311,7 @@ pub fn download_resolved_depots(
         None,
         None,
         None,
+        None,
     )
 }
 
@@ -336,6 +337,7 @@ pub fn download_resolved_depots_with_cancel(
         cancel,
         None,
         None,
+        None,
     )
 }
 
@@ -351,6 +353,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     cancel: Option<&AtomicBool>,
     on_progress: Option<DepotProgressCallback<'_>>,
     code_refresher: Option<ManifestCodeRefresher<'_>>,
+    log: Option<crate::depot_writer::DepotLogCallback<'_>>,
 ) -> DepotDownloadResult {
     if let Err(error) = validate_resolved_download_inputs(install_dir, depots, servers) {
         return error;
@@ -501,6 +504,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                 max_process_workers,
                 cancel,
                 on_progress: Some(chunk_progress),
+                log,
                 ..Default::default()
             },
         );

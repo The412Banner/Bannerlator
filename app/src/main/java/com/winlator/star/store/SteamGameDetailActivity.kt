@@ -37,6 +37,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Help
+import com.winlator.star.R
+import com.winlator.star.ui.screens.HelpDialog
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.outlinedMenuCard
@@ -3262,6 +3265,18 @@ private fun DownloadSpeedPickerDialog(
     // SD-card install opt-in — off by default; only offered when a removable card is present.
     var installToSd by remember { mutableStateOf(false) }
 
+    // Per-"?" help — a general one on the header plus one per speed tier. Reuses the shared
+    // HelpDialog (a centered, scrollable Compose dialog); it layers on top of whichever layout
+    // is showing, so it's rendered once here before the landscape/portrait branch.
+    var helpRes by remember { mutableStateOf<Int?>(null) }
+    helpRes?.let { HelpDialog(it) { helpRes = null } }
+    fun tierHelpRes(tier: Int): Int = when (tier) {
+        DownloadSpeedConfig.TIER_SLOW -> R.string.help_download_speed_slow
+        DownloadSpeedConfig.TIER_MEDIUM -> R.string.help_download_speed_medium
+        DownloadSpeedConfig.TIER_FAST -> R.string.help_download_speed_fast
+        else -> R.string.help_download_speed_blazing
+    }
+
     // Landscape gets a WIDE two-column variant. In landscape the portrait Column (4 radios +
     // debug checkbox +warning + SD checkbox +warning) stacks past the short screen height and
     // clips the action buttons with no scroll, so split it into two scrollable columns under a
@@ -3290,16 +3305,29 @@ private fun DownloadSpeedPickerDialog(
                 Column(Modifier.heightIn(max = maxH)) {
                     // Header — no download-size/on-disk values are in scope in this composable, so
                     // per the mock's subline we keep the header to the title only rather than
-                    // inventing numbers (portrait shows the same title).
-                    Text(
-                        text = "Download speed",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = cs.onSurface,
-                        modifier = Modifier.padding(
-                            start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp,
-                        ),
-                    )
+                    // inventing numbers (portrait shows the same title). A general "?" sits at the
+                    // end of the header row.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 6.dp),
+                    ) {
+                        Text(
+                            text = "Download speed",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = cs.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { helpRes = R.string.help_download_speed }) {
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = "What is this?",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -3400,6 +3428,15 @@ private fun DownloadSpeedPickerDialog(
                                             text = hint,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = cs.onSurfaceVariant,
+                                        )
+                                    }
+                                    // Per-tier "?" — has its own onClick, so tapping it opens
+                                    // help without selecting the row.
+                                    IconButton(onClick = { helpRes = tierHelpRes(tier) }) {
+                                        Icon(
+                                            Icons.Default.Help,
+                                            contentDescription = "What is this?",
+                                            modifier = Modifier.size(18.dp),
                                         )
                                     }
                                 }
@@ -3535,10 +3572,21 @@ private fun DownloadSpeedPickerDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Download speed") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("Download speed", modifier = Modifier.weight(1f))
+                IconButton(onClick = { helpRes = R.string.help_download_speed }) {
+                    Icon(
+                        Icons.Default.Help,
+                        contentDescription = "What is this?",
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        },
         text = {
             Column {
-                options.forEachIndexed { index, (label, _) ->
+                options.forEachIndexed { index, (label, tier) ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -3556,6 +3604,14 @@ private fun DownloadSpeedPickerDialog(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
+                        // Per-tier "?" — its own onClick opens help without changing selection.
+                        IconButton(onClick = { helpRes = tierHelpRes(tier) }) {
+                            Icon(
+                                Icons.Default.Help,
+                                contentDescription = "What is this?",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
 

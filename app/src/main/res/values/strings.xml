@@ -302,26 +302,119 @@
     <!-- Help for the Box64 variables added alongside the 19 -> 32 expansion. Wording follows
          WinNative, which has shipped these knobs longest. Without these the "?" button had
          nothing to show and silently did nothing. -->
-    <string name="box64_env_var_help__dynarec">Enables or disables the Box64 dynamic recompiler. Turning it off falls back to interpreting every instruction, which is dramatically slower — leave it on unless you are debugging.</string>
-    <string name="box64_env_var_help__dynarec_sep">Adds secondary entry points to optimize CALL/RET when CALLRET is enabled.</string>
-    <string name="box64_env_var_help__dynarec_noarch">Reduces dynarec block metadata to save memory, with compatibility tradeoffs.</string>
-    <string name="box64_env_var_help__dynarec_volatile_metadata">Uses PE volatile metadata to guide strong memory emulation for 64-bit Windows games.</string>
-    <string name="box64_env_var_help__dynacache">Controls caching of generated dynarec blocks between runs to speed up startup.</string>
-    <string name="box64_env_var_help__aes">Exposes AES CPU capabilities to the guest.</string>
-    <string name="box64_env_var_help__pclmulqdq">Exposes PCLMULQDQ CPU capabilities to the guest.</string>
-    <string name="box64_env_var_help__shaext">Exposes SHA extension CPU capabilities to the guest.</string>
-    <string name="box64_env_var_help__sse42">Exposes SSE4.2 CPU capabilities to the guest.</string>
-    <string name="box64_env_var_help__sse_flushto0">Controls SSE flush-to-zero behavior and exception flag tracking.</string>
-    <string name="box64_env_var_help__x87_no80bits">Uses 64-bit double precision instead of 80-bit long double for x87.</string>
-    <string name="box64_env_var_help__cputype">Selects the Intel or AMD CPU model exposed to the guest.</string>
-    <string name="box64_env_var_help__unity">Marks the app as a Unity game and enables Unity-specific compatibility handling.</string>
+    <string name="box64_env_var_help__dynarec"><![CDATA[
+        Dynamic recompiler — the heart of Box64. It translates the game x86 code into ARM code once,
+        then reuses the translation.<br /><br />
+        <b>0</b> : Interpret every instruction one at a time. Correct, but many times slower and not
+        realistically playable. Debugging only.<br />
+        <b>1</b> : Translate and cache. This is what makes games run at usable speed. (default)]]></string>
+    <string name="box64_env_var_help__dynarec_sep"><![CDATA[
+        Secondary entry points for CALL/RET. Lets Box64 jump into the middle of a block it already
+        translated instead of building a near-identical copy.<br /><br />
+        <b>0</b> : One entry point per block. More duplicate blocks, more memory.<br />
+        <b>1</b> : Add secondary entry points. Fewer duplicates, slightly faster. (default)<br />
+        <b>2</b> : More aggressive still.<br /><br />
+        Only has an effect when DYNAREC_CALLRET is on.]]></string>
+    <string name="box64_env_var_help__dynarec_noarch"><![CDATA[
+        How much bookkeeping Box64 keeps for each translated block. That bookkeeping is what lets it
+        notice when code or memory changes and re-translate correctly.<br /><br />
+        <b>0</b> : Keep everything. Safest. (default)<br />
+        <b>1</b> : Trim some. Less memory.<br />
+        <b>2</b> : Trim aggressively. Least memory, most likely to misbehave.<br /><br />
+        Raise this only if you are short on RAM — it trades correctness for memory.]]></string>
+    <string name="box64_env_var_help__dynarec_volatile_metadata"><![CDATA[
+        64-bit Windows programs can carry volatile metadata: the compiler marking exactly which memory
+        accesses must not be reordered. Box64 can read it and enforce strict ordering only where the
+        game genuinely needs it, instead of everywhere.<br /><br />
+        <b>0</b> : Ignore it.<br />
+        <b>1</b> : Use it. Usually faster than blanket STRONGMEM while staying correct. (default)<br /><br />
+        Only applies to 64-bit Windows games built with the metadata present.]]></string>
+    <string name="box64_env_var_help__dynacache"><![CDATA[
+        Whether translated blocks are kept on disk between runs so the next launch starts warm.<br /><br />
+        <b>0</b> : Off. Translate fresh every launch. (default)<br />
+        <b>1</b> / <b>2</b> : Increasing levels of caching. Faster startup and fewer first-time
+        stutters, at the cost of disk space.<br /><br />
+        Clear the container cache after a game update if you see odd behaviour.]]></string>
+    <string name="box64_env_var_help__aes"><![CDATA[
+        AES-NI, the hardware encryption instructions. Games, DRM and anti-cheat use them heavily.<br /><br />
+        <b>0</b> : Tell the game the CPU has no AES. Anything using it falls back to slow software
+        encryption, or picks a different code path.<br />
+        <b>1</b> : Advertise AES and map it onto the ARM equivalents, so it runs at near-native
+        speed. (default)<br /><br />
+        Turn it off only if a game misdetects the CPU and refuses to start.]]></string>
+    <string name="box64_env_var_help__pclmulqdq"><![CDATA[
+        Carry-less multiply — a specialised instruction used by encryption and checksum code, often
+        alongside AES.<br /><br />
+        <b>0</b> : Hide it. Callers fall back to slower software routines.<br />
+        <b>1</b> : Advertise it and map it to the ARM equivalent. (default)]]></string>
+    <string name="box64_env_var_help__shaext"><![CDATA[
+        SHA extensions — hardware SHA-1 and SHA-256 hashing, used for file verification, save
+        integrity checks and DRM.<br /><br />
+        <b>0</b> : Hide it. Hashing falls back to software and gets slower.<br />
+        <b>1</b> : Advertise it and map it to the ARM equivalent. (default)]]></string>
+    <string name="box64_env_var_help__sse42"><![CDATA[
+        SSE4.2 — string and text processing instructions plus hardware CRC32.<br /><br />
+        <b>0</b> : Hide it. Some modern games check for SSE4.2 at startup and refuse to run without
+        it.<br />
+        <b>1</b> : Advertise it. (default)<br /><br />
+        Leave this on unless a game specifically misbehaves with it.]]></string>
+    <string name="box64_env_var_help__sse_flushto0"><![CDATA[
+        How denormals — extremely small floating-point numbers — are handled in SSE maths.<br /><br />
+        <b>0</b> : Full IEEE behaviour with exception flags tracked. Correct, but slow whenever a
+        game produces denormals. (default)<br />
+        <b>1</b> : Flush denormals straight to zero, which is what most game engines ask for anyway.
+        Faster, and can very slightly change physics or audio results.]]></string>
+    <string name="box64_env_var_help__x87_no80bits"><![CDATA[
+        x87 is the old floating-point unit. It works in 80-bit extended precision, which ARM has no
+        equivalent for, so Box64 has to emulate it.<br /><br />
+        <b>0</b> : Emulate full 80-bit precision. Accurate but slow.<br />
+        <b>1</b> : Use ordinary 64-bit doubles instead. Much faster, and what the fast presets pick.<br /><br />
+        Older games doing precise maths — physics, simulation, flight models — can drift or behave
+        oddly on 1.]]></string>
+    <string name="box64_env_var_help__cputype"><![CDATA[
+        Which CPU vendor Box64 reports to the game.<br /><br />
+        <b>0</b> : Intel (default)<br />
+        <b>1</b> : AMD<br /><br />
+        Some games, DRM and anti-cheat take different code paths depending on the vendor, and a few
+        refuse to run on one of them. Only worth changing if a specific title needs it.]]></string>
+    <string name="box64_env_var_help__unity"><![CDATA[
+        Marks the process as a Unity game so Box64 applies Unity-specific workarounds, mostly around
+        its Mono and IL2CPP runtimes and how they handle threads.<br /><br />
+        <b>0</b> : Off (default)<br />
+        <b>1</b> : On<br /><br />
+        Worth trying if a Unity game crashes at startup or hangs on a loading screen.]]></string>
 
     <!-- FEXCore variables that had no help text: two added with the Extreme presets, plus
          MAXINST and SMCCHECKS which were never covered. -->
-    <string name="fexcore_env_var_help__maxinst">Maximum number of guest instructions FEX will compile into a single translated block. Larger blocks run faster but take longer to compile and use more memory.</string>
-    <string name="fexcore_env_var_help__smcchecks">How hard FEX looks for self-modifying code — code the game writes or rewrites while running.\n\nnone is fastest but breaks anything that generates code at runtime (Java or .NET runtimes, some launchers and DRM). mtrack is the balanced default. full is the safest and slowest.</string>
-    <string name="fexcore_env_var_help__dynamicl1cacheincreasecountheuristic">How readily the dynamic L1 block cache grows. Lower values grow it sooner, using more memory for fewer recompiles. Only has an effect when the dynamic L1 cache is enabled.</string>
-    <string name="fexcore_env_var_help__dynamicl1cachedecreasecountheuristic">How readily the dynamic L1 block cache shrinks back. Higher values hold memory longer before releasing it. Only has an effect when the dynamic L1 cache is enabled.</string>
+    <string name="fexcore_env_var_help__maxinst"><![CDATA[
+        The largest number of guest instructions FEX will pack into a single translated block.<br /><br />
+        Bigger blocks run faster, because FEX can optimise across more of the game code at once and
+        jumps between blocks cost time. They also take longer to compile and use more memory, so a
+        very large value can cause hitching the first time new code runs.<br /><br />
+        <b>5000</b> is the default and suits almost everything. Lower it only if you are chasing
+        memory use or startup stutter.]]></string>
+    <string name="fexcore_env_var_help__smcchecks"><![CDATA[
+        How hard FEX watches for self-modifying code — a program writing or rewriting its own
+        instructions while running. FEX has to notice, or it keeps running a stale translation of
+        code that has since changed.<br /><br />
+        <b>none</b> : No checking. Fastest, and what the Extreme presets use. Breaks anything that
+        generates code at runtime: Java and .NET runtimes, some launchers, and most DRM.<br />
+        <b>mtrack</b> : Track writes to memory pages holding translated code. The balanced default.<br />
+        <b>full</b> : Check thoroughly. Slowest and safest — what the Denuvo preset uses.<br /><br />
+        If a game runs on Performance but not on an Extreme preset, this is the first thing to
+        change back.]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cacheincreasecountheuristic"><![CDATA[
+        How eagerly the dynamic L1 block cache grows.<br /><br />
+        The L1 cache holds recently used translated blocks. When it fills, FEX either grows it or
+        starts discarding blocks it will likely need again. This number is how much pressure it
+        takes before growing: <b>lower grows sooner</b>, spending memory to avoid re-translating.<br /><br />
+        Default <b>250</b>. Only has any effect when DYNAMICL1CACHE is on.]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cachedecreasecountheuristic"><![CDATA[
+        How eagerly the dynamic L1 block cache shrinks back down.<br /><br />
+        After a busy stretch — a level load, a big area transition — the cache may be far larger than
+        the game now needs. This number is how long it waits before handing memory back:
+        <b>higher holds memory longer</b>, which avoids shrinking and regrowing repeatedly.<br /><br />
+        Default <b>50</b>. Only has any effect when DYNAMICL1CACHE is on.]]></string>
 
     <!-- Per-preset help, shown by the "?" beside the preset name in the preset editor.
          Key = <prefix>_preset_help__<preset id lowercased>. Kept brief: what it does, then the

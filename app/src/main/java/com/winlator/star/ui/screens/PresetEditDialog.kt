@@ -72,9 +72,19 @@ import java.util.Locale
 // that visible rather than silent.
 // ─────────────────────────────────────────────────────────────────────────────
 
-internal enum class PresetKind(val prefix: String, val titleRes: Int) {
-    BOX64("box64", R.string.box64_preset),
-    FEXCORE("fexcore", R.string.fexcore_preset);
+internal enum class PresetKind(
+    /** Asset/pref prefix: box64_env_vars.json, fexcore_env_var_help__*, box64_preset_overrides. */
+    val prefix: String,
+    /**
+     * Prefix on the VARIABLE names, which is not the same as [prefix] for FEXCore: the resource
+     * keys are fexcore_env_var_help__* but the variables are FEX_*. Deriving this from [prefix]
+     * looked for FEXCORE_ and matched nothing, so every FEXCore help lookup came back empty.
+     */
+    val varPrefix: String,
+    val titleRes: Int,
+) {
+    BOX64("box64", "BOX64_", R.string.box64_preset),
+    FEXCORE("fexcore", "FEX_", R.string.fexcore_preset);
 }
 
 /** What the editor is open on: a brand-new preset, or an existing one by id. */
@@ -123,10 +133,10 @@ private fun loadSpecs(context: Context, prefix: String): List<VarSpec> = try {
     emptyList()
 }
 
-/** Per-variable help string, e.g. box64_env_var_help__dynarec_bigblock. */
-private fun varHelp(context: Context, prefix: String, name: String): String? {
-    val suffix = name.replace(prefix.uppercase(Locale.ENGLISH) + "_", "").lowercase(Locale.ENGLISH)
-    return StringUtils.getString(context, prefix + "_env_var_help__" + suffix)
+/** Per-variable help string, e.g. box64_env_var_help__dynarec_bigblock, fexcore_env_var_help__tsoenabled. */
+private fun varHelp(context: Context, kind: PresetKind, name: String): String? {
+    val suffix = name.replace(kind.varPrefix, "").lowercase(Locale.ENGLISH)
+    return StringUtils.getString(context, kind.prefix + "_env_var_help__" + suffix)
 }
 
 /** Per-preset help string, e.g. box64_preset_help__extreme_2 / fexcore_preset_help__extreme_tso. */
@@ -265,7 +275,7 @@ internal fun PresetEditDialog(
                     items(specs, key = { it.name }) { spec ->
                         // Resolve the help text up front: a variable with none hides its "?"
                         // rather than showing a button that does nothing when tapped.
-                        val help = remember(spec.name) { varHelp(context, prefix, spec.name) }
+                        val help = remember(spec.name) { varHelp(context, kind, spec.name) }
                         VarRow(
                             spec = spec,
                             value = values[spec.name] ?: spec.defaultValue,

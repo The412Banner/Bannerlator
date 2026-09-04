@@ -73,6 +73,42 @@ public class FEXCorePresetManager {
             envVars.put("FEX_X87REDUCEDPRECISION", "1");
             envVars.put("FEX_MULTIBLOCK", "1");
         }
+        else if (id.equals(FEXCorePreset.EXTREME) || id.equals(FEXCorePreset.EXTREME_TSO)) {
+            // Derived from WinNative (WinNative-Emu/WinNative, FEXCorePresetManager) — hence the
+            // "-wn" suffix on the displayed name. Same base as PERFORMANCE/PERFORMANCE_TSO plus
+            // five JIT/cache knobs: self-modifying-code checks off, FEX's L2 block cache off, and
+            // a dynamically-sized L1 block cache with its grow/shrink heuristics.
+            // FEX_SMCCHECKS=none is the risky one: anything that writes its own code at runtime
+            // (JIT/.NET/some launchers and DRM) can misbehave, which is why this sits above
+            // PERFORMANCE rather than replacing it. EXTREME_TSO keeps store ordering on for the
+            // many titles that need it.
+            envVars.put("FEX_TSOENABLED", id.equals(FEXCorePreset.EXTREME_TSO) ? "1" : "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+            envVars.put("FEX_SMCCHECKS", "none");
+            envVars.put("FEX_DISABLEL2CACHE", "1");
+            envVars.put("FEX_DYNAMICL1CACHE", "1");
+            envVars.put("FEX_DYNAMICL1CACHEINCREASECOUNTHEURISTIC", "250");
+            envVars.put("FEX_DYNAMICL1CACHEDECREASECOUNTHEURISTIC", "50");
+        }
+        else if (id.equals(FEXCorePreset.EXTREME_GN)) {
+            // Derived from GameNative (utkarshdalal/GameNative, FEXCorePresetManager) — hence "-gn".
+            // A much lighter "extreme" than the WinNative pair: PERFORMANCE's base plus only the
+            // TSC scaling and volatile-metadata hints, leaving the SMC checks and the block caches
+            // at FEX's defaults. Safer on JIT-heavy titles than EXTREME-wn, so it is worth trying
+            // first when a game misbehaves under the WinNative tiers.
+            envVars.put("FEX_TSOENABLED", "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+            envVars.put("FEX_SMALLTSCSCALE", "1");
+            envVars.put("FEX_VOLATILEMETADATA", "1");
+        }
         else if (id.equals(FEXCorePreset.DENUVO)) {
             envVars.put("FEX_TSOENABLED", "0");
             envVars.put("FEX_VECTORTSOENABLED", "0");
@@ -102,6 +138,9 @@ public class FEXCorePresetManager {
         presets.add(new FEXCorePreset(FEXCorePreset.INTERMEDIATE, context.getString(R.string.intermediate)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE, context.getString(R.string.performance)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE_TSO, context.getString(R.string.performance_tso)));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME, context.getString(R.string.fex_extreme_wn)));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_TSO, context.getString(R.string.fex_extreme_tso_wn)));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_GN, context.getString(R.string.fex_extreme_gn)));
         presets.add(new FEXCorePreset(FEXCorePreset.DENUVO, context.getString(R.string.denuvo)));
         for (String[] preset : customPresetsIterator(context)) presets.add(new FEXCorePreset(preset[0], preset[1]));
         return presets;

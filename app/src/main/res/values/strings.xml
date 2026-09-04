@@ -289,6 +289,12 @@
     <string name="performance_tso">Performance (TSO)</string>
     <string name="performance_mali">Performance (Mali)</string>
     <string name="extreme">Extreme</string>
+    <!-- FEXCore-only preset labels. The "-wn"/"-gn" suffixes mark which upstream the values were
+         derived from (WinNative / GameNative) so the two Extreme tiers stay tellable apart; the
+         plain "extreme" string above belongs to the Box64 preset and must not be reused here. -->
+    <string name="fex_extreme_wn">Extreme-wn</string>
+    <string name="fex_extreme_tso_wn">Extreme (TSO)-wn</string>
+    <string name="fex_extreme_gn">Extreme-gn</string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="denuvo">Denuvo</string>

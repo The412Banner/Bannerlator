@@ -101,7 +101,7 @@ public class PerfHudView extends View {
 
     /** "30\u2192118" while frames are being added, else the plain value. */
     private String fpsText() {
-        return presentedFps > fps + 1f
+        return presentedFps > 0f && Math.abs(presentedFps - fps) > Math.max(1f, fps * 0.10f)
             ? String.format(Locale.ENGLISH, "%.0f\u2192%.0f", fps, presentedFps)
             : String.format(Locale.ENGLISH, "%.0f", fps);
     }

@@ -280,7 +280,12 @@ public class FrameRating extends FrameLayout implements Runnable {
         // Show what the panel is getting; keep the game's own rate alongside it
         // rather than replacing it, because both numbers are worth seeing and
         // the gap between them IS the frame generation.
-        final boolean generating = presentedFps > lastFPS + 1.0f;
+        // Either direction. Up means frames are being ADDED (LSFG Native).
+        // Down means frames are being LOST between the guest and the panel,
+        // which is exactly the failure win-fg can hit and which a single
+        // number hides completely.
+        final boolean generating = presentedFps > 0f
+            && Math.abs(presentedFps - lastFPS) > Math.max(1.0f, lastFPS * 0.10f);
         float displayFps = generating ? presentedFps : lastFPS;
         if (tvFPS != null) {
             tvFPS.setText(generating

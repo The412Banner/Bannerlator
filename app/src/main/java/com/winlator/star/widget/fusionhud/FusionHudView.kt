@@ -324,7 +324,13 @@ class FusionHudView(
     // The game's own rate stays visible next to the panel rate, because the gap
     // between the two is precisely what frame generation is doing.
     private fun fpsText(v: Float): String =
-        if (presentedFps > v + 1f) "${one(v)}\u2192${one(presentedFps)}" else one(v)
+        if (differs(v)) "${one(v)}\u2192${one(presentedFps)}" else one(v)
+
+    // Either direction: up = frames added (LSFG Native), down = frames lost
+    // between the guest and the panel, which is the failure win-fg can hit
+    // and which a single number hides completely.
+    private fun differs(v: Float): Boolean =
+        presentedFps > 0f && kotlin.math.abs(presentedFps - v) > maxOf(1f, v * 0.10f)
 
     private fun fmt1(v: Float): String = String.format(Locale.US, "%.1f", v)
     private fun lowText(v: Float): String? = if (v <= 0f) null else fmt1(v)
@@ -599,7 +605,7 @@ class FusionHudView(
         // number is set at 30sp precisely because it is the one big thing on a
         // small overlay. Shrink it while it carries both figures so the pill
         // does not balloon across the screen; it is still the largest element.
-        val generating = presentedFps > fpsNow + 1f
+        val generating = differs(fpsNow)
         val fpsPx = if (generating) bigPx * 0.55f else bigPx
         left += Span(fpsText(fpsNow), colValue, fpsPx)
         left += Span("fps", colDim, if (generating) bigUnitPx * 0.8f else bigUnitPx)
@@ -684,7 +690,7 @@ class FusionHudView(
         val pad = sp(10f); val lineGap = sp(6f)
 
         // Same reasoning as the pill: 34sp is sized for one number, not two.
-        val minGenerating = presentedFps > fpsNow + 1f
+        val minGenerating = differs(fpsNow)
         val big = listOf(
             Span(fpsText(fpsNow), colValue, if (minGenerating) bigPx * 0.55f else bigPx),
             Span("fps", colDim, if (minGenerating) bigUnitPx * 0.8f else bigUnitPx))

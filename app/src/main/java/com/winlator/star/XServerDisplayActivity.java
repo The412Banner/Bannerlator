@@ -1663,6 +1663,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // perf_preset self-rebuild collides with the teardown's surface rebuild → Fold-8 freeze).
             // Flow Scale stays live (no reset). Replaces win-fg's old soft pulseFgReset.
             maybeTriggerWinFgReset(mult >= 2 ? mult : 0, fgModel, fgPreset);
+            // win-fg gets the same base->shown readout. Its case is the mirror
+            // image of LSFG Native's: its generated frames are produced INSIDE
+            // the guest and arrive as ordinary deliveries, so our per-guest-frame
+            // counter already counts them - what it cannot see is whether they
+            // survive the trip to the panel. Comparing that count against the
+            // measured present rate makes a coalesced, never-displayed frame
+            // visible as a DROP instead of it silently inflating the number.
+            if (mult >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
         };
         // Live Present Mode selector (Graphics tab). The user's pick is persisted (per-game shortcut
         // override if present, else the container) then applied live through the same choke point as the
@@ -2950,7 +2958,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     // the governor's accepted level, which is meaningless while
                     // the governor is off.
                     final int trusted = (int) st[1];
+                    // st[2] is the LSFG engine's own source rate and is 0 for
+                    // win-fg, which has no engine here. The HUDs do not need it
+                    // - they compare against their own counter - so only the
+                    // drawer line is suppressed in that case.
                     final float realFps = st[2], shownFps = st[3];
+                    final boolean haveEngineRates = realFps > 0f;
                     String text;
                     if (shownFps <= 0f) {
                         text = "measuring…";
@@ -2960,7 +2973,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         if (st[4] >= 3f) text += ", throttling";
                         text += ")";
                     }
-                    XServerDrawerState.INSTANCE.setFrameGenReadout(text);
+                    if (haveEngineRates) XServerDrawerState.INSTANCE.setFrameGenReadout(text);
                     // Also feed the in-game HUD. Its own counter ticks once per
                     // GUEST frame and therefore cannot see anything added after
                     // the game - it read 30 while the panel was showing 118,

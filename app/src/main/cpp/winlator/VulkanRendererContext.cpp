@@ -1077,13 +1077,16 @@ void VulkanRendererContext::recordCursorOverlay(VkCommandBuffer cb, uint32_t img
 }
 
 void VulkanRendererContext::frameGenStats(float out[5]) const {
-    out[0] = out[1] = out[2] = out[3] = 0.0f;
+    out[0] = out[1] = out[2] = 0.0f;
     out[4] = -1.0f;
+    // The presented rate is measured by the renderer itself, per present, and is
+    // valid for EVERY engine - including win-fg, whose generated frames arrive
+    // from inside the guest. It is reported even with no LSFG engine present.
+    out[3] = fgPresentedRate_;
     if (!lsfgEngine_) return;
     out[0] = (float)lsfgEngine_->acceptedGenerations();
     out[1] = (float)fgPlan_.generations;
     out[2] = lsfgEngine_->sourceRate();
-    out[3] = lsfgEngine_->loopRate();
     out[4] = (float)lsfgEngine_->thermalStatus();
 }
 

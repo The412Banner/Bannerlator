@@ -215,7 +215,8 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
-        final boolean generating = presentedFps > lastFPS + 1.0f;
+        final boolean generating = presentedFps > 0f
+            && Math.abs(presentedFps - lastFPS) > Math.max(1.0f, lastFPS * 0.10f);
         float displayFps = generating ? presentedFps : lastFPS;
         if (tvFPS != null) {
             tvFPS.setText(generating

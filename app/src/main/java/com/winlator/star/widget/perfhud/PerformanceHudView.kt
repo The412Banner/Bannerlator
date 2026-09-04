@@ -336,7 +336,8 @@ class PerformanceHudView(
             fpsValue = currentFps,
             cpuValue = cpu?.toFloat(),
             gpuValue = gpu?.toFloat(),
-            fps = if (presentedFps > currentFps + 1f)
+            fps = if (presentedFps > 0f &&
+                    kotlin.math.abs(presentedFps - currentFps) > maxOf(1f, currentFps * 0.10f))
                 String.format(Locale.US, "FPS %.0f\u2192%.0f", currentFps, presentedFps)
             else String.format(Locale.US, "FPS %.1f", currentFps),
             cpu = cpu?.let { "CPU $it%" },

@@ -866,9 +866,8 @@ bool VulkanRendererContext::ensureLsfgEngine() {
         RLOG_E("lsfg-native: engine init failed (cache %s)", lsfgCachePath_.c_str());
         return false;
     }
-    engine->configure((uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2),
-                      0, fgFlowScale_, fgRefreshHz_);
     lsfgEngine_ = std::move(engine);
+    fgConfigDirty_.store(true, std::memory_order_relaxed);
     RLOG("lsfg-native: engine ready");
     return true;
 }
@@ -948,18 +947,18 @@ void VulkanRendererContext::setLsfgCachePath(const char* path) {
 }
 
 void VulkanRendererContext::setFrameGenTuning(float flowScale, float refreshHz) {
-    fgFlowScale_ = flowScale;
-    fgRefreshHz_ = refreshHz;
-    if (lsfgEngine_) {
-        lsfgEngine_->configure(
-            (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2),
-            0, flowScale, refreshHz);
-    }
+    fgFlowScale_.store(flowScale, std::memory_order_relaxed);
+    fgRefreshHz_.store(refreshHz, std::memory_order_relaxed);
+    fgConfigDirty_.store(true, std::memory_order_relaxed);
 }
 
 void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
     const bool was = fgArmed_.load(std::memory_order_relaxed);
+    const int  wasMult = fgMultiplier_.load(std::memory_order_relaxed);
     fgMultiplier_.store(multiplier, std::memory_order_relaxed);
+    // A multiplier change must reach the pacer, or it keeps capping at the
+    // level it was built with.
+    if (wasMult != multiplier) fgConfigDirty_.store(true, std::memory_order_relaxed);
     if (was == armed) return;
 
     fgArmed_.store(armed, std::memory_order_relaxed);
@@ -1999,6 +1998,12 @@ ok=true;}catch(...){}
     // --- Frame gen: decide how many frames to synthesise for this source
     // frame, BEFORE acquiring, since that sets how many images we need.
     fgPlan_ = FrameGenPlan{};
+    if (lsfgEngine_ && fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
+        lsfgEngine_->configure(
+            (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2), 0,
+            fgFlowScale_.load(std::memory_order_relaxed),
+            fgRefreshHz_.load(std::memory_order_relaxed));
+    }
     if (compositeActive() && ensureLsfgEngine() &&
         lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
         const uint32_t capacity = (uint32_t)std::min<size_t>(

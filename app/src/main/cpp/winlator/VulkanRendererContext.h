@@ -475,8 +475,12 @@ private:
     // session. Read on the render thread; false keeps every path as it was.
     std::atomic<bool> fgArmed_{false};
     std::atomic<int>  fgMultiplier_{0};
-    float fgFlowScale_ = 1.0f;
-    float fgRefreshHz_ = 0.0f;
+    // Tuning is written by the UI thread and consumed by the render thread, so
+    // it is published through atomics and applied to the engine at the top of
+    // the frame-gen block. The UI thread never touches the engine itself.
+    std::atomic<float> fgFlowScale_{1.0f};
+    std::atomic<float> fgRefreshHz_{0.0f};
+    std::atomic<bool>  fgConfigDirty_{true};
 
     bool  createCompositeRenderPass();
     bool  ensureCompositeTargets(uint32_t w, uint32_t h, uint32_t count);

@@ -61,6 +61,12 @@ constexpr uint32_t kShaderChainFirst= 280u;
 constexpr uint32_t kShaderChainLast = 302u;
 constexpr uint32_t kShaderCount     = 25u;
 
+// Upstream spelling for the two ids the ported chain files refer to by name.
+// Kept so those files stay byte-close to their upstream form; these alias the
+// constants above rather than being a second source of truth.
+constexpr uint32_t LSFG_SHADER_MIPMAPS  = kShaderMipmaps;
+constexpr uint32_t LSFG_SHADER_GENERATE = kShaderGenerate;
+
 struct Module {
     uint32_t              id = 0;
     std::vector<uint32_t> words;   // SPIR-V

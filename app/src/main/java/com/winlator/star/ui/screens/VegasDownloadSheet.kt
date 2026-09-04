@@ -236,10 +236,10 @@ Column(modifier = Modifier.weight(1f)) {
                                                         // the stock prober never has to guess the asset shape.
                                                         val confUrl = release.configAssetUrl
                                                         val confName = profile?.verName
-                                                        if (confUrl != null && confName != null) {
-                                                            val assetName = confUrl.substringAfterLast('/', confUrl)
-                                                            scope.launch {
-                                                                withContext(Dispatchers.IO) {
+                                                        scope.launch {
+                                                            withContext(Dispatchers.IO) {
+                                                                if (confUrl != null && confName != null) {
+                                                                    val assetName = confUrl.substringAfterLast('/', confUrl)
                                                                     val vegasDir = ContentsManager.getContentTypeDir(
                                                                         context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
                                                                     val confDir = File(vegasDir, "configs")
@@ -251,15 +251,11 @@ Column(modifier = Modifier.weight(1f)) {
                                                                             release.tagName, assetName, confUrl,
                                                                         )
                                                                     }
-                                                                }
-                                                            }
-                                                        } else if (confName != null) {
-                                                            // Release ships NO config asset (repo reality: 2 of 5 builds
-                                                            // none) — clear any stale parked config from an earlier tag of
-                                                            // the same verName so the prober never surfaces a baseline
-                                                            // that does not belong to the installed build.
-                                                            scope.launch {
-                                                                withContext(Dispatchers.IO) {
+                                                                } else if (confName != null) {
+                                                                    // Release ships NO config asset (repo reality: 2 of 5 builds
+                                                                    // none) — clear any stale parked config from an earlier tag of
+                                                                    // the same verName so the prober never surfaces a baseline
+                                                                    // that does not belong to the installed build.
                                                                     val vegasDir = ContentsManager.getContentTypeDir(
                                                                         context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
                                                                     val confDir = File(vegasDir, "configs")
@@ -267,9 +263,9 @@ Column(modifier = Modifier.weight(1f)) {
                                                                     removeStockProvenance(confDir, confName)
                                                                 }
                                                             }
+                                                            onContentChanged()
+                                                            onDismiss()
                                                         }
-                                                        onContentChanged()
-                                                        onDismiss()
                                                     } else {
                                                         errorMsg = "Install failed."
                                                     }

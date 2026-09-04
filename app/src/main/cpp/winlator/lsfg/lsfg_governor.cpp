@@ -132,7 +132,12 @@ uint32_t ProbeGovernor::cap(uint32_t requested, float sourceRate, float loopRate
     // reset the backoff clock every single call, so the backoff could never
     // expire and the governor could never measure or recover. One decay per
     // second, and no churn at all once there is nothing left to give back.
+    thermalBlocked_ = thermal_ >= kThermalSevere;
     if (thermal_ >= kThermalSevere) {
+        // Logged, sparingly. This is a REFUSAL TO EVEN MEASURE, and it was
+        // silent: on device it looked identical to "measured and declined".
+        if ((refusalLog_++ % 600u) == 0u)
+            GOV_LOGI("thermal status %d - not probing (accepted=%u)", thermal_, accepted_);
         const bool decayDue = !haveThermalDecay_
             || phaseSeconds(lastThermalDecay_, now) >= kThermalDecaySeconds;
         if (accepted_ > 0 && decayDue) {
@@ -169,6 +174,11 @@ uint32_t ProbeGovernor::cap(uint32_t requested, float sourceRate, float loopRate
                 sourceAccum_ = loopAccum_ = 0.0f;
                 samples_ = 0;
             } else {
+                // Also previously silent. "Baseline completed but we did not
+                // probe" is a decision worth seeing in a log.
+                if ((refusalLog_++ % 600u) == 0u)
+                    GOV_LOGI("not probing: accepted=%u max=%u requested=%u thermal=%d",
+                             accepted_, maxGenerations_, requested, thermal_);
                 enterBaseline(now);   // nothing to try; measure again later
             }
         }

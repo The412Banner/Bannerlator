@@ -42,6 +42,13 @@ public:
 
     uint32_t accepted() const { return accepted_; }
     bool     probing()  const { return phase_ == Phase::Probing; }
+    // Whether the chain's input ring needs to be kept fed. Seeding it is a
+    // full-resolution copy every frame, so it is skipped during the long idle
+    // stretches - a backoff, or a thermal block - and resumed during Baseline,
+    // which gives it a couple of seconds to fill before a probe can start.
+    bool     wantsHistory() const {
+        return !thermalBlocked_ && phase_ != Phase::Backoff;
+    }
     // Latest thermal reading, 0 (none) .. 6 (shutdown); -1 when unavailable.
     int      thermalStatus() const { return thermal_; }
 
@@ -74,6 +81,8 @@ private:
     int  thermal_ = -1;
     Clock::time_point lastThermalDecay_{};
     bool haveThermalDecay_ = false;
+    bool thermalBlocked_ = false;
+    uint32_t refusalLog_ = 0;
     Clock::time_point lastThermalPoll_{};
     bool haveThermalPoll_ = false;
 };

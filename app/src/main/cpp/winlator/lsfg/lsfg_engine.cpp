@@ -244,9 +244,13 @@ void Engine::process(VkCommandBuffer cmd, VkImage source, uint32_t width, uint32
     lastCount_ = count;
     lastGenerations_ = generations;
 
-    // The input copy is cheap and must always happen: the chain needs the
-    // previous frame in its ring the moment generation starts.
-    copyPresentedFrame(cmd, source, chain_->Input(count), VkExtent2D{width, height});
+    // Seeding the input ring is a full-resolution image copy every frame, so it
+    // is NOT free at 100 fps - it was costing real frame rate while producing
+    // nothing. Copy only when generating, or while the governor is warming up
+    // towards a probe, so the ring is populated by the time it is needed.
+    const bool needHistory = generations > 0 || governor_.wantsHistory();
+    if (needHistory)
+        copyPresentedFrame(cmd, source, chain_->Input(count), VkExtent2D{width, height});
 
     // The SHARED chain is 24 of the 25 shaders - the whole flow pyramid - and
     // only `generate` runs per generated frame. Running it while producing

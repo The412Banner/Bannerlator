@@ -1,6 +1,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "VulkanRendererContext.h"
+#include "lsfg/lsfg_engine.h"
+#include "lsfg/lsfg_vkd.h"
 #include <stdexcept>
 #include <cstdlib>
 #include <cstring>
@@ -137,11 +139,14 @@ VulkanRendererContext::~VulkanRendererContext() {
     vk_.DestroyPipeline(device, pipeline, nullptr);
     vk_.DestroyPipelineLayout(device, pipeLayout, nullptr);
     vk_.DestroyDescriptorSetLayout(device, dsLayout, nullptr);
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    // Semaphores are per pending present, fences per frame slot.
+    for (size_t i = 0; i < renderDoneSems.size(); i++)
         vk_.DestroySemaphore(device, renderDoneSems[i], nullptr);
+    for (size_t i = 0; i < imgAvailSems.size(); i++)
         vk_.DestroySemaphore(device, imgAvailSems[i], nullptr);
+    for (size_t i = 0; i < inFlightFences.size(); i++)
         vk_.DestroyFence(device, inFlightFences[i], nullptr);
-    }
+    lsfgEngine_.reset();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
     vk_.DestroyRenderPass(device, renderPass, nullptr);
     vk_.DestroyDevice(device, nullptr);
@@ -840,6 +845,118 @@ void VulkanRendererContext::destroyCompositeTargets() {
     compositeIndex = 0;
 }
 
+// ===================== Native LSFG: generation passes ========================
+
+bool VulkanRendererContext::ensureLsfgEngine() {
+    if (lsfgEngine_) return lsfgEngine_->valid();
+    if (lsfgEngineTried_) return false;      // failed once; don't retry every frame
+    lsfgEngineTried_ = true;
+
+    if (lsfgCachePath_.empty()) {
+        RLOG_E("lsfg-native: no shader cache path set");
+        return false;
+    }
+    if (!lsfgVkdInit(vk_)) {
+        RLOG_E("lsfg-native: dispatch incomplete; frame generation unavailable");
+        return false;
+    }
+
+    auto engine = std::make_unique<lsfg::Engine>();
+    if (!engine->init(device, physicalDevice, lsfgCachePath_)) {
+        RLOG_E("lsfg-native: engine init failed (cache %s)", lsfgCachePath_.c_str());
+        return false;
+    }
+    engine->configure((uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2),
+                      0, fgFlowScale_, fgRefreshHz_);
+    lsfgEngine_ = std::move(engine);
+    RLOG("lsfg-native: engine ready");
+    return true;
+}
+
+void VulkanRendererContext::recordFrameGenPasses(VkCommandBuffer cb) {
+    if (!compositeActive() || !lsfgEngine_ || compositeTargets.empty()) return;
+
+    const CompositeTarget& src = compositeTargets[compositeIndex];
+    const uint32_t w = compositeW, h = compositeH;
+
+    // Take frame N as the chain's newest input and run everything that is
+    // shared across generations (mipmaps -> alpha -> beta -> gamma -> delta).
+    lsfgEngine_->process(cb, src.img, w, h, fgPlan_.generations);
+
+    // Then synthesise each in-between frame into its own spare composite
+    // target and copy it into the swapchain image reserved for it. The real
+    // frame's own copy still happens afterwards, in copyCompositeToSwapchain.
+    for (uint32_t g = 0; g < fgPlan_.generations; g++) {
+        const size_t slot = (compositeIndex + 1 + g) % compositeTargets.size();
+        const CompositeTarget& dst = compositeTargets[slot];
+        if (dst.img == VK_NULL_HANDLE || dst.storageView == VK_NULL_HANDLE) continue;
+
+        lsfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
+
+        // dst is left in GENERAL by the chain; move it and the target
+        // swapchain image into transfer layouts, copy, then hand the swapchain
+        // image to the presentation engine.
+        const uint32_t imgIdx = fgPlan_.imgIdx[g];
+        VkImageMemoryBarrier pre[2]{};
+        pre[0].sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        pre[0].oldLayout=VK_IMAGE_LAYOUT_GENERAL; pre[0].newLayout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        pre[0].srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; pre[0].dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+        pre[0].image=dst.img; pre[0].subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+        pre[0].srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT; pre[0].dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;
+
+        pre[1].sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        pre[1].oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; pre[1].newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        pre[1].srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; pre[1].dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+        pre[1].image=swapchainImages[imgIdx]; pre[1].subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+        pre[1].srcAccessMask=0; pre[1].dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,nullptr, 0,nullptr, 2,pre);
+
+        VkImageCopy region{};
+        region.srcSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+        region.dstSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+        region.extent={w,h,1};
+        vk_.CmdCopyImage(cb, dst.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                         swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         1, &region);
+
+        VkImageMemoryBarrier post[2]{};
+        post[0].sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        post[0].oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; post[0].newLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        post[0].srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; post[0].dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+        post[0].image=swapchainImages[imgIdx]; post[0].subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+        post[0].srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT; post[0].dstAccessMask=0;
+        // Put the generation target back in GENERAL for the next dispatch.
+        post[1].sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        post[1].oldLayout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; post[1].newLayout=VK_IMAGE_LAYOUT_GENERAL;
+        post[1].srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; post[1].dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+        post[1].image=dst.img; post[1].subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+        post[1].srcAccessMask=VK_ACCESS_TRANSFER_READ_BIT; post[1].dstAccessMask=VK_ACCESS_SHADER_WRITE_BIT;
+
+        vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            0, 0,nullptr, 0,nullptr, 2,post);
+    }
+}
+
+void VulkanRendererContext::setLsfgCachePath(const char* path) {
+    std::lock_guard<std::mutex> lk(renderMutex);
+    lsfgCachePath_ = path ? path : "";
+    lsfgEngineTried_ = false;    // a new cache deserves a fresh attempt
+    lsfgEngine_.reset();
+}
+
+void VulkanRendererContext::setFrameGenTuning(float flowScale, float refreshHz) {
+    fgFlowScale_ = flowScale;
+    fgRefreshHz_ = refreshHz;
+    if (lsfgEngine_) {
+        lsfgEngine_->configure(
+            (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2),
+            0, flowScale, refreshHz);
+    }
+}
+
 void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
     const bool was = fgArmed_.load(std::memory_order_relaxed);
     fgMultiplier_.store(multiplier, std::memory_order_relaxed);
@@ -1002,13 +1119,21 @@ void VulkanRendererContext::createCmdBufs() {
 }
 
 void VulkanRendererContext::createSyncObjects() {
-    imgAvailSems.resize(MAX_FRAMES_IN_FLIGHT); renderDoneSems.resize(MAX_FRAMES_IN_FLIGHT); inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+    // One semaphore PAIR per pending present (frame slot x presents), but still
+    // one fence per frame slot: all presents of a source frame come from a
+    // single submit, so they share its completion.
+    const uint32_t semCount = MAX_FRAMES_IN_FLIGHT * kMaxPresentsPerFrame;
+    imgAvailSems.resize(semCount); renderDoneSems.resize(semCount); inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
     VkSemaphoreCreateInfo si{}; si.sType=VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags=VK_FENCE_CREATE_SIGNALED_BIT;
-    for (uint32_t i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+    for (uint32_t i=0;i<semCount;i++) {
         if (vk_.CreateSemaphore(device,&si,nullptr,&imgAvailSems[i])!=VK_SUCCESS||
-            vk_.CreateSemaphore(device,&si,nullptr,&renderDoneSems[i])!=VK_SUCCESS||
-            vk_.CreateFence(device,&fi,nullptr,&inFlightFences[i])!=VK_SUCCESS) throw std::runtime_error("sync");
+            vk_.CreateSemaphore(device,&si,nullptr,&renderDoneSems[i])!=VK_SUCCESS)
+            throw std::runtime_error("sync");
+    }
+    for (uint32_t i=0;i<MAX_FRAMES_IN_FLIGHT;i++) {
+        if (vk_.CreateFence(device,&fi,nullptr,&inFlightFences[i])!=VK_SUCCESS)
+            throw std::runtime_error("sync");
     }
 }
 
@@ -1397,8 +1522,10 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     vk_.CmdEndRenderPass(cb);
     } // end !upFrame.active
 
-    // Frame gen composited off-swapchain: move the finished frame across and
-    // leave the swapchain image in PRESENT_SRC. No-op when frame gen is off.
+    // Frame gen: synthesise the in-between frames and copy each into its own
+    // acquired swapchain image, then move the real frame across. Both no-ops
+    // when frame gen is off.
+    recordFrameGenPasses(cb);
     copyCompositeToSwapchain(cb, imgIdx);
 
     VkResult endStatus = vk_.EndCommandBuffer(cb);
@@ -1852,28 +1979,76 @@ ok=true;}catch(...){}
         currentFenceWaited = true;
     }
 
-    uint32_t imgIdx;
-    // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.
-    VkResult res=vk_.AcquireNextImageKHR(device,swapchain,2000000000ULL,imgAvailSems[currentFrame],VK_NULL_HANDLE,&imgIdx);
-    if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR){fbResized.store(true);return;}
-    if (res!=VK_SUCCESS&&res!=VK_SUBOPTIMAL_KHR) return;
-    if (imgIdx >= swapchainFBs.size() || imgIdx >= swapchainImages.size()) {
-        RLOG_E("renderFrame: invalid acquired image index=%u (fb=%zu images=%zu)",
-            imgIdx, swapchainFBs.size(), swapchainImages.size());
-        return;
+    // --- Frame gen: decide whether THIS frame composites off-swapchain. The
+    // targets are created lazily on the first armed frame and torn down when it
+    // disarms, so a session that never turns frame gen on never allocates them.
+    if (fgArmed_.load(std::memory_order_relaxed) && lsfgCaps_.supported() && !scanoutActive.load()) {
+        const int mult = fgMultiplier_.load(std::memory_order_relaxed);
+        const uint32_t want = (uint32_t)std::min(std::max(mult, 2), 4) + 1u;
+        compositeArmed = ensureCompositeTargets(swapchainExt.width, swapchainExt.height, want);
+        if (compositeArmed && !compositeTargets.empty())
+            compositeIndex = (compositeIndex + 1) % (uint32_t)compositeTargets.size();
+    } else if (compositeArmed || !compositeTargets.empty()) {
+        // Disarmed (or the swapchain went away): drop the ring so the direct
+        // path is byte-identical to a session that never armed it.
+        compositeArmed = false;
+        vk_.DeviceWaitIdle(device);
+        destroyCompositeTargets();
     }
 
+    // --- Frame gen: decide how many frames to synthesise for this source
+    // frame, BEFORE acquiring, since that sets how many images we need.
+    fgPlan_ = FrameGenPlan{};
+    if (compositeActive() && ensureLsfgEngine() &&
+        lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+        const uint32_t capacity = (uint32_t)std::min<size_t>(
+            kMaxPresentsPerFrame - 1,
+            compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
+        fgPlan_.generations = lsfgEngine_->plan(capacity, ++fgSourceFrames_);
+    }
+    fgPlan_.presents = fgPlan_.generations + 1;
+
+    // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.
+    for (uint32_t k = 0; k < fgPlan_.presents; k++) {
+        uint32_t idx = 0;
+        VkResult ar = vk_.AcquireNextImageKHR(device,swapchain,2000000000ULL,
+                                              imgAvailSems[syncSlot(k)],VK_NULL_HANDLE,&idx);
+        if (ar==VK_ERROR_OUT_OF_DATE_KHR||ar==VK_ERROR_SURFACE_LOST_KHR){fbResized.store(true);return;}
+        if (ar!=VK_SUCCESS&&ar!=VK_SUBOPTIMAL_KHR) {
+            // Could not get every image we planned for. Anything already
+            // acquired has a semaphore nobody will wait on, so the only safe
+            // move is to drop this frame entirely rather than leak a signal.
+            if (k == 0) return;
+            RLOG_E("renderFrame: acquire %u/%u failed (res=%d) - dropping frame",
+                   k, fgPlan_.presents, (int)ar);
+            fbResized.store(true);
+            return;
+        }
+        if (idx >= swapchainFBs.size() || idx >= swapchainImages.size()) {
+            RLOG_E("renderFrame: invalid acquired image index=%u (fb=%zu images=%zu)",
+                idx, swapchainFBs.size(), swapchainImages.size());
+            return;
+        }
+        fgPlan_.imgIdx[k] = idx;
+    }
+    // Real frame N is presented LAST; generated frames take the earlier slots.
+    const uint32_t imgIdx = fgPlan_.imgIdx[fgPlan_.presents - 1];
+    VkResult res = VK_SUCCESS;
+
     if (imgInFlight.size()!=swapchainImages.size()) imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
-    if (imgInFlight[imgIdx]!=VK_NULL_HANDLE &&
-        (!currentFenceWaited || imgInFlight[imgIdx] != inFlightFences[currentFrame])) {
-        if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, imgInFlight[imgIdx]) == VK_NOT_READY) {
-            if (vk_.WaitForFences(device,1,&imgInFlight[imgIdx],VK_TRUE,2000000000ULL) != VK_SUCCESS) {
-                RLOG_E("renderFrame: in-flight image fence wait timed out (2s), skipping frame");
-                return;
+    for (uint32_t k = 0; k < fgPlan_.presents; k++) {
+        const uint32_t idx = fgPlan_.imgIdx[k];
+        if (imgInFlight[idx]!=VK_NULL_HANDLE &&
+            (!currentFenceWaited || imgInFlight[idx] != inFlightFences[currentFrame])) {
+            if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, imgInFlight[idx]) == VK_NOT_READY) {
+                if (vk_.WaitForFences(device,1,&imgInFlight[idx],VK_TRUE,2000000000ULL) != VK_SUCCESS) {
+                    RLOG_E("renderFrame: in-flight image fence wait timed out (2s), skipping frame");
+                    return;
+                }
             }
         }
+        imgInFlight[idx]=inFlightFences[currentFrame];
     }
-    imgInFlight[imgIdx]=inFlightFences[currentFrame];
 
     vk_.ResetCommandBuffer(cmdBufs[currentFrame],0);
 
@@ -1935,41 +2110,37 @@ ok=true;}catch(...){}
 
     bool effectiveCurVis = curVis && !scanoutActive.load();
 
-    // --- Frame gen: decide whether THIS frame composites off-swapchain. The
-    // targets are created lazily on the first armed frame and torn down when it
-    // disarms, so a session that never turns frame gen on never allocates them.
-    if (fgArmed_.load(std::memory_order_relaxed) && lsfgCaps_.supported() && !scanoutActive.load()) {
-        const int mult = fgMultiplier_.load(std::memory_order_relaxed);
-        const uint32_t want = (uint32_t)std::min(std::max(mult, 2), 4) + 1u;
-        compositeArmed = ensureCompositeTargets(swapchainExt.width, swapchainExt.height, want);
-        if (compositeArmed && !compositeTargets.empty())
-            compositeIndex = (compositeIndex + 1) % (uint32_t)compositeTargets.size();
-    } else if (compositeArmed || !compositeTargets.empty()) {
-        // Disarmed (or the swapchain went away): drop the ring so the direct
-        // path is byte-identical to a session that never armed it.
-        compositeArmed = false;
-        vk_.DeviceWaitIdle(device);
-        destroyCompositeTargets();
-    }
-
     planUpscaleFrame();   // decide/prepare spatial-upscaler passes for this frame
     recordCmdBuf(cmdBufs[currentFrame],imgIdx,frameDraws,
         frameAhbTransitions,framePreUpload,framePostUpload,
         curUpload,hasCurUpload,
         ox,oy,sx,sy,cw,ch,ptrX,ptrY,curHotX,curHotY,curW,curH,effectiveCurVis);
 
-    VkSemaphore wSem[]={imgAvailSems[currentFrame]}, sSem[]={renderDoneSems[currentFrame]};
-    // On the composite path the first thing to touch the acquired swapchain
-    // image is the copy, a TRANSFER write — and TRANSFER precedes
+    // One submit covers the real frame and every generated frame, so it waits
+    // on all the acquire semaphores and signals one per pending present. With
+    // FIFO, queuing those presents together makes the driver show them on
+    // consecutive vblanks - the pacing falls out of the present mode for free.
+    //
+    // On the composite path the first thing to touch an acquired swapchain
+    // image is the copy, a TRANSFER write - and TRANSFER precedes
     // COLOR_ATTACHMENT_OUTPUT in pipeline order, so waiting only on the latter
     // would let the copy run before the presentation engine released the image.
-    VkPipelineStageFlags wStage[]={ compositeActive()
+    const VkPipelineStageFlags waitStage = compositeActive()
         ? (VkPipelineStageFlags)(VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
-        : (VkPipelineStageFlags)VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        : (VkPipelineStageFlags)VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSemaphore wSem[kMaxPresentsPerFrame], sSem[kMaxPresentsPerFrame];
+    VkPipelineStageFlags wStage[kMaxPresentsPerFrame];
+    for (uint32_t k = 0; k < fgPlan_.presents; k++) {
+        wSem[k]   = imgAvailSems[syncSlot(k)];
+        sSem[k]   = renderDoneSems[syncSlot(k)];
+        wStage[k] = waitStage;
+    }
+
     VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
+    si.waitSemaphoreCount=fgPlan_.presents; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
     si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];
-    si.signalSemaphoreCount=1; si.pSignalSemaphores=sSem;
+    si.signalSemaphoreCount=fgPlan_.presents; si.pSignalSemaphores=sSem;
 
     vk_.ResetFences(device,1,&inFlightFences[currentFrame]);
     if (vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame])!=VK_SUCCESS) {
@@ -1979,10 +2150,18 @@ ok=true;}catch(...){}
         return;
     }
     VkSwapchainKHR scs[]={swapchain};
-    VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
-    res=vk_.QueuePresentKHR(graphicsQueue,&pi);
-    if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
+    // Generated frames belong between N-1 and N, so they go out first and the
+    // real frame is presented last.
+    for (uint32_t k = 0; k < fgPlan_.presents; k++) {
+        VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        pi.waitSemaphoreCount=1; pi.pWaitSemaphores=&sSem[k];
+        pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&fgPlan_.imgIdx[k];
+        res=vk_.QueuePresentKHR(graphicsQueue,&pi);
+        if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) {
+            fbResized.store(true);
+            break;
+        }
+    }
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
 }
 

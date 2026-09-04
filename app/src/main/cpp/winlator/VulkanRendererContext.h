@@ -121,6 +121,10 @@ struct VkTable {
 
 // Native (compositor-side) LSFG frame generation — capability gate.
 #include "lsfg/lsfg_probe.h"
+#include <memory>
+#include <string>
+
+namespace lsfg { class Engine; }
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -283,6 +287,12 @@ public:
     // not pay for.
     void setFrameGenArmed(bool armed, int multiplier);
     bool frameGenArmed() const { return fgArmed_.load(std::memory_order_relaxed); }
+    // Path to the SPIR-V cache built from the user's Lossless.dll. Setting it
+    // drops any existing engine so the next armed frame rebuilds from it.
+    void setLsfgCachePath(const char* path);
+    // Flow scale (0.25-1.0) and the panel's real refresh rate. The pacer never
+    // generates above the refresh rate.
+    void setFrameGenTuning(float flowScale, float refreshHz);
 
 private:
     struct WinTex {
@@ -465,6 +475,8 @@ private:
     // session. Read on the render thread; false keeps every path as it was.
     std::atomic<bool> fgArmed_{false};
     std::atomic<int>  fgMultiplier_{0};
+    float fgFlowScale_ = 1.0f;
+    float fgRefreshHz_ = 0.0f;
 
     bool  createCompositeRenderPass();
     bool  ensureCompositeTargets(uint32_t w, uint32_t h, uint32_t count);
@@ -478,6 +490,33 @@ private:
     // Copy the finished composite into the acquired swapchain image and leave
     // it in PRESENT_SRC. No-op when the composite path is not active.
     void  copyCompositeToSwapchain(VkCommandBuffer cb, uint32_t imgIdx);
+
+    // === Native LSFG: the per-source-frame present plan =======================
+    // Interpolation produces frames that belong BETWEEN N-1 and N, so the
+    // generated frames are presented FIRST and real frame N is held back one
+    // slot. All presents for one source frame are queued together: with FIFO
+    // the driver then shows them on consecutive vblanks, so the pacing falls
+    // out of the present mode for free - no sleeps, no render-mode change.
+    static constexpr uint32_t kMaxPresentsPerFrame = 4;   // 1 real + up to 3 generated
+    struct FrameGenPlan {
+        uint32_t generations = 0;
+        uint32_t presents    = 1;
+        uint32_t imgIdx[kMaxPresentsPerFrame] = {};
+    };
+    FrameGenPlan fgPlan_{};
+    std::unique_ptr<lsfg::Engine> lsfgEngine_;
+    uint64_t    fgSourceFrames_ = 0;
+    std::string lsfgCachePath_;
+    bool        lsfgEngineTried_ = false;
+
+    // Sync objects are indexed per PRESENT, not per composite: each pending
+    // present needs its own image-available and render-finished semaphore.
+    uint32_t syncSlot(uint32_t k) const { return currentFrame * kMaxPresentsPerFrame + k; }
+
+    bool ensureLsfgEngine();
+    // Generated frames: dispatch `generate` into spare composite targets and
+    // copy each into its own acquired swapchain image.
+    void recordFrameGenPasses(VkCommandBuffer cb);
 
     VkFormat          offscreenFmt      = VK_FORMAT_R8G8B8A8_UNORM;
     VkRenderPass      offscreenRenderPass = VK_NULL_HANDLE; // CLEAR -> SHADER_READ_ONLY

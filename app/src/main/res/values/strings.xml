@@ -298,6 +298,30 @@
     <string name="fex_extreme_wn">Extreme-wn</string>
     <string name="fex_extreme_tso_wn">Extreme (TSO)-wn</string>
     <string name="fex_extreme_gn">Extreme-gn</string>
+
+    <!-- Per-preset help, shown by the "?" beside the preset name in the preset editor.
+         Key = <prefix>_preset_help__<preset id lowercased>. Kept brief: what it does, then the
+         specific risk where there is one. -->
+    <string name="box64_preset_help__stability"><![CDATA[<b>Stability</b> — maximum correctness. Full CPU flag emulation, no fast maths, full 80-bit x87 precision and no block merging. The slowest option: reach for it when a game crashes on everything else.]]></string>
+    <string name="box64_preset_help__compatibility"><![CDATA[<b>Compatibility</b> — the same conservative maths as Stability with a little more freedom for the translator. A good fallback when a game misbehaves on Intermediate.]]></string>
+    <string name="box64_preset_help__intermediate"><![CDATA[<b>Intermediate</b> — the balanced default. Faster NaN handling and light block merging, while keeping safe CPU flags and full x87 precision. Start here.]]></string>
+    <string name="box64_preset_help__performance"><![CDATA[<b>Performance</b> — noticeably faster: relaxed flags, fast rounding, 64-bit x87 and aggressive block merging.<br><br>Small risk of maths or precision glitches in games sensitive to rounding.]]></string>
+    <string name="box64_preset_help__performance_mali"><![CDATA[<b>Performance (Mali)</b> — Performance retuned for Mali GPUs: CPU flag emulation off but exact rounding kept, which suits Mali drivers better. No benefit on Adreno.]]></string>
+    <string name="box64_preset_help__extreme"><![CDATA[<b>Extreme</b> — Performance plus deeper instruction look-ahead, call/return optimisation and AVX disabled. Faster again.<br><br>Wider blast radius: a game sensitive to timing or maths is more likely to misbehave than on Performance.]]></string>
+    <string name="box64_preset_help__extreme_2"><![CDATA[<b>Extreme-2</b> — the community 32-variable tuning. Everything Extreme does, pushed further: faster rounding, double the look-ahead, native CPU flags, and the AES, SSE4.2, SHA and PCLMULQDQ instruction sets exposed to the game.<br><br><b>Risk:</b> it also weakens memory barriers, which can corrupt multi-threaded state. That shows up as random instability rather than a clean crash — drop back to Extreme if a game turns flaky.]]></string>
+    <string name="box64_preset_help__unity"><![CDATA[<b>Unity</b> — Performance retuned for Unity games, with the stronger memory ordering most Unity titles need to stay stable.]]></string>
+    <string name="box64_preset_help__unity_mono_bleeding_edge"><![CDATA[<b>Unity Mono Bleeding Edge</b> — for newer Unity builds on the bleeding-edge Mono runtime. Disables the block merging that upsets its just-in-time compiler.]]></string>
+    <string name="box64_preset_help__denuvo"><![CDATA[<b>Denuvo</b> — conservative settings for Denuvo-protected games, which detect and dislike aggressive translation. Slower by design; use it only for titles that need it.]]></string>
+
+    <string name="fexcore_preset_help__stability"><![CDATA[<b>Stability</b> — every memory-ordering emulation enabled plus full x87 precision. The slowest and most correct option; use it when nothing else runs.]]></string>
+    <string name="fexcore_preset_help__compatibility"><![CDATA[<b>Compatibility</b> — full memory-ordering emulation, same as Stability. Broad correctness at the cost of speed.]]></string>
+    <string name="fexcore_preset_help__intermediate"><![CDATA[<b>Intermediate</b> — the balanced default. Keeps the main and half-barrier ordering, drops the heavier vector and memcpy ordering, and allows reduced x87 precision.]]></string>
+    <string name="fexcore_preset_help__performance"><![CDATA[<b>Performance</b> — all memory-ordering emulation off. Clearly faster.<br><br><b>Risk:</b> games that rely on strict store ordering can crash, hang or corrupt saves. If that happens, use Performance (TSO).]]></string>
+    <string name="fexcore_preset_help__performance_tso"><![CDATA[<b>Performance (TSO)</b> — Performance with the main store-ordering emulation switched back on, while the heavier vector, half-barrier and memcpy ordering stay off. The best general compromise, and the safest fast option.]]></string>
+    <string name="fexcore_preset_help__extreme"><![CDATA[<b>Extreme-wn</b> — from WinNative. Performance plus five JIT and cache knobs: self-modifying-code checks off, the L2 block cache off, and a dynamically sized L1 cache.<br><br><b>Risk:</b> with code checks off, anything that writes its own code while running — Java or .NET runtimes, some launchers and DRM — can misbehave. Memory ordering is also off, so this is the most aggressive tier available.]]></string>
+    <string name="fexcore_preset_help__extreme_tso"><![CDATA[<b>Extreme (TSO)-wn</b> — the same tuning as Extreme-wn but with store ordering kept on, so it suits far more games. This is the one to try first if you want more speed than Performance (TSO).<br><br><b>Risk:</b> self-modifying-code checks are off, which can break Java or .NET runtimes, some launchers and DRM. Fall back to Extreme-gn if that bites.]]></string>
+    <string name="fexcore_preset_help__extreme_gn"><![CDATA[<b>Extreme-gn</b> — from GameNative, and much gentler than the name suggests. Performance plus timer scaling and volatile-metadata hints only, leaving code checks and the block caches at their defaults.<br><br>The safer Extreme: try this when a game will not run on the two WinNative tiers.]]></string>
+    <string name="fexcore_preset_help__denuvo"><![CDATA[<b>Denuvo</b> — for Denuvo-protected games. Memory ordering off for speed, but full self-modifying-code checking and a hidden hypervisor bit, both of which Denuvo needs to start.]]></string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="denuvo">Denuvo</string>

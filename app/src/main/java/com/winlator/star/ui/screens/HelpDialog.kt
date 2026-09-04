@@ -49,6 +49,30 @@ private fun htmlToAnnotated(html: String): AnnotatedString {
     }
 }
 
+/**
+ * Same box, but for help text resolved at runtime rather than by resource id — the preset editor
+ * looks its strings up by name (box64_env_var_help__*, *_preset_help__*), so it has the text, not
+ * an id.
+ */
+@Composable
+internal fun HelpTextDialog(text: String, onDismiss: () -> Unit) {
+    val annotated = remember(text) { htmlToAnnotated(text) }
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        text = {
+            Text(
+                annotated,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
+            )
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } }
+    )
+}
+
 @Composable
 internal fun HelpDialog(textResId: Int, onDismiss: () -> Unit) {
     val context = LocalContext.current

@@ -1591,6 +1591,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // Route the single in-game multiplier/flow control to whichever engine is running this
             // session (honors a per-game engine override, else the container's engine).
             if (resolvedFrameGenEngine().equals("lsfg-native")) {
+                // Instrumented deliberately. The r3 run showed the drawer UI accepting a
+                // multiplier change while the engine kept planning at the old one, and the
+                // log could not say whether this handler ran, what it saw, or whether it
+                // reached the renderer - so it now says all three.
+                Log.i("XServerDisplayActivity", "lsfg-native toggle: fgOn=" + fgOn
+                    + " mult=" + mult + " flow=" + flow
+                    + " renderer=" + (vulkanRendererOrNull() != null ? "vulkan" : "NULL"));
                 // LSFG Native: the generator is OUR compositor, so a level change is just a call.
                 // None of the lsfg-vk workarounds apply and every one of them is deliberately
                 // skipped here - no conf.toml rewrite, no vsync clock, no MAILBOX override and no
@@ -2903,7 +2910,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Point the renderer at the cache and arm it at `multiplier` (0 = off). */
     private void applyLsfgNative(int multiplier, float flowScale) {
         com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
-        if (vkr == null) return;
+        if (vkr == null) {
+            Log.w("XServerDisplayActivity",
+                "applyLsfgNative(" + multiplier + ") ignored - no Vulkan renderer");
+            return;
+        }
+        Log.i("XServerDisplayActivity", "applyLsfgNative: multiplier=" + multiplier
+            + " flow=" + flowScale + " refresh=" + currentDisplayRefreshHz());
         vkr.setLsfgCachePath(
             com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
         vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());

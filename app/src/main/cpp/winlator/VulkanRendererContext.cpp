@@ -1093,7 +1093,13 @@ void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
     fgMultiplier_.store(multiplier, std::memory_order_relaxed);
     // A multiplier change must reach the pacer, or it keeps capping at the
     // level it was built with.
-    if (wasMult != multiplier) fgConfigDirty_.store(true, std::memory_order_relaxed);
+    if (wasMult != multiplier) {
+        fgConfigDirty_.store(true, std::memory_order_relaxed);
+        // Logged because a multiplier change that does NOT flip the armed state
+        // takes the early return below and was previously invisible - exactly
+        // the case the r3 run could not explain.
+        RLOG("lsfg-native: multiplier %d -> %d (armed=%d)", wasMult, multiplier, (int)armed);
+    }
     if (was == armed) return;
 
     fgArmed_.store(armed, std::memory_order_relaxed);

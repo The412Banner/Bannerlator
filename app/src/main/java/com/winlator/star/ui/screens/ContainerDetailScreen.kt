@@ -3388,8 +3388,9 @@ internal fun DxvkConfigDialog(
     var addValueDraft by remember { mutableStateOf("") }
     // §tier: staged FAQ tier selection (null = auto). Applied through vegas.forceTier.
     var tierChoice by remember { mutableStateOf<Int?>(null) }
-    // §tier: device detection, read once per dialog open (sysfs is cheap, still cached).
-    val gpuModel = remember { VegasTierPresets.readGpuModel() }
+    // §tier: device detection, read once per dialog open (native probe is cheap, still cached).
+    val tierCtx = LocalContext.current
+    val gpuModel = remember { VegasTierPresets.readGpuModel(tierCtx) }
     val detectedTier = remember { VegasTierPresets.classifyModel(gpuModel) }
     var showBackups by remember { mutableStateOf(false) }
     var restoreTarget by remember { mutableStateOf<java.io.File?>(null) }

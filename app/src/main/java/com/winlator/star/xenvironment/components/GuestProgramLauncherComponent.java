@@ -12,6 +12,7 @@ import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
+import com.winlator.star.BuildConfig;
 import com.winlator.star.box64.Box64Preset;
 import com.winlator.star.box64.Box64PresetManager;
 import com.winlator.star.container.Container;
@@ -24,6 +25,7 @@ import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.GPUInformation;
 import com.winlator.star.core.KeyValueSet;
 import com.winlator.star.core.ProcessHelper;
+import com.winlator.star.store.SteamLogRedactor;
 import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.core.WineInfo;
 import com.winlator.star.core.WinebusRumblePatcher;
@@ -553,10 +555,12 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         // Diagnostic: dump every env var the Wine process actually receives.
         // Log individually to stay under Android's ~4KB per-message truncation limit.
-        String[] finalEnv = envVars.toStringArray();
-        Log.d("GuestProgramLauncherComponent", "=== FINAL ENV VARS (" + finalEnv.length + " entries) ===");
-        for (String entry : finalEnv) {
-            Log.d("GuestProgramLauncherComponent", "  " + entry);
+        if (BuildConfig.DEBUG) {
+            String[] finalEnv = envVars.toStringArray();
+            Log.d("GuestProgramLauncherComponent", "=== FINAL ENV VARS (" + finalEnv.length + " entries) ===");
+            for (String entry : finalEnv) {
+                Log.d("GuestProgramLauncherComponent", "  " + SteamLogRedactor.redact(entry));
+            }
         }
 
         return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {

@@ -1942,7 +1942,7 @@ very high frame rates.
 while shaders compile happen once rather than every session.
         ]]></string>
     <string name="env_var_help__dxvk_hud"><![CDATA[
-        DXVK's on-screen overlay. Pick any combination of items.<br /><br />
+        DXVK’s on-screen overlay. Pick any combination of items.<br /><br />
 <b>fps</b> frame rate · <b>frametimes</b> a frame-time graph · <b>gpuload</b> GPU utilisation ·
 <b>memory</b> video memory · <b>devinfo</b> GPU name and driver · <b>drawcalls</b>,
 <b>pipelines</b>, <b>compiler</b> workload detail · <b>scale=</b> and <b>opacity=</b> control
@@ -1991,7 +1991,7 @@ what the driver claims to support, and getting it wrong produces corruption rath
 error.
         ]]></string>
     <string name="env_var_help__gallium_hud"><![CDATA[
-        A performance overlay drawn by Mesa's Gallium drivers, separate from the DXVK one.<br /><br />
+        A performance overlay drawn by Mesa’s Gallium drivers, separate from the DXVK one.<br /><br />
 <b>simple</b> · <b>fps</b> · <b>frametime</b>.<br /><br />
 <b>When to change:</b> only useful for OpenGL games, since DXVK titles will not show it. For
 D3D games use DXVK_HUD instead.
@@ -2016,7 +2016,7 @@ a gamble either way.
     <string name="env_var_help__mesa_glthread"><![CDATA[
         Runs OpenGL command submission on its own thread.<br /><br />
 <b>false</b> : Off.<br />
-<b>true</b> : On — can help when the game's main thread is the bottleneck.<br /><br />
+<b>true</b> : On — can help when the game’s main thread is the bottleneck.<br /><br />
 <b>When to change:</b> worth trying for OpenGL games that are CPU-limited. It can also cause
 stutter or crashes in games that use GL from several threads themselves.
         ]]></string>
@@ -2028,7 +2028,7 @@ stutter or crashes in games that use GL from several threads themselves.
 rather than fail cleanly, which makes any other problem much harder to diagnose.
         ]]></string>
     <string name="env_var_help__mesa_shader_cache_disable"><![CDATA[
-        Turns off Mesa's on-disk shader cache.<br /><br />
+        Turns off Mesa’s on-disk shader cache.<br /><br />
 <b>false</b> : Cache enabled. (default)<br />
 <b>true</b> : Disabled — recompile every run.<br /><br />
 <b>When to change:</b> essentially never, except to test whether a corrupt cache is causing crashes
@@ -2091,11 +2091,11 @@ lag.<br /><br />
 frame rate is uneven despite the GPU having headroom.
         ]]></string>
     <string name="env_var_help__wine_disable_fullscreen_hack"><![CDATA[
-        Wine normally intercepts a game's fullscreen resolution change and fakes it, so the desktop stays
+        Wine normally intercepts a game’s fullscreen resolution change and fakes it, so the desktop stays
 at its real resolution.<br /><br />
 <b>0</b> : Keep the hack. (default)<br />
 <b>1</b> : Disable it and let the game change the mode for real.<br /><br />
-<b>When to change:</b> disable it if a game's fullscreen is stretched, offset, or shows the wrong
+<b>When to change:</b> disable it if a game’s fullscreen is stretched, offset, or shows the wrong
 part of the screen.
         ]]></string>
     <string name="env_var_help__wine_do_not_create_dxgi_device_manager"><![CDATA[
@@ -2141,7 +2141,7 @@ soft, raise it if sharpening makes edges look harsh or noisy.
 CPU decoding is slower but far more reliable under emulation.
         ]]></string>
     <string name="env_var_help__wine_new_mediasource"><![CDATA[
-        Selects Wine's newer media pipeline for in-game video.<br /><br />
+        Selects Wine’s newer media pipeline for in-game video.<br /><br />
 <b>0</b> : Old pipeline.<br />
 <b>1</b> : New pipeline.<br /><br />
 <b>When to change:</b> try the other setting when cutscenes are black, silent, stuttering or hang
@@ -2155,7 +2155,7 @@ the game. Which one works varies by title.
 create a context.
         ]]></string>
     <string name="env_var_help__winedebug"><![CDATA[
-        Wine's logging channels. Controls what goes into wine_debug.log.<br /><br />
+        Wine’s logging channels. Controls what goes into wine_debug.log.<br /><br />
 <b>-all</b> : Silence everything. Fastest.<br />
 <b>fixme-all</b> : Hide the noisy fixme messages, keep errors.<br />
 <b>+seh</b> : Exception detail — useful for crashes.<br />
@@ -2167,15 +2167,15 @@ write hundreds of megabytes.
         ]]></string>
     <string name="env_var_help__winedlloverrides"><![CDATA[
         Tells Wine whether to use its own version of a DLL or one shipped with the game.<br /><br />
-Format is <b>name=b</b> for Wine's builtin, <b>name=n</b> for the game's native file, or
+Format is <b>name=b</b> for Wine’s builtin, <b>name=n</b> for the game’s native file, or
 <b>name=n,b</b> to prefer native and fall back. Several are separated by semicolons.<br /><br />
 <b>When to change:</b> the usual case is a game shipping its own copy of a library that works
-better than Wine's, or the reverse. The editor detects DLLs in the game folder and offers a toggle
+better than Wine’s, or the reverse. The editor detects DLLs in the game folder and offers a toggle
 per file, which is easier than typing this by hand.
         ]]></string>
     <string name="env_var_help__wineesync"><![CDATA[
         Eventfd-based thread synchronisation. Windows programs wait on each other constantly; esync makes
-those waits far cheaper than Wine's default server round-trip.<br /><br />
+those waits far cheaper than Wine’s default server round-trip.<br /><br />
 <b>0</b> : Off, use the normal Wine server path.<br />
 <b>1</b> : On. Often a large frame-rate gain in threaded games.<br /><br />
 <b>When to change:</b> on by default in most of our layers and usually worth having. Turn it off if
@@ -2197,7 +2197,7 @@ allocating far too much and running out, or refusing to start. Setting a sane fi
 or 4096 can fix that. Leave it unset unless a game has a memory-related problem.
         ]]></string>
     <string name="env_var_help__wrapper_bcn_astc"><![CDATA[
-        Re-encodes BCn textures to ASTC, which Mali GPUs do read natively. Part of the wrapper's integrated
+        Re-encodes BCn textures to ASTC, which Mali GPUs do read natively. Part of the wrapper’s integrated
 path.<br /><br />
 <b>0</b> : Off.<br />
 <b>1</b> : On.<br /><br />
@@ -2223,7 +2223,7 @@ a hardware-specific path. Rarely needed.
 vendor-specific path. Purely cosmetic to the driver — it changes only what the game is told.
         ]]></string>
     <string name="env_var_help__wrapper_diag"><![CDATA[
-        Turns on the wrapper's own diagnostic logging.<br /><br />
+        Turns on the wrapper’s own diagnostic logging.<br /><br />
 <b>0</b> : Off.<br />
 <b>1</b> : On.<br /><br />
 <b>When to change:</b> for diagnosing driver-level problems, and worth turning off afterwards —

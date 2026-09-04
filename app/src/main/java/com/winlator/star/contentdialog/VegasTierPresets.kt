@@ -1,5 +1,7 @@
 package com.winlator.star.contentdialog
 
+import android.content.Context
+import com.winlator.star.core.GPUInformation
 import java.io.File
 
 /**
@@ -49,16 +51,26 @@ object VegasTierPresets {
     )
 
     /**
-     * Reads the KGSL GPU model node (world-readable on Adreno devices — the same
-     * sysfs family the runtime itself reads, per the FAQ). Null when unavailable
-     * (non-Adreno, blocked, or path differs) — the caller then stays manual-only.
+     * Reads the GPU model via the native Vulkan renderer probe, then normalizes
+     * it through [GPUInformation.extractModelName] (e.g. "Adreno 750"). Falls
+     * back to the KGSL sysfs node when the native probe is unavailable.
+     * Returns null on non-Adreno or unparseable input.
      */
-    fun readGpuModel(): String? = runCatching {
-        val f = File("/sys/class/kgsl/kgsl-3d0/gpu_model")
-        if (!f.isFile) return@runCatching null
-        val t = f.readText().trim()
-        if (t.isEmpty()) null else t
-    }.getOrNull()
+    fun readGpuModel(context: Context): String? {
+        // Prefer the native Vulkan renderer — returns proper marketing names
+        // ("Adreno 750") even on 7xx/8xx where sysfs returns the internal core
+        // name ("Adreno33v2") that misclassifies as Tier 1.
+        val raw = runCatching { GPUInformation.getRenderer(null, context) }.getOrNull()
+        val extracted = GPUInformation.extractModelName(raw)
+        if (extracted != null && extracted.contains("adreno", ignoreCase = true)) return extracted
+        // Fallback: KGSL sysfs (works on older Adreno where getRenderer may not engage)
+        return runCatching {
+            val f = File("/sys/class/kgsl/kgsl-3d0/gpu_model")
+            if (!f.isFile) return@runCatching null
+            val t = f.readText().trim()
+            if (t.isEmpty()) null else t
+        }.getOrNull()
+    }
 
     /**
      * Classifies an Adreno model string ("Adreno 660", "Adreno (TM) 750", …) into a

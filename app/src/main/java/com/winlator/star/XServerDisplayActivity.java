@@ -9970,7 +9970,20 @@ return true;
     private void applyVrr(int cap) {
         if (xServerView == null) return;
         float vrrRate = 0.0f;
-        if (container != null && resolvedMatchRefreshRate()) {
+        // LSFG Native generating: VRR stays OUT of it. The native path presents
+        // real + generated frames under FIFO against a fixed panel cadence, and
+        // that is the configuration that was device-proven (30 -> 118 with the
+        // panel pinned at 144 for the whole run). Letting VRR re-vote the panel
+        // to cap x multiplier would (a) trigger a display mode switch mid-game,
+        // which stutters or black-flashes on many panels, and (b) chase a number
+        // that is only the REQUESTED multiplier, not what is actually presented.
+        // Fixed max refresh is the predictable choice here; the user's manual
+        // lock, if any, is still honoured below.
+        final boolean nativeFgGenerating = "lsfg-native".equals(resolvedFrameGenEngine())
+            && frameGenMultipliesDisplay();
+        if (container != null && resolvedMatchRefreshRate() && nativeFgGenerating) {
+            vrrRate = 0.0f;   // no vote: panel stays at its max
+        } else if (container != null && resolvedMatchRefreshRate()) {
             // Auto (match FPS): vote the panel cadence to follow the displayed FPS while capping.
             if (cap > 0) {
                 if (frameGenMultipliesDisplay()) {

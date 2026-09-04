@@ -78,14 +78,22 @@ public abstract class Box64PresetManager {
     }
 
     public static EnvVars getEnvVars(String prefix, Context context, String id) {
-        String ucPrefix = prefix.toUpperCase(Locale.ENGLISH);
-        EnvVars envVars = new EnvVars();
-
-        // A user edit to a built-in wins over the shipped values below.
+        // A user edit to a built-in wins over the shipped values.
         if (!id.startsWith(Box64Preset.CUSTOM)) {
             EnvVars override = getOverride(prefix, context, id);
             if (override != null) return override;
         }
+        return getShippedEnvVars(prefix, context, id);
+    }
+
+    /**
+     * The values this build ships for a preset, ignoring any user override. Reset restores these,
+     * and the editor compares against them so putting a preset back by hand clears the edited flag
+     * rather than storing an override that merely happens to match.
+     */
+    public static EnvVars getShippedEnvVars(String prefix, Context context, String id) {
+        String ucPrefix = prefix.toUpperCase(Locale.ENGLISH);
+        EnvVars envVars = new EnvVars();
 
         if (id.equals(Box64Preset.STABILITY)) {
             envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "2");

@@ -73,13 +73,21 @@ public class FEXCorePresetManager {
     }
 
     public static EnvVars getEnvVars(Context context, String id) {
-        EnvVars envVars = new EnvVars();
-
-        // A user edit to a built-in wins over the shipped values below.
+        // A user edit to a built-in wins over the shipped values.
         if (!id.startsWith(FEXCorePreset.CUSTOM)) {
             EnvVars override = getOverride(context, id);
             if (override != null) return override;
         }
+        return getShippedEnvVars(context, id);
+    }
+
+    /**
+     * The values this build ships for a preset, ignoring any user override. Reset restores these,
+     * and the editor compares against them so putting a preset back by hand clears the edited flag
+     * rather than storing an override that merely happens to match.
+     */
+    public static EnvVars getShippedEnvVars(Context context, String id) {
+        EnvVars envVars = new EnvVars();
 
         if (id.equals(FEXCorePreset.STABILITY)) {
             envVars.put("FEX_TSOENABLED", "1");

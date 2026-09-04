@@ -181,6 +181,19 @@ internal fun PresetEditDialog(
     }
 
     val specs = remember(prefix) { loadSpecs(context, prefix) }
+
+    // What this build ships for a built-in, ignoring any override — the reference Reset restores to
+    // and Save compares against.
+    val shipped = remember(presetId) {
+        if (presetId == null || presetId.startsWith(
+                if (kind == PresetKind.BOX64) Box64Preset.CUSTOM else FEXCorePreset.CUSTOM
+            )
+        ) null
+        else when (kind) {
+            PresetKind.BOX64 -> Box64PresetManager.getShippedEnvVars(prefix, context, presetId)
+            PresetKind.FEXCORE -> FEXCorePresetManager.getShippedEnvVars(context, presetId)
+        }
+    }
     val current = remember(presetId) {
         when {
             presetId == null -> null
@@ -293,9 +306,28 @@ internal fun PresetEditDialog(
                 if (clean.isEmpty()) return@TextButton
                 val envVars = EnvVars()
                 specs.forEach { envVars.put(it.name, values[it.name] ?: it.defaultValue) }
-                when (kind) {
-                    PresetKind.BOX64 -> Box64PresetManager.editPreset(prefix, context, presetId, clean, envVars)
-                    PresetKind.FEXCORE -> FEXCorePresetManager.editPreset(context, presetId, clean, envVars)
+
+                // Saving a built-in whose values match what this build ships must CLEAR the
+                // override, not write one that happens to be identical — otherwise Reset then Save
+                // left the preset permanently flagged as edited.
+                //
+                // The comparison has to be against what the editor would SHOW for the shipped
+                // preset, not against the shipped map directly: a preset only sets the variables it
+                // cares about (Extreme (TSO)-wn sets 11 of 17) while Save always writes all of them,
+                // so the two maps never match on size alone.
+                val unchanged = isBuiltIn && specs.all { spec ->
+                    val shippedSeed = shipped?.takeIf { it.has(spec.name) }?.get(spec.name)
+                        ?: spec.defaultValue
+                    (values[spec.name] ?: spec.defaultValue) == shippedSeed
+                }
+                when {
+                    unchanged -> when (kind) {
+                        PresetKind.BOX64 -> Box64PresetManager.resetPreset(prefix, context, presetId)
+                        PresetKind.FEXCORE -> FEXCorePresetManager.resetPreset(context, presetId)
+                    }
+                    kind == PresetKind.BOX64 ->
+                        Box64PresetManager.editPreset(prefix, context, presetId, clean, envVars)
+                    else -> FEXCorePresetManager.editPreset(context, presetId, clean, envVars)
                 }
                 onSaved()
                 onDismiss()
@@ -311,15 +343,11 @@ internal fun PresetEditDialog(
                             PresetKind.BOX64 -> Box64PresetManager.resetPreset(prefix, context, presetId)
                             PresetKind.FEXCORE -> FEXCorePresetManager.resetPreset(context, presetId)
                         }
-                        // Re-seed the editor from the now-restored shipped values so the change
-                        // is visible immediately rather than only after reopening.
-                        val restored = when (kind) {
-                            PresetKind.BOX64 -> Box64PresetManager.getEnvVars(prefix, context, presetId!!)
-                            PresetKind.FEXCORE -> FEXCorePresetManager.getEnvVars(context, presetId!!)
-                        }
+                        // Re-seed the editor from the shipped values so the change is visible
+                        // immediately rather than only after reopening.
                         specs.forEach { spec ->
                             values[spec.name] =
-                                restored.takeIf { it.has(spec.name) }?.get(spec.name) ?: spec.defaultValue
+                                shipped?.takeIf { it.has(spec.name) }?.get(spec.name) ?: spec.defaultValue
                         }
                         modified = false
                         onSaved()

@@ -9284,11 +9284,20 @@ return true;
     // frame gen toggles / the multiplier changes. Mailbox lock removed: the user's chosen present
     // mode is honored regardless of FG, and the drawer selector stays unlocked so it can be changed
     // live with FG on. No-op on non-Vulkan renderers / before setup.
+    // Last mode actually pushed to the renderer + drawer. Without this, applying
+    // the same mode again still writes the drawer StateFlow, the drawer
+    // recomposes, its frame-gen controls re-fire their apply callback, and that
+    // calls back into here - a feedback loop that spun applyLsfgNative four
+    // times in four milliseconds on device and took the game down with it.
+    private String lastAppliedPresentMode = null;
+
     private void applyEffectivePresentMode() {
         if (xServerView == null) return;
         HostRenderer r = xServerView.getRenderer();
         if (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer) {
             String pm = effectivePresentMode();
+            if (pm != null && pm.equals(lastAppliedPresentMode)) return;
+            lastAppliedPresentMode = pm;
             int pmInt = "immediate".equals(pm) ? 0 : "mailbox".equals(pm) ? 1 : 2; // VkPresentModeKHR
             ((com.winlator.star.renderer.vulkan.VulkanRenderer) r).setVkPresentMode(pmInt);
             // Mirror the mode into the drawer selector; never lock it (mailbox lock removed).

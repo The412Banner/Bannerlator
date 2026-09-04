@@ -244,8 +244,18 @@ void Engine::process(VkCommandBuffer cmd, VkImage source, uint32_t width, uint32
     lastCount_ = count;
     lastGenerations_ = generations;
 
+    // The input copy is cheap and must always happen: the chain needs the
+    // previous frame in its ring the moment generation starts.
     copyPresentedFrame(cmd, source, chain_->Input(count), VkExtent2D{width, height});
-    if (warm_) chain_->DispatchShared(cmd, count);
+
+    // The SHARED chain is 24 of the 25 shaders - the whole flow pyramid - and
+    // only `generate` runs per generated frame. Running it while producing
+    // nothing spends almost the entire cost of frame generation for no frames
+    // at all, every frame. That is what pinned the GPU at 100% on device
+    // regardless of the game's own settings, and it fed straight back into the
+    // governor: the chain made the source rate collapse, the governor saw the
+    // collapse and refused to generate, and refusing did not stop the chain.
+    if (warm_ && generations > 0) chain_->DispatchShared(cmd, count);
 }
 
 void Engine::generateInto(VkCommandBuffer cmd, uint32_t generation, uint32_t targetIndex,

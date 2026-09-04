@@ -2230,6 +2230,12 @@ ok=true;}catch(...){}
         // must be given the rate that actually reaches the PANEL, not the guest
         // rate wearing a different name.
         lsfgEngine_->setPresentedRate(fgPresentedRate_);
+        // Tell the engine how large the GUEST actually renders. Without this the
+        // flow pyramid is built at full composite resolution regardless - the
+        // device log read "flow 1920x1080 scale 1.00 (guest 0x0)" - which is the
+        // most expensive setting available and was never intended as a default.
+        if (containerWidth > 0 && containerHeight > 0)
+            lsfgEngine_->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
         const uint32_t capacity = (uint32_t)std::min<size_t>(
             kMaxPresentsPerFrame - 1,
             compositeTargets.empty() ? 0 : compositeTargets.size() - 1);

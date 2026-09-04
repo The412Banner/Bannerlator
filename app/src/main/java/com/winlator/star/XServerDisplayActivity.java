@@ -2961,6 +2961,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         text += ")";
                     }
                     XServerDrawerState.INSTANCE.setFrameGenReadout(text);
+                    // Also feed the in-game HUD. Its own counter ticks once per
+                    // GUEST frame and therefore cannot see anything added after
+                    // the game - it read 30 while the panel was showing 118,
+                    // which made a working feature look like a broken one. Only
+                    // a system overlay could tell the truth until now.
+                    if (frameRating != null) frameRating.setPresentedFps(shownFps);
+                    if (frameRatingHorizontal != null)
+                        frameRatingHorizontal.setPresentedFps(shownFps);
                 }
                 if (lsfgStatsHandler != null) lsfgStatsHandler.postDelayed(this, 1000);
             }
@@ -2969,6 +2977,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void stopLsfgStatsReadout() {
+        // 0 puts both HUDs back to plain guest-rate reporting.
+        if (frameRating != null) frameRating.setPresentedFps(0f);
+        if (frameRatingHorizontal != null) frameRatingHorizontal.setPresentedFps(0f);
         if (lsfgStatsHandler != null && lsfgStatsTick != null)
             lsfgStatsHandler.removeCallbacks(lsfgStatsTick);
         lsfgStatsHandler = null;

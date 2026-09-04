@@ -89,6 +89,8 @@ void copyPresentedFrame(VkCommandBuffer cmd, VkImage source, LsfgImage& destinat
 
 } // namespace
 
+Engine::Engine() = default;
+
 Engine::~Engine() {
     chain_.reset();
     shaders_.reset();

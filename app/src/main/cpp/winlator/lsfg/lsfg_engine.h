@@ -40,7 +40,13 @@ constexpr uint32_t kMaxGenerations = 3;
 
 class Engine {
 public:
-    Engine() = default;
+    // Both the constructor and destructor are out-of-line ON PURPOSE. The
+    // shader set and the chain are held by unique_ptr to forward-declared
+    // types, and an inline constructor would make the compiler emit the
+    // exception-cleanup path for those members at every construction site -
+    // which needs the complete types there. Keeping both here confines that to
+    // lsfg_engine.cpp, where the types are complete.
+    Engine();
     ~Engine();
 
     Engine(const Engine&) = delete;

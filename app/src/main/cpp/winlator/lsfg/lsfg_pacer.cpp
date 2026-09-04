@@ -119,15 +119,19 @@ LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
     }
 
     if (target_rate == 0.0f) {
-        // No explicit target rate: generate as many as the CEILING allows, but
-        // still respect the panel. Bannerlator always takes this branch (the
-        // governor, not a target rate, decides the multiplier), and without the
-        // headroom clamp a 60 fps source at 4x would ask a 144 Hz panel for 240
-        // presents per second. FIFO would then block the render thread, and that
-        // back-pressure reaches the guest through the Present extension - the
-        // frame-gen pacer would end up throttling the game it is meant to smooth.
+        // No explicit target rate: the multiplier is the multiplier, full stop.
+        // The panel-headroom clamp was here briefly and was removed at the
+        // user's decision; this is also upstream's behaviour on this branch.
+        //
+        // What that means above the panel's refresh rate, for the record: the
+        // display cannot show more frames than it refreshes, so under FIFO the
+        // surplus presents queue and the render thread waits on acquire. Nothing
+        // is displayed faster, and the compositor falls behind on guest
+        // deliveries instead. Below the refresh rate - every source at or under
+        // panel/4 - this branch behaves identically with or without the clamp.
+        // To restore it: limit = std::min(ceiling, HeadroomLimit()).
         output_credit = 0.0f;
-        limit = std::min(ceiling, HeadroomLimit());
+        limit = ceiling;
         return LsfgPlan{limit, true};
     }
 

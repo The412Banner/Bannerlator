@@ -289,6 +289,188 @@
     <string name="performance_tso">Performance (TSO)</string>
     <string name="performance_mali">Performance (Mali)</string>
     <string name="extreme">Extreme</string>
+    <!-- Second Box64 Extreme tier: the community 32-variable build. Kept separate from "extreme"
+         above so anyone already running Extreme keeps that exact tuning. -->
+    <string name="extreme_2">Extreme-2</string>
+    <!-- FEXCore-only preset labels. The "-wn"/"-gn" suffixes mark which upstream the values were
+         derived from (WinNative / GameNative) so the two Extreme tiers stay tellable apart; the
+         plain "extreme" string above belongs to the Box64 preset and must not be reused here. -->
+    <string name="fex_extreme_wn">Extreme-wn</string>
+    <string name="fex_extreme_tso_wn">Extreme (TSO)-wn</string>
+    <string name="fex_extreme_gn">Extreme-gn</string>
+
+    <!-- Help for the Box64 variables added alongside the 19 -> 32 expansion. Wording follows
+         WinNative, which has shipped these knobs longest. Without these the "?" button had
+         nothing to show and silently did nothing. -->
+    <string name="box64_env_var_help__dynarec"><![CDATA[
+        Dynamic recompiler — the heart of Box64. It translates the game x86 code into ARM code once,
+        then reuses the translation.<br /><br />
+        <b>0</b> : Interpret every instruction one at a time. Correct, but many times slower and not
+        realistically playable. Debugging only.<br />
+        <b>1</b> : Translate and cache. This is what makes games run at usable speed. (default)
+        <br /><br /><b>When to change:</b> Never turn this off for playing. It exists for diagnosing a suspected translation bug: if a game misbehaves on 1 but is correct on 0, the fault is in the recompiler rather than the game.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_sep"><![CDATA[
+        Secondary entry points for CALL/RET. Lets Box64 jump into the middle of a block it already
+        translated instead of building a near-identical copy.<br /><br />
+        <b>0</b> : One entry point per block. More duplicate blocks, more memory.<br />
+        <b>1</b> : Add secondary entry points. Fewer duplicates, slightly faster. (default)<br />
+        <b>2</b> : More aggressive still.<br /><br />
+        Only has an effect when DYNAREC_CALLRET is on.
+        <br /><br /><b>When to change:</b> Leave it at the default. Worth lowering only if you are already turning CALLRET off for a packed or DRM-protected executable, since the two work together.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_noarch"><![CDATA[
+        How much bookkeeping Box64 keeps for each translated block. That bookkeeping is what lets it
+        notice when code or memory changes and re-translate correctly.<br /><br />
+        <b>0</b> : Keep everything. Safest. (default)<br />
+        <b>1</b> : Trim some. Less memory.<br />
+        <b>2</b> : Trim aggressively. Least memory, most likely to misbehave.<br /><br />
+        <b>When to change:</b> raise it only if you are short on RAM — it trades correctness for memory. Set it back to 0 first if a game starts crashing after previously running fine on the same preset.]]></string>
+    <string name="box64_env_var_help__dynarec_volatile_metadata"><![CDATA[
+        64-bit Windows programs can carry volatile metadata: the compiler marking exactly which memory
+        accesses must not be reordered. Box64 can read it and enforce strict ordering only where the
+        game genuinely needs it, instead of everywhere.<br /><br />
+        <b>0</b> : Ignore it.<br />
+        <b>1</b> : Use it. Usually faster than blanket STRONGMEM while staying correct. (default)<br /><br />
+        Only applies to 64-bit Windows games built with the metadata present.
+        <br /><br /><b>When to change:</b> Leave it on — it costs nothing and simply has no effect on games built without the metadata. Turning it off is only useful to check whether it is masking a different ordering problem.
+        ]]></string>
+    <string name="box64_env_var_help__dynacache"><![CDATA[
+        Whether translated blocks are kept on disk between runs so the next launch starts warm.<br /><br />
+        <b>0</b> : Off. Translate fresh every launch. (default)<br />
+        <b>1</b> / <b>2</b> : Increasing levels of caching. Faster startup and fewer first-time
+        stutters, at the cost of disk space.<br /><br />
+        Clear the container cache after a game update if you see odd behaviour.
+        <br /><br /><b>When to change:</b> Turn it on if a game takes a long time to warm up every session, or stutters in the same places on every launch. Clear the container cache after a game update, since a stale cache can produce odd behaviour.
+        ]]></string>
+    <string name="box64_env_var_help__aes"><![CDATA[
+        AES-NI, the hardware encryption instructions. Games, DRM and anti-cheat use them heavily.<br /><br />
+        <b>0</b> : Tell the game the CPU has no AES. Anything using it falls back to slow software
+        encryption, or picks a different code path.<br />
+        <b>1</b> : Advertise AES and map it onto the ARM equivalents, so it runs at near-native
+        speed. (default)<br /><br />
+        Turn it off only if a game misdetects the CPU and refuses to start.
+        <br /><br /><b>When to change:</b> Leave it on — it maps to real ARM instructions, so it is close to free. Turn it off only if a game misdetects the CPU and refuses to start.
+        ]]></string>
+    <string name="box64_env_var_help__pclmulqdq"><![CDATA[
+        Carry-less multiply — a specialised instruction used by encryption and checksum code, often
+        alongside AES.<br /><br />
+        <b>0</b> : Hide it. Callers fall back to slower software routines.<br />
+        <b>1</b> : Advertise it and map it to the ARM equivalent. (default)
+        <br /><br /><b>When to change:</b> Leave it on. It only matters for games doing heavy encryption or checksum work, where hiding it makes loading and verification noticeably slower.
+        ]]></string>
+    <string name="box64_env_var_help__shaext"><![CDATA[
+        SHA extensions — hardware SHA-1 and SHA-256 hashing, used for file verification, save
+        integrity checks and DRM.<br /><br />
+        <b>0</b> : Hide it. Hashing falls back to software and gets slower.<br />
+        <b>1</b> : Advertise it and map it to the ARM equivalent. (default)
+        <br /><br /><b>When to change:</b> Leave it on. Hiding it slows down any game that verifies its own files at startup, since every hash falls back to software.
+        ]]></string>
+    <string name="box64_env_var_help__sse42"><![CDATA[
+        SSE4.2 — string and text processing instructions plus hardware CRC32.<br /><br />
+        <b>0</b> : Hide it. Some modern games check for SSE4.2 at startup and refuse to run without
+        it.<br />
+        <b>1</b> : Advertise it. (default)<br /><br />
+        Leave this on unless a game specifically misbehaves with it.
+        <br /><br /><b>When to change:</b> Leave it on. Several modern games test for SSE4.2 during startup and exit immediately without it, usually with an unhelpful error or no message at all.
+        ]]></string>
+    <string name="box64_env_var_help__sse_flushto0"><![CDATA[
+        How denormals — extremely small floating-point numbers — are handled in SSE maths.<br /><br />
+        <b>0</b> : Full IEEE behaviour with exception flags tracked. Correct, but slow whenever a
+        game produces denormals. (default)<br />
+        <b>1</b> : Flush denormals straight to zero, which is what most game engines ask for anyway.
+        Faster, and can very slightly change physics or audio results.
+        <br /><br /><b>When to change:</b> Set it to 1 for a speed gain in games with heavy physics or audio processing, which generate denormals constantly. Set it back to 0 if physics or sound behave subtly differently from how they should.
+        ]]></string>
+    <string name="box64_env_var_help__x87_no80bits"><![CDATA[
+        x87 is the old floating-point unit. It works in 80-bit extended precision, which ARM has no
+        equivalent for, so Box64 has to emulate it.<br /><br />
+        <b>0</b> : Emulate full 80-bit precision. Accurate but slow.<br />
+        <b>1</b> : Use ordinary 64-bit doubles instead. Much faster, and what the fast presets pick.<br /><br />
+        Older games doing precise maths — physics, simulation, flight models — can drift or behave
+        oddly on 1.
+        <br /><br /><b>When to change:</b> Leave at 1 for modern games, which barely touch x87. Set it to 0 for older simulation-style games — flight sims, racing physics, strategy titles with large numbers — where accumulated precision loss shows up as drift over a long session.
+        ]]></string>
+    <string name="box64_env_var_help__cputype"><![CDATA[
+        Which CPU vendor Box64 reports to the game.<br /><br />
+        <b>0</b> : Intel (default)<br />
+        <b>1</b> : AMD<br /><br />
+        Some games, DRM and anti-cheat take different code paths depending on the vendor, and a few
+        refuse to run on one of them. Only worth changing if a specific title needs it.
+        <br /><br /><b>When to change:</b> Only change it for a specific title that needs it. Some games and anti-cheat take a different code path per vendor, and a few refuse to run on one of them outright.
+        ]]></string>
+    <string name="box64_env_var_help__unity"><![CDATA[
+        Marks the process as a Unity game so Box64 applies Unity-specific workarounds, mostly around
+        its Mono and IL2CPP runtimes and how they handle threads.<br /><br />
+        <b>0</b> : Off (default)<br />
+        <b>1</b> : On<br /><br />
+        Worth trying if a Unity game crashes at startup or hangs on a loading screen.
+        <br /><br /><b>When to change:</b> Turn it on if a Unity game crashes at startup or hangs on a loading screen. It is a no-op for everything else, so it is safe to leave on for a container dedicated to Unity titles.
+        ]]></string>
+
+    <!-- FEXCore variables that had no help text: two added with the Extreme presets, plus
+         MAXINST and SMCCHECKS which were never covered. -->
+    <string name="fexcore_env_var_help__maxinst"><![CDATA[
+        The largest number of guest instructions FEX will pack into a single translated block.<br /><br />
+        Bigger blocks run faster, because FEX can optimise across more of the game code at once and
+        jumps between blocks cost time. They also take longer to compile and use more memory, so a
+        very large value can cause hitching the first time new code runs.<br /><br />
+        <b>5000</b> is the default and suits almost everything. Lower it only if you are chasing
+        memory use or startup stutter.
+        <br /><br /><b>When to change:</b> Leave it at 5000. Lower it if you are chasing memory use, or if a game hitches badly the first time it reaches new code and you would rather have smaller, quicker compiles.
+        ]]></string>
+    <string name="fexcore_env_var_help__smcchecks"><![CDATA[
+        How hard FEX watches for self-modifying code — a program writing or rewriting its own
+        instructions while running. FEX has to notice, or it keeps running a stale translation of
+        code that has since changed.<br /><br />
+        <b>none</b> : No checking. Fastest, and what the Extreme presets use. Breaks anything that
+        generates code at runtime: Java and .NET runtimes, some launchers, and most DRM.<br />
+        <b>mtrack</b> : Track writes to memory pages holding translated code. The balanced default.<br />
+        <b>full</b> : Check thoroughly. Slowest and safest — what the Denuvo preset uses.<br /><br />
+        If a game runs on Performance but not on an Extreme preset, this is the first thing to
+        change back.
+        <br /><br /><b>When to change:</b> If a game runs on Performance but not on an Extreme preset, this is the first thing to change back. Set it to full for a Denuvo-protected title, which will not start otherwise.
+        ]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cacheincreasecountheuristic"><![CDATA[
+        How eagerly the dynamic L1 block cache grows.<br /><br />
+        The L1 cache holds recently used translated blocks. When it fills, FEX either grows it or
+        starts discarding blocks it will likely need again. This number is how much pressure it
+        takes before growing: <b>lower grows sooner</b>, spending memory to avoid re-translating.<br /><br />
+        Default <b>250</b>. Only has any effect when DYNAMICL1CACHE is on.
+        <br /><br /><b>When to change:</b> Lower it if you see stutter in busy scenes and have memory to spare. Raise it on a memory-tight device. It does nothing at all unless DYNAMICL1CACHE is on.
+        ]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cachedecreasecountheuristic"><![CDATA[
+        How eagerly the dynamic L1 block cache shrinks back down.<br /><br />
+        After a busy stretch — a level load, a big area transition — the cache may be far larger than
+        the game now needs. This number is how long it waits before handing memory back:
+        <b>higher holds memory longer</b>, which avoids shrinking and regrowing repeatedly.<br /><br />
+        Default <b>50</b>. Only has any effect when DYNAMICL1CACHE is on.
+        <br /><br /><b>When to change:</b> Raise it if you get a hitch shortly after a level load, which usually means the cache shrank and then had to grow straight back. Lower it to hand memory back sooner. It does nothing at all unless DYNAMICL1CACHE is on.
+        ]]></string>
+
+    <!-- Per-preset help, shown by the "?" beside the preset name in the preset editor.
+         Key = <prefix>_preset_help__<preset id lowercased>. Kept brief: what it does, then the
+         specific risk where there is one. -->
+    <string name="box64_preset_help__stability"><![CDATA[<b>Stability</b> — maximum correctness. Full CPU flag emulation, no fast maths, full 80-bit x87 precision and no block merging. The slowest option: reach for it when a game crashes on everything else.]]></string>
+    <string name="box64_preset_help__compatibility"><![CDATA[<b>Compatibility</b> — the same conservative maths as Stability with a little more freedom for the translator. A good fallback when a game misbehaves on Intermediate.]]></string>
+    <string name="box64_preset_help__intermediate"><![CDATA[<b>Intermediate</b> — the balanced default. Faster NaN handling and light block merging, while keeping safe CPU flags and full x87 precision. Start here.]]></string>
+    <string name="box64_preset_help__performance"><![CDATA[<b>Performance</b> — noticeably faster: relaxed flags, fast rounding, 64-bit x87 and aggressive block merging.<br><br>Small risk of maths or precision glitches in games sensitive to rounding.]]></string>
+    <string name="box64_preset_help__performance_mali"><![CDATA[<b>Performance (Mali)</b> — Performance retuned for Mali GPUs: CPU flag emulation off but exact rounding kept, which suits Mali drivers better. No benefit on Adreno.]]></string>
+    <string name="box64_preset_help__extreme"><![CDATA[<b>Extreme</b> — Performance plus deeper instruction look-ahead, call/return optimisation and AVX disabled. Faster again.<br><br>Wider blast radius: a game sensitive to timing or maths is more likely to misbehave than on Performance.]]></string>
+    <string name="box64_preset_help__extreme_2"><![CDATA[<b>Extreme-2</b> — the community 32-variable tuning. Everything Extreme does, pushed further: faster rounding, double the look-ahead, native CPU flags, and the AES, SSE4.2, SHA and PCLMULQDQ instruction sets exposed to the game.<br><br><b>Risk:</b> it also weakens memory barriers, which can corrupt multi-threaded state. That shows up as random instability rather than a clean crash — drop back to Extreme if a game turns flaky.]]></string>
+    <string name="box64_preset_help__unity"><![CDATA[<b>Unity</b> — Performance retuned for Unity games, with the stronger memory ordering most Unity titles need to stay stable.]]></string>
+    <string name="box64_preset_help__unity_mono_bleeding_edge"><![CDATA[<b>Unity Mono Bleeding Edge</b> — for newer Unity builds on the bleeding-edge Mono runtime. Disables the block merging that upsets its just-in-time compiler.]]></string>
+    <string name="box64_preset_help__denuvo"><![CDATA[<b>Denuvo</b> — conservative settings for Denuvo-protected games, which detect and dislike aggressive translation. Slower by design; use it only for titles that need it.]]></string>
+
+    <string name="fexcore_preset_help__stability"><![CDATA[<b>Stability</b> — every memory-ordering emulation enabled plus full x87 precision. The slowest and most correct option; use it when nothing else runs.]]></string>
+    <string name="fexcore_preset_help__compatibility"><![CDATA[<b>Compatibility</b> — full memory-ordering emulation, same as Stability. Broad correctness at the cost of speed.]]></string>
+    <string name="fexcore_preset_help__intermediate"><![CDATA[<b>Intermediate</b> — the balanced default. Keeps the main and half-barrier ordering, drops the heavier vector and memcpy ordering, and allows reduced x87 precision.]]></string>
+    <string name="fexcore_preset_help__performance"><![CDATA[<b>Performance</b> — all memory-ordering emulation off. Clearly faster.<br><br><b>Risk:</b> games that rely on strict store ordering can crash, hang or corrupt saves. If that happens, use Performance (TSO).]]></string>
+    <string name="fexcore_preset_help__performance_tso"><![CDATA[<b>Performance (TSO)</b> — Performance with the main store-ordering emulation switched back on, while the heavier vector, half-barrier and memcpy ordering stay off. The best general compromise, and the safest fast option.]]></string>
+    <string name="fexcore_preset_help__extreme"><![CDATA[<b>Extreme-wn</b> — from WinNative. Performance plus five JIT and cache knobs: self-modifying-code checks off, the L2 block cache off, and a dynamically sized L1 cache.<br><br><b>Risk:</b> with code checks off, anything that writes its own code while running — Java or .NET runtimes, some launchers and DRM — can misbehave. Memory ordering is also off, so this is the most aggressive tier available.]]></string>
+    <string name="fexcore_preset_help__extreme_tso"><![CDATA[<b>Extreme (TSO)-wn</b> — the same tuning as Extreme-wn but with store ordering kept on, so it suits far more games. This is the one to try first if you want more speed than Performance (TSO).<br><br><b>Risk:</b> self-modifying-code checks are off, which can break Java or .NET runtimes, some launchers and DRM. Fall back to Extreme-gn if that bites.]]></string>
+    <string name="fexcore_preset_help__extreme_gn"><![CDATA[<b>Extreme-gn</b> — from GameNative, and much gentler than the name suggests. Performance plus timer scaling and volatile-metadata hints only, leaving code checks and the block caches at their defaults.<br><br>The safer Extreme: try this when a game will not run on the two WinNative tiers.]]></string>
+    <string name="fexcore_preset_help__denuvo"><![CDATA[<b>Denuvo</b> — for Denuvo-protected games. Memory ordering off for speed, but full self-modifying-code checking and a hidden hypervisor bit, both of which Denuvo needs to start.]]></string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="denuvo">Denuvo</string>
@@ -509,79 +691,282 @@
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
         <b>1</b> : Most RET will need flags, most CALLS will not<br />
         <b>2</b> : All CALL/RET will need flags (slower)
-    ]]></string>
-    <string name="box64_env_var_help__dynarec_fastnan">Generation of -NAN like on x86</string>
-    <string name="box64_env_var_help__dynarec_fastround">Generation of precise x86 rounding</string>
-    <string name="box64_env_var_help__dynarec_x87double">Use of Float/Double for x87 emulation</string>
+        <br /><br /><b>When to change:</b> Lower it for speed in call-heavy games. Raise it to 2 if a game crashes shortly after launch or behaves erratically — missing flags around calls corrupt the decisions a program makes right after returning from a function.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_fastnan"><![CDATA[
+        NaN handling. x86 produces a negative NaN in some floating-point cases where ARM produces a
+        positive one, and matching x86 exactly costs extra instructions on every such operation.<br /><br />
+        <b>0</b> : Reproduce the x86 NaN sign exactly. Slower, bit-accurate.<br />
+        <b>1</b> : Let the ARM chip produce its natural NaN. Faster. (default)<br /><br />
+        <b>When to change:</b> leave on 1. Drop to 0 if a game shows stretched or invisible models,
+        geometry shooting off to infinity, or physics exploding — classic signs of a NaN sign
+        difference propagating through maths.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_fastround"><![CDATA[
+        Rounding mode. x86 lets a program pick a rounding mode and expects it honoured on every
+        floating-point operation; reproducing that on ARM costs work each time.<br /><br />
+        <b>0</b> : Emulate x86 rounding precisely, all modes. Slowest and most accurate.<br />
+        <b>1</b> : Fast rounding covering the common cases. (default)<br />
+        <b>2</b> : Fastest, least faithful. Used by Extreme-2.<br /><br />
+        <b>When to change:</b> raise it for speed. Drop to 0 if you see jittering geometry, drifting
+        physics, or crackling audio — anything where small numeric errors accumulate.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_x87double"><![CDATA[
+        Which native type Box64 uses to stand in for x87 floating point. x87 works in 80-bit
+        extended precision that ARM has no equivalent for, so something narrower has to be
+        substituted.<br /><br />
+        <b>0</b> : Use the narrowest type that fits. Fastest, least precise.<br />
+        <b>1</b> : Use double precision throughout. Slower, closer to the original. (default on the
+        safe presets)<br />
+        <b>2</b> : Highest precision available. Slowest.<br /><br />
+        <b>When to change:</b> older games doing serious maths — flight simulators, racing physics,
+        strategy games with large numbers — can drift or desync at 0. Raise it if a game behaves
+        subtly wrong rather than crashing outright.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_bigblock"><![CDATA[
         Dynarec building BigBlock<br /><br />
         <b>0</b> : Don\'t try to build block as big as possible<br />
         <b>1</b> : Build Dynarec block as big as possible<br />
         <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
         <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
-    ]]></string>
+        <br /><br /><b>When to change:</b> Higher values give faster sustained frame rates because more of the game loop is optimised together. Lower them if you get a hitch the first time you enter each new area, or if a game generates code as it runs and trips over blocks that span too much memory.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_strongmem"><![CDATA[
         Simulation of Strong Memory model<br /><br />
         <b>0</b> : Don\'t try anything special<br />
         <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
-    ]]></string>
-    <string name="box64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
-    <string name="box64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
-    <string name="box64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
+        <br /><br /><b>When to change:</b> Raise it when a multithreaded game crashes at random, corrupts saves, or desyncs in multiplayer — symptoms of writes landing out of order. Lower it for speed once you know a game is happy without it. Unity games generally need at least 1.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_forward"><![CDATA[
+        How far ahead Box64 will follow a forward jump when deciding how much code to translate into
+        one block.<br /><br />
+        <b>0</b> : Stop at the first forward jump. Smallest blocks.<br />
+        <b>128</b> / <b>256</b> : Modest look-ahead.<br />
+        <b>512</b> : Balanced. (default)<br />
+        <b>1024</b> : Maximum look-ahead. Biggest, fastest blocks. Used by Extreme-2.<br /><br />
+        <b>When to change:</b> raise it for more speed in tight game loops. Lower it if you get
+        hitching the first time you enter a new area, since bigger blocks take longer to compile the
+        moment they are first needed.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_callret"><![CDATA[
+        Optimisation of CALL and RET. Normally every function return is an indirect jump Box64 has
+        to look up; this option keeps a proper return-address stack instead.<br /><br />
+        <b>0</b> : Generic handling. Slower, but tolerates programs that play games with return
+        addresses.<br />
+        <b>1</b> : Optimised. Noticeably faster in call-heavy code. (default on most presets)<br /><br />
+        <b>When to change:</b> turn it off for packed, obfuscated or DRM-protected executables that
+        deliberately manipulate the call stack. Crashes deep in unfamiliar code shortly after launch
+        are the usual symptom.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_wait"><![CDATA[
+        What a thread does when it needs a block another thread is still compiling.<br /><br />
+        <b>0</b> : Do not wait — interpret the code in the meantime. No stalls, but that stretch runs
+        slowly.<br />
+        <b>1</b> : Wait for the compiled block. Better sustained speed, at the cost of a brief pause.
+        (default)<br /><br />
+        <b>When to change:</b> set 0 if you get short freezes during loading screens or when first
+        entering an area, especially on a device with fewer cores.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_weakbarrier"><![CDATA[
         Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
         <b>0</b> : Use regular safe barriers<br />
         <b>1</b> : Use weak barriers for mild performance boost<br />
-        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
+        <b>2</b> : Use weak barriers, additionally disable last write barriers
+        <br /><br /><b>When to change:</b> A way to keep most of the speed while still emulating strong memory. If a game needs STRONGMEM but the cost is too high, try 1 here first. Drop back to 0 if instability returns — weak barriers fail as random corruption rather than a clean crash.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_aligned_atomics"><![CDATA[
         Generate aligned atomics only (only available on Arm64 for now).<br /><br />
         <b>0</b> : Generate unaligned atomics handling code.<br />
-        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
+        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.
+        <br /><br /><b>When to change:</b> Leave at 0. Set 1 only for a game you know keeps its atomic data aligned, and be ready to revert: the failure mode is a hard SIGBUS crash the moment a misaligned locked operation is executed.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_df"><![CDATA[
-        Enable or disable the use of deferred flags.<br /><br />
-        <b>0</b> : Disable the use of deferred flags.<br />
-        <b>1</b> : Enable the use of deferred flags.]]></string>
+        Deferred flags. x86 updates its condition flags on almost every arithmetic instruction, and
+        the vast majority are never read. Deferring means only working them out when something
+        actually asks.<br /><br />
+        <b>0</b> : Compute flags eagerly, every time. Slower, maximally faithful.<br />
+        <b>1</b> : Defer until read. Considerably faster. (default)<br /><br />
+        <b>When to change:</b> almost never — leave it on. Turn it off only when hunting a bug where
+        a game takes visibly wrong decisions: enemies not reacting, doors not opening, checks that
+        should pass and do not.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_dirty"><![CDATA[
         Allow continue running a block that is unprotected and potentially dirty.<br /><br />
         <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
         <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
-        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
+        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).
+        <br /><br /><b>When to change:</b> Raise it to speed up loading in games that write data next to their own code. Set it back to 0 if you get unexplained crashes during loading screens or shortly after a level starts.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_nativeflags"><![CDATA[
-        Enable or disable the use of native flags.<br /><br />
-        <b>0</b> : Do not use native flags.<br />
-        <b>1</b> : Use native flags when possible.]]></string>
+        Whether Box64 uses the ARM chip own condition flags directly instead of keeping emulated x86
+        flags in memory.<br /><br />
+        <b>0</b> : Emulate x86 flags separately. Safe, slower.<br />
+        <b>1</b> : Use native ARM flags where the meaning maps exactly. Faster. (used by Extreme-2)<br /><br />
+        <b>When to change:</b> it is one of the bigger speed levers, so try it on. Set it back to 0
+        if a game starts behaving illogically — comparisons going the wrong way, AI acting oddly —
+        rather than crashing.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_pause"><![CDATA[
         Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
         <b>0</b> : Ignore x86 PAUSE instruction.<br />
         <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
         <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
         <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
-    ]]></string>
+        <br /><br /><b>When to change:</b> Matters for games that spin-wait between threads. If a game pegs the CPU and runs hot while doing very little, try 1 or 3 — a proper yield lets the other thread actually make progress instead of both fighting for the core.
+        ]]></string>
     <string name="box64_env_var_help__avx"><![CDATA[
         AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
         <b>0</b> : Disable AVX extension<br />
         <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
         <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
-    ]]></string>
-    <string name="box64_env_var_help__maxcpu">Maximum number of CPUs presented to programs by Box64</string>
-    <string name="box64_env_var_help__unityplayer">Detect UnityPlayer.dll and apply strongmem settings</string>
-    <string name="box64_env_var_help__mmap32">Force every memory allocation in 32bit address spaces</string>
-    <string name="fexcore_env_var_help__tsoenabled">Enables TSO IR ops (required for multithreaded apps).</string>
-    <string name="fexcore_env_var_help__vectortsoenabled">Makes vector load/stores atomic when TSO is enabled.</string>
-    <string name="fexcore_env_var_help__halfbarriertsoenabled">Uses half-barrier atomics for unaligned loads/stores under TSO.</string>
-    <string name="fexcore_env_var_help__memcpysettsoenabled">Makes REP MOVS / REP STOS atomic under TSO.</string>
-    <string name="fexcore_env_var_help__multiblock">Enables multiblock code compilation. Can cause longer JIT compilation and stutter.</string>
-    <string name="fexcore_env_var_help__hostfeatures">Controls CPU feature forcing.</string>
-    <string name="fexcore_env_var_help__smalltscscale">Scales TSC on low-frequency systems.</string>
+        <br /><br /><b>When to change:</b> Raise it for modern games that check for AVX or AVX2 and refuse to start without them. Lower it to 0 if a game detects AVX, takes that code path, and then renders incorrectly or crashes — emulated AVX is not always a perfect match.
+        ]]></string>
+    <string name="box64_env_var_help__maxcpu"><![CDATA[
+        How many CPU cores Box64 tells the game it has.<br /><br />
+        <b>0</b> : Report the real count. (default)<br />
+        <b>4</b> / <b>8</b> / <b>16</b> / <b>32</b> / <b>64</b> : Cap the reported count.<br /><br />
+        <b>When to change:</b> some games create a worker thread per core and fall apart on a
+        many-core phone — stuttering, thread starvation, or a crash at startup. Capping to 4 or 8
+        often fixes it. A few older titles also break outright above 32.
+        ]]></string>
+    <string name="box64_env_var_help__unityplayer"><![CDATA[
+        Detects UnityPlayer.dll and automatically applies the stronger memory ordering Unity games
+        need, without slowing everything else down.<br /><br />
+        <b>0</b> : Off. Unity games need STRONGMEM set manually instead.<br />
+        <b>1</b> : On. Auto-applied when a Unity game is detected. (default)<br /><br />
+        <b>When to change:</b> leave it on — it costs nothing for non-Unity games. Turn it off only
+        if you are setting memory ordering by hand and want no surprises.
+        ]]></string>
+    <string name="box64_env_var_help__mmap32"><![CDATA[
+        Forces memory allocations into the low 32-bit address range, so every pointer fits in 32
+        bits.<br /><br />
+        <b>0</b> : Allocate anywhere in the 64-bit space.<br />
+        <b>1</b> : Force the low 32-bit space. (default)<br /><br />
+        <b>When to change:</b> needed by 32-bit games, and by 64-bit games that carelessly store
+        pointers in 32-bit fields. Turn it off for a large 64-bit game that runs out of memory,
+        since the low space is only 4 GB no matter how much RAM the device has.
+        ]]></string>
+    <string name="fexcore_env_var_help__tsoenabled"><![CDATA[
+        Total Store Ordering. x86 guarantees that memory writes become visible to other threads in
+        the order they were made; ARM makes no such promise. FEX can enforce it, at a cost.<br /><br />
+        <b>0</b> : Off. Clearly faster.<br />
+        <b>1</b> : On. Correct for multithreaded games. (default)<br /><br />
+        <b>When to change:</b> this is the single most important correctness knob. Games that need it
+        and do not get it crash at random, hang, corrupt saves or desync in multiplayer — rarely in
+        the same place twice. Turn it off only for simple or single-threaded games.
+        ]]></string>
+    <string name="fexcore_env_var_help__vectortsoenabled"><![CDATA[
+        Extends store ordering to vector (SIMD) loads and stores, making them atomic as well.<br /><br />
+        <b>0</b> : Off. (default on the Performance and Extreme presets)<br />
+        <b>1</b> : On. Slower — vector memory traffic is heavy in most games.<br /><br />
+        <b>When to change:</b> rarely needed. Only games doing multithreaded SIMD work on shared
+        buffers require it. Worth trying if Stability fixes a crash and you are narrowing down which
+        knob was responsible.
+        ]]></string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled"><![CDATA[
+        Uses cheaper half-barriers for unaligned loads and stores when store ordering is on, instead
+        of full barriers.<br /><br />
+        <b>0</b> : Full barriers. Strongest guarantee, slowest.<br />
+        <b>1</b> : Half-barriers. Faster, marginally weaker.<br /><br />
+        <b>When to change:</b> a useful middle ground between Performance and Stability. If a game
+        needs ordering but full barriers cost too much, try turning this on before giving up on
+        speed.
+        ]]></string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled"><![CDATA[
+        Makes the bulk memory instructions REP MOVS and REP STOS — block copy and block fill —
+        atomic under store ordering.<br /><br />
+        <b>0</b> : Off. Faster, and bulk copies are among the hottest operations in a game engine.
+        (default on the fast presets)<br />
+        <b>1</b> : On. Slower but correct when threads share the buffers being copied.<br /><br />
+        <b>When to change:</b> turn it on if a game corrupts textures, audio or save data under load
+        while looking otherwise stable — a sign of one thread reading a buffer another is still
+        copying.
+        ]]></string>
+    <string name="fexcore_env_var_help__multiblock"><![CDATA[
+        Whether FEX compiles several connected blocks of code together instead of one at a time.<br /><br />
+        <b>0</b> : One block at a time. Quick to compile, slower code.<br />
+        <b>1</b> : Compile across blocks, so FEX can optimise the whole path. Faster code, longer
+        compiles. (default)<br /><br />
+        <b>When to change:</b> leave it on for sustained frame rate. Turn it off if first-visit
+        stutter — a hitch the first time you enter each new area, then smooth afterwards — bothers
+        you more than average speed does.
+        ]]></string>
+    <string name="fexcore_env_var_help__hostfeatures"><![CDATA[
+        Forces CPU features on or off rather than letting FEX detect them.<br /><br />
+        <b>off</b> : Detect automatically. (default)<br />
+        <b>enableavx</b> / <b>disableavx</b> : Force AVX on or off in what the game is told.<br />
+        <b>enablesve</b> / <b>disablesve</b> : Force the ARM Scalable Vector Extension on or off in
+        what FEX uses internally.<br /><br />
+        <b>When to change:</b> enableavx for a game that refuses to start claiming it needs AVX;
+        disableavx if a game detects it, takes an AVX code path and then misbehaves. The SVE options
+        are for testing on chips that actually have it.
+        ]]></string>
+    <string name="fexcore_env_var_help__smalltscscale"><![CDATA[
+        Scales the CPU timestamp counter, which is what games read to measure elapsed time. Phone
+        counters often tick at a very different rate to the desktop CPUs a game expects.<br /><br />
+        <b>0</b> : Pass the counter through unscaled.<br />
+        <b>1</b> : Scale it to something the game will interpret sensibly. (default)<br /><br />
+        <b>When to change:</b> this is the knob for a game running in slow motion or fast-forward,
+        animations playing at the wrong speed, or timers counting wrongly while the frame rate
+        itself looks fine.
+        ]]></string>
     <string name="fexcore_env_var_help__smc_checks">Self-Modifying Code checks.</string>
-    <string name="fexcore_env_var_help__volatilemetadata">Uses volatile metadata from PE files for TSO when available.</string>
-    <string name="fexcore_env_var_help__monohacks">Special SMC + JIT block hacks for Mono detection.</string>
-    <string name="fexcore_env_var_help__hidehypervisorbit">Hides CPUID hypervisor bit (useful for apps that crash with it).</string>
-    <string name="fexcore_env_var_help__disablel2cache">Disables FEXCore JIT L2 cache lookup, saving memory but introducing stutters.</string>
-    <string name="fexcore_env_var_help__dynamicl1cache">Switches FEXCore JIT L1 cache to be dynamically sized, saving memory but introducing stutters.</string>
-    <string name="fexcore_env_var_help__x87reducedprecision">Emulates X87 floating point using 64-bit precision. This reduces emulation accuracy and may result in rendering bugs.</string>
+    <string name="fexcore_env_var_help__volatilemetadata"><![CDATA[
+        64-bit Windows programs can carry volatile metadata: the compiler marking exactly which
+        memory accesses must not be reordered. FEX can read it and apply store ordering only where
+        the game genuinely needs it, rather than everywhere.<br /><br />
+        <b>0</b> : Ignore it.<br />
+        <b>1</b> : Use it when present. (default)<br /><br />
+        <b>When to change:</b> leave it on — it is close to free accuracy. It simply has no effect on
+        games built without the metadata.
+        ]]></string>
+    <string name="fexcore_env_var_help__monohacks"><![CDATA[
+        Workarounds for Mono, the .NET runtime Unity games are built on. Mono generates code while
+        running, which needs special handling around self-modifying-code detection and JIT
+        blocks.<br /><br />
+        <b>0</b> : Off.<br />
+        <b>1</b> : On. Detects Mono and applies the workarounds. (default)<br /><br />
+        <b>When to change:</b> leave it on; it only engages for games that need it. Turn it off only
+        to test whether it is implicated in a Unity game misbehaving.
+        ]]></string>
+    <string name="fexcore_env_var_help__hidehypervisorbit"><![CDATA[
+        CPUID includes a bit saying whether the code is running under a hypervisor. Emulation looks
+        like a hypervisor, so it is normally set.<br /><br />
+        <b>0</b> : Report it honestly.<br />
+        <b>1</b> : Hide it, so the game believes it is on bare metal. (default on the Denuvo
+        preset)<br /><br />
+        <b>When to change:</b> turn it on for a game or anti-cheat that refuses to launch, or exits
+        immediately, because it thinks it is being run in a virtual machine.
+        ]]></string>
+    <string name="fexcore_env_var_help__disablel2cache"><![CDATA[
+        FEX keeps translated code in two cache levels. This disables the second, larger one.<br /><br />
+        <b>0</b> : Keep the L2 cache. Smoother, uses more memory. (default)<br />
+        <b>1</b> : Disable it. Less memory, but code has to be re-translated more often, which shows
+        up as stutter. (used by the Extreme-wn presets)<br /><br />
+        <b>When to change:</b> turn it on when memory is tight on a large game. Turn it back off if
+        you get recurring hitches in areas you have already visited.
+        ]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cache"><![CDATA[
+        Makes the first-level translated-code cache grow and shrink with demand instead of staying a
+        fixed size.<br /><br />
+        <b>0</b> : Fixed size. Predictable, uses its memory whether or not it needs it. (default)<br />
+        <b>1</b> : Dynamic. Less memory when idle, occasional stutter as it resizes. (used by the
+        Extreme-wn presets, together with the two heuristic counters below)<br /><br />
+        <b>When to change:</b> on for memory-constrained devices or very large games; off if you
+        would rather have consistent frame pacing than free memory.
+        ]]></string>
+    <string name="fexcore_env_var_help__x87reducedprecision"><![CDATA[
+        x87 is the old floating-point unit, working in 80-bit extended precision that ARM has no
+        equivalent for.<br /><br />
+        <b>0</b> : Emulate the full 80-bit precision. Accurate and slow.<br />
+        <b>1</b> : Use ordinary 64-bit doubles instead. Much faster. (default on every preset above
+        Compatibility)<br /><br />
+        <b>When to change:</b> set it back to 0 if an older game shows rendering bugs, geometry
+        cracks, or physics that slowly drifts wrong over a long session. Modern games rarely use x87
+        at all, so this costs them nothing either way.
+        ]]></string>
     <string name="columns">Columns</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
     <string name="desktop">Desktop</string>

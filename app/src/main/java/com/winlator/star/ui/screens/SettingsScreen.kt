@@ -76,7 +76,6 @@ import androidx.preference.PreferenceManager
 import com.winlator.star.R
 import com.winlator.star.SettingsFragment
 import com.winlator.star.util.InAppFilePicker
-import com.winlator.star.box64.Box64EditPresetDialog
 import com.winlator.star.box64.Box64Preset
 import com.winlator.star.box64.Box64PresetManager
 import com.winlator.star.contentdialog.ContentDialog
@@ -87,7 +86,6 @@ import com.winlator.star.core.PreloaderDialog
 import com.winlator.star.core.UpdateManager
 import com.winlator.star.core.WinFgCapture
 import com.winlator.star.core.WinFgDiag
-import com.winlator.star.fexcore.FEXCoreEditPresetDialog
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.midi.MidiManager
@@ -197,12 +195,35 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
     var installSFCallback by remember { mutableStateOf<((Uri) -> Unit)?>(null) }
 
+    // Which preset the Compose editor is open on, if any (null = closed). Replaces the old
+    // Box64EditPresetDialog / FEXCoreEditPresetDialog, which were android.app.Dialog subclasses
+    // themed by AppCompat and so ignored the app theme entirely.
+    var box64EditTarget by remember { mutableStateOf<PresetEditTarget?>(null) }
+    var fexEditTarget by remember { mutableStateOf<PresetEditTarget?>(null) }
+
     fun refreshBox64Presets() {
         box64Presets = Box64PresetManager.getPresets("box64", context)
     }
 
     fun refreshFEXCorePresets() {
         fexcorePresets = FEXCorePresetManager.getPresets(context)
+    }
+
+    box64EditTarget?.let { target ->
+        PresetEditDialog(
+            kind = PresetKind.BOX64,
+            presetId = target.id,
+            onDismiss = { box64EditTarget = null },
+            onSaved = { refreshBox64Presets() },
+        )
+    }
+    fexEditTarget?.let { target ->
+        PresetEditDialog(
+            kind = PresetKind.FEXCORE,
+            presetId = target.id,
+            onDismiss = { fexEditTarget = null },
+            onSaved = { refreshFEXCorePresets() },
+        )
     }
 
     fun refreshSF() {
@@ -749,18 +770,12 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = {
-                    Box64EditPresetDialog(context, "box64", null).apply {
-                        setOnConfirmCallback { refreshBox64Presets() }
-                        show()
-                    }
-                }) { Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface) }
-                IconButton(onClick = {
-                    Box64EditPresetDialog(context, "box64", selectedBox64Preset).apply {
-                        setOnConfirmCallback { refreshBox64Presets() }
-                        show()
-                    }
-                }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface) }
+                IconButton(onClick = { box64EditTarget = PresetEditTarget.New }) {
+                    Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                IconButton(onClick = { box64EditTarget = PresetEditTarget.Existing(selectedBox64Preset) }) {
+                    Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface)
+                }
                 IconButton(onClick = {
                     ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_preset) {
                         Box64PresetManager.duplicatePreset("box64", context, selectedBox64Preset)
@@ -818,18 +833,12 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = {
-                    FEXCoreEditPresetDialog(context, null).apply {
-                        setOnConfirmCallback { refreshFEXCorePresets() }
-                        show()
-                    }
-                }) { Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface) }
-                IconButton(onClick = {
-                    FEXCoreEditPresetDialog(context, selectedFEXCorePreset).apply {
-                        setOnConfirmCallback { refreshFEXCorePresets() }
-                        show()
-                    }
-                }) { Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface) }
+                IconButton(onClick = { fexEditTarget = PresetEditTarget.New }) {
+                    Icon(Icons.Default.Add, "Add", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                IconButton(onClick = { fexEditTarget = PresetEditTarget.Existing(selectedFEXCorePreset) }) {
+                    Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface)
+                }
                 IconButton(onClick = {
                     ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_preset) {
                         FEXCorePresetManager.duplicatePreset(context, selectedFEXCorePreset)

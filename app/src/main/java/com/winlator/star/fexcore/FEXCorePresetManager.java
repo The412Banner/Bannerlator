@@ -27,7 +27,66 @@ import java.util.Iterator;
 import java.util.Locale;
 
 public class FEXCorePresetManager {
+    /**
+     * Pref holding user edits to BUILT-IN presets, as {@code ID|envvars} joined by commas — the
+     * same escaping rules as the custom-preset list, so neither separator can appear in a value.
+     * The hardcoded blocks in {@link #getEnvVars} stay the shipped originals no matter what is in
+     * here, which is what lets {@link #resetPreset} always restore them.
+     */
+    private static final String OVERRIDES_KEY = "fexcore_preset_overrides";
+
+    private static EnvVars getOverride(Context context, String id) {
+        String stored = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(OVERRIDES_KEY, "");
+        if (stored == null || stored.isEmpty()) return null;
+        for (String entry : stored.split(",")) {
+            String[] parts = entry.split("\\|", 2);
+            if (parts.length == 2 && parts[0].equals(id)) return new EnvVars(parts[1]);
+        }
+        return null;
+    }
+
+    /** True when a built-in preset has been edited, i.e. Reset would change something. */
+    public static boolean hasOverride(Context context, String id) {
+        return id != null && !id.startsWith(FEXCorePreset.CUSTOM) && getOverride(context, id) != null;
+    }
+
+    private static void putOverride(Context context, String id, EnvVars envVars) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String stored = preferences.getString(OVERRIDES_KEY, "");
+        ArrayList<String> out = new ArrayList<>();
+        if (stored != null && !stored.isEmpty()) {
+            for (String entry : stored.split(",")) {
+                String[] parts = entry.split("\\|", 2);
+                // Drop any existing entry for this id; null envVars means "reset", so it just goes.
+                if (parts.length == 2 && !parts[0].equals(id)) out.add(entry);
+            }
+        }
+        if (envVars != null) out.add(id + "|" + envVars);
+        preferences.edit().putString(OVERRIDES_KEY, String.join(",", out)).apply();
+    }
+
+    /** Discard a built-in preset's user edits, restoring the values this build ships. */
+    public static void resetPreset(Context context, String id) {
+        if (id == null || id.startsWith(FEXCorePreset.CUSTOM)) return;
+        putOverride(context, id, null);
+    }
+
     public static EnvVars getEnvVars(Context context, String id) {
+        // A user edit to a built-in wins over the shipped values.
+        if (!id.startsWith(FEXCorePreset.CUSTOM)) {
+            EnvVars override = getOverride(context, id);
+            if (override != null) return override;
+        }
+        return getShippedEnvVars(context, id);
+    }
+
+    /**
+     * The values this build ships for a preset, ignoring any user override. Reset restores these,
+     * and the editor compares against them so putting a preset back by hand clears the edited flag
+     * rather than storing an override that merely happens to match.
+     */
+    public static EnvVars getShippedEnvVars(Context context, String id) {
         EnvVars envVars = new EnvVars();
 
         if (id.equals(FEXCorePreset.STABILITY)) {
@@ -73,6 +132,42 @@ public class FEXCorePresetManager {
             envVars.put("FEX_X87REDUCEDPRECISION", "1");
             envVars.put("FEX_MULTIBLOCK", "1");
         }
+        else if (id.equals(FEXCorePreset.EXTREME) || id.equals(FEXCorePreset.EXTREME_TSO)) {
+            // Derived from WinNative (WinNative-Emu/WinNative, FEXCorePresetManager) — hence the
+            // "-wn" suffix on the displayed name. Same base as PERFORMANCE/PERFORMANCE_TSO plus
+            // five JIT/cache knobs: self-modifying-code checks off, FEX's L2 block cache off, and
+            // a dynamically-sized L1 block cache with its grow/shrink heuristics.
+            // FEX_SMCCHECKS=none is the risky one: anything that writes its own code at runtime
+            // (JIT/.NET/some launchers and DRM) can misbehave, which is why this sits above
+            // PERFORMANCE rather than replacing it. EXTREME_TSO keeps store ordering on for the
+            // many titles that need it.
+            envVars.put("FEX_TSOENABLED", id.equals(FEXCorePreset.EXTREME_TSO) ? "1" : "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+            envVars.put("FEX_SMCCHECKS", "none");
+            envVars.put("FEX_DISABLEL2CACHE", "1");
+            envVars.put("FEX_DYNAMICL1CACHE", "1");
+            envVars.put("FEX_DYNAMICL1CACHEINCREASECOUNTHEURISTIC", "250");
+            envVars.put("FEX_DYNAMICL1CACHEDECREASECOUNTHEURISTIC", "50");
+        }
+        else if (id.equals(FEXCorePreset.EXTREME_GN)) {
+            // Derived from GameNative (utkarshdalal/GameNative, FEXCorePresetManager) — hence "-gn".
+            // A much lighter "extreme" than the WinNative pair: PERFORMANCE's base plus only the
+            // TSC scaling and volatile-metadata hints, leaving the SMC checks and the block caches
+            // at FEX's defaults. Safer on JIT-heavy titles than EXTREME-wn, so it is worth trying
+            // first when a game misbehaves under the WinNative tiers.
+            envVars.put("FEX_TSOENABLED", "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+            envVars.put("FEX_SMALLTSCSCALE", "1");
+            envVars.put("FEX_VOLATILEMETADATA", "1");
+        }
         else if (id.equals(FEXCorePreset.DENUVO)) {
             envVars.put("FEX_TSOENABLED", "0");
             envVars.put("FEX_VECTORTSOENABLED", "0");
@@ -102,6 +197,9 @@ public class FEXCorePresetManager {
         presets.add(new FEXCorePreset(FEXCorePreset.INTERMEDIATE, context.getString(R.string.intermediate)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE, context.getString(R.string.performance)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE_TSO, context.getString(R.string.performance_tso)));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME, context.getString(R.string.fex_extreme_wn)));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_TSO, context.getString(R.string.fex_extreme_tso_wn)));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_GN, context.getString(R.string.fex_extreme_gn)));
         presets.add(new FEXCorePreset(FEXCorePreset.DENUVO, context.getString(R.string.denuvo)));
         for (String[] preset : customPresetsIterator(context)) presets.add(new FEXCorePreset(preset[0], preset[1]));
         return presets;
@@ -139,6 +237,14 @@ public class FEXCorePresetManager {
     }
 
     public static void editPreset(Context context, String id, String name, EnvVars envVars) {
+        // Built-in presets are editable too: their values are stored as an override rather than
+        // rewritten in place, so Reset can put the shipped ones back. The name is fixed for these
+        // (it comes from a string resource), so only the values are kept.
+        if (id != null && !id.startsWith(FEXCorePreset.CUSTOM)) {
+            putOverride(context, id, envVars);
+            return;
+        }
+
         String key = "fexcore_custom_presets";
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         String customPresetsStr = preferences.getString(key, "");

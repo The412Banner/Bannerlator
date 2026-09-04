@@ -1209,17 +1209,23 @@ private fun TopLevelFields(
         // Frame Generation engine: Off / bionic-fg / lsfg-vk (mutually exclusive). lsfg-vk is grayed
         // out until a Lossless.dll is imported (Settings). This is the ONLY per-container FG control;
         // the multiplier & flow scale for BOTH engines are tuned live from the in-game side menu.
-        val fgEngines = listOf("off", "bionic", "lsfg")
+        val fgEngines = listOf("off", "bionic", "lsfg", "lsfg-native")
         val fgEngineLabels = listOf(
             stringResource(R.string.frame_generation_off),
             stringResource(R.string.frame_generation_bionic),
-            stringResource(R.string.frame_generation_lsfg)
+            stringResource(R.string.frame_generation_lsfg),
+            stringResource(R.string.frame_generation_lsfg_native)
         )
         val lsfgDllAvailable = remember { java.io.File(context.filesDir, "lsfg-vk/Lossless.dll").isFile }
         val fgDisabledOpts = buildSet {
             // bionic-fg re-enabled (2.9.4+): the FIFO-backpressure present-mode fix is the likely
             // root of its old "doesn't reliably work" reports; still experimental — see the note below.
             if (!lsfgDllAvailable) add(fgEngineLabels[2])   // lsfg-vk — needs an imported Lossless.dll
+            // LSFG Native needs the same DLL. Whether the DEVICE can run the
+            // chain (Vulkan 1.3 + the three shader features + a storage-capable
+            // swapchain format) is only knowable once a renderer is up, so it
+            // is reported in-game rather than guessed at here.
+            if (!lsfgDllAvailable) add(fgEngineLabels[3])
         }
         val fgSelIdx = fgEngines.indexOf(viewModel.frameGenEngine).coerceAtLeast(0)
         // FG's present-mode/mailbox delivery only exists on the Vulkan host renderer; OpenGL (GLRenderer)
@@ -1286,6 +1292,14 @@ private fun TopLevelFields(
                     modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
                 )
             }
+        }
+        if (viewModel.frameGenEngine == "lsfg-native") {
+            Text(
+                text = stringResource(R.string.frame_generation_lsfg_native_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+            )
         }
         if (viewModel.frameGenEngine == "lsfg") {
             Text(

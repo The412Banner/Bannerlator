@@ -379,3 +379,29 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgCapsReason(JNIEn
     if (!r) return nullptr;
     return env->NewStringUTF(r->lsfgCaps().reason);
 }
+
+// --- Native LSFG frame generation: arming and tuning ------------------------
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenArmed(
+        JNIEnv*, jobject, jlong handle, jboolean armed, jint multiplier) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenArmed(armed == JNI_TRUE, (int)multiplier);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetLsfgCachePath(
+        JNIEnv* env, jobject, jlong handle, jstring path) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return;
+    if (!path) { r->setLsfgCachePath(nullptr); return; }
+    const char* chars = env->GetStringUTFChars(path, nullptr);
+    r->setLsfgCachePath(chars);
+    if (chars) env->ReleaseStringUTFChars(path, chars);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
+        JNIEnv*, jobject, jlong handle, jfloat flowScale, jfloat refreshHz) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz);
+}

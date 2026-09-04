@@ -1590,6 +1590,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
             float flow     = s.getFrameGenFlowScale().getValue();
             // Route the single in-game multiplier/flow control to whichever engine is running this
             // session (honors a per-game engine override, else the container's engine).
+            if (resolvedFrameGenEngine().equals("lsfg-native")) {
+                // LSFG Native: the generator is OUR compositor, so a level change is just a call.
+                // None of the lsfg-vk workarounds apply and every one of them is deliberately
+                // skipped here - no conf.toml rewrite, no vsync clock, no MAILBOX override and no
+                // pause/teardown/Resume reset. There is no guest layer to re-sync with.
+                applyLsfgNative(mult, flow);
+                if (fgOn) container.setFrameGenMultiplier(mult);
+                container.setFrameGenFlowScale(flow);
+                container.saveData();
+                // The limiter guard still has to see the >=2 threshold crossing.
+                reapplyFpsLimit();
+                return;
+            }
             if (resolvedFrameGenEngine().equals("lsfg")) {
                 // lsfg-vk: rewrite its conf.toml — the fork layer watches the file mtime and reloads
                 // live (swapchain recreate). Passthrough = multiplier 1 (layer treats <=1 as off).
@@ -1970,7 +1983,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // container. The FPS limiter is independent (host pacer) and is always available regardless.
         String fgEngine = resolvedFrameGenEngine();
         boolean fgEnabled = fgEngine.equals("bionic");
-        boolean lsfgOn = fgEngine.equals("lsfg");
+        // Both LSFG engines drive the same in-game multiplier row; only WHERE the
+        // generator runs differs (in-container layer vs our own compositor).
+        boolean lsfgOn = fgEngine.equals("lsfg") || fgEngine.equals("lsfg-native");
         boolean fpsLimOn = resolvedFpsLimiterEnabled();
         boolean bionicFgActive = fgEnabled || lsfgOn;
         XServerDrawerState.INSTANCE.setBionicFgActive(bionicFgActive);
@@ -2841,6 +2856,70 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // UI thread. Choreographer frame timestamps are CLOCK_MONOTONIC — the clock the layer paces with.
     private android.os.Handler vsyncClockHandler;
     private java.util.concurrent.ExecutorService vsyncWriteExecutor;
+
+    // ===================== LSFG Native (compositor-side) =====================
+    // Runs the Lossless Scaling chain inside our own Vulkan compositor. Unlike
+    // lsfg-vk nothing is injected into the container, so there is no conf.toml,
+    // no ENABLE_LSFG, no vsync clock and no presentation reset on a multiplier
+    // change - the generator shares the compositor's command stream.
+
+    /** Renderer for this session, or null when it is not the Vulkan one. */
+    private com.winlator.star.renderer.vulkan.VulkanRenderer vulkanRendererOrNull() {
+        HostRenderer r = (xServerView != null) ? xServerView.getRenderer() : null;
+        return (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer)
+            ? (com.winlator.star.renderer.vulkan.VulkanRenderer) r : null;
+    }
+
+    /**
+     * Build the SPIR-V cache from the user's Lossless.dll if needed, then arm
+     * the renderer. Cache building is slow on a first run - the DXBC chain is
+     * translated on device - so it happens off the main thread and arms only
+     * once it has actually succeeded.
+     */
+    private void prepareLsfgNative() {
+        if (!com.winlator.star.core.LsfgNative.isDllAvailable(this)) {
+            Log.w("XServerDisplayActivity",
+                "LSFG Native selected but no Lossless.dll imported (Settings) - leaving frame gen off");
+            return;
+        }
+        final int launchMult = container.isLsfgAutoEnable()
+            && container.getFrameGenMultiplier() >= 2 ? container.getFrameGenMultiplier() : 0;
+        final float flow = container.getFrameGenFlowScale();
+
+        new Thread(() -> {
+            final int status = com.winlator.star.core.LsfgNative.ensureCache(
+                XServerDisplayActivity.this, /*preferFp16=*/false);
+            runOnUiThread(() -> {
+                if (status != com.winlator.star.core.LsfgNative.STATUS_OK) {
+                    Log.e("XServerDisplayActivity", "LSFG Native unavailable: "
+                        + com.winlator.star.core.LsfgNative.explain(status));
+                    return;
+                }
+                applyLsfgNative(launchMult, flow);
+            });
+        }, "lsfg-native-cache").start();
+    }
+
+    /** Point the renderer at the cache and arm it at `multiplier` (0 = off). */
+    private void applyLsfgNative(int multiplier, float flowScale) {
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+        if (vkr == null) return;
+        vkr.setLsfgCachePath(
+            com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
+        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
+        vkr.setFrameGenArmed(multiplier >= 2, multiplier);
+    }
+
+    /** The panel's real refresh rate; the pacer never generates above it. */
+    private float currentDisplayRefreshHz() {
+        try {
+            android.view.Display d = getWindowManager().getDefaultDisplay();
+            float hz = (d != null) ? d.getRefreshRate() : 0f;
+            return hz > 1f ? hz : 0f;
+        } catch (Throwable t) {
+            return 0f;
+        }
+    }
 
     private void startVsyncClock() {
         stopVsyncClock();
@@ -5932,7 +6011,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // back to Vulkan (ASR unsupported) also skips FG — safe, and the editor prevents that combo.
             boolean fgRendererVulkan = "vulkan".equalsIgnoreCase(resolvedRenderer());
             if (fgRendererVulkan) {
-            if (resolvedFrameGenEngine().equals("lsfg")) {
+            if (resolvedFrameGenEngine().equals("lsfg-native")) {
+                // LSFG Native runs the Lossless Scaling chain inside OUR compositor, on the Android
+                // side of the Wine boundary. Nothing is injected into the container: no layer, no
+                // conf.toml, no ENABLE_LSFG, and no vsync clock file for a guest layer to phase-lock
+                // to - the generator shares our command stream, so it needs none of them.
+                //
+                // All that happens at launch is building the SPIR-V cache from the user's own
+                // Lossless.dll (slow on a first run: the DXBC chain is translated on device, which
+                // is why it is off the main thread) and arming the renderer.
+                prepareLsfgNative();
+            } else if (resolvedFrameGenEngine().equals("lsfg")) {
                 // lsfg-vk engine (mutually exclusive with bionic-fg). Opt-in via ENABLE_LSFG so the
                 // staged layer stays inert elsewhere. Driven by conf.toml (NOT the LSFG_LEGACY env):
                 // the GameNative-fork layer watches the conf.toml mtime in its present hook and forces
@@ -9687,7 +9776,8 @@ return true;
     // https://github.com/utkarshdalal/GameNative. See README Credits.
     private boolean lsfgGovernsFps() {
         XServerDrawerState s = XServerDrawerState.INSTANCE;
-        return "lsfg".equals(resolvedFrameGenEngine())
+        final String engine = resolvedFrameGenEngine();
+        return ("lsfg".equals(engine) || "lsfg-native".equals(engine))
             && s.getFrameGenEnabled().getValue()
             && s.getFrameGenMultiplier().getValue() >= 2;
     }

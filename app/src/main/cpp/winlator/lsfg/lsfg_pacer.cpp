@@ -119,8 +119,15 @@ LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
     }
 
     if (target_rate == 0.0f) {
+        // No explicit target rate: generate as many as the CEILING allows, but
+        // still respect the panel. Bannerlator always takes this branch (the
+        // governor, not a target rate, decides the multiplier), and without the
+        // headroom clamp a 60 fps source at 4x would ask a 144 Hz panel for 240
+        // presents per second. FIFO would then block the render thread, and that
+        // back-pressure reaches the guest through the Present extension - the
+        // frame-gen pacer would end up throttling the game it is meant to smooth.
         output_credit = 0.0f;
-        limit = ceiling;
+        limit = std::min(ceiling, HeadroomLimit());
         return LsfgPlan{limit, true};
     }
 

@@ -273,6 +273,13 @@ public:
     // UI (through JNI) to grey the engine out with a reason.
     const lsfg::Caps& lsfgCaps() const { return lsfgCaps_; }
 
+    // Arm/disarm native LSFG frame generation for this session. Changing the
+    // armed state recreates the swapchain, because the composite path needs
+    // TRANSFER_DST usage and a deeper image queue that a normal session does
+    // not pay for.
+    void setFrameGenArmed(bool armed, int multiplier);
+    bool frameGenArmed() const { return fgArmed_.load(std::memory_order_relaxed); }
+
 private:
     struct WinTex {
         VkImage              img            = VK_NULL_HANDLE;
@@ -418,6 +425,56 @@ private:
     uint32_t          ntscFrameCounter  = 0;       // animates NTSC chroma phase
 
     VkSampler         upscaleSampler    = VK_NULL_HANDLE; // linear clamp; offscreen/mid input
+
+    // === Native LSFG: composite target ring ===================================
+    // Frame generation cannot composite straight into a swapchain image: the
+    // finished frame has to be READABLE (it becomes the next frame's LSFG
+    // input) and generated frames have to be STORAGE-WRITABLE by a compute
+    // dispatch. Android swapchain images are COLOR_ATTACHMENT only, and
+    // storage support on a swapchain format is not something a driver owes us.
+    //
+    // So when frame gen is armed the whole existing recording is redirected at
+    // a composite image we own — format-identical to the swapchain, so every
+    // existing pipeline stays render-pass compatible — and a copy moves it into
+    // the acquired swapchain image at the end. With frame gen off, not one of
+    // these objects is created and the direct-to-swapchain path is untouched.
+    struct CompositeTarget {
+        VkImage         img         = VK_NULL_HANDLE;
+        VkDeviceMemory  mem         = VK_NULL_HANDLE;
+        VkImageView     view        = VK_NULL_HANDLE;  // colour attachment + sampled
+        VkImageView     storageView = VK_NULL_HANDLE;  // compute writes (generate)
+        VkFramebuffer   fb          = VK_NULL_HANDLE;
+        VkDescriptorSet ds          = VK_NULL_HANDLE;  // sampled, for later passes
+    };
+    // Hard ceiling: (max generations + 1) presentable frames per source frame,
+    // times a queue depth of 2, capped so the footprint stays bounded.
+    static constexpr uint32_t kMaxCompositeTargets = 7;
+
+    std::vector<CompositeTarget> compositeTargets;
+    VkRenderPass compositeRenderPass = VK_NULL_HANDLE;  // CLEAR -> GENERAL
+    uint32_t     compositeW = 0, compositeH = 0;
+    uint32_t     compositeIndex = 0;      // rotates per composite; gives history for free
+    bool         compositeArmed = false;  // targets exist AND this frame uses them
+    bool         swapchainTransferDst = false; // swapchain was created with TRANSFER_DST
+
+    // Set from the app when the native LSFG engine is selected for this
+    // session. Read on the render thread; false keeps every path as it was.
+    std::atomic<bool> fgArmed_{false};
+    std::atomic<int>  fgMultiplier_{0};
+
+    bool  createCompositeRenderPass();
+    bool  ensureCompositeTargets(uint32_t w, uint32_t h, uint32_t count);
+    void  destroyCompositeTargets();
+    // True when this frame should composite off-swapchain. Call on the render
+    // thread; every gate must hold or we fall back to the untouched path.
+    bool  compositeActive() const;
+    // Render pass / framebuffer this frame draws its FINAL pass into.
+    VkRenderPass  targetRenderPass() const;
+    VkFramebuffer targetFramebuffer(uint32_t imgIdx) const;
+    // Copy the finished composite into the acquired swapchain image and leave
+    // it in PRESENT_SRC. No-op when the composite path is not active.
+    void  copyCompositeToSwapchain(VkCommandBuffer cb, uint32_t imgIdx);
+
     VkFormat          offscreenFmt      = VK_FORMAT_R8G8B8A8_UNORM;
     VkRenderPass      offscreenRenderPass = VK_NULL_HANDLE; // CLEAR -> SHADER_READ_ONLY
     VkPipelineLayout  postPipeLayout    = VK_NULL_HANDLE;

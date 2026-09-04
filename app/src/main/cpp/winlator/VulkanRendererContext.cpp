@@ -129,6 +129,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     if (debandPipelineSwap!= VK_NULL_HANDLE) vk_.DestroyPipeline(device, debandPipelineSwap, nullptr);
     if (postPipeLayout    != VK_NULL_HANDLE) vk_.DestroyPipelineLayout(device, postPipeLayout, nullptr);
     if (offscreenRenderPass != VK_NULL_HANDLE) vk_.DestroyRenderPass(device, offscreenRenderPass, nullptr);
+    if (compositeRenderPass != VK_NULL_HANDLE) { vk_.DestroyRenderPass(device, compositeRenderPass, nullptr); compositeRenderPass = VK_NULL_HANDLE; }
     if (upscaleSampler    != VK_NULL_HANDLE) vk_.DestroySampler(device, upscaleSampler, nullptr);
 
     vk_.DestroySampler(device, sampler, nullptr);
@@ -397,6 +398,13 @@ void VulkanRendererContext::createSwapchain() {
          (int)lsfgCaps_.storageOnSwapchainFormat);
 
     uint32_t imgCount=caps.minImageCount+1;
+    // Frame gen presents several images per source frame, so the queue needs
+    // depth to keep them in flight without stalling on AcquireNextImageKHR.
+    // Only while armed: extra images cost memory.
+    if (fgArmed_.load(std::memory_order_relaxed)) {
+        const uint32_t want = caps.minImageCount + kMaxCompositeTargets;
+        if (want > imgCount) imgCount = want;
+    }
     if (caps.maxImageCount>0&&imgCount>caps.maxImageCount) imgCount=caps.maxImageCount;
 
     uint32_t pmCount=0;
@@ -425,6 +433,17 @@ void VulkanRendererContext::createSwapchain() {
     ci.surface=surface; ci.minImageCount=imgCount; ci.imageFormat=swapchainFmt;
     ci.imageColorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; ci.imageExtent=swapchainExt;
     ci.imageArrayLayers=1; ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    // The composite path copies INTO the swapchain image, which needs
+    // TRANSFER_DST. Requested only while frame gen is armed, so a normal
+    // session never trades away framebuffer compression for a flag it never
+    // uses. Toggling arming recreates the swapchain (see setFrameGenArmed).
+    if (fgArmed_.load(std::memory_order_relaxed) &&
+        (caps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
+        ci.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        swapchainTransferDst = true;
+    } else {
+        swapchainTransferDst = false;
+    }
     ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE; ci.preTransform=pre;
     ci.compositeAlpha=compositeAlpha; ci.presentMode=presentMode; ci.clipped=VK_TRUE;
     ci.oldSwapchain=oldSwapchain;
@@ -685,6 +704,215 @@ bool VulkanRendererContext::createColorTarget(int w, int h, VkImage& img, VkDevi
     return true;
 }
 
+// ======================= Native LSFG: composite target ring ==================
+// See VulkanRendererContext.h. When frame generation is armed the final pass
+// draws into a composite image we own instead of the acquired swapchain image,
+// and a copy moves it across at the end of the command buffer. The composite
+// carries the SWAPCHAIN's format, so every existing pipeline stays render-pass
+// compatible with both targets and none of them has to be rebuilt.
+
+bool VulkanRendererContext::createCompositeRenderPass() {
+    if (compositeRenderPass != VK_NULL_HANDLE) return true;
+
+    // Format-identical to renderPass (and to offscreenRenderPass — both are
+    // R8G8B8A8_UNORM today), so pipelines built against either remain
+    // compatible: render-pass compatibility is attachment format + sample
+    // count, not load/store ops or layouts.
+    VkAttachmentDescription att{}; att.format=swapchainFmt; att.samples=VK_SAMPLE_COUNT_1_BIT;
+    att.loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR; att.storeOp=VK_ATTACHMENT_STORE_OP_STORE;
+    att.stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    att.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+    // GENERAL, so both a compute dispatch (generate) and the copy can touch the
+    // finished frame without another layout transition per use.
+    att.finalLayout=VK_IMAGE_LAYOUT_GENERAL;
+
+    VkAttachmentReference ref{0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkSubpassDescription sub{}; sub.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS;
+    sub.colorAttachmentCount=1; sub.pColorAttachments=&ref;
+
+    VkSubpassDependency deps[2]{};
+    // A previous frame may still be sampling or computing on this target.
+    deps[0].srcSubpass=VK_SUBPASS_EXTERNAL; deps[0].dstSubpass=0;
+    deps[0].srcStageMask=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_TRANSFER_BIT;
+    deps[0].dstStageMask=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    deps[0].srcAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_TRANSFER_READ_BIT;
+    deps[0].dstAccessMask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    // Make this pass's writes visible to the copy and to the LSFG chain.
+    deps[1].srcSubpass=0; deps[1].dstSubpass=VK_SUBPASS_EXTERNAL;
+    deps[1].srcStageMask=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    deps[1].dstStageMask=VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    deps[1].srcAccessMask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    deps[1].dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_SHADER_READ_BIT;
+
+    VkRenderPassCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    ci.attachmentCount=1; ci.pAttachments=&att; ci.subpassCount=1; ci.pSubpasses=&sub;
+    ci.dependencyCount=2; ci.pDependencies=deps;
+    if (vk_.CreateRenderPass(device,&ci,nullptr,&compositeRenderPass)!=VK_SUCCESS) {
+        RLOG_E("createCompositeRenderPass failed");
+        compositeRenderPass = VK_NULL_HANDLE;
+        return false;
+    }
+    return true;
+}
+
+bool VulkanRendererContext::ensureCompositeTargets(uint32_t w, uint32_t h, uint32_t count) {
+    if (w == 0 || h == 0 || count == 0) return false;
+    if (count > kMaxCompositeTargets) count = kMaxCompositeTargets;
+
+    if (compositeW == w && compositeH == h && compositeTargets.size() == count) return true;
+    if (!createCompositeRenderPass()) return false;
+
+    destroyCompositeTargets();
+
+    compositeTargets.resize(count);
+    for (uint32_t i = 0; i < count; i++) {
+        CompositeTarget& t = compositeTargets[i];
+
+        VkImageCreateInfo ii{}; ii.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        ii.imageType=VK_IMAGE_TYPE_2D; ii.extent={w,h,1};
+        ii.mipLevels=1; ii.arrayLayers=1; ii.format=swapchainFmt;
+        ii.tiling=VK_IMAGE_TILING_OPTIMAL; ii.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+        // The full set the frame-gen path needs: drawn into by the effect
+        // chain, sampled as the next frame's LSFG input, written by `generate`
+        // through a storage view, and copied into the swapchain image.
+        ii.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                 | VK_IMAGE_USAGE_SAMPLED_BIT
+                 | VK_IMAGE_USAGE_STORAGE_BIT
+                 | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                 | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        ii.samples=VK_SAMPLE_COUNT_1_BIT; ii.sharingMode=VK_SHARING_MODE_EXCLUSIVE;
+        if (vk_.CreateImage(device,&ii,nullptr,&t.img)!=VK_SUCCESS) { destroyCompositeTargets(); return false; }
+
+        VkMemoryRequirements req; vk_.GetImageMemoryRequirements(device,t.img,&req);
+        VkMemoryAllocateInfo ai{}; ai.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        ai.allocationSize=req.size;
+        ai.memoryTypeIndex=findMemType(req.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (vk_.AllocateMemory(device,&ai,nullptr,&t.mem)!=VK_SUCCESS) { destroyCompositeTargets(); return false; }
+        vk_.BindImageMemory(device,t.img,t.mem,0);
+
+        VkImageViewCreateInfo vci{}; vci.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        vci.image=t.img; vci.viewType=VK_IMAGE_VIEW_TYPE_2D; vci.format=swapchainFmt;
+        vci.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+        vci.components={VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY,
+                        VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY};
+        if (vk_.CreateImageView(device,&vci,nullptr,&t.view)!=VK_SUCCESS) { destroyCompositeTargets(); return false; }
+        // Storage views must carry identity swizzle and no component mapping;
+        // same descriptor otherwise.
+        if (vk_.CreateImageView(device,&vci,nullptr,&t.storageView)!=VK_SUCCESS) { destroyCompositeTargets(); return false; }
+
+        VkImageView att[]={t.view};
+        VkFramebufferCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fi.renderPass=compositeRenderPass; fi.attachmentCount=1; fi.pAttachments=att;
+        fi.width=w; fi.height=h; fi.layers=1;
+        if (vk_.CreateFramebuffer(device,&fi,nullptr,&t.fb)!=VK_SUCCESS) { destroyCompositeTargets(); return false; }
+
+        VkDescriptorSetAllocateInfo dsai{}; dsai.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsai.descriptorPool=winTexPool; dsai.descriptorSetCount=1; dsai.pSetLayouts=&dsLayout;
+        if (vk_.AllocateDescriptorSets(device,&dsai,&t.ds)!=VK_SUCCESS) { t.ds=VK_NULL_HANDLE; destroyCompositeTargets(); return false; }
+        VkDescriptorImageInfo dii{}; dii.imageLayout=VK_IMAGE_LAYOUT_GENERAL;
+        dii.imageView=t.view; dii.sampler=upscaleSampler;
+        VkWriteDescriptorSet wr{}; wr.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        wr.dstSet=t.ds; wr.dstBinding=0;
+        wr.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wr.descriptorCount=1;
+        wr.pImageInfo=&dii;
+        vk_.UpdateDescriptorSets(device,1,&wr,0,nullptr);
+    }
+
+    compositeW = w; compositeH = h; compositeIndex = 0;
+    RLOG("composite ring: %ux%u x%u targets", w, h, count);
+    return true;
+}
+
+void VulkanRendererContext::destroyCompositeTargets() {
+    for (CompositeTarget& t : compositeTargets) {
+        if (t.ds          !=VK_NULL_HANDLE){ vk_.FreeDescriptorSets(device,winTexPool,1,&t.ds); t.ds=VK_NULL_HANDLE; }
+        if (t.fb          !=VK_NULL_HANDLE){ vk_.DestroyFramebuffer(device,t.fb,nullptr); t.fb=VK_NULL_HANDLE; }
+        if (t.storageView !=VK_NULL_HANDLE){ vk_.DestroyImageView(device,t.storageView,nullptr); t.storageView=VK_NULL_HANDLE; }
+        if (t.view        !=VK_NULL_HANDLE){ vk_.DestroyImageView(device,t.view,nullptr); t.view=VK_NULL_HANDLE; }
+        if (t.img         !=VK_NULL_HANDLE){ vk_.DestroyImage(device,t.img,nullptr); t.img=VK_NULL_HANDLE; }
+        if (t.mem         !=VK_NULL_HANDLE){ vk_.FreeMemory(device,t.mem,nullptr); t.mem=VK_NULL_HANDLE; }
+    }
+    compositeTargets.clear();
+    compositeW = compositeH = 0;
+    compositeIndex = 0;
+}
+
+void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
+    const bool was = fgArmed_.load(std::memory_order_relaxed);
+    fgMultiplier_.store(multiplier, std::memory_order_relaxed);
+    if (was == armed) return;
+
+    fgArmed_.store(armed, std::memory_order_relaxed);
+    RLOG("lsfg-native: frame gen %s (multiplier=%d) - recreating swapchain",
+         armed ? "ARMED" : "disarmed", multiplier);
+    // The swapchain's usage flags and image count both depend on this, so it
+    // has to be rebuilt. The existing resize path already does that safely.
+    fbResized.store(true);
+    dirtyCV.notify_one();
+}
+
+bool VulkanRendererContext::compositeActive() const {
+    // Every gate must hold, or we run the pre-LSFG path unchanged.
+    if (!fgArmed_.load(std::memory_order_relaxed)) return false;
+    if (!lsfgCaps_.supported()) return false;
+    if (scanoutActive.load()) return false;   // direct scanout bypasses the compositor entirely
+    return compositeArmed;
+}
+
+VkRenderPass VulkanRendererContext::targetRenderPass() const {
+    return compositeActive() ? compositeRenderPass : renderPass;
+}
+
+VkFramebuffer VulkanRendererContext::targetFramebuffer(uint32_t imgIdx) const {
+    if (compositeActive() && compositeIndex < compositeTargets.size())
+        return compositeTargets[compositeIndex].fb;
+    return swapchainFBs[imgIdx];
+}
+
+void VulkanRendererContext::copyCompositeToSwapchain(VkCommandBuffer cb, uint32_t imgIdx) {
+    if (!compositeActive() || compositeIndex >= compositeTargets.size()) return;
+    const CompositeTarget& t = compositeTargets[compositeIndex];
+
+    // composite: GENERAL (render pass left it there) -> TRANSFER_SRC
+    // swapchain: UNDEFINED (nothing has touched it this frame) -> TRANSFER_DST
+    VkImageMemoryBarrier pre[2]{};
+    pre[0].sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    pre[0].oldLayout=VK_IMAGE_LAYOUT_GENERAL; pre[0].newLayout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    pre[0].srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; pre[0].dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+    pre[0].image=t.img; pre[0].subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    pre[0].srcAccessMask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT|VK_ACCESS_SHADER_WRITE_BIT;
+    pre[0].dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;
+
+    pre[1].sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    pre[1].oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; pre[1].newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    pre[1].srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; pre[1].dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+    pre[1].image=swapchainImages[imgIdx]; pre[1].subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    pre[1].srcAccessMask=0; pre[1].dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vk_.CmdPipelineBarrier(cb,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,nullptr, 0,nullptr, 2,pre);
+
+    // Same format and same extent, so a copy is enough — no blit, no filtering.
+    VkImageCopy region{};
+    region.srcSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+    region.dstSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+    region.extent={compositeW, compositeH, 1};
+    vk_.CmdCopyImage(cb,
+        t.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &region);
+
+    VkImageMemoryBarrier post{};
+    post.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    post.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; post.newLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    post.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; post.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+    post.image=swapchainImages[imgIdx]; post.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    post.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT; post.dstAccessMask=0;
+    vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,nullptr, 0,nullptr, 1,&post);
+}
+
 void VulkanRendererContext::destroyColorTarget(VkImage& img, VkDeviceMemory& mem, VkImageView& view,
         VkFramebuffer& fb, VkDescriptorSet& ds) {
     if (ds  !=VK_NULL_HANDLE){ vk_.FreeDescriptorSets(device,winTexPool,1,&ds); ds=VK_NULL_HANDLE; }
@@ -782,6 +1010,10 @@ void VulkanRendererContext::createSyncObjects() {
 }
 
 void VulkanRendererContext::cleanupSwapchain() {
+    // The composite ring is sized to the swapchain extent and its framebuffers
+    // reference compositeRenderPass, so it goes with the swapchain.
+    destroyCompositeTargets();
+    compositeArmed = false;
     for (auto fb:swapchainFBs) vk_.DestroyFramebuffer(device,fb,nullptr); swapchainFBs.clear();
     for (auto iv:swapchainViews) vk_.DestroyImageView(device,iv,nullptr); swapchainViews.clear();
     if (!cmdBufs.empty()){vk_.FreeCommandBuffers(device,cmdPool,(uint32_t)cmdBufs.size(),cmdBufs.data());cmdBufs.clear();}
@@ -1105,7 +1337,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     } else {
 
     VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpi.renderPass=renderPass; rpi.framebuffer=swapchainFBs[imgIdx]; rpi.renderArea={{0,0},swapchainExt};
+    // Frame gen redirects the final target to a composite image we own; the
+    // accessors return the swapchain pair unchanged when it is off.
+    rpi.renderPass=targetRenderPass(); rpi.framebuffer=targetFramebuffer(imgIdx); rpi.renderArea={{0,0},swapchainExt};
     VkClearValue clr={{{0.f,0.f,0.f,1.f}}}; rpi.clearValueCount=1; rpi.pClearValues=&clr;
 
     vk_.CmdBeginRenderPass(cb, &rpi, VK_SUBPASS_CONTENTS_INLINE);
@@ -1159,6 +1393,10 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     }
     vk_.CmdEndRenderPass(cb);
     } // end !upFrame.active
+
+    // Frame gen composited off-swapchain: move the finished frame across and
+    // leave the swapchain image in PRESENT_SRC. No-op when frame gen is off.
+    copyCompositeToSwapchain(cb, imgIdx);
 
     VkResult endStatus = vk_.EndCommandBuffer(cb);
     if (endStatus!=VK_SUCCESS) {
@@ -1235,7 +1473,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     auto postPass=[&](VkPipeline pl, VkFramebuffer fb, bool toSwapchain,
                       VkDescriptorSet srcDS, const void* pcd, uint32_t pcsz){
         VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpi.renderPass = toSwapchain ? renderPass : offscreenRenderPass;
+        rpi.renderPass = toSwapchain ? targetRenderPass() : offscreenRenderPass;
         rpi.framebuffer=fb; rpi.renderArea={{0,0},swapchainExt};
         rpi.clearValueCount=1; rpi.pClearValues=&blk;
         vk_.CmdBeginRenderPass(cb,&rpi,VK_SUBPASS_CONTENTS_INLINE);
@@ -1257,7 +1495,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
         // renderPass post pipeline into an offscreenRenderPass fx target reuses the
         // exact pattern the composite stage already uses (window `pipeline` -> offscreen).
         const bool scaleFinal = !fxOn;
-        VkFramebuffer stFB = scaleFinal ? swapchainFBs[imgIdx] : fx1FB;
+        VkFramebuffer stFB = scaleFinal ? targetFramebuffer(imgIdx) : fx1FB;
         if (upFrame.mode==3 || upFrame.mode==6 || upFrame.mode==7 || upFrame.mode==UPMODE_DOWNSCALE) {
             VkPipeline   pl   = (upFrame.mode==3) ? sgsrPipeline
                               : (upFrame.mode==7) ? nisPipeline
@@ -1316,7 +1554,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     for (int i=0;i<n;i++) {
         const bool toSwap = (i==n-1);
         VkFramebuffer tgtFB; VkDescriptorSet tgtDS;
-        if (toSwap)               { tgtFB=swapchainFBs[imgIdx]; tgtDS=VK_NULL_HANDLE; }
+        if (toSwap)               { tgtFB=targetFramebuffer(imgIdx); tgtDS=VK_NULL_HANDLE; }
         else if (curDS==fx1DS)    { tgtFB=fx2FB; tgtDS=fx2DS; }
         else                      { tgtFB=fx1FB; tgtDS=fx1DS; }
         switch (effects[i]) {
@@ -1693,6 +1931,24 @@ ok=true;}catch(...){}
         memcpy(cursorStgP, cursorPixels.data(), cursorUploadSize);
 
     bool effectiveCurVis = curVis && !scanoutActive.load();
+
+    // --- Frame gen: decide whether THIS frame composites off-swapchain. The
+    // targets are created lazily on the first armed frame and torn down when it
+    // disarms, so a session that never turns frame gen on never allocates them.
+    if (fgArmed_.load(std::memory_order_relaxed) && lsfgCaps_.supported() && !scanoutActive.load()) {
+        const int mult = fgMultiplier_.load(std::memory_order_relaxed);
+        const uint32_t want = (uint32_t)std::min(std::max(mult, 2), 4) + 1u;
+        compositeArmed = ensureCompositeTargets(swapchainExt.width, swapchainExt.height, want);
+        if (compositeArmed && !compositeTargets.empty())
+            compositeIndex = (compositeIndex + 1) % (uint32_t)compositeTargets.size();
+    } else if (compositeArmed || !compositeTargets.empty()) {
+        // Disarmed (or the swapchain went away): drop the ring so the direct
+        // path is byte-identical to a session that never armed it.
+        compositeArmed = false;
+        vk_.DeviceWaitIdle(device);
+        destroyCompositeTargets();
+    }
+
     planUpscaleFrame();   // decide/prepare spatial-upscaler passes for this frame
     recordCmdBuf(cmdBufs[currentFrame],imgIdx,frameDraws,
         frameAhbTransitions,framePreUpload,framePostUpload,
@@ -1700,7 +1956,13 @@ ok=true;}catch(...){}
         ox,oy,sx,sy,cw,ch,ptrX,ptrY,curHotX,curHotY,curW,curH,effectiveCurVis);
 
     VkSemaphore wSem[]={imgAvailSems[currentFrame]}, sSem[]={renderDoneSems[currentFrame]};
-    VkPipelineStageFlags wStage[]={VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    // On the composite path the first thing to touch the acquired swapchain
+    // image is the copy, a TRANSFER write — and TRANSFER precedes
+    // COLOR_ATTACHMENT_OUTPUT in pipeline order, so waiting only on the latter
+    // would let the copy run before the presentation engine released the image.
+    VkPipelineStageFlags wStage[]={ compositeActive()
+        ? (VkPipelineStageFlags)(VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+        : (VkPipelineStageFlags)VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
     si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];

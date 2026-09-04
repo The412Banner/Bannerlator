@@ -1709,4 +1709,638 @@ E.g. <b>META</b> for <i>META key</i>, \n
     -->
     <string name="winfg_capture_consent_title">Contribute frame-gen training capture</string>
     <string name="winfg_capture_consent_v1">Turning this on records raw in-game frames while you play, to help train an open, clean frame-generation model. Please read this before enabling.\n\nWHAT IS CAPTURED\n• Only the game\'s raw rendered frames, straight from the game, while you play.\n\nWHAT IS NOT CAPTURED\n• NO personal information of any kind.\n• NO account, login, name, or email.\n• NO Android system data.\n• NO audio.\n• NO full-screen or system video — nothing outside the game\'s rendered image, and no HUD or overlay.\n\nANONYMOUS BY DESIGN\n• Each capture file carries a small consent record that is anonymous: only a random anonymous ID, the terms version, a timestamp, and the app version (and optionally your device model, for dataset-diversity stats only). It cannot identify you.\n\nWHERE IT IS SAVED\n• Files are written to the Download/win-fg folder on this device, for you to share with us.\n\nGOOD TO KNOW\n• Recording lowers your FPS while it runs.\n• You can turn this off at any time from Settings.\n\nBy ticking \"I understand\" below you agree that the captured game frames may be used to train the model, and you confirm this is willingly created and shared.</string>
+
+    <!-- Per-variable help for the environment-variables editor, looked up by name as
+         env_var_help__<name lowercased>. A variable with no entry here simply shows no "?"
+         button. Format matches the preset help: what it is, what each value does, and a
+         labelled "When to change" scenario. -->
+    <string name="env_var_help__banner_audio_direct_decay"><![CDATA[
+        Whether the driver shrinks its buffer back down after a quiet spell, recovering latency it took to
+survive a rough patch.<br /><br />
+<b>0</b> : Stay at the grown size.<br />
+<b>1</b> : Shrink back when things settle.<br /><br />
+<b>When to change:</b> leave it on — it is what stops one bad moment costing you latency for the
+whole session. Turn it off if audio repeatedly grows and shrinks in a way you can hear.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_decay_maxbackoff"><![CDATA[
+        A ceiling on how far the driver backs off after repeated dropouts.<br /><br />
+<b>When to change:</b> raise it for a device that struggles persistently, so the driver is allowed
+to settle somewhere genuinely safe. Lower it to keep latency bounded.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_decay_punish_ms"><![CDATA[
+        How long the driver holds off shrinking after a dropout.<br /><br />
+<b>When to change:</b> raise it if the buffer shrinks too eagerly and dropouts return. This is the
+brake on the decay behaviour.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_decay_quiet_ms"><![CDATA[
+        How long the audio path must run cleanly before the driver considers shrinking the buffer.<br /><br />
+<b>When to change:</b> raise it to make shrinking more cautious, which suits a device that has
+occasional bursts of load. Lower it to recover latency sooner after a rough patch.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_exclusive"><![CDATA[
+        Asks Android for exclusive access to the audio device, bypassing the normal mixer.<br /><br />
+<b>0</b> : Shared.<br />
+<b>1</b> : Exclusive — lower latency where the device allows it.<br /><br />
+<b>When to change:</b> turn it on to chase the lowest audio delay. Not every device grants it, and
+where it is granted other apps may be unable to play sound at the same time.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_log"><![CDATA[
+        Logging for the DirectAudio driver.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> turn it on when reporting an audio problem, so the buffer sizes and dropout
+counts are recorded. Turn it back off afterwards.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_maxms"><![CDATA[
+        The largest buffer the adaptive path may grow to, in milliseconds.<br /><br />
+<b>When to change:</b> DirectAudio grows its buffer when it detects dropouts. This caps how far.
+Raise it for a device that keeps crackling under load; lower it to keep latency bounded even if that
+means occasional dropouts.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_minperiod_ms"><![CDATA[
+        A floor on the wake-up interval, so the driver cannot spin too fast.<br /><br />
+<b>When to change:</b> raise it if audio is costing noticeable CPU or battery. Too high and the
+driver cannot refill the buffer in time.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_ms"><![CDATA[
+        Target audio buffer size in milliseconds for our DirectAudio driver.<br /><br />
+Smaller means less delay between action and sound, and more risk of crackling. Larger is safer.<br /><br />
+<b>When to change:</b> the audio settings dialog sets this for you from a preset — only touch it in
+Custom mode. Raise it if audio crackles, lower it if sound lags the action. Values above about
+62.5 ms leave the range we have tested as safe.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_period_ms"><![CDATA[
+        How often the audio driver wakes to hand over more samples.<br /><br />
+<b>When to change:</b> shorter periods mean tighter timing and more CPU wake-ups. Leave it alone
+unless you are tuning against a specific dropout pattern.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_stall_ms"><![CDATA[
+        How long the audio path must be silent before the watchdog treats it as stalled.<br /><br />
+<b>When to change:</b> lower it to recover from stalls faster, at the risk of restarting audio
+during a legitimately quiet passage. Raise it if you hear audio restarting when nothing was
+wrong.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_watchdog"><![CDATA[
+        Watches for the audio path stalling and restarts it.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> leave it on. Without it, an audio stall is permanent for that session —
+sound simply stops and does not come back.
+        ]]></string>
+    <string name="env_var_help__bcn_astc_only_2p"><![CDATA[
+        Forces every block to use two partitions rather than choosing per block.<br /><br />
+<b>0</b> : Choose per block.<br />
+<b>1</b> : Always two.<br /><br />
+<b>When to change:</b> mostly a quality experiment. It costs time on blocks that gain nothing from
+it, so it is usually worse value than BCN_ASTC_TRY_2P alone.
+        ]]></string>
+    <string name="env_var_help__bcn_astc_try_2p"><![CDATA[
+        Lets the ASTC encoder try two-partition blocks, which represent detailed areas better.<br /><br />
+<b>0</b> : Single partition only. Faster.<br />
+<b>1</b> : Try two. Higher quality, slower.<br /><br />
+<b>When to change:</b> turn it on if transcoded textures look blocky. Expect longer loading.
+        ]]></string>
+    <string name="env_var_help__bcn_astc_use_large_steps"><![CDATA[
+        Makes the ASTC encoder search in coarser steps.<br /><br />
+<b>0</b> : Fine search. Slower, better quality.<br />
+<b>1</b> : Coarse search. Faster, lower quality.<br /><br />
+<b>When to change:</b> from the Fcharan fork of the BCn layer. Turn it on when loading times matter
+more than texture quality.
+        ]]></string>
+    <string name="env_var_help__bcn_compute_auto"><![CDATA[
+        Lets the compute layer decide for itself whether transcoding is needed.<br /><br />
+<b>0</b> : Follow the explicit settings.<br />
+<b>1</b> : Auto-detect.<br /><br />
+<b>When to change:</b> auto is the sensible default. Turn it off when you want to force a specific
+target format regardless of what the layer would choose.
+        ]]></string>
+    <string name="env_var_help__bcn_compute_image_view"><![CDATA[
+        Uses the storage-image path for compute transcoding rather than the buffer path.<br /><br />
+<b>0</b> : Buffer path.<br />
+<b>1</b> : Storage image path.<br /><br />
+<b>When to change:</b> an alternative implementation — try the other setting if textures come out
+corrupted or the layer crashes.
+        ]]></string>
+    <string name="env_var_help__bcn_layer_log_level"><![CDATA[
+        How much the BCn layer logs, for example <b>info</b> or <b>error</b>.<br /><br />
+<b>When to change:</b> raise it while diagnosing texture problems, then set it back. Texture
+transcoding happens constantly, so verbose logging here is expensive.
+        ]]></string>
+    <string name="env_var_help__bcn_max_staging_cache_mb"><![CDATA[
+        Memory budget for textures waiting to be transcoded, in megabytes.<br /><br />
+<b>When to change:</b> raise it if loading is slow and the device has memory to spare — more
+staging room means fewer stalls. Lower it if a game runs out of memory during loading.
+        ]]></string>
+    <string name="env_var_help__bcn_profile_transfers"><![CDATA[
+        Logs timing for every texture transfer the layer handles.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> diagnosis only — for working out whether transcoding is what is making
+loading slow. It is noisy and costs performance itself.
+        ]]></string>
+    <string name="env_var_help__bcn_queue_throttle_limit"><![CDATA[
+        How many transcode jobs may be queued at once.<br /><br />
+<b>When to change:</b> lower it if transcoding starves the game of GPU time and the frame rate dips
+during loading. Raise it to prioritise getting textures ready sooner.
+        ]]></string>
+    <string name="env_var_help__bcn_transcode_to_astc"><![CDATA[
+        Target ASTC when re-encoding BCn textures. ASTC is the format Mali GPUs handle best.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> the usual choice on Mali. Needs the compute layer enabled. Higher quality
+than ETC but slower to produce.
+        ]]></string>
+    <string name="env_var_help__bcn_transcode_to_etc1"><![CDATA[
+        Target ETC1, the oldest and most widely supported compressed format.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> a last resort. ETC1 has no alpha channel, so transparency suffers — use ETC2
+or ASTC where possible.
+        ]]></string>
+    <string name="env_var_help__bcn_transcode_to_etc2"><![CDATA[
+        Target ETC2 instead of ASTC. ETC2 is supported on essentially every Android GPU.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> when ASTC is unavailable or too slow. Quality is lower than ASTC,
+particularly on textures with sharp detail or alpha.
+        ]]></string>
+    <string name="env_var_help__compat_emulate_null_descriptors"><![CDATA[
+        Emulates null descriptors, letting shaders reference resources that are not bound.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Emulate.<br /><br />
+<b>When to change:</b> a DX12 requirement on the compat layer. Without it, games that leave slots
+unbound crash on the first draw call that touches one.
+        ]]></string>
+    <string name="env_var_help__compat_emulate_push_descriptors"><![CDATA[
+        Emulates push descriptors, a fast way of handing shader parameters to the GPU.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Emulate.<br /><br />
+<b>When to change:</b> leave it on for DX12 titles on the compat layer — several use push
+descriptors and will not start without it.
+        ]]></string>
+    <string name="env_var_help__compat_emulate_sparse_binding"><![CDATA[
+        Emulates sparse binding — the ability to build a large resource from scattered pieces of memory —
+which Mali does not support.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Emulate.<br /><br />
+<b>When to change:</b> needed by games using tiled or streaming resources, which otherwise fail at
+startup. Emulation costs memory and speed, so leave it off for games that do not need it.
+        ]]></string>
+    <string name="env_var_help__compat_force_masking"><![CDATA[
+        Forces the compat layer to apply write masking rather than relying on the driver.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Force.<br /><br />
+<b>When to change:</b> a rendering-correctness workaround. Try it when colours or transparency come
+out wrong on Mali in a way no other setting explains.
+        ]]></string>
+    <string name="env_var_help__dxvk_async"><![CDATA[
+        Compiles shader pipelines in the background instead of stopping the game to wait.<br /><br />
+<b>0</b> : Off. Correct but stuttery on first encounter with new effects.<br />
+<b>1</b> : On. Far smoother, at the cost of objects briefly rendering wrong or not at all while
+their shader compiles.<br /><br />
+<b>When to change:</b> turn it on for stutter-prone games. Only works on DXVK builds with async
+support — ours are gplasync builds, which have it.
+        ]]></string>
+    <string name="env_var_help__dxvk_config"><![CDATA[
+        DXVK settings written inline, as <b>key=value</b> pairs separated by semicolons.<br /><br />
+<b>When to change:</b> for one-off tweaks without maintaining a file — for example
+<b>d3d11.maxFeatureLevel=11_0</b> to force an older feature level for a game that misdetects.
+DXVK_CONFIG_FILE is easier for anything longer.
+        ]]></string>
+    <string name="env_var_help__dxvk_config_file"><![CDATA[
+        Path to a dxvk.conf file holding DXVK settings.<br /><br />
+<b>When to change:</b> when you have a set of tweaks to reuse, or a per-game config someone else
+published. The path is inside the container, so it is usually somewhere under the game folder or
+the Windows drive.
+        ]]></string>
+    <string name="env_var_help__dxvk_disable_timeline_semaphores"><![CDATA[
+        Makes DXVK avoid Vulkan timeline semaphores and use the older synchronisation path.<br /><br />
+<b>0</b> : Use them. (default)<br />
+<b>1</b> : Avoid them.<br /><br />
+<b>When to change:</b> a compatibility fallback for drivers whose timeline semaphore support is
+buggy — the symptom is a hang or a GPU crash rather than anything visual.
+        ]]></string>
+    <string name="env_var_help__dxvk_filter_device_name"><![CDATA[
+        Restricts DXVK to a GPU whose name contains this text.<br /><br />
+<b>When to change:</b> only useful on a device exposing more than one Vulkan GPU, where DXVK
+chooses the wrong one. Leave it blank otherwise — a name that matches nothing leaves the game with
+no GPU at all.
+        ]]></string>
+    <string name="env_var_help__dxvk_frame_rate"><![CDATA[
+        Caps the frame rate inside DXVK itself.<br /><br />
+<b>0</b> : No cap.<br />
+Any other number: that many frames per second.<br /><br />
+<b>When to change:</b> capping to 30 or 60 on a phone often gives smoother, cooler, longer-lasting
+play than letting a game run flat out. Also useful for games whose physics or timers misbehave at
+very high frame rates.
+        ]]></string>
+    <string name="env_var_help__dxvk_gplasynccache"><![CDATA[
+        Caches the results of async pipeline compilation between runs.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> pairs with DXVK_ASYNC — turning both on means the brief visual glitches
+while shaders compile happen once rather than every session.
+        ]]></string>
+    <string name="env_var_help__dxvk_hud"><![CDATA[
+        DXVK's on-screen overlay. Pick any combination of items.<br /><br />
+<b>fps</b> frame rate · <b>frametimes</b> a frame-time graph · <b>gpuload</b> GPU utilisation ·
+<b>memory</b> video memory · <b>devinfo</b> GPU name and driver · <b>drawcalls</b>,
+<b>pipelines</b>, <b>compiler</b> workload detail · <b>scale=</b> and <b>opacity=</b> control
+appearance.<br /><br />
+<b>When to change:</b> add <b>fps</b> plus <b>gpuload</b> when you want to know whether a game is
+limited by the GPU or something else. <b>compiler</b> is useful when diagnosing stutter, since it
+shows shader compilation happening. Turn it all off for normal play — the overlay itself costs a
+little.
+        ]]></string>
+    <string name="env_var_help__dxvk_log_level"><![CDATA[
+        How much DXVK writes to its log file.<br /><br />
+<b>none</b> · <b>error</b> · <b>warn</b> · <b>info</b> · <b>debug</b>, in increasing detail.<br /><br />
+<b>When to change:</b> raise it to <b>info</b> or <b>debug</b> when diagnosing a graphics problem —
+the log records the GPU, driver, extensions and DXVK version, which is usually the first thing worth
+checking. Put it back afterwards; debug logging is slow.
+        ]]></string>
+    <string name="env_var_help__dxvk_state_cache"><![CDATA[
+        Whether DXVK saves compiled shader pipelines to disk so later runs start warm.<br /><br />
+<b>0</b> : Off, recompile every run.<br />
+<b>1</b> : On. (default)<br /><br />
+<b>When to change:</b> leave it on — the first playthrough of an area stutters while shaders
+compile, and the cache is what stops that happening again. Turn it off only if a corrupt cache is
+causing crashes, then delete the cache file.
+        ]]></string>
+    <string name="env_var_help__enable_bcn_compute"><![CDATA[
+        Switches on the standalone BCn compute layer, which ships separately from the driver wrapper.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> this is the important one on Mali with the Original wrapper, which has no
+BCn support of its own — the compute layer is then the only way compressed textures work at all.
+Pair it with WRAPPER_EMULATE_BCN=0 so the work is not done twice. Unnecessary on Adreno.
+        ]]></string>
+    <string name="env_var_help__enable_dxvk_mali_compat_layer"><![CDATA[
+        Enables the compatibility layer that fills in D3D features Mali GPUs lack.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> Mali devices only, and required for many DX11 and DX12 games there. It does
+nothing on Adreno.
+        ]]></string>
+    <string name="env_var_help__fd_dev_features"><![CDATA[
+        Overrides device feature flags in the freedreno/Turnip driver.<br /><br />
+<b>enable_tp_ubwc_flag_hint=1</b> and <b>storage_8bit=1</b> switch on capabilities the driver
+otherwise leaves off.<br /><br />
+<b>When to change:</b> only when a specific guide for a specific game tells you to. These change
+what the driver claims to support, and getting it wrong produces corruption rather than a clean
+error.
+        ]]></string>
+    <string name="env_var_help__gallium_hud"><![CDATA[
+        A performance overlay drawn by Mesa's Gallium drivers, separate from the DXVK one.<br /><br />
+<b>simple</b> · <b>fps</b> · <b>frametime</b>.<br /><br />
+<b>When to change:</b> only useful for OpenGL games, since DXVK titles will not show it. For
+D3D games use DXVK_HUD instead.
+        ]]></string>
+    <string name="env_var_help__ir3_shader_debug"><![CDATA[
+        Flags for the Adreno shader compiler inside Mesa.<br /><br />
+<b>nouboopt</b>, <b>nopreamble</b>, <b>noearlypreamble</b> each disable a compiler optimisation.<br /><br />
+<b>When to change:</b> only to work around a shader compiler bug producing corrupted graphics in a
+specific game. Each one costs performance.
+        ]]></string>
+    <string name="env_var_help__mesa_extension_max_year"><![CDATA[
+        Hides any OpenGL extension introduced after the given year.<br /><br />
+<b>When to change:</b> for old games that walk the extension list and break on anything they do not
+recognise. Setting something like 2005 makes the driver look like hardware of that era.
+        ]]></string>
+    <string name="env_var_help__mesa_gl_version_override"><![CDATA[
+        Forces the OpenGL version string reported to the game, for example <b>4.6</b> or <b>3.3COMPAT</b>.<br /><br />
+<b>When to change:</b> for an OpenGL game that refuses to start because it thinks the driver is too
+old. Claiming a version the driver cannot actually deliver usually ends in a crash instead, so it is
+a gamble either way.
+        ]]></string>
+    <string name="env_var_help__mesa_glthread"><![CDATA[
+        Runs OpenGL command submission on its own thread.<br /><br />
+<b>false</b> : Off.<br />
+<b>true</b> : On — can help when the game's main thread is the bottleneck.<br /><br />
+<b>When to change:</b> worth trying for OpenGL games that are CPU-limited. It can also cause
+stutter or crashes in games that use GL from several threads themselves.
+        ]]></string>
+    <string name="env_var_help__mesa_no_error"><![CDATA[
+        Skips OpenGL error checking for a small speed gain.<br /><br />
+<b>0</b> : Normal checking. (default)<br />
+<b>1</b> : Skip it.<br /><br />
+<b>When to change:</b> rarely worth it. A game that generates errors will misbehave unpredictably
+rather than fail cleanly, which makes any other problem much harder to diagnose.
+        ]]></string>
+    <string name="env_var_help__mesa_shader_cache_disable"><![CDATA[
+        Turns off Mesa's on-disk shader cache.<br /><br />
+<b>false</b> : Cache enabled. (default)<br />
+<b>true</b> : Disabled — recompile every run.<br /><br />
+<b>When to change:</b> essentially never, except to test whether a corrupt cache is causing crashes
+or artefacts. Leaving it disabled means permanent first-run stutter.
+        ]]></string>
+    <string name="env_var_help__mesa_vk_wsi_present_mode"><![CDATA[
+        How finished frames are handed to the display.<br /><br />
+<b>fifo</b> : Wait for the display. No tearing, capped to the refresh rate. Most power-efficient.<br />
+<b>mailbox</b> : Keep the newest frame ready, discard older ones. Smooth and tear-free, uses more
+power.<br />
+<b>immediate</b> : Show frames as soon as they are done. Lowest lag, can tear.<br />
+<b>relaxed</b> : Like fifo but allows tearing when the game falls behind.<br /><br />
+<b>When to change:</b> frame generation needs <b>mailbox</b> or <b>immediate</b> — it does nothing
+on fifo. Otherwise fifo is the sane default, and immediate is for chasing minimum input lag.
+        ]]></string>
+    <string name="env_var_help__pulse_latency_msec"><![CDATA[
+        How much audio PulseAudio buffers ahead, in milliseconds.<br /><br />
+Lower means more responsive sound and a higher risk of crackling. Higher means safer but more
+delayed audio.<br /><br />
+<b>When to change:</b> raise it (60-120) if audio crackles or drops out under load. Lower it
+(20-40) if sound noticeably lags the action. Only applies to the PulseAudio backend.
+        ]]></string>
+    <string name="env_var_help__tu_debug"><![CDATA[
+        Debug and behaviour flags for Turnip, the open-source Vulkan driver for Adreno GPUs.<br /><br />
+Most are diagnostic (<b>startup</b>, <b>perf</b>, <b>nir</b>), while others disable optimisations
+(<b>noubwc</b>, <b>nolrz</b>, <b>sysmem</b>, <b>forcebin</b>).<br /><br />
+<b>When to change:</b> the disable flags are compatibility workarounds — <b>nolrz</b> and
+<b>noubwc</b> in particular fix rendering glitches on some games at a cost in speed. The diagnostic
+flags belong in a bug report, not in normal play.
+        ]]></string>
+    <string name="env_var_help__vkd3d_config"><![CDATA[
+        VKD3D behaviour flags, several allowed at once.<br /><br />
+<b>When to change:</b> these are targeted workarounds — most are for specific bugs in specific
+games. Leave it empty unless a per-game guide tells you otherwise.
+        ]]></string>
+    <string name="env_var_help__vkd3d_debug"><![CDATA[
+        How much VKD3D writes to its log.<br /><br />
+<b>none</b> · <b>err</b> · <b>fixme</b> · <b>warn</b> · <b>trace</b>, in increasing detail.<br /><br />
+<b>When to change:</b> raise it when a D3D12 game misbehaves. <b>trace</b> is enormous and slow —
+use it only briefly.
+        ]]></string>
+    <string name="env_var_help__vkd3d_feature_level"><![CDATA[
+        The highest D3D12 feature level VKD3D reports.<br /><br />
+<b>12_2</b> down to <b>11_0</b>.<br /><br />
+<b>When to change:</b> lower it for a game that asks for features the GPU lacks and crashes rather
+than falling back. Raise it only if a game refuses to start claiming the hardware is too old.
+        ]]></string>
+    <string name="env_var_help__vkd3d_shader_model"><![CDATA[
+        The highest D3D12 shader model VKD3D reports to the game.<br /><br />
+<b>6_6</b> down to <b>5_1</b>, newest first.<br /><br />
+<b>When to change:</b> lower it when a game requests shaders your driver cannot actually compile —
+the symptom is a crash or black rendering shortly after loading. Lowering it makes the game pick a
+simpler path.
+        ]]></string>
+    <string name="env_var_help__vkd3d_swapchain_latency_frames"><![CDATA[
+        How many frames VKD3D lets the game queue ahead of the display.<br /><br />
+Lower means less input lag but more chance of the GPU idling. Higher means smoother pacing and more
+lag.<br /><br />
+<b>When to change:</b> lower it (1 or 2) if a D3D12 game feels laggy to control. Raise it if the
+frame rate is uneven despite the GPU having headroom.
+        ]]></string>
+    <string name="env_var_help__wine_disable_fullscreen_hack"><![CDATA[
+        Wine normally intercepts a game's fullscreen resolution change and fakes it, so the desktop stays
+at its real resolution.<br /><br />
+<b>0</b> : Keep the hack. (default)<br />
+<b>1</b> : Disable it and let the game change the mode for real.<br /><br />
+<b>When to change:</b> disable it if a game's fullscreen is stretched, offset, or shows the wrong
+part of the screen.
+        ]]></string>
+    <string name="env_var_help__wine_do_not_create_dxgi_device_manager"><![CDATA[
+        Stops Wine creating the DXGI device manager that hardware video decoding hangs off.<br /><br />
+<b>0</b> : Normal behaviour.<br />
+<b>1</b> : Skip it.<br /><br />
+<b>When to change:</b> a workaround for games that crash or hang on startup while setting up video
+playback — typically at an intro movie or a cutscene.
+        ]]></string>
+    <string name="env_var_help__wine_fast_yield"><![CDATA[
+        Our own fast-yield gate. Some games spin a worker thread that repeatedly asks the system to let
+something else run; on a phone that ends up pegging one core at 100% regardless of your frame
+cap.<br /><br />
+<b>0</b> : Normal yield behaviour. (default)<br />
+<b>1</b> : Make the yield a no-op so the thread stops burning the core.<br /><br />
+<b>When to change:</b> turn it on for a game where one core sits at 100% and the device runs hot
+while the frame rate is capped and fine. Tester-measured on Cyberpunk: prime core 100% down to
+roughly 0-3%, power ~5.3W down to ~3.9W, frame rate unchanged.<br /><br />
+<b>Risk:</b> a no-op yield can starve the thread that was waiting to run, which hangs some games.
+It also needs a layer built with the gate — Proton 10.0-2 and newer have it; older layers ignore
+the variable entirely.
+        ]]></string>
+    <string name="env_var_help__wine_fullscreen_fsr"><![CDATA[
+        AMD FidelityFX Super Resolution upscaling for fullscreen games. Renders at a lower internal
+resolution and upscales, which can be a large speed win.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> turn it on when a game runs slowly at native resolution. It only applies to
+games running genuinely fullscreen at a lower-than-native resolution — a game already at native
+resolution has nothing to upscale.
+        ]]></string>
+    <string name="env_var_help__wine_fullscreen_fsr_strength"><![CDATA[
+        How aggressively FSR sharpens the upscaled image. Lower is sharper.<br /><br />
+Typical range <b>0</b> to <b>5</b>; <b>2</b> is a common middle ground.<br /><br />
+<b>When to change:</b> only meaningful with WINE_FULLSCREEN_FSR on. Lower it if the image looks
+soft, raise it if sharpening makes edges look harsh or noisy.
+        ]]></string>
+    <string name="env_var_help__wine_gst_no_gl"><![CDATA[
+        Stops GStreamer, which decodes in-game video, from using the GPU.<br /><br />
+<b>0</b> : Allow GPU decoding.<br />
+<b>1</b> : Force CPU decoding.<br /><br />
+<b>When to change:</b> set it to 1 if cutscenes crash, freeze the game, or show corrupted video.
+CPU decoding is slower but far more reliable under emulation.
+        ]]></string>
+    <string name="env_var_help__wine_new_mediasource"><![CDATA[
+        Selects Wine's newer media pipeline for in-game video.<br /><br />
+<b>0</b> : Old pipeline.<br />
+<b>1</b> : New pipeline.<br /><br />
+<b>When to change:</b> try the other setting when cutscenes are black, silent, stuttering or hang
+the game. Which one works varies by title.
+        ]]></string>
+    <string name="env_var_help__wine_x11forceglx"><![CDATA[
+        Forces the X11 driver down the GLX path rather than its newer default.<br /><br />
+<b>0</b> : Normal.<br />
+<b>1</b> : Force GLX.<br /><br />
+<b>When to change:</b> a compatibility fallback for OpenGL games that render black or fail to
+create a context.
+        ]]></string>
+    <string name="env_var_help__winedebug"><![CDATA[
+        Wine's logging channels. Controls what goes into wine_debug.log.<br /><br />
+<b>-all</b> : Silence everything. Fastest.<br />
+<b>fixme-all</b> : Hide the noisy fixme messages, keep errors.<br />
+<b>+seh</b> : Exception detail — useful for crashes.<br />
+<b>+relay</b> : Every API call. Enormous and very slow.<br />
+<b>warn+all</b> : Everything at warning level and above.<br /><br />
+<b>When to change:</b> leave it alone unless you are diagnosing something. Custom values like
+"+loaddll,+seh" are kept as typed. Logging costs real performance, and a hang with logging on can
+write hundreds of megabytes.
+        ]]></string>
+    <string name="env_var_help__winedlloverrides"><![CDATA[
+        Tells Wine whether to use its own version of a DLL or one shipped with the game.<br /><br />
+Format is <b>name=b</b> for Wine's builtin, <b>name=n</b> for the game's native file, or
+<b>name=n,b</b> to prefer native and fall back. Several are separated by semicolons.<br /><br />
+<b>When to change:</b> the usual case is a game shipping its own copy of a library that works
+better than Wine's, or the reverse. The editor detects DLLs in the game folder and offers a toggle
+per file, which is easier than typing this by hand.
+        ]]></string>
+    <string name="env_var_help__wineesync"><![CDATA[
+        Eventfd-based thread synchronisation. Windows programs wait on each other constantly; esync makes
+those waits far cheaper than Wine's default server round-trip.<br /><br />
+<b>0</b> : Off, use the normal Wine server path.<br />
+<b>1</b> : On. Often a large frame-rate gain in threaded games.<br /><br />
+<b>When to change:</b> on by default in most of our layers and usually worth having. Turn it off if
+a game deadlocks or hangs on a loading screen — esync is known to deadlock some titles.
+        ]]></string>
+    <string name="env_var_help__winefsync"><![CDATA[
+        Futex-based synchronisation. Same purpose as esync but using a newer kernel mechanism, generally
+faster where the kernel supports it.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> needs kernel support that many Android devices lack, and it is silently
+ignored where unavailable. If enabling it changes nothing, your kernel does not have it — esync is
+the fallback.
+        ]]></string>
+    <string name="env_var_help__winevmemmaxsize"><![CDATA[
+        Caps the video memory Wine reports to the game, in megabytes.<br /><br />
+<b>When to change:</b> some games misbehave when told the GPU has an unusual amount of memory —
+allocating far too much and running out, or refusing to start. Setting a sane figure such as 2048
+or 4096 can fix that. Leave it unset unless a game has a memory-related problem.
+        ]]></string>
+    <string name="env_var_help__wrapper_bcn_astc"><![CDATA[
+        Re-encodes BCn textures to ASTC, which Mali GPUs do read natively. Part of the wrapper's integrated
+path.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> for Mali devices running games with compressed textures, when using a
+wrapper that carries the integrated path. This path is ASTC only — ETC needs the standalone
+layer.
+        ]]></string>
+    <string name="env_var_help__wrapper_bcn_gpu"><![CDATA[
+        Does the BCn decode work on the GPU rather than the CPU.<br /><br />
+<b>0</b> : CPU.<br />
+<b>1</b> : GPU.<br /><br />
+<b>When to change:</b> GPU decode is usually much faster and cuts loading times, but uses GPU time
+the game also wants. Switch back to CPU if enabling it costs frame rate.
+        ]]></string>
+    <string name="env_var_help__wrapper_device_id"><![CDATA[
+        Reports a different Vulkan device ID to the game.<br /><br />
+<b>When to change:</b> paired with the vendor ID for games that identify the GPU by number and take
+a hardware-specific path. Rarely needed.
+        ]]></string>
+    <string name="env_var_help__wrapper_device_name"><![CDATA[
+        Reports a different GPU name to the game.<br /><br />
+<b>When to change:</b> for games that check the GPU name and refuse to run, or enable a broken
+vendor-specific path. Purely cosmetic to the driver — it changes only what the game is told.
+        ]]></string>
+    <string name="env_var_help__wrapper_diag"><![CDATA[
+        Turns on the wrapper's own diagnostic logging.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> for diagnosing driver-level problems, and worth turning off afterwards —
+logging on the graphics path costs performance.
+        ]]></string>
+    <string name="env_var_help__wrapper_disable_placed"><![CDATA[
+        Disables placed memory allocations in the wrapper.<br /><br />
+<b>0</b> : Normal.<br />
+<b>1</b> : Disabled.<br /><br />
+<b>When to change:</b> a compatibility toggle for drivers that mishandle this allocation style.
+Try it for memory-related crashes that no other setting fixes.
+        ]]></string>
+    <string name="env_var_help__wrapper_disable_present_wait"><![CDATA[
+        Stops the wrapper using the present-wait extension for frame pacing.<br /><br />
+<b>0</b> : Use it.<br />
+<b>1</b> : Disable it.<br /><br />
+<b>When to change:</b> a fallback for drivers whose present-wait is broken. The symptom is the game
+hanging at the point it tries to show its first frame.
+        ]]></string>
+    <string name="env_var_help__wrapper_driver_id"><![CDATA[
+        Overrides the driver identity string the wrapper reports.<br /><br />
+<b>When to change:</b> some games and layers take a different code path per driver vendor. Changing
+this can dodge a driver-specific workaround that is doing more harm than good on our stack.
+        ]]></string>
+    <string name="env_var_help__wrapper_emulate_bcn"><![CDATA[
+        BCn texture emulation inside the driver wrapper. Desktop games ship BC/DXT compressed textures that
+Mali GPUs cannot read natively.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Basic.<br />
+<b>2</b> : Full.<br />
+<b>3</b> : Auto. (default)<br /><br />
+<b>When to change:</b> only the leegao and GameNative wrappers implement this — the Winlator base
+and Bionic wrappers ignore it. On Adreno it is unnecessary, since those GPUs read BCn natively. Set
+it to 0 if you are using the standalone compute layer instead, to avoid transcoding twice.
+        ]]></string>
+    <string name="env_var_help__wrapper_extension_blacklist"><![CDATA[
+        A comma-separated list of Vulkan extensions to hide from the game.<br /><br />
+<b>When to change:</b> when a game uses an extension the driver reports but does not implement well
+— the result is usually corruption or a GPU hang. Hiding it forces the game down a working path.
+        ]]></string>
+    <string name="env_var_help__wrapper_max_image_count"><![CDATA[
+        Caps how many images the swapchain may hold.<br /><br />
+Fewer images means less lag and less memory; more means smoother pacing.<br /><br />
+<b>When to change:</b> setting 2 or 3 can reduce input lag. Too few can make the frame rate uneven,
+since the GPU waits for an image to become free.
+        ]]></string>
+    <string name="env_var_help__wrapper_no_bcn_thread"><![CDATA[
+        Transcodes textures on the thread that needs them instead of on a background worker.<br /><br />
+<b>0</b> : Background thread. (default)<br />
+<b>1</b> : Inline.<br /><br />
+<b>When to change:</b> a debugging and stability fallback. Inline transcoding stalls the game while
+it happens, so expect longer loading pauses.
+        ]]></string>
+    <string name="env_var_help__wrapper_no_patch_opconstcomp"><![CDATA[
+        Stops the wrapper rewriting a particular SPIR-V shader construct before handing it to the driver.<br /><br />
+<b>0</b> : Patch as usual. (default)<br />
+<b>1</b> : Leave shaders alone.<br /><br />
+<b>When to change:</b> the patch exists to work around driver bugs; disabling it is worth trying if
+shaders fail to compile or render incorrectly on a driver that does not need the workaround.
+        ]]></string>
+    <string name="env_var_help__wrapper_reduce_depth_format"><![CDATA[
+        Uses a simpler depth buffer format than the game asked for.<br /><br />
+<b>0</b> : Honour the request.<br />
+<b>1</b> : Reduce it.<br /><br />
+<b>When to change:</b> compatibility for GPUs that struggle with certain depth formats. Symptoms
+are z-fighting, missing geometry, or shadows rendering wrong.
+        ]]></string>
+    <string name="env_var_help__wrapper_resource_type"><![CDATA[
+        Overrides how the wrapper classifies graphics resources.<br /><br />
+<b>When to change:</b> an advanced compatibility knob — leave it blank unless a per-game guide
+specifies a value.
+        ]]></string>
+    <string name="env_var_help__wrapper_safe_create_device"><![CDATA[
+        Creates the Vulkan device more conservatively, requesting fewer optional features at once.<br /><br />
+<b>0</b> : Normal.<br />
+<b>1</b> : Safe path.<br /><br />
+<b>When to change:</b> try it when a game crashes immediately at startup, before anything renders —
+that pattern often means device creation failed.
+        ]]></string>
+    <string name="env_var_help__wrapper_use_bcn_cache"><![CDATA[
+        Caches transcoded textures so the work happens once rather than every time a texture loads.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> worth having on if you have the storage — it noticeably cuts repeat loading
+times. Turn it off if space is tight.
+        ]]></string>
+    <string name="env_var_help__wrapper_vendor_id"><![CDATA[
+        Reports a different GPU vendor ID to the game.<br /><br />
+<b>When to change:</b> for games that enable vendor-specific rendering paths. Claiming a vendor
+whose extensions the driver lacks usually makes things worse, so change it only on advice.
+        ]]></string>
+    <string name="env_var_help__wrapper_vk_version"><![CDATA[
+        The Vulkan version the wrapper reports to the game, for example <b>1.4</b>.<br /><br />
+<b>When to change:</b> for a game or translation layer that refuses to run against the version the
+driver actually reports. Claiming a version the driver cannot deliver moves the failure later rather
+than fixing it.
+        ]]></string>
+    <string name="env_var_help__wrapper_vmem_max_size"><![CDATA[
+        Caps the video memory the wrapper reports, in megabytes. <b>0</b> leaves it unset.<br /><br />
+<b>When to change:</b> for games that allocate based on reported memory and then run out, or that
+refuse to start when the figure looks wrong. A round number like 2048 or 4096 is a reasonable
+starting point.
+        ]]></string>
+    <string name="env_var_help__zink_debug"><![CDATA[
+        Debug flags for the Zink OpenGL-on-Vulkan layer.<br /><br />
+<b>validation</b> enables the Vulkan validation layers; <b>sync</b> forces synchronous submission;
+<b>nir</b>, <b>spirv</b> and <b>tgsi</b> dump shader stages.<br /><br />
+<b>When to change:</b> diagnosis only. <b>sync</b> is occasionally useful to establish whether a
+crash is a synchronisation problem, but everything here is slow.
+        ]]></string>
+    <string name="env_var_help__zink_descriptors"><![CDATA[
+        How Zink — which runs OpenGL on top of Vulkan — manages descriptors.<br /><br />
+<b>auto</b> : Let Zink decide. (default)<br />
+<b>lazy</b> : Simplest and often fastest.<br />
+<b>cached</b> : Reuse descriptor sets.<br />
+<b>notemplates</b> : Avoid update templates, a compatibility fallback.<br /><br />
+<b>When to change:</b> only applies to OpenGL games running through Zink. <b>lazy</b> is worth
+trying for speed, <b>notemplates</b> if you get driver crashes.
+        ]]></string>
 </resources>

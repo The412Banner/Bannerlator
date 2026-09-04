@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,11 +52,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.SectionBox
+import com.winlator.star.core.StringUtils
+import com.winlator.star.ui.screens.HelpTextDialog
 import com.winlator.star.ui.screens.outlinedMenuCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -677,6 +681,9 @@ private fun EnvVarRow(
 ) {
     val known = KnownEnvVars.find(row.name)
     val type = known?.type ?: EnvVarType.TEXT
+    val context = LocalContext.current
+    val help = remember(row.name) { envVarHelp(context, row.name) }
+    var showHelp by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -725,11 +732,31 @@ private fun EnvVarRow(
                 }
             }
         }
+        // "?" only when we actually have something to say — a variable with no help string shows
+        // no button rather than one that does nothing when tapped.
+        if (help != null) {
+            IconButton(onClick = { showHelp = true }) {
+                Icon(
+                    Icons.Outlined.HelpOutline,
+                    contentDescription = "About ${row.name}",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         IconButton(onClick = onRemove) {
             Icon(Icons.Default.Delete, contentDescription = "Remove ${row.name}")
         }
     }
+    if (showHelp && help != null) HelpTextDialog(help) { showHelp = false }
 }
+
+/**
+ * Per-variable help, looked up by name: env_var_help__&lt;name lowercased&gt;. Resolved by name rather
+ * than resource id because the catalog is data, not code — a variable added to KnownEnvVars picks
+ * its help up automatically once the string exists, and shows no "?" until it does.
+ */
+private fun envVarHelp(context: android.content.Context, name: String): String? =
+    StringUtils.getString(context, "env_var_help__" + name.lowercase(java.util.Locale.ENGLISH))
 
 /**
  * The typed value field shared by SELECT, TEXT and NUMBER rows.

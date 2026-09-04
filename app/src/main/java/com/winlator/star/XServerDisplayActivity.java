@@ -2969,6 +2969,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     if (frameRating != null) frameRating.setPresentedFps(shownFps);
                     if (frameRatingHorizontal != null)
                         frameRatingHorizontal.setPresentedFps(shownFps);
+                    if (fusionHud != null) fusionHud.setPresentedFps(shownFps);
                 }
                 if (lsfgStatsHandler != null) lsfgStatsHandler.postDelayed(this, 1000);
             }
@@ -2980,6 +2981,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // 0 puts both HUDs back to plain guest-rate reporting.
         if (frameRating != null) frameRating.setPresentedFps(0f);
         if (frameRatingHorizontal != null) frameRatingHorizontal.setPresentedFps(0f);
+        if (fusionHud != null) fusionHud.setPresentedFps(0f);
         if (lsfgStatsHandler != null && lsfgStatsTick != null)
             lsfgStatsHandler.removeCallbacks(lsfgStatsTick);
         lsfgStatsHandler = null;

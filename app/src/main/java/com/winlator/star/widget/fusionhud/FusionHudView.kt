@@ -57,6 +57,14 @@ class FusionHudView(
     private var fpsCounter: FpsCounter? = null
     fun setFpsCounter(counter: FpsCounter?) { fpsCounter = counter }
 
+    // Frames per second actually reaching the panel. FpsCounter is ticked once
+    // per GUEST frame, so it counts what the game draws and cannot see frames
+    // added after it: with native LSFG generating three for every one, this HUD
+    // showed 30 while the display was showing 118. 0 = nothing is adding
+    // frames, and the readout is exactly what it always was.
+    private var presentedFps = 0f
+    fun setPresentedFps(fps: Float) { presentedFps = fps }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var updateJob: Job? = null
     private val metrics = HudMetrics(context)
@@ -309,8 +317,14 @@ class FusionHudView(
         return x
     }
 
-    private fun fpsText(v: Float): String =
+    private fun one(v: Float): String =
         if (fpsDecimal) String.format(Locale.US, "%.1f", v) else v.roundToInt().toString()
+
+    // Shows "30->118" while something downstream of the game is adding frames.
+    // The game's own rate stays visible next to the panel rate, because the gap
+    // between the two is precisely what frame generation is doing.
+    private fun fpsText(v: Float): String =
+        if (presentedFps > v + 1f) "${one(v)}\u2192${one(presentedFps)}" else one(v)
 
     private fun fmt1(v: Float): String = String.format(Locale.US, "%.1f", v)
     private fun lowText(v: Float): String? = if (v <= 0f) null else fmt1(v)

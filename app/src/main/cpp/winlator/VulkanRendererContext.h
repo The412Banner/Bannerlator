@@ -287,6 +287,13 @@ public:
     // not pay for.
     void setFrameGenArmed(bool armed, int multiplier);
     bool frameGenArmed() const { return fgArmed_.load(std::memory_order_relaxed); }
+    // Live frame-gen telemetry for the in-game readout:
+    //   [0] generations the governor currently trusts
+    //   [1] generations actually planned for the last source frame
+    //   [2] measured source (real) frames per second
+    //   [3] measured presented frames per second
+    //   [4] thermal status, -1 when the device gives no signal
+    void frameGenStats(float out[5]) const;
     // Path to the SPIR-V cache built from the user's Lossless.dll. Setting it
     // drops any existing engine so the next armed frame rebuilds from it.
     void setLsfgCachePath(const char* path);

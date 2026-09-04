@@ -4,14 +4,30 @@ Phased plan to move Lossless Scaling frame generation from the in-container
 Vulkan layer (`lsfg-vk`) into Bannerlator's own Vulkan compositor, on the
 Android side of the Wine boundary.
 
-**Status:** in progress. Branch `feat/lsfg-native-compositor`, based on clean
-`main` (`3b8f9663`).
+**Status:** implemented on `feat/lsfg-native-compositor`, based on clean `main`
+(`3b8f9663`). Built, not yet device-proven.
+
+| Phase | State |
+|---|---|
+| 0 — device features + probe | built, CI-green |
+| 1 — `Lossless.dll` → modules + cache | built, CI-green |
+| 1b — DXBC → SPIR-V (vendored DXVK `dxbc`) | built, CI-green |
+| 2 — storage-capable composite ring | built, CI-green |
+| 3 — compute + the 25-shader chain | built |
+| 4 — multi-present, one submit per source frame | built |
+| 5 — probe/backoff governor + thermals | built |
+| 6 — engine wiring, UI, per-present cursor | built |
+| 7 — CI build + staged APK | pending |
+
+Nothing here is device-proven. "Built" means it compiles and the logic is
+reviewed; whether a game boots, renders and actually gains frames is what the
+device test is for.
 
 The unmerged `feat/framegen-compositor-slot` branch is **not** the base. Its
-pacer and multi-present cadence are instead built fresh here, designed for a
+pacer and multi-present cadence were instead built fresh here, designed for a
 generating producer from the start rather than retrofitted from a
-de-coalescing one. That branch remains independent; if it merges later, the
-overlap is the pacer, and this implementation supersedes it.
+de-coalescing one. That branch remains independent; the overlap is the pacer,
+and this implementation supersedes it.
 
 ---
 

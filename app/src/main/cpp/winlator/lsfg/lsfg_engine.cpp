@@ -253,6 +253,9 @@ void Engine::generateInto(VkCommandBuffer cmd, uint32_t generation, uint32_t tar
                                targetImage, VkExtent2D{width, height});
 }
 
+float Engine::sourceRate() const { return pacer_.Stats().source_rate; }
+float Engine::loopRate()   const { return pacer_.Stats().loop_rate; }
+
 void Engine::forgetTargets() {
     if (chain_) chain_->ForgetTargets();
 }

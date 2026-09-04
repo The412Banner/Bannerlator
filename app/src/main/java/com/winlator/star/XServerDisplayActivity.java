@@ -2908,6 +2908,53 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
         vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
         vkr.setFrameGenArmed(multiplier >= 2, multiplier);
+        if (multiplier >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
+    }
+
+    // Live readout for the FG drawer, polled while the native engine is armed.
+    private android.os.Handler lsfgStatsHandler;
+    private Runnable lsfgStatsTick;
+
+    /**
+     * Poll the renderer for what frame generation is actually achieving and
+     * push it to the drawer. Worth showing because the multiplier is a ceiling
+     * to earn, not a setting that is obeyed - the governor grants an extra
+     * generated frame only when it measurably helps, so "4x selected" and
+     * "2x running" is a normal, correct state rather than a bug.
+     */
+    private void startLsfgStatsReadout() {
+        if (lsfgStatsHandler != null) return;
+        lsfgStatsHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        lsfgStatsTick = new Runnable() {
+            @Override public void run() {
+                com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+                float[] st = (vkr != null) ? vkr.getFrameGenStats() : null;
+                if (st != null && st.length >= 5) {
+                    final int trusted = (int) st[0];
+                    final float realFps = st[2], shownFps = st[3];
+                    String text;
+                    if (shownFps <= 0f) {
+                        text = "measuring…";
+                    } else {
+                        text = String.format(java.util.Locale.US,
+                            "%.0f real → %.0f shown  (%dx", realFps, shownFps, trusted + 1);
+                        if (st[4] >= 3f) text += ", throttling";
+                        text += ")";
+                    }
+                    XServerDrawerState.INSTANCE.setFrameGenReadout(text);
+                }
+                if (lsfgStatsHandler != null) lsfgStatsHandler.postDelayed(this, 1000);
+            }
+        };
+        lsfgStatsHandler.postDelayed(lsfgStatsTick, 1000);
+    }
+
+    private void stopLsfgStatsReadout() {
+        if (lsfgStatsHandler != null && lsfgStatsTick != null)
+            lsfgStatsHandler.removeCallbacks(lsfgStatsTick);
+        lsfgStatsHandler = null;
+        lsfgStatsTick = null;
+        XServerDrawerState.INSTANCE.setFrameGenReadout("");
     }
 
     /** The panel's real refresh rate; the pacer never generates above it. */
@@ -5506,6 +5553,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         // Stop publishing the lsfg-vk vsync clock on game exit.
         stopVsyncClock();
+        // ... and stop polling the native LSFG readout.
+        stopLsfgStatsReadout();
         if (vsyncWriteExecutor != null) {
             vsyncWriteExecutor.shutdownNow();
             vsyncWriteExecutor = null;

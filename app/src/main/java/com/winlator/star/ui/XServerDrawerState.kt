@@ -133,6 +133,12 @@ object XServerDrawerState {
 
     // lsfg-vk only: performance_mode (lower interpolation quality, higher FPS — for low-end devices).
     // Seeded from the container when the drawer opens; toggled live from the FG pane (rewrites conf.toml).
+    // Live readout for the native LSFG engine: what the governor currently
+    // trusts and what the panel is actually getting. Empty when it is not the
+    // running engine. Pushed from the activity, which polls the renderer.
+    private val _frameGenReadout = MutableStateFlow("")
+    val frameGenReadout: StateFlow<String> = _frameGenReadout
+
     private val _lsfgPerformanceMode = MutableStateFlow(false)
     val lsfgPerformanceMode: StateFlow<Boolean> = _lsfgPerformanceMode
 
@@ -435,6 +441,7 @@ object XServerDrawerState {
     fun setFrameGenModel(v: Int)           { _frameGenModel.value = v.coerceIn(0, 4) }
     fun setFrameGenPerfPreset(v: Int)      { _frameGenPerfPreset.value = v.coerceIn(0, 2) }
     fun setFrameGenEngine(v: String)       { _frameGenEngine.value = v }
+    fun setFrameGenReadout(v: String)      { _frameGenReadout.value = v }
     fun setLsfgPerformanceMode(v: Boolean) { _lsfgPerformanceMode.value = v }
     fun setFpsLimiterEnabled(v: Boolean)   { _fpsLimiterEnabled.value = v }
     fun setFpsLimit(v: Int)                { _fpsLimit.value = v }

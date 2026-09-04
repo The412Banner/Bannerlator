@@ -1217,9 +1217,10 @@ private fun FrameGenSection(state: XServerDrawerState) {
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
     // labeled twice. Badge shows bionic-fg / lsfg-vk depending on the container's selection.
     val engineLabel = when (engine) {
-        "lsfg"   -> "lsfg-vk"
-        "bionic" -> "win-fg"
-        else     -> "Off"
+        "lsfg"        -> "lsfg-vk"
+        "lsfg-native" -> "LSFG Native"
+        "bionic"      -> "win-fg"
+        else          -> "Off"
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0
     // (Off) every launch even when the container has an engine selected, so gate on initFgMult too
@@ -1252,6 +1253,19 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 fontWeight = FontWeight.Medium
             )
         }
+    }
+
+    // Native LSFG reports what it is actually achieving, because the requested
+    // multiplier is a ceiling to earn rather than a setting that is obeyed: the
+    // governor only keeps an extra generated frame when it measurably helps.
+    val readout by state.frameGenReadout.collectAsState()
+    if (readout.isNotEmpty()) {
+        Spacer(Modifier.height(4.dp))
+        Text(
+            readout,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+            fontSize = 10.sp
+        )
     }
     Spacer(Modifier.height(8.dp))
 

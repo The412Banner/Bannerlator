@@ -85,6 +85,8 @@ public:
     // reading (-1 = no signal). Surfaced for the HUD and diagnostics.
     uint32_t acceptedGenerations() const { return governor_.accepted(); }
     int      thermalStatus() const { return governor_.thermalStatus(); }
+    float    sourceRate() const;
+    float    loopRate() const;
 
     void forgetTargets();
     void reset();

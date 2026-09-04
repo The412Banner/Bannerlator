@@ -135,6 +135,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetFrameGenArmed(long handle, boolean armed, int multiplier);
     private native void nativeSetLsfgCachePath(long handle, String path);
     private native void nativeSetFrameGenTuning(long handle, float flowScale, float refreshHz);
+    private native float[] nativeFrameGenStats(long handle);
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -922,6 +923,18 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         synchronized (lock) {
             if (nativeHandle != 0) nativeSetLsfgCachePath(nativeHandle, path);
         }
+    }
+
+    /**
+     * Live native frame-gen telemetry, or null when the renderer is down:
+     * {generations trusted, generations planned, real fps, presented fps,
+     * thermal status (-1 = no signal)}.
+     */
+    public float[] getFrameGenStats() {
+        synchronized (lock) {
+            if (nativeHandle != 0) return nativeFrameGenStats(nativeHandle);
+        }
+        return null;
     }
 
     /** Flow scale (0.25-1.0) and the panel's real refresh rate. */

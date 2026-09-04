@@ -2970,6 +2970,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     if (frameRatingHorizontal != null)
                         frameRatingHorizontal.setPresentedFps(shownFps);
                     if (fusionHud != null) fusionHud.setPresentedFps(shownFps);
+                    if (perfHud != null) perfHud.setPresentedFps(shownFps);
+                    if (gameNativeHud != null) gameNativeHud.setPresentedFps(shownFps);
                 }
                 if (lsfgStatsHandler != null) lsfgStatsHandler.postDelayed(this, 1000);
             }
@@ -2982,6 +2984,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (frameRating != null) frameRating.setPresentedFps(0f);
         if (frameRatingHorizontal != null) frameRatingHorizontal.setPresentedFps(0f);
         if (fusionHud != null) fusionHud.setPresentedFps(0f);
+        if (perfHud != null) perfHud.setPresentedFps(0f);
+        if (gameNativeHud != null) gameNativeHud.setPresentedFps(0f);
         if (lsfgStatsHandler != null && lsfgStatsTick != null)
             lsfgStatsHandler.removeCallbacks(lsfgStatsTick);
         lsfgStatsHandler = null;

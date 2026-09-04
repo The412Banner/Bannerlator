@@ -595,8 +595,14 @@ class FusionHudView(
         val pad = sp(10f); val midGap = sp(12f); val stkLineGap = sp(3f)
 
         val left = ArrayList<Span>()
-        left += Span(fpsText(fpsNow), colValue, bigPx)
-        left += Span("fps", colDim, bigUnitPx)
+        // "30->118" is roughly three times the width of "30", and the pill's
+        // number is set at 30sp precisely because it is the one big thing on a
+        // small overlay. Shrink it while it carries both figures so the pill
+        // does not balloon across the screen; it is still the largest element.
+        val generating = presentedFps > fpsNow + 1f
+        val fpsPx = if (generating) bigPx * 0.55f else bigPx
+        left += Span(fpsText(fpsNow), colValue, fpsPx)
+        left += Span("fps", colDim, if (generating) bigUnitPx * 0.8f else bigUnitPx)
 
         val stack = ArrayList<List<Span>>()
         if (showGpuModel && gpuModel.isNotBlank()) stack.add(listOf(Span(gpuModel, colDim, stkPx)))
@@ -677,7 +683,11 @@ class FusionHudView(
         val bigPx = sp(34f); val bigUnitPx = bigPx * 0.32f; val subPx = sp(11.5f)
         val pad = sp(10f); val lineGap = sp(6f)
 
-        val big = listOf(Span(fpsText(fpsNow), colValue, bigPx), Span("fps", colDim, bigUnitPx))
+        // Same reasoning as the pill: 34sp is sized for one number, not two.
+        val minGenerating = presentedFps > fpsNow + 1f
+        val big = listOf(
+            Span(fpsText(fpsNow), colValue, if (minGenerating) bigPx * 0.55f else bigPx),
+            Span("fps", colDim, if (minGenerating) bigUnitPx * 0.8f else bigUnitPx))
         val sub = ArrayList<Span>()
         sub += Span("1% ", colDim, subPx); sub += Span(lowText(lows.low1Fps) ?: "—", colFps, subPx)
         sub += Span("  ·  0.1% ", colDim, subPx); sub += Span(lowText(lows.low01Fps) ?: "—", colFps, subPx)

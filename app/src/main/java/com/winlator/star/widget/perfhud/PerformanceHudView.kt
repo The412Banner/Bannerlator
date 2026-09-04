@@ -73,6 +73,12 @@ class PerformanceHudView(
 
     fun setFpsCounter(counter: FpsCounter?) { fpsCounter = counter }
 
+    // Frames per second actually reaching the panel. FpsCounter ticks once per
+    // GUEST frame and so cannot see frames added after the game. 0 = nothing is
+    // adding any, and the readout is exactly what it always was.
+    private var presentedFps = 0f
+    fun setPresentedFps(fps: Float) { presentedFps = fps }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var updateJob: Job? = null
     private val metrics = HudMetrics(context)
@@ -330,7 +336,9 @@ class PerformanceHudView(
             fpsValue = currentFps,
             cpuValue = cpu?.toFloat(),
             gpuValue = gpu?.toFloat(),
-            fps = String.format(Locale.US, "FPS %.1f", currentFps),
+            fps = if (presentedFps > currentFps + 1f)
+                String.format(Locale.US, "FPS %.0f\u2192%.0f", currentFps, presentedFps)
+            else String.format(Locale.US, "FPS %.1f", currentFps),
             cpu = cpu?.let { "CPU $it%" },
             gpu = gpu?.let { "GPU $it%" },
             ram = "RAM ${metrics.usedRamText}",

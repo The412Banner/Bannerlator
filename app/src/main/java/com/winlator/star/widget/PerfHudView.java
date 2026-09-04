@@ -92,6 +92,20 @@ public class PerfHudView extends View {
     private FpsCounter fpsCounter = null;
     public void setFpsCounter(FpsCounter c) { this.fpsCounter = c; }
 
+    // Frames per second actually reaching the panel. FpsCounter is ticked once
+    // per GUEST frame, so it cannot see frames added after the game - with
+    // native LSFG generating three for every one it reads 30 while the display
+    // shows 118. 0 = nothing is adding frames; the readout is unchanged.
+    private float presentedFps = 0f;
+    public void setPresentedFps(float v) { this.presentedFps = v; }
+
+    /** "30\u2192118" while frames are being added, else the plain value. */
+    private String fpsText() {
+        return presentedFps > fps + 1f
+            ? String.format(Locale.ENGLISH, "%.0f\u2192%.0f", fps, presentedFps)
+            : String.format(Locale.ENGLISH, "%.0f", fps);
+    }
+
     // ---- Paints (rebuilt when scale/skin/outline change) ------------------
     private final float density;
     private Paint fillPaint, strokePaint, graphPaint, guidePaint, bgPaint, sepPaint;
@@ -223,7 +237,7 @@ public class PerfHudView extends View {
             cells.add(new Cell("TMP", HudMetrics.formatTemp(tempC, tempDisplay, true),
                                HudMetrics.tempColor(tempC, t, tempDisplay, C_TMP)));
         }
-        if (showFPS)   cells.add(new Cell("FPS", String.format(Locale.ENGLISH, "%.0f", fps), C_FPS));
+        if (showFPS)   cells.add(new Cell("FPS", fpsText(), C_FPS));
         return cells;
     }
 

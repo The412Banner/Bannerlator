@@ -203,7 +203,7 @@ uint32_t Engine::plan(uint32_t capacity, uint64_t sourceFrames) {
     // says how many this device can actually afford right now - on a handheld
     // the chain competes with the game for one GPU, so an extra generation has
     // to prove it improves total output without collapsing the real frame rate.
-    {
+    if (governorEnabled_) {
         const LsfgPacerStats s = pacer_.Stats();
         governor_.configure((uint32_t)std::min<size_t>(pacer_.MaxGenerations(), kMaxGenerations));
         // presentedRate_, NOT the pacer's loop rate. The pacer samples its loop
@@ -248,7 +248,8 @@ void Engine::process(VkCommandBuffer cmd, VkImage source, uint32_t width, uint32
     // is NOT free at 100 fps - it was costing real frame rate while producing
     // nothing. Copy only when generating, or while the governor is warming up
     // towards a probe, so the ring is populated by the time it is needed.
-    const bool needHistory = generations > 0 || governor_.wantsHistory();
+    const bool needHistory = generations > 0
+        || (governorEnabled_ && governor_.wantsHistory());
     if (needHistory)
         copyPresentedFrame(cmd, source, chain_->Input(count), VkExtent2D{width, height});
 

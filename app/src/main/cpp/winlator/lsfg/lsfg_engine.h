@@ -103,6 +103,13 @@ private:
     std::unique_ptr<LsfgChain>   chain_;
     LsfgPacer      pacer_;
     ProbeGovernor  governor_;
+    // The governor is OFF by default: the device's own thermal management is
+    // the authority, and a probe loop that can veto the user's setting is not
+    // wanted here. The multiplier is then what was asked for, still clamped by
+    // what the panel can show. Kept behind a flag rather than deleted because
+    // the probe/backoff logic is the right answer for a device WITHOUT decent
+    // native throttling, and this is the only thing that would have to change.
+    bool           governorEnabled_ = false;
     LsfgPlan    plan_{};
 
     VkExtent2D builtExtent_{};

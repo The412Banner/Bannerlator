@@ -2946,7 +2946,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
                 float[] st = (vkr != null) ? vkr.getFrameGenStats() : null;
                 if (st != null && st.length >= 5) {
-                    final int trusted = (int) st[0];
+                    // st[1] is what is actually planned for this frame. st[0] is
+                    // the governor's accepted level, which is meaningless while
+                    // the governor is off.
+                    final int trusted = (int) st[1];
                     final float realFps = st[2], shownFps = st[3];
                     String text;
                     if (shownFps <= 0f) {

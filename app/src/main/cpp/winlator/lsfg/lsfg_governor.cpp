@@ -31,8 +31,17 @@ constexpr float kThermalDecaySeconds = 1.0f;
 // ADEVICE_THERMAL_STATUS_* from <android/thermal.h>, which is API 30. Resolved
 // by dlsym so the build keeps working below that and on devices that do not
 // ship the service; -1 simply means "no thermal signal", never "hot".
-constexpr int kThermalSevere = 3;   // ADEVICE_THERMAL_STATUS_SEVERE
-constexpr int kThermalModerate = 2; // ADEVICE_THERMAL_STATUS_MODERATE
+// Android reports a STATUS, not a temperature - NONE 0, LIGHT 1, MODERATE 2,
+// SEVERE 3, CRITICAL 4, EMERGENCY 5, SHUTDOWN 6 - so there is no degree value
+// here to raise. The equivalent of "let it run hotter" is to act on a higher
+// status, which is what these now do.
+//
+// A handheld under a real 3D load sits at SEVERE routinely; blocking there
+// made the governor refuse on a device that was working exactly as intended.
+// It now only stops GROWING at SEVERE and only gives frames back at CRITICAL,
+// leaving the device's own thermal management as the authority.
+constexpr int kThermalBlock    = 4;  // CRITICAL: give generations back
+constexpr int kThermalNoGrowth = 3;  // SEVERE: keep what we have, stop probing
 
 using PFN_AThermal_acquireManager = void* (*)();
 using PFN_AThermal_getCurrentThermalStatus = int (*)(void*);
@@ -132,8 +141,8 @@ uint32_t ProbeGovernor::cap(uint32_t requested, float sourceRate, float loopRate
     // reset the backoff clock every single call, so the backoff could never
     // expire and the governor could never measure or recover. One decay per
     // second, and no churn at all once there is nothing left to give back.
-    thermalBlocked_ = thermal_ >= kThermalSevere;
-    if (thermal_ >= kThermalSevere) {
+    thermalBlocked_ = thermal_ >= kThermalBlock;
+    if (thermal_ >= kThermalBlock) {
         // Logged, sparingly. This is a REFUSAL TO EVEN MEASURE, and it was
         // silent: on device it looked identical to "measured and declined".
         if ((refusalLog_++ % 600u) == 0u)
@@ -167,7 +176,7 @@ uint32_t ProbeGovernor::cap(uint32_t requested, float sourceRate, float loopRate
             haveBaseline_   = true;
 
             const bool roomToGrow = accepted_ < maxGenerations_ && requested > accepted_;
-            const bool thermallyFree = thermal_ < kThermalModerate || thermal_ < 0;
+            const bool thermallyFree = thermal_ < kThermalNoGrowth || thermal_ < 0;
             if (roomToGrow && thermallyFree) {
                 phase_ = Phase::Probing;
                 phaseStart_ = now;

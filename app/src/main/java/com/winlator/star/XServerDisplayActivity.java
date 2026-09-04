@@ -2011,7 +2011,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // multiplier so frame gen is live + the drawer/badge show ON from launch. The setupUI FPS-limiter
         // apply (applyFpsLimit) runs after this seed and re-evaluates lsfgGovernsFps(), so the cap steps
         // aside automatically for mult>=2. The persisted container multiplier is left untouched.
-        int lsfgSeedMult = (lsfgOn && container.isLsfgAutoEnable() && container.getFrameGenMultiplier() >= 2)
+        // LSFG Native never auto-arms at launch (see prepareLsfgNative); lsfg-vk keeps its opt-in.
+        int lsfgSeedMult = (fgEngine.equals("lsfg") && container.isLsfgAutoEnable() && container.getFrameGenMultiplier() >= 2)
                 ? container.getFrameGenMultiplier() : 0;
         XServerDrawerState.INSTANCE.setFrameGenMultiplier(lsfgSeedMult);
         XServerDrawerState.INSTANCE.setFrameGenFlowScale(container.getFrameGenFlowScale());
@@ -2897,8 +2898,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 "LSFG Native selected but no Lossless.dll imported (Settings) - leaving frame gen off");
             return;
         }
-        final int launchMult = container.isLsfgAutoEnable()
-            && container.getFrameGenMultiplier() >= 2 ? container.getFrameGenMultiplier() : 0;
+        // Every launch starts with frame generation OFF; the user arms it from the
+        // in-game drawer. isLsfgAutoEnable is an lsfg-vk-era setting and is not
+        // honoured for the native engine - an auto-armed launch is exactly the
+        // state that surprised the tester and cannot be reasoned about from a log.
+        final int launchMult = 0;
         final float flow = container.getFrameGenFlowScale();
 
         new Thread(() -> {
@@ -2932,6 +2936,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Present mode has to follow the armed state: fifo while multiplying,
         // back to the user's choice when off.
         applyEffectivePresentMode();
+        applyNativeFgLocks(multiplier >= 2);
         if (multiplier >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
     }
 
@@ -3004,6 +3009,50 @@ public class XServerDisplayActivity extends AppCompatActivity {
         lsfgStatsHandler = null;
         lsfgStatsTick = null;
         XServerDrawerState.INSTANCE.setFrameGenReadout("");
+    }
+
+    // The user's limiter/VRR choices from before native FG took them over, so
+    // they come back exactly as they were when it is turned off.
+    private boolean nativeFgSavedLimiterOn = false;
+    private int     nativeFgSavedLimit     = 0;
+    private boolean nativeFgSavedMatchRefresh = false;
+    private boolean nativeFgLocksHeld = false;
+
+    /**
+     * While LSFG Native generates: FPS limiter locked ON and Auto refresh (VRR)
+     * locked OFF. That is the configuration the engine was device-proven in and
+     * the only one that behaves - an uncapped guest times the multiplier overruns
+     * the panel and FIFO stalls the compositor, and a VRR mode switch mid-game
+     * stutters. If no cap was set, 30 is used: it is the case this was proven on.
+     */
+    private void applyNativeFgLocks(boolean lock) {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        if (lock && !nativeFgLocksHeld) {
+            nativeFgSavedLimiterOn    = s.getFpsLimiterEnabled().getValue();
+            nativeFgSavedLimit        = s.getFpsLimit().getValue();
+            nativeFgSavedMatchRefresh = s.getMatchRefreshRate().getValue();
+            nativeFgLocksHeld = true;
+
+            int cap = nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 30;
+            s.setFpsLimiterEnabled(true);
+            s.setFpsLimit(cap);
+            s.setMatchRefreshRate(false);
+            s.setNativeFgLocks(true);
+            Log.i("XServerDisplayActivity", "lsfg-native locks ON: limiter=" + cap + " vrr=off"
+                + " (was limiter=" + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
+                + " vrr=" + nativeFgSavedMatchRefresh + ")");
+            applyFpsLimit(cap);
+        } else if (!lock && nativeFgLocksHeld) {
+            nativeFgLocksHeld = false;
+            s.setNativeFgLocks(false);
+            s.setFpsLimiterEnabled(nativeFgSavedLimiterOn);
+            s.setFpsLimit(nativeFgSavedLimit);
+            s.setMatchRefreshRate(nativeFgSavedMatchRefresh);
+            Log.i("XServerDisplayActivity", "lsfg-native locks OFF: restored limiter="
+                + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
+                + " vrr=" + nativeFgSavedMatchRefresh);
+            applyFpsLimit(nativeFgSavedLimiterOn && nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 0);
+        }
     }
 
     /** The panel's real refresh rate; the pacer never generates above it. */
@@ -9322,9 +9371,13 @@ return true;
         // engines suffer, just moved. lsfg-vk needs mailbox for the opposite
         // reason: its extra presents come from inside the guest and fifo
         // back-pressure strangles them.
+        // Keyed on the renderer's REAL armed state, not the drawer's multiplier
+        // StateFlow. That flow defaults to 2 before the launch seed writes 0, which
+        // is how the r9 log shows FIFO being forced 0.6 s after mailbox was applied
+        // and before anything was armed - and then never released on disarm.
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkrPm = vulkanRendererOrNull();
         if ("lsfg-native".equals(resolvedFrameGenEngine())
-                && XServerDrawerState.INSTANCE.getFrameGenEnabled().getValue()
-                && XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue() >= 2) {
+                && vkrPm != null && vkrPm.isFrameGenArmed()) {
             return "fifo";
         }
         return resolvedRendererPresentMode();

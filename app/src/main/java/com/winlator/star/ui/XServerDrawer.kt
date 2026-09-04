@@ -2595,7 +2595,16 @@ private fun HudContent(state: XServerDrawerState) {
     CollapsibleSection("Frame rate & refresh", lead = "always on", initiallyExpanded = true) {
         Text("FPS Limiter", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
-        ToggleRow("Limit FPS", limiterOn) { limiterOn = it; applyLimiter() }
+        val nativeFgLocks by state.nativeFgLocks.collectAsState()
+        // Locked ON while LSFG Native generates - see XServerDrawerState.nativeFgLocks.
+        ToggleRow("Limit FPS", limiterOn, enabled = !nativeFgLocks) { limiterOn = it; applyLimiter() }
+        if (nativeFgLocks) {
+            Text(
+                "Locked on while LSFG Native is generating",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                fontSize = 10.sp
+            )
+        }
         if (limiterOn) {
             LabeledSlider(
                 "Max FPS", limitVal.toFloat(), 10f..200f,
@@ -2623,7 +2632,10 @@ private fun HudContent(state: XServerDrawerState) {
         Text("Refresh rate", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
         // Auto (match FPS) == the existing VRR toggle; behavior unchanged.
-        ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported, enabled = vrrSupported) {
+        val nativeFgLocksVrr by state.nativeFgLocks.collectAsState()
+        // Locked OFF while LSFG Native generates - see XServerDrawerState.nativeFgLocks.
+        ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported && !nativeFgLocksVrr,
+                  enabled = vrrSupported && !nativeFgLocksVrr) {
             matchRefreshOn = it
             state.setMatchRefreshRate(it)
             state.onMatchRefreshChange?.run()

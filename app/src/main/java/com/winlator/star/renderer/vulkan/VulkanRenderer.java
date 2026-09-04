@@ -917,6 +917,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         }
     }
 
+    /** Whether native frame generation is currently armed in the renderer. */
+    public boolean isFrameGenArmed() { return pendingFgArmed; }
+
     /** Path to the SPIR-V cache built from the user's Lossless.dll. */
     public void setLsfgCachePath(String path) {
         pendingLsfgCachePath = path;

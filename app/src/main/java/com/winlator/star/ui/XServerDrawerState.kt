@@ -118,6 +118,15 @@ object XServerDrawerState {
     val presentMode: StateFlow<String> = _presentMode
     fun setPresentMode(v: String) { _presentMode.value = v }
 
+    // LSFG Native generating: the limiter is locked ON and Auto refresh (VRR)
+    // locked OFF, because that is the configuration the engine was proven in
+    // and the only one that behaves. Uncapped guest x multiplier overruns the
+    // panel and FIFO stalls the compositor; a VRR mode switch mid-game stutters.
+    // The drawer greys both controls out while this is set.
+    private val _nativeFgLocks = MutableStateFlow(false)
+    val nativeFgLocks: StateFlow<Boolean> = _nativeFgLocks
+    fun setNativeFgLocks(v: Boolean) { _nativeFgLocks.value = v }
+
     private val _presentModeLocked = MutableStateFlow(false)
     val presentModeLocked: StateFlow<Boolean> = _presentModeLocked
     fun setPresentModeLocked(v: Boolean) { _presentModeLocked.value = v }
@@ -556,6 +565,7 @@ object XServerDrawerState {
         _frameGenEngine.value = "off"
         _presentMode.value = "fifo"
         _presentModeLocked.value = false
+        _nativeFgLocks.value = false
         _rendererIsVulkan.value = false
         _lsfgPerformanceMode.value = false
         _fpsLimiterEnabled.value = false

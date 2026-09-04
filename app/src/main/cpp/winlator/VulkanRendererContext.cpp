@@ -221,6 +221,9 @@ void VulkanRendererContext::loadDeviceDispatch() {
     LOAD_D2(FreeCommandBuffers);
     LOAD_D2(BeginCommandBuffer);
     LOAD_D2(EndCommandBuffer);
+    LOAD_D2(CmdDispatch);
+    LOAD_D2(CreateComputePipelines);
+    LOAD_D2(UnmapMemory);
     LOAD_D2(ResetCommandBuffer);
     LOAD_D2(CmdBeginRenderPass);
     LOAD_D2(CmdEndRenderPass);

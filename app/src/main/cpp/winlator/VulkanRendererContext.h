@@ -79,6 +79,10 @@ struct VkTable {
     PFN_vkCmdSetScissor CmdSetScissor;
     PFN_vkCmdPipelineBarrier CmdPipelineBarrier;
     PFN_vkCmdCopyImage CmdCopyImage;
+    // Compute: the native LSFG chain is 25 compute dispatches.
+    PFN_vkCmdDispatch CmdDispatch;
+    PFN_vkCreateComputePipelines CreateComputePipelines;
+    PFN_vkUnmapMemory UnmapMemory;
     PFN_vkCmdCopyBufferToImage CmdCopyBufferToImage;
     PFN_vkCreateSampler CreateSampler;
     PFN_vkDestroySampler DestroySampler;

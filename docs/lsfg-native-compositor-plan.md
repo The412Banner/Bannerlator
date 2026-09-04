@@ -67,7 +67,8 @@ file layout is not, because our renderer is not theirs.
 
 - **It does not replace win-fg.** win-fg stays the default engine: our own,
   weightless, needs no DLL.
-- **It does not replace `lsfg-vk` either.** Native LSFG is a *fourth* engine.
+- **It does not replace `lsfg-vk` either.** Native LSFG is a *third* engine
+  (the fourth entry in the dropdown, after Off).
   It only exists on the native Vulkan compositor path, so the GL renderer, the
   ASR/SurfaceFlinger path and direct scanout still need the in-container layer.
   `lsfg-vk` is shipping and device-proven; it stays.
@@ -301,7 +302,7 @@ real frames, visible in the log; a 60 Hz panel self-limits with no added latency
   is a pass split, not a redesign.
 - Frame gen runs **after** the effect chain, so SGSR/CRT/HDR output is what gets
   interpolated and generated frames match the real ones visually.
-- **`lsfg-vk` stays. This is a fourth engine, not a replacement.** Native LSFG
+- **`lsfg-vk` stays. This is a third engine, not a replacement.** Native LSFG
   only works on the native Vulkan compositor path — it is unavailable on the
   GL renderer, the ASR/SurfaceFlinger path, and direct scanout, so it cannot be
   universal. `lsfg-vk` is shipping and device-proven and remains the fallback

@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-09-04T10-45-55-3ac1d5",
+    "created": "2026-09-04T10:45:55.573Z",
+    "reporter": "Ayajo",
+    "device": "Realme 11 pro",
+    "gpu": "Mali g68 mc 4",
+    "game": "Resident evil 2 remake",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 2
+  },
+  {
     "id": "2026-09-02T21-28-57-ccabc8",
     "created": "2026-09-02T21:28:57.788Z",
     "reporter": "Fenix",

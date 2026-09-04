@@ -953,6 +953,10 @@ private fun AddEnvVarPicker(
 ) {
     var nameQuery by remember { mutableStateOf("") }
     var valueQuery by remember { mutableStateOf("") }
+    val pickerContext = LocalContext.current
+    // Help text for the candidate whose "?" was tapped, shown over the picker so the list stays
+    // put behind it — you read what a variable does, dismiss, and carry on choosing.
+    var pickerHelp by remember { mutableStateOf<String?>(null) }
     val rawName = nameQuery.trim().replace(" ", "")
     // TWO boxes — Name and Value — so users never have to type an '='. The Name box still also
     // accepts a pasted "NAME=VALUE" (split on the FIRST '='); otherwise the Value box supplies it.
@@ -1038,8 +1042,26 @@ private fun AddEnvVarPicker(
                     }
                     candidates.forEachIndexed { index, known ->
                         if (index > 0) MenuItemDivider()
-                        TextButton(onClick = { onAdd(combined(known)) }, modifier = Modifier.fillMaxWidth()) {
-                            Text(known, modifier = Modifier.weight(1f))
+                        // "?" here as well as on the added row: this list is where you decide
+                        // WHETHER to add something, so needing to add it blind just to read what
+                        // it does — then delete it again — is the wrong way round.
+                        val candidateHelp = remember(known) { envVarHelp(pickerContext, known) }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = { onAdd(combined(known)) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(known, modifier = Modifier.weight(1f))
+                            }
+                            if (candidateHelp != null) {
+                                IconButton(onClick = { pickerHelp = candidateHelp }) {
+                                    Icon(
+                                        Icons.Outlined.HelpOutline,
+                                        contentDescription = "About $known",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
                     }
                     if (candidates.isEmpty() && !showAddTyped) {
@@ -1057,4 +1079,7 @@ private fun AddEnvVarPicker(
             TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
         }
     )
+    // Composed AFTER the picker so it draws on top of it — a dialog composed first ends up behind
+    // the one that follows, which would look like the "?" did nothing.
+    pickerHelp?.let { text -> HelpTextDialog(text) { pickerHelp = null } }
 }

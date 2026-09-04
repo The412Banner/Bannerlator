@@ -359,3 +359,23 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeReattachSurface(JNIE
     }
     return (jboolean)ok;
 }
+
+// ---------------------------------------------------------------------------
+// Native LSFG frame generation — capability verdict.
+//
+// Answers "can this device run the compositor-side LSFG chain at all", settled
+// at device + swapchain creation. Returns null when the renderer is gone, so
+// the caller treats an absent renderer as "unknown" rather than "unsupported".
+// ---------------------------------------------------------------------------
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgSupported(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return (jboolean)(r && r->lsfgCaps().supported());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgCapsReason(JNIEnv* env, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return nullptr;
+    return env->NewStringUTF(r->lsfgCaps().reason);
+}

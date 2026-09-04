@@ -78,6 +78,7 @@ add_library(vulkan_renderer SHARED
         winlator/vulkan_jni.cpp
         winlator/VulkanRendererContext.cpp
         winlator/VulkanRendererScanout.cpp
+        winlator/lsfg/lsfg_probe.cpp
         scanout/ScanoutContext.cpp
 )
 

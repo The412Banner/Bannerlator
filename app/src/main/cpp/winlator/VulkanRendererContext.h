@@ -15,6 +15,8 @@ struct VkTable {
     PFN_vkGetPhysicalDeviceSurfacePresentModesKHR GetPhysicalDeviceSurfacePresentModesKHR;
     PFN_vkGetPhysicalDeviceQueueFamilyProperties GetPhysicalDeviceQueueFamilyProperties;
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR;
+    PFN_vkGetPhysicalDeviceFormatProperties GetPhysicalDeviceFormatProperties;
+    PFN_vkGetPhysicalDeviceFeatures2 GetPhysicalDeviceFeatures2;
     PFN_vkCreateDevice CreateDevice;
     PFN_vkDestroySurfaceKHR DestroySurfaceKHR;
     PFN_vkCreateAndroidSurfaceKHR CreateAndroidSurfaceKHR;
@@ -112,6 +114,9 @@ struct VkTable {
 // Renderer-neutral direct-scanout impl (owns the SurfaceControl/AHB state).
 // Included after SCANOUT_LOG is defined above; its own definition is guarded.
 #include "../scanout/ScanoutContext.h"
+
+// Native (compositor-side) LSFG frame generation — capability gate.
+#include "lsfg/lsfg_probe.h"
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -261,6 +266,12 @@ public:
     void setSwapRB(bool enabled);
     void setPresentMode(VkPresentModeKHR mode);
     std::vector<int> getSupportedPresentModes() const;
+
+    // --- Native LSFG frame generation -------------------------------------
+    // Capability verdict for the compositor-side LSFG engine. Filled at device
+    // creation and completed once the swapchain format is known; read by the
+    // UI (through JNI) to grey the engine out with a reason.
+    const lsfg::Caps& lsfgCaps() const { return lsfgCaps_; }
 
 private:
     struct WinTex {
@@ -522,6 +533,8 @@ private:
     void createInstance();
     void createSurface();
     void pickPhysicalDevice();
+    lsfg::Caps lsfgCaps_{};
+
     void createLogicalDevice();
     void createSwapchain();
     void createRenderPass();

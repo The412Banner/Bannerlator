@@ -128,6 +128,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetPresentMode(long handle, int mode);
     private native int[] nativeGetSupportedPresentModes(long handle);
 
+    // Native LSFG frame generation — capability gate. Settled at device +
+    // swapchain creation; see cpp/winlator/lsfg/lsfg_probe.h.
+    private native boolean nativeLsfgSupported(long handle);
+    private native String nativeLsfgCapsReason(long handle);
+
     private static volatile boolean gpuImageChecked = false;
 
     private static long did(Drawable d) {
@@ -871,6 +876,30 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             if (nativeHandle != 0) return nativeGetSupportedPresentModes(nativeHandle);
         }
         return new int[0];
+    }
+
+    /**
+     * Whether this device can run the native (compositor-side) LSFG frame-gen
+     * chain: Vulkan 1.3, the three required shader features actually enabled at
+     * device creation, and a storage-capable swapchain format. False while the
+     * renderer is not up — callers treat that as "not yet known", not "no".
+     */
+    public boolean isLsfgNativeSupported() {
+        synchronized (lock) {
+            if (nativeHandle != 0) return nativeLsfgSupported(nativeHandle);
+        }
+        return false;
+    }
+
+    /** Human-readable verdict, naming the first gate that failed. */
+    public String getLsfgCapsReason() {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                String r = nativeLsfgCapsReason(nativeHandle);
+                if (r != null) return r;
+            }
+        }
+        return "renderer not started";
     }
     public void setNativeColorFormat(int format) {}
     public int getNativeColorFormat() { return 0; }

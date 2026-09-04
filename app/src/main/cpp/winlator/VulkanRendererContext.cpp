@@ -161,6 +161,8 @@ void VulkanRendererContext::loadInstanceDispatch() {
     LOAD_I2(GetPhysicalDeviceSurfacePresentModesKHR);
     LOAD_I2(GetPhysicalDeviceQueueFamilyProperties);
     LOAD_I2(GetPhysicalDeviceSurfaceSupportKHR);
+    LOAD_I2(GetPhysicalDeviceFormatProperties);
+    LOAD_I2(GetPhysicalDeviceFeatures2);
     LOAD_I2(CreateDevice);
     LOAD_I2(DestroySurfaceKHR);
     LOAD_I2(CreateAndroidSurfaceKHR);
@@ -319,7 +321,50 @@ void VulkanRendererContext::createLogicalDevice() {
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
     ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
-    if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
+
+    // --- Native LSFG frame generation: enable the three features its shaders
+    // need. The renderer has historically enabled NO features at all
+    // (pEnabledFeatures = nullptr, no pNext), so all three are off by default.
+    // Only chain anything when the device passes every gate: on any other
+    // device this block is inert and vkCreateDevice is called exactly as it
+    // always has been.
+    lsfgCaps_ = lsfg::Caps{};
+    lsfgCaps_.features = lsfg::queryFeatures(vk_, physicalDevice);
+
+    VkPhysicalDeviceVulkan12Features lsfgV12{};
+    VkPhysicalDeviceFeatures2        lsfgF2{};
+    if (lsfgCaps_.features.deviceGatesPass()) {
+        lsfgV12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        lsfgV12.vulkanMemoryModel = VK_TRUE;
+        // Device scope is a separate SPIR-V capability; enable it only when the
+        // driver offers it, so a driver without it still gets the base model.
+        lsfgV12.vulkanMemoryModelDeviceScope =
+            lsfgCaps_.features.vulkanMemoryModelDeviceScope ? VK_TRUE : VK_FALSE;
+
+        lsfgF2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        lsfgF2.pNext = &lsfgV12;
+        lsfgF2.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+        lsfgF2.features.shaderStorageImageExtendedFormats    = VK_TRUE;
+
+        // pEnabledFeatures MUST stay null while a VkPhysicalDeviceFeatures2 is
+        // chained — the two are mutually exclusive.
+        ci.pNext = &lsfgF2;
+        lsfgCaps_.featuresEnabled = true;
+    }
+
+    if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) {
+        // A driver that rejects the feature chain must not cost us the whole
+        // renderer: retry once with the pre-LSFG device create, unchanged.
+        if (lsfgCaps_.featuresEnabled) {
+            RLOG_E("createLogicalDevice: CreateDevice failed WITH LSFG features; retrying without");
+            ci.pNext = nullptr;
+            lsfgCaps_.featuresEnabled = false;
+            if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS)
+                throw std::runtime_error("device");
+        } else {
+            throw std::runtime_error("device");
+        }
+    }
     vk_.GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)gipa(instance, "vkGetDeviceProcAddr");
     loadDeviceDispatch();
     vk_.GetDeviceQueue(device,graphicsQueueFamilyIndex,0,&graphicsQueue);
@@ -338,6 +383,19 @@ void VulkanRendererContext::createSwapchain() {
     uint32_t fmtN=0; vk_.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,&fmtN,nullptr);
     std::vector<VkSurfaceFormatKHR> fmts(fmtN); vk_.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,&fmtN,fmts.data());
     swapchainFmt = VK_FORMAT_R8G8B8A8_UNORM;
+
+    // Native LSFG: the composite target carries the swapchain's format so the
+    // effect pipelines stay render-pass compatible with both paths, and
+    // `generate` writes it through a storage image. Probe it here, where the
+    // format is finally known, and settle the capability verdict.
+    lsfgCaps_.probedFormat = swapchainFmt;
+    lsfgCaps_.storageOnSwapchainFormat =
+        lsfg::probeStorageFormat(vk_, physicalDevice, swapchainFmt);
+    lsfg::explain(lsfgCaps_);
+    RLOG("lsfg-native: %s (features enabled=%d, storage-on-fmt=%d)",
+         lsfgCaps_.reason, (int)lsfgCaps_.featuresEnabled,
+         (int)lsfgCaps_.storageOnSwapchainFormat);
+
     uint32_t imgCount=caps.minImageCount+1;
     if (caps.maxImageCount>0&&imgCount>caps.maxImageCount) imgCount=caps.maxImageCount;
 

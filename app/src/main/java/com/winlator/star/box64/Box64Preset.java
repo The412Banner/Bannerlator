@@ -9,6 +9,7 @@ public class Box64Preset {
     public static final String PERFORMANCE = "PERFORMANCE";
     public static final String PERFORMANCE_MALI = "PERFORMANCE_MALI";
     public static final String EXTREME = "EXTREME";
+    public static final String EXTREME_2 = "EXTREME_2";
     public static final String UNITY = "UNITY";
     public static final String UNITY_MONO_BLEEDING_EDGE = "UNITY_MONO_BLEEDING_EDGE";
     public static final String DENUVO = "DENUVO";

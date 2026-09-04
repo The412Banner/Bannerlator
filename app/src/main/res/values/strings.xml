@@ -289,6 +289,9 @@
     <string name="performance_tso">Performance (TSO)</string>
     <string name="performance_mali">Performance (Mali)</string>
     <string name="extreme">Extreme</string>
+    <!-- Second Box64 Extreme tier: the community 32-variable build. Kept separate from "extreme"
+         above so anyone already running Extreme keeps that exact tuning. -->
+    <string name="extreme_2">Extreme-2</string>
     <!-- FEXCore-only preset labels. The "-wn"/"-gn" suffixes mark which upstream the values were
          derived from (WinNative / GameNative) so the two Extreme tiers stay tellable apart; the
          plain "extreme" string above belongs to the Box64 preset and must not be reused here. -->

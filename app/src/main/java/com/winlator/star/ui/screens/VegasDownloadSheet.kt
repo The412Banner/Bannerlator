@@ -147,7 +147,7 @@ fun VegasDownloadSheet(
 
     // Main dialog
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (downloadingTag == null && !installing) onDismiss() },
         title = { Text("VEGAS Downloads", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             if (isLoading) {
@@ -289,7 +289,7 @@ Column(modifier = Modifier.weight(1f)) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = { if (downloadingTag == null && !installing) onDismiss() }) { Text("Close") } },
     )
 
     // Full-body release notes dialog — the inline preview stays at 2 lines by design

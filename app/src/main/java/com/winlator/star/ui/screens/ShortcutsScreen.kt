@@ -242,6 +242,7 @@ import com.winlator.star.ui.theme.DangerRed
 import com.winlator.star.core.LogInventory
 import com.winlator.star.core.LogLocation
 import com.winlator.star.core.StringUtils
+import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.core.WineInfo
 import com.winlator.star.core.WinePath
 import com.winlator.star.core.WineUtils
@@ -6942,7 +6943,21 @@ internal fun ShortcutSettingsDialogScreen(
                             label = stringResource(R.string.dxwrapper),
                             options = dxWrapperEntries,
                             selected = selectedDxWrapper,
-                            onSelect = { selectedDxWrapper = it },
+                            onSelect = { newWrapper ->
+                                val wasVegas = StringUtils.parseIdentifier(selectedDxWrapper).contains("vegas")
+                                val isVegas = StringUtils.parseIdentifier(newWrapper).contains("vegas")
+                                selectedDxWrapper = newWrapper
+                                // Strip dxvkConfigFile when leaving VEGAS — prevents stale
+                                // VEGAS config path from leaking into plain DXVK+VKD3D.
+                                if (wasVegas && !isVegas) {
+                                    val cfg = DXVKConfigDialog.parseConfig(dxWrapperConfig)
+                                    val path = cfg.get("dxvkConfigFile")
+                                    if (path.isNotEmpty()) {
+                                        val stripped = dxWrapperConfig.split(",").filter { !it.startsWith("dxvkConfigFile=") }.joinToString(",")
+                                        dxWrapperConfig = stripped
+                                    }
+                                }
+                            },
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { helpRes = R.string.dxwrapper_help_content }) {

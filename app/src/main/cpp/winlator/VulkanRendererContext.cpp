@@ -1087,6 +1087,26 @@ void VulkanRendererContext::frameGenStats(float out[5]) const {
     out[4] = (float)lsfgEngine_->thermalStatus();
 }
 
+void VulkanRendererContext::trackPresentedRate(uint32_t presents) {
+    const auto now = std::chrono::steady_clock::now();
+    if (!fgRateWindowOpen_) {
+        fgRateWindowStart_ = now;
+        fgRateWindowOpen_  = true;
+        fgPresentAccum_    = 0;
+    }
+    fgPresentAccum_ += presents;
+
+    const float elapsed = std::chrono::duration<float>(now - fgRateWindowStart_).count();
+    if (elapsed < 0.5f) return;                    // half-second window
+    const float rate = (float)fgPresentAccum_ / elapsed;
+    // Same smoothing shape the pacer uses, so the two numbers are comparable.
+    fgPresentedRate_ = fgPresentedRate_ > 0.0f
+        ? fgPresentedRate_ + (rate - fgPresentedRate_) * 0.25f
+        : rate;
+    fgRateWindowStart_ = now;
+    fgPresentAccum_    = 0;
+}
+
 void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
     const bool was = fgArmed_.load(std::memory_order_relaxed);
     const int  wasMult = fgMultiplier_.load(std::memory_order_relaxed);
@@ -2206,6 +2226,10 @@ ok=true;}catch(...){}
     }
     if (compositeActive() && ensureLsfgEngine() &&
         lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+        // The governor judges whether an extra generated frame paid off, so it
+        // must be given the rate that actually reaches the PANEL, not the guest
+        // rate wearing a different name.
+        lsfgEngine_->setPresentedRate(fgPresentedRate_);
         const uint32_t capacity = (uint32_t)std::min<size_t>(
             kMaxPresentsPerFrame - 1,
             compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
@@ -2376,6 +2400,7 @@ ok=true;}catch(...){}
             break;
         }
     }
+    trackPresentedRate(fgPlan_.presents);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
 }
 

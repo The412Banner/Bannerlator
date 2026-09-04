@@ -206,7 +206,12 @@ uint32_t Engine::plan(uint32_t capacity, uint64_t sourceFrames) {
     {
         const LsfgPacerStats s = pacer_.Stats();
         governor_.configure((uint32_t)std::min<size_t>(pacer_.MaxGenerations(), kMaxGenerations));
-        plan_.generations = governor_.cap((uint32_t)plan_.generations, s.source_rate, s.loop_rate);
+        // presentedRate_, NOT the pacer's loop rate. The pacer samples its loop
+        // once per SOURCE frame, so its "loop rate" is the guest rate by
+        // construction and can never show that generation added anything - the
+        // governor could not accept a probe on any hardware.
+        plan_.generations = governor_.cap((uint32_t)plan_.generations, s.source_rate,
+                                          presentedRate_);
     }
 
     warm_ = plan_.warm && frameCount_ + 1 >= kRequiredFrames;
@@ -216,6 +221,7 @@ uint32_t Engine::plan(uint32_t capacity, uint64_t sourceFrames) {
     if ((planCalls_++ % kTelemetryInterval) == 0) {
         const LsfgPacerStats stats = pacer_.Stats();
         const float wanted = stats.source_rate * (float)(plan_.generations + 1);
+        LSFG_LOGI("presented=%.1f fps (measured at the swapchain)", (double)presentedRate_);
         LSFG_LOGI("pace gen=%zu max=%zu cap=%u guest=%.1f loop=%.1f refresh=%.1f target=%.0f "
                   "slots=%.2f drawn=%llu needs=%.1fHz%s%s",
                   plan_.generations, pacer_.MaxGenerations(), capacity,
@@ -254,7 +260,6 @@ void Engine::generateInto(VkCommandBuffer cmd, uint32_t generation, uint32_t tar
 }
 
 float Engine::sourceRate() const { return pacer_.Stats().source_rate; }
-float Engine::loopRate()   const { return pacer_.Stats().loop_rate; }
 
 void Engine::forgetTargets() {
     if (chain_) chain_->ForgetTargets();

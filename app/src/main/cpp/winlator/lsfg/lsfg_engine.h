@@ -86,7 +86,10 @@ public:
     uint32_t acceptedGenerations() const { return governor_.accepted(); }
     int      thermalStatus() const { return governor_.thermalStatus(); }
     float    sourceRate() const;
-    float    loopRate() const;
+    // The rate that actually reaches the panel, generated frames included.
+    // Supplied by the renderer, which is the only thing that counts presents.
+    float    loopRate() const { return presentedRate_; }
+    void     setPresentedRate(float fps) { presentedRate_ = fps; }
 
     void forgetTargets();
     void reset();
@@ -107,6 +110,8 @@ private:
     VkFormat   builtFormat_{VK_FORMAT_UNDEFINED};
     float      builtFlowScale_{};
     float      flowScale_{1.0f};
+
+    float    presentedRate_{};
 
     uint64_t frameCount_{};
     uint64_t lastCount_{};

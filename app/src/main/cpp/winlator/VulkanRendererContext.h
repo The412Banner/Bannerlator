@@ -114,6 +114,7 @@ struct VkTable {
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
+#include <chrono>
 
 // Renderer-neutral direct-scanout impl (owns the SurfaceControl/AHB state).
 // Included after SCANOUT_LOG is defined above; its own definition is guarded.
@@ -548,6 +549,16 @@ private:
     // swapchain, so no stale pending signal can survive into the new one.
     void recreateSyncObjects();
     uint32_t fgAcquireFailLog_ = 0;
+
+    // Measured PRESENTS per second - the rate that actually reaches the panel,
+    // counting generated frames. The pacer's own "loop rate" cannot serve this
+    // purpose: it is sampled once per SOURCE frame, so it always equals the
+    // guest rate and contains no evidence that generation happened at all.
+    float    fgPresentedRate_   = 0.0f;
+    uint32_t fgPresentAccum_    = 0;
+    std::chrono::steady_clock::time_point fgRateWindowStart_{};
+    bool     fgRateWindowOpen_  = false;
+    void     trackPresentedRate(uint32_t presents);
 
     bool ensureLsfgEngine();
     // Generated frames: dispatch `generate` into spare composite targets and

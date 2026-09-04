@@ -27,8 +27,59 @@ import java.util.Iterator;
 import java.util.Locale;
 
 public class FEXCorePresetManager {
+    /**
+     * Pref holding user edits to BUILT-IN presets, as {@code ID|envvars} joined by commas — the
+     * same escaping rules as the custom-preset list, so neither separator can appear in a value.
+     * The hardcoded blocks in {@link #getEnvVars} stay the shipped originals no matter what is in
+     * here, which is what lets {@link #resetPreset} always restore them.
+     */
+    private static final String OVERRIDES_KEY = "fexcore_preset_overrides";
+
+    private static EnvVars getOverride(Context context, String id) {
+        String stored = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(OVERRIDES_KEY, "");
+        if (stored == null || stored.isEmpty()) return null;
+        for (String entry : stored.split(",")) {
+            String[] parts = entry.split("\\|", 2);
+            if (parts.length == 2 && parts[0].equals(id)) return new EnvVars(parts[1]);
+        }
+        return null;
+    }
+
+    /** True when a built-in preset has been edited, i.e. Reset would change something. */
+    public static boolean hasOverride(Context context, String id) {
+        return id != null && !id.startsWith(FEXCorePreset.CUSTOM) && getOverride(context, id) != null;
+    }
+
+    private static void putOverride(Context context, String id, EnvVars envVars) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String stored = preferences.getString(OVERRIDES_KEY, "");
+        ArrayList<String> out = new ArrayList<>();
+        if (stored != null && !stored.isEmpty()) {
+            for (String entry : stored.split(",")) {
+                String[] parts = entry.split("\\|", 2);
+                // Drop any existing entry for this id; null envVars means "reset", so it just goes.
+                if (parts.length == 2 && !parts[0].equals(id)) out.add(entry);
+            }
+        }
+        if (envVars != null) out.add(id + "|" + envVars);
+        preferences.edit().putString(OVERRIDES_KEY, String.join(",", out)).apply();
+    }
+
+    /** Discard a built-in preset's user edits, restoring the values this build ships. */
+    public static void resetPreset(Context context, String id) {
+        if (id == null || id.startsWith(FEXCorePreset.CUSTOM)) return;
+        putOverride(context, id, null);
+    }
+
     public static EnvVars getEnvVars(Context context, String id) {
         EnvVars envVars = new EnvVars();
+
+        // A user edit to a built-in wins over the shipped values below.
+        if (!id.startsWith(FEXCorePreset.CUSTOM)) {
+            EnvVars override = getOverride(context, id);
+            if (override != null) return override;
+        }
 
         if (id.equals(FEXCorePreset.STABILITY)) {
             envVars.put("FEX_TSOENABLED", "1");
@@ -178,6 +229,14 @@ public class FEXCorePresetManager {
     }
 
     public static void editPreset(Context context, String id, String name, EnvVars envVars) {
+        // Built-in presets are editable too: their values are stored as an override rather than
+        // rewritten in place, so Reset can put the shipped ones back. The name is fixed for these
+        // (it comes from a string resource), so only the values are kept.
+        if (id != null && !id.startsWith(FEXCorePreset.CUSTOM)) {
+            putOverride(context, id, envVars);
+            return;
+        }
+
         String key = "fexcore_custom_presets";
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         String customPresetsStr = preferences.getString(key, "");

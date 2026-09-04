@@ -158,7 +158,17 @@ internal fun PresetEditDialog(
             if (kind == PresetKind.BOX64) Box64Preset.CUSTOM else FEXCorePreset.CUSTOM
         )
     }
-    val readOnly = presetId != null && !isCustom
+    // Built-in presets are editable; their values are stored as an override so Reset can restore
+    // the shipped ones. Only the NAME is locked, since it comes from a string resource.
+    val isBuiltIn = presetId != null && !isCustom
+    var modified by remember(presetId) {
+        mutableStateOf(
+            presetId != null && when (kind) {
+                PresetKind.BOX64 -> Box64PresetManager.hasOverride(prefix, context, presetId)
+                PresetKind.FEXCORE -> FEXCorePresetManager.hasOverride(context, presetId)
+            }
+        )
+    }
 
     val specs = remember(prefix) { loadSpecs(context, prefix) }
     val current = remember(presetId) {
@@ -214,11 +224,13 @@ internal fun PresetEditDialog(
                         }
                     }
                 }
-                if (readOnly) {
+                if (isBuiltIn) {
                     Text(
-                        "Built-in preset — duplicate it to make changes",
+                        if (modified) "Built-in preset — edited. Reset restores the original."
+                        else "Built-in preset — edits are saved separately and can be reset.",
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (modified) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -228,7 +240,8 @@ internal fun PresetEditDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    enabled = !readOnly,
+                    // Built-in names come from string resources, so only custom presets rename.
+                    enabled = !isBuiltIn,
                     singleLine = true,
                     label = { Text("Name") },
                     modifier = Modifier.fillMaxWidth(),
@@ -253,7 +266,7 @@ internal fun PresetEditDialog(
                         VarRow(
                             spec = spec,
                             value = values[spec.name] ?: spec.defaultValue,
-                            enabled = !readOnly,
+                            enabled = true,
                             onValue = { values[spec.name] = it },
                             onHelp = { varHelp(context, prefix, spec.name)?.let { h -> helpText = h } },
                         )
@@ -262,25 +275,45 @@ internal fun PresetEditDialog(
             }
         },
         confirmButton = {
-            if (readOnly) {
-                TextButton(onClick = onDismiss) { Text("Close") }
-            } else {
-                TextButton(onClick = {
-                    val clean = name.trim().replace(Regex("[,|]+"), "")
-                    if (clean.isEmpty()) return@TextButton
-                    val envVars = EnvVars()
-                    specs.forEach { envVars.put(it.name, values[it.name] ?: it.defaultValue) }
-                    when (kind) {
-                        PresetKind.BOX64 -> Box64PresetManager.editPreset(prefix, context, presetId, clean, envVars)
-                        PresetKind.FEXCORE -> FEXCorePresetManager.editPreset(context, presetId, clean, envVars)
-                    }
-                    onSaved()
-                    onDismiss()
-                }) { Text("Save") }
-            }
+            TextButton(onClick = {
+                val clean = name.trim().replace(Regex("[,|]+"), "")
+                if (clean.isEmpty()) return@TextButton
+                val envVars = EnvVars()
+                specs.forEach { envVars.put(it.name, values[it.name] ?: it.defaultValue) }
+                when (kind) {
+                    PresetKind.BOX64 -> Box64PresetManager.editPreset(prefix, context, presetId, clean, envVars)
+                    PresetKind.FEXCORE -> FEXCorePresetManager.editPreset(context, presetId, clean, envVars)
+                }
+                onSaved()
+                onDismiss()
+            }) { Text("Save") }
         },
-        dismissButton = if (readOnly) null else {
-            { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Reset only makes sense for a built-in that has actually been edited — a custom
+                // preset has no shipped original to go back to.
+                if (isBuiltIn && modified) {
+                    TextButton(onClick = {
+                        when (kind) {
+                            PresetKind.BOX64 -> Box64PresetManager.resetPreset(prefix, context, presetId)
+                            PresetKind.FEXCORE -> FEXCorePresetManager.resetPreset(context, presetId)
+                        }
+                        // Re-seed the editor from the now-restored shipped values so the change
+                        // is visible immediately rather than only after reopening.
+                        val restored = when (kind) {
+                            PresetKind.BOX64 -> Box64PresetManager.getEnvVars(prefix, context, presetId!!)
+                            PresetKind.FEXCORE -> FEXCorePresetManager.getEnvVars(context, presetId!!)
+                        }
+                        specs.forEach { spec ->
+                            values[spec.name] =
+                                restored.takeIf { it.has(spec.name) }?.get(spec.name) ?: spec.defaultValue
+                        }
+                        modified = false
+                        onSaved()
+                    }) { Text("Reset", color = MaterialTheme.colorScheme.error) }
+                }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
         },
     )
 }

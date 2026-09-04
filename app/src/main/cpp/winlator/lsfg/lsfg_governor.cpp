@@ -66,8 +66,18 @@ float phaseSeconds(std::chrono::steady_clock::time_point a,
 
 void ProbeGovernor::configure(uint32_t maxGenerations) {
     if (maxGenerations_ == maxGenerations) return;
+    // Raising the ceiling must NOT throw away what we already know works -
+    // going 2x -> 4x used to reset the accepted level to zero and restart the
+    // whole baseline/probe cycle, so a user raising the multiplier got FEWER
+    // frames. Only clamp down to a ceiling that has actually been lowered.
     maxGenerations_ = maxGenerations;
-    reset();
+    if (accepted_ > maxGenerations_) accepted_ = maxGenerations_;
+    // Re-measure against the new ceiling, but keep the accepted level.
+    phase_ = Phase::Baseline;
+    havePhaseStart_ = false;
+    sourceAccum_ = loopAccum_ = 0.0f;
+    samples_ = 0;
+    haveBaseline_ = false;
 }
 
 void ProbeGovernor::reset() {

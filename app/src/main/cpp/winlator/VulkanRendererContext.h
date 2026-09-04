@@ -544,6 +544,10 @@ private:
     // Sync objects are indexed per PRESENT, not per composite: each pending
     // present needs its own image-available and render-finished semaphore.
     uint32_t syncSlot(uint32_t k) const { return currentFrame * kMaxPresentsPerFrame + k; }
+    // Destroy and rebuild every acquire/present semaphore. Called with the
+    // swapchain, so no stale pending signal can survive into the new one.
+    void recreateSyncObjects();
+    uint32_t fgAcquireFailLog_ = 0;
 
     bool ensureLsfgEngine();
     // Generated frames: dispatch `generate` into spare composite targets and

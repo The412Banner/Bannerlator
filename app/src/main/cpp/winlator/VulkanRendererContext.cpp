@@ -411,7 +411,10 @@ void VulkanRendererContext::createSwapchain() {
     // depth to keep them in flight without stalling on AcquireNextImageKHR.
     // Only while armed: extra images cost memory.
     if (fgArmed_.load(std::memory_order_relaxed)) {
-        const uint32_t want = caps.minImageCount + kMaxCompositeTargets;
+        // Enough depth for base + generated in flight, but capped: Android's
+        // BufferQueue does not enjoy very deep swapchains, and the surface's
+        // own maxImageCount is not always the real limit.
+        const uint32_t want = std::min<uint32_t>(caps.minImageCount + kMaxPresentsPerFrame, 8u);
         if (want > imgCount) imgCount = want;
     }
     if (caps.maxImageCount>0&&imgCount>caps.maxImageCount) imgCount=caps.maxImageCount;
@@ -771,6 +774,10 @@ bool VulkanRendererContext::ensureCompositeTargets(uint32_t w, uint32_t h, uint3
     if (compositeW == w && compositeH == h && compositeTargets.size() == count) return true;
     if (!createCompositeRenderPass()) return false;
 
+    // Changing the multiplier resizes the ring, and the images being replaced
+    // may still be referenced by a submitted command buffer. Destroying them
+    // under the GPU is a use-after-free; wait first.
+    if (!compositeTargets.empty()) vk_.DeviceWaitIdle(device);
     destroyCompositeTargets();
 
     compositeTargets.resize(count);
@@ -952,14 +959,25 @@ void VulkanRendererContext::recordFrameGenPasses(VkCommandBuffer cb) {
 
 void VulkanRendererContext::setLsfgCachePath(const char* path) {
     std::lock_guard<std::mutex> lk(renderMutex);
-    lsfgCachePath_ = path ? path : "";
+    const std::string next = path ? path : "";
+    // Only a genuinely NEW cache justifies throwing the engine away. This is
+    // called on every multiplier change, and rebuilding here meant the chain,
+    // the pacer's rate history and the governor's accepted level were all
+    // discarded each time - so the governor restarted at zero generations and
+    // never survived long enough to probe. Frame generation reported gen=0
+    // forever while looking perfectly healthy.
+    if (next == lsfgCachePath_ && lsfgEngine_) return;
+    lsfgCachePath_ = next;
     lsfgEngineTried_ = false;    // a new cache deserves a fresh attempt
     lsfgEngine_.reset();
 }
 
 void VulkanRendererContext::setFrameGenTuning(float flowScale, float refreshHz) {
     fgFlowScale_.store(flowScale, std::memory_order_relaxed);
-    fgRefreshHz_.store(refreshHz, std::memory_order_relaxed);
+    // A zero here means the display could not be read, not "0 Hz". Keeping the
+    // last good value stops the pacer's refresh ceiling flapping between 144
+    // and unknown, which was visible in the logs as max= alternating.
+    if (refreshHz > 1.0f) fgRefreshHz_.store(refreshHz, std::memory_order_relaxed);
     fgConfigDirty_.store(true, std::memory_order_relaxed);
 }
 
@@ -1258,6 +1276,30 @@ void VulkanRendererContext::createSyncObjects() {
         if (vk_.CreateFence(device,&fi,nullptr,&inFlightFences[i])!=VK_SUCCESS)
             throw std::runtime_error("sync");
     }
+}
+
+void VulkanRendererContext::recreateSyncObjects() {
+    // Caller has already waited on every fence, so nothing is executing; the
+    // only thing that can still be outstanding is an acquire semaphore that was
+    // signalled for a frame which never got submitted.
+    vk_.DeviceWaitIdle(device);
+
+    for (size_t i = 0; i < imgAvailSems.size(); i++)
+        if (imgAvailSems[i] != VK_NULL_HANDLE) vk_.DestroySemaphore(device, imgAvailSems[i], nullptr);
+    for (size_t i = 0; i < renderDoneSems.size(); i++)
+        if (renderDoneSems[i] != VK_NULL_HANDLE) vk_.DestroySemaphore(device, renderDoneSems[i], nullptr);
+
+    const uint32_t semCount = MAX_FRAMES_IN_FLIGHT * kMaxPresentsPerFrame;
+    imgAvailSems.assign(semCount, VK_NULL_HANDLE);
+    renderDoneSems.assign(semCount, VK_NULL_HANDLE);
+
+    VkSemaphoreCreateInfo si{}; si.sType=VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    for (uint32_t i = 0; i < semCount; i++) {
+        if (vk_.CreateSemaphore(device,&si,nullptr,&imgAvailSems[i])!=VK_SUCCESS ||
+            vk_.CreateSemaphore(device,&si,nullptr,&renderDoneSems[i])!=VK_SUCCESS)
+            throw std::runtime_error("sync");
+    }
+    currentFrame = 0;
 }
 
 void VulkanRendererContext::cleanupSwapchain() {
@@ -2101,7 +2143,19 @@ void VulkanRendererContext::renderFrame() {
         if (!fencesOk) return;
         cleanupSwapchain();
         bool ok=false;
-        try{createSwapchain();createFramebuffers();createCmdBufs();imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
+        try{
+            // Rebuild the acquire/present semaphores along with the swapchain.
+            // A frame that acquired an image and then bailed out - which any
+            // early return between AcquireNextImageKHR and QueueSubmit does,
+            // and arming/disarming frame gen forces mid-flight - leaves its
+            // image-available semaphore SIGNALLED with nothing left to wait on
+            // it. Reusing such a semaphore in the next AcquireNextImageKHR is
+            // invalid, and Adreno answers with VK_ERROR_OUT_OF_DATE_KHR, which
+            // sets fbResized again: a swapchain-recreate loop that never
+            // presents another frame. Recreating them is the only way to
+            // guarantee no pending signal survives.
+            recreateSyncObjects();
+            createSwapchain();createFramebuffers();createCmdBufs();imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
 ok=true;}catch(...){}
         if (ok) fbResized.store(false);
         return;
@@ -2158,7 +2212,16 @@ ok=true;}catch(...){}
         uint32_t idx = 0;
         VkResult ar = vk_.AcquireNextImageKHR(device,swapchain,2000000000ULL,
                                               imgAvailSems[syncSlot(k)],VK_NULL_HANDLE,&idx);
-        if (ar==VK_ERROR_OUT_OF_DATE_KHR||ar==VK_ERROR_SURFACE_LOST_KHR){fbResized.store(true);return;}
+        if (ar==VK_ERROR_OUT_OF_DATE_KHR||ar==VK_ERROR_SURFACE_LOST_KHR){
+            // Logged deliberately: when this fires every frame it IS the
+            // swapchain-recreate loop, and it used to be invisible.
+            if ((fgAcquireFailLog_++ % 60u) == 0u)
+                RLOG_E("renderFrame: acquire %u/%u -> %s (recreating swapchain)",
+                       k, fgPlan_.presents,
+                       ar==VK_ERROR_OUT_OF_DATE_KHR ? "OUT_OF_DATE" : "SURFACE_LOST");
+            fbResized.store(true);
+            return;
+        }
         if (ar!=VK_SUCCESS&&ar!=VK_SUBOPTIMAL_KHR) {
             // Could not get every image we planned for. Anything already
             // acquired has a semaphore nobody will wait on, so the only safe

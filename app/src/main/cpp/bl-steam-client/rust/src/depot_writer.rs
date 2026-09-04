@@ -1,14 +1,17 @@
-use crate::cdn_client::{CdnClient, CdnConnection};
+use crate::cdn_client::{AsyncCdnClient, AsyncFetchError, CdnClient, CdnConnection, FetchFailKind};
 use crate::content_manifest::{ChunkData, ContentManifest};
 use crate::depot_chunk::process_depot_chunk;
 use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
+use futures_util::stream::FuturesUnordered;
+use futures_util::StreamExt;
+use std::collections::VecDeque;
 use std::fs::{self, File, OpenOptions};
 use std::path::{Component, Path};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use tokio::sync::Semaphore;
 
 pub const DEPOT_FILE_FLAG_EXECUTABLE: u32 = 32;
 pub const DEPOT_FILE_FLAG_DIRECTORY: u32 = 64;
@@ -17,24 +20,140 @@ pub const MAX_CHUNK_ATTEMPTS: u32 = 5;
 pub const SLOW_CHUNK_ROTATE_THRESHOLD_SECS: u64 = 8;
 pub const SLOW_CHUNK_ROTATE_CONSECUTIVE_LIMIT: u32 = 3;
 
-/// Byte budget for the *compressed* chunk bytes buffered in the fetch→process channel.
+/// Floor for the in-flight byte budget — the pre-r4 fixed value, so no depot ever gets *less*
+/// buffered memory than it had before the budget started scaling. See [`inflight_budget_bytes`].
+pub const FETCH_INFLIGHT_BUDGET_FLOOR_BYTES: u64 = 24 * 1024 * 1024;
+
+/// Hard ceiling for the in-flight byte budget. This is THE OOM guard (the #408 class): whatever the
+/// tier, the host count or the chunk size, the RAW bytes in memory for one depot can never exceed
+/// this. 96 MiB = 4× the old fixed budget and still a small fraction of the heap an Android game
+/// installer runs in — and it is only ever reached by a Blazing-tier depot whose CDN pool is large
+/// enough to support a 64+ window (the observed 7-host pool tops out at a 63 MiB budget). Raising
+/// this is the one change in the fetch layer that can reintroduce OOM, so it stays fixed and small.
+pub const FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES: u64 = 96 * 1024 * 1024;
+
+/// Assumed RAW (on-the-wire, still-compressed) size of one chunk when sizing the budget. Steam
+/// chunks are ~1 MiB; this is the same nominal [`NOMINAL_CHUNK_RESERVE_BYTES`] uses at dispatch.
+pub const TYPICAL_CHUNK_BYTES: u64 = NOMINAL_CHUNK_RESERVE_BYTES;
+
+/// Headroom the budget carries over "one chunk per window slot" (3/2 = 1.5×), as a rational so the
+/// arithmetic stays integer. The window is a count of concurrent *requests*; a slot's bytes are held
+/// from DISPATCH until its WRITE completes, so at any instant some slots hold a fetched-but-not-yet-
+/// written chunk while others hold a reservation for a fetch still on the wire. 1.5× covers that
+/// overlap (and the occasional above-nominal chunk) without doubling the memory bound.
+pub const BUDGET_HEADROOM_NUM: u64 = 3;
+pub const BUDGET_HEADROOM_DEN: u64 = 2;
+
+/// Byte budget for the *compressed* chunk bytes buffered in the fetch→process channel, scaled to the
+/// window ceiling this depot can actually reach.
 ///
 /// The decouple channel is bounded by BYTES, not chunk count: a count cap makes in-flight memory
 /// swing wildly with chunk size (a 4-chunk cap is ~4 MB for 1 MB chunks but ~120 MB for 30 MB
-/// chunks). Budgeting bytes keeps the heap fixed regardless of game size (the #408 OOM class) while
+/// chunks). Budgeting bytes keeps the heap bounded regardless of game size (the #408 OOM class) while
 /// giving the fetch pool bandwidth-delay-product headroom so the socket stays busy while process
-/// workers decompress+write. Raw Steam chunks are ~1 MB, so ~24 MB ≈ ~24 chunks in flight.
+/// workers decompress+write.
 ///
-/// Budget only the RAW bytes actually queued (incremented on ENQUEUE, decremented on WRITE-COMPLETE);
-/// the decoded expansion is transient inside a process worker and never accumulates. See
+/// r4: the r3 device run proved a fixed 24 MiB budget becomes the binding constraint the moment the
+/// adaptive window works — a Blazing depot on a 1 Gbps line grew the window to 42 but the budget
+/// admitted only ~24 chunks, so `in_flight` stalled at 23–28 with `budget_stalls` in the hundreds
+/// and `host_stalls=0`. A budget that refuses slots the window has already decided are safe is not a
+/// memory guard, it is a throttle. So the budget now scales WITH the same effective ceiling
+/// [`window_bounds`] computes (tier ∧ hosts×per-host-cap ∧ hard cap) and is clamped between the old
+/// fixed value and a hard cap. Low tiers are unaffected (Slow/Medium land on the floor); a fast link
+/// gets a budget that stops binding before the window does.
+///
+/// Budget only the RAW bytes actually queued (reserved at DISPATCH, released on WRITE-COMPLETE); the
+/// decoded expansion is transient inside a process worker and never accumulates. See
 /// [`budget_admits`] for the single-chunk deadlock guard.
-pub const FETCH_INFLIGHT_BUDGET_BYTES: u64 = 24 * 1024 * 1024;
+pub fn inflight_budget_bytes(effective_ceiling: usize) -> u64 {
+    (effective_ceiling as u64)
+        .saturating_mul(TYPICAL_CHUNK_BYTES)
+        .saturating_mul(BUDGET_HEADROOM_NUM)
+        .saturating_div(BUDGET_HEADROOM_DEN)
+        .clamp(
+            FETCH_INFLIGHT_BUDGET_FLOOR_BYTES,
+            FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES,
+        )
+}
 
 /// How often the parallel writer emits a per-server throughput line to the debug log.
 const BANDWIDTH_LOG_INTERVAL_MS: u64 = 5_000;
 
 /// Slack below which the free-space guard will not fail (guards against small statvfs imprecision).
 const FREE_SPACE_MARGIN_BYTES: u64 = 64 * 1024 * 1024;
+
+// ─── B2b async-fetch tuning ────────────────────────────────────────────────────────────────────
+// The window/host/back-off knobs for the adaptive concurrency fetch driver. The important behaviours
+// are structural (slow-start ramp → hold at plateau → back off on REAL errors, per-host cap, hard
+// byte budget), not the exact numbers.
+//
+// r3 retune: the first device run pinned the window at the floor on a 1 Gbps link. The B2b controller
+// shrank on throughput dips and latency jitter (normal CDN noise) as well as on errors, shrank a flat
+// −6 on every single error, and only grew when throughput rose >10% in a 700 ms sample. The shrinks
+// dominated, so the window ratcheted to the floor and stayed there. r3 makes growth eager and makes
+// ERRORS the only shrink signal.
+
+/// Max concurrent requests to any single CDN host. Steam throttles/resets per host, so a big window
+/// is reached by spreading across MORE hosts, never by piling onto one. (Refinement #3.)
+pub const PER_HOST_CAP: usize = 6;
+/// Initial in-flight window. Slow-start doubles from here, so this only sets how fast the first
+/// couple of probes get useful — the ceiling still comes from the tier × hosts clamp.
+pub const BOOTSTRAP_WINDOW: usize = 8;
+/// Hard safety ceiling on the window regardless of tier (also clamped to distinct-hosts × per-host).
+pub const WINDOW_HARD_CAP: usize = 256;
+/// The window never shrinks below this (keeps a little pipelining even on a rough link).
+pub const WINDOW_MIN_FLOOR: usize = 2;
+/// Additive growth step once slow-start has ended (after the first real back-off).
+pub const WINDOW_STEP_UP: usize = 4;
+/// Slow-start multiplier: until the first back-off the window DOUBLES each healthy probe, so a fast
+/// link reaches a useful window in seconds instead of never.
+pub const WINDOW_SLOW_START_FACTOR: usize = 2;
+/// Proportional shrink on a real error signal (never a flat step: a flat −6 slammed a small window
+/// straight to the floor). Always at least −1 while above the floor.
+pub const WINDOW_SHRINK_FACTOR: f64 = 0.75;
+/// How often the adaptive window re-evaluates. Long enough (vs B2b's 700 ms) that one jittery sample
+/// cannot drive a decision; decisions use the EWMA, not the raw sample.
+pub const WINDOW_PROBE_INTERVAL_MS: u64 = 2_000;
+/// After a back-off, hold the window (no growth) for this long — hysteresis against oscillation.
+pub const WINDOW_COOLDOWN_MS: u64 = 3_000;
+/// EWMA smoothing for the measured throughput samples (higher = more responsive).
+pub const WINDOW_BPS_EWMA_ALPHA: f64 = 0.4;
+/// Throughput above `best × (1 + this)` counts as a genuine improvement (keeps slow-start climbing).
+pub const WINDOW_IMPROVE_EPS: f64 = 0.05;
+/// Throughput below `best × (1 − this)` counts as falling — growth STOPS (hold). It never shrinks:
+/// only real errors shrink.
+pub const WINDOW_DECLINE_EPS: f64 = 0.15;
+/// Error-rate thresholds over one probe window: above HIGH shrinks; growth needs at/below LOW
+/// (in between = hold).
+pub const WINDOW_ERR_RATE_HIGH: f64 = 0.10;
+pub const WINDOW_ERR_RATE_LOW: f64 = 0.05;
+/// Errors inside ONE probe interval that trigger an immediate (don't-wait-for-the-probe) shrink. A
+/// single stray timeout no longer moves the window; a burst does. A 429 always shrinks immediately.
+pub const WINDOW_ERR_BURST_IMMEDIATE: u32 = 3;
+/// Consecutive non-improving probes still allowed to grow before declaring a plateau — throughput
+/// lags a window change by a probe or two, so one flat sample must not stop the ramp.
+pub const WINDOW_PLATEAU_PATIENCE: u32 = 2;
+/// Once plateaued, re-arm the ramp this long later (doubling, capped) to re-probe for headroom if the
+/// link improved. Bounded re-probing, not a creep: a weak link answers with errors and shrinks back.
+pub const WINDOW_PLATEAU_REARM_MS: u64 = 30_000;
+pub const WINDOW_PLATEAU_REARM_MAX_MS: u64 = 300_000;
+/// Even when the window does not change, emit one `fetch-window` line every N probes so a stuck
+/// window explains itself in the log (`reason=` says why it is not moving).
+pub const WINDOW_LOG_EVERY_PROBES: u32 = 5;
+/// Every Nth exploit dispatch is instead an exploration pick (epsilon-greedy ≈ 1/N) so a
+/// demoted-but-recovered host is retried rather than starved forever. (Refinement #5.)
+pub const SERVER_EXPLORE_EVERY: u64 = 8;
+/// Reservation for a chunk whose compressed size the manifest didn't carry (keeps the byte budget
+/// honest at dispatch time). Steam chunks are ~1 MiB.
+pub const NOMINAL_CHUNK_RESERVE_BYTES: u64 = 1024 * 1024;
+/// While the fetch pipe is busy, process at most this many consecutive verify-skips before yielding
+/// the driver back to poll in-flight fetches — keeps a resume's local re-hash from starving the
+/// socket. (During a pure verify pass with nothing in flight there is nothing to starve, so the
+/// driver blasts straight through.)
+pub const VERIFY_YIELD_BATCH: u32 = 256;
+/// Extra host cooldown floor when a host answers 429 (rate-limited) — back off harder than a
+/// one-off timeout.
+pub const RATE_LIMIT_COOLDOWN_MS: u64 = 5_000;
 
 /// Sink for engine-side download diagnostics (throughput lines, fallocate fallback notice). Wired by
 /// the JNI layer to `android_log("BL_STEAM_DL", …)`; `None` in tests. Must be `Sync` — it is called
@@ -313,6 +432,12 @@ impl BandwidthMeter {
         }
     }
 
+    /// Cumulative bytes served so far (feeds the adaptive window's throughput probe).
+    #[inline]
+    pub fn total_bytes(&self) -> u64 {
+        self.total_bytes.load(Ordering::Relaxed)
+    }
+
     /// A one-line snapshot for the debug log: overall MB/s + the busiest servers' MB/s.
     pub fn summary_line(&self, depot_id: u32) -> String {
         let secs = self.start.elapsed().as_secs_f64().max(0.001);
@@ -329,8 +454,13 @@ impl BandwidthMeter {
             .collect();
         per.sort_by(|a, b| b.1.cmp(&a.1));
 
+        // `used` = how many of the pool's servers actually carried bytes. With a small window the
+        // speed ranking piles onto one host, so this is the quick read on whether the fetch is
+        // spread across the CDN pool or has degenerated to a single server.
+        let used = per.len();
+        let pool = self.per_server_bytes.len();
         let mut servers = String::new();
-        for (i, bytes) in per.iter().take(4) {
+        for (i, bytes) in per.iter().take(6) {
             let host = self.hosts.get(*i).map(String::as_str).unwrap_or("?");
             servers.push_str(&format!(
                 " [{host} {:.1}MB/s {:.0}MB]",
@@ -339,10 +469,540 @@ impl BandwidthMeter {
             ));
         }
         format!(
-            "throughput depot={depot_id} overall={overall_mbps:.2}MB/s total={:.0}MB elapsed={secs:.0}s servers:{servers}",
+            "throughput depot={depot_id} overall={overall_mbps:.2}MB/s total={:.0}MB elapsed={secs:.0}s used={used}/{pool} servers:{servers}",
             mb(total)
         )
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// B2b async fetch: adaptive concurrency window + speed-ranked, per-host-capped server selection.
+// This state lives on (and is mutated only by) the single fetch-driver task, so it needs no locks;
+// per-host caps are enforced with tokio Semaphores whose permits ride INSIDE the in-flight futures
+// (RAII release on success, error, timeout, AND cancel/abort-drop).
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Distinct CDN host count (keyed on vhost|host) — the multiplier for the window's host ceiling.
+fn distinct_host_count(servers: &[CContentServerDirectoryServerInfo]) -> usize {
+    let mut keys: Vec<&str> = Vec::new();
+    for s in servers {
+        let key = if s.vhost.is_empty() {
+            s.host.as_str()
+        } else {
+            s.vhost.as_str()
+        };
+        if !keys.contains(&key) {
+            keys.push(key);
+        }
+    }
+    keys.len().max(1)
+}
+
+/// Per-CDN-server health used to rank selection. `ewma_bps` smooths measured speed (a fast CDN can
+/// throttle mid-download, so one sample is never trusted); `cooldown_until` demotes a host that just
+/// errored.
+#[derive(Clone, Debug, Default)]
+struct ServerHealth {
+    ewma_bps: f64,
+    samples: u32,
+    consecutive_errors: u32,
+    cooldown_until: Option<Instant>,
+}
+
+/// Speed-ranked, per-host-capped server picker. Cold hosts are probed first, then selection is
+/// epsilon-greedy over the measured EWMA so a demoted-but-recovered host returns. Per-host caps key
+/// on the host STRING (one `tokio::sync::Semaphore` each) so two directory entries that share a host
+/// still share one cap.
+struct FetchScheduler {
+    health: Vec<ServerHealth>,
+    /// server index → distinct-host index.
+    server_host: Vec<usize>,
+    /// one semaphore per distinct host, each with `per_host_cap` permits.
+    host_sems: Vec<Arc<Semaphore>>,
+    host_count: usize,
+    dispatch_counter: u64,
+}
+
+impl FetchScheduler {
+    fn new(servers: &[CContentServerDirectoryServerInfo], per_host_cap: usize) -> Self {
+        let mut host_keys: Vec<String> = Vec::new();
+        let mut server_host: Vec<usize> = Vec::with_capacity(servers.len());
+        for s in servers {
+            let key = if s.vhost.is_empty() {
+                s.host.clone()
+            } else {
+                s.vhost.clone()
+            };
+            let idx = host_keys.iter().position(|k| *k == key).unwrap_or_else(|| {
+                host_keys.push(key);
+                host_keys.len() - 1
+            });
+            server_host.push(idx);
+        }
+        let host_sems = host_keys
+            .iter()
+            .map(|_| Arc::new(Semaphore::new(per_host_cap.max(1))))
+            .collect();
+        Self {
+            health: servers.iter().map(|_| ServerHealth::default()).collect(),
+            server_host,
+            host_sems,
+            host_count: host_keys.len().max(1),
+            dispatch_counter: 0,
+        }
+    }
+
+    fn host_sem(&self, server_idx: usize) -> &Arc<Semaphore> {
+        &self.host_sems[self.server_host[server_idx]]
+    }
+
+    fn eligible(&self, server_idx: usize, now: Instant) -> bool {
+        self.host_sem(server_idx).available_permits() > 0
+            && self.health[server_idx]
+                .cooldown_until
+                .map_or(true, |t| t <= now)
+    }
+
+    /// Pick the server for the next request, or `None` if every host is at its cap or cooling down
+    /// (the driver then waits for an in-flight request to complete).
+    fn pick(&mut self, now: Instant) -> Option<usize> {
+        let eligible: Vec<usize> = (0..self.health.len())
+            .filter(|&i| self.eligible(i, now))
+            .collect();
+        if eligible.is_empty() {
+            return None;
+        }
+        // Cold start: probe an unsampled host before exploiting anything.
+        if let Some(&cold) = eligible.iter().find(|&&i| self.health[i].samples == 0) {
+            return Some(cold);
+        }
+        self.dispatch_counter = self.dispatch_counter.wrapping_add(1);
+        // Epsilon-greedy exploration: revisit the least-sampled eligible host.
+        if SERVER_EXPLORE_EVERY > 0 && self.dispatch_counter % SERVER_EXPLORE_EVERY == 0 {
+            return eligible
+                .iter()
+                .copied()
+                .min_by_key(|&i| self.health[i].samples);
+        }
+        // Exploit: highest EWMA, tie-break to the host with more free permits, then lower index.
+        eligible.iter().copied().max_by(|&a, &b| {
+            self.health[a]
+                .ewma_bps
+                .partial_cmp(&self.health[b].ewma_bps)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(
+                    self.host_sem(a)
+                        .available_permits()
+                        .cmp(&self.host_sem(b).available_permits()),
+                )
+                .then(b.cmp(&a))
+        })
+    }
+
+    fn on_success(&mut self, server_idx: usize, bytes: u64, elapsed: Duration) {
+        let secs = elapsed.as_secs_f64().max(0.001);
+        let bps = bytes as f64 / secs;
+        let h = &mut self.health[server_idx];
+        h.ewma_bps = if h.samples == 0 {
+            bps
+        } else {
+            0.7 * h.ewma_bps + 0.3 * bps
+        };
+        h.samples = h.samples.saturating_add(1);
+        h.consecutive_errors = 0;
+        h.cooldown_until = None;
+    }
+
+    fn on_error(&mut self, server_idx: usize, now: Instant, kind: FetchFailKind) {
+        let h = &mut self.health[server_idx];
+        h.consecutive_errors = h.consecutive_errors.saturating_add(1);
+        let mut backoff = retry_backoff_millis(h.consecutive_errors);
+        if kind == FetchFailKind::RateLimited {
+            backoff = backoff.max(RATE_LIMIT_COOLDOWN_MS);
+        }
+        h.cooldown_until = Some(now + Duration::from_millis(backoff));
+        // Demote so ranking avoids it even after the cooldown expires, until it re-earns speed.
+        h.ewma_bps *= 0.5;
+    }
+}
+
+/// Why the window last moved (or refused to). Logged on every `fetch-window` line so the next device
+/// run is self-diagnosing: a window sitting still now says whether it is at the ceiling, plateaued,
+/// cooling down after an error, or being held back by errors.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WindowReason {
+    Start,
+    GrowSlowStart,
+    GrowThroughputUp,
+    GrowProbe,
+    HoldPlateau,
+    HoldCooldown,
+    HoldCeiling,
+    HoldErrors,
+    HoldThroughputDown,
+    ShrinkRateLimited,
+    ShrinkTimeout,
+    ShrinkReset,
+    ShrinkServerFault,
+    ShrinkErrorRate,
+    ShrinkErrorBurst,
+}
+
+impl WindowReason {
+    fn code(self) -> &'static str {
+        match self {
+            WindowReason::Start => "start",
+            WindowReason::GrowSlowStart => "grow:slow-start",
+            WindowReason::GrowThroughputUp => "grow:throughput-up",
+            WindowReason::GrowProbe => "grow:probe",
+            WindowReason::HoldPlateau => "hold:plateau",
+            WindowReason::HoldCooldown => "hold:cooldown",
+            WindowReason::HoldCeiling => "hold:ceiling",
+            WindowReason::HoldErrors => "hold:errors",
+            WindowReason::HoldThroughputDown => "hold:throughput-down",
+            WindowReason::ShrinkRateLimited => "shrink:429",
+            WindowReason::ShrinkTimeout => "shrink:timeout",
+            WindowReason::ShrinkReset => "shrink:reset",
+            WindowReason::ShrinkServerFault => "shrink:5xx",
+            WindowReason::ShrinkErrorRate => "shrink:err-rate",
+            WindowReason::ShrinkErrorBurst => "shrink:err-burst",
+        }
+    }
+
+    fn from_fail_kind(kind: FetchFailKind) -> Self {
+        match kind {
+            FetchFailKind::RateLimited => WindowReason::ShrinkRateLimited,
+            FetchFailKind::Timeout => WindowReason::ShrinkTimeout,
+            FetchFailKind::Connect => WindowReason::ShrinkReset,
+            FetchFailKind::ServerFault => WindowReason::ShrinkServerFault,
+            FetchFailKind::Other => WindowReason::ShrinkErrorBurst,
+        }
+    }
+}
+
+/// Adaptive in-flight window (r3). Slow-start doubles the window every healthy probe until the first
+/// real back-off, then grows additively; it keeps growing while the error rate is low and throughput
+/// is not falling, HOLDS once throughput plateaus, and shrinks PROPORTIONALLY only on real errors
+/// (429 / timeout / connection reset / server fault). Throughput dips and latency jitter never shrink
+/// it — that noise is exactly what pinned B2b at the floor.
+///
+/// Slow-connection safety is unchanged in kind: a thin pipe saturates and answers with timeouts and
+/// resets (real errors → shrink + cooldown), plateaus early (→ hold, so growth simply stops), and is
+/// still bounded by the per-host cap, the floor/ceiling, and the in-flight byte budget (which on a
+/// thin link stays at its 24 MiB floor, since that budget is sized from the same effective ceiling).
+/// `max` is the tier ceiling (already clamped to distinct-hosts × per-host-cap).
+#[derive(Clone, Debug)]
+struct AdaptiveWindow {
+    current: usize,
+    min: usize,
+    max: usize,
+    last_probe: Instant,
+    last_bytes: u64,
+    /// Raw throughput of the last probe sample (logged as `last=`).
+    last_bps: f64,
+    /// Smoothed throughput — the ONLY throughput signal decisions use.
+    bps_ewma: f64,
+    /// High-water smoothed throughput at the current regime (reset on a shrink).
+    best_bps: f64,
+    /// True until the first real back-off: growth is multiplicative.
+    slow_start: bool,
+    /// Consecutive non-improving probes that still grew (plateau patience).
+    plateau_streak: u32,
+    /// When the plateau hold started, and how long to hold before re-probing for headroom.
+    plateau_since: Option<Instant>,
+    plateau_rearm_ms: u64,
+    ok_count: u32,
+    err_count: u32,
+    /// Dispatch attempts since the last probe that WANTED another slot but could not take one: the
+    /// byte budget was full, or every CDN host was at its per-host cap / cooling down. These say
+    /// whether the window is the binding constraint at all — a big window with a high `budget_stalls`
+    /// is bounded by the byte budget, and a high `host_stalls` is bounded by hosts × per-host cap.
+    /// Since r4 the budget is sized from the window ceiling, so `budget_stalls` should stay near zero
+    /// — a spike means the budget is binding again and the headroom/hard cap needs revisiting.
+    budget_stalls: u32,
+    host_stalls: u32,
+    last_budget_stalls: u32,
+    last_host_stalls: u32,
+    latency_ewma_ms: f64,
+    cooldown_until: Option<Instant>,
+    last_reason: WindowReason,
+    last_err_rate: f64,
+    probes_since_log: u32,
+}
+
+impl AdaptiveWindow {
+    fn new(bootstrap: usize, min: usize, max: usize, now: Instant) -> Self {
+        let max = max.max(1);
+        let min = min.clamp(1, max);
+        Self {
+            current: bootstrap.clamp(min, max),
+            min,
+            max,
+            last_probe: now,
+            last_bytes: 0,
+            last_bps: 0.0,
+            bps_ewma: 0.0,
+            best_bps: 0.0,
+            slow_start: true,
+            plateau_streak: 0,
+            plateau_since: None,
+            plateau_rearm_ms: WINDOW_PLATEAU_REARM_MS,
+            ok_count: 0,
+            err_count: 0,
+            budget_stalls: 0,
+            host_stalls: 0,
+            last_budget_stalls: 0,
+            last_host_stalls: 0,
+            latency_ewma_ms: 0.0,
+            cooldown_until: None,
+            last_reason: WindowReason::Start,
+            last_err_rate: 0.0,
+            probes_since_log: 0,
+        }
+    }
+
+    /// The dispatch loop wanted another in-flight slot but the byte budget was full.
+    fn note_budget_stall(&mut self) {
+        self.budget_stalls = self.budget_stalls.saturating_add(1);
+    }
+
+    /// The dispatch loop wanted another in-flight slot but every host was at cap or cooling.
+    fn note_host_stall(&mut self) {
+        self.host_stalls = self.host_stalls.saturating_add(1);
+    }
+
+    fn record_ok(&mut self, latency_ms: f64) {
+        self.ok_count = self.ok_count.saturating_add(1);
+        self.latency_ewma_ms = if self.latency_ewma_ms == 0.0 {
+            latency_ms
+        } else {
+            0.8 * self.latency_ewma_ms + 0.2 * latency_ms
+        };
+    }
+
+    /// Proportional shrink (never a flat step) + hysteresis cooldown, and slow-start ends here: from
+    /// now on the window advances additively.
+    fn shrink(&mut self, now: Instant, reason: WindowReason) {
+        let scaled = (self.current as f64 * WINDOW_SHRINK_FACTOR).floor() as usize;
+        // Always give up at least one slot while above the floor, so a factor that rounds to the same
+        // value still makes progress.
+        let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.current = next.max(self.min);
+        self.cooldown_until = Some(now + Duration::from_millis(WINDOW_COOLDOWN_MS));
+        self.slow_start = false;
+        // The old high-water mark was measured at a bigger window; keep it and we would read
+        // "falling" forever and never recover. Re-baseline to what we are actually seeing.
+        self.best_bps = self.bps_ewma;
+        self.plateau_streak = 0;
+        self.plateau_since = None;
+        self.plateau_rearm_ms = WINDOW_PLATEAU_REARM_MS;
+        self.last_reason = reason;
+    }
+
+    /// `multiplicative` doubles (slow-start); otherwise a single additive step. Doubling is reserved
+    /// for probes where throughput actually ROSE — a link that is already saturated reports FLAT
+    /// throughput, and doubling into a saturated thin pipe is exactly the flood the window exists to
+    /// prevent. Flat-but-clean probes advance one step at a time.
+    fn grow(&mut self, reason: WindowReason, multiplicative: bool) {
+        let next = if multiplicative {
+            self.current.saturating_mul(WINDOW_SLOW_START_FACTOR)
+        } else {
+            self.current + WINDOW_STEP_UP
+        };
+        self.current = next.min(self.max).max(self.min);
+        self.last_reason = reason;
+    }
+
+    /// Record a fetch error. Back-off is REAL-ERROR-ONLY, and a single stray failure no longer moves
+    /// the window: a rate-limit (429) shrinks immediately, otherwise it takes a burst inside one probe
+    /// interval (the probe's error-rate check catches slower error storms). Returns `true` if the
+    /// window changed, so the caller can log the back-off as it happens.
+    fn record_err(&mut self, now: Instant, kind: FetchFailKind) -> bool {
+        self.err_count = self.err_count.saturating_add(1);
+        let immediate = kind == FetchFailKind::RateLimited
+            || self.err_count >= WINDOW_ERR_BURST_IMMEDIATE;
+        if !immediate {
+            return false;
+        }
+        let before = self.current;
+        self.shrink(now, WindowReason::from_fail_kind(kind));
+        if before != self.current {
+            self.probes_since_log = 0;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Re-evaluate on the probe interval. Returns `true` when the caller should log (the window moved,
+    /// or the heartbeat is due so a stuck window keeps explaining itself).
+    fn maybe_probe(&mut self, now: Instant, total_bytes: u64) -> bool {
+        let dt = now.duration_since(self.last_probe);
+        if dt < Duration::from_millis(WINDOW_PROBE_INTERVAL_MS) {
+            return false;
+        }
+        let secs = dt.as_secs_f64().max(0.001);
+        let sample_bps = total_bytes.saturating_sub(self.last_bytes) as f64 / secs;
+        self.bps_ewma = if self.bps_ewma == 0.0 {
+            sample_bps
+        } else {
+            WINDOW_BPS_EWMA_ALPHA * sample_bps + (1.0 - WINDOW_BPS_EWMA_ALPHA) * self.bps_ewma
+        };
+        let events = self.ok_count + self.err_count;
+        let err_rate = if events == 0 {
+            0.0
+        } else {
+            self.err_count as f64 / events as f64
+        };
+        let before = self.current;
+        let cooling = self.cooldown_until.is_some_and(|t| now < t);
+
+        if err_rate > WINDOW_ERR_RATE_HIGH {
+            // A sustained error storm: the one and only shrink signal at probe time.
+            self.shrink(now, WindowReason::ShrinkErrorRate);
+        } else if cooling {
+            self.last_reason = WindowReason::HoldCooldown;
+        } else if self.current >= self.max {
+            self.last_reason = WindowReason::HoldCeiling;
+        } else if err_rate > WINDOW_ERR_RATE_LOW {
+            // Errors present but not a storm: stop growing, but do NOT shrink.
+            self.last_reason = WindowReason::HoldErrors;
+        } else {
+            let improving = self.bps_ewma > self.best_bps * (1.0 + WINDOW_IMPROVE_EPS);
+            let falling = self.bps_ewma < self.best_bps * (1.0 - WINDOW_DECLINE_EPS);
+            if improving {
+                self.best_bps = self.bps_ewma;
+                self.plateau_streak = 0;
+                self.plateau_since = None;
+                self.plateau_rearm_ms = WINDOW_PLATEAU_REARM_MS;
+                let doubling = self.slow_start;
+                let reason = if doubling {
+                    WindowReason::GrowSlowStart
+                } else {
+                    WindowReason::GrowThroughputUp
+                };
+                self.grow(reason, doubling);
+            } else if falling {
+                // Throughput dropped without errors (a CDN slowed, or we are past the useful
+                // concurrency): HOLD. Shrinking here is what collapsed B2b to the floor.
+                self.last_reason = WindowReason::HoldThroughputDown;
+            } else if self.plateau_streak < WINDOW_PLATEAU_PATIENCE {
+                // Flat, but throughput lags a window change — spend a little patience before calling
+                // it a plateau.
+                self.plateau_streak += 1;
+                // Additive even during slow-start: flat throughput can mean "already saturated".
+                self.grow(WindowReason::GrowProbe, false);
+            } else {
+                // Plateau: more concurrency stopped helping. HOLD (correct behaviour on a slow link),
+                // and re-arm the ramp later — with a doubling interval — in case the link improves.
+                let since = *self.plateau_since.get_or_insert(now);
+                if now.duration_since(since) >= Duration::from_millis(self.plateau_rearm_ms) {
+                    self.plateau_streak = 0;
+                    self.plateau_since = None;
+                    self.plateau_rearm_ms =
+                        (self.plateau_rearm_ms * 2).min(WINDOW_PLATEAU_REARM_MAX_MS);
+                }
+                self.last_reason = WindowReason::HoldPlateau;
+            }
+        }
+
+        self.last_bytes = total_bytes;
+        self.last_bps = sample_bps;
+        self.last_probe = now;
+        self.last_err_rate = err_rate;
+        self.ok_count = 0;
+        self.err_count = 0;
+        self.last_budget_stalls = self.budget_stalls;
+        self.last_host_stalls = self.host_stalls;
+        self.budget_stalls = 0;
+        self.host_stalls = 0;
+        self.probes_since_log = self.probes_since_log.saturating_add(1);
+        let changed = before != self.current;
+        if changed || self.probes_since_log >= WINDOW_LOG_EVERY_PROBES {
+            self.probes_since_log = 0;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn cooldown_left_ms(&self, now: Instant) -> u64 {
+        self.cooldown_until
+            .map(|t| t.saturating_duration_since(now).as_millis() as u64)
+            .unwrap_or(0)
+    }
+
+    fn summary_line(&self, depot_id: u32, in_flight_requests: usize, now: Instant) -> String {
+        let mbps = |bps: f64| bps / (1024.0 * 1024.0);
+        format!(
+            "fetch-window depot={depot_id} window={} (min={} max={}) in_flight={in_flight_requests} \
+last={:.2}MB/s ewma={:.2}MB/s best={:.2}MB/s reason={} cooldown={}ms err_rate={:.1}% \
+phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
+            self.current,
+            self.min,
+            self.max,
+            mbps(self.last_bps),
+            mbps(self.bps_ewma),
+            mbps(self.best_bps),
+            self.last_reason.code(),
+            self.cooldown_left_ms(now),
+            self.last_err_rate * 100.0,
+            if self.slow_start { "slow-start" } else { "steady" },
+            self.latency_ewma_ms,
+            self.last_budget_stalls,
+            self.last_host_stalls
+        )
+    }
+}
+
+/// A chunk awaiting (re)dispatch: `attempts` already spent; not eligible before `not_before`.
+#[derive(Clone, Copy, Debug)]
+struct PendingChunk {
+    job: ChunkWriteJob,
+    attempts: u32,
+    not_before: Instant,
+}
+
+/// The result the driver awaits for each dispatched fetch.
+struct FetchDone {
+    job: ChunkWriteJob,
+    attempts: u32,
+    reserve: u64,
+    server_idx: usize,
+    elapsed: Duration,
+    res: Result<Vec<u8>, AsyncFetchError>,
+}
+
+/// Bytes to reserve against the in-flight budget for a chunk BEFORE it is fetched (compressed size
+/// from the manifest, or a nominal fallback). Reserving at dispatch — not at enqueue — makes the byte
+/// budget bound the TOTAL raw bytes in memory (being fetched + queued), the hard memory cap.
+fn reserve_bytes(manifest: &ContentManifest, job: ChunkWriteJob) -> u64 {
+    manifest
+        .files
+        .get(job.file_idx as usize)
+        .and_then(|f| f.chunks.get(job.chunk_idx as usize))
+        .map(|c| {
+            if c.cb_compressed == 0 {
+                NOMINAL_CHUNK_RESERVE_BYTES
+            } else {
+                c.cb_compressed as u64
+            }
+        })
+        .unwrap_or(NOMINAL_CHUNK_RESERVE_BYTES)
+}
+
+/// Window bounds for a depot: `max` = the tier ceiling (`options.max_workers`) clamped to
+/// distinct-hosts × per-host-cap and the hard cap; `min` = the floor; `bootstrap` = the start.
+fn window_bounds(
+    max_workers: usize,
+    distinct_hosts: usize,
+    per_host_cap: usize,
+) -> (usize, usize, usize) {
+    let host_ceiling = distinct_hosts.saturating_mul(per_host_cap).max(1);
+    let max = max_workers.max(1).min(host_ceiling).min(WINDOW_HARD_CAP);
+    let min = WINDOW_MIN_FLOOR.min(max).max(1);
+    let bootstrap = BOOTSTRAP_WINDOW.clamp(min, max);
+    (bootstrap, min, max)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -669,16 +1329,22 @@ fn write_depot_single(
     }
 }
 
-/// Decoupled two-pool depot writer (JavaSteam parity).
+/// Decoupled fetch→process depot writer (B2b async fetch).
 ///
-/// A **fetch pool** (`max_workers`) work-steals chunk-job indices: a chunk already correct on disk
-/// is counted as verifying and never enqueued; anything else is fetched RAW (encrypted) from the CDN
-/// with the existing retry/rotation logic and handed to an unbounded channel gated by an in-flight
-/// **byte budget** ([`FETCH_INFLIGHT_BUDGET_BYTES`]). A separate **process pool**
-/// (`max_process_workers`) drains the channel and does decrypt+decompress+positioned-write, counting
-/// bytes on the WRITE. Each file is written through ONE shared handle with `pwrite` (positioned, no
-/// shared cursor) so multiple workers can write different chunks of the same file concurrently
-/// without corruption; the handle is closed as its last chunk lands.
+/// The **fetch side** is an async driver on ONE tokio current-thread runtime (built here so the rest
+/// of the `.so` stays sync): it keeps up to an ADAPTIVE window of lightweight chunk requests in flight
+/// (async tasks, not OS threads), fanned across CDN hosts with a per-host cap and speed-ranked
+/// selection, and hands each fetched RAW (still-encrypted) chunk to a byte-budget-bounded channel. A
+/// chunk already correct on disk is counted as verifying and never fetched. The **process side** is
+/// unchanged from B2a — a pool of OS threads draining the channel and doing
+/// decrypt+decompress+positioned-write (`pwrite`), counting bytes on the WRITE and finalizing each
+/// file exactly once as its last chunk lands. Decode/write stay sync; only the fetch mechanism is
+/// async.
+///
+/// Slow-connection safety is structural: growth stops the moment throughput plateaus (a thin link
+/// plateaus almost immediately), the window shrinks proportionally on REAL errors (429 / timeout /
+/// connection reset / 5xx) with a cooldown, it never exceeds the per-host cap or tier ceiling, and the
+/// byte budget hard-bounds raw memory regardless of window.
 #[allow(clippy::too_many_arguments)]
 fn write_depot_parallel(
     manifest: &ContentManifest,
@@ -694,13 +1360,10 @@ fn write_depot_parallel(
     let bytes_written = AtomicU64::new(0);
     let in_flight = AtomicU64::new(0);
     let error_slot: Mutex<Option<String>> = Mutex::new(None);
-    let next_index = AtomicUsize::new(0);
     let reporter_done = AtomicBool::new(false);
     let jobs = &plan.chunk_jobs;
 
-    let fetch_count = (plan.worker_count as usize).max(1).min(jobs.len());
     let proc_count = (options.max_process_workers as usize).max(1).min(jobs.len());
-    let budget = FETCH_INFLIGHT_BUDGET_BYTES;
     let cdn_auth_token = options.cdn_auth_token;
     let timeout = options.timeout;
     let cancel = options.cancel;
@@ -708,16 +1371,40 @@ fn write_depot_parallel(
     let log = options.log;
     let depot_id = manifest.metadata.depot_id;
 
+    // Tier ceiling → adaptive window bounds (clamped to distinct-hosts × per-host-cap).
+    let distinct_hosts = distinct_host_count(servers);
+    let (bootstrap, win_min, win_max) =
+        window_bounds(options.max_workers as usize, distinct_hosts, PER_HOST_CAP);
+    // The in-flight byte budget is sized from the SAME effective ceiling the window is bounded by, so
+    // memory stops being the thing that refuses a slot the window already decided is safe.
+    let budget = inflight_budget_bytes(win_max);
+    if let Some(log) = log {
+        // One line per depot showing exactly how the ceiling was derived, so a low ceiling is
+        // attributable to the tier or to the host count without guessing — and what byte budget that
+        // ceiling bought, so a future `budget_stalls` spike is attributable too.
+        log(&format!(
+            "fetch-window depot={depot_id} init window={bootstrap} (min={win_min} max={win_max}) \
+tier_max={} servers={} distinct_hosts={distinct_hosts} per_host_cap={PER_HOST_CAP} \
+host_ceiling={} budget={}MiB reason=start",
+            options.max_workers,
+            servers.len(),
+            distinct_hosts.saturating_mul(PER_HOST_CAP),
+            budget / (1024 * 1024),
+        ));
+    }
+
     let scope_result = thread::scope(|scope| -> DepotWriteResult {
-        let (tx, rx) = channel::<(ChunkWriteJob, Vec<u8>)>();
-        // `rx` is created inside the scope, so it is not `'env` and cannot be borrowed by scoped
-        // threads — share it as an owned `Arc` clone per process worker (as the pre-B2a code did).
+        // Async(fetch) → sync(process) hand-off: a tokio unbounded mpsc. The fetch side uses the
+        // non-blocking `send` (never parks a tokio worker); the process side drains with
+        // `blocking_recv`. Memory is bounded not by channel capacity but by the RAW byte budget
+        // enforced at DISPATCH. `rx` is created inside the scope, so it is shared as an owned `Arc`
+        // clone per process worker.
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<(ChunkWriteJob, Vec<u8>)>();
         let rx = Arc::new(Mutex::new(rx));
         // Reference bindings so the `move` workers capture Copy references, not the owned locals.
         let bytes_written = &bytes_written;
         let in_flight = &in_flight;
         let error_slot = &error_slot;
-        let next_index = &next_index;
         let reporter_done = &reporter_done;
 
         // Periodic throughput reporter — atomics only, never on the fetch hot path.
@@ -742,127 +1429,8 @@ fn write_depot_parallel(
             None
         };
 
-        // ── Fetch pool: skip already-correct chunks, fetch the rest RAW, hand off downstream. ──
-        let mut fetch_handles = Vec::with_capacity(fetch_count);
-        for worker_id in 0..fetch_count {
-            let tx = tx.clone();
-            fetch_handles.push(scope.spawn(move || {
-                let mut conn = cdn.open_connection();
-                let mut slow_chunks = 0u32;
-                let mut worker_server_bias = worker_id % servers.len();
-                loop {
-                    if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
-                        return;
-                    }
-                    if error_slot.lock().expect("err slot poisoned").is_some() {
-                        return;
-                    }
-                    let idx = next_index.fetch_add(1, Ordering::Relaxed);
-                    if idx >= jobs.len() {
-                        return;
-                    }
-                    let job = jobs[idx];
-                    let file_idx = job.file_idx as usize;
-                    let file = match manifest.files.get(file_idx) {
-                        Some(file) => file,
-                        None => {
-                            record_first_error(error_slot, "bad file index".to_string());
-                            return;
-                        }
-                    };
-                    let chunk = match file.chunks.get(job.chunk_idx as usize) {
-                        Some(chunk) => chunk,
-                        None => {
-                            record_first_error(error_slot, "bad chunk index".to_string());
-                            return;
-                        }
-                    };
-                    // Resume/verify only: check on-disk content before fetching. Never for a fresh
-                    // file (nothing there but pre-allocated zeros).
-                    if files.needs_verify(file_idx) {
-                        let handle = match files.acquire(file_idx, log) {
-                            Ok(handle) => handle,
-                            Err(error) => {
-                                record_first_error(error_slot, error);
-                                return;
-                            }
-                        };
-                        if existing_chunk_matches(&handle, chunk) {
-                            let total = bytes_written
-                                .fetch_add(chunk.cb_original as u64, Ordering::Relaxed)
-                                + chunk.cb_original as u64;
-                            if let Some(cb) = progress {
-                                cb(total, total_bytes, true);
-                            }
-                            if let Err(error) = files.complete_chunk(file_idx, &handle) {
-                                record_first_error(error_slot, error);
-                                return;
-                            }
-                            continue;
-                        }
-                    }
-                    if should_rotate_after_slow_chunks(slow_chunks, servers.len()) {
-                        worker_server_bias = (worker_server_bias + 1) % servers.len();
-                        conn = cdn.open_connection();
-                        slow_chunks = 0;
-                    }
-                    let start_server = (idx + worker_server_bias) % servers.len();
-                    let started = Instant::now();
-                    match fetch_raw_chunk(
-                        cdn,
-                        Some(&mut conn),
-                        servers,
-                        manifest,
-                        file_idx,
-                        job.chunk_idx as usize,
-                        cdn_auth_token,
-                        start_server,
-                        timeout,
-                        Some(meter),
-                    ) {
-                        Ok(raw) => {
-                            if started.elapsed()
-                                > Duration::from_secs(SLOW_CHUNK_ROTATE_THRESHOLD_SECS)
-                                && servers.len() > 1
-                            {
-                                slow_chunks += 1;
-                            } else {
-                                slow_chunks = 0;
-                            }
-                            let raw_len = raw.len() as u64;
-                            // Byte-budget backpressure on the RAW compressed bytes queued. Always
-                            // admits when nothing is in flight so a chunk bigger than the whole
-                            // budget can never deadlock. Bail promptly on cancel/error.
-                            loop {
-                                if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
-                                    return;
-                                }
-                                if error_slot.lock().expect("err slot poisoned").is_some() {
-                                    return;
-                                }
-                                if budget_admits(in_flight.load(Ordering::Relaxed), raw_len, budget) {
-                                    break;
-                                }
-                                thread::sleep(Duration::from_millis(5));
-                            }
-                            in_flight.fetch_add(raw_len, Ordering::Relaxed);
-                            if tx.send((job, raw)).is_err() {
-                                return;
-                            }
-                        }
-                        Err(error) => {
-                            record_first_error(error_slot, error);
-                            return;
-                        }
-                    }
-                }
-            }));
-        }
-        // Drop the template sender: once every fetch worker exits the channel disconnects, the
-        // process pool drains what remains, then its blocked `recv()`s return `Err` and it exits.
-        drop(tx);
-
         // ── Process pool: decrypt + decompress + positioned-write each fetched chunk. ──
+        // Unchanged from B2a except the receiver is a tokio mpsc drained with `blocking_recv`.
         let mut proc_handles = Vec::with_capacity(proc_count);
         for _ in 0..proc_count {
             let rx = Arc::clone(&rx);
@@ -876,12 +1444,12 @@ fn write_depot_parallel(
                     }
                     // Lock held only across the (fast) dequeue; the decode+write below runs unlocked.
                     let msg = {
-                        let guard = rx.lock().expect("rx poisoned");
-                        guard.recv()
+                        let mut guard = rx.lock().expect("rx poisoned");
+                        guard.blocking_recv()
                     };
                     let (job, raw) = match msg {
-                        Ok(item) => item,
-                        Err(_) => return,
+                        Some(item) => item,
+                        None => return,
                     };
                     let raw_len = raw.len() as u64;
                     let file_idx = job.file_idx as usize;
@@ -911,7 +1479,7 @@ fn write_depot_parallel(
                     };
                     match process_and_write_chunk(&handle, chunk, &raw, depot_key) {
                         Ok(bytes) => {
-                            // Free the budget on WRITE-COMPLETE.
+                            // Free the budget on WRITE-COMPLETE (actual raw bytes).
                             in_flight.fetch_sub(raw_len, Ordering::Relaxed);
                             if let Err(error) = files.complete_chunk(file_idx, &handle) {
                                 record_first_error(error_slot, error);
@@ -932,9 +1500,44 @@ fn write_depot_parallel(
             }));
         }
 
-        for handle in fetch_handles {
-            let _ = handle.join();
+        // ── Async fetch driver: keep an adaptive window of requests in flight on one runtime. ──
+        // `tx` is MOVED in and dropped when the driver returns, which closes the channel so the
+        // process pool's `blocking_recv` returns `None` and its workers exit.
+        match tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
+            Ok(rt) => {
+                rt.block_on(run_async_fetch_driver(
+                    manifest,
+                    servers,
+                    cdn,
+                    files,
+                    jobs,
+                    bytes_written,
+                    in_flight,
+                    error_slot,
+                    cancel,
+                    progress,
+                    meter,
+                    log,
+                    tx,
+                    cdn_auth_token,
+                    timeout,
+                    total_bytes,
+                    budget,
+                    bootstrap,
+                    win_min,
+                    win_max,
+                    depot_id,
+                ));
+            }
+            Err(err) => {
+                record_first_error(error_slot, format!("write_depot: tokio runtime: {err}"));
+                drop(tx);
+            }
         }
+
         for handle in proc_handles {
             let _ = handle.join();
         }
@@ -964,6 +1567,293 @@ fn write_depot_parallel(
         return DepotWriteResult::fail(error, true);
     }
     scope_result
+}
+
+/// The async fetch driver — runs on one tokio current-thread runtime via `block_on`. It keeps an
+/// adaptive window of chunk requests in flight in a [`FuturesUnordered`] (NOT spawned: the futures
+/// borrow the depot state directly, and dropping the set ABORTS every in-flight request — that is the
+/// cancel/error teardown). It skips already-correct chunks inline (resume/verify), reserves the byte
+/// budget at DISPATCH, and hands raw chunks to the process pool. `tx` is dropped on return.
+#[allow(clippy::too_many_arguments)]
+async fn run_async_fetch_driver(
+    manifest: &ContentManifest,
+    servers: &[CContentServerDirectoryServerInfo],
+    cdn: &CdnClient,
+    files: &DepotFiles,
+    jobs: &[ChunkWriteJob],
+    bytes_written: &AtomicU64,
+    in_flight: &AtomicU64,
+    error_slot: &Mutex<Option<String>>,
+    cancel: Option<&AtomicBool>,
+    progress: Option<DepotChunkProgressCallback<'_>>,
+    meter: &BandwidthMeter,
+    log: Option<DepotLogCallback<'_>>,
+    tx: tokio::sync::mpsc::UnboundedSender<(ChunkWriteJob, Vec<u8>)>,
+    cdn_auth_token: &str,
+    timeout: Duration,
+    total_bytes: u64,
+    budget: u64,
+    bootstrap: usize,
+    win_min: usize,
+    win_max: usize,
+    depot_id: u32,
+) {
+    let async_client = match AsyncCdnClient::new(cdn.ca_bundle_path(), PER_HOST_CAP) {
+        Ok(client) => client,
+        Err(err) => {
+            record_first_error(error_slot, format!("write_depot: {err}"));
+            drop(tx);
+            return;
+        }
+    };
+
+    let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now());
+    let mut sched = FetchScheduler::new(servers, PER_HOST_CAP);
+    let mut inflight: FuturesUnordered<_> = FuturesUnordered::new();
+    let mut ready: VecDeque<ChunkWriteJob> = VecDeque::new();
+    let mut retry: VecDeque<PendingChunk> = VecDeque::new();
+    let mut next_job = 0usize;
+    let mut verify_since_yield: u32 = 0;
+
+    loop {
+        if cancel.is_some_and(|c| c.load(Ordering::Relaxed))
+            || error_slot.lock().expect("err slot poisoned").is_some()
+        {
+            break;
+        }
+        let probe_now = Instant::now();
+        if window.maybe_probe(probe_now, meter.total_bytes()) {
+            if let Some(log) = log {
+                log(&window.summary_line(depot_id, inflight.len(), probe_now));
+            }
+        }
+
+        // ── Dispatch up to the current window ──
+        let mut aborted = false;
+        while inflight.len() < window.current {
+            if cancel.is_some_and(|c| c.load(Ordering::Relaxed))
+                || error_slot.lock().expect("err slot poisoned").is_some()
+            {
+                aborted = true;
+                break;
+            }
+            let now = Instant::now();
+
+            // Refill `ready` from fresh jobs, skipping already-correct chunks inline (resume/verify).
+            while ready.is_empty()
+                && next_job < jobs.len()
+                && !retry.front().is_some_and(|p| p.not_before <= now)
+            {
+                let job = jobs[next_job];
+                next_job += 1;
+                let file_idx = job.file_idx as usize;
+                if files.needs_verify(file_idx) {
+                    let handle = match files.acquire(file_idx, log) {
+                        Ok(handle) => handle,
+                        Err(error) => {
+                            record_first_error(error_slot, error);
+                            aborted = true;
+                            break;
+                        }
+                    };
+                    let chunk = match manifest
+                        .files
+                        .get(file_idx)
+                        .and_then(|f| f.chunks.get(job.chunk_idx as usize))
+                    {
+                        Some(chunk) => chunk,
+                        None => {
+                            record_first_error(error_slot, "bad chunk index".to_string());
+                            aborted = true;
+                            break;
+                        }
+                    };
+                    if existing_chunk_matches(&handle, chunk) {
+                        let total = bytes_written
+                            .fetch_add(chunk.cb_original as u64, Ordering::Relaxed)
+                            + chunk.cb_original as u64;
+                        if let Some(cb) = progress {
+                            cb(total, total_bytes, true);
+                        }
+                        if let Err(error) = files.complete_chunk(file_idx, &handle) {
+                            record_first_error(error_slot, error);
+                            aborted = true;
+                            break;
+                        }
+                        verify_since_yield += 1;
+                        // While the pipe is busy, don't let a long verify run starve in-flight
+                        // fetches; with nothing in flight there is nothing to starve, so blast on.
+                        if !inflight.is_empty() && verify_since_yield >= VERIFY_YIELD_BATCH {
+                            break;
+                        }
+                        continue;
+                    }
+                }
+                ready.push_back(job);
+            }
+            if aborted {
+                break;
+            }
+
+            // Choose the next unit of work: a due retry first, else a fresh ready job.
+            let use_retry = retry.front().is_some_and(|p| p.not_before <= now);
+            let (job, attempts) = if use_retry {
+                let p = *retry.front().expect("retry nonempty");
+                (p.job, p.attempts)
+            } else if let Some(&job) = ready.front() {
+                (job, 0u32)
+            } else {
+                break; // nothing dispatchable now (verify yield, retry not due, or all done)
+            };
+
+            // Byte-budget gate (hard memory bound): reserve the compressed size at DISPATCH. Always
+            // admits when nothing is in flight, so a chunk bigger than the whole budget can't deadlock.
+            let reserve = reserve_bytes(manifest, job);
+            if !budget_admits(in_flight.load(Ordering::Relaxed), reserve, budget) {
+                // Diagnostic only: the window wanted this slot, the memory budget refused it.
+                window.note_budget_stall();
+                break; // wait for a completion to free budget
+            }
+
+            // Speed-ranked, per-host-capped server pick.
+            let Some(server_idx) = sched.pick(now) else {
+                // Diagnostic only: the window wanted this slot, hosts × per-host-cap refused it.
+                window.note_host_stall();
+                break; // every host at cap or cooling → wait for a completion
+            };
+            let permit = match sched.host_sem(server_idx).clone().try_acquire_owned() {
+                Ok(permit) => permit,
+                Err(_) => {
+                    window.note_host_stall();
+                    break; // raced to the cap; wait
+                }
+            };
+
+            let chunk_sha = match manifest
+                .files
+                .get(job.file_idx as usize)
+                .and_then(|f| f.chunks.get(job.chunk_idx as usize))
+            {
+                Some(chunk) => chunk.sha.clone(),
+                None => {
+                    record_first_error(error_slot, "bad chunk index".to_string());
+                    aborted = true;
+                    break;
+                }
+            };
+            let url = match cdn.build_chunk_url(
+                &servers[server_idx],
+                depot_id,
+                &chunk_sha,
+                cdn_auth_token,
+            ) {
+                Ok(url) => url,
+                Err(error) => {
+                    record_first_error(error_slot, error);
+                    aborted = true;
+                    break;
+                }
+            };
+
+            // Commit: pop the work item, reserve budget, launch the fetch future.
+            if use_retry {
+                retry.pop_front();
+            } else {
+                ready.pop_front();
+            }
+            in_flight.fetch_add(reserve, Ordering::Relaxed);
+            verify_since_yield = 0;
+            let async_client = &async_client;
+            let started = Instant::now();
+            inflight.push(async move {
+                let res = async_client.fetch_url_async(&url, timeout).await;
+                drop(permit); // RAII per-host permit release (also on future drop / cancel-abort)
+                FetchDone {
+                    job,
+                    attempts: attempts + 1,
+                    reserve,
+                    server_idx,
+                    elapsed: started.elapsed(),
+                    res,
+                }
+            });
+        }
+        if aborted {
+            break;
+        }
+
+        // ── Nothing in flight? either finished, or waiting on budget / retry-not-due / host cooldown.
+        if inflight.is_empty() {
+            if next_job >= jobs.len() && ready.is_empty() && retry.is_empty() {
+                break; // every chunk fetched or verified
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+            continue;
+        }
+
+        // ── Await one completion (drives ALL in-flight requests cooperatively). ──
+        let Some(done) = inflight.next().await else {
+            continue;
+        };
+        let now = Instant::now();
+        match done.res {
+            Ok(raw) => {
+                let raw_len = raw.len() as u64;
+                meter.record(done.server_idx, raw_len);
+                sched.on_success(done.server_idx, raw_len, done.elapsed);
+                window.record_ok(done.elapsed.as_secs_f64() * 1000.0);
+                // Reconcile the dispatch reservation to the actual raw size; the process pool then
+                // subtracts the actual size on WRITE-COMPLETE, netting this chunk's budget to zero.
+                if raw_len >= done.reserve {
+                    in_flight.fetch_add(raw_len - done.reserve, Ordering::Relaxed);
+                } else {
+                    in_flight.fetch_sub(done.reserve - raw_len, Ordering::Relaxed);
+                }
+                if tx.send((done.job, raw)).is_err() {
+                    break; // process side gone
+                }
+            }
+            Err(err) => {
+                in_flight.fetch_sub(done.reserve, Ordering::Relaxed);
+                sched.on_error(done.server_idx, now, err.kind);
+                if window.record_err(now, err.kind) {
+                    if let Some(log) = log {
+                        log(&window.summary_line(depot_id, inflight.len(), now));
+                    }
+                }
+                // Preserve the existing per-chunk retry/rotation as fallback: up to
+                // MAX_CHUNK_ATTEMPTS, each re-dispatch rotates to a different (non-cooling) host with
+                // the same exponential backoff.
+                if done.attempts < MAX_CHUNK_ATTEMPTS {
+                    let backoff = retry_backoff_millis(done.attempts);
+                    retry.push_back(PendingChunk {
+                        job: done.job,
+                        attempts: done.attempts,
+                        not_before: now + Duration::from_millis(backoff),
+                    });
+                } else {
+                    let name = manifest
+                        .files
+                        .get(done.job.file_idx as usize)
+                        .map(|f| f.filename.clone())
+                        .unwrap_or_default();
+                    record_first_error(
+                        error_slot,
+                        format!(
+                            "write_depot: chunk for '{}' failed after {} attempts: {}",
+                            name, MAX_CHUNK_ATTEMPTS, err.message
+                        ),
+                    );
+                    break;
+                }
+            }
+        }
+    }
+
+    // Close the channel so the process pool drains and exits; dropping `inflight` aborts any
+    // still-running requests (the cancel / error / final-failure teardown path).
+    drop(tx);
+    drop(inflight);
 }
 
 pub fn create_depot_layout(plan: &DepotWritePlan) -> DepotWriteResult {
@@ -1878,6 +2768,414 @@ mod tests {
         assert_eq!(result.error, "cancelled");
         assert!(result.resume_trust_safe);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── B2b async-fetch adaptive window + scheduler ───────────────────────────────────────────
+
+    fn srv(host: &str) -> CContentServerDirectoryServerInfo {
+        CContentServerDirectoryServerInfo {
+            host: host.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn window_bounds_clamps_tier_ceiling_to_hosts() {
+        // Fast tier ceiling 32, 10 hosts × cap 6 = 60 → 32; bootstrap 8, floor 2.
+        assert_eq!(window_bounds(32, 10, 6), (8, 2, 32));
+        // Blazing 96 but only 4 hosts × 6 = 24 → clamped to 24.
+        assert_eq!(window_bounds(96, 4, 6), (8, 2, 24));
+        // Slow 6 with plenty of hosts stays 6 (deliberately gentle) and clamps the bootstrap down.
+        assert_eq!(window_bounds(6, 10, 6), (6, 2, 6));
+        // Tiny ceiling < bootstrap: bootstrap clamps down to max.
+        assert_eq!(window_bounds(3, 1, 6), (3, 2, 3));
+        // Degenerate single-host single-permit: everything collapses to 1.
+        assert_eq!(window_bounds(10, 1, 1), (1, 1, 1));
+    }
+
+    const MIB: u64 = 1024 * 1024;
+
+    #[test]
+    fn inflight_budget_scales_with_the_window_ceiling() {
+        // r4's whole point: the budget must not refuse a slot the window already granted. At the
+        // ceilings a 7-host CDN pool (the observed real pool) produces per tier:
+        //   Slow    ceiling min(6, 42)  =  6 →   9 MiB → floor 24 MiB
+        //   Medium  ceiling min(16, 42) = 16 →  24 MiB → exactly the floor
+        //   Fast    ceiling min(32, 42) = 32 →  48 MiB
+        //   Blazing ceiling min(96, 42) = 42 →  63 MiB  (the r3 device run's ceiling)
+        let hosts_7 = window_bounds(6, 7, PER_HOST_CAP).2;
+        assert_eq!(hosts_7, 6);
+        assert_eq!(inflight_budget_bytes(hosts_7), 24 * MIB);
+        assert_eq!(inflight_budget_bytes(window_bounds(16, 7, PER_HOST_CAP).2), 24 * MIB);
+        assert_eq!(inflight_budget_bytes(window_bounds(32, 7, PER_HOST_CAP).2), 48 * MIB);
+        assert_eq!(inflight_budget_bytes(window_bounds(96, 7, PER_HOST_CAP).2), 63 * MIB);
+
+        // Monotonic in the ceiling, and always ≥ one chunk per slot (never a budget that would stall
+        // a window it was sized for).
+        let mut prev = 0u64;
+        for ceiling in 1..=WINDOW_HARD_CAP {
+            let budget = inflight_budget_bytes(ceiling);
+            assert!(budget >= prev, "budget shrank at ceiling {ceiling}");
+            assert!(
+                budget >= (ceiling as u64) * TYPICAL_CHUNK_BYTES
+                    || budget == FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES,
+                "ceiling {ceiling} would stall on its own budget"
+            );
+            prev = budget;
+        }
+    }
+
+    #[test]
+    fn inflight_budget_respects_floor_and_hard_cap() {
+        // Floor: nothing ever gets less than the pre-r4 fixed budget, however small the ceiling.
+        assert_eq!(inflight_budget_bytes(0), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        assert_eq!(inflight_budget_bytes(1), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        assert_eq!(inflight_budget_bytes(15), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        // 16 slots × 1 MiB × 1.5 = 24 MiB — the first ceiling that meets the floor exactly.
+        assert_eq!(inflight_budget_bytes(16), FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        assert!(inflight_budget_bytes(17) > FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+
+        // Hard cap: the OOM guard. 64 slots × 1.5 MiB = 96 MiB is the last uncapped ceiling; every
+        // ceiling above it — up to the window hard cap and beyond — pins at 96 MiB.
+        assert_eq!(inflight_budget_bytes(64), FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES);
+        assert_eq!(inflight_budget_bytes(65), FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES);
+        assert_eq!(
+            inflight_budget_bytes(WINDOW_HARD_CAP),
+            FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES
+        );
+        assert_eq!(
+            inflight_budget_bytes(usize::MAX),
+            FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES
+        );
+        // And the cap really is a bound, not a suggestion.
+        for ceiling in [0usize, 1, 42, 96, 1_000, usize::MAX] {
+            assert!(inflight_budget_bytes(ceiling) <= FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES);
+            assert!(inflight_budget_bytes(ceiling) >= FETCH_INFLIGHT_BUDGET_FLOOR_BYTES);
+        }
+    }
+
+    #[test]
+    fn scaled_budget_keeps_the_single_chunk_admit_guard() {
+        // The deadlock guard is independent of how the budget is sized: at ANY budget the scaler can
+        // produce, a chunk larger than the whole budget still admits when nothing is in flight.
+        for ceiling in [0usize, 6, 16, 32, 42, 96, WINDOW_HARD_CAP] {
+            let budget = inflight_budget_bytes(ceiling);
+            assert!(
+                budget_admits(0, 512 * MIB, budget),
+                "oversized chunk deadlocked at ceiling {ceiling}"
+            );
+            // …and still refuses that chunk once anything at all is queued.
+            assert!(!budget_admits(1, 512 * MIB, budget));
+        }
+    }
+
+    #[test]
+    fn scaled_budget_admits_a_full_blazing_window_of_nominal_chunks() {
+        // The r3 device failure in one assertion: at the 42-slot ceiling a 7-host Blazing pool
+        // reached, the OLD fixed budget admitted only 24 of the 42 slots the window granted (hence
+        // budget_stalls=102..176). The scaled budget admits all 42, with headroom to spare.
+        let ceiling = window_bounds(96, 7, PER_HOST_CAP).2;
+        assert_eq!(ceiling, 42);
+
+        let admitted = |budget: u64| {
+            let mut in_flight = 0u64;
+            let mut n = 0usize;
+            while n < 10_000 && budget_admits(in_flight, NOMINAL_CHUNK_RESERVE_BYTES, budget) {
+                in_flight += NOMINAL_CHUNK_RESERVE_BYTES;
+                n += 1;
+            }
+            n
+        };
+        assert_eq!(admitted(FETCH_INFLIGHT_BUDGET_FLOOR_BYTES), 24);
+        assert!(
+            admitted(inflight_budget_bytes(ceiling)) >= ceiling,
+            "scaled budget still binds before the window"
+        );
+    }
+
+    #[test]
+    fn reserve_bytes_uses_compressed_or_nominal() {
+        let manifest = ContentManifest {
+            files: vec![crate::content_manifest::FileMapping {
+                filename: "a".into(),
+                size: 10,
+                chunks: vec![
+                    ChunkData {
+                        cb_compressed: 4096,
+                        ..Default::default()
+                    },
+                    ChunkData {
+                        cb_compressed: 0,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        assert_eq!(
+            reserve_bytes(&manifest, ChunkWriteJob { file_idx: 0, chunk_idx: 0 }),
+            4096
+        );
+        // Missing compressed size → nominal reservation keeps the budget honest.
+        assert_eq!(
+            reserve_bytes(&manifest, ChunkWriteJob { file_idx: 0, chunk_idx: 1 }),
+            NOMINAL_CHUNK_RESERVE_BYTES
+        );
+        // Out-of-range → nominal (never zero).
+        assert_eq!(
+            reserve_bytes(&manifest, ChunkWriteJob { file_idx: 9, chunk_idx: 0 }),
+            NOMINAL_CHUNK_RESERVE_BYTES
+        );
+    }
+
+    #[test]
+    fn dispatch_reservation_never_exceeds_budget_except_single_chunk_guard() {
+        // Reserving compressed bytes at DISPATCH means total raw bytes in flight can never exceed
+        // the budget — at the floor, 24 MiB / 1 MiB = 24 chunks, then the gate closes until a write
+        // frees space.
+        let budget = FETCH_INFLIGHT_BUDGET_FLOOR_BYTES;
+        let reserve = 1024 * 1024u64;
+        let mut in_flight = 0u64;
+        let mut admitted = 0u64;
+        while budget_admits(in_flight, reserve, budget) {
+            in_flight += reserve;
+            admitted += 1;
+            if admitted > 10_000 {
+                break;
+            }
+        }
+        assert_eq!(admitted, 24);
+        assert!(in_flight <= budget, "in_flight {in_flight} exceeded budget {budget}");
+        // Deadlock guard: a chunk bigger than the whole budget still admits when nothing is queued.
+        assert!(budget_admits(0, 100 * 1024 * 1024, budget));
+    }
+
+    /// Drive `probes` probe intervals starting at interval `first_probe`, each delivering `delta(i)`
+    /// bytes, `oks` clean completions and `errs` timeouts. `start_total` continues a previous run's
+    /// cumulative byte counter (the window reads a monotonic total); returns the new total.
+    #[allow(clippy::too_many_arguments)]
+    fn run_probes(
+        w: &mut AdaptiveWindow,
+        t: Instant,
+        first_probe: u64,
+        probes: u64,
+        oks: u32,
+        errs: u32,
+        start_total: u64,
+        mut delta: impl FnMut(u64) -> u64,
+    ) -> u64 {
+        let mut total = start_total;
+        for i in first_probe..first_probe + probes {
+            for _ in 0..oks {
+                w.record_ok(20.0);
+            }
+            let now = t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10);
+            for _ in 0..errs {
+                w.record_err(now, FetchFailKind::Timeout);
+            }
+            total += delta(i);
+            w.maybe_probe(now, total);
+        }
+        total
+    }
+
+    #[test]
+    fn adaptive_window_ramps_up_fast_under_healthy_conditions() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 64, t);
+        assert_eq!(w.current, 8);
+        // Clean successes with rising throughput → slow-start doubles every probe: 8→16→32→64 in
+        // three probes (~6 s), not "never" like the pre-r3 >10%-per-700ms gate.
+        run_probes(&mut w, t, 1, 3, 20, 0, 0, |i| 10_000_000 * (1u64 << i));
+        assert_eq!(w.current, 64, "slow-start should reach the ceiling fast");
+        assert_eq!(w.last_reason, WindowReason::GrowSlowStart);
+    }
+
+    #[test]
+    fn adaptive_window_grows_on_flat_healthy_throughput() {
+        // The r3 regression guard: B2b required a >10% RISE every probe, so ordinary flat-but-fine
+        // CDN throughput never grew the window (and the noise shrank it). Flat + clean must GROW.
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t);
+        run_probes(&mut w, t, 1, 3, 20, 0, 0, |_| 20_000_000);
+        assert!(
+            w.current > 8,
+            "flat healthy throughput must still ramp, got {}",
+            w.current
+        );
+    }
+
+    #[test]
+    fn adaptive_window_does_not_double_into_a_saturated_link() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t);
+        // Probe 1 sees throughput appear from nothing — a genuine rise — so slow-start doubles.
+        let total = run_probes(&mut w, t, 1, 1, 20, 0, 0, |_| 20_000_000);
+        assert_eq!(w.current, 16);
+        // From here throughput is FLAT, which is what an already-saturated link reports. Growth must
+        // continue (no errors) but ONE additive step at a time — doubling into a saturated thin pipe
+        // is the flood the window exists to prevent.
+        run_probes(&mut w, t, 2, 1, 20, 0, total, |_| 20_000_000);
+        assert_eq!(
+            w.current, 20,
+            "flat throughput must grow additively, never double"
+        );
+        assert_eq!(w.last_reason, WindowReason::GrowProbe);
+    }
+
+    #[test]
+    fn adaptive_window_holds_at_plateau_and_never_shrinks() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t);
+        // Steady, identical throughput forever: grow through the patience budget, then HOLD — never
+        // shrink, because there are no errors. (Correct slow-link behaviour.)
+        let total = run_probes(&mut w, t, 1, 4, 20, 0, 0, |_| 20_000_000);
+        let plateau_at = w.current;
+        assert!(plateau_at > 8);
+        run_probes(&mut w, t, 5, 6, 20, 0, total, |_| 20_000_000);
+        assert_eq!(w.current, plateau_at, "plateau must hold, not grow or shrink");
+        assert_eq!(w.last_reason, WindowReason::HoldPlateau);
+    }
+
+    #[test]
+    fn adaptive_window_does_not_shrink_on_throughput_dips_or_jitter() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(16, 2, 256, t);
+        // One good probe to establish a baseline, then throughput halves each probe with ZERO errors
+        // (exactly the CDN noise that pinned B2b at the floor). The window must hold, never shrink.
+        let total = run_probes(&mut w, t, 1, 1, 20, 0, 0, |_| 40_000_000);
+        let after_ramp = w.current;
+        run_probes(&mut w, t, 2, 5, 20, 0, total, |i| {
+            40_000_000u64 >> (i - 1).min(20)
+        });
+        assert_eq!(
+            w.current, after_ramp,
+            "throughput dips alone must not shrink the window"
+        );
+        assert_eq!(w.last_reason, WindowReason::HoldThroughputDown);
+    }
+
+    #[test]
+    fn adaptive_window_never_exceeds_tier_ceiling() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(4, 2, 8, t); // ceiling 8
+        run_probes(&mut w, t, 1, 20, 10, 0, 0, |i| 10_000_000 * i * i);
+        assert_eq!(w.current, 8);
+        assert_eq!(w.last_reason, WindowReason::HoldCeiling);
+    }
+
+    #[test]
+    fn adaptive_window_ignores_a_single_error_but_shrinks_on_a_burst() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        // A lone timeout is noise, not a signal: the window must not move (B2b shrank a flat −6).
+        assert!(!w.record_err(t, FetchFailKind::Timeout));
+        assert_eq!(w.current, 32);
+        assert!(!w.record_err(t, FetchFailKind::Timeout));
+        assert_eq!(w.current, 32);
+        // A burst inside one probe interval is real: shrink PROPORTIONALLY (32 → 24), not to floor.
+        assert!(w.record_err(t, FetchFailKind::Timeout));
+        assert_eq!(w.current, 24);
+        assert_eq!(w.last_reason, WindowReason::ShrinkTimeout);
+        assert!(w.cooldown_left_ms(t) > 0);
+    }
+
+    #[test]
+    fn adaptive_window_shrinks_immediately_on_rate_limit() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        // 429 is unambiguous back-pressure: shrink on the first one, no burst needed.
+        assert!(w.record_err(t, FetchFailKind::RateLimited));
+        assert_eq!(w.current, 24);
+        assert_eq!(w.last_reason, WindowReason::ShrinkRateLimited);
+        assert!(!w.slow_start, "a real back-off ends slow-start");
+    }
+
+    #[test]
+    fn adaptive_window_error_storm_walks_down_to_the_floor() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        // 1 error per 5 successes = 16% > HIGH: the probe shrinks every time (below the immediate
+        // burst threshold, so this exercises the probe path) until the floor stops it.
+        run_probes(&mut w, t, 1, 30, 5, 1, 0, |_| 1_000_000);
+        assert_eq!(w.current, 2, "a sustained error storm must reach the floor");
+        assert_eq!(w.min, 2, "and stop there");
+    }
+
+    #[test]
+    fn adaptive_window_recovers_after_the_error_storm_stops() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        let total = run_probes(&mut w, t, 1, 10, 5, 1, 0, |_| 1_000_000);
+        let bottom = w.current;
+        // Clean probes after the cooldown expires must climb again (additively — slow-start is over).
+        run_probes(&mut w, t, 11, 6, 20, 0, total, |_| 20_000_000);
+        assert!(
+            w.current > bottom,
+            "window must recover once errors stop, got {} from {bottom}",
+            w.current
+        );
+    }
+
+    #[test]
+    fn window_summary_line_carries_the_decision_reason() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 30, t);
+        // Two dispatch attempts were refused by the byte budget before this probe: the line must say
+        // so, otherwise a window that looks healthy but is memory-bound reads as a mystery on device.
+        w.note_budget_stall();
+        w.note_budget_stall();
+        w.note_host_stall();
+        run_probes(&mut w, t, 1, 1, 10, 0, 0, |_| 20_000_000);
+        let line = w.summary_line(49521, 12, t + Duration::from_millis(2_010));
+        assert!(line.starts_with("fetch-window depot=49521 window=16 (min=2 max=30) in_flight=12"));
+        assert!(line.contains("reason=grow:slow-start"), "{line}");
+        assert!(line.contains("cooldown=0ms"), "{line}");
+        assert!(line.contains("err_rate=0.0%"), "{line}");
+        assert!(line.contains("phase=slow-start"), "{line}");
+        assert!(line.contains("budget_stalls=2"), "{line}");
+        assert!(line.contains("host_stalls=1"), "{line}");
+    }
+
+    #[test]
+    fn fetch_scheduler_respects_per_host_cap_and_counts_distinct_hosts() {
+        // Two directory entries share hostA; hostB is separate → 2 distinct hosts, per-host cap 2.
+        let servers = vec![srv("hostA"), srv("hostA"), srv("hostB")];
+        let mut sched = FetchScheduler::new(&servers, 2);
+        assert_eq!(sched.host_count, 2);
+        let now = Instant::now();
+        // Exhaust hostA's shared 2 permits (servers 0 and 1 map to the same semaphore).
+        let p1 = sched.host_sem(0).clone().try_acquire_owned().unwrap();
+        let p2 = sched.host_sem(1).clone().try_acquire_owned().unwrap();
+        assert!(!sched.eligible(0, now));
+        assert!(!sched.eligible(1, now));
+        assert!(sched.eligible(2, now));
+        // Only the un-capped host is pickable.
+        assert_eq!(sched.pick(now), Some(2));
+        drop(p1);
+        drop(p2);
+        assert!(sched.eligible(0, now));
+    }
+
+    #[test]
+    fn fetch_scheduler_ranks_fastest_and_recovers_after_cooldown() {
+        let servers = vec![srv("h0"), srv("h1")];
+        let mut sched = FetchScheduler::new(&servers, 4);
+        let now = Instant::now();
+        // Cold start probes unsampled hosts first (round-robin over the two).
+        let a = sched.pick(now).unwrap();
+        sched.on_success(a, 1_000_000, Duration::from_millis(100)); // ~10 MB/s
+        let b = sched.pick(now).unwrap();
+        assert_ne!(a, b, "cold start should probe the other host");
+        sched.on_success(b, 100_000, Duration::from_millis(100)); // ~1 MB/s (slower)
+        // Both sampled now → exploit picks the faster host.
+        assert_eq!(sched.pick(now), Some(a));
+        // An error cools + demotes the fast host; it recovers once the cooldown expires.
+        sched.on_error(a, now, FetchFailKind::Timeout);
+        assert!(!sched.eligible(a, now));
+        let later = now + Duration::from_secs(10);
+        assert!(sched.eligible(a, later));
     }
 
     fn temp_dir(name: &str) -> PathBuf {

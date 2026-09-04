@@ -298,10 +298,14 @@ internal object BlDepotInstaller {
         if (paused.get()) { activeAppId = -1; finishPaused(appId, db, installBase); return }
         val caPath = CaBundleExtractor.ensureBundle(ctx)
         val speedConfig = DownloadSpeedConfig(speedTier)
-        val maxWorkers = speedConfig.maxDownloads.coerceIn(1, 32)
-        // Fetch pool = maxDownloads (network), process pool = maxDecompress (decrypt+decompress+
-        // write): the engine now runs a decoupled 2-stage pipeline so the socket never idles while
-        // a worker decompresses, matching the JavaSteam engine's tier semantics.
+        // B2b: the engine's fetch side is now an async adaptive-concurrency window, so this value is
+        // the tier's MAX in-flight-request CEILING (not an OS-thread count). The engine bootstraps
+        // low and ramps toward it only while throughput rises with a clean error/latency signal,
+        // clamped to distinct-hosts × per-host-cap; a weak connection settles far below it.
+        val maxWorkers = speedConfig.maxNetworkWindow.coerceIn(1, 128)
+        // Process pool = maxDecompress (decrypt+decompress+write) — the DECODE-worker count, kept as
+        // before. The engine runs a decoupled fetch→process pipeline so the socket never idles while
+        // a worker decompresses; only the fetch side became async in B2b.
         val maxDecompress = speedConfig.maxDecompress.coerceIn(1, 32)
         SteamDepotDownloader.acquireDownloadWakelock(ctx)
         repo.setDownloadActive(true)

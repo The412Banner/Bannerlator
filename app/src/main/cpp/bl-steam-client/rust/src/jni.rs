@@ -1286,6 +1286,49 @@ fn request_cdn_servers(
             servers.len()
         ),
     );
+    // Instrumentation only (no behaviour change): the window's ceiling is distinct-hosts × per-host
+    // cap, so record what the directory actually gave us — how many entries, how many DISTINCT hosts
+    // they collapse to (Steam returns several entries sharing one host under different vhosts, and
+    // the fetch scheduler keys its per-host cap on vhost-or-host), what the usable filter would drop
+    // and why, and what we asked for.
+    let requested_max_servers =
+        crate::pb::ccontentserverdirectory::CContentServerDirectoryGetServersForSteamPipeRequest::default()
+            .max_servers;
+    let mut host_keys: Vec<&str> = Vec::new();
+    let mut vhost_keys: Vec<&str> = Vec::new();
+    for server in &servers {
+        let host = server.host.as_str();
+        if !host_keys.contains(&host) {
+            host_keys.push(host);
+        }
+        // The fetch scheduler's per-host cap keys on vhost-or-host, so count that separately: if the
+        // two numbers differ, entries share a physical host and the window ceiling is optimistic.
+        let vhost = if server.vhost.is_empty() {
+            host
+        } else {
+            server.vhost.as_str()
+        };
+        if !vhost_keys.contains(&vhost) {
+            vhost_keys.push(vhost);
+        }
+    }
+    let distinct_host = host_keys.len();
+    let distinct_vhost = vhost_keys.len();
+    let dropped_china = servers.iter().filter(|s| s.steam_china_only).count();
+    let dropped_no_host = servers
+        .iter()
+        .filter(|s| !s.steam_china_only && s.host.is_empty())
+        .count();
+    android_log(
+        "BL_STEAM_DL",
+        &format!(
+            "cdn pool detail: requested(cell={cell_id} max_servers={requested_max_servers}) \
+entries={} distinct_host={distinct_host} distinct_vhost_key={distinct_vhost} usable={} \
+dropped_china={dropped_china} dropped_no_host={dropped_no_host}",
+            servers.len(),
+            servers.len() - dropped_china - dropped_no_host,
+        ),
+    );
     Some(servers)
 }
 

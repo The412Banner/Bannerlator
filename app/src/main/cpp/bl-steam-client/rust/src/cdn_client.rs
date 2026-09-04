@@ -440,6 +440,129 @@ struct HttpResponse {
     body: Vec<u8>,
 }
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Async fetch client (B2b) — the depot chunk-download fetch layer ONLY.
+//
+// The blocking `CdnClient` above is UNCHANGED and still owns manifest fetches and the
+// single-connection depot path. This async client is used only by the parallel depot writer's fetch
+// driver, which keeps many lightweight requests in flight on one tokio current-thread runtime. A
+// SINGLE pooled `reqwest::Client` is shared by every in-flight request so "many concurrent" reuses
+// keep-alive connections instead of opening thousands (`pool_max_idle_per_host` matches the per-host
+// concurrency cap). URL formation and the 200/content-length validation are shared with the blocking
+// client (`build_chunk_url`) so the two paths fetch byte-identically.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Classified fetch failure so the fetch driver can back off proportionally (429/5xx/timeout/reset
+/// shrink the window + cool the host harder than a one-off protocol error).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FetchFailKind {
+    Timeout,
+    RateLimited,
+    ServerFault,
+    Connect,
+    Other,
+}
+
+#[derive(Clone, Debug)]
+pub struct AsyncFetchError {
+    pub message: String,
+    pub kind: FetchFailKind,
+}
+
+/// One pooled async client shared by all in-flight chunk fetches for a depot.
+pub struct AsyncCdnClient {
+    client: reqwest::Client,
+}
+
+impl AsyncCdnClient {
+    /// Build the shared pooled client. `pool_max_idle_per_host` is set to the per-host concurrency
+    /// cap so concurrent requests to one CDN host reuse keep-alive connections. CA-bundle handling
+    /// mirrors the blocking client exactly.
+    pub fn new(ca_bundle_path: &str, pool_max_idle_per_host: usize) -> Result<Self, String> {
+        let mut builder = reqwest::Client::builder()
+            .user_agent(USER_AGENT)
+            .connect_timeout(CdnClient::connect_timeout())
+            .pool_max_idle_per_host(pool_max_idle_per_host.max(1))
+            .pool_idle_timeout(Duration::from_secs(90));
+        if !ca_bundle_path.is_empty() {
+            let pem =
+                fs::read(ca_bundle_path).map_err(|err| format!("read CA bundle: {err}"))?;
+            let certs = reqwest::Certificate::from_pem_bundle(&pem)
+                .map_err(|err| format!("parse CA bundle: {err}"))?;
+            for cert in certs {
+                builder = builder.add_root_certificate(cert);
+            }
+        }
+        let client = builder
+            .build()
+            .map_err(|err| format!("http client: {err}"))?;
+        Ok(Self { client })
+    }
+
+    /// Fetch ONE chunk from a pre-built URL (a single attempt; the caller owns retry/rotation).
+    /// Returns the validated raw (still-encrypted, still-compressed) bytes, or a classified error.
+    pub async fn fetch_url_async(
+        &self,
+        url: &str,
+        timeout: Duration,
+    ) -> Result<Vec<u8>, AsyncFetchError> {
+        let response = match self.client.get(url).timeout(timeout).send().await {
+            Ok(response) => response,
+            Err(err) => {
+                let kind = if err.is_timeout() {
+                    FetchFailKind::Timeout
+                } else if err.is_connect() {
+                    FetchFailKind::Connect
+                } else {
+                    FetchFailKind::Other
+                };
+                return Err(AsyncFetchError {
+                    message: format!("http get: {err}"),
+                    kind,
+                });
+            }
+        };
+        let status = response.status().as_u16() as i32;
+        if status != 200 {
+            let kind = if status == 429 {
+                FetchFailKind::RateLimited
+            } else if (500..600).contains(&status) {
+                FetchFailKind::ServerFault
+            } else {
+                FetchFailKind::Other
+            };
+            return Err(AsyncFetchError {
+                message: format!("non-200 HTTP status ({status})"),
+                kind,
+            });
+        }
+        let content_length = response.content_length();
+        let body = match response.bytes().await {
+            Ok(body) => body.to_vec(),
+            Err(err) => {
+                let kind = if err.is_timeout() {
+                    FetchFailKind::Timeout
+                } else {
+                    FetchFailKind::Other
+                };
+                return Err(AsyncFetchError {
+                    message: format!("http body: {err}"),
+                    kind,
+                });
+            }
+        };
+        if let Some(expected) = content_length {
+            if body.len() as u64 != expected {
+                return Err(AsyncFetchError {
+                    message: "chunk body truncated (length mismatch)".to_string(),
+                    kind: FetchFailKind::ServerFault,
+                });
+            }
+        }
+        Ok(body)
+    }
+}
+
 impl CdnChunkResult {
     pub fn ok(&self) -> bool {
         self.error.is_empty() && !self.data.is_empty()

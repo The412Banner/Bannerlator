@@ -2908,6 +2908,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
         vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
         vkr.setFrameGenArmed(multiplier >= 2, multiplier);
+        // Present mode has to follow the armed state: fifo while multiplying,
+        // back to the user's choice when off.
+        applyEffectivePresentMode();
         if (multiplier >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
     }
 
@@ -9246,6 +9249,21 @@ return true;
     // Host present mode — the user's chosen mode is always honored (mailbox lock removed:
     // frame gen no longer forces mailbox, so FIFO/etc. can be used with FG on).
     private String effectivePresentMode() {
+        // LSFG Native REQUIRES fifo while it is multiplying, and this is the
+        // opposite of what lsfg-vk wants. The native path queues the real frame
+        // and its generated frames together in one submit and relies on fifo to
+        // scan them out on consecutive vblanks. Under mailbox the presentation
+        // engine keeps only the NEWEST queued image per vblank, so the whole
+        // batch collapses to the real frame and every generated frame is
+        // discarded at the very last step - the exact failure the guest-side
+        // engines suffer, just moved. lsfg-vk needs mailbox for the opposite
+        // reason: its extra presents come from inside the guest and fifo
+        // back-pressure strangles them.
+        if ("lsfg-native".equals(resolvedFrameGenEngine())
+                && XServerDrawerState.INSTANCE.getFrameGenEnabled().getValue()
+                && XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue() >= 2) {
+            return "fifo";
+        }
         return resolvedRendererPresentMode();
     }
 
@@ -9825,6 +9843,26 @@ return true;
     // https://github.com/utkarshdalal/GameNative. See README Credits.
     private boolean lsfgGovernsFps() {
         XServerDrawerState s = XServerDrawerState.INSTANCE;
+        // ONLY lsfg-vk. It lives inside the guest and paces the guest itself, so
+        // our limiter has to step aside or the two fight.
+        //
+        // LSFG Native deliberately does NOT qualify. It never touches the guest;
+        // it generates frames in our compositor on top of whatever the guest
+        // produces. Letting the limiter step aside there would silently drop the
+        // user's FPS cap, run the guest uncapped, and hand the frame-gen chain a
+        // hotter, busier GPU to compete with - which is exactly what makes the
+        // governor reject its probes. The right shape for the native engine is:
+        // cap the REAL frames, and generate in between them.
+        return "lsfg".equals(resolvedFrameGenEngine())
+            && s.getFrameGenEnabled().getValue()
+            && s.getFrameGenMultiplier().getValue() >= 2;
+    }
+
+    // True when what reaches the PANEL is a multiple of the guest's rate, for
+    // either LSFG engine. VRR must vote the displayed cadence, not the cap -
+    // separate question from who paces the guest.
+    private boolean frameGenMultipliesDisplay() {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
         final String engine = resolvedFrameGenEngine();
         return ("lsfg".equals(engine) || "lsfg-native".equals(engine))
             && s.getFrameGenEnabled().getValue()
@@ -9880,7 +9918,7 @@ return true;
         if (container != null && resolvedMatchRefreshRate()) {
             // Auto (match FPS): vote the panel cadence to follow the displayed FPS while capping.
             if (cap > 0) {
-                if (lsfgGovernsFps()) {
+                if (frameGenMultipliesDisplay()) {
                     int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
                     vrrRate = (float) cap * (mult >= 2 ? mult : 1);
                 } else {

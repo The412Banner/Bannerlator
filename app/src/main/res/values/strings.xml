@@ -503,7 +503,7 @@
         <b>Immediate:</b> \'Vsync off.\' Frames appear the instant they\'re ready — lowest lag, but you may see tearing. Rarely worth it on a high-refresh screen.<br /><br />
         <b>Tip:</b> Bannerlator automatically switches to Mailbox while frame generation is multiplying, then back to your setting when it\'s off.
     ]]></string>
-    <string name="renderer_present_mode_fg_note">Frame generation temporarily switches this to Mailbox while it\'s running, then restores your choice.</string>
+    <string name="renderer_present_mode_fg_note">LSFG Native switches this to FIFO while it\'s generating, then restores your choice — it queues the real and generated frames together and needs FIFO to show them one per refresh. The other engines leave your choice alone.</string>
 
     <!-- Download-speed picker — general "?" plus per-tier plain-language help -->
     <string name="help_download_speed"><![CDATA[

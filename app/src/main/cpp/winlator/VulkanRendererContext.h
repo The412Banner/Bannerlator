@@ -495,6 +495,27 @@ private:
     // it in PRESENT_SRC. No-op when the composite path is not active.
     void  copyCompositeToSwapchain(VkCommandBuffer cb, uint32_t imgIdx);
 
+    // === Native LSFG: the software cursor ====================================
+    // LSFG interpolates whatever it is given, so a cursor composited into the
+    // frame gets warped along the flow field and smears. It is therefore
+    // excluded from the composite while frame gen is armed and drawn once into
+    // EVERY presented image instead - real and generated alike - through a
+    // load-op render pass that leaves the image ready to present.
+    VkRenderPass cursorOverlayRenderPass = VK_NULL_HANDLE;
+    struct CursorOverlay {
+        bool  draw = false;
+        float ox = 0, oy = 0, sx = 0, sy = 0, cw = 0, ch = 0;
+        short ptrX = 0, ptrY = 0, hotX = 0, hotY = 0, w = 0, h = 0;
+    };
+    CursorOverlay cursorOverlay_{};
+
+    bool createCursorOverlayRenderPass();
+    // Draw the cursor into an already-copied swapchain image and leave it in
+    // PRESENT_SRC. Takes over the final transition from the copy helpers.
+    void recordCursorOverlay(VkCommandBuffer cb, uint32_t imgIdx);
+    // True when the cursor is being drawn per present rather than composited.
+    bool cursorDrawnPerPresent() const;
+
     // === Native LSFG: the per-source-frame present plan =======================
     // Interpolation produces frames that belong BETWEEN N-1 and N, so the
     // generated frames are presented FIRST and real frame N is held back one

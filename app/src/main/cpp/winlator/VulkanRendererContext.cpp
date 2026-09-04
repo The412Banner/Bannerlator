@@ -132,6 +132,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     if (postPipeLayout    != VK_NULL_HANDLE) vk_.DestroyPipelineLayout(device, postPipeLayout, nullptr);
     if (offscreenRenderPass != VK_NULL_HANDLE) vk_.DestroyRenderPass(device, offscreenRenderPass, nullptr);
     if (compositeRenderPass != VK_NULL_HANDLE) { vk_.DestroyRenderPass(device, compositeRenderPass, nullptr); compositeRenderPass = VK_NULL_HANDLE; }
+    if (cursorOverlayRenderPass != VK_NULL_HANDLE) { vk_.DestroyRenderPass(device, cursorOverlayRenderPass, nullptr); cursorOverlayRenderPass = VK_NULL_HANDLE; }
     if (upscaleSampler    != VK_NULL_HANDLE) vk_.DestroySampler(device, upscaleSampler, nullptr);
 
     vk_.DestroySampler(device, sampler, nullptr);
@@ -920,6 +921,8 @@ void VulkanRendererContext::recordFrameGenPasses(VkCommandBuffer cb) {
                          swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                          1, &region);
 
+        // Restore the generation target first; the swapchain image's own final
+        // transition depends on whether the cursor overlay runs for it.
         VkImageMemoryBarrier post[2]{};
         post[0].sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         post[0].oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; post[0].newLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -933,9 +936,17 @@ void VulkanRendererContext::recordFrameGenPasses(VkCommandBuffer cb) {
         post[1].image=dst.img; post[1].subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
         post[1].srcAccessMask=VK_ACCESS_TRANSFER_READ_BIT; post[1].dstAccessMask=VK_ACCESS_SHADER_WRITE_BIT;
 
-        vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            0, 0,nullptr, 0,nullptr, 2,post);
+        if (cursorDrawnPerPresent() && cursorOverlay_.draw) {
+            // Only the generation target goes back to GENERAL here; the
+            // overlay pass takes the swapchain image to PRESENT_SRC.
+            vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,nullptr, 0,nullptr, 1,&post[1]);
+            recordCursorOverlay(cb, imgIdx);
+        } else {
+            vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                0, 0,nullptr, 0,nullptr, 2,post);
+        }
     }
 }
 
@@ -950,6 +961,101 @@ void VulkanRendererContext::setFrameGenTuning(float flowScale, float refreshHz) 
     fgFlowScale_.store(flowScale, std::memory_order_relaxed);
     fgRefreshHz_.store(refreshHz, std::memory_order_relaxed);
     fgConfigDirty_.store(true, std::memory_order_relaxed);
+}
+
+// ================== Native LSFG: per-present software cursor =================
+// LSFG warps whatever it is handed along the estimated flow field. A cursor
+// composited into the frame is therefore smeared across the generated frames,
+// which is very visible on a Wine desktop. So while frame gen is armed the
+// cursor is left OUT of the composite and drawn once into every presented
+// image - real and generated alike - by a load-op pass that also performs the
+// final transition to PRESENT_SRC.
+
+bool VulkanRendererContext::cursorDrawnPerPresent() const {
+    return compositeActive() && cursorOverlayRenderPass != VK_NULL_HANDLE;
+}
+
+bool VulkanRendererContext::createCursorOverlayRenderPass() {
+    if (cursorOverlayRenderPass != VK_NULL_HANDLE) return true;
+
+    // Format-compatible with renderPass, so the existing swapchain
+    // framebuffers and the window pipeline can both be reused as they are;
+    // only the load op and the layouts differ.
+    VkAttachmentDescription att{}; att.format=swapchainFmt; att.samples=VK_SAMPLE_COUNT_1_BIT;
+    att.loadOp=VK_ATTACHMENT_LOAD_OP_LOAD;       // keep the frame we just copied in
+    att.storeOp=VK_ATTACHMENT_STORE_OP_STORE;
+    att.stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    att.stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    att.initialLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    att.finalLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference ref{0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkSubpassDescription sub{}; sub.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS;
+    sub.colorAttachmentCount=1; sub.pColorAttachments=&ref;
+
+    VkSubpassDependency dep{}; dep.srcSubpass=VK_SUBPASS_EXTERNAL; dep.dstSubpass=0;
+    dep.srcStageMask=VK_PIPELINE_STAGE_TRANSFER_BIT;
+    dep.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
+    dep.dstStageMask=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dep.dstAccessMask=VK_ACCESS_COLOR_ATTACHMENT_READ_BIT|VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkRenderPassCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    ci.attachmentCount=1; ci.pAttachments=&att; ci.subpassCount=1; ci.pSubpasses=&sub;
+    ci.dependencyCount=1; ci.pDependencies=&dep;
+    if (vk_.CreateRenderPass(device,&ci,nullptr,&cursorOverlayRenderPass)!=VK_SUCCESS) {
+        RLOG_E("createCursorOverlayRenderPass failed");
+        cursorOverlayRenderPass = VK_NULL_HANDLE;
+        return false;
+    }
+    return true;
+}
+
+void VulkanRendererContext::recordCursorOverlay(VkCommandBuffer cb, uint32_t imgIdx) {
+    if (!cursorDrawnPerPresent()) return;
+    const CursorOverlay& c = cursorOverlay_;
+    if (!c.draw || cursorDS == VK_NULL_HANDLE || imgIdx >= swapchainFBs.size()) return;
+
+    // The copy left the image in TRANSFER_DST; the render pass wants
+    // COLOR_ATTACHMENT_OPTIMAL and hands it on as PRESENT_SRC itself.
+    VkImageMemoryBarrier toAttachment{};
+    toAttachment.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    toAttachment.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toAttachment.newLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    toAttachment.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+    toAttachment.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+    toAttachment.image=swapchainImages[imgIdx];
+    toAttachment.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    toAttachment.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
+    toAttachment.dstAccessMask=VK_ACCESS_COLOR_ATTACHMENT_READ_BIT|VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0,nullptr, 0,nullptr, 1,&toAttachment);
+
+    VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpi.renderPass=cursorOverlayRenderPass; rpi.framebuffer=swapchainFBs[imgIdx];
+    rpi.renderArea={{0,0},swapchainExt};
+    rpi.clearValueCount=0; rpi.pClearValues=nullptr;   // LOAD_OP_LOAD: nothing to clear
+    vk_.CmdBeginRenderPass(cb,&rpi,VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0,0,(float)swapchainExt.width,(float)swapchainExt.height,0,1};
+    VkRect2D   sc{{0,0},swapchainExt};
+    vk_.CmdSetViewport(cb,0,1,&vp);
+    vk_.CmdSetScissor(cb,0,1,&sc);
+    // `pipeline` is the alpha-blended window pipeline, built against renderPass;
+    // format compatibility is what makes it usable with the overlay pass too.
+    vk_.CmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline);
+    vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeLayout,0,1,&cursorDS,0,nullptr);
+
+    const float cx=(float)std::max(0,(int)c.ptrX-c.hotX), cy=(float)std::max(0,(int)c.ptrY-c.hotY);
+    WindowPushConstants pc{};
+    pc.ndcX0=(c.ox+cx*c.sx)/c.cw*2.f-1.f;
+    pc.ndcY0=(c.oy+cy*c.sy)/c.ch*2.f-1.f;
+    pc.ndcX1=(c.ox+(cx+c.w)*c.sx)/c.cw*2.f-1.f;
+    pc.ndcY1=(c.oy+(cy+c.h)*c.sy)/c.ch*2.f-1.f;
+    pc.useTexAlpha=1;
+    vk_.CmdPushConstants(cb,pipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,
+                         0,sizeof(pc),&pc);
+    vk_.CmdDraw(cb,4,1,0,0);
+    vk_.CmdEndRenderPass(cb);
 }
 
 void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
@@ -1021,6 +1127,13 @@ void VulkanRendererContext::copyCompositeToSwapchain(VkCommandBuffer cb, uint32_
         t.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1, &region);
+
+    // The cursor overlay, when it runs, takes the image from TRANSFER_DST to
+    // PRESENT_SRC itself; only do it here when there is no overlay.
+    if (cursorDrawnPerPresent() && cursorOverlay_.draw) {
+        recordCursorOverlay(cb, imgIdx);
+        return;
+    }
 
     VkImageMemoryBarrier post{};
     post.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1434,6 +1547,21 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     }
 
     bool cursorDrawn = curVis && cursorImg!=VK_NULL_HANDLE && cursorDS!=VK_NULL_HANDLE;
+
+    // Frame gen: keep the cursor OUT of the composite - LSFG would warp it
+    // along the flow field and smear it - and draw it into every presented
+    // image instead, real and generated alike.
+    cursorOverlay_ = CursorOverlay{};
+    if (cursorDrawnPerPresent()) {
+        cursorOverlay_.draw = cursorDrawn;
+        cursorOverlay_.ox = ox; cursorOverlay_.oy = oy;
+        cursorOverlay_.sx = sx; cursorOverlay_.sy = sy;
+        cursorOverlay_.cw = cw; cursorOverlay_.ch = ch;
+        cursorOverlay_.ptrX = ptrX; cursorOverlay_.ptrY = ptrY;
+        cursorOverlay_.hotX = curHotX; cursorOverlay_.hotY = curHotY;
+        cursorOverlay_.w = curW; cursorOverlay_.h = curH;
+        cursorDrawn = false;
+    }
     bool hasCursorCopy = hasCursorUpload && cursorImg!=VK_NULL_HANDLE && cursorUpload!=VK_NULL_HANDLE;
     if (hasCursorCopy) {
         VkImageMemoryBarrier b{}; b.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1985,6 +2113,7 @@ ok=true;}catch(...){}
         const int mult = fgMultiplier_.load(std::memory_order_relaxed);
         const uint32_t want = (uint32_t)std::min(std::max(mult, 2), 4) + 1u;
         compositeArmed = ensureCompositeTargets(swapchainExt.width, swapchainExt.height, want);
+        if (compositeArmed) createCursorOverlayRenderPass();
         if (compositeArmed && !compositeTargets.empty())
             compositeIndex = (compositeIndex + 1) % (uint32_t)compositeTargets.size();
     } else if (compositeArmed || !compositeTargets.empty()) {

@@ -6197,6 +6197,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));
 
+            // Keep the lsfg-vk Vulkan layer INERT unless lsfg-vk is actually the engine.
+            // Placed AFTER both user env merges (container above, shortcut just here) so
+            // nothing the user carries over can re-enable it. The layer's manifest honours
+            // disable_environment over enable_environment, so this wins even when a stale
+            // ENABLE_LSFG=1 is still sitting in a container that used lsfg-vk before.
+            //
+            // Device report that prompted this: r8 tester on Adreno 830, LSFG Native
+            // selected, NFS Heat asserting in winevulkan's vkCreateSwapchainKHR thunk on
+            // launch. LSFG Native writes nothing into the guest, but a leftover ENABLE_LSFG
+            // loads the lsfg-vk layer into the game with no conf.toml, no LSFG_CONFIG and no
+            // DLL path - and that layer hard-fails swapchain creation when it cannot find
+            // its config. That is precisely the assertion in the screenshot.
+            if (!"lsfg".equals(resolvedFrameGenEngine())) {
+                envVars.put("DISABLE_LSFG", "1");
+                envVars.remove("ENABLE_LSFG");
+            }
+
             // Epic per-game launch fixes (Feature #7). Runs on the background launch setup thread.
             //  • applyEnv: merge required WINEDLLOVERRIDES (Kingdom Hearts III) into the launch env,
             //    after the shortcut env so a user override still wins.

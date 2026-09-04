@@ -483,20 +483,30 @@ class GogLoginActivity : ComponentActivity() {
             val fragment = uri.fragment ?: return
             val frag = Uri.parse("x://x?$fragment")
 
-            // CSRF: the auth server echoes back the `state` we sent. Reject a redirect
-            // whose state is missing or does not match (defeats forged login responses).
-            // NOTE: depends on auth.gog.com echoing `state` in the implicit-flow fragment.
-            // If device-test shows valid logins being rejected, relax to mismatch-only
-            // (i.e. allow a null returnedState).
+            // CSRF: we send a `state` on AUTH_URL and validate it if the auth server
+            // echoes it back. MISMATCH-ONLY, deliberately: device test 2026-09-04 proved
+            // GOG returns NO state at all on the social-login path (the provider round-trip
+            // goes through external-accounts.gog.com/login/providers/<p>/back), so the
+            // stricter "missing counts as mismatch" rule threw away a perfectly good
+            // access_token and bounced the user back to the login form. This is the relaxation
+            // the original note in d471bd26 called for. A present-but-wrong state is still
+            // rejected, which is the case a forged redirect would actually produce.
             val expected = oauthState
             val returnedState = frag.getQueryParameter("state")
-            if (expected != null && returnedState != expected) {
-                Log.e(TAG, "OAuth state mismatch (got=${returnedState != null}) — rejecting redirect")
+            if (expected != null && returnedState != null && returnedState != expected) {
+                Log.e(TAG, "OAuth state mismatch — rejecting redirect")
                 rejectLogin(getString(R.string.gog_login_error_verification))
                 return
             }
+            if (returnedState == null) Log.d(TAG, "redirect carried no state (expected on social login)")
 
-            val accessToken = frag.getQueryParameter("access_token") ?: return
+            val accessToken = frag.getQueryParameter("access_token")
+            if (accessToken == null) {
+                // Name the keys, never the values — a fragment carries live tokens.
+                Log.e(TAG, "redirect had no access_token; fragment keys=${frag.queryParameterNames}")
+                rejectLogin(getString(R.string.gog_login_error_verification))
+                return
+            }
             val refreshToken = frag.getQueryParameter("refresh_token")
             val userId = frag.getQueryParameter("user_id")
 

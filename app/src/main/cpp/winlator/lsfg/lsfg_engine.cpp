@@ -184,6 +184,7 @@ bool Engine::prepare(uint32_t width, uint32_t height, VkFormat format) {
     warm_ = false;
     generating_ = false;
     pacer_.Reset();
+    governor_.reset();
     LSFG_LOGI("chain built at %ux%u, flow %ux%u scale %.2f (preset %.2f, guest %ux%u)",
               width, height, (unsigned)(width * scale), (unsigned)(height * scale),
               (double)scale, (double)flowScale_,
@@ -195,6 +196,16 @@ uint32_t Engine::plan(uint32_t capacity, uint64_t sourceFrames) {
     if (unavailable_ || !chain_) return 0;
 
     plan_ = pacer_.Plan(std::min<size_t>(capacity, kMaxGenerations), sourceFrames);
+
+    // The pacer says how many frames FIT in the panel's budget. The governor
+    // says how many this device can actually afford right now - on a handheld
+    // the chain competes with the game for one GPU, so an extra generation has
+    // to prove it improves total output without collapsing the real frame rate.
+    {
+        const LsfgPacerStats s = pacer_.Stats();
+        governor_.configure((uint32_t)std::min<size_t>(pacer_.MaxGenerations(), kMaxGenerations));
+        plan_.generations = governor_.cap((uint32_t)plan_.generations, s.source_rate, s.loop_rate);
+    }
 
     warm_ = plan_.warm && frameCount_ + 1 >= kRequiredFrames;
     warmStreak_ = warm_ ? warmStreak_ + 1 : 0;
@@ -246,6 +257,7 @@ void Engine::forgetTargets() {
 
 void Engine::reset() {
     pacer_.Reset();
+    governor_.reset();
     peakGuestExtent_ = VkExtent2D{};
     warmStreak_ = 0;
     warm_ = false;

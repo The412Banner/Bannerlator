@@ -27,6 +27,7 @@
 #include <vulkan/vulkan.h>
 
 #include "lsfg_common.hpp"
+#include "lsfg_governor.h"
 #include "lsfg_pacer.hpp"
 
 namespace lsfg {
@@ -74,6 +75,11 @@ public:
                       VkImage targetImage, VkImageView targetView,
                       uint32_t width, uint32_t height);
 
+    // What the probe governor currently trusts, and the latest thermal
+    // reading (-1 = no signal). Surfaced for the HUD and diagnostics.
+    uint32_t acceptedGenerations() const { return governor_.accepted(); }
+    int      thermalStatus() const { return governor_.thermalStatus(); }
+
     void forgetTargets();
     void reset();
 
@@ -84,7 +90,8 @@ private:
     std::string cachePath_;
     std::unique_ptr<LsfgShaders> shaders_;
     std::unique_ptr<LsfgChain>   chain_;
-    LsfgPacer   pacer_;
+    LsfgPacer      pacer_;
+    ProbeGovernor  governor_;
     LsfgPlan    plan_{};
 
     VkExtent2D builtExtent_{};

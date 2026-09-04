@@ -99,6 +99,7 @@ add_library(vulkan_renderer SHARED
         winlator/lsfg/lsfg_chain.cpp
         winlator/lsfg/lsfg_pacer.cpp
         winlator/lsfg/lsfg_engine.cpp
+        winlator/lsfg/lsfg_governor.cpp
         scanout/ScanoutContext.cpp
 )
 

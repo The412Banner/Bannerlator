@@ -119,23 +119,48 @@ public abstract class Box64PresetManager {
             }
         }
         else if (id.equals(Box64Preset.EXTREME)) {
+            // Retuned to the community "Extreme" box64 preset (32 variables). Versus the previous
+            // build of this preset: FASTROUND 1->2, FORWARD 512->1024, WEAKBARRIER 1->2,
+            // DIRTY 1->0, NATIVEFLAGS 0->1, plus the dynarec/CPU-feature knobs below that we
+            // previously left at box64's defaults.
+            // NATIVEFLAGS=1 is the main speed lever; WEAKBARRIER=2 is the risky one — weaker
+            // memory barriers are faster but can corrupt multi-threaded state, which is why this
+            // stays a separate tier rather than folding into Performance.
             envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "1");
             envVars.put(ucPrefix+"_DYNAREC_FASTNAN", "1");
-            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "2");
             envVars.put(ucPrefix+"_DYNAREC_X87DOUBLE", "0");
             envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "3");
             envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "0");
-            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "512");
+            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "1024");
             envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
             envVars.put(ucPrefix+"_DYNAREC_WAIT", "1");
             if (ucPrefix.equals("BOX64")) {
+                // BOX64-only: box86 either lacks these or names them differently, so they stay
+                // guarded exactly as the previous preset did.
+                envVars.put("BOX64_DYNAREC", "1");
+                envVars.put("BOX64_DYNAREC_SEP", "1");
+                envVars.put("BOX64_DYNAREC_WEAKBARRIER", "2");
+                envVars.put("BOX64_DYNAREC_ALIGNED_ATOMICS", "0");
+                envVars.put("BOX64_DYNAREC_DF", "1");
+                envVars.put("BOX64_DYNAREC_DIRTY", "0");
+                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "1");
+                envVars.put("BOX64_DYNAREC_PAUSE", "0");
+                envVars.put("BOX64_DYNAREC_NOARCH", "0");
+                envVars.put("BOX64_DYNAREC_VOLATILE_METADATA", "1");
+                envVars.put("BOX64_DYNACACHE", "0");
                 envVars.put("BOX64_AVX", "0");
+                envVars.put("BOX64_AES", "1");
+                envVars.put("BOX64_PCLMULQDQ", "1");
+                envVars.put("BOX64_SHAEXT", "1");
+                envVars.put("BOX64_SSE42", "1");
+                envVars.put("BOX64_SSE_FLUSHTO0", "0");
+                envVars.put("BOX64_X87_NO80BITS", "0");
+                envVars.put("BOX64_CPUTYPE", "0");
+                envVars.put("BOX64_MAXCPU", "0");
                 envVars.put("BOX64_UNITYPLAYER", "0");
+                envVars.put("BOX64_UNITY", "0");
                 envVars.put("BOX64_MMAP32", "1");
-                envVars.put("BOX64_DYNAREC_WEAKBARRIER", "1");
-                envVars.put("BOX64_DYNAREC_DIRTY", "1");
-                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
-
             }
         }
         else if (id.equals(Box64Preset.UNITY)) {

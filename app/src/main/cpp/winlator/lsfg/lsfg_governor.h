@@ -72,6 +72,8 @@ private:
     uint32_t backoffStep_ = 0;
 
     int  thermal_ = -1;
+    Clock::time_point lastThermalDecay_{};
+    bool haveThermalDecay_ = false;
     Clock::time_point lastThermalPoll_{};
     bool haveThermalPoll_ = false;
 };

@@ -26,6 +26,7 @@ constexpr float kBackoffSeconds[] = {5.0f, 15.0f, 30.0f, 60.0f};
 constexpr uint32_t kBackoffSteps  = 4;
 
 constexpr float kThermalPollSeconds = 2.0f;
+constexpr float kThermalDecaySeconds = 1.0f;
 
 // ADEVICE_THERMAL_STATUS_* from <android/thermal.h>, which is API 30. Resolved
 // by dlsym so the build keeps working below that and on devices that do not
@@ -122,16 +123,28 @@ uint32_t ProbeGovernor::cap(uint32_t requested, float sourceRate, float loopRate
     if (!havePhaseStart_) enterBaseline(now);
     pollThermal(now);
 
-    // Thermal override. SEVERE and above gives generations back immediately;
-    // MODERATE just stops us asking for more.
+    // Thermal override: at SEVERE and above we stop asking for more and give
+    // generations back, but SLOWLY.
+    //
+    // This runs once per source frame - about forty times a second - so the
+    // previous version's unconditional accepted_-- was not "give one back", it
+    // was "slam to zero in three frames", and its unconditional enterBackoff()
+    // reset the backoff clock every single call, so the backoff could never
+    // expire and the governor could never measure or recover. One decay per
+    // second, and no churn at all once there is nothing left to give back.
     if (thermal_ >= kThermalSevere) {
-        if (accepted_ > 0) {
+        const bool decayDue = !haveThermalDecay_
+            || phaseSeconds(lastThermalDecay_, now) >= kThermalDecaySeconds;
+        if (accepted_ > 0 && decayDue) {
             GOV_LOGI("thermal status %d - dropping to %u generations", thermal_, accepted_ - 1);
             accepted_--;
+            lastThermalDecay_ = now;
+            haveThermalDecay_ = true;
+            enterBackoff(now);
         }
-        enterBackoff(now);
         return std::min(requested, accepted_);
     }
+    haveThermalDecay_ = false;
 
     if (sourceRate > 0.0f && loopRate > 0.0f) {
         sourceAccum_ += sourceRate;

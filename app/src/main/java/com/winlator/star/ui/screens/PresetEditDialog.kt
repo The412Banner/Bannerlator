@@ -263,12 +263,15 @@ internal fun PresetEditDialog(
                         .padding(vertical = 4.dp),
                 ) {
                     items(specs, key = { it.name }) { spec ->
+                        // Resolve the help text up front: a variable with none hides its "?"
+                        // rather than showing a button that does nothing when tapped.
+                        val help = remember(spec.name) { varHelp(context, prefix, spec.name) }
                         VarRow(
                             spec = spec,
                             value = values[spec.name] ?: spec.defaultValue,
                             enabled = true,
                             onValue = { values[spec.name] = it },
-                            onHelp = { varHelp(context, prefix, spec.name)?.let { h -> helpText = h } },
+                            onHelp = help?.let { h -> { helpText = h } },
                         )
                     }
                 }
@@ -324,7 +327,7 @@ private fun VarRow(
     value: String,
     enabled: Boolean,
     onValue: (String) -> Unit,
-    onHelp: () -> Unit,
+    onHelp: (() -> Unit)?,
 ) {
     Row(
         modifier = Modifier
@@ -340,13 +343,17 @@ private fun VarRow(
             color = if (enabled) MaterialTheme.colorScheme.onSurface
             else MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        IconButton(onClick = onHelp, modifier = Modifier.size(28.dp)) {
-            Icon(
-                Icons.Outlined.HelpOutline,
-                contentDescription = "About " + spec.name,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
-            )
+        if (onHelp != null) {
+            IconButton(onClick = onHelp, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    Icons.Outlined.HelpOutline,
+                    contentDescription = "About " + spec.name,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        } else {
+            Spacer(Modifier.width(28.dp))
         }
         Spacer(Modifier.width(4.dp))
         when (spec.kind) {

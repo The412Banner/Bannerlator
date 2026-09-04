@@ -299,6 +299,30 @@
     <string name="fex_extreme_tso_wn">Extreme (TSO)-wn</string>
     <string name="fex_extreme_gn">Extreme-gn</string>
 
+    <!-- Help for the Box64 variables added alongside the 19 -> 32 expansion. Wording follows
+         WinNative, which has shipped these knobs longest. Without these the "?" button had
+         nothing to show and silently did nothing. -->
+    <string name="box64_env_var_help__dynarec">Enables or disables the Box64 dynamic recompiler. Turning it off falls back to interpreting every instruction, which is dramatically slower — leave it on unless you are debugging.</string>
+    <string name="box64_env_var_help__dynarec_sep">Adds secondary entry points to optimize CALL/RET when CALLRET is enabled.</string>
+    <string name="box64_env_var_help__dynarec_noarch">Reduces dynarec block metadata to save memory, with compatibility tradeoffs.</string>
+    <string name="box64_env_var_help__dynarec_volatile_metadata">Uses PE volatile metadata to guide strong memory emulation for 64-bit Windows games.</string>
+    <string name="box64_env_var_help__dynacache">Controls caching of generated dynarec blocks between runs to speed up startup.</string>
+    <string name="box64_env_var_help__aes">Exposes AES CPU capabilities to the guest.</string>
+    <string name="box64_env_var_help__pclmulqdq">Exposes PCLMULQDQ CPU capabilities to the guest.</string>
+    <string name="box64_env_var_help__shaext">Exposes SHA extension CPU capabilities to the guest.</string>
+    <string name="box64_env_var_help__sse42">Exposes SSE4.2 CPU capabilities to the guest.</string>
+    <string name="box64_env_var_help__sse_flushto0">Controls SSE flush-to-zero behavior and exception flag tracking.</string>
+    <string name="box64_env_var_help__x87_no80bits">Uses 64-bit double precision instead of 80-bit long double for x87.</string>
+    <string name="box64_env_var_help__cputype">Selects the Intel or AMD CPU model exposed to the guest.</string>
+    <string name="box64_env_var_help__unity">Marks the app as a Unity game and enables Unity-specific compatibility handling.</string>
+
+    <!-- FEXCore variables that had no help text: two added with the Extreme presets, plus
+         MAXINST and SMCCHECKS which were never covered. -->
+    <string name="fexcore_env_var_help__maxinst">Maximum number of guest instructions FEX will compile into a single translated block. Larger blocks run faster but take longer to compile and use more memory.</string>
+    <string name="fexcore_env_var_help__smcchecks">How hard FEX looks for self-modifying code — code the game writes or rewrites while running.\n\nnone is fastest but breaks anything that generates code at runtime (Java or .NET runtimes, some launchers and DRM). mtrack is the balanced default. full is the safest and slowest.</string>
+    <string name="fexcore_env_var_help__dynamicl1cacheincreasecountheuristic">How readily the dynamic L1 block cache grows. Lower values grow it sooner, using more memory for fewer recompiles. Only has an effect when the dynamic L1 cache is enabled.</string>
+    <string name="fexcore_env_var_help__dynamicl1cachedecreasecountheuristic">How readily the dynamic L1 block cache shrinks back. Higher values hold memory longer before releasing it. Only has an effect when the dynamic L1 cache is enabled.</string>
+
     <!-- Per-preset help, shown by the "?" beside the preset name in the preset editor.
          Key = <prefix>_preset_help__<preset id lowercased>. Kept brief: what it does, then the
          specific risk where there is one. -->

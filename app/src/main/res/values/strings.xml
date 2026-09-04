@@ -2343,4 +2343,18 @@ crash is a synchronisation problem, but everything here is slow.
 <b>When to change:</b> only applies to OpenGL games running through Zink. <b>lazy</b> is worth
 trying for speed, <b>notemplates</b> if you get driver crashes.
         ]]></string>
+
+    <!-- GOG sign-in screen -->
+    <string name="gog_login_title">Sign in to GOG</string>
+    <string name="gog_login_provider_title">Sign in with your provider</string>
+    <string name="gog_login_finishing">Finishing sign-in…</string>
+    <string name="gog_login_reload">Reload</string>
+    <string name="gog_login_close">Close</string>
+    <string name="gog_login_retry">Try again</string>
+    <string name="gog_login_error_network">Could not load the GOG sign-in page.\n\n%1$s</string>
+    <string name="gog_login_error_http">The GOG sign-in page returned an error (HTTP %1$d).</string>
+    <string name="gog_login_error_ssl">The sign-in page failed its security check and was not loaded.</string>
+    <string name="gog_login_error_verification">Login verification failed, please try again</string>
+    <string name="gog_login_error_generic">Login error, please try again</string>
+    <string name="gog_login_error_idp_blocked">This sign-in provider refused to load inside the app.\n\nSign in with your GOG email and password instead. If your GOG account has no password yet, set one at gog.com in your phone\'s browser first.</string>
 </resources>

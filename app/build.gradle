@@ -209,6 +209,12 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 
     implementation 'androidx.appcompat:appcompat:1.4.0'
+    // androidx.webkit: gives us setRequestedWithHeaderOriginAllowList(), the only supported
+    // way to stop the WebView appending X-Requested-With: <package> to every request.
+    // That header is how Google detects an embedded browser and rejects OAuth with
+    // 403 disallowed_useragent (the GOG "Sign in with Google" white screen).
+    // Feature-gated at runtime via WebViewFeature.isFeatureSupported().
+    implementation 'androidx.webkit:webkit:1.11.0'
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'com.github.luben:zstd-jni:1.5.2-3@aar'

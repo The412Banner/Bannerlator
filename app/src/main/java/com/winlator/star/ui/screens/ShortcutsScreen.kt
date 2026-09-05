@@ -5016,6 +5016,7 @@ private fun ShortcutItemLayoutL(
                     showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
                     showEos = rememberEosBadge(shortcut),
                     showGog = remember(shortcut) { isGogShortcut(shortcut) },
+                    showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
                     showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
                     modifier = Modifier.padding(start = 6.dp),
                 )
@@ -5275,6 +5276,7 @@ private fun ShortcutGridItem(
             showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
             showEos = rememberEosBadge(shortcut),
             showGog = remember(shortcut) { isGogShortcut(shortcut) },
+            showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
             showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -8493,6 +8495,24 @@ private fun SteamBadge(modifier: Modifier = Modifier) {
  * [isCustomOriginShortcut] for the detection rule.
  */
 @Composable
+private fun AmazonBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFE47911))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "AMAZON",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+/** Amazon-brand orange pill, sized identically to the EPIC/EOS/GOG/STEAM/CUSTOM pills. */
+@Composable
 private fun CustomBadge(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
@@ -8531,8 +8551,22 @@ private fun isCustomOriginShortcut(shortcut: Shortcut): Boolean {
     if (src.isNotEmpty() && src != "custom") return false
     if (isSteamOriginShortcut(shortcut)) return false
     if (isGogShortcut(shortcut)) return false
+    if (isAmazonShortcut(shortcut)) return false
     return true
 }
+
+/**
+ * True when a shortcut is an Amazon Games title. New Amazon shortcuts are tagged
+ * `storeSource=amazon` (StarLaunchBridge store overload); pre-tagging ones are recognised by the exec
+ * path living under the Amazon install root (`imagefs/Amazon/<title>/…` → `Z:\Amazon\…`).
+ */
+internal fun isAmazonShortcut(shortcut: Shortcut): Boolean {
+    if (shortcut.getExtra("storeSource") == "amazon") return true
+    val p = shortcut.path ?: return false
+    return AMAZON_ROOT_RE.containsMatchIn(p)
+}
+
+private val AMAZON_ROOT_RE = Regex("""(^|[\\/])Amazon[\\/]""")
 
 /**
  * EPIC + EOS + GOG pills clustered for the top-left corner of a shortcut's cover art. Caller aligns
@@ -8951,15 +8985,17 @@ private fun ShortcutBadgeOverlay(
     showEpic: Boolean,
     showEos: Boolean,
     showGog: Boolean,
+    showAmazon: Boolean = false,
     showCustom: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    if (!showSteam && !showEpic && !showEos && !showGog && !showCustom) return
+    if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showCustom) return
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (showSteam) SteamBadge()
         if (showEpic) EpicBadge()
         if (showEos) EosBadge()
         if (showGog) GogBadge()
+        if (showAmazon) AmazonBadge()
         if (showCustom) CustomBadge()
     }
 }

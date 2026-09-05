@@ -190,7 +190,10 @@
         <activity
             android:exported="false"
             android:name="com.winlator.star.store.AmazonMainActivity"
-            android:screenOrientation="fullSensor"
+            android:screenOrientation="sensor"
+            android:launchMode="singleTop"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/AppTheme"/>
         <activity 
             android:exported="false"

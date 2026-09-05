@@ -88,7 +88,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 // ── Where a shortcut comes from (drives which launch methods the popup offers) ────────────────────
-private enum class GameSource { STEAM, EPIC, GOG, CUSTOM }
+private enum class GameSource { STEAM, EPIC, GOG, AMAZON, CUSTOM }
 
 /**
  * The SteamLite package status shown under the SteamLite chip + the footer's "Update & Launch" gate.
@@ -122,6 +122,7 @@ private fun classifySource(shortcut: Shortcut): GameSource = when {
     shortcut.getExtra("storeSource") == "epic" -> GameSource.EPIC
     shortcut.getExtra("storeSource") == "gog" ||
         (shortcut.path?.contains("gog_games", ignoreCase = true) == true) -> GameSource.GOG
+    isAmazonShortcut(shortcut) -> GameSource.AMAZON
     else -> GameSource.CUSTOM
 }
 
@@ -1089,6 +1090,7 @@ private fun sourceSubline(source: GameSource, appId: Int): String = when (source
     GameSource.STEAM -> if (appId > 0) "Steam · App $appId" else "Steam"
     GameSource.EPIC -> "Epic · Raw launch"
     GameSource.GOG -> "GOG · DRM-free · Raw"
+    GameSource.AMAZON -> "Amazon Games · Raw"
     GameSource.CUSTOM -> "Custom · Raw"
 }
 
@@ -1098,6 +1100,7 @@ private fun methodDescription(method: LaunchMethod, source: GameSource): String 
     LaunchMethod.RAW -> when (source) {
         GameSource.EPIC -> "Run the game's .exe directly."
         GameSource.GOG -> "Run the DRM-free .exe directly — no launcher."
+        GameSource.AMAZON -> "Run the game's .exe directly — no Amazon Games app."
         GameSource.CUSTOM -> "Run the .exe directly."
         GameSource.STEAM -> "Run the game's .exe directly — no Steam layer."
     }

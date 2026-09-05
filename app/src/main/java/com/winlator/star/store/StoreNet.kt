@@ -86,6 +86,26 @@ internal object StoreNet {
         }
     }
 
+    /**
+     * A SteamGridDB 600x900 poster for [title] via name search — the same lookup the launch bridge
+     * and the GOG library use — or empty when SGDB has nothing. Blocking; IO thread only.
+     */
+    fun sgdbPoster(title: String): String = try {
+        val enc = java.net.URLEncoder.encode(title, "UTF-8")
+        val search = get("https://www.steamgriddb.com/api/v2/search/autocomplete/$enc", bearer = SGDB_KEY)
+        val data = search?.let { org.json.JSONObject(it).optJSONArray("data") }
+        if (data == null || data.length() == 0) "" else {
+            val gameId = data.getJSONObject(0).getInt("id")
+            val grids = get(
+                "https://www.steamgriddb.com/api/v2/grids/game/$gameId?dimensions=600x900&mimes=image/jpeg,image/png&limit=1",
+                bearer = SGDB_KEY,
+            )?.let { org.json.JSONObject(it).optJSONArray("data") }
+            if (grids == null || grids.length() == 0) "" else grids.getJSONObject(0).optString("url", "")
+        }
+    } catch (_: Exception) { "" }
+
+    private const val SGDB_KEY = "cf89227f12c773bb1117b6b109ae1659"
+
     private fun readAll(conn: HttpURLConnection): String {
         val sb = StringBuilder()
         BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { br ->

@@ -199,6 +199,52 @@ public final class StarLaunchBridge {
     }
 
     /**
+     * Store-tagged variant for the non-Steam, non-Epic stores (GOG, Amazon). Stamps
+     * {@code storeSource=<store>} into the shortcut so the Games tab can badge it without
+     * guessing from the exec path, and — when {@code preferSgdbCover} — resolves the cover as a
+     * SteamGridDB 600x900 poster FIRST, falling back to the store's own {@code coverArtUrl}.
+     * Amazon only publishes a square icon, so its tiles would otherwise be the odd ones out.
+     */
+    public static void addToLauncher(Activity activity,
+                                     String gameName,
+                                     String exePath,
+                                     String coverArtUrl,
+                                     String storeSource,
+                                     boolean preferSgdbCover) {
+        Handler h = new Handler(Looper.getMainLooper());
+        new Thread(() -> {
+            try {
+                ContainerManager manager = new ContainerManager(activity);
+                ArrayList<Container> containers = manager.getContainers();
+                if (containers == null || containers.isEmpty()) {
+                    h.post(() -> showToast(activity,
+                            "No Wine container found — create one first in the Containers screen."));
+                    return;
+                }
+                String[] names = new String[containers.size()];
+                for (int i = 0; i < containers.size(); i++) {
+                    String n = containers.get(i).getName();
+                    names[i] = (n != null && !n.isEmpty()) ? n : "Container " + (i + 1);
+                }
+                ArrayList<Container> finalContainers = containers;
+                h.post(() -> new AlertDialog.Builder(activity, R.style.StoreAlertDialogDark)
+                        .setTitle("Add \"" + gameName + "\" to…")
+                        .setItems(names, (dialog, which) -> {
+                            Container chosen = finalContainers.get(which);
+                            writeShortcutAsync(activity, chosen, gameName, exePath, coverArtUrl, 0, null,
+                                    storeSource, preferSgdbCover,
+                                    (success, message) -> showToast(activity, message));
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show());
+            } catch (Exception e) {
+                Log.e(TAG, "addToLauncher(store) failed", e);
+                h.post(() -> showToast(activity, "Error loading containers: " + e.getMessage()));
+            }
+        }, "store-launcher-picker").start();
+    }
+
+    /**
      * Convenience overload — falls back to SteamGridDB for cover art.
      */
     public static void addToLauncher(Activity activity, String gameName, String exePath) {
@@ -250,6 +296,24 @@ public final class StarLaunchBridge {
                                           String coverArtUrl,
                                           int steamAppId,
                                           EpicMeta epic,
+                                          ResultCallback cb) {
+        writeShortcutAsync(activity, container, gameName, exePath, coverArtUrl, steamAppId, epic, null, false, cb);
+    }
+
+    /**
+     * The core writer. {@code storeSource} (e.g. "gog", "amazon") is stamped as
+     * {@code storeSource=} when no Steam appId / Epic meta claims the shortcut first;
+     * {@code preferSgdbCover} tries the SteamGridDB poster before the store's own URL.
+     */
+    public static void writeShortcutAsync(Activity activity,
+                                          Container container,
+                                          String gameName,
+                                          String exePath,
+                                          String coverArtUrl,
+                                          int steamAppId,
+                                          EpicMeta epic,
+                                          String storeSource,
+                                          boolean preferSgdbCover,
                                           ResultCallback cb) {
         Handler h = new Handler(Looper.getMainLooper());
         new Thread(() -> {
@@ -327,6 +391,9 @@ public final class StarLaunchBridge {
                     if (EpicEosDetector.hasBeenScanned(activity, epic.appName)) {
                         content += "eos=" + (EpicEosDetector.isEosCached(activity, epic.appName) ? "1" : "0") + "\n";
                     }
+                } else if (storeSource != null && !storeSource.isEmpty()) {
+                    // GOG / Amazon: an explicit tag, so the badge never has to guess from the path.
+                    content += "storeSource=" + storeSource + "\n";
                 }
 
                 try (FileWriter fw = new FileWriter(shortcutFile)) {
@@ -337,10 +404,18 @@ public final class StarLaunchBridge {
 
                 // Resolve cover art URL: fix protocol-relative, then try store URL,
                 // fall back to SteamGridDB if needed.
-                String artUrl = normalizeUrl(coverArtUrl);
-                if (artUrl == null || artUrl.isEmpty()) {
-                    Log.d(TAG, "No store cover art URL — trying SteamGridDB for: " + gameName);
+                String artUrl;
+                if (preferSgdbCover) {
+                    // Poster first (600x900 SteamGridDB grid, the same shape Steam / GOG tiles carry),
+                    // the store's own image only if SGDB has nothing.
                     artUrl = sgdbFetchCover(gameName);
+                    if (artUrl == null || artUrl.isEmpty()) artUrl = normalizeUrl(coverArtUrl);
+                } else {
+                    artUrl = normalizeUrl(coverArtUrl);
+                    if (artUrl == null || artUrl.isEmpty()) {
+                        Log.d(TAG, "No store cover art URL — trying SteamGridDB for: " + gameName);
+                        artUrl = sgdbFetchCover(gameName);
+                    }
                 }
 
                 if (artUrl != null && !artUrl.isEmpty()) {

@@ -58,6 +58,9 @@ import com.winlator.star.store.download.StoreHero
 import com.winlator.star.store.download.StoreProgressBar
 import com.winlator.star.store.download.StoreSection
 import com.winlator.star.store.download.StoreStatusText
+import com.winlator.star.store.download.StoreDetailScaffold
+import com.winlator.star.store.download.StoreGearItem
+import com.winlator.star.store.download.StorePrimaryAction
 import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
@@ -511,11 +514,11 @@ class AmazonGameDetailActivity : ComponentActivity() {
             val candidates = exeFiles.map { it.absolutePath }
             withContext(Dispatchers.Main) {
                 if (candidates.size == 1) {
-                    StarLaunchBridge.addToLauncher(this@AmazonGameDetailActivity, name, candidates[0], artUrl)
+                    StarLaunchBridge.addToLauncher(this@AmazonGameDetailActivity, name, candidates[0], artUrl, "amazon", true)
                 } else {
                     showExePicker(candidates, cancelable = true) { chosen ->
                         runOnUiThread {
-                            StarLaunchBridge.addToLauncher(this@AmazonGameDetailActivity, name, chosen, artUrl)
+                            StarLaunchBridge.addToLauncher(this@AmazonGameDetailActivity, name, chosen, artUrl, "amazon", true)
                         }
                     }
                 }
@@ -724,6 +727,11 @@ class AmazonGameDetailActivity : ComponentActivity() {
 }
 
 // ─── Composable Screen ─────────────────────────────────────────────────────
+//
+// Mounted on the shared Steam-style scaffold (StoreDetailScaffold): hero → name → ONE primary
+// button (Install / Launch, or the read-only download fill) + ⚙ gear → pill tabs
+// (Details · DLC). Every former action is still reachable through the gear; the handlers are
+// UNCHANGED — only the layout moved.
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -761,133 +769,101 @@ private fun AmazonGameDetailScreen(
     onDlcInstall: (eid: String, pid: String, title: String) -> Unit,
 ) {
     val context = LocalContext.current
+    var tab by remember { mutableStateOf(0) }
+    val downloading = progressVisible && installBtnText == "Cancel"
+    val installed = launchBtnVisible
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        // Header — back + Amazon badge + Download Manager button (Steam parity).
-        StoreDetailHeader(
-            onBack = onBack,
-            storeBadge = { StoreBadge(Store.AMAZON) },
-            actions = { DownloadsButton() },
+    val primary = when {
+        downloading -> StorePrimaryAction.Progress(
+            label = if (progressLabelVisible && progressLabel.isNotBlank()) progressLabel else "Downloading… $progressValue%",
+            fraction = progressValue / 100f,
         )
+        installed -> StorePrimaryAction.Button("Launch", onLaunchClick, enabled = launchBtnEnabled)
+        else -> StorePrimaryAction.Button(installBtnText, onInstallClick, enabled = installBtnVisible && installBtnEnabled)
+    }
+    val gear = buildList {
+        // onInstallClick doubles as Cancel while the label reads "Cancel".
+        if (downloading) add(StoreGearItem("🗑", "Cancel download", danger = true, onClick = onInstallClick))
+        if (setExeBtnVisible) add(StoreGearItem("🎯", "Set .exe…", onClick = onSetExeClick))
+        if (installed) add(StoreGearItem("🔄", "Check for updates", enabled = checkUpdatesEnabled, onClick = onCheckUpdatesClick))
+        if (updateBtnVisible) add(StoreGearItem("⬆️", "Update now", onClick = onUpdateNowClick))
+        if (uninstallBtnVisible) add(StoreGearItem("🗑️", "Uninstall", danger = true, onClick = onUninstallClick))
+    }
+    val dlcCount = remember(dlcJson) {
+        if (dlcJson.isEmpty() || dlcJson == "[]") 0 else runCatching { org.json.JSONArray(dlcJson).length() }.getOrDefault(0)
+    }
+    // Poster for the hero when the library sync has resolved one; the square icon otherwise.
+    val heroCandidates = remember(productId, artUrl) {
+        listOfNotNull(
+            productId?.let { AmazonLibraryRepo.poster(context, it) },
+            artUrl?.takeIf { it.isNotBlank() },
+        )
+    }
 
-        // Hero image with the fade into the page background.
-        StoreHero {
-            if (!artUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(artUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
+    StoreDetailScaffold(
+        onBack = onBack,
+        title = titleText ?: "",
+        storeBadge = { StoreBadge(Store.AMAZON) },
+        hero = {
+            if (heroCandidates.isNotEmpty()) {
+                CatalogArt(
+                    candidates = heroCandidates,
+                    title = titleText ?: "",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
+                    aspectRatio = null,
                 )
             } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                )
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             }
-        }
-
-        // Info section — name + metadata chips + install status.
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
-            Text(
-                text = titleText ?: "",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoChip(sizeText)
-                if (!developer.isNullOrEmpty()) InfoChip(developer)
-                if (!publisher.isNullOrEmpty()) InfoChip(publisher)
-                if (!productId.isNullOrEmpty()) {
-                    val dot = productId.lastIndexOf('.')
-                    val shortId = if (dot in 0 until productId.length - 1)
-                        productId.substring(dot + 1) else productId
-                    InfoChip("ID: $shortId")
-                }
-            }
-            if (exeNameVisible) {
-                Spacer(Modifier.height(8.dp))
+        },
+        subtitle = if (exeNameVisible) {
+            {
+                Spacer(Modifier.height(4.dp))
                 StoreStatusText(exeNameText, StoreDetailState.INSTALLED)
             }
-        }
+        } else null,
+        primary = primary,
+        gear = gear,
+        tabs = listOf("Details", "DLC"),
+        selectedTab = tab,
+        onSelectTab = { tab = it },
+        tabBadges = if (dlcCount > 0) mapOf(1 to "$dlcCount") else emptyMap(),
+    ) {
+        when (tab) {
+            0 -> Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        InfoChip(sizeText)
+                        if (!developer.isNullOrEmpty()) InfoChip(developer)
+                        if (!publisher.isNullOrEmpty() && publisher != developer) InfoChip(publisher)
+                        if (!productId.isNullOrEmpty()) {
+                            val dot = productId.lastIndexOf('.')
+                            val shortId = if (dot in 0 until productId.length - 1) productId.substring(dot + 1) else productId
+                            InfoChip("ID: $shortId")
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                StoreSection(title = "Updates") {
+                    AmazonUpdatesContent(
+                        updateStatusText = updateStatusText,
+                        checkUpdatesEnabled = checkUpdatesEnabled,
+                        updateBtnVisible = updateBtnVisible,
+                        onCheckUpdatesClick = onCheckUpdatesClick,
+                        onUpdateNowClick = onUpdateNowClick,
+                    )
+                }
+            }
 
-        // Progress — one honest install bar with its label. Byte figures flow into
-        // the Download Manager via StoreDownloadHooks; the label here carries the
-        // current file / status string.
-        if (progressVisible) {
-            StoreProgressBar(
-                pct = progressValue,
-                label = if (progressLabelVisible) progressLabel else null,
-            )
-        }
-
-        // Actions — weighted M3 buttons; Cancel/Uninstall are destructive (error).
-        StoreActionRow {
-            if (launchBtnVisible) {
-                StoreActionButton(
-                    text = "Launch",
-                    onClick = onLaunchClick,
-                    modifier = Modifier.weight(1f),
-                    enabled = launchBtnEnabled,
-                )
-            }
-            if (installBtnVisible) {
-                StoreActionButton(
-                    text = installBtnText,
-                    onClick = onInstallClick,
-                    modifier = Modifier.weight(1f),
-                    enabled = installBtnEnabled,
-                    destructive = installBtnText == "Cancel",
-                )
-            }
-            if (setExeBtnVisible) {
-                StoreActionButton(
-                    text = "Set .exe…",
-                    onClick = onSetExeClick,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (uninstallBtnVisible) {
-                StoreActionButton(
-                    text = "Uninstall",
-                    onClick = onUninstallClick,
-                    modifier = Modifier.weight(1f),
-                    destructive = true,
-                )
+            else -> Column(modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)) {
+                StoreSection(title = "DLC") {
+                    AmazonDlcContent(
+                        dlcJson = dlcJson,
+                        onDlcInstall = onDlcInstall,
+                    )
+                }
             }
         }
-
-        // Updates
-        StoreSection(title = "Updates") {
-            AmazonUpdatesContent(
-                updateStatusText = updateStatusText,
-                checkUpdatesEnabled = checkUpdatesEnabled,
-                updateBtnVisible = updateBtnVisible,
-                onCheckUpdatesClick = onCheckUpdatesClick,
-                onUpdateNowClick = onUpdateNowClick,
-            )
-        }
-
-        // DLC
-        StoreSection(title = "DLC") {
-            AmazonDlcContent(
-                dlcJson = dlcJson,
-                onDlcInstall = onDlcInstall,
-            )
-        }
-
         Spacer(Modifier.height(16.dp))
     }
 }

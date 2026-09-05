@@ -406,14 +406,14 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
     if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz);
 }
 
-// Live frame-gen telemetry: {accepted, planned, sourceFps, presentedFps, thermal}
+// Live frame-gen telemetry: {accepted, planned, sourceFps, presentedFps, thermal, chainMsPerGen}
 extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeFrameGenStats(
         JNIEnv* env, jobject, jlong handle) {
-    float stats[5] = {0.f, 0.f, 0.f, 0.f, -1.f};
+    float stats[6] = {0.f, 0.f, 0.f, 0.f, -1.f, -1.f};
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
     if (r) r->frameGenStats(stats);
-    jfloatArray arr = env->NewFloatArray(5);
-    if (arr) env->SetFloatArrayRegion(arr, 0, 5, stats);
+    jfloatArray arr = env->NewFloatArray(6);
+    if (arr) env->SetFloatArrayRegion(arr, 0, 6, stats);
     return arr;
 }

@@ -40,6 +40,12 @@
 > - **r2 (user decision):** Friends tabs DROPPED on GOG and Epic — both rosters are real (Galaxy friends / Epic launcher friends) but empty for almost everyone; the count + a short avatar/name row stay on Profile. Hosts are now three tabs: Store / Library / Profile. Steam keeps its Friends tab.
 > - ✅ r2 commit `dcba2b3d` → CI run `33941770783` pubg GREEN. Staged `/sdcard/Download/Bannerlator-store-parity-r2-pubg.apk` sha256 `d759129d…32cc8` (529,853,136 B, 1306 entries verified); r1 APK removed from Downloads.
 > - ⏭️ user test: GOG/Epic Store tabs, search, free-claim WebView, Library sync, Friends/Profile, detail pages (owned + catalog), rotation.
+## 2026-09-04 — 🎞️ **LSFG Native follow-ups 5/6/8 built** (branch `feat/lsfg-native-568` off main `d7d0f7bb`)
+> User picked three of eight proposed improvements (win-fg native port dropped for now at `feat/winfg-native-compositor` `c5527592`, r2 staged, never device-run).
+> - **(8) Present per generation** — one command buffer per pending present (`cmdSlot(k)`, `cmdBufs` = 2×4); slot 0 carries composite + shared chain + gen 0, later gens and the real frame each get their own submit+present. Fence on the last submit (ordered after all prior submissions); empty fence-carrying submit on early exit; per-buffer memory barrier for cross-buffer ordering. Non-FG path is byte-for-byte the old single submit.
+> - **(6) Chain GPU cost** — timestamp query pair per frame slot around process→last generateInto (end at COMPUTE_SHADER, before the copy), read after the slot's fence wait, smoothed; stat [5]; drawer readout appends "x.x ms/frame GPU".
+> - **(5) Shader cache at import** — Settings builds the cache after Detect/Import and on open if stale ("Preparing shaders for LSFG Native…" → "Shaders ready"); Remove deletes it; section relabelled for both engines.
+> - ⏭️ CI `lsfg-native-568-r1` → stage pubg → device: DiRT capped 30/36, 4×: confirm 118/144 still reached (item 8 is the risky one — the renderFrame restructure), readout shows ms/frame, Settings shows the shader status. Compiles: unverified until CI.
 
 ## 2026-09-04 — ✅ **LSFG Native MERGED to `main` → `c2389ef4`** (on 3.0.5 `26831fc2`, vc 79)
 > Merge commit; revert with `git revert -m 1 c2389ef4`. 113 files, +35,174/−70 (25k of it the vendored DXVK `dxbc` translator). File list scanned before push — nothing outside the expected areas. Branch rebased onto main first (34 commits, zero conflicts), then README and plan docs brought up to date (`cd9aa601`).

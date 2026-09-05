@@ -148,6 +148,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     for (size_t i = 0; i < inFlightFences.size(); i++)
         vk_.DestroyFence(device, inFlightFences[i], nullptr);
     lsfgEngine_.reset();
+    destroyFgQueryPool();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
     vk_.DestroyRenderPass(device, renderPass, nullptr);
     vk_.DestroyDevice(device, nullptr);
@@ -190,6 +191,11 @@ void VulkanRendererContext::loadDeviceDispatch() {
     LOAD_D2(AcquireNextImageKHR);
     LOAD_D2(QueuePresentKHR);
     LOAD_D2(QueueSubmit);
+    LOAD_D2(CreateQueryPool);
+    LOAD_D2(DestroyQueryPool);
+    LOAD_D2(CmdResetQueryPool);
+    LOAD_D2(CmdWriteTimestamp);
+    LOAD_D2(GetQueryPoolResults);
     LOAD_D2(CreateRenderPass);
     LOAD_D2(DestroyRenderPass);
     LOAD_D2(CreateFramebuffer);
@@ -302,6 +308,7 @@ void VulkanRendererContext::pickPhysicalDevice() {
             if ((qProps[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && present) {
                 physicalDevice = d;
                 graphicsQueueFamilyIndex = i;
+                fgTimestampsOk_ = qProps[i].timestampValidBits > 0;
                 return;
             }
         }
@@ -384,6 +391,7 @@ void VulkanRendererContext::createLogicalDevice() {
     VkPhysicalDeviceProperties props{};
     vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
     maxAnisotropy = props.limits.maxSamplerAnisotropy;
+    fgTimestampPeriodNs_ = props.limits.timestampPeriod;
 }
 
 void VulkanRendererContext::createSwapchain() {
@@ -880,25 +888,68 @@ bool VulkanRendererContext::ensureLsfgEngine() {
     return true;
 }
 
-void VulkanRendererContext::recordFrameGenPasses(VkCommandBuffer cb) {
+void VulkanRendererContext::ensureFgQueryPool() {
+    if (fgQueryPool_ != VK_NULL_HANDLE || !fgTimestampsOk_ || !vk_.CreateQueryPool) return;
+    VkQueryPoolCreateInfo qi{}; qi.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    qi.queryType = VK_QUERY_TYPE_TIMESTAMP; qi.queryCount = MAX_FRAMES_IN_FLIGHT * 2;
+    if (vk_.CreateQueryPool(device, &qi, nullptr, &fgQueryPool_) != VK_SUCCESS) {
+        fgQueryPool_ = VK_NULL_HANDLE;
+        fgTimestampsOk_ = false;
+        RLOG_E("lsfg-native: timestamp query pool unavailable; chain cost will not be reported");
+    }
+}
+
+void VulkanRendererContext::destroyFgQueryPool() {
+    if (fgQueryPool_ != VK_NULL_HANDLE && vk_.DestroyQueryPool)
+        vk_.DestroyQueryPool(device, fgQueryPool_, nullptr);
+    fgQueryPool_ = VK_NULL_HANDLE;
+    for (auto& p : fgQueryPending_) p = false;
+}
+
+void VulkanRendererContext::readFgQueryResult() {
+    if (fgQueryPool_ == VK_NULL_HANDLE || !fgQueryPending_[currentFrame]) return;
+    fgQueryPending_[currentFrame] = false;      // one attempt per sample; a miss is dropped
+    uint64_t ts[2] = {0, 0};
+    const VkResult r = vk_.GetQueryPoolResults(device, fgQueryPool_, currentFrame * 2, 2,
+                                               sizeof(ts), ts, sizeof(uint64_t),
+                                               VK_QUERY_RESULT_64_BIT);
+    if (r != VK_SUCCESS || ts[1] <= ts[0]) return;
+    const double ms = (double)(ts[1] - ts[0]) * (double)fgTimestampPeriodNs_ / 1.0e6;
+    const float perGen = (float)(ms / (double)std::max(1u, fgQueryGens_[currentFrame]));
+    fgChainMsPerGen_ = fgChainMsPerGen_ < 0.0f
+        ? perGen
+        : fgChainMsPerGen_ + (perGen - fgChainMsPerGen_) * 0.1f;
+}
+
+void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
     if (!compositeActive() || !lsfgEngine_ || compositeTargets.empty()) return;
-
     const CompositeTarget& src = compositeTargets[compositeIndex];
-    const uint32_t w = compositeW, h = compositeH;
-
+    ensureFgQueryPool();
+    if (fgQueryPool_ != VK_NULL_HANDLE && fgPlan_.generations > 0) {
+        vk_.CmdResetQueryPool(cb, fgQueryPool_, currentFrame * 2, 2);
+        vk_.CmdWriteTimestamp(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, fgQueryPool_, currentFrame * 2);
+    }
     // Take frame N as the chain's newest input and run everything that is
     // shared across generations (mipmaps -> alpha -> beta -> gamma -> delta).
-    lsfgEngine_->process(cb, src.img, w, h, fgPlan_.generations);
+    lsfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
+}
 
-    // Then synthesise each in-between frame into its own spare composite
-    // target and copy it into the swapchain image reserved for it. The real
-    // frame's own copy still happens afterwards, in copyCompositeToSwapchain.
-    for (uint32_t g = 0; g < fgPlan_.generations; g++) {
+void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_t g) {
+    if (!compositeActive() || !lsfgEngine_ || compositeTargets.empty()) return;
+    if (g >= fgPlan_.generations) return;
+    const uint32_t w = compositeW, h = compositeH;
+    {
         const size_t slot = (compositeIndex + 1 + g) % compositeTargets.size();
         const CompositeTarget& dst = compositeTargets[slot];
-        if (dst.img == VK_NULL_HANDLE || dst.storageView == VK_NULL_HANDLE) continue;
+        if (dst.img == VK_NULL_HANDLE || dst.storageView == VK_NULL_HANDLE) return;
 
         lsfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
+
+        if (fgQueryPool_ != VK_NULL_HANDLE && g + 1 == fgPlan_.generations) {
+            vk_.CmdWriteTimestamp(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, fgQueryPool_, currentFrame * 2 + 1);
+            fgQueryPending_[currentFrame] = true;
+            fgQueryGens_[currentFrame]    = fgPlan_.generations;
+        }
 
         // dst is left in GENERAL by the chain; move it and the target
         // swapchain image into transfer layouts, copy, then hand the swapchain
@@ -1076,13 +1127,14 @@ void VulkanRendererContext::recordCursorOverlay(VkCommandBuffer cb, uint32_t img
     vk_.CmdEndRenderPass(cb);
 }
 
-void VulkanRendererContext::frameGenStats(float out[5]) const {
+void VulkanRendererContext::frameGenStats(float out[6]) const {
     out[0] = out[1] = out[2] = 0.0f;
     out[4] = -1.0f;
     // The presented rate is measured by the renderer itself, per present, and is
     // valid for EVERY engine - including win-fg, whose generated frames arrive
     // from inside the guest. It is reported even with no LSFG engine present.
     out[3] = fgPresentedRate_;
+    out[5] = fgChainMsPerGen_;
     if (!lsfgEngine_) return;
     out[0] = (float)lsfgEngine_->acceptedGenerations();
     out[1] = (float)fgPlan_.generations;
@@ -1282,9 +1334,9 @@ void VulkanRendererContext::createCursorDS() {
 }
 
 void VulkanRendererContext::createCmdBufs() {
-    cmdBufs.resize(MAX_FRAMES_IN_FLIGHT);
+    cmdBufs.resize(MAX_FRAMES_IN_FLIGHT * kMaxPresentsPerFrame);
     VkCommandBufferAllocateInfo ai{}; ai.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    ai.commandPool=cmdPool; ai.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY; ai.commandBufferCount=MAX_FRAMES_IN_FLIGHT;
+    ai.commandPool=cmdPool; ai.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY; ai.commandBufferCount=(uint32_t)cmdBufs.size();
     if (vk_.AllocateCommandBuffers(device,&ai,cmdBufs.data())!=VK_SUCCESS) throw std::runtime_error("cmdbuf");
 }
 
@@ -1731,11 +1783,17 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     vk_.CmdEndRenderPass(cb);
     } // end !upFrame.active
 
-    // Frame gen: synthesise the in-between frames and copy each into its own
-    // acquired swapchain image, then move the real frame across. Both no-ops
-    // when frame gen is off.
-    recordFrameGenPasses(cb);
-    copyCompositeToSwapchain(cb, imgIdx);
+    // Frame gen: the chain's shared passes and the FIRST generated frame go in
+    // this command buffer. Every later generated frame and the real frame are
+    // recorded into their own buffers in renderFrame, each submitted and
+    // presented as soon as it is done. With no generation this is just the
+    // real frame's copy (a no-op off the composite path).
+    if (fgPlan_.generations > 0) {
+        recordFrameGenProcess(cb);
+        recordFrameGenGeneration(cb, 0);
+    } else {
+        copyCompositeToSwapchain(cb, imgIdx);
+    }
 
     VkResult endStatus = vk_.EndCommandBuffer(cb);
     if (endStatus!=VK_SUCCESS) {
@@ -2190,7 +2248,7 @@ ok=true;}catch(...){}
         return;
     }
 
-    if (currentFrame >= cmdBufs.size() || cmdBufs[currentFrame] == VK_NULL_HANDLE) return;
+    if (cmdSlot(kMaxPresentsPerFrame - 1) >= cmdBufs.size() || cmdBufs[cmdSlot(0)] == VK_NULL_HANDLE) return;
     bool currentFenceWaited = false;
     if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY) {
         if (vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,2000000000ULL) != VK_SUCCESS) {
@@ -2199,6 +2257,8 @@ ok=true;}catch(...){}
         }
         currentFenceWaited = true;
     }
+    // This slot's previous frame is complete, so its chain timestamps are final.
+    readFgQueryResult();
 
     // --- Frame gen: decide whether THIS frame composites off-swapchain. The
     // targets are created lazily on the first armed frame and torn down when it
@@ -2297,7 +2357,7 @@ ok=true;}catch(...){}
         imgInFlight[idx]=inFlightFences[currentFrame];
     }
 
-    vk_.ResetCommandBuffer(cmdBufs[currentFrame],0);
+    for (uint32_t k = 0; k < fgPlan_.presents; k++) vk_.ResetCommandBuffer(cmdBufs[cmdSlot(k)],0);
 
     float ox,oy,sx,sy,cw,ch;
     short ptrX,ptrY,curHotX,curHotY,curW,curH; bool curVis;
@@ -2358,15 +2418,19 @@ ok=true;}catch(...){}
     bool effectiveCurVis = curVis && !scanoutActive.load();
 
     planUpscaleFrame();   // decide/prepare spatial-upscaler passes for this frame
-    recordCmdBuf(cmdBufs[currentFrame],imgIdx,frameDraws,
+    recordCmdBuf(cmdBufs[cmdSlot(0)],imgIdx,frameDraws,
         frameAhbTransitions,framePreUpload,framePostUpload,
         curUpload,hasCurUpload,
         ox,oy,sx,sy,cw,ch,ptrX,ptrY,curHotX,curHotY,curW,curH,effectiveCurVis);
 
-    // One submit covers the real frame and every generated frame, so it waits
-    // on all the acquire semaphores and signals one per pending present. With
-    // FIFO, queuing those presents together makes the driver show them on
-    // consecutive vblanks - the pacing falls out of the present mode for free.
+    // Each pending present gets its own submit. cmdBufs[cmdSlot(0)] (recorded
+    // above) carries the composite, the chain's shared passes and generated
+    // frame 0; every later generated frame and finally the real frame are
+    // recorded and submitted here one at a time, each presented the moment its
+    // submit is queued. With one submit for everything, nothing reached the
+    // presentation engine until the chain had finished for EVERY generated
+    // frame; now the first one is on its way while the GPU is still working on
+    // the next. FIFO still spaces them onto consecutive vblanks.
     //
     // On the composite path the first thing to touch an acquired swapchain
     // image is the copy, a TRANSFER write - and TRANSFER precedes
@@ -2375,41 +2439,77 @@ ok=true;}catch(...){}
     const VkPipelineStageFlags waitStage = compositeActive()
         ? (VkPipelineStageFlags)(VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
         : (VkPipelineStageFlags)VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-    VkSemaphore wSem[kMaxPresentsPerFrame], sSem[kMaxPresentsPerFrame];
-    VkPipelineStageFlags wStage[kMaxPresentsPerFrame];
-    for (uint32_t k = 0; k < fgPlan_.presents; k++) {
-        wSem[k]   = imgAvailSems[syncSlot(k)];
-        sSem[k]   = renderDoneSems[syncSlot(k)];
-        wStage[k] = waitStage;
-    }
-
-    VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount=fgPlan_.presents; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
-    si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];
-    si.signalSemaphoreCount=fgPlan_.presents; si.pSignalSemaphores=sSem;
-
-    vk_.ResetFences(device,1,&inFlightFences[currentFrame]);
-    if (vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame])!=VK_SUCCESS) {
-        vk_.DestroyFence(device,inFlightFences[currentFrame],nullptr);
-        VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags=VK_FENCE_CREATE_SIGNALED_BIT;
-        vk_.CreateFence(device,&fi,nullptr,&inFlightFences[currentFrame]);
-        return;
-    }
     VkSwapchainKHR scs[]={swapchain};
+
+    // The slot's fence rides on the LAST submit. A fence signal is ordered
+    // after every command submitted earlier on the same queue, so it still
+    // covers all of this frame's work.
+    vk_.ResetFences(device,1,&inFlightFences[currentFrame]);
+    uint32_t presented = 0;
+    bool fenceSubmitted = false;
     // Generated frames belong between N-1 and N, so they go out first and the
     // real frame is presented last.
     for (uint32_t k = 0; k < fgPlan_.presents; k++) {
+        VkCommandBuffer cb = cmdBufs[cmdSlot(k)];
+        if (k > 0) {
+            VkCommandBufferBeginInfo bi{}; bi.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            if (vk_.BeginCommandBuffer(cb,&bi)!=VK_SUCCESS) { fbResized.store(true); break; }
+            // Order this buffer after everything already submitted for this
+            // frame: the chain's shared passes and the earlier generations.
+            // Barriers span command buffers on one queue, so this is enough.
+            VkMemoryBarrier mb{}; mb.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+            mb.srcAccessMask=VK_ACCESS_MEMORY_WRITE_BIT;
+            mb.dstAccessMask=VK_ACCESS_MEMORY_READ_BIT|VK_ACCESS_MEMORY_WRITE_BIT;
+            vk_.CmdPipelineBarrier(cb,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_TRANSFER_BIT,
+                0, 1,&mb, 0,nullptr, 0,nullptr);
+            if (k < fgPlan_.generations) recordFrameGenGeneration(cb, k);
+            else                          copyCompositeToSwapchain(cb, imgIdx);
+            if (vk_.EndCommandBuffer(cb)!=VK_SUCCESS) {
+                RLOG_E("renderFrame: EndCommandBuffer failed for present %u/%u", k, fgPlan_.presents);
+                fbResized.store(true);
+                break;
+            }
+        }
+        const bool last = (k + 1 == fgPlan_.presents);
+        VkSemaphore wSem = imgAvailSems[syncSlot(k)];
+        VkSemaphore sSem = renderDoneSems[syncSlot(k)];
+        VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.waitSemaphoreCount=1; si.pWaitSemaphores=&wSem; si.pWaitDstStageMask=&waitStage;
+        si.commandBufferCount=1; si.pCommandBuffers=&cb;
+        si.signalSemaphoreCount=1; si.pSignalSemaphores=&sSem;
+        if (vk_.QueueSubmit(graphicsQueue,1,&si, last ? inFlightFences[currentFrame] : VK_NULL_HANDLE)!=VK_SUCCESS) {
+            // The fence was reset above and may now never signal; replace it
+            // with a signalled one so the next use of this slot does not wait
+            // on it forever.
+            vk_.DestroyFence(device,inFlightFences[currentFrame],nullptr);
+            VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags=VK_FENCE_CREATE_SIGNALED_BIT;
+            vk_.CreateFence(device,&fi,nullptr,&inFlightFences[currentFrame]);
+            return;
+        }
+        fenceSubmitted = last;
         VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        pi.waitSemaphoreCount=1; pi.pWaitSemaphores=&sSem[k];
+        pi.waitSemaphoreCount=1; pi.pWaitSemaphores=&sSem;
         pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&fgPlan_.imgIdx[k];
         res=vk_.QueuePresentKHR(graphicsQueue,&pi);
+        presented++;
         if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) {
+            // The swapchain recreate this triggers also rebuilds the
+            // semaphores, so the acquires we never waited on cannot strand a
+            // signal into the next swapchain (recreateSyncObjects).
             fbResized.store(true);
             break;
         }
     }
-    trackPresentedRate(fgPlan_.presents);
+    if (!fenceSubmitted) {
+        // Left early before the last submit: an empty submit carrying the
+        // fence is ordered after everything queued above, so the slot's fence
+        // still means "this frame's work is done".
+        VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame]);
+    }
+    trackPresentedRate(presented);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
 }
 

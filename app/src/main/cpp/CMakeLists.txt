@@ -101,6 +101,9 @@ add_library(vulkan_renderer SHARED
         winlator/lsfg/lsfg_engine.cpp
         winlator/lsfg/lsfg_governor.cpp
         winlator/lsfg/lsfg_jni.cpp
+        winlator/winfg/framegen.cpp
+        winlator/winfg/winfg_vkd.cpp
+        winlator/winfg/winfg_engine.cpp
         scanout/ScanoutContext.cpp
 )
 

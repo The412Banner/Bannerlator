@@ -1248,7 +1248,7 @@
     <string name="screen_alignment_disabled_hint">No effect in Stretch or Fill (no letterbox bars to move).</string>
     <string name="frame_generation">Frame Generation (AI)</string>
     <string name="frame_generation_off">Off</string>
-    <string name="frame_generation_bionic">win-fg</string>
+    <string name="frame_generation_bionic">Win-FG Native (built in)</string>
     <string name="frame_generation_lsfg">lsfg-vk (Lossless Scaling)</string>
     <string name="frame_generation_lsfg_native">LSFG Native (Lossless Scaling)</string>
     <string name="frame_generation_multiplier">Multiplier</string>

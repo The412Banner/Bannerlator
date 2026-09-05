@@ -4,24 +4,28 @@ Phased plan to move Lossless Scaling frame generation from the in-container
 Vulkan layer (`lsfg-vk`) into Bannerlator's own Vulkan compositor, on the
 Android side of the Wine boundary.
 
-**Status:** implemented on `feat/lsfg-native-compositor`, based on clean `main`
-(`3b8f9663`). Built, not yet device-proven.
+**Status:** DEVICE-PROVEN on `feat/lsfg-native-compositor`, rebased onto
+`main` 3.0.5 (vc 79). 30 fps in, 118-120 fps at the panel on DiRT Showdown
+(Adreno 750), confirmed independently by the AYANEO system overlay and by the
+user's own eyes.
 
 | Phase | State |
 |---|---|
-| 0 — device features + probe | built, CI-green |
-| 1 — `Lossless.dll` → modules + cache | built, CI-green |
-| 1b — DXBC → SPIR-V (vendored DXVK `dxbc`) | built, CI-green |
-| 2 — storage-capable composite ring | built, CI-green |
-| 3 — compute + the 25-shader chain | built |
-| 4 — multi-present, one submit per source frame | built |
-| 5 — probe/backoff governor + thermals | built |
-| 6 — engine wiring, UI, per-present cursor | built |
-| 7 — CI build + staged APK | pending |
+| 0 — device features + probe | device-proven (Vulkan 1.3.128, all three features, storage fmt) |
+| 1 — `Lossless.dll` → modules + cache | device-proven (25 modules, dxbc-translated) |
+| 1b — DXBC → SPIR-V (vendored DXVK `dxbc`) | device-proven |
+| 2 — storage-capable composite ring | device-proven |
+| 3 — compute + the 25-shader chain | device-proven |
+| 4 — multi-present, one submit per source frame | device-proven (30 → 120, 4 presents/source) |
+| 5 — probe/backoff governor + thermals | built; **OFF by default** at the user's decision |
+| 6 — engine wiring, UI, per-present cursor, HUDs | device-proven except the cursor overlay (no desktop-cursor run yet) |
+| 7 — CI build + staged APK | r11 staged |
 
-Nothing here is device-proven. "Built" means it compiles and the logic is
-reviewed; whether a game boots, renders and actually gains frames is what the
-device test is for.
+Policy, decided by the user after six device runs: the governor is bypassed
+(the device's own thermal management is the authority); the panel-headroom
+clamp is removed; while native FG generates the FPS limiter is locked ON and
+Auto refresh (VRR) locked OFF; every launch starts with frame gen OFF. See the
+progress log for the nine bugs found on device and why each mattered.
 
 The unmerged `feat/framegen-compositor-slot` branch is **not** the base. Its
 pacer and multi-present cadence were instead built fresh here, designed for a

@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — ✅ **lsfg-vk retired from the engine list — MERGED to main `059c57d3`** (revert `git revert -m 1 059c57d3`)
+> `feat/retire-lsfg-vk` (`2ec0187a`) merged --no-ff after CI `retire-lsfg-vk-r1` green on all three flavours. Two engines remain: win-fg, LSFG Native. Legacy "lsfg" container/shortcut values resolve to "lsfg-native". lsfg-vk code parked in place; plumbing work parked on `feat/lsfg-vk-plumbing` @ `008a92a6`. Main build `main-lsfg-native-only` run `33948700463` → staging. Gotcha hit: the merge watcher's `git checkout -B main` failed ("main is already used by worktree bl-wt-main") and its unconditional `echo MERGED` misled the follow-on builder → merged via detached HEAD + `push HEAD:main`; misled run 33948666252 cancelled.
+
 ## 2026-09-05 — 🅿️ **lsfg-vk RETIRED from the engine list; plumbing branch PARKED** (user: "native seems like the best way to go")
 > After r5 proved lsfg-vk's frames CAN reach the panel (30→90 delivered=presented), the user chose LSFG Native as the one path and asked to park lsfg-vk. **Parked:** `feat/lsfg-vk-plumbing` @ `008a92a6` (r7 staged `0f0beefb…`, never device-run: pacer telemetry, HUD hysteresis, auto-enable default off) — everything learned is in the branch + [[project_bannerlator_lsfg_vk_plumbing_native_way]]. **Retired (this branch `feat/retire-lsfg-vk` off main `96a8f08a`):** "lsfg" removed from both engine dropdowns (container editor + per-game), legacy "lsfg" values resolve to "lsfg-native" in `Container.getFrameGenEngine()` and `resolvedFrameGenEngine()`, Settings section/glossary/README reworded to two engines. lsfg-vk code paths (launch env, conf.toml, drawer perf toggle, layer asset) remain in place, unreachable.
 

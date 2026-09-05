@@ -448,6 +448,10 @@ public class Container {
     public String getFrameGenEngine() {
         String e = getExtra("frameGenEngine", "");
         if (e.isEmpty()) return isFrameGenEnabled() ? "bionic" : "off";
+        // lsfg-vk retired 2026-09-05: a container still set to it runs LSFG Native,
+        // which uses the same imported DLL and is the engine whose frames reach
+        // the panel. The lsfg-vk code paths are parked, not deleted.
+        if (e.equals("lsfg")) return "lsfg-native";
         return e;
     }
 

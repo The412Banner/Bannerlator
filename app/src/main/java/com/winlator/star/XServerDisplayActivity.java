@@ -9343,7 +9343,12 @@ return true;
     }
 
     private String resolvedFrameGenEngine() {
-        return shortcut != null ? shortcut.getExtra("frameGenEngine", container.getFrameGenEngine()) : container.getFrameGenEngine();
+        final String e = shortcut != null
+            ? shortcut.getExtra("frameGenEngine", container.getFrameGenEngine())
+            : container.getFrameGenEngine();
+        // lsfg-vk retired 2026-09-05 (parked on feat/lsfg-vk-plumbing): a legacy
+        // per-game override still saying "lsfg" runs LSFG Native.
+        return "lsfg".equals(e) ? "lsfg-native" : e;
     }
 
     // Any frame-gen engine (lsfg-vk OR bionic-fg) actively multiplying (mult >= 2) inserts extra

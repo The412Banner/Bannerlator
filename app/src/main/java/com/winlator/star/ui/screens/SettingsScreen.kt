@@ -377,7 +377,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // badge survives an app restart. The DLL file itself is still the single runtime source of truth;
     // this pref is purely cosmetic provenance. Cleared when the DLL is removed.
     fun lsfgDllStatusText(): String {
-        if (!(lsfgDllFile.isFile && lsfgDllFile.length() > 0)) return "Not set — lsfg-vk will stay off"
+        if (!(lsfgDllFile.isFile && lsfgDllFile.length() > 0)) return "Not set — LSFG Native will stay off"
         val mb = lsfgDllFile.length() / (1024 * 1024)
         return when (prefs.getString("lsfg_dll_source", null)) {
             "store"  -> "Imported from Steam store (Lossless Scaling) — $mb MB"
@@ -1138,12 +1138,12 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
 
         // ── Frame Generation: lsfg-vk (Lossless Scaling DLL) ─────────────
-        FieldSetLabel("Frame Generation — lsfg-vk")
+        FieldSetLabel("Frame Generation — LSFG Native (Lossless Scaling)")
         FieldSet {
             Text(
-                "lsfg-vk needs a Lossless Scaling \"Lossless.dll\". Download Lossless Scaling from the in-app " +
+                "LSFG Native needs a Lossless Scaling \"Lossless.dll\". Download Lossless Scaling from the in-app " +
                 "Steam store and tap Detect below — or import your own copy. Either way it is copied into the " +
-                "app and reused by any container whose Frame Generation engine is set to lsfg-vk.",
+                "app and reused by any container whose Frame Generation engine is set to LSFG Native.",
                 color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 6.dp)
             )

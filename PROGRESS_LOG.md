@@ -1,5 +1,7 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — ✅ 568 follow-ups on main: `be13c44b` (fast-forward after CI `33980365701` green on all three flavours); staged `Bannerlator-lsfg-native-568-main-r1-pubg.apk` sha `485c9937…`. vc frozen 80. NOT device-run on main yet.
+
 ## 2026-09-05 — 🔁 **568 follow-ups cherry-picked onto main (post-3.0.6)** — branch `feat/lsfg-native-568-main`, artifacts build, fast-forward to main on green
 > User: "cherry-pick the 568 branch onto main and rebuild as artifacts only." Picked `5ea7c318` (present-per-generation · chain GPU ms readout · shader cache at import) + `a8566465` (process() every frame · refresh ceiling from the panel's top mode) onto `e0f54620`. One conflict, `SettingsScreen.kt` DLL section wording (568 said "lsfg-vk / LSFG Native", the retirement says "LSFG Native") — resolved to the retired two-engine wording plus 568's shader-status line. Renderer/JNI/activity applied clean. vc stays FROZEN 80 (post-stable, artifacts only).
 

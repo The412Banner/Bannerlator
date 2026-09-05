@@ -1,0 +1,257 @@
+package com.winlator.star.store
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.theme.LocalAccentDim
+
+/**
+ * The store-AGNOSTIC section shell: the Steam storefront's four-tab host
+ * ([SteamStorefrontHost]) re-cut so GOG and Epic get the same chrome without touching the Steam
+ * code path.
+ *
+ * - **Portrait / compact** → a title row (store name + status slot + action icons) over a top
+ *   [TabRow], content beneath.
+ * - **Landscape at Medium width or wider** → a left [androidx.compose.material3.NavigationRail]
+ *   of EXACT [RAIL_WIDTH] (see [SteamMainActivity]'s note on why a bounded Column and not a bare
+ *   NavigationRail — a `fillMaxWidth()` descendant would otherwise inflate it to the whole screen),
+ *   scrolling as a whole, with the secondary actions in its tail.
+ * - The rail is one focus group whose D-pad RIGHT lands in the content pane.
+ * - Hardware back returns to the first tab before it leaves the section.
+ *
+ * The host owns nothing store-specific: tabs, counts and every action come from the caller.
+ */
+data class StoreSectionTab(val key: String, val label: String, val icon: ImageVector)
+
+@Composable
+fun StoreSectionHost(
+    storeName: String,
+    tabs: List<StoreSectionTab>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    onClose: () -> Unit,
+    counts: Map<String, Int> = emptyMap(),
+    /** Portrait: drawn after the store name in the title row (a signed-in chip, a status pill). */
+    statusSlot: @Composable () -> Unit = {},
+    /** Landscape: drawn at the top of the rail, above the tabs. */
+    railStatusSlot: @Composable ColumnScope.() -> Unit = {},
+    /** Portrait: the right-aligned action icons. */
+    actions: @Composable RowScope.() -> Unit = {},
+    /** Landscape: the rail tail (two or three icons plus an overflow). */
+    railActions: @Composable ColumnScope.() -> Unit = {},
+    /** Transient themed message, drawn LAST so it floats over the tab content. */
+    message: String? = null,
+    onMessageTimeout: () -> Unit = {},
+    content: @Composable (wide: Boolean, modifier: Modifier) -> Unit,
+) {
+    val layout = rememberStorefrontLayout()
+    val contentFocus = remember { FocusRequester() }
+
+    BackHandler(enabled = true) {
+        if (selected == 0) onClose() else onSelect(0)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding()
+            .displayCutoutPadding(),
+    ) {
+        if (layout.wide) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                SectionRail(
+                    tabs = tabs,
+                    selected = selected,
+                    counts = counts,
+                    onSelect = onSelect,
+                    contentFocus = contentFocus,
+                    statusSlot = railStatusSlot,
+                    actions = railActions,
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        // Requester BEFORE the focus group — the rail's `right = contentFocus`
+                        // resolves against the group that follows it. Order is load-bearing.
+                        .focusRequester(contentFocus)
+                        .focusGroup(),
+                ) { content(true, Modifier.fillMaxSize()) }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = storeName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    statusSlot()
+                    Spacer(Modifier.weight(1f))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                        actions()
+                    }
+                }
+                SectionTabRow(tabs = tabs, selected = selected, counts = counts, onSelect = onSelect)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .focusRequester(contentFocus)
+                        .focusGroup(),
+                ) { content(false, Modifier.fillMaxSize()) }
+            }
+        }
+
+        message?.let { StoreMessageBar(it, onMessageTimeout) }
+    }
+}
+
+/** Fixed rail width — wide enough for "Library (12)" at labelSmall. */
+private val RAIL_WIDTH = 96.dp
+
+@Composable
+private fun SectionTabRow(
+    tabs: List<StoreSectionTab>,
+    selected: Int,
+    counts: Map<String, Int>,
+    onSelect: (Int) -> Unit,
+) {
+    TabRow(
+        selectedTabIndex = selected.coerceIn(0, (tabs.size - 1).coerceAtLeast(0)),
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.primary,
+    ) {
+        tabs.forEachIndexed { index, t ->
+            Tab(
+                selected = selected == index,
+                onClick = { onSelect(index) },
+                modifier = Modifier.steamFocusRing(RoundedCornerShape(0.dp)),
+                selectedContentColor = MaterialTheme.colorScheme.primary,
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(t.label, fontWeight = FontWeight.Bold, maxLines = 1)
+                        counts[t.key]?.takeIf { it > 0 }?.let {
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "($it)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionRail(
+    tabs: List<StoreSectionTab>,
+    selected: Int,
+    counts: Map<String, Int>,
+    onSelect: (Int) -> Unit,
+    contentFocus: FocusRequester,
+    statusSlot: @Composable ColumnScope.() -> Unit,
+    actions: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            // EXACT width. Do not replace with widthIn/wrapContentWidth.
+            .width(RAIL_WIDTH)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .focusGroup()
+            .focusProperties { right = contentFocus },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(Modifier.height(6.dp))
+        statusSlot()
+        Spacer(Modifier.height(8.dp))
+
+        tabs.forEachIndexed { index, t ->
+            val n = counts[t.key]?.takeIf { it > 0 }
+            NavigationRailItem(
+                selected = selected == index,
+                onClick = { onSelect(index) },
+                icon = { Icon(t.icon, contentDescription = t.label) },
+                label = {
+                    Text(
+                        text = if (n != null) "${t.label} ($n)" else t.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = if (selected == index) FontWeight.Bold else FontWeight.Normal,
+                    )
+                },
+                alwaysShowLabel = true,
+                modifier = Modifier.steamFocusRing(),
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = LocalAccentDim.current,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        HorizontalDivider(
+            modifier = Modifier.width(RAIL_WIDTH - 24.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        Spacer(Modifier.height(4.dp))
+        actions()
+        Spacer(Modifier.height(8.dp))
+    }
+}

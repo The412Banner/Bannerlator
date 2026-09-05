@@ -59,6 +59,9 @@ import com.winlator.star.store.download.StoreHero
 import com.winlator.star.store.download.StoreProgressBar
 import com.winlator.star.store.download.StoreSection
 import com.winlator.star.store.download.StoreStatusText
+import com.winlator.star.store.download.StoreDetailScaffold
+import com.winlator.star.store.download.StoreGearItem
+import com.winlator.star.store.download.StorePrimaryAction
 import com.winlator.star.ui.theme.WinlatorTheme
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -813,6 +816,12 @@ private data class DlcRowUi(
 )
 
 // ── Composable Screen ──────────────────────────────────────────────────────
+//
+// Mounted on the shared Steam-style scaffold (StoreDetailScaffold): hero → name → ONE primary
+// button (Install / Launch, or the read-only download fill) + ⚙ gear → pill tabs
+// (Details · DLC · Cloud saves). Every former action is still reachable: the gear carries
+// cancel / set-exe / copy / updates / verify / prerequisites / uninstall. The handlers are
+// UNCHANGED — only the layout moved.
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -864,22 +873,40 @@ private fun GogGameDetailScreen(
     onUploadSaves: () -> Unit,
     onDownloadSaves: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        // Header — back + GOG badge + Download Manager button (Steam parity).
-        StoreDetailHeader(
-            onBack = onBack,
-            storeBadge = { StoreBadge(Store.GOG) },
-            actions = { DownloadsButton() },
-        )
+    var tab by remember { mutableStateOf(0) }
+    val downloading = progressVisible && installBtnText == "Cancel"
 
-        // Hero image with the fade into the page background. GOG loads its cover as a
-        // raw Bitmap (loadHeaderImage) rather than via Coil.
-        StoreHero {
+    val primary = when {
+        downloading -> StorePrimaryAction.Progress(
+            label = if (progressLabelVisible && progressLabel.isNotBlank()) progressLabel else "Downloading… $progressValue%",
+            fraction = progressValue / 100f,
+        )
+        launchVisible -> StorePrimaryAction.Button("Launch", onLaunch)
+        else -> StorePrimaryAction.Button(installBtnText, onInstall, enabled = installVisible)
+    }
+    val gear = buildList {
+        // onInstall doubles as Cancel while the button label reads "Cancel" (see onInstallClicked).
+        if (downloading) add(StoreGearItem("🗑", "Cancel download", danger = true, onClick = onInstall))
+        if (setExeVisible) add(StoreGearItem("🎯", "Set .exe…", onClick = onSetExe))
+        if (copyVisible) add(StoreGearItem("📁", "Copy to Downloads", onClick = onCopy))
+        if (updatesInstalled) {
+            add(StoreGearItem("🔄", "Check for updates", enabled = checkUpdateEnabled, onClick = onCheckUpdate))
+            add(StoreGearItem("🩹", "Verify / repair files", enabled = checkUpdateEnabled, onClick = onVerifyRepair))
+        }
+        if (prereqsVisible) add(StoreGearItem("🧰", "Install prerequisites", onClick = onInstallPrereqs))
+        if (uninstallVisible) add(StoreGearItem("🗑️", "Uninstall", danger = true, onClick = onUninstall))
+    }
+    val dlcCount = remember(dlcJson) {
+        if (dlcJson.isNullOrEmpty() || dlcJson == "[]") 0
+        else runCatching { org.json.JSONArray(dlcJson).length() }.getOrDefault(0)
+    }
+    val tabs = listOf("Details", "DLC", "Cloud saves")
+
+    StoreDetailScaffold(
+        onBack = onBack,
+        title = title,
+        storeBadge = { StoreBadge(Store.GOG) },
+        hero = {
             if (headerBitmap != null) {
                 Image(
                     bitmap = headerBitmap.asImageBitmap(),
@@ -888,146 +915,94 @@ private fun GogGameDetailScreen(
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                )
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             }
-        }
-
-        // Info section — name + metadata chips + description + install status.
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoChip(sizeText)
-                if (developer.isNotEmpty()) InfoChip(developer)
-                if (category.isNotEmpty()) InfoChip(category)
-                if (generation > 0) InfoChip("Gen $generation")
-            }
-            if (description.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = Html.fromHtml(description, Html.FROM_HTML_MODE_COMPACT).toString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (exeNameVisible) {
-                Spacer(Modifier.height(8.dp))
+        },
+        subtitle = if (exeNameVisible) {
+            {
+                Spacer(Modifier.height(4.dp))
                 StoreStatusText(exeNameText, StoreDetailState.INSTALLED)
             }
-        }
-
-        // Progress — one honest install bar with its label (file / status string).
-        if (progressVisible) {
-            StoreProgressBar(
-                pct = progressValue,
-                label = if (progressLabelVisible) progressLabel else null,
-            )
-        }
-
-        // Actions — weighted M3 buttons; Cancel/Uninstall are destructive (error).
-        StoreActionRow {
-            if (launchVisible) {
-                StoreActionButton(
-                    text = "Launch",
-                    onClick = onLaunch,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (installVisible) {
-                StoreActionButton(
-                    text = installBtnText,
-                    onClick = onInstall,
-                    modifier = Modifier.weight(1f),
-                    destructive = installBtnText == "Cancel",
-                )
-            }
-            if (setExeVisible) {
-                StoreActionButton(
-                    text = "Set .exe…",
-                    onClick = onSetExe,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (uninstallVisible) {
-                StoreActionButton(
-                    text = "Uninstall",
-                    onClick = onUninstall,
-                    modifier = Modifier.weight(1f),
-                    destructive = true,
-                )
-            }
-            if (copyVisible) {
-                StoreActionButton(
-                    text = "Copy to Downloads",
-                    onClick = onCopy,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        // Updates
-        StoreSection(title = "Updates") {
-            GogUpdatesContent(
-                installed = updatesInstalled,
-                updateStatusText = updateStatusText,
-                checkUpdateEnabled = checkUpdateEnabled,
-                updateBtnVisible = updateBtnVisible,
-                onCheckUpdate = onCheckUpdate,
-                onVerifyRepair = onVerifyRepair,
-                onUpdateNow = onUpdateNow,
-            )
-        }
-
-        // Prerequisites (gap#3) — only when this gen2 game declared GOG redist dependencies.
-        if (prereqsVisible) {
-            StoreSection(title = "Prerequisites") {
-                StoreStatusText(
-                    "This game needs Microsoft runtimes (Visual C++, .NET, …). Install them into a " +
-                        "container's Wine prefix so the game can start. A brief setup window appears for each."
-                )
+        } else null,
+        primary = primary,
+        gear = gear,
+        tabs = tabs,
+        selectedTab = tab,
+        onSelectTab = { tab = it },
+        tabBadges = if (dlcCount > 0) mapOf(1 to "$dlcCount") else emptyMap(),
+    ) {
+        when (tab) {
+            0 -> Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        InfoChip(sizeText)
+                        if (developer.isNotEmpty()) InfoChip(developer)
+                        if (category.isNotEmpty()) InfoChip(category)
+                        if (generation > 0) InfoChip("Gen $generation")
+                    }
+                    if (description.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = Html.fromHtml(description, Html.FROM_HTML_MODE_COMPACT).toString().trim(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
-                StoreActionButton(
-                    text = "Install prerequisites",
-                    onClick = onInstallPrereqs,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                StoreSection(title = "Updates") {
+                    GogUpdatesContent(
+                        installed = updatesInstalled,
+                        updateStatusText = updateStatusText,
+                        checkUpdateEnabled = checkUpdateEnabled,
+                        updateBtnVisible = updateBtnVisible,
+                        onCheckUpdate = onCheckUpdate,
+                        onVerifyRepair = onVerifyRepair,
+                        onUpdateNow = onUpdateNow,
+                    )
+                }
+                if (prereqsVisible) {
+                    StoreSection(title = "Prerequisites") {
+                        StoreStatusText(
+                            "This game needs Microsoft runtimes (Visual C++, .NET, …). Install them into a " +
+                                "container's Wine prefix so the game can start. A brief setup window appears for each."
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        StoreActionButton(
+                            text = "Install prerequisites",
+                            onClick = onInstallPrereqs,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+
+            1 -> Column(modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)) {
+                StoreSection(title = "DLC") {
+                    GogDlcContent(
+                        dlcJson = dlcJson,
+                        baseInstalled = dlcBaseInstalled,
+                        states = dlcStates,
+                        onInstall = onInstallDlc,
+                    )
+                }
+            }
+
+            else -> Column(modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)) {
+                StoreSection(title = "Cloud Saves") {
+                    GogCloudSavesContent(
+                        saveDirText = cloudSaveDirText,
+                        saveDirColor = cloudSaveDirColor,
+                        statusText = cloudSaveStatusText,
+                        statusVisible = cloudSaveStatusVisible,
+                        btnsEnabled = cloudBtnsEnabled,
+                        onBrowse = onBrowseCloud,
+                        onUpload = onUploadSaves,
+                        onDownload = onDownloadSaves,
+                    )
+                }
             }
         }
-
-        // DLC
-        StoreSection(title = "DLC") {
-            GogDlcContent(
-                dlcJson = dlcJson,
-                baseInstalled = dlcBaseInstalled,
-                states = dlcStates,
-                onInstall = onInstallDlc,
-            )
-        }
-
-        // Cloud Saves
-        StoreSection(title = "Cloud Saves") {
-            GogCloudSavesContent(
-                saveDirText = cloudSaveDirText,
-                saveDirColor = cloudSaveDirColor,
-                statusText = cloudSaveStatusText,
-                statusVisible = cloudSaveStatusVisible,
-                btnsEnabled = cloudBtnsEnabled,
-                onBrowse = onBrowseCloud,
-                onUpload = onUploadSaves,
-                onDownload = onDownloadSaves,
-            )
-        }
-
         Spacer(Modifier.height(16.dp))
     }
 }

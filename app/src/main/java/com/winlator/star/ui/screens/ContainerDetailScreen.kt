@@ -1209,23 +1209,25 @@ private fun TopLevelFields(
         // Frame Generation engine: Off / bionic-fg / lsfg-vk (mutually exclusive). lsfg-vk is grayed
         // out until a Lossless.dll is imported (Settings). This is the ONLY per-container FG control;
         // the multiplier & flow scale for BOTH engines are tuned live from the in-game side menu.
-        val fgEngines = listOf("off", "bionic", "lsfg", "lsfg-native")
+        // lsfg-vk (the in-container layer) retired from the list 2026-09-05: LSFG Native
+        // runs the same shaders from the same DLL inside our compositor and is the one that
+        // measurably reaches the panel. Its code paths remain (parked on feat/lsfg-vk-plumbing);
+        // a container still set to "lsfg" resolves to "lsfg-native" (Container.getFrameGenEngine).
+        val fgEngines = listOf("off", "bionic", "lsfg-native")
         val fgEngineLabels = listOf(
             stringResource(R.string.frame_generation_off),
             stringResource(R.string.frame_generation_bionic),
-            stringResource(R.string.frame_generation_lsfg),
             stringResource(R.string.frame_generation_lsfg_native)
         )
         val lsfgDllAvailable = remember { java.io.File(context.filesDir, "lsfg-vk/Lossless.dll").isFile }
         val fgDisabledOpts = buildSet {
             // bionic-fg re-enabled (2.9.4+): the FIFO-backpressure present-mode fix is the likely
             // root of its old "doesn't reliably work" reports; still experimental — see the note below.
-            if (!lsfgDllAvailable) add(fgEngineLabels[2])   // lsfg-vk — needs an imported Lossless.dll
-            // LSFG Native needs the same DLL. Whether the DEVICE can run the
-            // chain (Vulkan 1.3 + the three shader features + a storage-capable
-            // swapchain format) is only knowable once a renderer is up, so it
-            // is reported in-game rather than guessed at here.
-            if (!lsfgDllAvailable) add(fgEngineLabels[3])
+            // LSFG Native needs an imported Lossless.dll. Whether the DEVICE can run
+            // the chain (Vulkan 1.3 + the three shader features + a storage-capable
+            // swapchain format) is only knowable once a renderer is up, so it is
+            // reported in-game rather than guessed at here.
+            if (!lsfgDllAvailable) add(fgEngineLabels[2])
         }
         val fgSelIdx = fgEngines.indexOf(viewModel.frameGenEngine).coerceAtLeast(0)
         // FG's present-mode/mailbox delivery only exists on the Vulkan host renderer; OpenGL (GLRenderer)

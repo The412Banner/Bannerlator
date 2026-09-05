@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — 🅿️ **lsfg-vk RETIRED from the engine list; plumbing branch PARKED** (user: "native seems like the best way to go")
+> After r5 proved lsfg-vk's frames CAN reach the panel (30→90 delivered=presented), the user chose LSFG Native as the one path and asked to park lsfg-vk. **Parked:** `feat/lsfg-vk-plumbing` @ `008a92a6` (r7 staged `0f0beefb…`, never device-run: pacer telemetry, HUD hysteresis, auto-enable default off) — everything learned is in the branch + [[project_bannerlator_lsfg_vk_plumbing_native_way]]. **Retired (this branch `feat/retire-lsfg-vk` off main `96a8f08a`):** "lsfg" removed from both engine dropdowns (container editor + per-game), legacy "lsfg" values resolve to "lsfg-native" in `Container.getFrameGenEngine()` and `resolvedFrameGenEngine()`, Settings section/glossary/README reworded to two engines. lsfg-vk code paths (launch env, conf.toml, drawer perf toggle, layer asset) remain in place, unreachable.
+
 ## 2026-09-05 — ✅ **Amazon store parity MERGED to `main` → `d12e0387`** (USER-CONFIRMED on device: "works")
 > Merge commit on the user's instruction; revert with `git revert -m 1 d12e0387`. 15 files, +1,296/−210 — file list scanned before push, exactly the expected set. Old main `49feedec` had not moved. CI-green (`33944416886`) and device-confirmed on the staged `amazon-parity-r1` pubg APK (sha `d9ca5187…`). All four stores now share the Store / Library / Profile shell (Steam also has Friends) and the Steam-style detail scaffold; Games-tab badges cover STEAM / EPIC / EOS / GOG / AMAZON / CUSTOM.
 

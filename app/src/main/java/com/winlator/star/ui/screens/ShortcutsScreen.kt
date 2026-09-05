@@ -6110,9 +6110,12 @@ internal fun ShortcutSettingsDialogScreen(
     }
 
     // Frame Generation engine (off / bionic / lsfg) — per-game override.
-    val fgEngines = remember { listOf("off", "bionic", "lsfg", "lsfg-native") }
+    // lsfg-vk retired from the list (see ContainerDetailScreen); a legacy "lsfg" override
+    // shows and saves as LSFG Native.
+    val fgEngines = remember { listOf("off", "bionic", "lsfg-native") }
     var frameGenEngine by remember {
-        mutableStateOf(shortcut.getExtra("frameGenEngine", shortcut.container.frameGenEngine))
+        mutableStateOf(shortcut.getExtra("frameGenEngine", shortcut.container.frameGenEngine)
+            .let { if (it == "lsfg") "lsfg-native" else it })
     }
     val lsfgDllAvailable = remember { File(context.filesDir, "lsfg-vk/Lossless.dll").isFile }
 
@@ -7186,7 +7189,6 @@ internal fun ShortcutSettingsDialogScreen(
                         val fgLabels = listOf(
                             stringResource(R.string.frame_generation_off),
                             stringResource(R.string.frame_generation_bionic),
-                            stringResource(R.string.frame_generation_lsfg),
                             stringResource(R.string.frame_generation_lsfg_native)
                         )
                         val fgIdx = fgEngines.indexOf(frameGenEngine).coerceAtLeast(0)
@@ -7204,8 +7206,7 @@ internal fun ShortcutSettingsDialogScreen(
                                 enabled = fgVulkan,
                                 disabledOptions = buildSet {
                                     // bionic-fg re-enabled (2.9.4+) — see ContainerDetailScreen note.
-                                    if (!lsfgDllAvailable) add(fgLabels[2])   // lsfg-vk — needs an imported Lossless.dll
-                                    if (!lsfgDllAvailable) add(fgLabels[3])   // LSFG Native — same DLL
+                                    if (!lsfgDllAvailable) add(fgLabels[2])   // LSFG Native — needs an imported Lossless.dll
                                 },
                                 modifier = (if (!fgVulkan) Modifier.alpha(0.5f) else Modifier).weight(1f)
                             )

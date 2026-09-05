@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — 🔧 **lsfg-vk: "Auto-enable at launch" default flipped ON→OFF** (user: "games are still starting on my last multiplier setting")
+> `Container.isLsfgAutoEnable()` defaulted to `"1"`, so any container that never touched the switch launched at its saved multiplier. Native's rule (launch always off, arm from the drawer) now applies to lsfg-vk by default; explicit opt-in per container still works. Hint string updated. Folded into r7 (r6 cancelled).
+
 ## 2026-09-05 — 🔧 **lsfg-vk r6: pacer telemetry + HUD hysteresis** (user: HUD flickers 1↔2 numbers and "struggles" ~10 s after a multiplier change; flow scale 1.0 felt best)
 > r5 log: after 2×→3× deliveries ramped 34→45→57→79→90 over ~10 s before locking at 90/90. Cause unknown (guest-side warm-up vs our release pacer) → `present-pacer: target= scheduled=/s fired=/s pendingMax= lead=ms` every 2 s. HUD flicker = the ±10% base→shown rule catching transient mismatch during the ramp → hysteresis at the source: shown rate handed to the 5 HUDs only when steady (±5%) for 3 ticks, else 0 (single number). Flow-scale default for lsfg-vk (currently the shared 0.68) is a candidate to raise now that its frames actually reach the panel — not changed. ⏭️ CI r6 → device: read `present-pacer` lines across a 2×→3× switch.
 

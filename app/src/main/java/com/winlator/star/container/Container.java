@@ -558,7 +558,13 @@ public class Container {
     // GameNative — uncheck it to restore the start-off behavior for a given lsfg container. Note this
     // only affects lsfg containers; bionic-fg still always starts off in-game.
     public boolean isLsfgAutoEnable() {
-        return getExtra("lsfgAutoEnable", "1").equals("1");
+        // Default OFF (was "1"). Every launch starts with frame generation off and
+        // the user arms it from the in-game drawer - the same rule LSFG Native has
+        // always had. With the old default any container that never touched this
+        // switch came up at its last multiplier, which read as "it remembered my
+        // setting" to the tester and cannot be reasoned about from a log. A
+        // container that explicitly enabled it keeps it.
+        return getExtra("lsfgAutoEnable", "0").equals("1");
     }
 
     public void setLsfgAutoEnable(boolean autoEnable) {

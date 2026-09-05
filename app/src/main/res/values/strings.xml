@@ -1270,7 +1270,7 @@
     <string name="fg_performance_mode">Performance mode</string>
     <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>
     <string name="lsfg_auto_enable">Auto-enable at launch</string>
-    <string name="lsfg_auto_enable_hint">Starts frame generation live at your saved multiplier from launch, instead of off. Leave off to load the layer but enable it per session from the in-game side menu.</string>
+    <string name="lsfg_auto_enable_hint">Off by default: every launch starts with frame generation off and you turn it on from the in-game side menu, like LSFG Native. Turn this on to start live at your saved multiplier from launch instead.</string>
     <string name="fps_limiter">FPS Limiter</string>
     <string name="fps_limiter_ingame_hint">Loads the limiter; set the cap (10–200) live from the in-game FPS menu.</string>
     <string name="match_refresh_rate">Match refresh rate to FPS</string>

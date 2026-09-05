@@ -1590,6 +1590,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
             float flow     = s.getFrameGenFlowScale().getValue();
             // Route the single in-game multiplier/flow control to whichever engine is running this
             // session (honors a per-game engine override, else the container's engine).
+            if (resolvedFrameGenEngine().equals("lsfg-native")) {
+                // Instrumented deliberately. The r3 run showed the drawer UI accepting a
+                // multiplier change while the engine kept planning at the old one, and the
+                // log could not say whether this handler ran, what it saw, or whether it
+                // reached the renderer - so it now says all three.
+                Log.i("XServerDisplayActivity", "lsfg-native toggle: fgOn=" + fgOn
+                    + " mult=" + mult + " flow=" + flow
+                    + " renderer=" + (vulkanRendererOrNull() != null ? "vulkan" : "NULL"));
+                // LSFG Native: the generator is OUR compositor, so a level change is just a call.
+                // None of the lsfg-vk workarounds apply and every one of them is deliberately
+                // skipped here - no conf.toml rewrite, no vsync clock, no MAILBOX override and no
+                // pause/teardown/Resume reset. There is no guest layer to re-sync with.
+                applyLsfgNative(mult, flow);
+                if (fgOn) container.setFrameGenMultiplier(mult);
+                container.setFrameGenFlowScale(flow);
+                container.saveData();
+                // The limiter guard still has to see the >=2 threshold crossing.
+                reapplyFpsLimit();
+                return;
+            }
             if (resolvedFrameGenEngine().equals("lsfg")) {
                 // lsfg-vk: rewrite its conf.toml — the fork layer watches the file mtime and reloads
                 // live (swapchain recreate). Passthrough = multiplier 1 (layer treats <=1 as off).
@@ -1643,6 +1663,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // perf_preset self-rebuild collides with the teardown's surface rebuild → Fold-8 freeze).
             // Flow Scale stays live (no reset). Replaces win-fg's old soft pulseFgReset.
             maybeTriggerWinFgReset(mult >= 2 ? mult : 0, fgModel, fgPreset);
+            // win-fg gets the same base->shown readout. Its case is the mirror
+            // image of LSFG Native's: its generated frames are produced INSIDE
+            // the guest and arrive as ordinary deliveries, so our per-guest-frame
+            // counter already counts them - what it cannot see is whether they
+            // survive the trip to the panel. Comparing that count against the
+            // measured present rate makes a coalesced, never-displayed frame
+            // visible as a DROP instead of it silently inflating the number.
+            if (mult >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
         };
         // Live Present Mode selector (Graphics tab). The user's pick is persisted (per-game shortcut
         // override if present, else the container) then applied live through the same choke point as the
@@ -1970,7 +1998,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // container. The FPS limiter is independent (host pacer) and is always available regardless.
         String fgEngine = resolvedFrameGenEngine();
         boolean fgEnabled = fgEngine.equals("bionic");
-        boolean lsfgOn = fgEngine.equals("lsfg");
+        // Both LSFG engines drive the same in-game multiplier row; only WHERE the
+        // generator runs differs (in-container layer vs our own compositor).
+        boolean lsfgOn = fgEngine.equals("lsfg") || fgEngine.equals("lsfg-native");
         boolean fpsLimOn = resolvedFpsLimiterEnabled();
         boolean bionicFgActive = fgEnabled || lsfgOn;
         XServerDrawerState.INSTANCE.setBionicFgActive(bionicFgActive);
@@ -1981,7 +2011,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // multiplier so frame gen is live + the drawer/badge show ON from launch. The setupUI FPS-limiter
         // apply (applyFpsLimit) runs after this seed and re-evaluates lsfgGovernsFps(), so the cap steps
         // aside automatically for mult>=2. The persisted container multiplier is left untouched.
-        int lsfgSeedMult = (lsfgOn && container.isLsfgAutoEnable() && container.getFrameGenMultiplier() >= 2)
+        // LSFG Native never auto-arms at launch (see prepareLsfgNative); lsfg-vk keeps its opt-in.
+        int lsfgSeedMult = (fgEngine.equals("lsfg") && container.isLsfgAutoEnable() && container.getFrameGenMultiplier() >= 2)
                 ? container.getFrameGenMultiplier() : 0;
         XServerDrawerState.INSTANCE.setFrameGenMultiplier(lsfgSeedMult);
         XServerDrawerState.INSTANCE.setFrameGenFlowScale(container.getFrameGenFlowScale());
@@ -2841,6 +2872,199 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // UI thread. Choreographer frame timestamps are CLOCK_MONOTONIC — the clock the layer paces with.
     private android.os.Handler vsyncClockHandler;
     private java.util.concurrent.ExecutorService vsyncWriteExecutor;
+
+    // ===================== LSFG Native (compositor-side) =====================
+    // Runs the Lossless Scaling chain inside our own Vulkan compositor. Unlike
+    // lsfg-vk nothing is injected into the container, so there is no conf.toml,
+    // no ENABLE_LSFG, no vsync clock and no presentation reset on a multiplier
+    // change - the generator shares the compositor's command stream.
+
+    /** Renderer for this session, or null when it is not the Vulkan one. */
+    private com.winlator.star.renderer.vulkan.VulkanRenderer vulkanRendererOrNull() {
+        HostRenderer r = (xServerView != null) ? xServerView.getRenderer() : null;
+        return (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer)
+            ? (com.winlator.star.renderer.vulkan.VulkanRenderer) r : null;
+    }
+
+    /**
+     * Build the SPIR-V cache from the user's Lossless.dll if needed, then arm
+     * the renderer. Cache building is slow on a first run - the DXBC chain is
+     * translated on device - so it happens off the main thread and arms only
+     * once it has actually succeeded.
+     */
+    private void prepareLsfgNative() {
+        if (!com.winlator.star.core.LsfgNative.isDllAvailable(this)) {
+            Log.w("XServerDisplayActivity",
+                "LSFG Native selected but no Lossless.dll imported (Settings) - leaving frame gen off");
+            return;
+        }
+        // Every launch starts with frame generation OFF; the user arms it from the
+        // in-game drawer. isLsfgAutoEnable is an lsfg-vk-era setting and is not
+        // honoured for the native engine - an auto-armed launch is exactly the
+        // state that surprised the tester and cannot be reasoned about from a log.
+        final int launchMult = 0;
+        final float flow = container.getFrameGenFlowScale();
+
+        new Thread(() -> {
+            final int status = com.winlator.star.core.LsfgNative.ensureCache(
+                XServerDisplayActivity.this, /*preferFp16=*/false);
+            runOnUiThread(() -> {
+                if (status != com.winlator.star.core.LsfgNative.STATUS_OK) {
+                    Log.e("XServerDisplayActivity", "LSFG Native unavailable: "
+                        + com.winlator.star.core.LsfgNative.explain(status));
+                    return;
+                }
+                applyLsfgNative(launchMult, flow);
+            });
+        }, "lsfg-native-cache").start();
+    }
+
+    /** Point the renderer at the cache and arm it at `multiplier` (0 = off). */
+    private void applyLsfgNative(int multiplier, float flowScale) {
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+        if (vkr == null) {
+            Log.w("XServerDisplayActivity",
+                "applyLsfgNative(" + multiplier + ") ignored - no Vulkan renderer");
+            return;
+        }
+        Log.i("XServerDisplayActivity", "applyLsfgNative: multiplier=" + multiplier
+            + " flow=" + flowScale + " refresh=" + currentDisplayRefreshHz());
+        vkr.setLsfgCachePath(
+            com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
+        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
+        vkr.setFrameGenArmed(multiplier >= 2, multiplier);
+        // Present mode has to follow the armed state: fifo while multiplying,
+        // back to the user's choice when off.
+        applyEffectivePresentMode();
+        applyNativeFgLocks(multiplier >= 2);
+        if (multiplier >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
+    }
+
+    // Live readout for the FG drawer, polled while the native engine is armed.
+    private android.os.Handler lsfgStatsHandler;
+    private Runnable lsfgStatsTick;
+
+    /**
+     * Poll the renderer for what frame generation is actually achieving and
+     * push it to the drawer. Worth showing because the multiplier is a ceiling
+     * to earn, not a setting that is obeyed - the governor grants an extra
+     * generated frame only when it measurably helps, so "4x selected" and
+     * "2x running" is a normal, correct state rather than a bug.
+     */
+    private void startLsfgStatsReadout() {
+        if (lsfgStatsHandler != null) return;
+        lsfgStatsHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        lsfgStatsTick = new Runnable() {
+            @Override public void run() {
+                com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+                float[] st = (vkr != null) ? vkr.getFrameGenStats() : null;
+                if (st != null && st.length >= 5) {
+                    // st[1] is what is actually planned for this frame. st[0] is
+                    // the governor's accepted level, which is meaningless while
+                    // the governor is off.
+                    final int trusted = (int) st[1];
+                    // st[2] is the LSFG engine's own source rate and is 0 for
+                    // win-fg, which has no engine here. The HUDs do not need it
+                    // - they compare against their own counter - so only the
+                    // drawer line is suppressed in that case.
+                    final float realFps = st[2], shownFps = st[3];
+                    final boolean haveEngineRates = realFps > 0f;
+                    String text;
+                    if (shownFps <= 0f) {
+                        text = "measuring…";
+                    } else {
+                        text = String.format(java.util.Locale.US,
+                            "%.0f real → %.0f shown  (%dx", realFps, shownFps, trusted + 1);
+                        if (st[4] >= 3f) text += ", throttling";
+                        text += ")";
+                    }
+                    if (haveEngineRates) XServerDrawerState.INSTANCE.setFrameGenReadout(text);
+                    // Also feed the in-game HUD. Its own counter ticks once per
+                    // GUEST frame and therefore cannot see anything added after
+                    // the game - it read 30 while the panel was showing 118,
+                    // which made a working feature look like a broken one. Only
+                    // a system overlay could tell the truth until now.
+                    if (frameRating != null) frameRating.setPresentedFps(shownFps);
+                    if (frameRatingHorizontal != null)
+                        frameRatingHorizontal.setPresentedFps(shownFps);
+                    if (fusionHud != null) fusionHud.setPresentedFps(shownFps);
+                    if (perfHud != null) perfHud.setPresentedFps(shownFps);
+                    if (gameNativeHud != null) gameNativeHud.setPresentedFps(shownFps);
+                }
+                if (lsfgStatsHandler != null) lsfgStatsHandler.postDelayed(this, 1000);
+            }
+        };
+        lsfgStatsHandler.postDelayed(lsfgStatsTick, 1000);
+    }
+
+    private void stopLsfgStatsReadout() {
+        // 0 puts both HUDs back to plain guest-rate reporting.
+        if (frameRating != null) frameRating.setPresentedFps(0f);
+        if (frameRatingHorizontal != null) frameRatingHorizontal.setPresentedFps(0f);
+        if (fusionHud != null) fusionHud.setPresentedFps(0f);
+        if (perfHud != null) perfHud.setPresentedFps(0f);
+        if (gameNativeHud != null) gameNativeHud.setPresentedFps(0f);
+        if (lsfgStatsHandler != null && lsfgStatsTick != null)
+            lsfgStatsHandler.removeCallbacks(lsfgStatsTick);
+        lsfgStatsHandler = null;
+        lsfgStatsTick = null;
+        XServerDrawerState.INSTANCE.setFrameGenReadout("");
+    }
+
+    // The user's limiter/VRR choices from before native FG took them over, so
+    // they come back exactly as they were when it is turned off.
+    private boolean nativeFgSavedLimiterOn = false;
+    private int     nativeFgSavedLimit     = 0;
+    private boolean nativeFgSavedMatchRefresh = false;
+    private boolean nativeFgLocksHeld = false;
+
+    /**
+     * While LSFG Native generates: FPS limiter locked ON and Auto refresh (VRR)
+     * locked OFF. That is the configuration the engine was device-proven in and
+     * the only one that behaves - an uncapped guest times the multiplier overruns
+     * the panel and FIFO stalls the compositor, and a VRR mode switch mid-game
+     * stutters. If no cap was set, 30 is used: it is the case this was proven on.
+     */
+    private void applyNativeFgLocks(boolean lock) {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        if (lock && !nativeFgLocksHeld) {
+            nativeFgSavedLimiterOn    = s.getFpsLimiterEnabled().getValue();
+            nativeFgSavedLimit        = s.getFpsLimit().getValue();
+            nativeFgSavedMatchRefresh = s.getMatchRefreshRate().getValue();
+            nativeFgLocksHeld = true;
+
+            int cap = nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 30;
+            s.setFpsLimiterEnabled(true);
+            s.setFpsLimit(cap);
+            s.setMatchRefreshRate(false);
+            s.setNativeFgLocks(true);
+            Log.i("XServerDisplayActivity", "lsfg-native locks ON: limiter=" + cap + " vrr=off"
+                + " (was limiter=" + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
+                + " vrr=" + nativeFgSavedMatchRefresh + ")");
+            applyFpsLimit(cap);
+        } else if (!lock && nativeFgLocksHeld) {
+            nativeFgLocksHeld = false;
+            s.setNativeFgLocks(false);
+            s.setFpsLimiterEnabled(nativeFgSavedLimiterOn);
+            s.setFpsLimit(nativeFgSavedLimit);
+            s.setMatchRefreshRate(nativeFgSavedMatchRefresh);
+            Log.i("XServerDisplayActivity", "lsfg-native locks OFF: restored limiter="
+                + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
+                + " vrr=" + nativeFgSavedMatchRefresh);
+            applyFpsLimit(nativeFgSavedLimiterOn && nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 0);
+        }
+    }
+
+    /** The panel's real refresh rate; the pacer never generates above it. */
+    private float currentDisplayRefreshHz() {
+        try {
+            android.view.Display d = getWindowManager().getDefaultDisplay();
+            float hz = (d != null) ? d.getRefreshRate() : 0f;
+            return hz > 1f ? hz : 0f;
+        } catch (Throwable t) {
+            return 0f;
+        }
+    }
 
     private void startVsyncClock() {
         stopVsyncClock();
@@ -5427,6 +5651,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         // Stop publishing the lsfg-vk vsync clock on game exit.
         stopVsyncClock();
+        // ... and stop polling the native LSFG readout.
+        stopLsfgStatsReadout();
         if (vsyncWriteExecutor != null) {
             vsyncWriteExecutor.shutdownNow();
             vsyncWriteExecutor = null;
@@ -5932,7 +6158,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // back to Vulkan (ASR unsupported) also skips FG — safe, and the editor prevents that combo.
             boolean fgRendererVulkan = "vulkan".equalsIgnoreCase(resolvedRenderer());
             if (fgRendererVulkan) {
-            if (resolvedFrameGenEngine().equals("lsfg")) {
+            if (resolvedFrameGenEngine().equals("lsfg-native")) {
+                // LSFG Native runs the Lossless Scaling chain inside OUR compositor, on the Android
+                // side of the Wine boundary. Nothing is injected into the container: no layer, no
+                // conf.toml, no ENABLE_LSFG, and no vsync clock file for a guest layer to phase-lock
+                // to - the generator shares our command stream, so it needs none of them.
+                //
+                // All that happens at launch is building the SPIR-V cache from the user's own
+                // Lossless.dll (slow on a first run: the DXBC chain is translated on device, which
+                // is why it is off the main thread) and arming the renderer.
+                prepareLsfgNative();
+            } else if (resolvedFrameGenEngine().equals("lsfg")) {
                 // lsfg-vk engine (mutually exclusive with bionic-fg). Opt-in via ENABLE_LSFG so the
                 // staged layer stays inert elsewhere. Driven by conf.toml (NOT the LSFG_LEGACY env):
                 // the GameNative-fork layer watches the conf.toml mtime in its present hook and forces
@@ -6009,6 +6245,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
 
             if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));
+
+            // Keep the lsfg-vk Vulkan layer INERT unless lsfg-vk is actually the engine.
+            // Placed AFTER both user env merges (container above, shortcut just here) so
+            // nothing the user carries over can re-enable it. The layer's manifest honours
+            // disable_environment over enable_environment, so this wins even when a stale
+            // ENABLE_LSFG=1 is still sitting in a container that used lsfg-vk before.
+            //
+            // Device report that prompted this: r8 tester on Adreno 830, LSFG Native
+            // selected, NFS Heat asserting in winevulkan's vkCreateSwapchainKHR thunk on
+            // launch. LSFG Native writes nothing into the guest, but a leftover ENABLE_LSFG
+            // loads the lsfg-vk layer into the game with no conf.toml, no LSFG_CONFIG and no
+            // DLL path - and that layer hard-fails swapchain creation when it cannot find
+            // its config. That is precisely the assertion in the screenshot.
+            if (!"lsfg".equals(resolvedFrameGenEngine())) {
+                envVars.put("DISABLE_LSFG", "1");
+                envVars.remove("ENABLE_LSFG");
+            }
 
             // Epic per-game launch fixes (Feature #7). Runs on the background launch setup thread.
             //  • applyEnv: merge required WINEDLLOVERRIDES (Kingdom Hearts III) into the launch env,
@@ -9108,6 +9361,25 @@ return true;
     // Host present mode — the user's chosen mode is always honored (mailbox lock removed:
     // frame gen no longer forces mailbox, so FIFO/etc. can be used with FG on).
     private String effectivePresentMode() {
+        // LSFG Native REQUIRES fifo while it is multiplying, and this is the
+        // opposite of what lsfg-vk wants. The native path queues the real frame
+        // and its generated frames together in one submit and relies on fifo to
+        // scan them out on consecutive vblanks. Under mailbox the presentation
+        // engine keeps only the NEWEST queued image per vblank, so the whole
+        // batch collapses to the real frame and every generated frame is
+        // discarded at the very last step - the exact failure the guest-side
+        // engines suffer, just moved. lsfg-vk needs mailbox for the opposite
+        // reason: its extra presents come from inside the guest and fifo
+        // back-pressure strangles them.
+        // Keyed on the renderer's REAL armed state, not the drawer's multiplier
+        // StateFlow. That flow defaults to 2 before the launch seed writes 0, which
+        // is how the r9 log shows FIFO being forced 0.6 s after mailbox was applied
+        // and before anything was armed - and then never released on disarm.
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkrPm = vulkanRendererOrNull();
+        if ("lsfg-native".equals(resolvedFrameGenEngine())
+                && vkrPm != null && vkrPm.isFrameGenArmed()) {
+            return "fifo";
+        }
         return resolvedRendererPresentMode();
     }
 
@@ -9115,11 +9387,20 @@ return true;
     // frame gen toggles / the multiplier changes. Mailbox lock removed: the user's chosen present
     // mode is honored regardless of FG, and the drawer selector stays unlocked so it can be changed
     // live with FG on. No-op on non-Vulkan renderers / before setup.
+    // Last mode actually pushed to the renderer + drawer. Without this, applying
+    // the same mode again still writes the drawer StateFlow, the drawer
+    // recomposes, its frame-gen controls re-fire their apply callback, and that
+    // calls back into here - a feedback loop that spun applyLsfgNative four
+    // times in four milliseconds on device and took the game down with it.
+    private String lastAppliedPresentMode = null;
+
     private void applyEffectivePresentMode() {
         if (xServerView == null) return;
         HostRenderer r = xServerView.getRenderer();
         if (r instanceof com.winlator.star.renderer.vulkan.VulkanRenderer) {
             String pm = effectivePresentMode();
+            if (pm != null && pm.equals(lastAppliedPresentMode)) return;
+            lastAppliedPresentMode = pm;
             int pmInt = "immediate".equals(pm) ? 0 : "mailbox".equals(pm) ? 1 : 2; // VkPresentModeKHR
             ((com.winlator.star.renderer.vulkan.VulkanRenderer) r).setVkPresentMode(pmInt);
             // Mirror the mode into the drawer selector; never lock it (mailbox lock removed).
@@ -9687,7 +9968,28 @@ return true;
     // https://github.com/utkarshdalal/GameNative. See README Credits.
     private boolean lsfgGovernsFps() {
         XServerDrawerState s = XServerDrawerState.INSTANCE;
+        // ONLY lsfg-vk. It lives inside the guest and paces the guest itself, so
+        // our limiter has to step aside or the two fight.
+        //
+        // LSFG Native deliberately does NOT qualify. It never touches the guest;
+        // it generates frames in our compositor on top of whatever the guest
+        // produces. Letting the limiter step aside there would silently drop the
+        // user's FPS cap, run the guest uncapped, and hand the frame-gen chain a
+        // hotter, busier GPU to compete with - which is exactly what makes the
+        // governor reject its probes. The right shape for the native engine is:
+        // cap the REAL frames, and generate in between them.
         return "lsfg".equals(resolvedFrameGenEngine())
+            && s.getFrameGenEnabled().getValue()
+            && s.getFrameGenMultiplier().getValue() >= 2;
+    }
+
+    // True when what reaches the PANEL is a multiple of the guest's rate, for
+    // either LSFG engine. VRR must vote the displayed cadence, not the cap -
+    // separate question from who paces the guest.
+    private boolean frameGenMultipliesDisplay() {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        final String engine = resolvedFrameGenEngine();
+        return ("lsfg".equals(engine) || "lsfg-native".equals(engine))
             && s.getFrameGenEnabled().getValue()
             && s.getFrameGenMultiplier().getValue() >= 2;
     }
@@ -9738,10 +10040,23 @@ return true;
     private void applyVrr(int cap) {
         if (xServerView == null) return;
         float vrrRate = 0.0f;
-        if (container != null && resolvedMatchRefreshRate()) {
+        // LSFG Native generating: VRR stays OUT of it. The native path presents
+        // real + generated frames under FIFO against a fixed panel cadence, and
+        // that is the configuration that was device-proven (30 -> 118 with the
+        // panel pinned at 144 for the whole run). Letting VRR re-vote the panel
+        // to cap x multiplier would (a) trigger a display mode switch mid-game,
+        // which stutters or black-flashes on many panels, and (b) chase a number
+        // that is only the REQUESTED multiplier, not what is actually presented.
+        // Fixed max refresh is the predictable choice here; the user's manual
+        // lock, if any, is still honoured below.
+        final boolean nativeFgGenerating = "lsfg-native".equals(resolvedFrameGenEngine())
+            && frameGenMultipliesDisplay();
+        if (container != null && resolvedMatchRefreshRate() && nativeFgGenerating) {
+            vrrRate = 0.0f;   // no vote: panel stays at its max
+        } else if (container != null && resolvedMatchRefreshRate()) {
             // Auto (match FPS): vote the panel cadence to follow the displayed FPS while capping.
             if (cap > 0) {
-                if (lsfgGovernsFps()) {
+                if (frameGenMultipliesDisplay()) {
                     int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
                     vrrRate = (float) cap * (mult >= 2 ? mult : 1);
                 } else {

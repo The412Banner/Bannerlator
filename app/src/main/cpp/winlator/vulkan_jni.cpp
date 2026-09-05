@@ -359,3 +359,61 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeReattachSurface(JNIE
     }
     return (jboolean)ok;
 }
+
+// ---------------------------------------------------------------------------
+// Native LSFG frame generation — capability verdict.
+//
+// Answers "can this device run the compositor-side LSFG chain at all", settled
+// at device + swapchain creation. Returns null when the renderer is gone, so
+// the caller treats an absent renderer as "unknown" rather than "unsupported".
+// ---------------------------------------------------------------------------
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgSupported(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return (jboolean)(r && r->lsfgCaps().supported());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgCapsReason(JNIEnv* env, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return nullptr;
+    return env->NewStringUTF(r->lsfgCaps().reason);
+}
+
+// --- Native LSFG frame generation: arming and tuning ------------------------
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenArmed(
+        JNIEnv*, jobject, jlong handle, jboolean armed, jint multiplier) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenArmed(armed == JNI_TRUE, (int)multiplier);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetLsfgCachePath(
+        JNIEnv* env, jobject, jlong handle, jstring path) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return;
+    if (!path) { r->setLsfgCachePath(nullptr); return; }
+    const char* chars = env->GetStringUTFChars(path, nullptr);
+    r->setLsfgCachePath(chars);
+    if (chars) env->ReleaseStringUTFChars(path, chars);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
+        JNIEnv*, jobject, jlong handle, jfloat flowScale, jfloat refreshHz) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz);
+}
+
+// Live frame-gen telemetry: {accepted, planned, sourceFps, presentedFps, thermal}
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeFrameGenStats(
+        JNIEnv* env, jobject, jlong handle) {
+    float stats[5] = {0.f, 0.f, 0.f, 0.f, -1.f};
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->frameGenStats(stats);
+    jfloatArray arr = env->NewFloatArray(5);
+    if (arr) env->SetFloatArrayRegion(arr, 0, 5, stats);
+    return arr;
+}

@@ -57,6 +57,14 @@ class FusionHudView(
     private var fpsCounter: FpsCounter? = null
     fun setFpsCounter(counter: FpsCounter?) { fpsCounter = counter }
 
+    // Frames per second actually reaching the panel. FpsCounter is ticked once
+    // per GUEST frame, so it counts what the game draws and cannot see frames
+    // added after it: with native LSFG generating three for every one, this HUD
+    // showed 30 while the display was showing 118. 0 = nothing is adding
+    // frames, and the readout is exactly what it always was.
+    private var presentedFps = 0f
+    fun setPresentedFps(fps: Float) { presentedFps = fps }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var updateJob: Job? = null
     private val metrics = HudMetrics(context)
@@ -309,8 +317,20 @@ class FusionHudView(
         return x
     }
 
-    private fun fpsText(v: Float): String =
+    private fun one(v: Float): String =
         if (fpsDecimal) String.format(Locale.US, "%.1f", v) else v.roundToInt().toString()
+
+    // Shows "30->118" while something downstream of the game is adding frames.
+    // The game's own rate stays visible next to the panel rate, because the gap
+    // between the two is precisely what frame generation is doing.
+    private fun fpsText(v: Float): String =
+        if (differs(v)) "${one(v)}\u2192${one(presentedFps)}" else one(v)
+
+    // Either direction: up = frames added (LSFG Native), down = frames lost
+    // between the guest and the panel, which is the failure win-fg can hit
+    // and which a single number hides completely.
+    private fun differs(v: Float): Boolean =
+        presentedFps > 0f && kotlin.math.abs(presentedFps - v) > maxOf(1f, v * 0.10f)
 
     private fun fmt1(v: Float): String = String.format(Locale.US, "%.1f", v)
     private fun lowText(v: Float): String? = if (v <= 0f) null else fmt1(v)
@@ -581,8 +601,14 @@ class FusionHudView(
         val pad = sp(10f); val midGap = sp(12f); val stkLineGap = sp(3f)
 
         val left = ArrayList<Span>()
-        left += Span(fpsText(fpsNow), colValue, bigPx)
-        left += Span("fps", colDim, bigUnitPx)
+        // "30->118" is roughly three times the width of "30", and the pill's
+        // number is set at 30sp precisely because it is the one big thing on a
+        // small overlay. Shrink it while it carries both figures so the pill
+        // does not balloon across the screen; it is still the largest element.
+        val generating = differs(fpsNow)
+        val fpsPx = if (generating) bigPx * 0.55f else bigPx
+        left += Span(fpsText(fpsNow), colValue, fpsPx)
+        left += Span("fps", colDim, if (generating) bigUnitPx * 0.8f else bigUnitPx)
 
         val stack = ArrayList<List<Span>>()
         if (showGpuModel && gpuModel.isNotBlank()) stack.add(listOf(Span(gpuModel, colDim, stkPx)))
@@ -663,7 +689,11 @@ class FusionHudView(
         val bigPx = sp(34f); val bigUnitPx = bigPx * 0.32f; val subPx = sp(11.5f)
         val pad = sp(10f); val lineGap = sp(6f)
 
-        val big = listOf(Span(fpsText(fpsNow), colValue, bigPx), Span("fps", colDim, bigUnitPx))
+        // Same reasoning as the pill: 34sp is sized for one number, not two.
+        val minGenerating = differs(fpsNow)
+        val big = listOf(
+            Span(fpsText(fpsNow), colValue, if (minGenerating) bigPx * 0.55f else bigPx),
+            Span("fps", colDim, if (minGenerating) bigUnitPx * 0.8f else bigUnitPx))
         val sub = ArrayList<Span>()
         sub += Span("1% ", colDim, subPx); sub += Span(lowText(lows.low1Fps) ?: "—", colFps, subPx)
         sub += Span("  ·  0.1% ", colDim, subPx); sub += Span(lowText(lows.low01Fps) ?: "—", colFps, subPx)

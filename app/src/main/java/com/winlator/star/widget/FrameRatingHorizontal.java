@@ -38,6 +38,11 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
     /** Shared authoritative FPS source; set by the host so every overlay shows the identical number. */
     public void setFpsCounter(FpsCounter c) { this.fpsCounter = c; }
 
+    // See FrameRating.setPresentedFps: the counter is ticked per GUEST frame, so
+    // it cannot see frames added after the game. 0 = nothing is adding any.
+    private float presentedFps = 0f;
+    public void setPresentedFps(float fps) { this.presentedFps = fps; }
+
     // Device-complete metric readers (GPU load / CPU temp / RAM) live in the single shared collector.
     private final HudMetrics metrics;
     private HudMetrics.TempDisplay tempDisplay = HudMetrics.TempDisplay.from(null);
@@ -210,11 +215,15 @@ public class FrameRatingHorizontal extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
-        float displayFps = lastFPS;
+        final boolean generating = presentedFps > 0f
+            && Math.abs(presentedFps - lastFPS) > Math.max(1.0f, lastFPS * 0.10f);
+        float displayFps = generating ? presentedFps : lastFPS;
         if (tvFPS != null) {
-            tvFPS.setText(String.format(Locale.ENGLISH, "FPS: %.0f", displayFps));
-            tvFPS.setTextColor(lastFPS > 30 ? 0xFF4CAF50 :
-                               lastFPS > 20 ? 0xFFFFEB3B : 0xFFF44336);
+            tvFPS.setText(generating
+                ? String.format(Locale.ENGLISH, "FPS: %.0f\u2192%.0f", lastFPS, presentedFps)
+                : String.format(Locale.ENGLISH, "FPS: %.0f", displayFps));
+            tvFPS.setTextColor(displayFps > 30 ? 0xFF4CAF50 :
+                               displayFps > 20 ? 0xFFFFEB3B : 0xFFF44336);
         }
         if (tvLatency != null) {
             float latencyMs = 1000.0f / Math.max(displayFps, 1.0f);

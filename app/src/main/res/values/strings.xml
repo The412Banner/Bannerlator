@@ -503,7 +503,7 @@
         <b>Immediate:</b> \'Vsync off.\' Frames appear the instant they\'re ready — lowest lag, but you may see tearing. Rarely worth it on a high-refresh screen.<br /><br />
         <b>Tip:</b> Bannerlator automatically switches to Mailbox while frame generation is multiplying, then back to your setting when it\'s off.
     ]]></string>
-    <string name="renderer_present_mode_fg_note">Frame generation temporarily switches this to Mailbox while it\'s running, then restores your choice.</string>
+    <string name="renderer_present_mode_fg_note">LSFG Native switches this to FIFO while it\'s generating, then restores your choice — it queues the real and generated frames together and needs FIFO to show them one per refresh. The other engines leave your choice alone.</string>
 
     <!-- Download-speed picker — general "?" plus per-tier plain-language help -->
     <string name="help_download_speed"><![CDATA[
@@ -1250,6 +1250,7 @@
     <string name="frame_generation_off">Off</string>
     <string name="frame_generation_bionic">win-fg</string>
     <string name="frame_generation_lsfg">lsfg-vk (Lossless Scaling)</string>
+    <string name="frame_generation_lsfg_native">LSFG Native (Lossless Scaling)</string>
     <string name="frame_generation_multiplier">Multiplier</string>
     <string name="frame_generation_lsfg_needs_dll">lsfg-vk is unavailable — import a Lossless.dll at the bottom of Settings to enable it.</string>
     <string name="frame_generation_requires_vulkan">Frame generation requires the Vulkan renderer.</string>
@@ -1263,6 +1264,9 @@
     <string name="frame_generation_model_fsr3_v2">Optical flow · bidirectional</string>
     <string name="frame_generation_model_experimental_hint">Experimental model — may render incorrectly or cost more performance than it gains. Switch back to Default if a game misbehaves.</string>
     <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
+    <string name="frame_generation_lsfg_native_hint">Runs the Lossless Scaling shaders inside Bannerlator itself instead of inside the game, so the extra frames reach the screen directly. Needs your imported Lossless.dll and the Vulkan renderer. Smoother motion; adds about one frame of input delay, as all frame interpolation does.</string>
+    <string name="frame_generation_lsfg_native_unsupported">LSFG Native is unavailable on this device: %1$s</string>
+    <string name="frame_generation_lsfg_native_preparing">Preparing frame-generation shaders from your Lossless.dll…</string>
     <string name="fg_performance_mode">Performance mode</string>
     <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>
     <string name="lsfg_auto_enable">Auto-enable at launch</string>

@@ -6108,7 +6108,7 @@ internal fun ShortcutSettingsDialogScreen(
     }
 
     // Frame Generation engine (off / bionic / lsfg) — per-game override.
-    val fgEngines = remember { listOf("off", "bionic", "lsfg") }
+    val fgEngines = remember { listOf("off", "bionic", "lsfg", "lsfg-native") }
     var frameGenEngine by remember {
         mutableStateOf(shortcut.getExtra("frameGenEngine", shortcut.container.frameGenEngine))
     }
@@ -7184,7 +7184,8 @@ internal fun ShortcutSettingsDialogScreen(
                         val fgLabels = listOf(
                             stringResource(R.string.frame_generation_off),
                             stringResource(R.string.frame_generation_bionic),
-                            stringResource(R.string.frame_generation_lsfg)
+                            stringResource(R.string.frame_generation_lsfg),
+                            stringResource(R.string.frame_generation_lsfg_native)
                         )
                         val fgIdx = fgEngines.indexOf(frameGenEngine).coerceAtLeast(0)
                         // FG's mailbox/present-mode delivery only exists on the Vulkan host renderer, so
@@ -7202,6 +7203,7 @@ internal fun ShortcutSettingsDialogScreen(
                                 disabledOptions = buildSet {
                                     // bionic-fg re-enabled (2.9.4+) — see ContainerDetailScreen note.
                                     if (!lsfgDllAvailable) add(fgLabels[2])   // lsfg-vk — needs an imported Lossless.dll
+                                    if (!lsfgDllAvailable) add(fgLabels[3])   // LSFG Native — same DLL
                                 },
                                 modifier = (if (!fgVulkan) Modifier.alpha(0.5f) else Modifier).weight(1f)
                             )

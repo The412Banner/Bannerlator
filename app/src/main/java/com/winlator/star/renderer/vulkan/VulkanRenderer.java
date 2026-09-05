@@ -128,6 +128,15 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetPresentMode(long handle, int mode);
     private native int[] nativeGetSupportedPresentModes(long handle);
 
+    // Native LSFG frame generation — capability gate. Settled at device +
+    // swapchain creation; see cpp/winlator/lsfg/lsfg_probe.h.
+    private native boolean nativeLsfgSupported(long handle);
+    private native String nativeLsfgCapsReason(long handle);
+    private native void nativeSetFrameGenArmed(long handle, boolean armed, int multiplier);
+    private native void nativeSetLsfgCachePath(long handle, String path);
+    private native void nativeSetFrameGenTuning(long handle, float flowScale, float refreshHz);
+    private native float[] nativeFrameGenStats(long handle);
+
     private static volatile boolean gpuImageChecked = false;
 
     private static long did(Drawable d) {
@@ -171,6 +180,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetNtsc(nativeHandle, pendingNtscEnabled);
                     nativeSetColorGrade(nativeHandle, pendingColorBrightness, pendingColorContrast, pendingColorGamma);
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
+                    if (pendingLsfgCachePath != null)
+                        nativeSetLsfgCachePath(nativeHandle, pendingLsfgCachePath);
+                    nativeSetFrameGenTuning(nativeHandle, pendingFgFlowScale, pendingFgRefreshHz);
+                    if (pendingFgArmed)
+                        nativeSetFrameGenArmed(nativeHandle, true, pendingFgMultiplier);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
                     if (nativeMode) {
@@ -872,6 +886,79 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         }
         return new int[0];
     }
+
+    /**
+     * Whether this device can run the native (compositor-side) LSFG frame-gen
+     * chain: Vulkan 1.3, the three required shader features actually enabled at
+     * device creation, and a storage-capable swapchain format. False while the
+     * renderer is not up — callers treat that as "not yet known", not "no".
+     */
+    public boolean isLsfgNativeSupported() {
+        synchronized (lock) {
+            if (nativeHandle != 0) return nativeLsfgSupported(nativeHandle);
+        }
+        return false;
+    }
+
+    /**
+     * Arm or disarm native LSFG frame generation. Changing this recreates the
+     * swapchain: the composite path needs TRANSFER_DST usage and a deeper image
+     * queue that a normal session should not pay for.
+     *
+     * @param multiplier the requested 2x-4x ceiling. It is a ceiling to earn,
+     *                   not a setting to obey - the governor grants extra
+     *                   generated frames only when they measurably help.
+     */
+    public void setFrameGenArmed(boolean armed, int multiplier) {
+        pendingFgArmed = armed;
+        pendingFgMultiplier = multiplier;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetFrameGenArmed(nativeHandle, armed, multiplier);
+        }
+    }
+
+    /** Whether native frame generation is currently armed in the renderer. */
+    public boolean isFrameGenArmed() { return pendingFgArmed; }
+
+    /** Path to the SPIR-V cache built from the user's Lossless.dll. */
+    public void setLsfgCachePath(String path) {
+        pendingLsfgCachePath = path;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetLsfgCachePath(nativeHandle, path);
+        }
+    }
+
+    /**
+     * Live native frame-gen telemetry, or null when the renderer is down:
+     * {generations trusted, generations planned, real fps, presented fps,
+     * thermal status (-1 = no signal)}.
+     */
+    public float[] getFrameGenStats() {
+        synchronized (lock) {
+            if (nativeHandle != 0) return nativeFrameGenStats(nativeHandle);
+        }
+        return null;
+    }
+
+    /** Flow scale (0.25-1.0) and the panel's real refresh rate. */
+    public void setFrameGenTuning(float flowScale, float refreshHz) {
+        pendingFgFlowScale = flowScale;
+        pendingFgRefreshHz = refreshHz;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetFrameGenTuning(nativeHandle, flowScale, refreshHz);
+        }
+    }
+
+    /** Human-readable verdict, naming the first gate that failed. */
+    public String getLsfgCapsReason() {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                String r = nativeLsfgCapsReason(nativeHandle);
+                if (r != null) return r;
+            }
+        }
+        return "renderer not started";
+    }
     public void setNativeColorFormat(int format) {}
     public int getNativeColorFormat() { return 0; }
 
@@ -935,6 +1022,13 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private float   pendingColorContrast   = 0.0f;  // -100..100 slider; 0 = neutral
     private float   pendingColorGamma      = 1.0f;  // 0.5..3.0 slider; 1.0 = neutral
     private boolean pendingSwapRB         = false;
+    // Native LSFG frame generation. Replayed after a surface reattach, like
+    // every other renderer setting, so arming survives a background cycle.
+    private boolean pendingFgArmed        = false;
+    private int     pendingFgMultiplier   = 0;
+    private float   pendingFgFlowScale    = 1.0f;
+    private float   pendingFgRefreshHz    = 0.0f;
+    private String  pendingLsfgCachePath  = null;
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) {
         this.fpsLimit = limit;

@@ -41,6 +41,15 @@ public class FrameRating extends FrameLayout implements Runnable {
     /** Shared authoritative FPS source; set by the host so every overlay shows the identical number. */
     public void setFpsCounter(FpsCounter c) { this.fpsCounter = c; }
 
+    // Frames per second actually reaching the panel, when something downstream
+    // of the game is adding frames. The counter above is ticked once per GUEST
+    // frame, so with native LSFG generating 3 frames for every 1 the game draws
+    // it reports 30 while the display is showing 118 - the HUD undersold the
+    // feature to the point of looking broken. 0 means "nothing is adding
+    // frames", and the HUD behaves exactly as it always has.
+    private float presentedFps = 0f;
+    public void setPresentedFps(float fps) { this.presentedFps = fps; }
+
     // Device-complete metric readers (GPU load / CPU temp) live in the single shared collector.
     private final HudMetrics metrics;
     private HudMetrics.TempDisplay tempDisplay = HudMetrics.TempDisplay.from(null);
@@ -268,11 +277,22 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
-        float displayFps = lastFPS;
+        // Show what the panel is getting; keep the game's own rate alongside it
+        // rather than replacing it, because both numbers are worth seeing and
+        // the gap between them IS the frame generation.
+        // Either direction. Up means frames are being ADDED (LSFG Native).
+        // Down means frames are being LOST between the guest and the panel,
+        // which is exactly the failure win-fg can hit and which a single
+        // number hides completely.
+        final boolean generating = presentedFps > 0f
+            && Math.abs(presentedFps - lastFPS) > Math.max(1.0f, lastFPS * 0.10f);
+        float displayFps = generating ? presentedFps : lastFPS;
         if (tvFPS != null) {
-            tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", displayFps));
-            tvFPS.setTextColor(lastFPS > 30 ? 0xFF4CAF50 :
-                               lastFPS > 20 ? 0xFFFFEB3B : 0xFFF44336);
+            tvFPS.setText(generating
+                ? String.format(Locale.ENGLISH, "%.0f\u2192%.0f", lastFPS, presentedFps)
+                : String.format(Locale.ENGLISH, "%.1f", displayFps));
+            tvFPS.setTextColor(displayFps > 30 ? 0xFF4CAF50 :
+                               displayFps > 20 ? 0xFFFFEB3B : 0xFFF44336);
         }
         if (tvLatency != null) {
             float latencyMs = 1000.0f / Math.max(displayFps, 1.0f);

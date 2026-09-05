@@ -1217,9 +1217,10 @@ private fun FrameGenSection(state: XServerDrawerState) {
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
     // labeled twice. Badge shows bionic-fg / lsfg-vk depending on the container's selection.
     val engineLabel = when (engine) {
-        "lsfg"   -> "lsfg-vk"
-        "bionic" -> "win-fg"
-        else     -> "Off"
+        "lsfg"        -> "lsfg-vk"
+        "lsfg-native" -> "LSFG Native"
+        "bionic"      -> "win-fg"
+        else          -> "Off"
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0
     // (Off) every launch even when the container has an engine selected, so gate on initFgMult too
@@ -1252,6 +1253,19 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 fontWeight = FontWeight.Medium
             )
         }
+    }
+
+    // Native LSFG reports what it is actually achieving, because the requested
+    // multiplier is a ceiling to earn rather than a setting that is obeyed: the
+    // governor only keeps an extra generated frame when it measurably helps.
+    val readout by state.frameGenReadout.collectAsState()
+    if (readout.isNotEmpty()) {
+        Spacer(Modifier.height(4.dp))
+        Text(
+            readout,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+            fontSize = 10.sp
+        )
     }
     Spacer(Modifier.height(8.dp))
 
@@ -2581,7 +2595,16 @@ private fun HudContent(state: XServerDrawerState) {
     CollapsibleSection("Frame rate & refresh", lead = "always on", initiallyExpanded = true) {
         Text("FPS Limiter", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
-        ToggleRow("Limit FPS", limiterOn) { limiterOn = it; applyLimiter() }
+        val nativeFgLocks by state.nativeFgLocks.collectAsState()
+        // Locked ON while LSFG Native generates - see XServerDrawerState.nativeFgLocks.
+        ToggleRow("Limit FPS", limiterOn, enabled = !nativeFgLocks) { limiterOn = it; applyLimiter() }
+        if (nativeFgLocks) {
+            Text(
+                "Locked on while LSFG Native is generating",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                fontSize = 10.sp
+            )
+        }
         if (limiterOn) {
             LabeledSlider(
                 "Max FPS", limitVal.toFloat(), 10f..200f,
@@ -2609,7 +2632,10 @@ private fun HudContent(state: XServerDrawerState) {
         Text("Refresh rate", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
         // Auto (match FPS) == the existing VRR toggle; behavior unchanged.
-        ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported, enabled = vrrSupported) {
+        val nativeFgLocksVrr by state.nativeFgLocks.collectAsState()
+        // Locked OFF while LSFG Native generates - see XServerDrawerState.nativeFgLocks.
+        ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported && !nativeFgLocksVrr,
+                  enabled = vrrSupported && !nativeFgLocksVrr) {
             matchRefreshOn = it
             state.setMatchRefreshRate(it)
             state.onMatchRefreshChange?.run()

@@ -118,6 +118,15 @@ object XServerDrawerState {
     val presentMode: StateFlow<String> = _presentMode
     fun setPresentMode(v: String) { _presentMode.value = v }
 
+    // LSFG Native generating: the limiter is locked ON and Auto refresh (VRR)
+    // locked OFF, because that is the configuration the engine was proven in
+    // and the only one that behaves. Uncapped guest x multiplier overruns the
+    // panel and FIFO stalls the compositor; a VRR mode switch mid-game stutters.
+    // The drawer greys both controls out while this is set.
+    private val _nativeFgLocks = MutableStateFlow(false)
+    val nativeFgLocks: StateFlow<Boolean> = _nativeFgLocks
+    fun setNativeFgLocks(v: Boolean) { _nativeFgLocks.value = v }
+
     private val _presentModeLocked = MutableStateFlow(false)
     val presentModeLocked: StateFlow<Boolean> = _presentModeLocked
     fun setPresentModeLocked(v: Boolean) { _presentModeLocked.value = v }
@@ -133,6 +142,12 @@ object XServerDrawerState {
 
     // lsfg-vk only: performance_mode (lower interpolation quality, higher FPS — for low-end devices).
     // Seeded from the container when the drawer opens; toggled live from the FG pane (rewrites conf.toml).
+    // Live readout for the native LSFG engine: what the governor currently
+    // trusts and what the panel is actually getting. Empty when it is not the
+    // running engine. Pushed from the activity, which polls the renderer.
+    private val _frameGenReadout = MutableStateFlow("")
+    val frameGenReadout: StateFlow<String> = _frameGenReadout
+
     private val _lsfgPerformanceMode = MutableStateFlow(false)
     val lsfgPerformanceMode: StateFlow<Boolean> = _lsfgPerformanceMode
 
@@ -435,6 +450,7 @@ object XServerDrawerState {
     fun setFrameGenModel(v: Int)           { _frameGenModel.value = v.coerceIn(0, 4) }
     fun setFrameGenPerfPreset(v: Int)      { _frameGenPerfPreset.value = v.coerceIn(0, 2) }
     fun setFrameGenEngine(v: String)       { _frameGenEngine.value = v }
+    fun setFrameGenReadout(v: String)      { _frameGenReadout.value = v }
     fun setLsfgPerformanceMode(v: Boolean) { _lsfgPerformanceMode.value = v }
     fun setFpsLimiterEnabled(v: Boolean)   { _fpsLimiterEnabled.value = v }
     fun setFpsLimit(v: Int)                { _fpsLimit.value = v }
@@ -549,6 +565,7 @@ object XServerDrawerState {
         _frameGenEngine.value = "off"
         _presentMode.value = "fifo"
         _presentModeLocked.value = false
+        _nativeFgLocks.value = false
         _rendererIsVulkan.value = false
         _lsfgPerformanceMode.value = false
         _fpsLimiterEnabled.value = false

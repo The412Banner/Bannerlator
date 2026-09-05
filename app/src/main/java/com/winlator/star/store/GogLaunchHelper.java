@@ -13,11 +13,11 @@ public final class GogLaunchHelper {
 
     public static void addToLauncher(Activity activity, String gameName,
                                      String exePath, String coverArtUrl) {
-        StarLaunchBridge.addToLauncher(activity, gameName, exePath, coverArtUrl);
+        StarLaunchBridge.addToLauncher(activity, gameName, exePath, coverArtUrl, "gog", false);
     }
 
     public static void addToLauncher(Activity activity, String gameName, String exePath) {
-        StarLaunchBridge.addToLauncher(activity, gameName, exePath, null);
+        StarLaunchBridge.addToLauncher(activity, gameName, exePath, null, "gog", false);
     }
 
     /**

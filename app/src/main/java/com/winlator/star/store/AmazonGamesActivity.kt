@@ -360,7 +360,7 @@ class AmazonGamesActivity : ComponentActivity() {
     private fun onInstallOrLaunch(game: AmazonGame) {
         val exe = prefs!!.getString("amazon_exe_${game.productId}", null)
         if (exe != null) {
-            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl)
+            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl, "amazon", true)
             return
         }
         installConfirmGame = game
@@ -369,7 +369,7 @@ class AmazonGamesActivity : ComponentActivity() {
     private fun launchAdd(game: AmazonGame) {
         val exe = prefs!!.getString("amazon_exe_${game.productId}", null)
         if (exe != null) {
-            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl)
+            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl, "amazon", true)
         }
     }
 

@@ -2549,8 +2549,11 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
         ahbImportCache[ahb] = tmp;
         windowAhbs[id].push_back(ahb);
         cit = ahbImportCache.find(ahb);
-        RLOG("updateWindowContentAHB: imported new AHB %p for id=%" PRId64 " (%dx%d)",
-            (void*)ahb, id, tmp.w, tmp.h);
+        // Logged sparsely: under the 5-buffer/4-slot thrash below this fired on EVERY
+        // frame (900 lines in 20 s on device) and pushed the useful log out of the buffer.
+        if ((ahbImportLogCount_++ % 64u) == 0u)
+            RLOG("updateWindowContentAHB: imported new AHB %p for id=%" PRId64 " (%dx%d) [import #%u, tracked %zu]",
+                (void*)ahb, id, tmp.w, tmp.h, ahbImportLogCount_, windowAhbs[id].size() + 1);
 
         // ERL bug report #9: a window that receives many distinct AHB pointers over its
         // lifetime (rather than cycling a small fixed swapchain pool) otherwise accumulates
@@ -2558,8 +2561,14 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
         // per window; evict the oldest via the existing deleteQueue deferred-destruction path
         // (same one used for whole-window teardown, drained under renderMutex each frame).
         // The just-imported AHB is newest (at back) so it is never the one evicted, keeping cit valid.
+        // 8, not 4: a frame-generation layer's swapchain rotates FIVE buffers (device
+        // log: five AHB pointers cycling, each imported 182 times in 20 s). With a cap
+        // of 4 that is a perfect LRU thrash - every single delivery evicts the buffer
+        // that is about to be needed and re-imports it: a VkImage, a memory import
+        // and a descriptor set per frame, then a deferred destroy. 8 covers any
+        // sane swapchain depth and is still bounded.
         auto& list = windowAhbs[id];
-        constexpr size_t kMaxTrackedPerWindow = 4;
+        constexpr size_t kMaxTrackedPerWindow = 8;
         while (list.size() > kMaxTrackedPerWindow) {
             AHardwareBuffer* stale = list.front();
             list.erase(list.begin());

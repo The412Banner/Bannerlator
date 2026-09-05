@@ -106,7 +106,20 @@ public class PresentExtension implements Extension {
             window = w; pixmap = p; serial = s; idleFence = f; targetNs = t;
         }
     }
-    private final java.util.concurrent.ConcurrentHashMap<Integer, PendingIdle> pendingIdles =
+    // One QUEUE of pending releases per window, fired in order at the paced cadence.
+    //
+    // This used to be one PendingIdle per window, replaced on every present. That is
+    // fine for a guest that presents once and waits (DXVK), and fatal for a guest that
+    // presents several buffers back to back: a frame-generation layer hands us the
+    // generated frame and the real frame within a millisecond, the second put()
+    // replaced the first, and the first buffer's IdleNotify was never sent. The layer
+    // then waited on a buffer that would never come back until its own timeout, and
+    // the whole guest crawled. Device log, lsfg-vk 2x with the pacer at 60: deliveries
+    // fell to exactly 25 a second the moment pacing engaged. With a queue each present
+    // gets its own release, one per period, in the order they arrived - which is also
+    // exactly the even spacing the generated frames need.
+    private final java.util.concurrent.ConcurrentHashMap<Integer,
+        java.util.concurrent.ConcurrentLinkedDeque<PendingIdle>> pendingIdles =
         new java.util.concurrent.ConcurrentHashMap<>();
 
     private static class WindowTiming { long nextIdleNs = 0; }
@@ -140,7 +153,8 @@ public class PresentExtension implements Extension {
         long fireTime = wt.nextIdleNs - FIRE_EARLY_NS;
 
         if (tryGetChoreographer(renderer) != null) {
-            pendingIdles.put(window.id, new PendingIdle(window, pixmap, serial, idleFence, fireTime));
+            pendingIdles.computeIfAbsent(window.id, k -> new java.util.concurrent.ConcurrentLinkedDeque<>())
+                .addLast(new PendingIdle(window, pixmap, serial, idleFence, fireTime));
             postChoreographerCallback();
         } else {
             cpuQueue.offer(new PendingIdle(window, pixmap, serial, idleFence, fireTime));
@@ -165,13 +179,13 @@ public class PresentExtension implements Extension {
     private final android.view.Choreographer.FrameCallback vsyncCallback = frameTimeNs -> {
         choreographerPosted = false;
         boolean anyRemaining = false;
-        for (java.util.Iterator<java.util.Map.Entry<Integer, PendingIdle>> it =
-                pendingIdles.entrySet().iterator(); it.hasNext(); ) {
-            PendingIdle p = it.next().getValue();
-            if (frameTimeNs >= p.targetNs) {
-                it.remove();
+        for (java.util.concurrent.ConcurrentLinkedDeque<PendingIdle> q : pendingIdles.values()) {
+            PendingIdle p;
+            while ((p = q.peekFirst()) != null && frameTimeNs >= p.targetNs) {
+                q.pollFirst();
                 sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
-            } else anyRemaining = true;
+            }
+            if (!q.isEmpty()) anyRemaining = true;
         }
         if (anyRemaining) postChoreographerCallback();
     };
@@ -191,7 +205,8 @@ public class PresentExtension implements Extension {
                 long now = System.nanoTime();
                 if (now >= p.targetNs) {
                     cpuQueue.poll();
-                    pendingIdles.remove(p.window.id, p);
+                    java.util.concurrent.ConcurrentLinkedDeque<PendingIdle> q = pendingIdles.get(p.window.id);
+                    if (q != null) q.remove(p);
                     sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
                 } else {
                     long diff = p.targetNs - now;

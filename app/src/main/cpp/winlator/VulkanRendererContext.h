@@ -549,6 +549,7 @@ private:
     // swapchain, so no stale pending signal can survive into the new one.
     void recreateSyncObjects();
     uint32_t fgAcquireFailLog_ = 0;
+    uint32_t ahbImportLogCount_ = 0;
 
     // Measured PRESENTS per second - the rate that actually reaches the panel,
     // counting generated frames. The pacer's own "loop rate" cannot serve this

@@ -50,6 +50,9 @@ object BlSocialFeed : BlSteamEngine.MessageTap {
         var hasAvatar = false
         var gameName = ""
         var richPresence: MutableMap<String, String>? = null
+        /** `game_lobby_id` (field 73, fixed64) — the lobby the friend is in; [hasLobby] mirrors the presence bit. */
+        var gameLobbyId = 0L
+        var hasLobby = false
     }
 
     @Volatile private var installed = false
@@ -101,7 +104,9 @@ object BlSocialFeed : BlSteamEngine.MessageTap {
     }
 
     // ── CMsgClientPersonaState: friends (2) { friendid fixed64 (1), persona_state (2), game_played_app_id (3),
-    //    player_name (15), rich_presence (25) { key (1), value (2) }, avatar_hash (31), game_name (55) }
+    //    player_name (15), avatar_hash (31), game_name (55), rich_presence (71) { key (1), value (2) },
+    //    game_lobby_id fixed64 (73) }. Field 25 is steamid_source (fixed64) in the real proto; the
+    //    submessage arm on 25 is kept only for the historical shape.
     private fun decodePersonaState(body: ByteArray) {
         val list = ArrayList<Persona>()
         val r = BlProto(body)
@@ -116,13 +121,15 @@ object BlSocialFeed : BlSteamEngine.MessageTap {
             var gameName = ""
             var rp: MutableMap<String, String>? = null
             var sid = 0L
+            var lobby = 0L; var hasLobby = false
             while (f.next()) {
                 when (f.field) {
                     1 -> if (f.wireType == 1) sid = f.fixed64
                     2 -> if (f.wireType == 0) { state = f.int(); hasState = true }
                     3 -> if (f.wireType == 0) { app = f.int(); hasApp = true }
                     15 -> if (f.wireType == 2) name = f.string()
-                    25 -> if (f.wireType == 2) {
+                    73 -> if (f.wireType == 1) { lobby = f.fixed64; hasLobby = true }
+                    25, 71 -> if (f.wireType == 2) {
                         val kv = f.sub()
                         var k = ""; var v = ""
                         while (kv.next()) {
@@ -143,6 +150,7 @@ object BlSocialFeed : BlSteamEngine.MessageTap {
             p.avatarHash = avatar; p.hasAvatar = hasAvatar
             p.gameName = gameName
             p.richPresence = rp
+            p.gameLobbyId = lobby; p.hasLobby = hasLobby
             list.add(p)
         }
         if (list.isNotEmpty()) SteamFriendsStore.rustOnPersonaState(list)

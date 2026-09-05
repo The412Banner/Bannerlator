@@ -606,7 +606,9 @@ private fun FriendActionsDialog(
                 MenuActionRow("Message", onClick = onMessage)
                 if (inGame) {
                     HorizontalDivider(thickness = 1.dp, color = RowDivider)
-                    MenuActionRow("Join ${friend.gameName ?: "game"}", onClick = onJoin)
+                    // "View", not "Join": this opens the game's page. A real join needs the lobby id
+                    // (persona field 73) proven on device first — see BL_STEAM_LOBBY log lines.
+                    MenuActionRow("View ${friend.gameName ?: "game"}", onClick = onJoin)
                 }
                 HorizontalDivider(thickness = 1.dp, color = RowDivider)
                 MenuActionRow("View Steam profile", onClick = onProfile)
@@ -1585,6 +1587,10 @@ internal fun MessageBubble(
     self: SteamFriendsStore.SteamFriend?,
 ) {
     val mine = msg.fromSelf
+    if (msg.kind == SteamFriendsStore.KIND_INVITE) {
+        InviteBubble(msg, friend, self)
+        return
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
@@ -1649,6 +1655,98 @@ internal fun MessageBubble(
             }
         }
         // Sent: our own avatar on the right, mirroring the friend's on the left.
+        if (mine && self != null) {
+            Spacer(Modifier.width(8.dp))
+            FriendAvatar(friend = self, size = 30.dp)
+        }
+    }
+}
+
+/**
+ * A game invite in the thread (`EChatEntryType::InviteGame`). Shows who invited to what and the
+ * parsed lobby id; the action opens the game's detail page today. Wiring it to a launch with
+ * `+connect_lobby <id>` is the next step once the lobby id is proven to arrive on device.
+ */
+@Composable
+private fun InviteBubble(
+    msg: SteamFriendsStore.ChatMessage,
+    friend: SteamFriendsStore.SteamFriend,
+    self: SteamFriendsStore.SteamFriend?,
+) {
+    val ctx = LocalContext.current
+    val mine = msg.fromSelf
+    val appId = if (msg.appId != 0) msg.appId else friend.gameAppId
+    val gameName = friend.gameName?.takeIf { it.isNotBlank() && (msg.appId == 0 || msg.appId == friend.gameAppId) }
+        ?: if (appId != 0) "App $appId" else "a game"
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Top,
+    ) {
+        if (!mine) {
+            FriendAvatar(friend = friend, size = 30.dp)
+            Spacer(Modifier.width(8.dp))
+        }
+        Column(horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+            Text(
+                text = if (mine) (self?.displayName ?: "You") else friend.displayName,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+            ) {
+                Text(
+                    text = "🎮 GAME INVITE",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = if (mine) "You invited ${friend.displayName} to $gameName" else "Invited you to $gameName",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (msg.lobbyId != 0L) "Lobby ${msg.lobbyId}" else "No lobby id in this invite",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                if (!mine && appId != 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Button(
+                        onClick = {
+                            runCatching {
+                                ctx.startActivity(
+                                    Intent(ctx, SteamGameDetailActivity::class.java)
+                                        .putExtra(SteamGameDetailActivity.EXTRA_APP_ID, appId),
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    ) { Text("View game", style = MaterialTheme.typography.labelMedium) }
+                }
+                if (msg.timestampSec > 0) {
+                    Text(
+                        text = timeLabel(msg.timestampSec),
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp).align(if (mine) Alignment.End else Alignment.Start),
+                    )
+                }
+            }
+        }
         if (mine && self != null) {
             Spacer(Modifier.width(8.dp))
             FriendAvatar(friend = self, size = 30.dp)

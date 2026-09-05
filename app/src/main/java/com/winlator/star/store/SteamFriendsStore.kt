@@ -99,6 +99,8 @@ object SteamFriendsStore {
         /** Relay-only: [presence]/[statusText] are the app session's LAST-KNOWN values, not yet confirmed by
          *  the in-game client (its persona for this friend hasn't arrived). Cleared by the first `persona`. */
         val stale: Boolean = false,
+        /** Steam lobby the friend is in (persona `game_lobby_id`, field 73), 0 when none. The join target. */
+        val gameLobbyId: Long = 0L,
     ) {
         val displayName: String
             get() = nickname?.takeIf { it.isNotBlank() }
@@ -110,7 +112,36 @@ object SteamFriendsStore {
             get() = avatarHash?.let { "$AVATAR_CDN_BASE/${it}_full.jpg" }
     }
 
-    data class ChatMessage(val fromSelf: Boolean, val text: String, val timestampSec: Long)
+    /**
+     * One chat entry. [kind] is the `EChatEntryType`: [KIND_TEXT] for a message, [KIND_INVITE] for a
+     * game invite — then [text] is the raw connect string Steam sent (e.g. `+connect_lobby <id>`),
+     * [lobbyId] is the parsed lobby (0 if the string carried none) and [appId] the sender's game.
+     */
+    data class ChatMessage(
+        val fromSelf: Boolean,
+        val text: String,
+        val timestampSec: Long,
+        val kind: Int = KIND_TEXT,
+        val lobbyId: Long = 0L,
+        val appId: Int = 0,
+    )
+
+    const val KIND_TEXT = 1
+    const val KIND_INVITE = 3
+
+    /** GameHub's connect-string rule: `+connect_lobby <id>` anywhere in the body. */
+    private val CONNECT_LOBBY_RE = Regex("""(?:^|\s)\+?connect_lobby\s+(\d+)""")
+
+    /** Lobby id out of an invite body — plain connect string, or a JSON body carrying one. */
+    fun parseLobbyId(body: String): Long {
+        CONNECT_LOBBY_RE.find(body)?.groupValues?.getOrNull(1)?.toLongOrNull()?.let { return it }
+        return runCatching {
+            val o = org.json.JSONObject(body)
+            o.optLong("lobby", 0L).takeIf { it != 0L }
+                ?: o.optString("connect", "").let { c -> CONNECT_LOBBY_RE.find(c)?.groupValues?.getOrNull(1)?.toLongOrNull() }
+                ?: 0L
+        }.getOrDefault(0L)
+    }
 
     /** The currently-open conversation (steamId 0 == none open). */
     data class ChatSession(val steamId: Long, val messages: List<ChatMessage>)
@@ -304,6 +335,8 @@ object SteamFriendsStore {
 
     /** Matches a leading http(s) URL — used to detect an image-only message for the notification text. */
     private val IMG_URL_RE = Regex("""https?://\S+""")
+    /** Logcat tag for the lobby / invite proof lines (P0 of the join-a-friend work). */
+    private const val LOBBY_TAG = "BL_STEAM_LOBBY"
 
     init {
         // Clear cross-account state on sign-out / session end so a different login never inherits the
@@ -589,6 +622,7 @@ object SteamFriendsStore {
                 friendMap[id] = SteamFriend(
                     id, o.optString("name", ""), null, presence, statusText, app, gameName,
                     o.optString("avatarHash", "").takeIf { it.isNotBlank() && !it.all { c -> c == '0' } }, rp,
+                    gameLobbyId = o.optLong("lobby", 0L),
                 )
             }
         } catch (t: Throwable) {
@@ -689,8 +723,22 @@ object SteamFriendsStore {
                 }
                 val avatar = if (p.hasAvatar) p.avatarHash else prev?.avatarHash
                 val rp = p.richPresence ?: prev?.richPresence ?: emptyMap()
+                // The lobby id follows the game: a persona push that clears the game clears the lobby too.
+                val lobby = when {
+                    p.hasLobby -> p.gameLobbyId
+                    p.hasGame && gameAppId == 0 -> 0L
+                    else -> prev?.gameLobbyId ?: 0L
+                }
                 val (presence, statusText) = classifyCode(state, gameAppId, gameName)
-                friendMap[id] = SteamFriend(id, name, null, presence, statusText, gameAppId, gameName, avatar, rp)
+                friendMap[id] = SteamFriend(id, name, null, presence, statusText, gameAppId, gameName, avatar, rp, gameLobbyId = lobby)
+                // P0 device proof: does the CM hand us a lobby id for a friend in a lobby game? One line per
+                // game-bearing persona push, in logcat AND the chat debug file (release builds keep the file).
+                if (p.hasGame || p.hasLobby) {
+                    val line = "persona sid=…${id.toString().takeLast(5)} app=$gameAppId game=\"${gameName ?: ""}\" " +
+                        "lobby=$lobby (hasLobby=${p.hasLobby}) rp.connect=\"${rp["connect"] ?: ""}\" rp.keys=${rp.keys}"
+                    Log.i(LOBBY_TAG, line)
+                    SteamChatDebug.log("LOBBY $line")
+                }
                 changed = true
             }
             if (changed) publish()
@@ -753,6 +801,25 @@ object SteamFriendsStore {
                     if (id == 0L) continue
                     val type = o.optInt("type", 1)
                     if (type == 2) { markTyping(id); continue }
+                    if (type == KIND_INVITE) {
+                        val body = o.optString("message", "")
+                        val ts = o.optLong("timestamp", 0L).let { if (it > 0) it else nowSec() }
+                        val fromSelf = o.optBoolean("fromSelf", false)
+                        val lobby = parseLobbyId(body)
+                        val sender = friendMap[id]
+                        val app = sender?.gameAppId ?: 0
+                        val line = "invite ${if (fromSelf) "TO" else "FROM"} …${id.toString().takeLast(5)} app=$app " +
+                            "lobby=$lobby body=\"${SteamChatDebug.snip(body)}\""
+                        Log.i(LOBBY_TAG, line)
+                        SteamChatDebug.log("LOBBY $line")
+                        clearTyping(id)
+                        appendMessage(id, ChatMessage(fromSelf, body, ts, kind = KIND_INVITE, lobbyId = lobby, appId = app))
+                        if (!fromSelf && id != activeChatId) {
+                            bumpUnread(id)
+                            maybeNotify(id, "🎮 Invited you to ${sender?.gameName?.takeIf { it.isNotBlank() } ?: "a game"}")
+                        }
+                        continue
+                    }
                     if (type != 1) continue
                     val body = o.optString("message", "")
                     if (body.isEmpty()) continue
@@ -899,7 +966,12 @@ object SteamFriendsStore {
                 val list = ArrayList<ChatMessage>(arr.length())
                 for (i in 0 until arr.length()) {
                     val o = arr.optJSONObject(i) ?: continue
-                    list.add(ChatMessage(o.optBoolean("s"), o.optString("t"), o.optLong("ts")))
+                    list.add(
+                        ChatMessage(
+                            o.optBoolean("s"), o.optString("t"), o.optLong("ts"),
+                            kind = o.optInt("k", KIND_TEXT), lobbyId = o.optLong("l", 0L), appId = o.optInt("a", 0),
+                        ),
+                    )
                 }
                 if (list.isNotEmpty()) histories[id] = list
             }
@@ -925,7 +997,9 @@ object SteamFriendsStore {
                 val trimmed = if (snapshot.size > 200) snapshot.subList(snapshot.size - 200, snapshot.size) else snapshot
                 val arr = org.json.JSONArray()
                 for (m in trimmed) {
-                    arr.put(org.json.JSONObject().put("s", m.fromSelf).put("t", m.text).put("ts", m.timestampSec))
+                    val j = org.json.JSONObject().put("s", m.fromSelf).put("t", m.text).put("ts", m.timestampSec)
+                    if (m.kind != KIND_TEXT) j.put("k", m.kind).put("l", m.lobbyId).put("a", m.appId)
+                    arr.put(j)
                 }
                 convos.put(id.toString(), arr)
             }

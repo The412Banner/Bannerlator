@@ -2242,6 +2242,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
             "avatarHash": crate::cdn_client::hex_encode(&persona.avatar_hash),
             "gameName": persona.game_name,
             "gameId": persona.gameid as i64,
+            "lobby": persona.game_lobby_id as i64,
             "connect": persona
                 .rich_presence
                 .iter()
@@ -2299,6 +2300,7 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlSteamSession_nativ
         "avatarHash": crate::cdn_client::hex_encode(&persona.avatar_hash),
         "gameName": persona.game_name,
         "gameId": persona.gameid as i64,
+        "lobby": persona.game_lobby_id as i64,
     })
     .to_string();
     new_string_or_null(&mut env, &value)

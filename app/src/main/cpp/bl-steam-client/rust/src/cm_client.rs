@@ -83,6 +83,8 @@ pub struct FriendPersonaSnapshot {
     pub rich_presence: Vec<(String, String)>,
     pub game_name: String,
     pub gameid: u64,
+    /// Steam lobby id the friend is in (persona field 73), 0 when none / unknown.
+    pub game_lobby_id: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -168,7 +170,8 @@ pub struct IncomingFriendMessage {
     pub message: String,
     pub timestamp: u32,
     pub ordinal: i32,
-    /// `EChatEntryType`: 1 = text (`message` set), 2 = typing notification (`message` empty).
+    /// `EChatEntryType`: 1 = text (`message` set), 2 = typing notification (`message` empty),
+    /// 3 = game invite (`message` carries the connect string, e.g. `+connect_lobby <id>`).
     pub chat_entry_type: i32,
 }
 
@@ -1677,6 +1680,9 @@ impl CMClientCore {
                                 if friend.gameid != 0 {
                                     existing.gameid = friend.gameid;
                                 }
+                                if friend.has_lobby {
+                                    existing.game_lobby_id = friend.game_lobby_id;
+                                }
                                 if !friend.avatar_hash.is_empty() {
                                     existing.avatar_hash = friend.avatar_hash;
                                 }
@@ -1703,6 +1709,9 @@ impl CMClientCore {
                         }
                         if friend.gameid != 0 {
                             slot.gameid = friend.gameid;
+                        }
+                        if friend.has_lobby {
+                            slot.game_lobby_id = friend.game_lobby_id;
                         }
                         if !friend.avatar_hash.is_empty() {
                             slot.avatar_hash = friend.avatar_hash;
@@ -1743,7 +1752,12 @@ impl CMClientCore {
                         let is_typing = note.chat_entry_type
                             == crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_TYPING
                             && !note.local_echo;
-                        if is_text || is_typing {
+                        // Game invites ride the same stream as `EChatEntryType::InviteGame` (3) with
+                        // the connect string as the body. They were silently dropped before.
+                        let is_invite = note.chat_entry_type
+                            == crate::pb::cfriendmessages::CHAT_ENTRY_TYPE_INVITE_GAME
+                            && !note.message.is_empty();
+                        if is_text || is_typing || is_invite {
                             self.push_incoming_message(IncomingFriendMessage {
                                 friend_id: note.steamid_friend,
                                 from_self: note.local_echo,

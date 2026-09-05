@@ -2,6 +2,9 @@ use crate::proto_wire::{Reader, WireType, Writer};
 
 pub const CHAT_ENTRY_TYPE_TEXT: i32 = 1;
 pub const CHAT_ENTRY_TYPE_TYPING: i32 = 2;
+/// `EChatEntryType::InviteGame` — verified against SteamKit's enums.steamd (3, NOT 6; 6 is
+/// LeftConversation).
+pub const CHAT_ENTRY_TYPE_INVITE_GAME: i32 = 3;
 
 #[derive(Clone, Debug, Default)]
 pub struct CFriendMessagesSendMessageRequest {

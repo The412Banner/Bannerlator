@@ -106,7 +106,15 @@ fun ComponentInstallResume(onNavigateToGames: () -> Unit = {}) {
                         // Another installer session is coming — DON'T return yet; the return target
                         // stays persisted for the next resume after that session restarts the app.
                         is ComponentExecInstaller.Result.Launched -> { /* heading into the next session */ }
-                        is ComponentExecInstaller.Result.Done -> consumeReturn(name)
+                        is ComponentExecInstaller.Result.Done -> {
+                            consumeReturn(name)
+                            // EA setup chain: the mono prerequisite just finished → run the deferred
+                            // installScript Run-Process step (EA Desktop installer) in its own session.
+                            withContext(Dispatchers.IO) {
+                                try { com.winlator.star.store.steamscript.InstallScriptExecutor.resumePending(context) }
+                                catch (t: Throwable) { android.util.Log.w("ComponentInstallResume", "installScript resume failed", t) }
+                            }
+                        }
                         is ComponentExecInstaller.Result.Error -> message = "Couldn't finish $name: ${res.message}"
                         null -> {}
                     }

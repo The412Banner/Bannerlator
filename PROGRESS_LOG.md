@@ -6960,3 +6960,13 @@ JavaSteam path (fallback, parity) `SteamDepotDownloader.kt` onDownloadCompleted 
 
 A/B/Q/B2a/WifiLock intact (no queue/native/DownloadSpeedConfig/depot_writer.rs changes). Kotlin-only.
 Other worktree /home/claude-user/bannerlators untouched. CI compile gate only; NOT device-tested.
+
+## 2026-09-05 — feat/ea-steam-support r1: EA-published Steam titles launch through SteamLite + EA Desktop
+Device-proven recipe (NFS Payback, GE-Proton 11.0-6 arm64ec, SteamLite v6 agent p5) turned into app behaviour:
+- `EaSupport` (new): on-disk detection (`__Installer/Origin`, `Link2EA.exe`, `EASteamProxy.exe`, `Core/Activation*`), Javelin anti-cheat flag, FEX preset clamp (EXTREME→PERFORMANCE, EXTREME_TSO→PERFORMANCE_TSO — SMC checks must stay on for Activation64), wine-mono check + catalog-component install, `WN_STEAM_LAUNCH_CHAIN` value.
+- Games tab: EA titles skip the launch-method popup → SteamLite forced + remembered; if EA Desktop isn't installed in the container → "Set up EA Desktop" dialog runs the depot installScript (mono first if missing, then `EAappInstaller.exe EAX_LAUNCH_CLIENT=0 IGNORE_INSTALLED=1`) in auto-closing sessions; Javelin titles get an "unsupported" dialog.
+- installScript executor (from the Aug scaffold, now built): VdfParser (exhaustive when fix), Registry with Steam's per-language block semantics (values on the parent key), Copy Files, Run Process with mono prerequisite + `resumePending` chained from ComponentInstallResume. Local stages also run at shortcut write and pre-launch.
+- RealSteamLauncher: steamapps\common folder = Valve's PICS installdir, ASCII-only (the ™ bug); `WN_STEAM_LAUNCH_CHAIN` for EA launches; `WN_STEAM_DEPOTS` from depot_manifests (agent writes InstalledDepots).
+- GuestProgramLauncherComponent: `WINE_ANDROID_GATEWAY` from the active network's default route (eanet layers' route table).
+- ContainerManager: vendor client .lnk (EA, Ubisoft Connect, …) no longer auto-imported as game cards. XServerDisplayActivity: `AppThemeState.init` on cold start; EA overlay hint.
+Not yet: Steamworks Shared 228980 download; auto-resume without the "Finish" tap; activation-persistence investigation.

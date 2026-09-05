@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.Network;
+import android.net.RouteInfo;
 import android.os.Process;
 import android.util.Log;
 
@@ -441,6 +442,22 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
         envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
         envVars.put("WINE_NEW_NDIS", "1");
+        // Default-route gateway for the layer's WINE_NEW_NDIS route table (eanet layers): the guest's
+        // GetBestRoute()/SIO_ROUTING_INTERFACE_QUERY need a 0.0.0.0/0 entry; the layer falls back to
+        // the subnet .1 when this is absent, so older layers are unaffected.
+        if (activeNetwork != null) {
+            LinkProperties lp = connectivityManager.getLinkProperties(activeNetwork);
+            if (lp != null) {
+                for (RouteInfo r : lp.getRoutes()) {
+                    InetAddress gw = r.getGateway();
+                    if (gw instanceof Inet4Address && !gw.isAnyLocalAddress()
+                            && r.getDestination() != null && r.getDestination().getPrefixLength() == 0) {
+                        envVars.put("WINE_ANDROID_GATEWAY", gw.getHostAddress());
+                        break;
+                    }
+                }
+            }
+        }
 
         String ld_preload = "";
 

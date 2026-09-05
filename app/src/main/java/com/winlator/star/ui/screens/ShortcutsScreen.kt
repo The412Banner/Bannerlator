@@ -258,6 +258,8 @@ import com.winlator.star.store.GoldbergPatcher
 import com.winlator.star.store.SteamDatabase
 import com.winlator.star.store.SteamGameUpdater
 import com.winlator.star.store.SteamLiteComponent
+import com.winlator.star.store.EaSupport
+import com.winlator.star.store.steamscript.InstallScriptExecutor
 import com.winlator.star.store.SteamLoginActivity
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.SteamSessionManager
@@ -339,6 +341,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // chooser is open (null = closed). A Steam game routes through this before launching UNLESS it
     // already has a remembered choice (launchMode set + launchModeRemembered=="1").
     var launchChoiceFor by remember { mutableStateOf<Shortcut?>(null) }
+    // EA support (see EaSupport): an EA title either needs its one-time EA Desktop setup, is unsupported
+    // (Javelin anti-cheat), or launches straight through SteamLite with the EA chain armed.
+    var eaSetupFor by remember { mutableStateOf<Shortcut?>(null) }
+    var eaUnsupportedFor by remember { mutableStateOf<Shortcut?>(null) }
+    var eaSetupBusy by remember { mutableStateOf(false) }
+    val eaScope = rememberCoroutineScope()
     // SteamLite launch pre-flight (session → network → cloud saves → update check, BEFORE the container opens):
     // the RealSteam game whose "Getting Steam ready" dialog is up (null = none). Every RealSteam
     // launch — the popup pick and a remembered pick — routes through it; Goldberg/Raw never do.
@@ -482,6 +490,26 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // A remembered RealSteam pick still goes through the SteamLite pre-flight (it is the launch's
     // session check, not part of the method choice).
     fun requestLaunch(shortcut: Shortcut) {
+        // EA-published Steam titles have exactly one working path: the genuine client (SteamLite) via
+        // EA Desktop's launcher chain. Skip the method popup, make sure the prefix is set up (wine-mono +
+        // EA Desktop, one-time), and refuse titles that ship EA Javelin anti-cheat (kernel driver).
+        if (isSteamOriginShortcut(shortcut)) {
+            val ea = EaSupport.detectForShortcut(shortcut)
+            if (ea != null) {
+                if (ea.javelinAntiCheat) { eaUnsupportedFor = shortcut; return }
+                shortcut.putExtra("launchMode", "RealSteam")
+                shortcut.putExtra("launchModeRemembered", "1")
+                val installDir = EaSupport.installDirOf(shortcut)
+                if (installDir == null) { launchWithSteamLite(shortcut); return }
+                eaScope.launch {
+                    val ready = withContext(Dispatchers.IO) {
+                        try { EaSupport.prefixReady(context, shortcut.container, installDir) } catch (t: Throwable) { true }
+                    }
+                    if (ready) launchWithSteamLite(shortcut) else eaSetupFor = shortcut
+                }
+                return
+            }
+        }
         val remembered = shortcut.getExtra("launchMode", "").isNotEmpty() &&
             shortcut.getExtra("launchModeRemembered", "") == "1"
         when {
@@ -2831,6 +2859,55 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     // ── Steam launch-method popup (M3): SteamLite (real Steam / VAC) vs Goldberg (offline) ──────────
+    eaUnsupportedFor?.let { s ->
+        AlertDialog(
+            onDismissRequest = { eaUnsupportedFor = null },
+            title = { Text("Not supported: EA anti-cheat") },
+            text = {
+                Text(
+                    "\"${s.name}\" ships EA Javelin anti-cheat, which needs a Windows kernel driver. " +
+                        "It cannot run under Wine on any Android emulator, so Bannerlator won't start the EA setup for it."
+                )
+            },
+            confirmButton = { TextButton(onClick = { eaUnsupportedFor = null }) { Text("OK") } },
+        )
+    }
+    eaSetupFor?.let { s ->
+        AlertDialog(
+            onDismissRequest = { if (!eaSetupBusy) eaSetupFor = null },
+            title = { Text("Set up EA Desktop") },
+            text = {
+                Text(
+                    "\"${s.name}\" is an EA title: it launches through EA Desktop, which isn't installed in this " +
+                        "container yet. Bannerlator will install it now (wine-mono first if the container lacks it) " +
+                        "in a short setup session — the app restarts when each step finishes. Afterwards launch the " +
+                        "game again; sign in to EA when it asks. This happens once per container."
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = !eaSetupBusy, onClick = {
+                    eaSetupBusy = true
+                    eaScope.launch {
+                        val exe = withContext(Dispatchers.IO) {
+                            try { WinePath.resolveAndroidPath(s.container, s.path)?.absolutePath } catch (t: Throwable) { null }
+                        }
+                        val appId = steamAppIdOf(s)
+                        if (exe != null && appId > 0) {
+                            withContext(Dispatchers.IO) {
+                                try { InstallScriptExecutor.runForShortcut(context, s.container, appId, exe) }
+                                catch (t: Throwable) { android.util.Log.w("ShortcutsScreen", "EA setup failed", t) }
+                            }
+                        } else {
+                            Toast.makeText(context, "Couldn't locate the game's install folder", Toast.LENGTH_LONG).show()
+                        }
+                        eaSetupBusy = false
+                        eaSetupFor = null
+                    }
+                }) { Text(if (eaSetupBusy) "Starting…" else "Set up") }
+            },
+            dismissButton = { TextButton(enabled = !eaSetupBusy, onClick = { eaSetupFor = null }) { Text("Cancel") } },
+        )
+    }
     launchChoiceFor?.let { s ->
         val appId = steamAppIdOf(s)
         LaunchMethodSheet(

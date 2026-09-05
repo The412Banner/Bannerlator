@@ -69,9 +69,17 @@ public final class RealSteamLauncher {
         public final String canonicalName;
         /** The resolved Steam appId (for diagnostics). */
         public final int appId;
+        /** True when this launch goes through EA's launcher chain (EA Desktop) — see {@link EaSupport}. */
+        public final boolean eaChain;
 
         Plan(Map<String, String> env, String steamExeDirWin, String steamExeName,
              String specArgWin, String canonicalName, int appId) {
+            this(env, steamExeDirWin, steamExeName, specArgWin, canonicalName, appId, false);
+        }
+
+        Plan(Map<String, String> env, String steamExeDirWin, String steamExeName,
+             String specArgWin, String canonicalName, int appId, boolean eaChain) {
+            this.eaChain = eaChain;
             this.env = env;
             this.steamExeDirWin = steamExeDirWin;
             this.steamExeName = steamExeName;
@@ -133,6 +141,30 @@ public final class RealSteamLauncher {
                                String hostInstallDir,
                                boolean controllerPassthrough,
                                int agentPort) {
+        return prepare(ctx, driveC, steamLiteInstallDir, shortcut, appId, displayName, hostInstallDir,
+                controllerPassthrough, agentPort, null, false);
+    }
+
+    /**
+     * As above, plus the two EA-support inputs (see {@link EaSupport}):
+     * {@code picsInstallDir} = Valve's canonical {@code config.installdir} from PICS (the store DB's
+     * {@code installDir}); when known it names the {@code steamapps\common} folder instead of the display
+     * name — Payback's display name carries a {@code ™} that the game could not read its own module path
+     * through (device-proven: Frostbite exited 10 s after activation). {@code eaChain} = the launch goes
+     * through EA Desktop's launcher chain → the agent gets {@code WN_STEAM_LAUNCH_CHAIN} so it holds the
+     * Steam session across the stub exe's hand-off (SteamLite v6 / agent p5).
+     */
+    public static Plan prepare(Context ctx,
+                               File driveC,
+                               File steamLiteInstallDir,
+                               Shortcut shortcut,
+                               int appId,
+                               String displayName,
+                               String hostInstallDir,
+                               boolean controllerPassthrough,
+                               int agentPort,
+                               String picsInstallDir,
+                               boolean eaChain) {
         try {
             // ── 0. Validate prerequisites ────────────────────────────────────────────────────────
             if (driveC == null) { Log.w(TAG, "prepare: null driveC — fallback"); return null; }
@@ -170,8 +202,11 @@ public final class RealSteamLauncher {
             // "Counter-Strike_ Source"). We symlink it under a CLEANED name (illegal chars removed,
             // whitespace collapsed) which yields Valve's canonical installdir for the M4 test games
             // (L4D2 "Left 4 Dead 2", TF2 "Team Fortress 2", CS:S "Counter-Strike Source").
-            String canonicalName = sanitizeFolderName(displayName);
-            if (canonicalName.isEmpty()) canonicalName = new File(hostInstallDir).getName();
+            // Prefer Valve's own installdir (PICS) — it IS the canonical name — and keep the folder
+            // name ASCII either way: a ™/®/© in steamapps\common broke the game's module-path lookup.
+            String canonicalName = asciiFolderName(sanitizeFolderName(picsInstallDir));
+            if (canonicalName.isEmpty()) canonicalName = asciiFolderName(sanitizeFolderName(displayName));
+            if (canonicalName.isEmpty()) canonicalName = asciiFolderName(new File(hostInstallDir).getName());
             if (canonicalName.isEmpty()) canonicalName = "App_" + appId;
 
             // ── 3. Host prefix layout ────────────────────────────────────────────────────────────
@@ -307,12 +342,21 @@ public final class RealSteamLauncher {
                 vacSource = "app-info";
             }
             env.put("WN_STEAM_VAC", vacSecure ? "1" : "0");
+            // EA launcher chain (agent p5): without this the agent treats the stub exe's exit during the
+            // Link2EA → EADesktop → EASteamProxy hand-off as "game exited" and tears the session down.
+            if (eaChain) env.put(EaSupport.CHAIN_ENV, EaSupport.CHAIN_VALUE);
+            // Agent appmanifest contract: InstalledDepots (depot:manifest:size,…) so the genuine client
+            // sees a complete install (the agent writes appmanifest_<id>.acf from these).
+            try {
+                String depots = SteamRepository.getInstance().getDatabase().getDepotManifestsCsv(appId);
+                if (depots != null && !depots.isEmpty()) env.put("WN_STEAM_DEPOTS", depots);
+            } catch (Throwable ignored) {}
 
             String specArgWin = "C:\\" + appId + ".spec";
             Log.i(TAG, "prepare: staged appId=" + appId + " canonical=\"" + canonicalName
                     + "\" relExe=\"" + relExe + "\" (LaunchApp SECURE, vac=" + (vacSecure ? 1 : 0)
                     + " from " + vacSource + ")");
-            return new Plan(env, STEAM_DIR_WIN, STEAM_EXE_NAME, specArgWin, canonicalName, appId);
+            return new Plan(env, STEAM_DIR_WIN, STEAM_EXE_NAME, specArgWin, canonicalName, appId, eaChain);
         } catch (Throwable t) {
             Log.w(TAG, "prepare: errored — fallback", t);
             return null;
@@ -769,6 +813,24 @@ public final class RealSteamLauncher {
 
     /** Strip Windows-illegal folder chars, collapse whitespace, trim. Removes (not underscores) so a
      *  display name like "Counter-Strike: Source" yields the canonical "Counter-Strike Source". */
+    /**
+     * Drops every non-ASCII character (™ ® © and friends) and re-collapses whitespace. The genuine
+     * client, GameHub and Valve's own installdir all use plain-ASCII folder names under
+     * {@code steamapps\common}; Frostbite/EA titles fail to read their module path through a non-ASCII one.
+     */
+    static String asciiFolderName(String name) {
+        if (name == null) return "";
+        StringBuilder sb = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c >= 0x20 && c < 0x7F) sb.append(c);
+        }
+        String cleaned = sb.toString().replaceAll("\\s+", " ").trim();
+        while (cleaned.endsWith(".") || cleaned.endsWith(" "))
+            cleaned = cleaned.substring(0, cleaned.length() - 1);
+        return cleaned;
+    }
+
     static String sanitizeFolderName(String name) {
         if (name == null) return "";
         String cleaned = name.replaceAll("[<>:\"/\\\\|?*\\x00-\\x1F]", "");

@@ -402,6 +402,20 @@ public final class StarLaunchBridge {
 
                 Log.d(TAG, "Wrote shortcut: " + shortcutFile.getPath());
 
+                // Steam install-recipe (local stages): a depot's installScript.vdf Registry + Copy Files
+                // (EA entitlement keys + Origin licence files) land in the chosen container now — the
+                // first moment (container, appId, installDir) all exist. The Run Process step (EA Desktop
+                // installer, needs a Wine session) is driven from the Games tab's EA setup flow instead of
+                // restarting the app mid-add. Best-effort — a failure never blocks the shortcut.
+                if (steamAppId > 0) {
+                    try {
+                        com.winlator.star.store.steamscript.InstallScriptExecutor.applyLocalStagesForLaunch(
+                                activity, container, steamAppId, exePath);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "installScript local stages failed for " + gameName, t);
+                    }
+                }
+
                 // Resolve cover art URL: fix protocol-relative, then try store URL,
                 // fall back to SteamGridDB if needed.
                 String artUrl;

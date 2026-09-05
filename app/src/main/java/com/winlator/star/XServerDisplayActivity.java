@@ -298,6 +298,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // getWineStartCommand() to rewrite the launch target to run our agent (steam.exe) with the per-game
     // spec. Null ⇒ every non-RealSteam (or failed-prep) launch is byte-for-byte unchanged.
     private RealSteamLauncher.Plan realSteamPlan;
+    /** EA launcher-chain title (EA Desktop) — set by maybeStageRealSteam(); drives the FEX preset clamp + overlay hints. */
+    private boolean realSteamEaChain = false;
     // True while THIS activity has the app's own Steam CM session suspended for the in-container
     // real-Steam session (set right after realSteamPlan is armed, cleared by releaseRealSteamSession).
     // Separate from realSteamPlan so the release is idempotent across exit() and onDestroy().
@@ -1367,6 +1369,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // A cold start straight into the game (home-screen pinned shortcut, ACTION_VIEW, adb) never ran
+        // MainActivity, so the theme/prefs singleton was uninitialised → default theme in the in-game UI.
+        try { com.winlator.star.ui.theme.AppThemeState.init(this); } catch (Throwable ignored) {}
         // Stamp the launch time up front: the HUD wrapper-log resolver (P3) only trusts a DXVK/VKD3D
         // log written THIS session, so a previous game's stale log in a shared dir can never leak in.
         sessionStartMs = System.currentTimeMillis();
@@ -2419,6 +2424,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     sweepStaleWineProcesses();
                     preloaderDialog.step(2, "Preparing Wine & graphics driver…");
                     setupWineSystemFiles();
+                    // Steam install-recipe robustness pass: a steamAppId-tagged game's installScript.vdf
+                    // Registry + Copy Files land in this prefix before the game boots (covers shortcuts made
+                    // before the feature or re-bound to a new container). Local stages only — the Run
+                    // Process step (EA Desktop installer) is driven from the Games tab's EA setup flow.
+                    runSteamInstallScriptPreLaunch();
                     extractGraphicsDriverFiles();
                     changeWineAudioDriver();
                     applyGameRefreshRateUnlock();
@@ -4570,6 +4580,30 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * so {@code getWineStartCommand()} keeps the NORMAL launch and a non-RealSteam launch is byte-for-byte
      * unchanged. Never throws; never logs the refresh token (it lives only inside the plan's env map).
      */
+    /**
+     * Applies a Steam game's installScript.vdf local stages (Registry + Copy Files) into this
+     * container just before first launch, guarded once per (appId, container). No-op for non-Steam
+     * shortcuts. Runs on the setup worker thread (prefix already prepared by setupWineSystemFiles).
+     */
+    private void runSteamInstallScriptPreLaunch() {
+        if (shortcut == null || container == null) return;
+        int appId;
+        try {
+            appId = Integer.parseInt(shortcut.getExtra("steamAppId", "0").trim());
+        } catch (NumberFormatException e) {
+            return;
+        }
+        if (appId <= 0) return;
+        try {
+            File exe = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+            if (exe == null) return;
+            com.winlator.star.store.steamscript.InstallScriptExecutor.applyLocalStagesForLaunch(
+                    this, container, appId, exe.getAbsolutePath());
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "installScript pre-launch pass failed", t);
+        }
+    }
+
     private void maybeStageRealSteam() {
         try {
             if (shortcut == null || container == null) return;
@@ -4590,6 +4624,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
             SteamDatabase.GameRow row = SteamRepository.getInstance().getDatabase().getGame(ref.appId);
             String displayName = (row != null && row.name != null) ? row.name : shortcut.name;
+            // EA support: an EA-published title launches through EA Desktop's chain — tell the agent
+            // (WN_STEAM_LAUNCH_CHAIN) and clamp the FEX preset later (Activation64 anti-tamper needs SMC
+            // checks ON). Detection is on-disk (Link2EA/EASteamProxy/__Installer/Origin/Core/Activation*).
+            com.winlator.star.store.EaSupport.Profile eaProfile =
+                    com.winlator.star.store.EaSupport.detect(new File(ref.installDir));
+            realSteamEaChain = eaProfile != null && eaProfile.getEaChain();
+            if (realSteamEaChain) Log.i("BH_REALSTEAM", "EA launcher-chain title detected (appId=" + ref.appId + ")");
 
             // Live agent↔app channel: bind the loopback listener BEFORE the guest boots so the plan
             // env can carry its port (BL_AGENT_PORT). Best-effort — 0 = no channel, launch unchanged.
@@ -4605,7 +4646,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     displayName,
                     ref.installDir,
                     isControllerPassthroughLaunch(),
-                    agentPort);
+                    agentPort,
+                    row != null ? row.installDir : null,
+                    realSteamEaChain);
 
             if (realSteamPlan != null) {
                 Log.i("BH_REALSTEAM", "RealSteam launch armed (appId=" + realSteamPlan.appId
@@ -4693,7 +4736,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     break;
                 }
                 case "launch_accepted":
-                    preloaderHint("Steam accepted the launch — starting the game…");
+                    preloaderHint(realSteamEaChain
+                            ? "Steam accepted the launch — starting EA Desktop (sign in to EA if it asks)…"
+                            : "Steam accepted the launch — starting the game…");
                     break;
                 case "launch_refused":
                     preloaderHint("Steam refused the launch (" + obj.optString("reason", "") + ") — trying a direct start…");
@@ -6334,11 +6379,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             : container.getBox64Preset()
             );
 
-            guestProgramLauncherComponent.setFEXCorePreset(
-                    shortcut != null
-                            ? shortcut.getExtra("fexcorePreset", container.getFEXCorePreset())
-                            : container.getFEXCorePreset()
-            );
+            String fexPreset = shortcut != null
+                    ? shortcut.getExtra("fexcorePreset", container.getFEXCorePreset())
+                    : container.getFEXCorePreset();
+            // EA titles: FEX_SMCCHECKS=none (Extreme presets) crashes EA's Activation64 anti-tamper
+            // (c0000005 in the game exe, device-proven) → clamp to the Performance twin for this launch.
+            if (realSteamEaChain && realSteamPlan != null) {
+                String clamped = com.winlator.star.store.EaSupport.clampPresetForEa(fexPreset);
+                if (clamped != null && !clamped.equals(fexPreset)) {
+                    Log.i("BH_REALSTEAM", "EA launch: FEX preset " + fexPreset + " -> " + clamped + " (SMC checks must stay on)");
+                    fexPreset = clamped;
+                }
+            }
+            guestProgramLauncherComponent.setFEXCorePreset(fexPreset);
         }
 
         // Merge overrideEnvVars if present

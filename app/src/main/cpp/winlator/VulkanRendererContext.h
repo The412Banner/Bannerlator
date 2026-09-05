@@ -111,6 +111,7 @@ struct VkTable {
 #include <unordered_map>
 #include <thread>
 #include <atomic>
+#include <deque>
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
@@ -302,6 +303,14 @@ public:
     // generates above the refresh rate.
     void setFrameGenTuning(float flowScale, float refreshHz);
 
+    // --- Guest-side frame generation (lsfg-vk) ---------------------------------
+    // While a guest layer multiplies, every distinct frame it delivers is queued
+    // and presented on its OWN compositor pass, paced at targetHz (= cap x
+    // multiplier), instead of overwriting the window's texture. The layer hands
+    // us the generated frame and the real frame about a millisecond apart; with
+    // latest-wins they landed in one pass and one of them was never presented.
+    void setGuestFrameGenPacing(bool enabled, float targetHz);
+
 private:
     struct WinTex {
         VkImage              img            = VK_NULL_HANDLE;
@@ -349,6 +358,29 @@ private:
 
     std::unordered_map<AHardwareBuffer*, WinTex>              ahbImportCache;
     std::unordered_map<int64_t, std::vector<AHardwareBuffer*>> windowAhbs;
+
+    // Guest-side frame-gen delivery queue (see setGuestFrameGenPacing). Queue and
+    // counters are guarded by renderMutex; the atomics are read by the render loop
+    // under dirtyMutex without taking renderMutex (lock-order safety).
+    struct GuestFgDelivery { int64_t id; AHardwareBuffer* ahb; };
+    static constexpr size_t kGuestFgQueueCap = 6;
+    std::atomic<bool>   guestFgPacing_{false};
+    std::atomic<float>  guestFgTargetHz_{0.0f};
+    std::atomic<size_t> guestFgQueued_{0};
+    std::deque<GuestFgDelivery> guestFgQueue_;
+    std::chrono::steady_clock::time_point guestFgNextDue_{};
+    bool     guestFgHaveDue_   = false;
+    uint32_t guestFgDropped_   = 0;
+    uint32_t guestFgLogCount_  = 0;
+    // Deliveries per second (every frame the guest hands us, real or generated),
+    // measured like fgPresentedRate_, so the two can be shown side by side.
+    float    fgDeliveredRate_  = 0.0f;
+    uint32_t fgDeliverAccum_   = 0;
+    std::chrono::steady_clock::time_point fgDeliverWindowStart_{};
+    bool     fgDeliverWindowOpen_ = false;
+    void trackDeliveredRate();
+    void assignDeliveryLocked(int64_t id, WinTex& src, AHardwareBuffer* ahb);
+    bool popGuestFgDeliveryLocked();
 
     std::vector<WinTex>    deleteQueue;
     std::vector<RenderEntry> renderList;

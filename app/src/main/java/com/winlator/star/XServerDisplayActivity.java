@@ -1637,12 +1637,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // The multiplier changed -> the pacer's period (cap x mult) must follow.
                 reapplyFpsLimit();
                 applyEffectivePresentMode();
-                // Frame-gen change (Off/On/2×/3×/4×) → full presentation reset. lsfg-vk restarts on the
-                // conf.toml rewrite above, but a swapchain-only recreate leaves it over-queued → generated
-                // frames present BLACK until a background/foreground cycle. Deterministically replicate
-                // that cycle: pause the guest, tear the surface fully down, and prompt Resume. Fires once
-                // per effective-level change (flow/perf-mode edits keep the level, so they don't reset).
-                maybeTriggerFgReset(mult >= 2 ? mult : 0);
+                // No presentation reset any more. The pause + surface teardown + Resume
+                // prompt existed because a level change under MAILBOX left the layer
+                // over-queued and its generated frames presented black until a
+                // background/foreground cycle. Under fifo with paced releases and the
+                // compositor delivery queue there is no over-queue to clear; the layer
+                // itself already recreates its swapchain on the conf.toml rewrite. The
+                // level is still tracked so the tracker stays coherent if this returns.
+                lastCommittedFgLevel = (mult >= 2) ? mult : 0;
                 return;
             }
             // FPS limiter is no longer part of frame gen — it's a standalone host pacer
@@ -2985,18 +2987,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         if (st[4] >= 3f) text += ", throttling";
                         text += ")";
                     }
-                    if (haveEngineRates) {
-                        XServerDrawerState.INSTANCE.setFrameGenReadout(text);
-                    } else if (shownFps > 0f && lsfgGovernsFps()) {
-                        // lsfg-vk: the chain runs inside the guest, so there is no engine
-                        // rate here - but the presented rate IS ours, and the target is
-                        // cap x mult. Showing both is the first honest readout this
-                        // engine has had; the HUD's own counter is fooled by it.
+                    if (lsfgGovernsFps()) {
+                        // lsfg-vk: st[2] is the DELIVERED rate (every frame the guest
+                        // hands us, real or generated - what the HUD's own counter
+                        // sees), st[3] what actually reaches the panel, target cap x
+                        // mult. The first honest readout this engine has had.
                         XServerDrawerState d = XServerDrawerState.INSTANCE;
                         final int target = d.getFpsLimit().getValue()
                             * Math.max(2, d.getFrameGenMultiplier().getValue());
-                        XServerDrawerState.INSTANCE.setFrameGenReadout(String.format(
-                            java.util.Locale.US, "%.0f shown at the panel  (target %d)", shownFps, target));
+                        if (shownFps > 0f) {
+                            XServerDrawerState.INSTANCE.setFrameGenReadout(String.format(
+                                java.util.Locale.US, "%.0f delivered → %.0f shown  (target %d)",
+                                realFps, shownFps, target));
+                        }
+                    } else if (haveEngineRates) {
+                        XServerDrawerState.INSTANCE.setFrameGenReadout(text);
                     }
                     // Also feed the in-game HUD. Its own counter ticks once per
                     // GUEST frame and therefore cannot see anything added after
@@ -10058,10 +10063,20 @@ return true;
         // is the fix for the clustered gen+real pair (~1 ms apart) that the
         // compositor was coalescing, which is why the HUD counted 2x while the
         // panel showed 1x (device-proven 2026-09-01 for the same delivery path).
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkrQ = vulkanRendererOrNull();
         if (lsfgGovernsFps() && fps > 0) {
             final int m = Math.max(2, XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue());
             fps = fps * m;
             Log.i("XServerDisplayActivity", "lsfg-vk pacer: cap " + vrrCap + " x " + m + " = " + fps);
+            // Pacing the buffer releases evens out the RATE, but the layer still
+            // hands us its generated and real frame ~1 ms apart whenever it has a
+            // free buffer, so they still land in one compositor pass and one is
+            // dropped (device: panel flat at ~37 with the pacer at 60 AND at 120).
+            // The compositor therefore queues every delivery and presents each on
+            // its own pass at this same cadence.
+            if (vkrQ != null) vkrQ.setGuestFrameGenPacing(true, fps);
+        } else if (vkrQ != null) {
+            vkrQ.setGuestFrameGenPacing(false, 0f);
         }
         com.winlator.star.xserver.extensions.PresentExtension pe =
                 xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);

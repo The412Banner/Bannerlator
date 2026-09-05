@@ -136,6 +136,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetLsfgCachePath(long handle, String path);
     private native void nativeSetFrameGenTuning(long handle, float flowScale, float refreshHz);
     private native float[] nativeFrameGenStats(long handle);
+    private native void nativeSetGuestFrameGenPacing(long handle, boolean enabled, float targetHz);
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -183,6 +184,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     if (pendingLsfgCachePath != null)
                         nativeSetLsfgCachePath(nativeHandle, pendingLsfgCachePath);
                     nativeSetFrameGenTuning(nativeHandle, pendingFgFlowScale, pendingFgRefreshHz);
+                    nativeSetGuestFrameGenPacing(nativeHandle, pendingGuestFgPacing, pendingGuestFgHz);
                     if (pendingFgArmed)
                         nativeSetFrameGenArmed(nativeHandle, true, pendingFgMultiplier);
                     updateTransform();
@@ -949,6 +951,18 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         }
     }
 
+    /**
+     * Guest-side frame gen (lsfg-vk): queue every delivered frame and present each
+     * on its own pass at targetHz (cap x multiplier), instead of latest-wins.
+     */
+    public void setGuestFrameGenPacing(boolean enabled, float targetHz) {
+        pendingGuestFgPacing = enabled;
+        pendingGuestFgHz = targetHz;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetGuestFrameGenPacing(nativeHandle, enabled, targetHz);
+        }
+    }
+
     /** Human-readable verdict, naming the first gate that failed. */
     public String getLsfgCapsReason() {
         synchronized (lock) {
@@ -1029,6 +1043,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private float   pendingFgFlowScale    = 1.0f;
     private float   pendingFgRefreshHz    = 0.0f;
     private String  pendingLsfgCachePath  = null;
+    private boolean pendingGuestFgPacing  = false;
+    private float   pendingGuestFgHz      = 0f;
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) {
         this.fpsLimit = limit;

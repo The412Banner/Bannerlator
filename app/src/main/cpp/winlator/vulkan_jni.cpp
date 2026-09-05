@@ -406,6 +406,14 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
     if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz);
 }
 
+// Guest-side frame gen (lsfg-vk): queue + pace deliveries at cap x multiplier.
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetGuestFrameGenPacing(
+        JNIEnv*, jobject, jlong handle, jboolean enabled, jfloat targetHz) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setGuestFrameGenPacing(enabled == JNI_TRUE, (float)targetHz);
+}
+
 // Live frame-gen telemetry: {accepted, planned, sourceFps, presentedFps, thermal}
 extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeFrameGenStats(

@@ -1083,6 +1083,10 @@ void VulkanRendererContext::frameGenStats(float out[5]) const {
     // valid for EVERY engine - including win-fg, whose generated frames arrive
     // from inside the guest. It is reported even with no LSFG engine present.
     out[3] = fgPresentedRate_;
+    // Guest-side engine (lsfg-vk): no engine here, but the delivery rate is ours
+    // to measure - it is what the HUD's own counter sees, so the pair
+    // delivered/presented is the honest readout for that engine.
+    if (guestFgPacing_.load(std::memory_order_relaxed)) out[2] = fgDeliveredRate_;
     if (!lsfgEngine_) return;
     out[0] = (float)lsfgEngine_->acceptedGenerations();
     out[1] = (float)fgPlan_.generations;
@@ -2109,14 +2113,124 @@ void VulkanRendererContext::planUpscaleFrame() {
 void VulkanRendererContext::renderLoop() {
 
     while (isRunning) {
+        bool pacedPop = false;
         { std::unique_lock<std::mutex> lk(dirtyMutex);
-          dirtyCV.wait(lk,[this]{
-              return !isRunning||(!surfaceDetached.load()&&(needsRender.load()||fbResized.load()))||cursorMoved.load(); }); }
+          auto basePred = [this]{
+              return !isRunning||(!surfaceDetached.load()&&(needsRender.load()||fbResized.load()))||cursorMoved.load(); };
+          if (guestFgPacing_.load(std::memory_order_relaxed)) {
+              // Guest-side frame gen: drain the delivery queue one frame per paced
+              // period. Wake at the next due time when something is queued, or on
+              // the usual triggers; otherwise wait for a delivery or a trigger.
+              const float hz = guestFgTargetHz_.load(std::memory_order_relaxed);
+              const auto period = std::chrono::nanoseconds((int64_t)(1e9 / (hz > 1.0f ? hz : 60.0f)));
+              auto now = std::chrono::steady_clock::now();
+              if (!guestFgHaveDue_) { guestFgNextDue_ = now; guestFgHaveDue_ = true; }
+              if (guestFgQueued_.load(std::memory_order_relaxed) > 0) {
+                  if (now < guestFgNextDue_) dirtyCV.wait_until(lk, guestFgNextDue_, basePred);
+              } else {
+                  dirtyCV.wait(lk, [&]{ return basePred() || guestFgQueued_.load(std::memory_order_relaxed) > 0; });
+              }
+              now = std::chrono::steady_clock::now();
+              if (guestFgQueued_.load(std::memory_order_relaxed) > 0 && now >= guestFgNextDue_) {
+                  pacedPop = true;
+                  // Advance from the DUE time so jitter does not accumulate, but
+                  // never fall more than one period behind real time - if the
+                  // queue built up, drain at most twice as fast until caught up.
+                  guestFgNextDue_ += period;
+                  if (guestFgNextDue_ < now - period) guestFgNextDue_ = now - period;
+              }
+          } else {
+              guestFgHaveDue_ = false;
+              dirtyCV.wait(lk, basePred);
+          }
+        }
         if (!isRunning) break;
 
         if (swapchain == VK_NULL_HANDLE || cmdBufs.empty()) continue;
+        if (pacedPop) {
+            bool popped;
+            { std::lock_guard<std::mutex> rl(renderMutex);
+              popped = popGuestFgDeliveryLocked();
+              guestFgQueued_.store(guestFgQueue_.size(), std::memory_order_relaxed); }
+            if (popped) needsRender.store(true, std::memory_order_relaxed);
+        }
+        if (!(needsRender.load() || fbResized.load() || cursorMoved.load())) continue;
         try { renderFrame(); } catch(...) {}
     }
+}
+
+// ---- Guest-side frame gen: delivery queue ----------------------------------
+
+void VulkanRendererContext::setGuestFrameGenPacing(bool enabled, float targetHz) {
+    const bool was = guestFgPacing_.load(std::memory_order_relaxed);
+    const float wasHz = guestFgTargetHz_.load(std::memory_order_relaxed);
+    if (was == enabled && (!enabled || std::fabs(wasHz - targetHz) < 0.01f)) return;
+    guestFgTargetHz_.store(targetHz, std::memory_order_relaxed);
+    guestFgPacing_.store(enabled, std::memory_order_relaxed);
+    RLOG("guest-fg: pacing %s target=%.1f Hz (was %s %.1f)", enabled ? "ON" : "off", targetHz,
+         was ? "ON" : "off", wasHz);
+    if (was && !enabled) {
+        // Turning off: the newest queued delivery becomes the window content,
+        // the rest are dropped, and latest-wins resumes.
+        std::lock_guard<std::mutex> rl(renderMutex);
+        while (popGuestFgDeliveryLocked()) {}
+        guestFgQueued_.store(0, std::memory_order_relaxed);
+        guestFgDropped_ = 0;
+    }
+    needsRender.store(true, std::memory_order_relaxed);
+    dirtyCV.notify_one();
+}
+
+void VulkanRendererContext::assignDeliveryLocked(int64_t id, WinTex& src, AHardwareBuffer* ahb) {
+    WinTex& wt  = texMap[id];
+    wt.img  = src.img;
+    wt.mem  = src.mem;
+    wt.view = src.view;
+    wt.ds   = src.ds;
+    wt.isAHB = true;
+    wt.ahb  = ahb;
+    wt.w    = src.w;
+    wt.h    = src.h;
+    if (src.needsTransition) {
+        wt.needsTransition  = true;
+        src.needsTransition = false;
+    }
+}
+
+bool VulkanRendererContext::popGuestFgDeliveryLocked() {
+    while (!guestFgQueue_.empty()) {
+        const GuestFgDelivery d = guestFgQueue_.front();
+        guestFgQueue_.pop_front();
+        auto cit = ahbImportCache.find(d.ahb);
+        if (cit == ahbImportCache.end()) { guestFgDropped_++; continue; }   // evicted meanwhile
+        assignDeliveryLocked(d.id, cit->second, d.ahb);
+        return true;
+    }
+    return false;
+}
+
+void VulkanRendererContext::trackDeliveredRate() {
+    const auto now = std::chrono::steady_clock::now();
+    if (!fgDeliverWindowOpen_) {
+        fgDeliverWindowStart_ = now;
+        fgDeliverWindowOpen_  = true;
+        fgDeliverAccum_       = 0;
+    }
+    fgDeliverAccum_++;
+    const float elapsed = std::chrono::duration<float>(now - fgDeliverWindowStart_).count();
+    if (elapsed < 0.5f) return;
+    const float rate = (float)fgDeliverAccum_ / elapsed;
+    fgDeliveredRate_ = fgDeliveredRate_ > 0.0f
+        ? fgDeliveredRate_ + (rate - fgDeliveredRate_) * 0.25f
+        : rate;
+    fgDeliverWindowStart_ = now;
+    fgDeliverAccum_       = 0;
+    // Every ~2 s while pacing: the one line that says whether guest frames reach
+    // the panel. delivered vs presented is the whole question for this engine.
+    if ((guestFgLogCount_++ % 4u) == 0u)
+        RLOG("guest-fg: delivered=%.1f/s presented=%.1f/s target=%.1f queue=%zu dropped=%u",
+             fgDeliveredRate_, fgPresentedRate_, guestFgTargetHz_.load(std::memory_order_relaxed),
+             guestFgQueue_.size(), guestFgDropped_);
 }
 
 void VulkanRendererContext::flushDeleteQueue() {
@@ -2580,25 +2694,29 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
                 AHardwareBuffer_release(stale);
                 ahbImportCache.erase(sit);
             }
+            // A queued delivery of an evicted buffer can no longer be shown.
+            for (auto qit = guestFgQueue_.begin(); qit != guestFgQueue_.end();) {
+                if (qit->ahb == stale) { qit = guestFgQueue_.erase(qit); guestFgDropped_++; }
+                else ++qit;
+            }
+            guestFgQueued_.store(guestFgQueue_.size(), std::memory_order_relaxed);
         }
     }
 
 
-    WinTex& src = cit->second;
-    WinTex& wt  = texMap[id];
-    wt.img  = src.img;
-    wt.mem  = src.mem;
-    wt.view = src.view;
-    wt.ds   = src.ds;
-    wt.isAHB = true;
-    wt.ahb  = ahb;
-    wt.w    = src.w;
-    wt.h    = src.h;
-
-    if (src.needsTransition) {
-        wt.needsTransition  = true;
-        src.needsTransition = false;
+    if (guestFgPacing_.load(std::memory_order_relaxed)) {
+        // Queue, don't overwrite: the render loop presents one delivery per paced
+        // period (renderLoop). Bounded; if the guest outruns the target the
+        // oldest is dropped, which is the same frame latest-wins would have lost.
+        trackDeliveredRate();
+        if (guestFgQueue_.size() >= kGuestFgQueueCap) { guestFgQueue_.pop_front(); guestFgDropped_++; }
+        guestFgQueue_.push_back(GuestFgDelivery{id, ahb});
+        guestFgQueued_.store(guestFgQueue_.size(), std::memory_order_relaxed);
+        dirtyCV.notify_one();
+        return;
     }
+
+    assignDeliveryLocked(id, cit->second, ahb);
     needsRender.store(true); dirtyCV.notify_one();
 }
 
@@ -2621,6 +2739,11 @@ void VulkanRendererContext::removeWindow(int64_t id) {
         texMap.erase(it);
     }
 
+
+    for (auto qit = guestFgQueue_.begin(); qit != guestFgQueue_.end();) {
+        if (qit->id == id) qit = guestFgQueue_.erase(qit); else ++qit;
+    }
+    guestFgQueued_.store(guestFgQueue_.size(), std::memory_order_relaxed);
 
     auto wit = windowAhbs.find(id);
     if (wit != windowAhbs.end()) {

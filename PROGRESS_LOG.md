@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-04 — ✅ **LSFG Native MERGED to `main` → `c2389ef4`** (on 3.0.5 `26831fc2`, vc 79)
+> Merge commit; revert with `git revert -m 1 c2389ef4`. 113 files, +35,174/−70 (25k of it the vendored DXVK `dxbc` translator). File list scanned before push — nothing outside the expected areas. Branch rebased onto main first (34 commits, zero conflicts), then README and plan docs brought up to date (`cd9aa601`).
+> - Merged on the user's reaffirmed instruction after one flag: the r10-onward lock path — limiter locked on, VRR locked off, launch-off, and the stuck-FIFO fix — has **no device log evidence yet**. The r10 log's buffer was cleared mid-run (no `locks ON/OFF` lines) and the APK installed at that moment was vc79/3.0.4, i.e. none of the staged builds. Everything else on the branch is device-proven.
+> - ⏭️ First thing next session: one run on r11 (or a main build) — arm, confirm Limit FPS and Auto refresh grey out, disarm, confirm they restore — and grep the log for `locks ON` / `locks OFF`.
+
 ## 2026-09-04 — 🎉 **LSFG Native DEVICE-PROVEN: 30 fps in, 118 fps at the panel** — plus a HUD honesty pass (r8 `23efff40`)
 > DiRT Showdown (D3D9/DXVK), AYANEO Pocket FIT / Adreno 750, pubg flavour, installed sha verified each run.
 > - **The result.** Guest locked at **30.0–30.1 fps**; measured at the swapchain **89.8 fps at 3×** and **119.8 fps at 4×** — within 0.4% of theoretical. Independently confirmed by the **AYANEO system overlay** (89 and 118), which is separate code from our instrumentation and agrees to about 1%. The user confirms it feels smoother, which is the half no log can answer.

@@ -589,6 +589,7 @@ private:
     bool        fgQueryPending_[MAX_FRAMES_IN_FLIGHT] = {};
     uint32_t    fgQueryGens_[MAX_FRAMES_IN_FLIGHT]    = {};
     float       fgChainMsPerGen_    = -1.0f;
+    uint32_t    fgChainLogCount_    = 0;
     void ensureFgQueryPool();
     void destroyFgQueryPool();
     void readFgQueryResult();

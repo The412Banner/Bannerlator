@@ -919,6 +919,11 @@ void VulkanRendererContext::readFgQueryResult() {
     fgChainMsPerGen_ = fgChainMsPerGen_ < 0.0f
         ? perGen
         : fgChainMsPerGen_ + (perGen - fgChainMsPerGen_) * 0.1f;
+    // Same cadence as the engine's own telemetry, so a log carries the cost
+    // next to the rates it explains.
+    if ((fgChainLogCount_++ % 120u) == 0u)
+        RLOG("lsfg-native: chain %.2f ms per generated frame (%.2f ms for %u, smoothed %.2f)",
+             perGen, (float)ms, fgQueryGens_[currentFrame], fgChainMsPerGen_);
 }
 
 void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
@@ -1788,12 +1793,16 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     // recorded into their own buffers in renderFrame, each submitted and
     // presented as soon as it is done. With no generation this is just the
     // real frame's copy (a no-op off the composite path).
-    if (fgPlan_.generations > 0) {
-        recordFrameGenProcess(cb);
-        recordFrameGenGeneration(cb, 0);
-    } else {
-        copyCompositeToSwapchain(cb, imgIdx);
-    }
+    //
+    // process() runs EVERY composite frame, generating or not: it is where the
+    // engine counts frames and seeds its input history, and it only starts
+    // generating once it has seen enough of them. r1 of this change called it
+    // only when a generation was already planned, so the count never advanced,
+    // the engine stayed cold for the whole session and plan() returned 0 every
+    // frame - presented rate equal to the guest rate, exactly.
+    recordFrameGenProcess(cb);
+    if (fgPlan_.generations > 0) recordFrameGenGeneration(cb, 0);
+    else                         copyCompositeToSwapchain(cb, imgIdx);
 
     VkResult endStatus = vk_.EndCommandBuffer(cb);
     if (endStatus!=VK_SUCCESS) {

@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — 🏁 **3.0.6 STABLE CUT — version bump vc79→80** (LSFG Native · lsfg-vk retired · GOG/Epic/Amazon storefronts)
+> Cut from `main` on top of `e8fbc4c4`. This commit = bump + README (version line, frame-gen section for two engines, credits: **Eden Team / camillelavey** + **WinNative** for LSFG Native, DXVK `dxbc`, lsfg-vk rows marked retired) + THIRD-PARTY-LICENSES rows (DXVK dxbc Zlib, Eden GPL-3.0) + `docs/releases/3.0.6.md` (= release body). Dispatch `release.yml --ref main` next; rich notes applied post-cut via `gh release edit 3.0.6 --notes-file /home/claude-user/bl-release-prep/notes-3.0.6.md`; update.json `notes` = one-liner. ⛔ nothing else to main until the publish job finishes (tag-repoint hazard).
+
 ## 2026-09-05 — ✅ **lsfg-vk retired from the engine list — MERGED to main `059c57d3`** (revert `git revert -m 1 059c57d3`)
 > `feat/retire-lsfg-vk` (`2ec0187a`) merged --no-ff after CI `retire-lsfg-vk-r1` green on all three flavours. Two engines remain: win-fg, LSFG Native. Legacy "lsfg" container/shortcut values resolve to "lsfg-native". lsfg-vk code parked in place; plumbing work parked on `feat/lsfg-vk-plumbing` @ `008a92a6`. Main build `main-lsfg-native-only` run `33948700463` → staging. Gotcha hit: the merge watcher's `git checkout -B main` failed ("main is already used by worktree bl-wt-main") and its unconditional `echo MERGED` misled the follow-on builder → merged via detached HEAD + `push HEAD:main`; misled run 33948666252 cancelled.
 

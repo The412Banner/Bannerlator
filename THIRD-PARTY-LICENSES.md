@@ -79,6 +79,8 @@ SOFTWARE.
 | Mesa / Turnip ([Banners-Turnip](https://github.com/The412Banner/Banners-Turnip)) | Mesa / jacojayy (Timeline-Semaphore patches) | MIT *(per upstream)* | Adreno Vulkan driver |
 | DXVK / [VEGAS DXVK](https://github.com/isygold/vegas-releases) | doitsujin / **isygold** | Zlib *(per upstream)* | D3D9/10/11 → Vulkan (VEGAS = Adreno-tuned DXVK fork) |
 | VKD3D-Proton | Valve / Wine | LGPL-2.1 *(per upstream)* | D3D12 → Vulkan |
+| DXVK `dxbc` compiler (vendored subset, `app/src/main/cpp/thirdparty/dxbc`) | doitsujin | Zlib *(per upstream)* | DXBC → SPIR-V translation of the user's own Lossless Scaling shaders for **LSFG Native** — nothing proprietary is bundled |
+| Eden emulator — native LSFG present path (PR #4263, camillelavey) | Eden Team | GPL-3.0 *(per upstream)* | **LSFG Native**: PE-resource shader map, ALPHA/BETA/GAMMA/DELTA chain decomposition and pacer, ported into the compositor (WinNative's implementation used as design reference, no code) |
 | [OpenXR-SDK](https://github.com/KhronosGroup/OpenXR-SDK) | Khronos | Apache-2.0 *(per upstream)* | XR support |
 
 ---

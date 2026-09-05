@@ -167,10 +167,10 @@ Also rolled up from the **`3.0.1`** point release on 3.0.0: **swipeable on-scree
 | Mode | What it does |
 |---|---|
 | **FIFO** (default) | "Vsync on" — smooth, tear-free, most battery-friendly, but it makes the game wait for the display. |
-| **Mailbox** | "Fast vsync" — never makes the game wait, still tear-free. The right mode for the Wine-side engines (lsfg-vk / win-fg), so their extra frames aren't throttled on the way out. |
+| **Mailbox** | "Fast vsync" — never makes the game wait, still tear-free. |
 | **Immediate** | "Vsync off" — lowest input lag, but can tear. |
 
-The engines want **opposite** present modes, and Bannerlator handles it for you. **LSFG Native forces FIFO** while it's generating — it queues the real and generated frames together and needs FIFO to show them one per refresh; under Mailbox the display would keep only the newest and discard the rest. The Wine-side engines prefer Mailbox for the mirror-image reason. Your chosen mode is restored the moment frame generation turns off. While LSFG Native is generating it also **locks the FPS limiter on** and **Auto refresh (VRR) off** — that's the configuration it was proven in, and both controls come back as you had them when it stops. You can also switch modes live from the **Present Mode selector** in the in-game Graphics tab, and every mode is explained by a **"?"** button and in the in-app **"What is all this?"** glossary.
+Bannerlator handles the present mode for you. **Both LSFG engines force FIFO** while generating: every frame, real or generated, needs its own refresh, and under Mailbox the display would keep only the newest and discard the rest. Your chosen mode is restored the moment frame generation turns off. While generating they also **lock the FPS limiter on** and **Auto refresh (VRR) off** — a steady, capped game is what frame generation is built on. With lsfg-vk the limiter paces at **cap × multiplier**, so the real frames land at your cap and the generated ones fill the gaps evenly. You can also switch modes live from the **Present Mode selector** in the in-game Graphics tab, and every mode is explained by a **"?"** button and in the in-app **"What is all this?"** glossary.
 
 ### Why is my FPS reading different from another emulator?
 

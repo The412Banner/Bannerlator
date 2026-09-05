@@ -2600,7 +2600,7 @@ private fun HudContent(state: XServerDrawerState) {
         ToggleRow("Limit FPS", limiterOn, enabled = !nativeFgLocks) { limiterOn = it; applyLimiter() }
         if (nativeFgLocks) {
             Text(
-                "Locked on while LSFG Native is generating",
+                "Locked on while frame generation is running",
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 fontSize = 10.sp
             )

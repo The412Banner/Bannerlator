@@ -1621,18 +1621,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // multiplier <= 1 as passthrough, so map anything below 2 to 1 — NOT max(2,mult),
                 // which would force 2x on Off.
                 writeLsfgConfig(mult >= 2 ? mult : 1, flow, dll.getAbsolutePath(), perfMode);
-                // Keep the vsync clock running only while frame-gen is actually generating (mult>=2),
-                // so the layer has a grid to phase-lock to; stop it in passthrough.
-                if (mult >= 2) startVsyncClock(); else stopVsyncClock();
+                // ONE pacer. The X server's Present pacer now spaces every guest present
+                // (real and generated) at cap x multiplier - see applyFpsLimit - so the
+                // layer must free-run, not phase-lock to a second clock and fight it.
+                stopVsyncClock();
                 if (fgOn) container.setFrameGenMultiplier(mult);
                 container.setFrameGenFlowScale(flow);
                 container.setLsfgPerformanceMode(perfMode);
                 container.saveData();
-                // lsfg multiplier may have crossed the >=2 threshold -> re-evaluate the limiter
-                // guard (lsfgGovernsFps) so the cap steps aside / resumes without extra user action.
+                // Same shape as LSFG Native while multiplying: limiter locked ON (the
+                // cap is what gives the layer a steady base and the pacer its period),
+                // Auto refresh locked OFF, fifo at the host so every paced present gets
+                // its own refresh. Restored on the way back to Off.
+                applyNativeFgLocks(mult >= 2);
+                // The multiplier changed -> the pacer's period (cap x mult) must follow.
                 reapplyFpsLimit();
-                // ... and re-apply the host present mode: mailbox while multiplying (so the generated
-                // frames aren't strangled by FIFO backpressure), back to the user's mode when off.
                 applyEffectivePresentMode();
                 // Frame-gen change (Off/On/2×/3×/4×) → full presentation reset. lsfg-vk restarts on the
                 // conf.toml rewrite above, but a swapchain-only recreate leaves it over-queued → generated
@@ -2854,7 +2857,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     + "flow_scale = " + String.format(java.util.Locale.US, "%.2f", flowScale) + "\n"
                     + "performance_mode = " + performanceMode + "\n"
                     + "hdr_mode = false\n"
-                    + "experimental_present_mode = " + (generating ? "\"mailbox\"" : "\"fifo\"") + "\n";
+                    // fifo on the layer's own swapchain too: its presents then BLOCK on our
+                    // X server, which is how the Present pacer's cap x mult period reaches
+                    // the layer. Under mailbox it never blocks and frames are replaced
+                    // upstream before we ever see them.
+                    + "experimental_present_mode = \"fifo\"\n";
             FileUtils.writeString(confFile, toml);
         }
         catch (Exception e) {
@@ -2978,7 +2985,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         if (st[4] >= 3f) text += ", throttling";
                         text += ")";
                     }
-                    if (haveEngineRates) XServerDrawerState.INSTANCE.setFrameGenReadout(text);
+                    if (haveEngineRates) {
+                        XServerDrawerState.INSTANCE.setFrameGenReadout(text);
+                    } else if (shownFps > 0f && lsfgGovernsFps()) {
+                        // lsfg-vk: the chain runs inside the guest, so there is no engine
+                        // rate here - but the presented rate IS ours, and the target is
+                        // cap x mult. Showing both is the first honest readout this
+                        // engine has had; the HUD's own counter is fooled by it.
+                        XServerDrawerState d = XServerDrawerState.INSTANCE;
+                        final int target = d.getFpsLimit().getValue()
+                            * Math.max(2, d.getFrameGenMultiplier().getValue());
+                        XServerDrawerState.INSTANCE.setFrameGenReadout(String.format(
+                            java.util.Locale.US, "%.0f shown at the panel  (target %d)", shownFps, target));
+                    }
                     // Also feed the in-game HUD. Its own counter ticks once per
                     // GUEST frame and therefore cannot see anything added after
                     // the game - it read 30 while the panel was showing 118,
@@ -6190,11 +6209,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     envVars.put("ENABLE_LSFG", "1");
                     envVars.put("LSFG_CONFIG", lsfgConf.getAbsolutePath());
                     envVars.put("LSFG_PROCESS", "bannerlator-lsfg");
-                    // Publish the display vsync clock so the layer phase-locks its pacing instead of
-                    // free-running and over-queuing the host compositor (the black-frame flicker root
-                    // cause). Runs from launch so it's live the instant FG is toggled on in-game; the
-                    // toggle path stops/restarts it, and onDestroy stops it.
-                    startVsyncClock();
+                    // The layer's vsync clock is deliberately NOT published any more: the X
+                    // server's Present pacer is the single pacer for guest-side frame gen
+                    // (cap x multiplier, applyFpsLimit). Two pacers is what made its output
+                    // uneven. The clock code stays for the diag builds that read it.
+                    if (lsfgLaunchMult >= 2) {
+                        // Auto-enabled from frame one: apply the same locks the in-game toggle
+                        // would, once the drawer state exists (it is seeded on the UI thread).
+                        runOnUiThread(() -> {
+                            applyNativeFgLocks(true);
+                            applyEffectivePresentMode();
+                            startLsfgStatsReadout();
+                        });
+                    }
                     // Baseline the FG-reset tracker to the launch level so the first in-game change
                     // fires the presentation reset. Auto-enable containers already generate from frame
                     // one (lsfgLaunchMult >= 2), so a passthrough launch is level 0.
@@ -9380,6 +9407,11 @@ return true;
                 && vkrPm != null && vkrPm.isFrameGenArmed()) {
             return "fifo";
         }
+        // lsfg-vk multiplying: also fifo. Its presents now arrive evenly paced at
+        // cap x mult (applyFpsLimit), and fifo gives each one its own refresh;
+        // mailbox would keep only the newest per refresh and drop the rest, which
+        // is exactly how its generated frames were being lost.
+        if (lsfgGovernsFps()) return "fifo";
         return resolvedRendererPresentMode();
     }
 
@@ -9967,6 +9999,13 @@ return true;
     // Behavior ported from GameNative (its "limiterControlledByLsfg"):
     // https://github.com/utkarshdalal/GameNative. See README Credits.
     private boolean lsfgGovernsFps() {
+        // 2026-09-04: the meaning of "governs" changed. The limiter no longer steps
+        // aside for lsfg-vk; it is MULTIPLIED (applyFpsLimit paces at cap x mult).
+        // Stepping aside ran the guest uncapped, which is the one configuration
+        // frame generation cannot work in: the game takes the whole GPU, the chain
+        // competes with it, the base rate wanders, and the generated frames are
+        // built between wandering real ones. LSFG Native proved on device that a
+        // capped, steady base is the entire trick; this gives lsfg-vk the same.
         XServerDrawerState s = XServerDrawerState.INSTANCE;
         // ONLY lsfg-vk. It lives inside the guest and paces the guest itself, so
         // our limiter has to step aside or the two fight.
@@ -10012,8 +10051,18 @@ return true;
         // the local `fps`. VRR votes the DISPLAYED rate, which in the lsfg-governs case is cap x mult
         // even though the present pacer steps aside (fps -> 0). This is the only place the two diverge.
         int vrrCap = fps;
-        // Step aside while lsfg-vk is multiplying -- it paces itself (see lsfgGovernsFps()).
-        if (lsfgGovernsFps()) fps = 0;
+        // lsfg-vk multiplying: the Present pacer cannot tell a real frame from a
+        // generated one - every present from the layer is one PresentPixmap - so
+        // pace ALL of them at cap x multiplier. Real frames then land at the cap
+        // and the generated ones fill the gaps at even spacing. That even spacing
+        // is the fix for the clustered gen+real pair (~1 ms apart) that the
+        // compositor was coalescing, which is why the HUD counted 2x while the
+        // panel showed 1x (device-proven 2026-09-01 for the same delivery path).
+        if (lsfgGovernsFps() && fps > 0) {
+            final int m = Math.max(2, XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue());
+            fps = fps * m;
+            Log.i("XServerDisplayActivity", "lsfg-vk pacer: cap " + vrrCap + " x " + m + " = " + fps);
+        }
         com.winlator.star.xserver.extensions.PresentExtension pe =
                 xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
         if (pe != null) pe.setFrameRateLimit(fps);
@@ -10049,8 +10098,8 @@ return true;
         // that is only the REQUESTED multiplier, not what is actually presented.
         // Fixed max refresh is the predictable choice here; the user's manual
         // lock, if any, is still honoured below.
-        final boolean nativeFgGenerating = "lsfg-native".equals(resolvedFrameGenEngine())
-            && frameGenMultipliesDisplay();
+        final boolean nativeFgGenerating = ("lsfg-native".equals(resolvedFrameGenEngine())
+            && frameGenMultipliesDisplay()) || lsfgGovernsFps();
         if (container != null && resolvedMatchRefreshRate() && nativeFgGenerating) {
             vrrRate = 0.0f;   // no vote: panel stays at its max
         } else if (container != null && resolvedMatchRefreshRate()) {

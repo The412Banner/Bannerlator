@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — 📱 3.0.6 notes + README: LSFG Native device-support note (Adreno A7xx+ and some Dimensity, per community testing)
+> Release body re-applied via `gh release edit`; `docs/releases/3.0.6.md` and README frame-gen bullet updated.
+
 ## 2026-09-05 — 🏁 **3.0.6 STABLE = Latest, tag on `dfe3782e`** (vc80; run `33978119820`; 3 APKs + update.json)
 > ✅ VERIFIED: tag `3.0.6` == built commit `dfe3782e` (no drift — main frozen through the publish job), isDraft=false, isPrerelease=false, `releases/latest` → 3.0.6, `update.json` vc80 / vn 3.0.6 + one-liner notes ending "Full notes below.", 3 flavour APKs (~530 MB each). Rich notes applied post-cut via `gh release edit 3.0.6 --notes-file` (3.0.5 house style + **"How to use LSFG Native"** section with per-panel cap×multiplier table + **"Where to get Proton 9"** restored + credits: Eden Team / camillelavey, WinNative, PancakeTAS, doitsujin, THS) — live body checked: has_howto / has_proton9 / has_credits all true. `docs/releases/3.0.6.md` == body, pushed after publish (`ec5b2419`).
 

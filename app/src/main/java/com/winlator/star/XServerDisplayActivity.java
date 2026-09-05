@@ -2951,6 +2951,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     // Live readout for the FG drawer, polled while the native engine is armed.
     private android.os.Handler lsfgStatsHandler;
+    // Last three shown-rate samples, for the HUD hysteresis in the tick below.
+    private final float[] shownHistory = new float[3];
+    private int shownHistoryIdx = 0;
     private Runnable lsfgStatsTick;
 
     /**
@@ -3008,12 +3011,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     // the game - it read 30 while the panel was showing 118,
                     // which made a working feature look like a broken one. Only
                     // a system overlay could tell the truth until now.
-                    if (frameRating != null) frameRating.setPresentedFps(shownFps);
+                    //
+                    // Hysteresis: the HUDs switch to the two-number "base->shown"
+                    // form when the shown rate differs from their own counter by
+                    // more than 10%. While frame gen ramps after a level change
+                    // (device: 34 -> 90 over ~10 s) the two drift in and out of
+                    // that band and the HUD flickered between one number and two.
+                    // So the shown rate is only handed over once it has been steady
+                    // (within 5%) for three consecutive ticks; otherwise the HUDs
+                    // get 0 and show their own counter alone.
+                    shownHistory[shownHistoryIdx++ % shownHistory.length] = shownFps;
+                    float lo = Float.MAX_VALUE, hi = 0f;
+                    for (float f : shownHistory) { lo = Math.min(lo, f); hi = Math.max(hi, f); }
+                    final boolean steady = lo > 0f && hi <= lo * 1.05f;
+                    final float hudShown = steady ? shownFps : 0f;
+                    if (frameRating != null) frameRating.setPresentedFps(hudShown);
                     if (frameRatingHorizontal != null)
-                        frameRatingHorizontal.setPresentedFps(shownFps);
-                    if (fusionHud != null) fusionHud.setPresentedFps(shownFps);
-                    if (perfHud != null) perfHud.setPresentedFps(shownFps);
-                    if (gameNativeHud != null) gameNativeHud.setPresentedFps(shownFps);
+                        frameRatingHorizontal.setPresentedFps(hudShown);
+                    if (fusionHud != null) fusionHud.setPresentedFps(hudShown);
+                    if (perfHud != null) perfHud.setPresentedFps(hudShown);
+                    if (gameNativeHud != null) gameNativeHud.setPresentedFps(hudShown);
                 }
                 if (lsfgStatsHandler != null) lsfgStatsHandler.postDelayed(this, 1000);
             }
@@ -3022,6 +3039,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void stopLsfgStatsReadout() {
+        java.util.Arrays.fill(shownHistory, 0f);
         // 0 puts both HUDs back to plain guest-rate reporting.
         if (frameRating != null) frameRating.setPresentedFps(0f);
         if (frameRatingHorizontal != null) frameRatingHorizontal.setPresentedFps(0f);

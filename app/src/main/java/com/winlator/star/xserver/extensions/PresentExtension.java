@@ -123,6 +123,25 @@ public class PresentExtension implements Extension {
         new java.util.concurrent.ConcurrentHashMap<>();
 
     private static class WindowTiming { long nextIdleNs = 0; }
+
+    // Pacer telemetry: one line every ~2 s while a limit is active. releases/s is
+    // what the guest actually got back; lead is how far ahead of real time the
+    // schedule is running (constant lead = latency, growing lead = the guest is
+    // being throttled harder than the target); pendingMax the deepest queue seen.
+    private volatile long pacerLogNs = 0;
+    private int pacerScheduled = 0, pacerFired = 0, pacerPendingMax = 0;
+    private void pacerTelemetry(long now, int targetFps, long leadNs, int pending) {
+        pacerScheduled++;
+        if (pending > pacerPendingMax) pacerPendingMax = pending;
+        if (pacerLogNs == 0) { pacerLogNs = now; return; }
+        final long dt = now - pacerLogNs;
+        if (dt < 2_000_000_000L) return;
+        final double secs = dt / 1e9;
+        android.util.Log.i("PresentExtension", String.format(java.util.Locale.US,
+            "present-pacer: target=%d scheduled=%.1f/s fired=%.1f/s pendingMax=%d lead=%.1fms",
+            targetFps, pacerScheduled / secs, pacerFired / secs, pacerPendingMax, leadNs / 1e6));
+        pacerLogNs = now; pacerScheduled = 0; pacerFired = 0; pacerPendingMax = 0;
+    }
     private final java.util.concurrent.ConcurrentHashMap<Integer, WindowTiming> windowTimings =
         new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -152,13 +171,18 @@ public class PresentExtension implements Extension {
         else wt.nextIdleNs += frameNs;
         long fireTime = wt.nextIdleNs - FIRE_EARLY_NS;
 
+        int pending;
         if (tryGetChoreographer(renderer) != null) {
-            pendingIdles.computeIfAbsent(window.id, k -> new java.util.concurrent.ConcurrentLinkedDeque<>())
-                .addLast(new PendingIdle(window, pixmap, serial, idleFence, fireTime));
+            java.util.concurrent.ConcurrentLinkedDeque<PendingIdle> q =
+                pendingIdles.computeIfAbsent(window.id, k -> new java.util.concurrent.ConcurrentLinkedDeque<>());
+            q.addLast(new PendingIdle(window, pixmap, serial, idleFence, fireTime));
+            pending = q.size();
             postChoreographerCallback();
         } else {
             cpuQueue.offer(new PendingIdle(window, pixmap, serial, idleFence, fireTime));
+            pending = cpuQueue.size();
         }
+        pacerTelemetry(now, targetFps, wt.nextIdleNs - now, pending);
     }
 
     private android.view.Choreographer tryGetChoreographer(com.winlator.star.renderer.vulkan.VulkanRenderer renderer) {
@@ -183,6 +207,7 @@ public class PresentExtension implements Extension {
             PendingIdle p;
             while ((p = q.peekFirst()) != null && frameTimeNs >= p.targetNs) {
                 q.pollFirst();
+                pacerFired++;
                 sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
             }
             if (!q.isEmpty()) anyRemaining = true;
@@ -207,6 +232,7 @@ public class PresentExtension implements Extension {
                     cpuQueue.poll();
                     java.util.concurrent.ConcurrentLinkedDeque<PendingIdle> q = pendingIdles.get(p.window.id);
                     if (q != null) q.remove(p);
+                    pacerFired++;
                     sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
                 } else {
                     long diff = p.targetNs - now;

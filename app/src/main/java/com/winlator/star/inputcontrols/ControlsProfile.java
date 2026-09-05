@@ -45,6 +45,54 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private final ArrayList<Object> elementOrder = new ArrayList<>();
     private final Context context;
     private GamepadState gamepadState;
+    // Preview mode: when non-null this profile is backed by an in-memory JSON document (e.g. a community
+    // .icp fetched for the Download Profiles "view example" popover) instead of a file under the profiles
+    // dir. Every disk read below goes through readProfileJSON() so the preview never touches storage, and
+    // save() refuses so a preview can never be persisted by accident.
+    private JSONObject previewData;
+
+    /**
+     * Build a throwaway, file-less profile from a raw .icp / .icpx JSON document so its on-screen layout
+     * can be drawn by InputControlsView without importing it. Header fields mirror
+     * InputControlsManager.loadProfile; returns null when the document has no usable name.
+     */
+    public static ControlsProfile createPreview(Context context, JSONObject data) {
+        if (data == null) return null;
+        String profileName = data.optString("name", null);
+        if (profileName == null || profileName.trim().isEmpty()) return null;
+        // Same legacy icon-id normalisation the importer applies before a file ever hits loadElements.
+        JSONArray elements = data.optJSONArray("elements");
+        if (elements != null) {
+            for (int i = 0; i < elements.length(); i++) {
+                JSONObject element = elements.optJSONObject(i);
+                if (element == null || !element.has("iconId")) continue;
+                try {
+                    element.put("iconId", InputControlsManager.normalizeLegacyIconId(element.optInt("iconId", 0)));
+                }
+                catch (JSONException ignored) {}
+            }
+        }
+        ControlsProfile profile = new ControlsProfile(context, data.optInt("id", -1));
+        profile.previewData = data;
+        profile.setName(profileName);
+        double cursorSpeed = data.optDouble("cursorSpeed", 1.0);
+        profile.setCursorSpeed(Double.isNaN(cursorSpeed) ? 1.0f : (float)cursorSpeed);
+        profile.setCustomAccentEnabled(data.optBoolean("customAccentEnabled", false));
+        profile.setCustomAccentColor(data.optInt("customAccentColor", 0xFF0055FF));
+        return profile;
+    }
+
+    public boolean isPreview() {
+        return previewData != null;
+    }
+
+    /** The profile's JSON document: the in-memory preview data, or the on-disk file (null if absent). */
+    private JSONObject readProfileJSON() throws JSONException, IOException {
+        if (previewData != null) return previewData;
+        File file = getProfileFile(context, id);
+        if (!file.isFile()) return null;
+        return new JSONObject(InputControlsManager.readStringAtomically(file));
+    }
 
     public static class GroupInfo {
         private final String name;
@@ -252,14 +300,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private void ensureGroupsLoaded() {
         if (groupsLoaded) return;
 
-        File file = getProfileFile(context, id);
-        if (!file.isFile()) {
-            groupsLoaded = true;
-            return;
-        }
-
         try {
-            JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
+            JSONObject profileJSONObject = readProfileJSON();
+            if (profileJSONObject == null) {
+                groupsLoaded = true;
+                return;
+            }
             loadGroupsFromJSONObject(profileJSONObject);
         }
         catch (JSONException | IOException e) {
@@ -336,6 +382,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public boolean save() {
+        if (previewData != null) return false; // previews are never persisted
         File file = getProfileFile(context, id);
 
         try {
@@ -450,10 +497,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
      */
     public boolean hasElementsOnDisk() {
         if (elementsLoaded) return !elements.isEmpty();
-        File file = getProfileFile(context, id);
-        if (!file.isFile()) return false;
         try {
-            JSONObject data = new JSONObject(InputControlsManager.readStringAtomically(file));
+            JSONObject data = readProfileJSON();
+            if (data == null) return false;
             JSONArray arr = data.optJSONArray("elements");
             return arr != null && arr.length() > 0;
         } catch (Exception e) {
@@ -469,15 +515,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         controllers.clear();
         controllersLoaded = false;
 
-        File file = getProfileFile(context, id);
-        if (!file.isFile()) {
-            controllersLoaded = true;
-            return controllers;
-        }
-
         try {
-            JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
-            if (!profileJSONObject.has("controllers")) {
+            JSONObject profileJSONObject = readProfileJSON();
+            if (profileJSONObject == null || !profileJSONObject.has("controllers")) {
                 controllersLoaded = true;
                 return controllers;
             }
@@ -526,14 +566,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         elementsLoaded = false;
         virtualGamepad = false;
 
-        File file = getProfileFile(context, id);
-        if (!file.isFile()) {
-            elementsLoaded = true;
-            return;
-        }
-
         try {
-            JSONObject profileJSONObject = new JSONObject(InputControlsManager.readStringAtomically(file));
+            JSONObject profileJSONObject = readProfileJSON();
+            if (profileJSONObject == null) {
+                elementsLoaded = true;
+                return;
+            }
             loadGroupsFromJSONObject(profileJSONObject);
             JSONArray elementsJSONArray = profileJSONObject.optJSONArray("elements");
             if (elementsJSONArray == null) {

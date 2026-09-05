@@ -6970,3 +6970,4 @@ Device-proven recipe (NFS Payback, GE-Proton 11.0-6 arm64ec, SteamLite v6 agent 
 - GuestProgramLauncherComponent: `WINE_ANDROID_GATEWAY` from the active network's default route (eanet layers' route table).
 - ContainerManager: vendor client .lnk (EA, Ubisoft Connect, …) no longer auto-imported as game cards. XServerDisplayActivity: `AppThemeState.init` on cold start; EA overlay hint.
 Not yet: Steamworks Shared 228980 download; auto-resume without the "Finish" tap; activation-persistence investigation.
+- r3: Steam Library tab gains an **Installed** chip (All / Games / Demos / Installed) = Games ∪ Demos that are downloaded on this device; own empty-state copy. r1→r2 was a one-line javac fix (Kotlin object accessor).

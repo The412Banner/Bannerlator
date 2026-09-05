@@ -31,6 +31,11 @@ struct VkTable {
     PFN_vkAcquireNextImageKHR AcquireNextImageKHR;
     PFN_vkQueuePresentKHR QueuePresentKHR;
     PFN_vkQueueSubmit QueueSubmit;
+    PFN_vkCreateQueryPool CreateQueryPool;
+    PFN_vkDestroyQueryPool DestroyQueryPool;
+    PFN_vkCmdResetQueryPool CmdResetQueryPool;
+    PFN_vkCmdWriteTimestamp CmdWriteTimestamp;
+    PFN_vkGetQueryPoolResults GetQueryPoolResults;
     PFN_vkCreateRenderPass CreateRenderPass;
     PFN_vkDestroyRenderPass DestroyRenderPass;
     PFN_vkCreateFramebuffer CreateFramebuffer;
@@ -294,7 +299,8 @@ public:
     //   [2] measured source (real) frames per second
     //   [3] measured presented frames per second
     //   [4] thermal status, -1 when the device gives no signal
-    void frameGenStats(float out[5]) const;
+    //   [5] GPU milliseconds the chain spends per generated frame, -1 unknown
+    void frameGenStats(float out[6]) const;
     // Path to the SPIR-V cache built from the user's Lossless.dll. Setting it
     // drops any existing engine so the next armed frame rebuilds from it.
     void setLsfgCachePath(const char* path);
@@ -561,9 +567,31 @@ private:
     void     trackPresentedRate(uint32_t presents);
 
     bool ensureLsfgEngine();
-    // Generated frames: dispatch `generate` into spare composite targets and
-    // copy each into its own acquired swapchain image.
-    void recordFrameGenPasses(VkCommandBuffer cb);
+    // One command buffer per pending present: slot 0 carries the composite,
+    // the chain's shared passes and generated frame 0; each later generated
+    // frame and the real frame are recorded and submitted on their own, so a
+    // finished frame reaches the presentation engine without waiting for the
+    // rest of the chain.
+    uint32_t cmdSlot(uint32_t k) const { return currentFrame * kMaxPresentsPerFrame + k; }
+    // Shared chain passes (the 24 shaders every generated frame depends on).
+    void recordFrameGenProcess(VkCommandBuffer cb);
+    // Generated frame g: synthesise into a spare composite target and copy it
+    // into the swapchain image reserved for it.
+    void recordFrameGenGeneration(VkCommandBuffer cb, uint32_t g);
+
+    // Chain cost: a timestamp pair per frame slot, start before the shared
+    // passes, end after the last generation's compute (before its copy, so a
+    // vblank wait on the swapchain image is not counted). Read back after the
+    // slot's fence wait, one frame later.
+    VkQueryPool fgQueryPool_        = VK_NULL_HANDLE;
+    bool        fgTimestampsOk_     = false;
+    float       fgTimestampPeriodNs_ = 0.0f;
+    bool        fgQueryPending_[MAX_FRAMES_IN_FLIGHT] = {};
+    uint32_t    fgQueryGens_[MAX_FRAMES_IN_FLIGHT]    = {};
+    float       fgChainMsPerGen_    = -1.0f;
+    void ensureFgQueryPool();
+    void destroyFgQueryPool();
+    void readFgQueryResult();
 
     VkFormat          offscreenFmt      = VK_FORMAT_R8G8B8A8_UNORM;
     VkRenderPass      offscreenRenderPass = VK_NULL_HANDLE; // CLEAR -> SHADER_READ_ONLY

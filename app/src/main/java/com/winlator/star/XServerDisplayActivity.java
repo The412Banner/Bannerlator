@@ -2977,6 +2977,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             "%.0f real → %.0f shown  (%dx", realFps, shownFps, trusted + 1);
                         if (st[4] >= 3f) text += ", throttling";
                         text += ")";
+                        // What each generated frame costs on the GPU. This is
+                        // the number that says whether a game has room for
+                        // frame generation before generation silently stops.
+                        if (st.length >= 6 && st[5] > 0f)
+                            text += String.format(java.util.Locale.US, "  %.1f ms/frame GPU", st[5]);
                     }
                     if (haveEngineRates) XServerDrawerState.INSTANCE.setFrameGenReadout(text);
                     // Also feed the in-game HUD. Its own counter ticks once per

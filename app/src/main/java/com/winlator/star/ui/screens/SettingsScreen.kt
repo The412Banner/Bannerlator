@@ -386,6 +386,34 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
     }
     var lsfgDllStatus by remember { mutableStateOf(lsfgDllStatusText()) }
+    // LSFG Native translates the DLL's shader chain to SPIR-V once and caches it.
+    // That used to happen on the first game launch, off-thread but with nothing
+    // on screen to say why the start was slow. Doing it here, right after the
+    // import (and on opening Settings if the cache is stale), moves the wait to
+    // where the user just acted and gives it a status line.
+    var lsfgShaderStatus by remember { mutableStateOf("") }
+    val lsfgShaderBuilding = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
+    fun buildLsfgShaderCache() {
+        if (!(lsfgDllFile.isFile && lsfgDllFile.length() > 0)) { lsfgShaderStatus = ""; return }
+        if (!lsfgShaderBuilding.compareAndSet(false, true)) return
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        val appCtx = context.applicationContext
+        lsfgShaderStatus = "Preparing shaders for LSFG Native… (one-time, can take a minute)"
+        Thread({
+            val started = System.currentTimeMillis()
+            val status = try {
+                com.winlator.star.core.LsfgNative.ensureCache(appCtx, false)
+            } catch (e: Throwable) { -1 }
+            val took = (System.currentTimeMillis() - started) / 1000
+            val text = when (status) {
+                com.winlator.star.core.LsfgNative.STATUS_OK ->
+                    if (took >= 2) "Shaders ready for LSFG Native (built in ${took}s)" else "Shaders ready for LSFG Native"
+                -1 -> "Shader preparation failed; it will be retried when a game launches"
+                else -> com.winlator.star.core.LsfgNative.explain(status)
+            }
+            main.post { lsfgShaderStatus = text; lsfgShaderBuilding.set(false) }
+        }, "lsfg-native-cache").start()
+    }
     fun importLosslessDllFromUri(uri: Uri) {
         try {
             lsfgDllFile.parentFile?.mkdirs()
@@ -394,6 +422,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             }
             prefs.edit().putString("lsfg_dll_source", "manual").apply()
             lsfgDllStatus = lsfgDllStatusText()
+            buildLsfgShaderCache()
         } catch (e: Exception) {
             lsfgDllStatus = "Import failed: " + e.message
         }
@@ -422,6 +451,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             src.inputStream().use { input -> lsfgDllFile.outputStream().use { output -> input.copyTo(output) } }
             prefs.edit().putString("lsfg_dll_source", "store").apply()
             lsfgDllStatus = lsfgDllStatusText()
+            buildLsfgShaderCache()
             Toast.makeText(context, "Lossless.dll set from Steam store install.", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             lsfgDllStatus = "Detect failed: " + e.message
@@ -436,6 +466,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) InAppFilePicker.pickedUri(result.data)?.let { importLosslessDllFromUri(it) }
     }
+    // A DLL imported before this existed still has its cache built at first
+    // launch; opening Settings now does it here instead. No-op when up to date.
+    LaunchedEffect(Unit) { buildLsfgShaderCache() }
 
     if (isBackingUp) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1138,12 +1171,12 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         }
 
         // ── Frame Generation: lsfg-vk (Lossless Scaling DLL) ─────────────
-        FieldSetLabel("Frame Generation — lsfg-vk")
+        FieldSetLabel("Frame Generation — Lossless Scaling (lsfg-vk / LSFG Native)")
         FieldSet {
             Text(
-                "lsfg-vk needs a Lossless Scaling \"Lossless.dll\". Download Lossless Scaling from the in-app " +
+                "lsfg-vk and LSFG Native need a Lossless Scaling \"Lossless.dll\". Download Lossless Scaling from the in-app " +
                 "Steam store and tap Detect below — or import your own copy. Either way it is copied into the " +
-                "app and reused by any container whose Frame Generation engine is set to lsfg-vk.",
+                "app and reused by any container whose Frame Generation engine is set to lsfg-vk or LSFG Native.",
                 color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
@@ -1151,6 +1184,12 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 "Status: " + lsfgDllStatus, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
+            if (lsfgShaderStatus.isNotEmpty()) {
+                Text(
+                    "LSFG Native: " + lsfgShaderStatus, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
             Button(
                 onClick = { detectLosslessDllFromStore() },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), // intentional: green = success/safe action, distinct from accent
@@ -1172,7 +1211,13 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             ) { Text("Pick via system…", color = MaterialTheme.colorScheme.primary) }
             if (lsfgDllFile.isFile) {
                 Button(
-                    onClick = { lsfgDllFile.delete(); prefs.edit().remove("lsfg_dll_source").apply(); lsfgDllStatus = lsfgDllStatusText() },
+                    onClick = {
+                        lsfgDllFile.delete()
+                        com.winlator.star.core.LsfgNative.cacheFile(context).delete()
+                        prefs.edit().remove("lsfg_dll_source").apply()
+                        lsfgDllStatus = lsfgDllStatusText()
+                        lsfgShaderStatus = ""
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                 ) { Text("Remove", color = Color.White) } // intentional: high-contrast label on error/destructive fill

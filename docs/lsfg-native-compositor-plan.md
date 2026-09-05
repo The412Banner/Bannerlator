@@ -374,3 +374,22 @@ Phase 0 first (everything depends on it). Phases 1/1b and Phase 2 are
 independent of each other and both land safely with frame gen off. Phase 3
 needs 0+1b+2. Phase 4 needs 3. Phases 5 and 6 need 4. Phase 7 is the CI build
 and the staged APK, run once at the end against the complete feature.
+
+## 9. Follow-ups built 2026-09-04 (branch `feat/lsfg-native-568`)
+
+- **Present per generation.** One command buffer per pending present
+  (`cmdSlot(k)`): slot 0 = composite + shared chain + generated frame 0; each
+  later generated frame and the real frame are recorded, submitted and
+  presented one at a time. The slot fence rides on the last submit (fence
+  signals are ordered after all earlier submissions on the queue); early exits
+  attach it to an empty submit. Cross-buffer ordering is a memory barrier at
+  the top of each later buffer - barriers span command buffers on one queue.
+- **Chain GPU cost.** Timestamp pair per frame slot: start (TOP_OF_PIPE)
+  before `process`, end (COMPUTE_SHADER) after the last `generateInto`, before
+  its swapchain copy so a vblank wait is not counted. Read back after the
+  slot's fence wait, smoothed 0.1, exposed as stat [5] and shown in the drawer
+  readout as "ms/frame GPU".
+- **Shader cache at import.** Settings builds the SPIR-V cache right after
+  Detect/Import, and on opening Settings if stale, with a status line under the
+  DLL status. Remove also deletes the cache. Launch-time build remains as the
+  fallback.

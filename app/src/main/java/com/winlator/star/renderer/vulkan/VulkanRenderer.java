@@ -931,7 +931,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     /**
      * Live native frame-gen telemetry, or null when the renderer is down:
      * {generations trusted, generations planned, real fps, presented fps,
-     * thermal status (-1 = no signal)}.
+     * thermal status (-1 = no signal), GPU ms per generated frame (-1 = unknown)}.
      */
     public float[] getFrameGenStats() {
         synchronized (lock) {

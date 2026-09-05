@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-04 — ✅ **568-r2 DEVICE-PROVEN: per-generation submits + chain cost readout work** (sha `30f05cba…`, installed sha verified)
+> DiRT, LSFG Native 4× (gen=3 max=3), refresh now fed as 144. Steady state: **guest 25.0 → presented 100.0 fps at the swapchain** (exact 4×), AYANEO PowerHelper independently reads ~100. **Chain cost 2.2 ms per generated frame (6.7 ms for all three)** at steady state; spikes to ~10 ms/gen (30 ms for three) in heavy scenes where the guest itself dipped to 13-17 — GPU contention, not the chain misbehaving. No renderer errors (no EndCommandBuffer/acquire/fence/OUT_OF_DATE lines). Presents-per-generation path therefore confirmed on device; r1's zero-generation was the warm-up regression, fixed in r2.
+
 ## 2026-09-04 — 🐞 **568-r1 DEVICE RUN: "running bad" = engine never warmed (my regression) → r2**
 > Installed sha verified `b3833e1d…`. DiRT, cap 30, LSFG Native 2×. Log: `pace gen=1 … guest=30.0 … cold` on every telemetry line and `presented=29.9 fps` = guest rate → **zero generated frames all session**. Cause: the r1 `recordCmdBuf` tail called `process()` only when a generation was planned; `process()` is where the engine counts frames (`frameCount_`) and warms (`kRequiredFrames`), so it stayed cold and `plan()` returned 0 forever. r11 called it every frame. Fix: `recordFrameGenProcess()` unconditional on the composite path.
 > - Also seen: `refresh=60.0` fed to the pacer on a 144 Hz panel (`Display.getRefreshRate()` under a frame-rate override; `dumpsys display` shows mode 1 = 144 active). `HeadroomLimit()` uses it → at 4× would clamp to 2×. Fix: `currentDisplayRefreshHz()` = max(panel highest mode, getRefreshRate()).

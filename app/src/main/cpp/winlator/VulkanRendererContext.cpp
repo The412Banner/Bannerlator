@@ -2303,7 +2303,7 @@ ok=true;}catch(...){}
                 ++fgSourceFrames_;
             }
         }
-    } else
+    } else {
     if (lsfgEngine_ && fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
         lsfgEngine_->configure(
             (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2), 0,
@@ -2324,6 +2324,7 @@ ok=true;}catch(...){}
             lsfgEngine_->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
         fgPlan_.generations = lsfgEngine_->plan(fgCapacity, ++fgSourceFrames_);
     }
+    }   // lsfg
     fgPlan_.presents = fgPlan_.generations + 1;
 
     // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.

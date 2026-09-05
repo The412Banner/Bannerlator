@@ -137,10 +137,13 @@
             android:screenOrientation="sensor"
             android:exported="false" />
 
-        <activity 
+        <activity
             android:exported="false"
             android:name="com.winlator.star.store.GogMainActivity"
-            android:screenOrientation="fullSensor"
+            android:screenOrientation="sensor"
+            android:launchMode="singleTop"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/AppTheme"/>
         <activity 
             android:exported="false"
@@ -153,10 +156,25 @@
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>
 
-        <activity 
+        <activity
             android:exported="false"
             android:name="com.winlator.star.store.EpicMainActivity"
-            android:screenOrientation="fullSensor"
+            android:screenOrientation="sensor"
+            android:launchMode="singleTop"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.star.store.StoreWebActivity"
+            android:screenOrientation="sensor"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.star.store.StoreCatalogDetailActivity"
+            android:screenOrientation="sensor"
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"

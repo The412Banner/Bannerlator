@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — ✅ **lsfg-vk DEVICE-PROVEN at the panel (r5 `a56ba2b9`, sha `857136c6…`)** — first time its generated frames measurably reach the screen
+> DiRT 3 (D3D11/DXVK), cap 30. **2×:** DXVK HUD 30.0 real → Fusion 60.0 delivered → **AYANEO system overlay 61** on glass (screenshot 01:19:48). **3×:** `guest-fg: delivered=90.0/s presented=90.1/s target=90.0 queue=1 dropped=0` held for 12 s straight (01:20:08-20) — delivered == presented, zero drops. The compositor delivery queue + paced Present releases + fifo + cap×mult did it; the layer's own pacing clock and the pause/teardown reset are gone and nothing missed them. Ramp-up after a level change is ~10 s (34→90) — pacer window + layer swapchain recreate; acceptable. The `dropped=27` burst at 01:20:22 coincides with the activity going to background (ActivityTaskManager stop/RESUMED), not with play. libsigchain SIGSEGV→SIG_DFL lines at 01:20:22 are new-process spawns, not a crash (game kept delivering).
+> - Not yet run: 4× (=120). Cost note: GPU 87% @ 83 °C at 2× with the game at 30 — lsfg-vk's guest-side chain is heavier than native's (2.2 ms/gen); expected.
+> - ⏭️ user go → merge `feat/lsfg-vk-plumbing` (4 commits on main `96a8f08a`) to main.
+
 ## 2026-09-05 — ✅ **Amazon store parity MERGED to `main` → `d12e0387`** (USER-CONFIRMED on device: "works")
 > Merge commit on the user's instruction; revert with `git revert -m 1 d12e0387`. 15 files, +1,296/−210 — file list scanned before push, exactly the expected set. Old main `49feedec` had not moved. CI-green (`33944416886`) and device-confirmed on the staged `amazon-parity-r1` pubg APK (sha `d9ca5187…`). All four stores now share the Store / Library / Profile shell (Steam also has Friends) and the Steam-style detail scaffold; Games-tab badges cover STEAM / EPIC / EOS / GOG / AMAZON / CUSTOM.
 

@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — 🏁 **3.0.6 STABLE = Latest, tag on `dfe3782e`** (vc80; run `33978119820`; 3 APKs + update.json)
+> ✅ VERIFIED: tag `3.0.6` == built commit `dfe3782e` (no drift — main frozen through the publish job), isDraft=false, isPrerelease=false, `releases/latest` → 3.0.6, `update.json` vc80 / vn 3.0.6 + one-liner notes ending "Full notes below.", 3 flavour APKs (~530 MB each). Rich notes applied post-cut via `gh release edit 3.0.6 --notes-file` (3.0.5 house style + **"How to use LSFG Native"** section with per-panel cap×multiplier table + **"Where to get Proton 9"** restored + credits: Eden Team / camillelavey, WinNative, PancakeTAS, doitsujin, THS) — live body checked: has_howto / has_proton9 / has_credits all true. `docs/releases/3.0.6.md` == body, pushed after publish (`ec5b2419`).
+
 ## 2026-09-05 — 🏁 **3.0.6 STABLE CUT — version bump vc79→80** (LSFG Native · lsfg-vk retired · GOG/Epic/Amazon storefronts)
 > Cut from `main` on top of `e8fbc4c4`. This commit = bump + README (version line, frame-gen section for two engines, credits: **Eden Team / camillelavey** + **WinNative** for LSFG Native, DXVK `dxbc`, lsfg-vk rows marked retired) + THIRD-PARTY-LICENSES rows (DXVK dxbc Zlib, Eden GPL-3.0) + `docs/releases/3.0.6.md` (= release body). Dispatch `release.yml --ref main` next; rich notes applied post-cut via `gh release edit 3.0.6 --notes-file /home/claude-user/bl-release-prep/notes-3.0.6.md`; update.json `notes` = one-liner. ⛔ nothing else to main until the publish job finishes (tag-repoint hazard).
 

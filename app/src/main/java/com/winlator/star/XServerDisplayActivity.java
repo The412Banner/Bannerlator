@@ -1646,6 +1646,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // (onFpsLimitChange). bionic-fg conf carries frame gen only; pass the limiter off.
             int fgModel = s.getFrameGenModel().getValue();
             int fgPreset = s.getFrameGenPerfPreset().getValue();
+            if (winFgNativeSession) {
+                // Win-FG Native: same shape as the LSFG Native branch above. The
+                // generator is our compositor, so a level/model/preset change is a
+                // call - no conf.toml, no layer reset, no presentation teardown.
+                Log.i("XServerDisplayActivity", "win-fg native toggle: fgOn=" + fgOn
+                    + " mult=" + mult + " flow=" + flow + " model=" + fgModel
+                    + " preset=" + fgPreset
+                    + " renderer=" + (vulkanRendererOrNull() != null ? "vulkan" : "NULL"));
+                applyWinFgNative(mult, flow, fgModel, fgPreset);
+                if (fgOn) container.setFrameGenMultiplier(mult);
+                container.setFrameGenFlowScale(flow);
+                container.setFrameGenModel(fgModel);
+                container.setFrameGenPerfPreset(fgPreset);
+                container.saveData();
+                reapplyFpsLimit();
+                return;
+            }
             writeWinFgConfig(mult, flow, false, 0, fgModel, fgPreset);
             if (fgOn) container.setFrameGenMultiplier(mult);
             container.setFrameGenFlowScale(flow);
@@ -2019,6 +2036,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         XServerDrawerState.INSTANCE.setFrameGenModel(resolvedFrameGenModel());
         XServerDrawerState.INSTANCE.setFrameGenPerfPreset(resolvedFrameGenPerfPreset());
         XServerDrawerState.INSTANCE.setFrameGenEngine(fgEngine);
+        winFgNativeSession = computeWinFgNativeSession();
+        XServerDrawerState.INSTANCE.setWinFgNative(winFgNativeSession);
         XServerDrawerState.INSTANCE.setLsfgPerformanceMode(container.isLsfgPerformanceMode());
         XServerDrawerState.INSTANCE.setFpsLimiterEnabled(fpsLimOn);
         XServerDrawerState.INSTANCE.setFpsLimit(resolvedFpsLimiterValue());
@@ -2940,6 +2959,38 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (multiplier >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
     }
 
+    /**
+     * Win-FG Native at launch: select the engine and arm it OFF. Nothing to
+     * build or import - the chain is embedded - so this is immediate. Same
+     * launch rule as LSFG Native: every session starts with frame gen off.
+     */
+    private void prepareWinFgNative() {
+        applyWinFgNative(0, container.getFrameGenFlowScale(),
+            resolvedFrameGenModel(), resolvedFrameGenPerfPreset());
+    }
+
+    /** Select win-fg in the renderer, push its knobs, and arm it at `multiplier` (0 = off). */
+    private void applyWinFgNative(int multiplier, float flowScale, int model, int perfPreset) {
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+        if (vkr == null) {
+            Log.w("XServerDisplayActivity",
+                "applyWinFgNative(" + multiplier + ") ignored - no Vulkan renderer");
+            return;
+        }
+        Log.i("XServerDisplayActivity", "applyWinFgNative: multiplier=" + multiplier
+            + " flow=" + flowScale + " model=" + model + " preset=" + perfPreset
+            + " refresh=" + currentDisplayRefreshHz());
+        vkr.setFrameGenEngine(com.winlator.star.renderer.vulkan.VulkanRenderer.FG_ENGINE_WINFG);
+        vkr.setWinFgTuning(model, perfPreset);
+        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
+        vkr.setFrameGenArmed(multiplier >= 2, multiplier);
+        // Identical follow-through to LSFG Native: fifo while multiplying, the
+        // limiter/VRR locks, and the base->shown readout.
+        applyEffectivePresentMode();
+        applyNativeFgLocks(multiplier >= 2);
+        if (multiplier >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
+    }
+
     // Live readout for the FG drawer, polled while the native engine is armed.
     private android.os.Handler lsfgStatsHandler;
     private Runnable lsfgStatsTick;
@@ -3038,7 +3089,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             s.setFpsLimit(cap);
             s.setMatchRefreshRate(false);
             s.setNativeFgLocks(true);
-            Log.i("XServerDisplayActivity", "lsfg-native locks ON: limiter=" + cap + " vrr=off"
+            Log.i("XServerDisplayActivity", "native-fg locks ON: limiter=" + cap + " vrr=off"
                 + " (was limiter=" + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
                 + " vrr=" + nativeFgSavedMatchRefresh + ")");
             applyFpsLimit(cap);
@@ -3048,7 +3099,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             s.setFpsLimiterEnabled(nativeFgSavedLimiterOn);
             s.setFpsLimit(nativeFgSavedLimit);
             s.setMatchRefreshRate(nativeFgSavedMatchRefresh);
-            Log.i("XServerDisplayActivity", "lsfg-native locks OFF: restored limiter="
+            Log.i("XServerDisplayActivity", "native-fg locks OFF: restored limiter="
                 + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
                 + " vrr=" + nativeFgSavedMatchRefresh);
             applyFpsLimit(nativeFgSavedLimiterOn && nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 0);
@@ -6207,7 +6258,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // FPS limiter is handled separately (host pacer), so it no longer forces this layer
                 // to load. multiplier=0 -> frame gen starts Off in-game (layer loaded, enable live).
                 boolean fgOn = resolvedFrameGenEngine().equals("bionic");
-                if (fgOn) {
+                // Win-FG Native: the win-fg chain runs inside OUR compositor, exactly like
+                // LSFG Native, and needs nothing from the user - the ten shaders are ours and
+                // embedded. Nothing is injected into the container: no WIN_FG_ENABLE, no
+                // conf.toml, no layer. The in-container layer is kept ONLY for the
+                // crowdsourced training capture, which records from inside the guest and has
+                // no native equivalent (computeWinFgNativeSession).
+                winFgNativeSession = computeWinFgNativeSession();
+                if (fgOn && winFgNativeSession) {
+                    prepareWinFgNative();
+                } else if (fgOn) {
                     envVars.put("WIN_FG_ENABLE", "1");
                     // Extra win-fg logging (global opt-in): verbose present-path logging for debugging
                     // win-fg freezes/crashes. Sets WIN_FG_DEBUG=1; writeWinFgConfig stamps debug=on/off.
@@ -9346,6 +9406,27 @@ return true;
         return shortcut != null ? shortcut.getExtra("frameGenEngine", container.getFrameGenEngine()) : container.getFrameGenEngine();
     }
 
+    // True for the session when the "bionic" (win-fg) engine runs inside our compositor
+    // rather than as a layer inside the guest. Decided from launch config only, so the
+    // drawer seed and the launch-env builder compute the same answer.
+    private boolean winFgNativeSession = false;
+
+    private boolean computeWinFgNativeSession() {
+        return "bionic".equals(resolvedFrameGenEngine())
+            && "vulkan".equalsIgnoreCase(resolvedRenderer())
+            // Training capture records from INSIDE the guest; it needs the layer.
+            && !WinFgCapture.isEnabled(this);
+    }
+
+    // Either engine that generates in OUR compositor: LSFG Native, or Win-FG Native.
+    // Everything that is true of one is true of the other - fifo while multiplying,
+    // limiter/VRR locks, HUD base->shown - so the callers below key on this, not on
+    // the engine name.
+    private boolean nativeFrameGenEngine() {
+        final String engine = resolvedFrameGenEngine();
+        return "lsfg-native".equals(engine) || ("bionic".equals(engine) && winFgNativeSession);
+    }
+
     // Any frame-gen engine (lsfg-vk OR bionic-fg) actively multiplying (mult >= 2) inserts extra
     // presents at the guest swapchain. The host compositor MUST be mailbox for those to reach the
     // screen: FIFO vsync-blocks the host present, which backpressures the guest present and strangles
@@ -9376,8 +9457,7 @@ return true;
         // is how the r9 log shows FIFO being forced 0.6 s after mailbox was applied
         // and before anything was armed - and then never released on disarm.
         com.winlator.star.renderer.vulkan.VulkanRenderer vkrPm = vulkanRendererOrNull();
-        if ("lsfg-native".equals(resolvedFrameGenEngine())
-                && vkrPm != null && vkrPm.isFrameGenArmed()) {
+        if (nativeFrameGenEngine() && vkrPm != null && vkrPm.isFrameGenArmed()) {
             return "fifo";
         }
         return resolvedRendererPresentMode();
@@ -9989,7 +10069,7 @@ return true;
     private boolean frameGenMultipliesDisplay() {
         XServerDrawerState s = XServerDrawerState.INSTANCE;
         final String engine = resolvedFrameGenEngine();
-        return ("lsfg".equals(engine) || "lsfg-native".equals(engine))
+        return ("lsfg".equals(engine) || nativeFrameGenEngine())
             && s.getFrameGenEnabled().getValue()
             && s.getFrameGenMultiplier().getValue() >= 2;
     }
@@ -10049,8 +10129,7 @@ return true;
         // that is only the REQUESTED multiplier, not what is actually presented.
         // Fixed max refresh is the predictable choice here; the user's manual
         // lock, if any, is still honoured below.
-        final boolean nativeFgGenerating = "lsfg-native".equals(resolvedFrameGenEngine())
-            && frameGenMultipliesDisplay();
+        final boolean nativeFgGenerating = nativeFrameGenEngine() && frameGenMultipliesDisplay();
         if (container != null && resolvedMatchRefreshRate() && nativeFgGenerating) {
             vrrRate = 0.0f;   // no vote: panel stays at its max
         } else if (container != null && resolvedMatchRefreshRate()) {

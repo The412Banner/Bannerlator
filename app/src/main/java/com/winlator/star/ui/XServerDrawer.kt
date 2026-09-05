@@ -1212,6 +1212,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val engine by state.frameGenEngine.collectAsState()
     val layerActive by state.bionicFgActive.collectAsState()
     val initLsfgPerf by state.lsfgPerformanceMode.collectAsState()
+    val winFgNative by state.winFgNative.collectAsState()
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -1219,7 +1220,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val engineLabel = when (engine) {
         "lsfg"        -> "lsfg-vk"
         "lsfg-native" -> "LSFG Native"
-        "bionic"      -> "win-fg"
+        "bionic"      -> if (winFgNative) "Win-FG Native" else "win-fg"
         else          -> "Off"
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0

@@ -374,3 +374,25 @@ Phase 0 first (everything depends on it). Phases 1/1b and Phase 2 are
 independent of each other and both land safely with frame gen off. Phase 3
 needs 0+1b+2. Phase 4 needs 3. Phases 5 and 6 need 4. Phase 7 is the CI build
 and the staged APK, run once at the end against the complete feature.
+
+## 8. Win-FG Native (2026-09-04) — second engine on the same seam
+
+The compositor seam built for LSFG turned out to be engine-agnostic, so win-fg
+(our own MIT chain, ten compute shaders, embedded SPIR-V, needs no DLL) now runs
+on it too. `winfg/winfg_engine.{h,cpp}` is a thin adapter with the same
+prepare/plan/process/generateInto contract as `lsfg::Engine`; the chain
+(`framegen.cpp`, `record_impl.inc`) is used unmodified. `winfg_vkd` fills its
+dispatch table from the renderer's `VkTable`, like `lsfg_vkd`.
+
+- Renderer: `setFrameGenEngine(0 lsfg | 1 win-fg)` drops the other engine;
+  `setWinFgTuning(model, perfPreset)`; the capability gate for win-fg is only
+  "storage on the swapchain format" (`fgCapsOk()`), not the LSFG fp16 chain.
+- App: the `bionic` engine key is unchanged (persisted config keeps working).
+  On the Vulkan renderer it runs native (`winFgNativeSession`) and shows as
+  "Win-FG Native"; the in-container layer is loaded only when training
+  capture is enabled, which has to record from inside the guest.
+- Same follow-through as LSFG Native: FIFO while multiplying, limiter locked
+  on / VRR locked off, base→shown HUD readout.
+- alpha: 2× uses 0.35 (the guest layer's proven bias); 3×/4× space evenly.
+  `record()` has no flow/synth split, so 3×/4× recompute flow per generated
+  frame — a cost to revisit once 2× is device-proven.

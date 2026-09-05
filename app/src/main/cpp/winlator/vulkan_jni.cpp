@@ -406,6 +406,21 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
     if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz);
 }
 
+// Which native engine generates (0 = LSFG, 1 = win-fg) and win-fg's own knobs.
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenEngine(
+        JNIEnv*, jobject, jlong handle, jint kind) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenEngine((int)kind);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetWinFgTuning(
+        JNIEnv*, jobject, jlong handle, jint model, jint perfPreset) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setWinFgTuning((int)model, (int)perfPreset);
+}
+
 // Live frame-gen telemetry: {accepted, planned, sourceFps, presentedFps, thermal}
 extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeFrameGenStats(

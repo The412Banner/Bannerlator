@@ -136,6 +136,12 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetLsfgCachePath(long handle, String path);
     private native void nativeSetFrameGenTuning(long handle, float flowScale, float refreshHz);
     private native float[] nativeFrameGenStats(long handle);
+    private native void nativeSetFrameGenEngine(long handle, int kind);
+    private native void nativeSetWinFgTuning(long handle, int model, int perfPreset);
+
+    /** Native frame-gen engine kinds (mirror VulkanRendererContext). */
+    public static final int FG_ENGINE_LSFG  = 0;
+    public static final int FG_ENGINE_WINFG = 1;
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -182,6 +188,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
                     if (pendingLsfgCachePath != null)
                         nativeSetLsfgCachePath(nativeHandle, pendingLsfgCachePath);
+                    nativeSetFrameGenEngine(nativeHandle, pendingFgEngine);
+                    nativeSetWinFgTuning(nativeHandle, pendingFgModel, pendingFgPerfPreset);
                     nativeSetFrameGenTuning(nativeHandle, pendingFgFlowScale, pendingFgRefreshHz);
                     if (pendingFgArmed)
                         nativeSetFrameGenArmed(nativeHandle, true, pendingFgMultiplier);
@@ -949,6 +957,23 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         }
     }
 
+    /** Which native engine generates: {@link #FG_ENGINE_LSFG} or {@link #FG_ENGINE_WINFG}. */
+    public void setFrameGenEngine(int kind) {
+        pendingFgEngine = kind;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetFrameGenEngine(nativeHandle, kind);
+        }
+    }
+
+    /** win-fg only: interpolation model (3/4) and performance preset (0..2). */
+    public void setWinFgTuning(int model, int perfPreset) {
+        pendingFgModel = model;
+        pendingFgPerfPreset = perfPreset;
+        synchronized (lock) {
+            if (nativeHandle != 0) nativeSetWinFgTuning(nativeHandle, model, perfPreset);
+        }
+    }
+
     /** Human-readable verdict, naming the first gate that failed. */
     public String getLsfgCapsReason() {
         synchronized (lock) {
@@ -1029,6 +1054,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private float   pendingFgFlowScale    = 1.0f;
     private float   pendingFgRefreshHz    = 0.0f;
     private String  pendingLsfgCachePath  = null;
+    private int     pendingFgEngine       = FG_ENGINE_LSFG;
+    private int     pendingFgModel        = 4;
+    private int     pendingFgPerfPreset   = 1;
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) {
         this.fpsLimit = limit;

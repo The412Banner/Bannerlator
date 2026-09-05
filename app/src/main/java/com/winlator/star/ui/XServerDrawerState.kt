@@ -127,6 +127,12 @@ object XServerDrawerState {
     val nativeFgLocks: StateFlow<Boolean> = _nativeFgLocks
     fun setNativeFgLocks(v: Boolean) { _nativeFgLocks.value = v }
 
+    // "bionic" (win-fg) is running inside our compositor this session rather than
+    // as a guest layer. Display only: the badge reads "Win-FG Native".
+    private val _winFgNative = MutableStateFlow(false)
+    val winFgNative: StateFlow<Boolean> = _winFgNative
+    fun setWinFgNative(v: Boolean) { _winFgNative.value = v }
+
     private val _presentModeLocked = MutableStateFlow(false)
     val presentModeLocked: StateFlow<Boolean> = _presentModeLocked
     fun setPresentModeLocked(v: Boolean) { _presentModeLocked.value = v }
@@ -566,6 +572,7 @@ object XServerDrawerState {
         _presentMode.value = "fifo"
         _presentModeLocked.value = false
         _nativeFgLocks.value = false
+        _winFgNative.value = false
         _rendererIsVulkan.value = false
         _lsfgPerformanceMode.value = false
         _fpsLimiterEnabled.value = false

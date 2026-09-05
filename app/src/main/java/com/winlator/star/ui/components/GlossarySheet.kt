@@ -119,7 +119,7 @@ internal val CONTAINER_GLOSSARY: List<GlossarySection> = listOf(
         GlossaryEntry("Render scale / supersampling",
             "Renders the game at a higher resolution and shrinks it for a sharper image (costs performance), or at a lower resolution for more FPS."),
         GlossaryEntry("Frame generation",
-            "Inserts extra in-between frames to make motion look smoother. Interpolation always adds about one frame of input delay, and can produce occasional artifacts, so it's optional. Three engines: win-fg (built in, needs nothing), lsfg-vk (runs the Lossless Scaling shaders inside the game) and LSFG Native (runs them inside Bannerlator itself, so the extra frames reach the screen directly). Both LSFG engines need your own imported Lossless.dll. Needs the Vulkan renderer."),
+            "Inserts extra in-between frames to make motion look smoother. Interpolation always adds about one frame of input delay, and can produce occasional artifacts, so it's optional. Three engines: Win-FG Native (built in, needs nothing, runs inside Bannerlator itself so the extra frames reach the screen directly), lsfg-vk (runs the Lossless Scaling shaders inside the game) and LSFG Native (runs them inside Bannerlator itself, like Win-FG Native). Both LSFG engines need your own imported Lossless.dll. Needs the Vulkan renderer."),
         GlossaryEntry("FPS limiter",
             "Caps how many frames the game renders per second. A cap cuts heat and battery use and can smooth out an unstable frame rate. Turning it on just loads the limiter — you set the actual cap live from the in-game FPS menu."),
         GlossaryEntry("Native rendering",

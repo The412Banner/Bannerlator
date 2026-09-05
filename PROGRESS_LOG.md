@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-05 — 🎮🔑 **EA-on-Steam: GameHub first-run of NFS Payback captured live — the mechanism is the real Steam client, not an installscript engine**
+> User launched Payback in GameHub (fresh EA state) while a logcat + 2 s process poller recorded (`/data/local/tmp/ea-capture`, copies in `lsfg-native-stage/ea_*.txt`). Sequence: new Proton-11-arm64ec container → **wine-mono 10.1.0 MSI installed first** → genuine `steam.exe --username --token` + steamservice → **`SteamService.exe /installscript …\runasadmin.vdf 1262580`** (Steam itself) → `EAappInstaller.exe EAX_LAUNCH_CLIENT=0 IGNORE_INSTALLED=1` → EA MSI with **managed .NET custom actions** (`juno-custom-actions!JunoCustomActions.*` via rundll32 — the reason our Aug attempt died at `0x8007065b` without mono) → vcredists (Steamworks Shared 228980 + EA's) → `Link2EA.exe link2ea://launchgame/1262580?platform=steam` → `EADesktop.exe -ls=BackgroundService -silent --disable-gpu …` (no window, so no OpenGL wall) → `EASteamProxy.exe` → game; title screen reached, "You're signed in" via the Steam-linked EA account, no login UI. FEX global TSO=0, no EA AppConfig needed.
+> - **For Bannerlator:** EA = our SteamLite launch path (`RealSteamLauncher` stages client + `appmanifest` StateFlags 4 + `--applaunch`) in a P11 container WITH wine-mono, plus Steamworks Shared (228980) download/manifest which we don't do today. Our installScript executor (`f9048bab`, Ubisoft P1) is for non-client launches only. ⏭️ test on device: Payback via our Steam store → SteamLite launch in xuser-3.
+
 ## 2026-09-05 — ✅ 568 follow-ups on main: `be13c44b` (fast-forward after CI `33980365701` green on all three flavours); staged `Bannerlator-lsfg-native-568-main-r1-pubg.apk` sha `485c9937…`. vc frozen 80. NOT device-run on main yet.
 
 ## 2026-09-05 — 🔁 **568 follow-ups cherry-picked onto main (post-3.0.6)** — branch `feat/lsfg-native-568-main`, artifacts build, fast-forward to main on green

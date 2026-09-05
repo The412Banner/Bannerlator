@@ -1371,7 +1371,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         // A cold start straight into the game (home-screen pinned shortcut, ACTION_VIEW, adb) never ran
         // MainActivity, so the theme/prefs singleton was uninitialised → default theme in the in-game UI.
-        try { com.winlator.star.ui.theme.AppThemeState.init(this); } catch (Throwable ignored) {}
+        try { com.winlator.star.ui.theme.AppThemeState.INSTANCE.init(this); } catch (Throwable ignored) {}
         // Stamp the launch time up front: the HUD wrapper-log resolver (P3) only trusts a DXVK/VKD3D
         // log written THIS session, so a previous game's stale log in a shared dir can never leak in.
         sessionStartMs = System.currentTimeMillis();

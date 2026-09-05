@@ -3063,9 +3063,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** The panel's real refresh rate; the pacer never generates above it. */
     private float currentDisplayRefreshHz() {
         try {
+            // The panel's HIGHEST mode, not getRefreshRate(). The latter reports
+            // what the platform currently grants this window, and on device it
+            // read 60 on a 144 Hz panel mid-game (a frame-rate override, not a
+            // mode switch). The engine uses this as its headroom ceiling, so a
+            // 60 there quietly caps 4x to 2x. The panel can always be driven at
+            // its top mode under FIFO; that is the number the ceiling wants.
+            float best = (float) pickHighestRefreshRate();
             android.view.Display d = getWindowManager().getDefaultDisplay();
             float hz = (d != null) ? d.getRefreshRate() : 0f;
-            return hz > 1f ? hz : 0f;
+            float out = Math.max(best, hz);
+            return out > 1f ? out : 0f;
         } catch (Throwable t) {
             return 0f;
         }

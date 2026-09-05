@@ -10,6 +10,7 @@
 > - ⚠️ **Not compile-verified locally** (no toolchain — CI is the compiler). ⚠️ NOT device-proven. Unverified-without-a-token: GOG `userData.json` `friends[]`/`avatar` shape, Epic friends-summary + bulk-account endpoints (both fail-soft → notice, never a crash). vc untouched (79).
 > - ✅ Commit `f6a8b0e5` → CI run `33940483471` (`store-parity-r1`, headSha verified) — **pubg + standard GREEN on the first build** (ludashi still finishing its informational Rust step at staging time). Staged `/sdcard/Download/Bannerlator-store-parity-r1-pubg.apk` sha256 `2b6889fa…4bdec` (529,862,243 B, 1306 zip entries verified).
 > - **r2 (user decision):** Friends tabs DROPPED on GOG and Epic — both rosters are real (Galaxy friends / Epic launcher friends) but empty for almost everyone; the count + a short avatar/name row stay on Profile. Hosts are now three tabs: Store / Library / Profile. Steam keeps its Friends tab.
+> - ✅ r2 commit `dcba2b3d` → CI run `33941770783` pubg GREEN. Staged `/sdcard/Download/Bannerlator-store-parity-r2-pubg.apk` sha256 `d759129d…32cc8` (529,853,136 B, 1306 entries verified); r1 APK removed from Downloads.
 > - ⏭️ user test: GOG/Epic Store tabs, search, free-claim WebView, Library sync, Friends/Profile, detail pages (owned + catalog), rotation.
 
 ## 2026-09-04 — ✅ **LSFG Native MERGED to `main` → `c2389ef4`** (on 3.0.5 `26831fc2`, vc 79)

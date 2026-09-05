@@ -29,73 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/** The Epic **Friends** and **Profile** tabs, fed by one [EpicUserData] fetch. */
-
-@Composable
-fun EpicFriendsTab(
-    profile: EpicUserData.Profile?,
-    loading: Boolean,
-    wide: Boolean,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val friends = profile?.friends.orEmpty()
-    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        StoreSectionHeader(
-            title = "Friends",
-            sub = when {
-                loading && profile == null -> "Loading…"
-                friends.isEmpty() -> null
-                else -> "${friends.size} on Epic · no presence feed"
-            },
-        )
-        when {
-            profile == null && loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StoreNotice(title = "Loading your friends", body = "Asking Epic for your friends list…")
-            }
-            profile == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StoreNotice(
-                    title = "Friends unavailable",
-                    body = "Epic didn't answer. Check your connection or sign in again.",
-                    actionLabel = "Retry",
-                    onAction = onRefresh,
-                )
-            }
-            !profile.friendsAvailable -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StoreNotice(
-                    title = "Friends list unavailable",
-                    body = "Epic's friends service refused this session. Your library and store still work.",
-                    actionLabel = "Retry",
-                    onAction = onRefresh,
-                )
-            }
-            friends.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StoreNotice(
-                    title = "No friends yet",
-                    body = "Add friends in the Epic Games launcher and they will show up here.",
-                    actionLabel = "Refresh",
-                    onAction = onRefresh,
-                )
-            }
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().focusGroup(),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (wide) {
-                    items(friends.chunked(2), key = { it.first().accountId }) { pair ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            pair.forEach { f -> EpicFriendRow(f, Modifier.weight(1f)) }
-                            if (pair.size == 1) Spacer(Modifier.weight(1f))
-                        }
-                    }
-                } else {
-                    items(friends, key = { it.accountId }) { f -> EpicFriendRow(f, Modifier.fillMaxWidth()) }
-                }
-            }
-        }
-    }
-}
+/** The Epic **Profile** tab, fed by one [EpicUserData] fetch. No Friends tab: the roster is empty for
+ *  most accounts, so the count and a short list live here instead. */
 
 @Composable
 private fun EpicFriendRow(f: EpicUserData.Friend, modifier: Modifier = Modifier) {
@@ -141,7 +76,6 @@ fun EpicProfileTab(
     tokenMinutesLeft: Long,
     libraryCount: Int,
     installedCount: Int,
-    onOpenFriends: () -> Unit,
     onOpenWeb: (url: String, title: String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
@@ -207,16 +141,12 @@ fun EpicProfileTab(
     val friendsPeek: @Composable () -> Unit = {
         val friends = profile?.friends.orEmpty()
         if (friends.isNotEmpty()) {
-            StoreSectionHeader("Friends", "${friends.size}")
+            StoreSectionHeader("Epic friends", "${friends.size} · no presence feed")
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 friends.take(if (wide) 6 else 4).forEach { f -> EpicFriendRow(f, Modifier.fillMaxWidth()) }
-            }
-            Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.padding(horizontal = 14.dp)) {
-                StoreFilterChip("See all friends", false, onOpenFriends)
             }
         }
     }

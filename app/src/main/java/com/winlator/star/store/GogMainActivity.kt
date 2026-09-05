@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -49,7 +48,7 @@ import com.winlator.star.ui.theme.WinlatorTheme
 
 /**
  * The GOG section's host — flipped from a login card + "View Game Library" button to a
- * **store-first** four-tab shell: **Store / Library / Friends / Profile**, the same shape as the
+ * **store-first** three-tab shell: **Store / Library / Profile** (friend count lives on Profile — GOG friends are a Galaxy-only roster nobody uses, so no tab), the same shape as the
  * Steam section ([SteamMainActivity]) over the shared [StoreSectionHost].
  *
  * The login gate is unchanged (`bh_gog_prefs.access_token`), as is the pending-exe bounce the
@@ -132,7 +131,6 @@ class GogMainActivity : ComponentActivity() {
 private val GOG_TABS = listOf(
     StoreSectionTab("store", "Store", Icons.Filled.Storefront),
     StoreSectionTab("library", "Library", Icons.Filled.VideoLibrary),
-    StoreSectionTab("friends", "Friends", Icons.Filled.People),
     StoreSectionTab("profile", "Profile", Icons.Filled.AccountCircle),
 )
 
@@ -175,10 +173,7 @@ private fun GogStorefrontHost(
         ctx.startActivity(i)
     }
 
-    val counts = mapOf(
-        "library" to library.games.size,
-        "friends" to (profile?.friends?.size ?: 0),
-    )
+    val counts = mapOf("library" to library.games.size)
 
     StoreSectionHost(
         storeName = "GOG",
@@ -248,13 +243,6 @@ private fun GogStorefrontHost(
                 onOpenFullLibrary = { ctx.startActivity(Intent(ctx, GogGamesActivity::class.java)) },
                 modifier = mod,
             )
-            "friends" -> GogFriendsTab(
-                profile = profile,
-                loading = profileLoading,
-                wide = wide,
-                onRefresh = { profileTick++ },
-                modifier = mod,
-            )
             else -> GogProfileTab(
                 profile = profile,
                 loading = profileLoading,
@@ -262,7 +250,6 @@ private fun GogStorefrontHost(
                 username = username,
                 libraryCount = library.games.size,
                 installedCount = library.installedIds.size,
-                onOpenFriends = { tab = GOG_TABS.indexOfFirst { it.key == "friends" } },
                 onOpenWeb = onOpenWeb,
                 onRefresh = { profileTick++ },
                 modifier = mod,

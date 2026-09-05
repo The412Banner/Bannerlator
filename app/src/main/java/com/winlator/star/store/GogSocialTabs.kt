@@ -41,10 +41,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
 /**
- * The GOG **Friends** and **Profile** tabs, both fed by one [GogUserData] fetch.
- *
- * GOG's payload is a roster with no presence, so the Friends tab lists people (avatar, name,
- * member-since) and says so plainly instead of inventing an "offline" state for everyone.
+ * The GOG **Profile** tab, fed by one [GogUserData] fetch. GOG friends are a Galaxy-only roster with
+ * no presence and, for nearly everyone, empty — so there is no Friends tab; the count and a small
+ * avatar row live here instead.
  */
 
 /** Round avatar with a candidate chain and an initial-letter placeholder. */
@@ -74,64 +73,6 @@ fun StoreAvatar(candidates: List<String>, name: String, size: androidx.compose.u
                 modifier = Modifier.fillMaxSize(),
                 onError = { attempt += 1 },
             )
-        }
-    }
-}
-
-@Composable
-fun GogFriendsTab(
-    profile: GogUserData.Profile?,
-    loading: Boolean,
-    wide: Boolean,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val friends = profile?.friends.orEmpty()
-    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        StoreSectionHeader(
-            title = "Friends",
-            sub = when {
-                loading && profile == null -> "Loading…"
-                friends.isEmpty() -> null
-                else -> "${friends.size} on GOG · no presence feed"
-            },
-        )
-        when {
-            profile == null && loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StoreNotice(title = "Loading your friends", body = "Asking GOG for your friends list…")
-            }
-            profile == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StoreNotice(
-                    title = "Friends unavailable",
-                    body = "GOG didn't answer. Check your connection or sign in again.",
-                    actionLabel = "Retry",
-                    onAction = onRefresh,
-                )
-            }
-            friends.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StoreNotice(
-                    title = "No friends yet",
-                    body = "Add friends on GOG.com and they will show up here.",
-                    actionLabel = "Refresh",
-                    onAction = onRefresh,
-                )
-            }
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().focusGroup(),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (wide) {
-                    items(friends.chunked(2), key = { it.first().username }) { pair ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            pair.forEach { f -> FriendRow(f, Modifier.weight(1f)) }
-                            if (pair.size == 1) Spacer(Modifier.weight(1f))
-                        }
-                    }
-                } else {
-                    items(friends, key = { it.username }) { f -> FriendRow(f, Modifier.fillMaxWidth()) }
-                }
-            }
         }
     }
 }
@@ -179,7 +120,6 @@ fun GogProfileTab(
     username: String,
     libraryCount: Int,
     installedCount: Int,
-    onOpenFriends: () -> Unit,
     onOpenWeb: (url: String, title: String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
@@ -246,7 +186,7 @@ fun GogProfileTab(
     val friendsPeek: @Composable () -> Unit = {
         val friends = profile?.friends.orEmpty()
         if (friends.isNotEmpty()) {
-            StoreSectionHeader("Friends", "${friends.size}")
+            StoreSectionHeader("GOG friends", "${friends.size} · no presence feed")
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -263,10 +203,6 @@ fun GogProfileTab(
                         )
                     }
                 }
-            }
-            Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.padding(horizontal = 14.dp)) {
-                StoreFilterChip("See all friends", false, onOpenFriends)
             }
         }
     }

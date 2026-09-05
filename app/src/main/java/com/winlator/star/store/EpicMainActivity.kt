@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storefront
@@ -47,7 +46,7 @@ import com.winlator.star.ui.theme.WinlatorTheme
 
 /**
  * The Epic section's host — flipped from a login card + "View Game Library" button to a
- * **store-first** four-tab shell: **Store / Library / Friends / Profile**, over the shared
+ * **store-first** three-tab shell: **Store / Library / Profile** (friend count lives on Profile — no Friends tab, most Epic accounts have an empty roster), over the shared
  * [StoreSectionHost], mirroring the Steam and GOG sections.
  *
  * The login gate is unchanged ([EpicCredentialStore.isLoggedIn]). The full games screen
@@ -133,7 +132,6 @@ class EpicMainActivity : ComponentActivity() {
 private val EPIC_TABS = listOf(
     StoreSectionTab("store", "Store", Icons.Filled.Storefront),
     StoreSectionTab("library", "Library", Icons.Filled.VideoLibrary),
-    StoreSectionTab("friends", "Friends", Icons.Filled.People),
     StoreSectionTab("profile", "Profile", Icons.Filled.AccountCircle),
 )
 
@@ -187,10 +185,7 @@ private fun EpicStorefrontHost(
         if (game != null) openOwned(game) else ctx.startActivity(StoreCatalogDetailActivity.intent(ctx, item))
     }
 
-    val counts = mapOf(
-        "library" to library.games.size,
-        "friends" to (profile?.friends?.size ?: 0),
-    )
+    val counts = mapOf("library" to library.games.size)
 
     StoreSectionHost(
         storeName = "Epic Games",
@@ -260,13 +255,6 @@ private fun EpicStorefrontHost(
                 onOpenFullLibrary = { ctx.startActivity(Intent(ctx, EpicGamesActivity::class.java)) },
                 modifier = mod,
             )
-            "friends" -> EpicFriendsTab(
-                profile = profile,
-                loading = profileLoading,
-                wide = wide,
-                onRefresh = { profileTick++ },
-                modifier = mod,
-            )
             else -> EpicProfileTab(
                 profile = profile,
                 loading = profileLoading,
@@ -275,7 +263,6 @@ private fun EpicStorefrontHost(
                 tokenMinutesLeft = tokenMinutesLeft,
                 libraryCount = library.games.size,
                 installedCount = library.installedIds.size,
-                onOpenFriends = { tab = EPIC_TABS.indexOfFirst { it.key == "friends" } },
                 onOpenWeb = onOpenWeb,
                 onRefresh = { profileTick++ },
                 modifier = mod,

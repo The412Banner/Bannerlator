@@ -33,6 +33,10 @@ object EaSupport {
     const val CHAIN_ENV = "WN_STEAM_LAUNCH_CHAIN"
     const val CHAIN_VALUE = "Link2EA.exe;EADesktop.exe;EASteamProxy.exe;EACefSubProcess.exe;ActivationUI.exe"
 
+    /** Shortcut [Extra Data] tags, stamped at shortcut write (StarLaunchBridge) like storeSource/steamAppId. */
+    const val EXTRA_EA = "eaSupport"
+    const val EXTRA_JAVELIN = "eaAntiCheat"
+
     /** Catalog component names that provide wine-mono, most preferred first (10.4.1 = device-proven). */
     private val MONO_COMPONENTS = listOf("mono-10.4.1", "mono-10.3.0", "mono-10.1.0", "mono")
 
@@ -83,8 +87,27 @@ object EaSupport {
         return null
     }
 
+    /** True when the shortcut carries the EA tag (no disk access). */
     @JvmStatic
-    fun detectForShortcut(shortcut: Shortcut): Profile? = detect(installDirOf(shortcut))
+    fun isTagged(shortcut: Shortcut): Boolean = shortcut.getExtra(EXTRA_EA, "") == "1"
+
+    /**
+     * Tag first (stamped at shortcut write — no path resolution involved), then on-disk detection for
+     * shortcuts written before the tag existed; a positive disk result is written back onto the shortcut
+     * so the next launch is a plain lookup.
+     */
+    @JvmStatic
+    fun detectForShortcut(shortcut: Shortcut): Profile? {
+        if (isTagged(shortcut)) {
+            return Profile(eaChain = true, javelinAntiCheat = shortcut.getExtra(EXTRA_JAVELIN, "") == "1")
+        }
+        val fromDisk = detect(installDirOf(shortcut)) ?: return null
+        try {
+            shortcut.putExtra(EXTRA_EA, "1")
+            if (fromDisk.javelinAntiCheat) shortcut.putExtra(EXTRA_JAVELIN, "1")
+        } catch (e: Exception) { Log.w(TAG, "could not stamp EA tag on ${shortcut.name}", e) }
+        return fromDisk
+    }
 
     // ---- Launch settings ------------------------------------------------------------------------
 

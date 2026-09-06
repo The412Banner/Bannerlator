@@ -375,6 +375,22 @@ public final class StarLaunchBridge {
                 if (steamAppId > 0) {
                     content += "storeSource=steam\n"
                             + "steamAppId=" + steamAppId + "\n";
+                    // EA-published title (EA Desktop launcher chain): stamp it on the shortcut like the
+                    // store tags above, so the Games tab knows it needs the EA setup / SteamLite path
+                    // without re-deriving anything from paths at launch time (EaSupport.detectForShortcut
+                    // reads this first). eaAntiCheat=1 marks EA Javelin titles (unsupported under Wine).
+                    try {
+                        java.io.File eaDir = com.winlator.star.store.steamscript.InstallScriptExecutor.INSTANCE
+                                .locateInstallDir(new File(exePath));
+                        com.winlator.star.store.EaSupport.Profile ea = com.winlator.star.store.EaSupport.detect(eaDir);
+                        if (ea != null) {
+                            content += com.winlator.star.store.EaSupport.EXTRA_EA + "=1\n";
+                            if (ea.getJavelinAntiCheat()) content += com.winlator.star.store.EaSupport.EXTRA_JAVELIN + "=1\n";
+                            Log.i(TAG, "EA title tagged on shortcut: " + gameName + (ea.getJavelinAntiCheat() ? " (Javelin anti-cheat)" : ""));
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "EA detection at shortcut write failed for " + gameName, t);
+                    }
                 } else if (epic != null && !epic.appName.isEmpty()) {
                     // EOS Phase 1: tag Epic-origin shortcuts so EpicLaunchArgs can scope the
                     // real-Epic auth args to this game. epicEos=1 default (non-EOS games ignore

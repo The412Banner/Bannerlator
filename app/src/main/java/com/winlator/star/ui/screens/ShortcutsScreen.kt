@@ -5090,6 +5090,7 @@ private fun ShortcutItemLayoutL(
                 )
                 ShortcutBadgeOverlay(
                     showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
+                    showEa = remember(shortcut) { EaSupport.isTagged(shortcut) },
                     showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
                     showEos = rememberEosBadge(shortcut),
                     showGog = remember(shortcut) { isGogShortcut(shortcut) },
@@ -5350,6 +5351,7 @@ private fun ShortcutGridItem(
         // (storeSource==gog or gog_games exec path).
         ShortcutBadgeOverlay(
             showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
+            showEa = remember(shortcut) { EaSupport.isTagged(shortcut) },
             showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
             showEos = rememberEosBadge(shortcut),
             showGog = remember(shortcut) { isGogShortcut(shortcut) },
@@ -9057,6 +9059,27 @@ private fun ChangeExecutableCoordinator(
     }
 }
 
+/**
+ * Marks a Steam title that runs through EA Desktop (shortcut tag `eaSupport=1`, see [EaSupport]) —
+ * it launches via SteamLite and needs the one-time EA setup. EA-brand red pill, sized like the others.
+ */
+@Composable
+private fun EaBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFC8102E))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "EA",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
 @Composable
 private fun ShortcutBadgeOverlay(
     showSteam: Boolean = false,
@@ -9065,11 +9088,13 @@ private fun ShortcutBadgeOverlay(
     showGog: Boolean,
     showAmazon: Boolean = false,
     showCustom: Boolean = false,
+    showEa: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showCustom) return
+    if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showCustom && !showEa) return
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (showSteam) SteamBadge()
+        if (showEa) EaBadge()
         if (showEpic) EpicBadge()
         if (showEos) EosBadge()
         if (showGog) GogBadge()

@@ -316,7 +316,8 @@ public class ContainerManager {
                         File desktopFile = new File(filePath.substring(0, filePath.lastIndexOf(".")) + ".desktop");
                         if (!desktopFile.exists()) {
                             MSLink.createDesktopFile(file, context);
-                            shortcuts.add(new Shortcut(container, desktopFile));
+                            Shortcut shortcut = loadShortcutOrNull(container, desktopFile);
+                            if (shortcut != null) shortcuts.add(shortcut);
                         }
                     }
                     else if (fileName.endsWith(".desktop")) {
@@ -325,7 +326,8 @@ public class ContainerManager {
                         // installs, and it rewrites them on every client start. Those are launchers,
                         // not games — keep them out of the Games grid.
                         if (isVendorClientDesktopEntry(file)) continue;
-                        shortcuts.add(new Shortcut(container, file));
+                        Shortcut shortcut = loadShortcutOrNull(container, file);
+                        if (shortcut != null) shortcuts.add(shortcut);
                     }
                 }
             }
@@ -333,6 +335,22 @@ public class ContainerManager {
 
         shortcuts.sort(Comparator.comparing(a -> a.name));
         return shortcuts;
+    }
+
+    /**
+     * Parses one .desktop entry, or returns null when it cannot be turned into a shortcut. One
+     * unreadable or truncated file (permission denied, missing/empty `Exec=` line, half-written by an
+     * external tool) used to throw out of the constructor and take the whole Games screen down at app
+     * start; a bad entry is now skipped and logged so the remaining shortcuts still load.
+     */
+    private static Shortcut loadShortcutOrNull(Container container, File file) {
+        try {
+            return new Shortcut(container, file);
+        }
+        catch (RuntimeException e) {
+            Log.w("ContainerManager", "Skipping unreadable shortcut " + file.getPath() + ": " + e);
+            return null;
+        }
     }
 
     /** Window classes of store-client executables whose winemenubuilder .desktop entries are not games. */

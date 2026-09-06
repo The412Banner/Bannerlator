@@ -104,6 +104,7 @@ object EaSupport {
         try {
             shortcut.putExtra(EXTRA_EA, "1")
             if (fromDisk.javelinAntiCheat) shortcut.putExtra(EXTRA_JAVELIN, "1")
+            shortcut.saveData()
         } catch (e: Exception) { Log.w(TAG, "could not stamp EA tag on ${shortcut.name}", e) }
         return fromDisk
     }

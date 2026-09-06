@@ -497,8 +497,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             val ea = EaSupport.detectForShortcut(shortcut)
             if (ea != null) {
                 if (ea.javelinAntiCheat) { eaUnsupportedFor = shortcut; return }
+                // Persist: the launch pipeline re-reads the .desktop file, so an unsaved extra is a
+                // plain Raw launch (device test #8 — the game started without the Steam client).
                 shortcut.putExtra("launchMode", "RealSteam")
                 shortcut.putExtra("launchModeRemembered", "1")
+                shortcut.saveData()
                 val installDir = EaSupport.installDirOf(shortcut)
                 if (installDir == null) { launchWithSteamLite(shortcut); return }
                 eaScope.launch {

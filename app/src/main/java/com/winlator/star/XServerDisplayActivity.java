@@ -4666,6 +4666,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 Log.i("BH_REALSTEAM", "RealSteam launch armed (appId=" + realSteamPlan.appId
                         + ", steamapps\\common\\" + realSteamPlan.canonicalName
                         + (agentPort > 0 ? ", agent channel port " + agentPort : ", no agent channel") + ")");
+                // EA titles: prepare() has just linked the depot into steamapps\common\<ascii name>.
+                // The installScript Registry stage ran earlier (onCreate worker), when that link did not
+                // exist yet on a fresh container, so the EA Games "Install Dir" value still points at the
+                // raw Z:\steam_games\<name> depot — and EA Desktop launches the game from that value.
+                // A non-ASCII depot name (e.g. the ™ in "Need for Speed™ Payback") makes Frostbite quit
+                // before it ever creates a D3D device. Re-apply the stage now that the link exists; it is
+                // idempotent by design (it re-applies Registry + Copy on every launch anyway).
+                if (realSteamEaChain) runSteamInstallScriptPreLaunch();
                 // The app's own CM session is suspended later, in suspendAppSteamSessionForRealSteam()
                 // — AFTER the pre-launch Steam Cloud pull and achievement seed, which still ride it.
                 armAgentWatchdog();

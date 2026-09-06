@@ -56,6 +56,45 @@ class InstallScriptTokens(
         "%SYSTEMROOT%" to "C:\\windows",
     )
 
+    /**
+     * `%INSTALLDIR%` for **registry values**, e.g.
+     * `C:\Program Files (x86)\Steam\steamapps\common\Need for Speed Payback`.
+     *
+     * Frostbite/EA titles read the game's module path out of their EA Games registry key and fail on a
+     * non-ASCII one — which is why [com.winlator.star.store.RealSteamLauncher] links the depot into
+     * `steamapps\common\<ascii name>`. EA Desktop launches the game from that registry value, so it must
+     * be the ASCII link, not the raw `Z:\steam_games\<name>` depot path (a `™` there makes the game start
+     * and quit again without ever creating its D3D device). Falls back to the `Z:` path when no such link
+     * resolves to this depot (non-Steam launch, or the link is not made yet).
+     *
+     * Recomputed per read: the link is created by `RealSteamLauncher.prepare()`, which can run after these
+     * tokens are constructed.
+     */
+    private val installDirRegistry: String
+        get() {
+            val depot = installDir.canonicalOrAbsolute()
+            val common = File(driveC, "Program Files (x86)/Steam/steamapps/common")
+            val link = (common.listFiles() ?: emptyArray()).firstOrNull { entry ->
+                entry.name.all { it.code in 0x20..0x7E } && entry.canonicalOrAbsolute() == depot
+            } ?: return installDirWindows
+            return "C:\\Program Files (x86)\\Steam\\steamapps\\common\\" + link.name
+        }
+
+    private fun File.canonicalOrAbsolute(): File =
+        runCatching { canonicalFile }.getOrElse { absoluteFile }
+
+    /**
+     * Like [substituteWindows], but resolves `%INSTALLDIR%` to the ASCII `steamapps\common` link when one
+     * exists. Used for registry VALUES only — process/command paths keep the depot path they are proven on.
+     */
+    fun substituteWindowsForRegistry(text: String): String {
+        var s = replaceIgnoreCase(text, "%INSTALLDIR%", installDirRegistry)
+        for ((token, value) in WINDOWS_TOKENS) {
+            if (token != "%INSTALLDIR%") s = replaceIgnoreCase(s, token, value)
+        }
+        return s
+    }
+
     // ---- Host-space resolution (Copy Files / Delete Files) ---------------------------------------
 
     /** Resolves a token-bearing installScript path to a real Android [File] for host-side copies. */

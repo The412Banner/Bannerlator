@@ -4788,11 +4788,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private String eaAbortReason = null;
     private static final long EA_REFUSAL_POLL_MS = 2000L;
     private static final long EA_REFUSAL_REASON_GRACE_MS = 5000L;
+    // NOTE: winStarted is NOT a stop condition here. On an EA launch the first application window is
+    // EA Desktop's own ("Preparing game…"), which flips winStarted and dismisses the launch screen long
+    // before EA has decided anything; the refusal comes after that. Only the game actually starting
+    // (agent game_spawned), a shown card, or exit() ends the watch. Device-seen: r1 stopped at
+    // winStarted and the refusal went unreported.
     private final Runnable eaRefusalWatchRunnable = new Runnable() {
         @Override public void run() {
-            if (exiting || winStarted || eaGameSpawned || eaRefusalShown) return;
+            if (exiting || eaGameSpawned || eaRefusalShown) return;
             try { pollEaDesktopLogForRefusal(); } catch (Throwable ignored) {}
-            if (!exiting && !winStarted && !eaGameSpawned && !eaRefusalShown)
+            if (!exiting && !eaGameSpawned && !eaRefusalShown)
                 eaRefusalHandler.postDelayed(this, EA_REFUSAL_POLL_MS);
         }
     };
@@ -4852,6 +4857,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void showEaRefusal(String reason) {
         if (eaRefusalShown) return;
         eaRefusalShown = true;
+        Log.w("BH_REALSTEAM", "EA refused the licence (" + reason + ") — showing the EA card");
         eaRefusalHandler.removeCallbacks(eaRefusalWatchRunnable);
         final String logDir = com.winlator.star.core.LogLocation.resolveLogDir(this).getAbsolutePath();
         final boolean logging = isLaunchLoggingEnabled();

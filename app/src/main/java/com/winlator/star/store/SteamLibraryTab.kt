@@ -92,6 +92,8 @@ enum class LibraryTypeFilter(val label: String) {
     ALL("All"),
     GAMES("Games"),
     DEMOS("Demos"),
+    /** Games ∪ Demos that are downloaded on this device — what the user can launch right now. */
+    INSTALLED("Installed"),
     ;
 
     /**
@@ -105,6 +107,7 @@ enum class LibraryTypeFilter(val label: String) {
         GAMES -> isGame(game)
         DEMOS -> game.type == TYPE_DEMO
         ALL -> isGame(game) || game.type == TYPE_DEMO
+        INSTALLED -> (isGame(game) || game.type == TYPE_DEMO) && game.isInstalled
     }
 
     fun filter(games: List<SteamGame>): List<SteamGame> = games.filter { accepts(it) }
@@ -113,6 +116,7 @@ enum class LibraryTypeFilter(val label: String) {
     fun emptyMessage(): String = when (this) {
         GAMES -> "No games in your library"
         DEMOS -> "No demos in your library"
+        INSTALLED -> "Nothing installed yet"
         ALL -> "No games yet"
     }
 
@@ -413,6 +417,8 @@ fun SteamLibraryTab(
                     body = when (typeFilter) {
                         LibraryTypeFilter.DEMOS ->
                             "Demos you have installed from the Steam store will appear here."
+                        LibraryTypeFilter.INSTALLED ->
+                            "Games and demos you download from your library will appear here."
                         else ->
                             "Nothing in your library matches this filter."
                     },

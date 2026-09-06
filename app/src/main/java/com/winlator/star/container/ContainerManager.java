@@ -292,6 +292,11 @@ public class ContainerManager {
         if (FileUtils.delete(container.getRootDir())) containers.remove(container);
     }
 
+    /** Desktop .lnk names written by store clients we install on the game's behalf — not games. */
+    private static final java.util.Set<String> VENDOR_CLIENT_LNK = new java.util.HashSet<>(Arrays.asList(
+            "EA", "EA app", "EA Desktop", "EA app Updater", "App Recovery", "EA Error Reporter", "Origin",
+            "Ubisoft Connect", "Uplay"));
+
     public ArrayList<Shortcut> loadShortcuts() {
         ArrayList<Shortcut> shortcuts = new ArrayList<>();
         for (Container container : containers) {
@@ -303,6 +308,10 @@ public class ContainerManager {
                 for (File file : files) {
                     String fileName = file.getName();
                     if (fileName.endsWith(".lnk")) {
+                        // Store-client installers (EA Desktop, Ubisoft Connect) drop their own desktop
+                        // shortcuts via winemenubuilder; those are not games — never auto-import them.
+                        String base = fileName.substring(0, fileName.length() - 4);
+                        if (VENDOR_CLIENT_LNK.contains(base)) continue;
                         String filePath = file.getPath();
                         File desktopFile = new File(filePath.substring(0, filePath.lastIndexOf(".")) + ".desktop");
                         if (!desktopFile.exists()) {

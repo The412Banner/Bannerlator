@@ -846,6 +846,27 @@ public final class SteamDatabase extends SQLiteOpenHelper {
      * real_*_bytes when the manifest GID is UNCHANGED; a GID change (new build) resets them to 0
      * so DepotSizeResolver re-fetches. Called on every library sync — must not clobber real sizes.
      */
+    /**
+     * The agent's {@code WN_STEAM_DEPOTS} contract: {@code depot:manifest:size,…} for every depot of
+     * {@code appId} with a known manifest GID (real uncompressed size when resolved, else the PICS
+     * estimate). Empty string when nothing is known.
+     */
+    public String getDepotManifestsCsv(int appId) {
+        StringBuilder sb = new StringBuilder();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT depot_id, manifest_id, CASE WHEN real_size_bytes > 0 THEN real_size_bytes ELSE size_bytes END" +
+                " FROM depot_manifests WHERE app_id = ? AND manifest_id > 0 ORDER BY depot_id",
+                new String[]{String.valueOf(appId)})) {
+            while (c.moveToNext()) {
+                if (sb.length() > 0) sb.append(',');
+                sb.append(c.getInt(0)).append(':').append(c.getLong(1)).append(':').append(c.getLong(2));
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "getDepotManifestsCsv(" + appId + "): " + e.getMessage());
+        }
+        return sb.toString();
+    }
+
     public void upsertDepotManifest(int appId, int depotId, long manifestId, long sizeBytes) {
         long realSize = 0L, realDownload = 0L, realDisk = 0L;
         try (Cursor c = getReadableDatabase().rawQuery(

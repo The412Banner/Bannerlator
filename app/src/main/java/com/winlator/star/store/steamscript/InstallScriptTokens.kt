@@ -88,8 +88,24 @@ class InstallScriptTokens(
         if (!isUser && !isMachine) return null
 
         val wow32 = h.endsWith("_WOW64_32")
-        val key = if (wow32) toWow6432(keyPath) else keyPath
+        val key = canonicalCase(if (wow32) toWow6432(keyPath) else keyPath)
         return RegTarget(if (isUser) userReg else systemReg, key)
+    }
+
+    /**
+     * Wine's .reg files store well-known key segments in a fixed case (`Software`, `Wow6432Node`,
+     * `Microsoft\\Windows\\CurrentVersion\\Uninstall`) and [WineRegistryEditor] matches section headers
+     * byte-for-byte, while Steam scripts spell them `SOFTWARE\\…`. Device-proven miss (2026-09-05): EA
+     * Desktop's `InstallSuccessful` guard was present in both views yet read as absent, so the setup
+     * dialog kept re-appearing. Normalise the leading segments to Wine's casing.
+     */
+    private fun canonicalCase(keyPath: String): String {
+        val canon = mapOf(
+            "software" to "Software", "wow6432node" to "Wow6432Node", "microsoft" to "Microsoft",
+            "windows" to "Windows", "currentversion" to "CurrentVersion", "uninstall" to "Uninstall",
+            "classes" to "Classes", "wine" to "Wine",
+        )
+        return keyPath.split('\\').joinToString("\\") { seg -> canon[seg.lowercase()] ?: seg }
     }
 
     /**

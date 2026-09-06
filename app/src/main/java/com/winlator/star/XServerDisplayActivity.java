@@ -4289,6 +4289,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private volatile boolean exiting = false;
 
     private void exit() {
+        eaRefusalHandler.removeCallbacks(eaRefusalWatchRunnable);
         if (exiting) return;
         exiting = true;
         // A frozen (SIGSTOP'd) guest can't act on the SIGTERM below — resume before tearing down so
@@ -4740,6 +4741,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // before it ever creates a D3D device. Re-apply the stage now that the link exists; it is
                 // idempotent by design (it re-applies Registry + Copy on every launch anyway).
                 if (realSteamEaChain) runSteamInstallScriptPreLaunch();
+                // EA titles: watch EA Desktop's own log for a refused licence so the user gets a card
+                // with EA's reason instead of a black screen (see eaRefusalWatchRunnable).
+                if (realSteamEaChain) {
+                    eaLogOffset = -1; eaAbortSeenAt = 0; eaAbortReason = null; eaGameSpawned = false;
+                    eaRefusalHandler.removeCallbacks(eaRefusalWatchRunnable);
+                    eaRefusalHandler.postDelayed(eaRefusalWatchRunnable, EA_REFUSAL_POLL_MS);
+                }
                 // The app's own CM session is suspended later, in suspendAppSteamSessionForRealSteam()
                 // — AFTER the pre-launch Steam Cloud pull and achievement seed, which still ride it.
                 armAgentWatchdog();
@@ -4764,6 +4772,115 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // best-effort: an agent without the feature never connects and the launch behaves as before.
     private static final String AGENT_TAG = "BH_STEAM_AGENT";
     /** No logged_in / login_failed / game_spawned within this long of arming → "sign-in did not complete". */
+    // ── "EA said no" watch ─────────────────────────────────────────────────────────────────────────
+    // EA titles launch through EA Desktop, and when EA refuses to license the game EA Desktop aborts
+    // the launch itself: the game exe never starts, the SteamLite agent keeps holding the session for
+    // it (up to 900 s) and the user sits on a black screen. EA Desktop writes the verdict to its own
+    // log inside the prefix within seconds ("Failed to license game. Aborting game launch." plus a
+    // game.license.erro telemetry line whose OOALaunchFailure names the reason, device-seen:
+    // "Concurrency guard limit"). Watch that log during the chain hold and turn the verdict into the
+    // launch failure card with EA's reason, instead of the black screen.
+    private final android.os.Handler eaRefusalHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private volatile boolean eaRefusalShown = false;
+    private volatile boolean eaGameSpawned = false;
+    private long eaLogOffset = -1;
+    private long eaAbortSeenAt = 0;
+    private String eaAbortReason = null;
+    private static final long EA_REFUSAL_POLL_MS = 2000L;
+    private static final long EA_REFUSAL_REASON_GRACE_MS = 5000L;
+    private final Runnable eaRefusalWatchRunnable = new Runnable() {
+        @Override public void run() {
+            if (exiting || winStarted || eaGameSpawned || eaRefusalShown) return;
+            try { pollEaDesktopLogForRefusal(); } catch (Throwable ignored) {}
+            if (!exiting && !winStarted && !eaGameSpawned && !eaRefusalShown)
+                eaRefusalHandler.postDelayed(this, EA_REFUSAL_POLL_MS);
+        }
+    };
+
+    private File eaDesktopLogFile() {
+        if (container == null) return null;
+        return new File(container.getRootDir(), ".wine/drive_c/ProgramData/EA Desktop/Logs/EADesktop.log");
+    }
+
+    /** Reads only what EA Desktop appended since the watch started; older verdicts never count. */
+    private void pollEaDesktopLogForRefusal() throws java.io.IOException {
+        File log = eaDesktopLogFile();
+        if (log == null || !log.isFile()) return;
+        long len = log.length();
+        if (eaLogOffset < 0) { eaLogOffset = len; return; }          // baseline = size at watch start
+        if (len < eaLogOffset) eaLogOffset = 0;                       // rotated / truncated
+        if (len > eaLogOffset) {
+            byte[] buf = new byte[(int) Math.min(len - eaLogOffset, 4 * 1024 * 1024)];
+            try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(log, "r")) {
+                raf.seek(eaLogOffset);
+                int n = raf.read(buf);
+                eaLogOffset += Math.max(n, 0);
+                String chunk = new String(buf, 0, Math.max(n, 0), java.nio.charset.StandardCharsets.UTF_8);
+                if (eaAbortSeenAt == 0 && (chunk.contains("Aborting game launch") || chunk.contains("Failed to request new license"))) {
+                    eaAbortSeenAt = android.os.SystemClock.uptimeMillis();
+                    Log.w("BH_REALSTEAM", "EA Desktop aborted the launch (licence refused)");
+                }
+                int i = chunk.indexOf("\"OOALaunchFailure\":\"");
+                if (i >= 0) {
+                    int start = i + "\"OOALaunchFailure\":\"".length();
+                    int end = chunk.indexOf('"', start);
+                    if (end > start) eaAbortReason = chunk.substring(start, end);
+                }
+            }
+        }
+        // Show once the abort is seen and either the reason arrived or the grace period passed.
+        if (eaAbortSeenAt != 0 && (eaAbortReason != null
+                || android.os.SystemClock.uptimeMillis() - eaAbortSeenAt > EA_REFUSAL_REASON_GRACE_MS)) {
+            showEaRefusal(eaAbortReason);
+        }
+    }
+
+    /** Plain-words version of EA's OOALaunchFailure string (EA's own wording is kept in the detail). */
+    private static String eaRefusalInPlainWords(String reason) {
+        if (reason == null) return "EA Desktop refused to license the game and did not start it.";
+        String r = reason.toLowerCase();
+        if (r.contains("concurrency") || r.contains("limit"))
+            return "EA's activation limit for this game was hit: too many activations in a short time, or too many "
+                    + "computers holding it (every Bannerlator container counts as a separate PC to EA).";
+        if (r.contains("entitle") || r.contains("not owned") || r.contains("ownership"))
+            return "EA reports this account does not own the game.";
+        if (r.contains("offline") || r.contains("network") || r.contains("connect"))
+            return "EA Desktop could not reach EA's licence servers.";
+        return "EA Desktop refused to license the game and did not start it.";
+    }
+
+    private void showEaRefusal(String reason) {
+        if (eaRefusalShown) return;
+        eaRefusalShown = true;
+        eaRefusalHandler.removeCallbacks(eaRefusalWatchRunnable);
+        final String logDir = com.winlator.star.core.LogLocation.resolveLogDir(this).getAbsolutePath();
+        final boolean logging = isLaunchLoggingEnabled();
+        final Shortcut sc = shortcut;
+        final Container c = container;
+        final String game = sc != null ? sc.name : "the game";
+        final String detail = eaRefusalInPlainWords(reason)
+                + (reason != null ? " EA's reason: \"" + reason + "\"." : "")
+                + " Try again later; if it keeps happening, use \"Deauthorize computers\" in your EA account's "
+                + "security settings.";
+        // The agent is still holding the Steam session for a game that will not come — release it so
+        // the guest tears down cleanly behind the card (Close finishes the session either way).
+        try { if (steamAgentChannel != null) steamAgentChannel.requestLogoff(); } catch (Throwable ignored) {}
+        runOnUiThread(() -> {
+            if (exiting || preloaderDialog == null) return;
+            cancelLaunchTimers();
+            java.util.List<com.winlator.star.core.FailureAction> actions = new ArrayList<>();
+            if (sc != null && c != null) {
+                actions.add(new com.winlator.star.core.FailureAction("Retry", true, () -> {
+                    com.winlator.star.store.SteamSessionManager.INSTANCE.setPendingRelaunch(
+                            getApplicationContext(), sc.file.getPath(), c.id,
+                            com.winlator.star.store.SteamSessionManager.RelaunchMode.STEAMLITE);
+                    exit();
+                }));
+            }
+            preloaderDialog.fail("EA Desktop", "EA Desktop couldn't start " + game, detail, logDir, logging, actions);
+        });
+    }
+
     private static final long AGENT_LOGIN_TIMEOUT_MS = 75_000L;
     private com.winlator.star.store.SteamAgentChannel steamAgentChannel = null;
     private volatile boolean agentConnected = false;
@@ -4866,6 +4983,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     break;
                 case "game_spawned": {
                     agentLoginResolved = true;
+                    eaGameSpawned = true;   // EA Desktop started the game — no refusal possible now
                     boolean secure = obj.optBoolean("secure", false);
                     // An insecure spawn after a vac=false fallback (agentFallbackVac, from the
                     // insecure_fallback event) is the normal outcome for a title without VAC — say
@@ -6556,6 +6674,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // The guest process died. If it never rendered a window, this is a launch failure — show
             // the failure card and let the user read it (Close finishes). If it had already rendered,
             // this is a normal exit / in-game crash: keep the existing exit-on-termination behaviour.
+            if (eaRefusalShown) {
+                // EA Desktop refused the licence and the card already names EA's reason; the guest
+                // tearing down after the agent's logoff is expected — keep that card.
+                return;
+            }
             if (!winStarted) {
                 final String logDir = com.winlator.star.core.LogLocation.resolveLogDir(this).getAbsolutePath();
                 runOnUiThread(() -> {

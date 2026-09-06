@@ -31,15 +31,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -110,6 +115,12 @@ fun InputControlsScreen() {
 
     var showProfileDropdown by remember { mutableStateOf(false) }
     var showDownloadDialog by remember { mutableStateOf(false) }
+    // Import ICP / ICpx source chooser (Open File / Pick via system / Download File) — Compose dialog.
+    var showImportChooser by remember { mutableStateOf(false) }
+    // Download Profiles → "view example": the community .icp file name whose layout popover is open.
+    var previewItem by remember { mutableStateOf<String?>(null) }
+    // Fetched community .icp text by file name, so re-opening a preview (or downloading it) is instant.
+    val previewCache = remember { mutableMapOf<String, String>() }
     var isDownloading by remember { mutableStateOf(false) }
     var importProfileCallback by remember { mutableStateOf<((ControlsProfile) -> Unit)?>(null) }
     var promptCreateName by remember { mutableStateOf(false) }
@@ -283,6 +294,65 @@ fun InputControlsScreen() {
         )
     }
 
+    // Import source chooser: replaces the legacy android.app.AlertDialog.Builder list with the app's
+    // outlined Compose dialog. Open File = the in-app file manager (primary); system picker is secondary.
+    if (showImportChooser) {
+        val armImport = {
+            importProfileCallback = { imported ->
+                currentProfile = imported
+                refreshProfiles()
+                refreshControllers()
+            }
+        }
+        OutlinedAlertDialog(
+            onDismissRequest = { showImportChooser = false },
+            title = { Text(stringResource(R.string.import_control_profile)) },
+            text = {
+                // Scrollable so the rows never collide with the button bar in landscape.
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    ImportSourceRow(
+                        icon = Icons.Default.FolderOpen,
+                        title = stringResource(R.string.open_file),
+                        subtitle = "Browse with the in-app file manager (.icp / .icpx)",
+                    ) {
+                        showImportChooser = false
+                        (context as? Activity)?.let { act ->
+                            armImport()
+                            importInAppLauncher.launch(
+                                InAppFilePicker.buildIntent(
+                                    act,
+                                    InAppFilePicker.ICP,
+                                    act.getString(R.string.select_control_profile),
+                                )
+                            )
+                        }
+                    }
+                    MenuItemDivider()
+                    ImportSourceRow(
+                        icon = Icons.Default.PhoneAndroid,
+                        title = stringResource(R.string.pick_via_system),
+                        subtitle = "Android document picker",
+                    ) {
+                        showImportChooser = false
+                        armImport()
+                        importLauncher.launch(arrayOf("*/*"))
+                    }
+                    MenuItemDivider()
+                    ImportSourceRow(
+                        icon = Icons.Default.CloudDownload,
+                        title = stringResource(R.string.download_file),
+                        subtitle = "Community profiles from the online list",
+                    ) {
+                        showImportChooser = false
+                        showDownloadDialog = true
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showImportChooser = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
     if (showDownloadDialog) {
         var items by remember { mutableStateOf(listOf<String>()) }
         var selectedItems by remember { mutableStateOf(setOf<Int>()) }
@@ -330,7 +400,12 @@ fun InputControlsScreen() {
                                     selectedItems = if (it) selectedItems + i else selectedItems - i
                                 })
                                 Spacer(Modifier.width(8.dp))
-                                Text(item, fontSize = 14.sp)
+                                Text(item, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                // View example: fetch the .icp and draw its on-screen layout (no import).
+                                IconButton(onClick = { previewItem = item }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.Visibility, contentDescription = "View example",
+                                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                }
                             }
                         }
                     }
@@ -375,6 +450,65 @@ fun InputControlsScreen() {
                     }) { Text("Download") }
                 },
                 dismissButton = { TextButton(onClick = { showDownloadDialog = false }) { Text("Cancel") } }
+            )
+        }
+
+        // "View example" popover: stacks above the list. Fetches the community .icp once (cached), builds a
+        // throwaway file-less ControlsProfile.createPreview() and draws it through the same read-only
+        // LayoutPreviewFrame the On-Screen tab uses, so the thumbnail is pixel-honest with the real overlay.
+        previewItem?.let { itemName ->
+            var previewProfile by remember(itemName) { mutableStateOf<ControlsProfile?>(null) }
+            var previewFailed by remember(itemName) { mutableStateOf(false) }
+            LaunchedEffect(itemName) {
+                val toProfile: (String?) -> ControlsProfile? = { content ->
+                    if (content == null) null
+                    else try { ControlsProfile.createPreview(context, JSONObject(content)) } catch (_: Exception) { null }
+                }
+                val cached = previewCache[itemName]
+                if (cached != null) {
+                    previewProfile = toProfile(cached)
+                    previewFailed = previewProfile == null
+                } else {
+                    HttpUtils.download(
+                        "https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/$itemName"
+                    ) { content ->
+                        (context as? Activity)?.runOnUiThread {
+                            if (content != null) previewCache[itemName] = content
+                            if (previewItem == itemName) {
+                                previewProfile = toProfile(content)
+                                previewFailed = previewProfile == null
+                            }
+                        }
+                    }
+                }
+            }
+            OutlinedAlertDialog(
+                onDismissRequest = { previewItem = null },
+                title = { Text(itemName.removeSuffix(".icpx").removeSuffix(".icp")) },
+                text = {
+                    // Scrollable + width-driven aspect box → fits portrait and landscape alike.
+                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                        Text("Preview — layout on the game screen (not imported yet)",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Spacer(Modifier.height(8.dp))
+                        val pp = previewProfile
+                        when {
+                            pp != null -> LayoutPreviewFrame(profile = pp, onTap = null)
+                            previewFailed -> Text(stringResource(R.string.unable_to_download_file),
+                                color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                            else -> Row(Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                                horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val idx = items.indexOf(itemName)
+                        if (idx >= 0) selectedItems = selectedItems + idx
+                        previewItem = null
+                    }) { Text("Select") }
+                },
+                dismissButton = { TextButton(onClick = { previewItem = null }) { Text("Close") } },
             )
         }
     }
@@ -551,52 +685,17 @@ fun InputControlsScreen() {
                     onClick = {},
                 )
                 MenuItemDivider()
+                // Arrow direction reads as data flow relative to the app: import = INTO the app (down),
+                // export = OUT of the app (up).
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.import_control_profile)) },
-                    leadingIcon = { Icon(Icons.Default.FileUpload, null) },
-                    onClick = {
-                        showOverflow = false
-                        (context as? Activity)?.let { act ->
-                            val builder = android.app.AlertDialog.Builder(act)
-                            val options = arrayOf(
-                                act.getString(R.string.open_file),
-                                "Pick via system…",
-                                act.getString(R.string.download_file)
-                            )
-                            builder.setItems(options) { _, which ->
-                                val setCallback = {
-                                    importProfileCallback = { imported ->
-                                        currentProfile = imported
-                                        refreshProfiles()
-                                        refreshControllers()
-                                    }
-                                }
-                                when (which) {
-                                    0 -> {
-                                        setCallback()
-                                        importInAppLauncher.launch(
-                                            InAppFilePicker.buildIntent(
-                                                act,
-                                                InAppFilePicker.ICP,
-                                                act.getString(R.string.select_control_profile),
-                                            )
-                                        )
-                                    }
-                                    1 -> {
-                                        setCallback()
-                                        importLauncher.launch(arrayOf("*/*"))
-                                    }
-                                    2 -> showDownloadDialog = true
-                                }
-                            }
-                            builder.show()
-                        }
-                    },
+                    leadingIcon = { Icon(Icons.Default.FileDownload, null) },
+                    onClick = { showOverflow = false; showImportChooser = true },
                 )
                 MenuItemDivider()
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.export_control_profile_icpx)) },
-                    leadingIcon = { Icon(Icons.Default.FileDownload, null) },
+                    leadingIcon = { Icon(Icons.Default.FileUpload, null) },
                     onClick = {
                         showOverflow = false
                         if (currentProfile != null) {
@@ -610,7 +709,7 @@ fun InputControlsScreen() {
                 // Legacy ICP export (was a tooltip'd OutlinedButton; the tooltip copy now reads as the item label).
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.export_control_profile_icp_legacy)) },
-                    leadingIcon = { Icon(Icons.Default.FileDownload, null) },
+                    leadingIcon = { Icon(Icons.Default.FileUpload, null) },
                     onClick = {
                         showOverflow = false
                         if (currentProfile != null) {
@@ -862,11 +961,23 @@ fun InputControlsScreen() {
 @Composable
 private fun OnScreenLayoutPreview(profileId: Int, refreshKey: Int, onOpenEditor: () -> Unit) {
     val context = LocalContext.current
-    val cs = MaterialTheme.colorScheme
     // Fresh throwaway instance; re-read when the profile changes OR we return from the editor (refreshKey).
     val previewProfile = remember(profileId, refreshKey) {
         InputControlsManager.loadProfile(context, ControlsProfile.getProfileFile(context, profileId))
     }
+    LayoutPreviewFrame(profile = previewProfile, onTap = onOpenEditor)
+}
+
+/**
+ * The read-only overlay thumbnail itself: a game-aspect box drawing [profile] through a non-interactive
+ * InputControlsView. Shared by the On-Screen tab (on-disk profile, tap → editor) and the Download Profiles
+ * "view example" popover (file-less ControlsProfile.createPreview, no tap action). [profile] must be an
+ * instance nobody else lays out — see the GOTCHA on OnScreenLayoutPreview.
+ */
+@Composable
+private fun LayoutPreviewFrame(profile: ControlsProfile?, onTap: (() -> Unit)?) {
+    val context = LocalContext.current
+    val cs = MaterialTheme.colorScheme
     // Game-screen aspect (device long:short, clamped; 16:9 fallback) so it reads as a mini game screen.
     val aspect = remember {
         val dm = context.resources.displayMetrics
@@ -883,7 +994,7 @@ private fun OnScreenLayoutPreview(profileId: Int, refreshKey: Int, onOpenEditor:
             .background(Color(0xFF0F0C0B)) // dark "game screen" ground
             .border(1.dp, cs.outline, RoundedCornerShape(12.dp)),
     ) {
-        if (previewProfile != null) {
+        if (profile != null) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
@@ -898,16 +1009,41 @@ private fun OnScreenLayoutPreview(profileId: Int, refreshKey: Int, onOpenEditor:
                     }
                 },
                 update = { view ->
-                    view.setProfile(previewProfile)   // fresh instance; loads lazily in onDraw once measured
+                    view.setProfile(profile)          // fresh instance; loads lazily in onDraw once measured
                     view.invalidate()
                 },
             )
-            // Transparent tap-catcher ON TOP: swallows taps (keeps the render static) and opens the editor.
+            // Transparent tap-catcher ON TOP: swallows taps (keeps the render static) and, when given, acts.
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clickable { onOpenEditor() }
+                    .let { m -> if (onTap != null) m.clickable { onTap() } else m }
             )
+        }
+    }
+}
+
+/** One row of the Import source chooser: leading icon, title, muted one-line hint. */
+@Composable
+private fun ImportSourceRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 12.dp),
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Column {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }

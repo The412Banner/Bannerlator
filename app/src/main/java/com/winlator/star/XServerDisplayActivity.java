@@ -737,6 +737,48 @@ public class XServerDisplayActivity extends AppCompatActivity {
             "wineboot.exe", "conhost.exe", "start.exe", "cmd.exe", "rundll32.exe", "tabtip.exe",
             "winedbg.exe", "wineconsole.exe", "regsvr32.exe", "msiexec.exe", "wscript.exe", "cscript.exe"));
 
+    // Processes that render through the DX wrappers WITHOUT being the game: store clients, their overlay
+    // proxies and launcher-chain helpers. EA Desktop's CEF/Qt front end and its in-game overlay proxy
+    // (IGOProxy32/64) create real D3D12 swapchains on VKD3D, so their vkd3d-proton.log ranked above the
+    // game's DXVK D3D11 log and every EA title read "D3D12 · VKD3D" (device-seen: Need for Speed Payback
+    // and Most Wanted, both D3D11 on DXVK). Wrapper logs written by these exes never label the game.
+    private static final java.util.Set<String> HELPER_RENDERER_EXES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "steam.exe", "steamwebhelper.exe", "gameoverlayui.exe",
+            "eadesktop.exe", "eacefsubprocess.exe", "ealauncher.exe", "ealaunchhelper.exe", "easteamproxy.exe",
+            "easteamlauncher.exe", "eaepiclauncher.exe", "link2ea.exe", "igoproxy32.exe", "igoproxy64.exe",
+            "activationui.exe", "eabackgroundservice.exe", "ealocalhostsvc.exe", "eaanticheat.gameservicelauncher.exe",
+            "origin.exe", "originwebhelperservice.exe", "originclientservice.exe",
+            "upc.exe", "uplay.exe", "ubisoftconnect.exe", "ubisoftgamelauncher.exe", "uplaywebcore.exe",
+            "epicgameslauncher.exe", "epicwebhelper.exe", "eossdk-win64-shipping.exe",
+            "galaxyclient.exe", "galaxyclient helper.exe", "gog galaxy notifications renderer.exe"));
+
+    /** Program name recorded in a vkd3d-proton.log header ({@code Program name: "<exe>"}), lowercased, or null. */
+    private static String vkd3dLogProgramName(File log) {
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(log))) {
+            String line;
+            int n = 0;
+            while ((line = r.readLine()) != null && n++ < 60) {
+                int i = line.indexOf("Program name: \"");
+                if (i < 0) continue;
+                int start = i + "Program name: \"".length();
+                int end = line.indexOf('"', start);
+                if (end > start) return line.substring(start, end).toLowerCase();
+            }
+        } catch (Exception ignore) {}
+        return null;
+    }
+
+    /** Stem of a DXVK per-API log name ({@code <stem>_d3d11.log} -> {@code <stem>}), lowercased. */
+    private static String dxvkLogStem(File log) {
+        String n = log.getName().toLowerCase();
+        int i = n.lastIndexOf("_d3d");
+        return i > 0 ? n.substring(0, i) : n;
+    }
+
+    private static boolean isHelperRendererExe(String exeLower) {
+        return exeLower != null && HELPER_RENDERER_EXES.contains(exeLower.endsWith(".exe") ? exeLower : exeLower + ".exe");
+    }
+
     /**
      * Disambiguate a dual-API build (BOTH d3d11 and d3d12 mapped) by asking the game engine which
      * graphics device it ACTUALLY created — ground truth that module presence cannot provide.
@@ -899,15 +941,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // per-game folder + freshness. DXVK per-API files are matched by suffix (any renderer stem).
             File[] files = dir.listFiles();
             if (files == null) return null;
+            // Two tiers per API: logs written by a process that could be the game, and logs written by a
+            // known helper (store client / overlay proxy / launcher chain — HELPER_RENDERER_EXES). A helper
+            // log is used only when no game-tier log of that API exists, so EA Desktop's CEF D3D11 log or
+            // its overlay's vkd3d log can't outrank the game's own wrapper log.
             File vkd3d = null, dxvk11 = null, dxvk10 = null, dxvk9 = null;
+            File hDxvk11 = null, hDxvk10 = null, hDxvk9 = null;
+            String wantedStem = shortcutExeBasename();          // "<exe>" without .exe, lowercase, or null
+            if (wantedStem != null && wantedStem.endsWith(".exe")) wantedStem = wantedStem.substring(0, wantedStem.length() - 4);
             for (File f : files) {
                 if (!f.isFile()) continue;
                 String n = f.getName().toLowerCase();
-                if (n.equals("vkd3d-proton.log")) vkd3d = f;
-                else if (n.endsWith("_d3d11.log")) dxvk11 = newerLog(dxvk11, f);
-                else if (n.endsWith("_d3d10.log")) dxvk10 = newerLog(dxvk10, f);
-                else if (n.endsWith("_d3d9.log"))  dxvk9  = newerLog(dxvk9, f);
+                if (n.equals("vkd3d-proton.log")) { vkd3d = f; continue; }
+                boolean helper = isHelperRendererExe(dxvkLogStem(f));
+                if (n.endsWith("_d3d11.log"))      { if (helper) hDxvk11 = newerLog(hDxvk11, f); else dxvk11 = newerLog(dxvk11, f); }
+                else if (n.endsWith("_d3d10.log")) { if (helper) hDxvk10 = newerLog(hDxvk10, f); else dxvk10 = newerLog(dxvk10, f); }
+                else if (n.endsWith("_d3d9.log"))  { if (helper) hDxvk9  = newerLog(hDxvk9, f);  else dxvk9  = newerLog(dxvk9, f); }
             }
+            if (dxvk11 == null) dxvk11 = hDxvk11;
+            if (dxvk10 == null) dxvk10 = hDxvk10;
+            if (dxvk9 == null)  dxvk9  = hDxvk9;
 
             final String SEP = " · ";
             // 1) D3D12 on VKD3D — highest rank, but ONLY when vkd3d actually RENDERED (a swapchain /
@@ -915,8 +968,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
             //    Ex: Mankind Divided) run on D3D11 yet still create a throwaway D3D12 device to query
             //    support — that probe log has instance/device/pipeline-cache lines but no swapchain, so it
             //    must NOT win over the game's real D3D11 (its large DXVK _d3d11.log, matched below).
+            //    Identity gates on top: the log names its program — a helper process (EA Desktop, its
+            //    IGOProxy overlay, Steam's overlay …) never labels the game; and when the shortcut's own
+            //    exe has a fresh DXVK log, a vkd3d log naming a DIFFERENT program loses to it.
             if (isFreshWrapperLog(vkd3d) && vkd3dLogShowsRendering(vkd3d)) {
-                return cacheWrapperResult(vkd3d, "D3D12" + SEP + "VKD3D");
+                String prog = vkd3dLogProgramName(vkd3d);
+                boolean helperVkd3d = isHelperRendererExe(prog);
+                boolean shortcutHasDxvk = wantedStem != null && (
+                        (isFreshWrapperLog(dxvk11) && wantedStem.equals(dxvkLogStem(dxvk11))) ||
+                        (isFreshWrapperLog(dxvk10) && wantedStem.equals(dxvkLogStem(dxvk10))) ||
+                        (isFreshWrapperLog(dxvk9)  && wantedStem.equals(dxvkLogStem(dxvk9))));
+                boolean vkd3dIsShortcut = prog != null && wantedStem != null
+                        && prog.equals(wantedStem + ".exe");
+                if (!helperVkd3d && (vkd3dIsShortcut || !shortcutHasDxvk)) {
+                    return cacheWrapperResult(vkd3d, "D3D12" + SEP + "VKD3D");
+                }
             }
             // 2) DXVK per-API files (D3D11/10/9) — the file exists only when DXVK created that device.
             if (isFreshWrapperLog(dxvk11)) return cacheWrapperResult(dxvk11, "D3D11" + SEP + wrapper);

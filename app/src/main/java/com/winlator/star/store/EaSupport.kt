@@ -58,12 +58,42 @@ object EaSupport {
             File(installDir, "Core/Activation64.dll").isFile ||
             File(installDir, "Core/Activation.dll").isFile ||
             File(installDir, "Core/ActivationUI.exe").isFile ||
-            File(installDir, "EAAntiCheat.GameServiceLauncher.exe").isFile
+            File(installDir, "EAAntiCheat.GameServiceLauncher.exe").isFile ||
+            // EA-app-era titles (e.g. STAR WARS Jedi: Survivor) ship no Link2EA/EASteamProxy/Core files;
+            // their only on-disk tell is the EA app installer somewhere under __Installer (the exact
+            // subfolder varies: Origin\redist\internal, EA\..., internal\...) or an installscript that
+            // runs it.
+            hasEaInstaller(File(installDir, "__Installer")) ||
+            installScriptMentionsEa(installDir)
         if (!ea) return null
         val javelin = File(installDir, "EAAntiCheat.GameServiceLauncher.exe").isFile ||
             File(installDir, "__Installer/EAAntiCheat").isDirectory ||
             File(installDir, "EAAntiCheat").isDirectory
         return Profile(eaChain = true, javelinAntiCheat = javelin)
+    }
+
+    /** True when an `EAappInstaller*.exe` (or `EADesktop*.exe`) exists up to 4 levels below [dir]. */
+    private fun hasEaInstaller(dir: File, depth: Int = 0): Boolean {
+        if (depth > 4 || !dir.isDirectory) return false
+        val children = dir.listFiles() ?: return false
+        for (f in children) {
+            val n = f.name
+            if (f.isFile && (n.startsWith("EAappInstaller", true) || n.startsWith("EADesktop", true)) && n.endsWith(".exe", true)) return true
+        }
+        for (f in children) if (f.isDirectory && hasEaInstaller(f, depth + 1)) return true
+        return false
+    }
+
+    /** True when the depot's installscript (any `installscript*.vdf` in the root) runs or references EA's installer/client. */
+    private fun installScriptMentionsEa(installDir: File): Boolean {
+        val vdfs = installDir.listFiles { f -> f.isFile && f.name.startsWith("installscript", true) && f.name.endsWith(".vdf", true) } ?: return false
+        for (v in vdfs) {
+            if (v.length() > 512 * 1024) continue
+            val text = try { v.readText() } catch (e: Exception) { continue }
+            if (text.contains("EAappInstaller", true) || text.contains("EADesktop", true) ||
+                text.contains("EA Desktop", true) || text.contains("Electronic Arts\\EA", true)) return true
+        }
+        return false
     }
 
     /** The depot root for a Steam shortcut (resolves the Windows exe path back to the Android install dir). */

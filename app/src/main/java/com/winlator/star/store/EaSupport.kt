@@ -3,7 +3,6 @@ package com.winlator.star.store
 import android.content.Context
 import android.util.Log
 import com.winlator.star.components.ComponentCatalog
-import com.winlator.star.components.ComponentExecInstaller
 import com.winlator.star.container.Container
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.WinePath
@@ -135,20 +134,29 @@ object EaSupport {
         processPath.contains("EAappInstaller", ignoreCase = true) || processPath.contains("EAapp", ignoreCase = true)
 
     /**
-     * Starts the wine-mono component install into [container] via the exec installer (its own
-     * auto-closing Wine session; the app restarts afterwards and ComponentInstallResume finishes the
-     * plan). Network: reads the components catalog. Returns true when a session was launched.
+     * Downloads the wine-mono MSI (from the components catalog's mono entry) into the container's
+     * `windows\temp\bannerlator_components` — the same staging dir the component installer uses —
+     * and returns it. It is NOT run here: the installScript setup session installs it silently
+     * (`msiexec /i … /qn`) right before the bundled EA installer, in one session. Network. Null on failure.
      */
     @JvmStatic
-    fun startMonoInstall(context: Context, container: Container): Boolean {
+    fun stageMonoMsi(context: Context, container: Container): File? {
         val catalog = try { ComponentCatalog.load() } catch (e: Exception) { emptyList() }
         val comp = MONO_COMPONENTS.firstNotNullOfOrNull { n -> catalog.firstOrNull { it.name.equals(n, true) } }
-        if (comp == null) { Log.w(TAG, "no mono component in the catalog"); return false }
-        return when (val r = ComponentExecInstaller.startInstall(context, container, comp) {}) {
-            is ComponentExecInstaller.Result.Launched -> true
-            is ComponentExecInstaller.Result.Done -> true   // nothing to run (already there) — caller re-checks
-            is ComponentExecInstaller.Result.Error -> { Log.w(TAG, "mono install failed: ${r.message}"); false }
-        }
+        val step = comp?.steps?.firstOrNull { it.action == "install_msi" }
+        if (comp == null || step == null) { Log.w(TAG, "no mono install_msi component in the catalog"); return null }
+        val fields = step.obj.optJSONObject("environment") ?: step.obj
+        val url = fields.optString("mirror").ifEmpty { fields.optString("url") }
+        if (!url.startsWith("http")) { Log.w(TAG, "mono component has no download URL"); return null }
+        val rawName = fields.optString("rename").ifEmpty { fields.optString("file_name").ifEmpty { url.substringBefore('?').substringAfterLast('/') } }
+        val safe = rawName.replace(Regex("""[\\/:*?"<>|\s]"""), "_").ifEmpty { "wine-mono.msi" }
+        val destDir = File(container.rootDir, ".wine/drive_c/windows/temp/bannerlator_components").apply { mkdirs() }
+        val dest = File(destDir, safe)
+        val expected = fields.optString("file_size").toLongOrNull() ?: 0L
+        if (dest.isFile && (expected == 0L || dest.length() == expected)) return dest
+        val ok = try { com.winlator.star.contents.Downloader.downloadFile(url, dest) { } } catch (e: Exception) { Log.w(TAG, "mono download failed", e); false }
+        if (!ok || !dest.isFile || (expected > 0L && dest.length() != expected)) { dest.delete(); Log.w(TAG, "mono download incomplete"); return null }
+        return dest
     }
 
     // ---- Readiness --------------------------------------------------------------------------------

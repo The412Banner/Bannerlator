@@ -2879,9 +2879,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             text = {
                 Text(
                     "\"${s.name}\" is an EA title: it launches through EA Desktop, which isn't installed in this " +
-                        "container yet. Bannerlator will install it now (wine-mono first if the container lacks it) " +
-                        "in a short setup session — the app restarts when each step finishes. Afterwards launch the " +
-                        "game again; sign in to EA when it asks. This happens once per container."
+                        "container yet. Bannerlator will install it now in one setup session (wine-mono first if the " +
+                        "container lacks it). You'll see a setup screen for a few minutes — leave it alone, it closes by " +
+                        "itself and the app comes back. Then launch the game again and sign in to EA when it asks. " +
+                        "This happens once per container."
                 )
             },
             confirmButton = {

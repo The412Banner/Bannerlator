@@ -128,18 +128,23 @@ object InstallScriptExecutor {
             // 0x8007065b (device-proven, Aug 2026). Install the mono component first (its own
             // auto-closing session; the app restarts), remember this script, and let [resumePending]
             // re-drive the Run-Process step once mono is in.
+            // wine-mono is staged (downloaded into the prefix) here and installed silently by the SAME
+            // setup session that runs the bundled installer — one session, no app restart in between,
+            // no second dialog (device test #2 showed the two-session chain confusing: a silent MSI
+            // means a black desktop with nothing telling the user it is working).
             val firstRun = model.runProcesses.firstOrNull { it.process.isNotBlank() }
+            var monoMsiWin: String? = null
             if (firstRun != null && EaSupport.runProcessNeedsMono(firstRun.process) && !EaSupport.hasMono(container)) {
-                savePending(context, container.id, appId, installDir)
-                val started = EaSupport.startMonoInstall(context, container)
-                Log.i(TAG, "Run-Process needs wine-mono (container ${container.id}) — mono install " + (if (started) "launched" else "NOT started"))
-                return if (started) Result.PrerequisiteLaunched else Result.Error("wine-mono is required but could not be installed")
+                val msi = EaSupport.stageMonoMsi(context, container)
+                    ?: return Result.Error("wine-mono is required but could not be downloaded")
+                monoMsiWin = "C:\\windows\\temp\\bannerlator_components\\" + msi.name
+                Log.i(TAG, "Run-Process needs wine-mono (container ${container.id}) — staged ${msi.name}, installing in the setup session")
             }
             clearPending(context)
             // Mark optimistically before we hand off — the session restarts the app, mirroring
             // ComponentExecInstaller's fire-and-forget cursor advance.
             markRunProcDone(context, container.id, appId)
-            val launched = runProcessStage.run(context, container, model.runProcesses, tokens)
+            val launched = runProcessStage.run(context, container, model.runProcesses, tokens, monoMsiWin)
             return if (launched) Result.RunLaunched else Result.LocalApplied
         }
         return if (localComplete) Result.LocalApplied else Result.AlreadyDone
@@ -266,10 +271,10 @@ object InstallScriptExecutor {
 
     private fun savePending(c: Context, containerId: Int, appId: Int, installDir: File) =
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(PENDING_KEY, "$containerId|$appId|${installDir.absolutePath}").apply()
+            .putString(PENDING_KEY, "$containerId|$appId|${installDir.absolutePath}").commit()
 
     private fun clearPending(c: Context) =
-        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING_KEY).apply()
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING_KEY).commit()
 
     /** True when a Run-Process step is waiting on a prerequisite install (see [resumePending]). */
     @JvmStatic
@@ -334,7 +339,7 @@ object InstallScriptExecutor {
     private fun mark(c: Context, key: String, appId: Int) {
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val cur = p.getStringSet(key, emptySet()) ?: emptySet()
-        if (appId.toString() !in cur) p.edit().putStringSet(key, cur + appId.toString()).apply()
+        if (appId.toString() !in cur) p.edit().putStringSet(key, cur + appId.toString()).commit()  // sync: the app restarts right after
     }
 
     // ---- Run-Process seam ------------------------------------------------------------------------
@@ -349,6 +354,7 @@ object InstallScriptExecutor {
         fun run(
             context: Context, container: Container,
             processes: List<InstallScriptModel.RunProcess>, tokens: InstallScriptTokens,
+            monoMsiWin: String? = null,
         ): Boolean
     }
 
@@ -366,15 +372,51 @@ object InstallScriptExecutor {
         override fun run(
             context: Context, container: Container,
             processes: List<InstallScriptModel.RunProcess>, tokens: InstallScriptTokens,
+            monoMsiWin: String?,
         ): Boolean {
             val rp = processes.firstOrNull { it.process.isNotBlank() } ?: return false
-            val winPath = tokens.substituteWindows(rp.process)
-            val execTarget = WinePath.escapeForExec(winPath)
-            val exeBaseName = winPath.substringAfterLast('\\').substringAfterLast('/')
-            val (envPairs, execArgs) = splitCommand(tokens.substituteWindows(rp.command))
+            val winProcess = tokens.substituteWindows(rp.process)
+            // The command line is passed VERBATIM as arguments. EA's burn bootstrapper takes
+            // EAX_LAUNCH_CLIENT=0 IGNORE_INSTALLED=1 as command-line properties (that is how the
+            // device-proven manual run passed them); an earlier revision split leading NAME=VALUE
+            // tokens off as environment variables and the installer exited without installing.
+            val command = tokens.substituteWindows(rp.command).trim()
+
+            // One setup session driven by a batch file: (optional) silent wine-mono MSI, then the
+            // bundled installer with `start /wait`, then an exit-code marker. Same shape as the
+            // hand-run C:\ea_setup\run.bat that installed EA Desktop on device (2026-09-05). The
+            // installer exe path is passed as %1 (a Unicode-safe command-line argument) so a
+            // non-ASCII game folder never has to survive the batch file's ANSI codepage.
+            val safe = rp.name.replace(Regex("""[\\/:*?"<>|\s]"""), "_").ifEmpty { "installscript" }
+            val driveC = File(container.rootDir, ".wine/drive_c")
+            val bat = File(driveC, "bl_installscript_$safe.bat")
+            val exitMarker = "C:\\bl_installscript_$safe.exit"
+            val lines = ArrayList<String>()
+            lines += "@echo off"
+            lines += "title Bannerlator setup - ${rp.name}"
+            lines += "echo Bannerlator: running the Steam install script step \"${rp.name}\"."
+            lines += "echo This window closes by itself when everything has finished. Please wait."
+            if (monoMsiWin != null) {
+                lines += "echo."
+                lines += "echo [1/2] Installing wine-mono (.NET runtime for the installer) - about 1-2 minutes..."
+                lines += "msiexec /i \"$monoMsiWin\" /qn"
+                lines += "echo       wine-mono exit code %ERRORLEVEL%"
+                lines += "echo."
+                lines += "echo [2/2] Running the bundled installer - this can take 2-4 minutes..."
+            } else {
+                lines += "echo."
+                lines += "echo Running the bundled installer - this can take 2-4 minutes..."
+            }
+            lines += "start /wait \"\" %1 $command"
+            lines += "echo %ERRORLEVEL% > $exitMarker"
+            lines += "echo Done (exit code %ERRORLEVEL%). Closing..."
+            bat.writeText(lines.joinToString("\r\n") + "\r\n", Charsets.US_ASCII.takeIf { lines.all { l -> l.all { c -> c.code < 128 } } } ?: Charsets.UTF_8)
+
+            val batWin = "C:\\" + bat.name
+            val execTarget = WinePath.escapeForExec("C:\\windows\\system32\\cmd.exe")
+            val execArgs = "/c $batWin \"$winProcess\""
 
             val desktopDir = File(context.filesDir, "desktops").apply { mkdirs() }
-            val safe = rp.name.replace(Regex("""[\\/:*?"<>|]"""), "_").ifEmpty { "installscript" }
             val shortcut = File(desktopDir, "installscript_$safe.desktop").apply {
                 writeText(buildString {
                     append("[Desktop Entry]\n")
@@ -384,8 +426,7 @@ object InstallScriptExecutor {
                     append("StartupWMClass=explorer\n")
                     append("\ncontainer_id:").append(container.id).append("\n")
                     append("\n[Extra Data]\n")
-                    if (execArgs.isNotEmpty()) append("execArgs=").append(execArgs).append("\n")
-                    if (envPairs.isNotEmpty()) append("envVars=").append(envPairs).append("\n")
+                    append("execArgs=").append(execArgs).append("\n")
                 })
             }
 
@@ -393,27 +434,14 @@ object InstallScriptExecutor {
             intent.putExtra("container_id", container.id)
             intent.putExtra("shortcut_path", shortcut.absolutePath)
             intent.putExtra("shortcut_name", shortcut.nameWithoutExtension)
-            intent.putExtra("component_installer_exe", exeBaseName)
+            // The session auto-closes once the batch's cmd.exe is gone (msiexec / the installer are
+            // matched too by the installer watch, so the hand-offs inside the batch never trip it).
+            intent.putExtra("component_installer_exe", "cmd.exe")
+            intent.putExtra("component_installer_label", (if (monoMsiWin != null) "wine-mono + " else "") + rp.name)
             if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            Log.d(TAG, "Launched Run-Process session for '${rp.name}' ($exeBaseName)")
+            Log.d(TAG, "Launched setup session for '${rp.name}' (batch ${bat.name}, mono=${monoMsiWin != null})")
             return true
-        }
-
-        /** Splits a command line into (envVars, args): leading `NAME=VALUE` tokens are env vars. */
-        private fun splitCommand(command: String): Pair<String, String> {
-            val env = StringBuilder()
-            val args = StringBuilder()
-            var stillEnv = true
-            for (t in command.trim().split(Regex("""\s+""")).filter { it.isNotBlank() }) {
-                if (stillEnv && t.matches(Regex("""^[A-Za-z_][A-Za-z0-9_]*=.*"""))) {
-                    if (env.isNotEmpty()) env.append(' '); env.append(t)
-                } else {
-                    stillEnv = false
-                    if (args.isNotEmpty()) args.append(' '); args.append(t)
-                }
-            }
-            return env.toString() to args.toString()
         }
     }
 
@@ -426,6 +454,7 @@ object InstallScriptExecutor {
         override fun run(
             context: Context, container: Container,
             processes: List<InstallScriptModel.RunProcess>, tokens: InstallScriptTokens,
+            monoMsiWin: String?,
         ): Boolean {
             Log.d(TAG, "Run-Process skipped (pre-baked container backend)")
             return false

@@ -2324,10 +2324,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     // renders behind it) so the boot steps are actually seen, then close and pop the
                     // controller-status toast (game now visible, preloader gone; runs on the main thread
                     // so getPlayerSlotAssignments is safe).
-                    new android.os.Handler(getMainLooper()).postDelayed(() -> {
-                        preloaderDialog.closeOnUiThread();
-                        showControllerStatusToast("launch", null);
-                    }, LAUNCH_OVERLAY_GRACE_MS);
+                    if (componentInstallerExe != null && !componentInstallerExe.isEmpty()) {
+                        // Installer / setup session (component MSI, Steam installScript step): the
+                        // installer's window is often invisible or silent, so closing the overlay would
+                        // leave a black desktop with no sign anything is happening (device test #2:
+                        // the user killed a working mono install). Keep the launch overlay up with a
+                        // clear status; the session exits by itself when the installer is gone.
+                        String label = getIntent().getStringExtra("component_installer_label");
+                        preloaderHint("Installing " + (label != null && !label.isEmpty() ? label : componentInstallerExe)
+                                + "… this can take a few minutes. Leave it running — this screen closes by itself when it is done.");
+                    } else {
+                        new android.os.Handler(getMainLooper()).postDelayed(() -> {
+                            preloaderDialog.closeOnUiThread();
+                            showControllerStatusToast("launch", null);
+                        }, LAUNCH_OVERLAY_GRACE_MS);
+                    }
                 }
                     
                 // SHM/copyArea present path — count the frame (self-heals onto the real presenting

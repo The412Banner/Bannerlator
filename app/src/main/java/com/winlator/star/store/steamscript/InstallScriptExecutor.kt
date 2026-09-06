@@ -471,30 +471,39 @@ object InstallScriptExecutor {
     }
 
     /**
-     * Windows path of a Run-Process exe, routed through `C:\\bl_installscript\\<dirname>` — an ASCII
-     * symlink to the depot's install dir — when the exe lives under %INSTALLDIR%. Falls back to the plain
-     * token-substituted path when the process is elsewhere or the link cannot be created.
+     * Windows path of a Run-Process exe, relocated to a REAL directory under `C:\\bl_installscript\\<ascii>`
+     * when the exe lives under %INSTALLDIR%: the exe's directory (regular files only, e.g.
+     * `__Installer\\Origin\\redist\\internal\\{EAappInstaller.exe, Autorun}`) is copied there, preserving the
+     * relative path. Device evidence (2026-09-05): EA's burn bootstrapper dies caching its own payload
+     * from a non-ASCII source path (exit 3), and its elevated worker never connects when the source is a
+     * symlinked directory; the only run that installed EA Desktop ran from a real ASCII folder. Falls
+     * back to the plain token-substituted path when the process is elsewhere or the copy fails.
      */
     private fun aliasedProcessPath(context: Context, container: Container, tokens: InstallScriptTokens, process: String): String {
         val plain = tokens.substituteWindows(process)
         val marker = "%INSTALLDIR%"
         val idx = process.indexOf(marker, ignoreCase = true)
         if (idx < 0) return plain
-        val rel = process.substring(idx + marker.length).trimStart('\\', '/').replace('/', '\\')
-        val installDir = tokens.installDir
-        // Alias name: ASCII-only, filesystem-safe, stable per install dir.
-        val alias = installDir.name.filter { it.code in 0x20..0x7E && it !in "<>:\"/\\|?*" }.trim().ifEmpty { "game" }
-            .replace(' ', '_')
-        val aliasRoot = File(container.rootDir, ".wine/drive_c/bl_installscript").apply { mkdirs() }
-        val link = File(aliasRoot, alias)
+        val rel = process.substring(idx + marker.length).trimStart('\\', '/').replace('\\', '/')
+        val srcExe = File(tokens.installDir, rel)
+        if (!srcExe.isFile) return plain
+        val alias = tokens.installDir.name.filter { it.code in 0x20..0x7E && it !in "<>:\"/\\|?*" }.trim()
+            .ifEmpty { "game" }.replace(' ', '_')
+        val dstExe = File(File(container.rootDir, ".wine/drive_c/bl_installscript/$alias"), rel)
         try {
-            if (com.winlator.star.core.FileUtils.isSymlink(link)) com.winlator.star.core.FileUtils.delete(link)
-            if (!link.exists()) com.winlator.star.core.FileUtils.symlink(installDir.absolutePath, link.absolutePath)
-            if (!com.winlator.star.core.FileUtils.isSymlink(link)) return plain
+            val srcDir = srcExe.parentFile!!; val dstDir = dstExe.parentFile!!
+            dstDir.mkdirs()
+            for (f in srcDir.listFiles() ?: emptyArray()) {
+                if (!f.isFile) continue
+                val d = File(dstDir, f.name)
+                if (d.isFile && d.length() == f.length()) continue
+                if (!com.winlator.star.core.FileUtils.copy(f, d)) { Log.w(TAG, "alias copy failed for ${f.name}"); return plain }
+            }
+            if (!dstExe.isFile) return plain
         } catch (e: Exception) {
-            Log.w(TAG, "alias symlink failed, using the real path", e); return plain
+            Log.w(TAG, "alias copy failed, using the real path", e); return plain
         }
-        return "C:\\bl_installscript\\$alias\\$rel"
+        return "C:\\bl_installscript\\$alias\\" + rel.replace('/', '\\')
     }
 
     /**

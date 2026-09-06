@@ -2325,14 +2325,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     // controller-status toast (game now visible, preloader gone; runs on the main thread
                     // so getPlayerSlotAssignments is safe).
                     if (componentInstallerExe != null && !componentInstallerExe.isEmpty()) {
-                        // Installer / setup session (component MSI, Steam installScript step): the
-                        // installer's window is often invisible or silent, so closing the overlay would
-                        // leave a black desktop with no sign anything is happening (device test #2:
-                        // the user killed a working mono install). Keep the launch overlay up with a
-                        // clear status; the session exits by itself when the installer is gone.
-                        String label = getIntent().getStringExtra("component_installer_label");
-                        preloaderHint("Installing " + (label != null && !label.isEmpty() ? label : componentInstallerExe)
-                                + "… this can take a few minutes. Leave it running — this screen closes by itself when it is done.");
+                        // Installer / setup session: a window appeared, so the installer has a UI the
+                        // user may need to click (device test #3: EA's installer waited for "Install"
+                        // behind an opaque overlay). Close the overlay like a normal launch and keep the
+                        // user informed with a reminder toast instead. A SILENT installer never maps a
+                        // window, so it never reaches here and the overlay's status line stays up.
+                        installerReminderToast();
+                        new android.os.Handler(getMainLooper()).postDelayed(preloaderDialog::closeOnUiThread, 1500);
                     } else {
                         new android.os.Handler(getMainLooper()).postDelayed(() -> {
                             preloaderDialog.closeOnUiThread();
@@ -11177,8 +11176,30 @@ return true;
                 || name.contains("install");
     }
 
+    private int installerTicksTotal = 0;
+
+    /** Short status for installer sessions (label from the intent, else the watched exe name). */
+    private String installerLabel() {
+        String label = getIntent().getStringExtra("component_installer_label");
+        return (label != null && !label.isEmpty()) ? label : componentInstallerExe;
+    }
+
+    private void installerReminderToast() {
+        try {
+            runOnUiThread(() -> android.widget.Toast.makeText(this,
+                    "Installing " + installerLabel() + "… follow the installer's prompts if it shows any. "
+                            + "This session closes by itself when it is done.",
+                    android.widget.Toast.LENGTH_LONG).show());
+        } catch (Throwable ignored) {}
+    }
+
     private void evaluateInstallerTick() {
         if (componentInstallerExe == null) return;
+        // Silent installer (no window ever mapped -> overlay still up): keep its status line current.
+        if (!winStarted) preloaderHint("Installing " + installerLabel()
+                + "… this can take a few minutes. Leave it running — this screen closes by itself when it is done.");
+        // Visible installer: repeat the reminder roughly every 45 s so a long install never looks stuck.
+        if (winStarted && (++installerTicksTotal % 45) == 0) installerReminderToast();
         boolean present = false;
         for (String n : installerTickNames) {
             if (looksLikeInstallerProc(n)) { present = true; break; }

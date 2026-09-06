@@ -78,7 +78,7 @@ object InstallScriptExecutor {
         try {
             val installDir = locateInstallDir(File(exePath)) ?: return
             if (retryRunProcess && !clientInstalled(context, container, installDir)) {
-                unmark(context, "runproc_c${container.id}", steamAppId)
+                unmark(container, "runproc", steamAppId)
                 // A previous attempt may have died mid-install (wizard abort, killed session): burn then
                 // "resumes" the half-registered bundle and fails. Start the retry from a clean slate.
                 val cleaned = EaSupport.cleanupFailedInstall(container)
@@ -130,16 +130,16 @@ object InstallScriptExecutor {
         // Local stages (idempotent). Registry only lands when the prefix has booted at least once,
         // else wineboot could clobber a hand-written hive; the launch-time hook re-applies then.
         var localComplete = true
-        if (!localDone(context, container.id, appId)) {
+        if (!localDone(container, appId)) {
             val registryApplied = applyRegistry(container, model, tokens)
             applyCopyFiles(model, tokens)
             localComplete = registryApplied || !model.hasRegistry
-            if (localComplete) markLocalDone(context, container.id, appId)
+            if (localComplete) markLocalDone(container, appId)
         }
 
         if (!allowRunProcess) return Result.LocalApplied
 
-        if (model.hasRunProcess && !runProcDone(context, container.id, appId) && !runGuardSatisfied(model, tokens)) {
+        if (model.hasRunProcess && !runProcDone(container, appId) && !runGuardSatisfied(model, tokens)) {
             // Prerequisite: EA's bundled installer (EAappInstaller.exe -> EA Desktop MSI) runs MANAGED
             // .NET custom actions, which need wine-mono in the prefix — without it the MSI dies with
             // 0x8007065b (device-proven, Aug 2026). Install the mono component first (its own
@@ -171,7 +171,7 @@ object InstallScriptExecutor {
             clearPending(context)
             // Mark optimistically before we hand off — the session restarts the app, mirroring
             // ComponentExecInstaller's fire-and-forget cursor advance.
-            markRunProcDone(context, container.id, appId)
+            markRunProcDone(container, appId)
             val launched = runProcessStage.run(context, container, model.runProcesses, tokens, preMsis)
             return if (launched) Result.RunLaunched else Result.LocalApplied
         }
@@ -355,25 +355,28 @@ object InstallScriptExecutor {
     }
 
     // ---- Per-(appId, container) guards -----------------------------------------------------------
+    // Marker FILES inside the prefix (drive_c/bl_installscript/state/<appId>.<kind>), not app prefs:
+    // a deleted-and-recreated container reuses its id, and a prefs guard keyed on the id then
+    // silently skipped Registry/Copy Files for the new prefix (device test 2026-09-06: EA Desktop
+    // reported "GameNotInstalled" because the EA Games keys + Origin licence were never written).
 
-    private fun localDone(c: Context, id: Int, appId: Int) = has(c, "local_c$id", appId)
-    private fun markLocalDone(c: Context, id: Int, appId: Int) = mark(c, "local_c$id", appId)
-    private fun runProcDone(c: Context, id: Int, appId: Int) = has(c, "runproc_c$id", appId)
-    private fun markRunProcDone(c: Context, id: Int, appId: Int) = mark(c, "runproc_c$id", appId)
+    private fun marker(container: Container, kind: String, appId: Int): File =
+        File(container.rootDir, ".wine/drive_c/bl_installscript/state/$appId.$kind")
 
-    private fun has(c: Context, key: String, appId: Int): Boolean =
-        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(key, emptySet())?.contains(appId.toString()) == true
+    private fun localDone(container: Container, appId: Int) = marker(container, "local", appId).exists()
+    private fun markLocalDone(container: Container, appId: Int) = mark(container, "local", appId)
+    private fun runProcDone(container: Container, appId: Int) = marker(container, "runproc", appId).exists()
+    private fun markRunProcDone(container: Container, appId: Int) = mark(container, "runproc", appId)
 
-    private fun unmark(c: Context, key: String, appId: Int) {
-        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val cur = p.getStringSet(key, emptySet()) ?: emptySet()
-        if (appId.toString() in cur) p.edit().putStringSet(key, cur - appId.toString()).commit()
+    private fun mark(container: Container, kind: String, appId: Int) {
+        try {
+            val f = marker(container, kind, appId); f.parentFile?.mkdirs()
+            f.writeText(java.util.Date().toString())
+        } catch (e: Exception) { Log.w(TAG, "could not write $kind marker", e) }
     }
 
-    private fun mark(c: Context, key: String, appId: Int) {
-        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val cur = p.getStringSet(key, emptySet()) ?: emptySet()
-        if (appId.toString() !in cur) p.edit().putStringSet(key, cur + appId.toString()).commit()  // sync: the app restarts right after
+    private fun unmark(container: Container, kind: String, appId: Int) {
+        try { marker(container, kind, appId).delete() } catch (e: Exception) { Log.w(TAG, "could not clear $kind marker", e) }
     }
 
     // ---- Run-Process seam ------------------------------------------------------------------------

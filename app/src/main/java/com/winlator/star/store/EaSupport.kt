@@ -192,6 +192,56 @@ object EaSupport {
     fun stageGeckoMsis(context: Context, container: Container): List<File> =
         stageComponentMsis(context, container, GECKO_COMPONENTS)
 
+    // ---- Failed-install cleanup -----------------------------------------------------------------
+
+    /**
+     * Removes what an aborted EA Desktop install leaves behind, so the next setup attempt starts clean
+     * instead of "resuming" a half-registered bundle and failing 0xa00a0480 ("Failed to run per-user
+     * mode", device-proven three times on 2026-09-06). Only call when the client is NOT installed and no
+     * session is running. Removes: `ProgramData\\Package Cache` (burn's cache), the clean-room dirs
+     * `windows\\Temp\\{GUID}`, stale setup exit markers, and every `system.reg` section mentioning a
+     * bundle GUID whose registration names the EA installer (Uninstall, Installer\\Dependencies, RunOnce).
+     * The registry file is backed up next to itself first.
+     */
+    @JvmStatic
+    fun cleanupFailedInstall(container: Container): Boolean {
+        val driveC = File(container.rootDir, ".wine/drive_c")
+        var changed = false
+        try {
+            val cache = File(driveC, "ProgramData/Package Cache")
+            if (cache.isDirectory) { changed = cache.deleteRecursively() || changed; Log.i(TAG, "cleanup: removed Package Cache") }
+            File(driveC, "windows/Temp").listFiles()?.filter { it.isDirectory && it.name.startsWith("{") }?.forEach { it.deleteRecursively(); changed = true }
+            driveC.listFiles()?.filter { it.isFile && it.name.startsWith("bl_installscript_") && it.name.endsWith(".exit") }?.forEach { it.delete() }
+
+            val reg = File(container.rootDir, ".wine/system.reg")
+            if (reg.isFile) {
+                val text = reg.readText(Charsets.UTF_8)
+                val blocks = text.split("\n\n")
+                val guidRe = Regex("\\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}")
+                // GUIDs of bundles that belong to the EA installer: any block mentioning its engine exe or
+                // an "EA app" Uninstall entry.
+                val guids = HashSet<String>()
+                for (b in blocks) {
+                    if (b.contains("EAappOfflineInstaller.exe", true) || (b.contains("Uninstall", true) && b.contains("\"EA app\"", true))) {
+                        guidRe.findAll(b).forEach { guids += it.value.uppercase() }
+                    }
+                }
+                if (guids.isNotEmpty()) {
+                    val kept = blocks.filter { b -> guids.none { g -> b.uppercase().contains(g) } }
+                    if (kept.size != blocks.size) {
+                        File(reg.path + ".bak_ea_cleanup").writeText(text, Charsets.UTF_8)
+                        reg.writeText(kept.joinToString("\n\n"), Charsets.UTF_8)
+                        changed = true
+                        Log.i(TAG, "cleanup: removed ${blocks.size - kept.size} registry section(s) for bundle(s) $guids")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "cleanupFailedInstall failed", e)
+        }
+        return changed
+    }
+
     // ---- Readiness --------------------------------------------------------------------------------
 
     /**

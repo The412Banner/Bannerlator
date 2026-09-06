@@ -79,7 +79,10 @@ object InstallScriptExecutor {
             val installDir = locateInstallDir(File(exePath)) ?: return
             if (retryRunProcess && !clientInstalled(context, container, installDir)) {
                 unmark(context, "runproc_c${container.id}", steamAppId)
-                Log.i(TAG, "retry requested and client not installed — cleared runproc guard for appId $steamAppId (container ${container.id})")
+                // A previous attempt may have died mid-install (wizard abort, killed session): burn then
+                // "resumes" the half-registered bundle and fails. Start the retry from a clean slate.
+                val cleaned = EaSupport.cleanupFailedInstall(container)
+                Log.i(TAG, "retry requested and client not installed — cleared runproc guard for appId $steamAppId (container ${container.id}); leftover state cleaned=$cleaned")
             }
             when (val r = execute(context, container, steamAppId, installDir, allowRunProcess = true)) {
                 is Result.Error -> Log.w(TAG, "installScript for appId $steamAppId: ${r.message}")

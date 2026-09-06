@@ -63,10 +63,24 @@ object InstallScriptExecutor {
      * game's Android exe path (used to locate the depot's install dir); [steamAppId] must be > 0.
      */
     @JvmStatic
-    fun runForShortcut(context: Context, container: Container, steamAppId: Int, exePath: String) {
+    fun runForShortcut(context: Context, container: Container, steamAppId: Int, exePath: String) =
+        runForShortcut(context, container, steamAppId, exePath, false)
+
+    /**
+     * As above; [retryRunProcess] = true is the explicit user-driven path (the Games tab's "Set up EA
+     * Desktop" dialog, shown only when the bundled client is NOT installed): it clears this
+     * (container, appId)'s optimistic "installer launched" mark first, so a setup session that ran but
+     * failed (killed, installer error) can be run again instead of being treated as done forever.
+     */
+    @JvmStatic
+    fun runForShortcut(context: Context, container: Container, steamAppId: Int, exePath: String, retryRunProcess: Boolean) {
         if (steamAppId <= 0) return
         try {
             val installDir = locateInstallDir(File(exePath)) ?: return
+            if (retryRunProcess && !clientInstalled(context, container, installDir)) {
+                unmark(context, "runproc_c${container.id}", steamAppId)
+                Log.i(TAG, "retry requested and client not installed — cleared runproc guard for appId $steamAppId (container ${container.id})")
+            }
             when (val r = execute(context, container, steamAppId, installDir, allowRunProcess = true)) {
                 is Result.Error -> Log.w(TAG, "installScript for appId $steamAppId: ${r.message}")
                 else -> Log.d(TAG, "installScript for appId $steamAppId -> ${r::class.simpleName}")
@@ -335,6 +349,12 @@ object InstallScriptExecutor {
 
     private fun has(c: Context, key: String, appId: Int): Boolean =
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(key, emptySet())?.contains(appId.toString()) == true
+
+    private fun unmark(c: Context, key: String, appId: Int) {
+        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val cur = p.getStringSet(key, emptySet()) ?: emptySet()
+        if (appId.toString() in cur) p.edit().putStringSet(key, cur - appId.toString()).commit()
+    }
 
     private fun mark(c: Context, key: String, appId: Int) {
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

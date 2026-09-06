@@ -2895,7 +2895,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         val appId = steamAppIdOf(s)
                         if (exe != null && appId > 0) {
                             withContext(Dispatchers.IO) {
-                                try { InstallScriptExecutor.runForShortcut(context, s.container, appId, exe) }
+                                try { InstallScriptExecutor.runForShortcut(context, s.container, appId, exe, true) }
                                 catch (t: Throwable) { android.util.Log.w("ShortcutsScreen", "EA setup failed", t) }
                             }
                         } else {

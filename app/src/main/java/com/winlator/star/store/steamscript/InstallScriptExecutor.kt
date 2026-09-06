@@ -147,18 +147,29 @@ object InstallScriptExecutor {
             // no second dialog (device test #2 showed the two-session chain confusing: a silent MSI
             // means a black desktop with nothing telling the user it is working).
             val firstRun = model.runProcesses.firstOrNull { it.process.isNotBlank() }
-            var monoMsiWin: String? = null
-            if (firstRun != null && EaSupport.runProcessNeedsMono(firstRun.process) && !EaSupport.hasMono(container)) {
-                val msi = EaSupport.stageMonoMsi(context, container)
-                    ?: return Result.Error("wine-mono is required but could not be downloaded")
-                monoMsiWin = "C:\\windows\\temp\\bannerlator_components\\" + msi.name
-                Log.i(TAG, "Run-Process needs wine-mono (container ${container.id}) — staged ${msi.name}, installing in the setup session")
+            val preMsis = ArrayList<String>()   // Windows paths, installed silently before the bundled installer
+            if (firstRun != null && EaSupport.runProcessNeedsMono(firstRun.process)) {
+                val staging = "C:\\windows\\temp\\bannerlator_components\\"
+                if (!EaSupport.hasMono(container)) {
+                    val msi = EaSupport.stageMonoMsi(context, container)
+                        ?: return Result.Error("wine-mono is required but could not be downloaded")
+                    preMsis += staging + msi.name
+                    Log.i(TAG, "Run-Process needs wine-mono (container ${container.id}) — staged ${msi.name}")
+                }
+                if (!EaSupport.hasGecko(container)) {
+                    // EA's MSI custom actions (64-bit msiexec) load mshtml → real Gecko for both arches,
+                    // else the install dies 0x8007065b / stalls on Wine's Gecko download dialog.
+                    val msis = EaSupport.stageGeckoMsis(context, container)
+                    if (msis.isEmpty()) return Result.Error("Wine Gecko is required but could not be downloaded")
+                    for (m in msis) preMsis += staging + m.name
+                    Log.i(TAG, "Run-Process needs Wine Gecko (container ${container.id}) — staged ${msis.map { it.name }}")
+                }
             }
             clearPending(context)
             // Mark optimistically before we hand off — the session restarts the app, mirroring
             // ComponentExecInstaller's fire-and-forget cursor advance.
             markRunProcDone(context, container.id, appId)
-            val launched = runProcessStage.run(context, container, model.runProcesses, tokens, monoMsiWin)
+            val launched = runProcessStage.run(context, container, model.runProcesses, tokens, preMsis)
             return if (launched) Result.RunLaunched else Result.LocalApplied
         }
         return if (localComplete) Result.LocalApplied else Result.AlreadyDone
@@ -374,7 +385,7 @@ object InstallScriptExecutor {
         fun run(
             context: Context, container: Container,
             processes: List<InstallScriptModel.RunProcess>, tokens: InstallScriptTokens,
-            monoMsiWin: String? = null,
+            preMsis: List<String> = emptyList(),
         ): Boolean
     }
 
@@ -392,7 +403,7 @@ object InstallScriptExecutor {
         override fun run(
             context: Context, container: Container,
             processes: List<InstallScriptModel.RunProcess>, tokens: InstallScriptTokens,
-            monoMsiWin: String?,
+            preMsis: List<String>,
         ): Boolean {
             val rp = processes.firstOrNull { it.process.isNotBlank() } ?: return false
             // Run the installer through an ASCII alias of the game folder. EA's burn bootstrapper died
@@ -421,17 +432,17 @@ object InstallScriptExecutor {
             lines += "title Bannerlator setup - ${rp.name}"
             lines += "echo Bannerlator: running the Steam install script step \"${rp.name}\"."
             lines += "echo This window closes by itself when everything has finished. Please wait."
-            if (monoMsiWin != null) {
+            val total = preMsis.size + 1
+            preMsis.forEachIndexed { i, msi ->
+                val name = msi.substringAfterLast('\\')
                 lines += "echo."
-                lines += "echo [1/2] Installing wine-mono (.NET runtime for the installer) - about 1-2 minutes..."
-                lines += "msiexec /i \"$monoMsiWin\" /qn"
-                lines += "echo       wine-mono exit code %ERRORLEVEL%"
-                lines += "echo."
-                lines += "echo [2/2] Running the bundled installer - this can take 2-4 minutes..."
-            } else {
-                lines += "echo."
-                lines += "echo Running the bundled installer - this can take 2-4 minutes..."
+                lines += "echo [${i + 1}/$total] Installing $name (runtime the installer needs) - about 1-2 minutes..."
+                lines += "msiexec /i \"$msi\" /qn"
+                lines += "echo       $name exit code %ERRORLEVEL%"
             }
+            lines += "echo."
+            lines += "echo [$total/$total] Running the bundled installer - follow its prompts; this can take 2-4 minutes..."
+
             lines += "start /wait \"\" %1 $command"
             lines += "echo %ERRORLEVEL% > $exitMarker"
             lines += "echo Done (exit code %ERRORLEVEL%). Closing..."
@@ -462,10 +473,10 @@ object InstallScriptExecutor {
             // The session auto-closes once the batch's cmd.exe is gone (msiexec / the installer are
             // matched too by the installer watch, so the hand-offs inside the batch never trip it).
             intent.putExtra("component_installer_exe", "cmd.exe")
-            intent.putExtra("component_installer_label", (if (monoMsiWin != null) "wine-mono + " else "") + rp.name)
+            intent.putExtra("component_installer_label", (if (preMsis.isNotEmpty()) "runtimes + " else "") + rp.name)
             if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            Log.d(TAG, "Launched setup session for '${rp.name}' (batch ${bat.name}, mono=${monoMsiWin != null})")
+            Log.d(TAG, "Launched setup session for '${rp.name}' (batch ${bat.name}, preMsis=${preMsis.size})")
             return true
         }
     }
@@ -515,7 +526,7 @@ object InstallScriptExecutor {
         override fun run(
             context: Context, container: Container,
             processes: List<InstallScriptModel.RunProcess>, tokens: InstallScriptTokens,
-            monoMsiWin: String?,
+            preMsis: List<String>,
         ): Boolean {
             Log.d(TAG, "Run-Process skipped (pre-baked container backend)")
             return false

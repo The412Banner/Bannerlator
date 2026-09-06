@@ -134,30 +134,62 @@ object EaSupport {
         processPath.contains("EAappInstaller", ignoreCase = true) || processPath.contains("EAapp", ignoreCase = true)
 
     /**
-     * Downloads the wine-mono MSI (from the components catalog's mono entry) into the container's
-     * `windows\temp\bannerlator_components` — the same staging dir the component installer uses —
-     * and returns it. It is NOT run here: the installScript setup session installs it silently
-     * (`msiexec /i … /qn`) right before the bundled EA installer, in one session. Network. Null on failure.
+     * Downloads every `install_msi` step of the first catalog component matching one of [names] into the
+     * container's `windows\\temp\\bannerlator_components` (the component installer's staging dir) and
+     * returns the files, in step order. They are NOT run here: the installScript setup session installs
+     * them silently (`msiexec /i … /qn`) before the bundled installer, all in one session. Network.
+     * Returns an empty list when the component is missing or any download fails.
      */
     @JvmStatic
-    fun stageMonoMsi(context: Context, container: Container): File? {
+    fun stageComponentMsis(context: Context, container: Container, names: List<String>): List<File> {
         val catalog = try { ComponentCatalog.load() } catch (e: Exception) { emptyList() }
-        val comp = MONO_COMPONENTS.firstNotNullOfOrNull { n -> catalog.firstOrNull { it.name.equals(n, true) } }
-        val step = comp?.steps?.firstOrNull { it.action == "install_msi" }
-        if (comp == null || step == null) { Log.w(TAG, "no mono install_msi component in the catalog"); return null }
-        val fields = step.obj.optJSONObject("environment") ?: step.obj
-        val url = fields.optString("mirror").ifEmpty { fields.optString("url") }
-        if (!url.startsWith("http")) { Log.w(TAG, "mono component has no download URL"); return null }
-        val rawName = fields.optString("rename").ifEmpty { fields.optString("file_name").ifEmpty { url.substringBefore('?').substringAfterLast('/') } }
-        val safe = rawName.replace(Regex("""[\\/:*?"<>|\s]"""), "_").ifEmpty { "wine-mono.msi" }
+        val comp = names.firstNotNullOfOrNull { n -> catalog.firstOrNull { it.name.equals(n, true) } }
+        val steps = comp?.steps?.filter { it.action == "install_msi" } ?: emptyList()
+        if (comp == null || steps.isEmpty()) { Log.w(TAG, "no install_msi component among $names in the catalog"); return emptyList() }
         val destDir = File(container.rootDir, ".wine/drive_c/windows/temp/bannerlator_components").apply { mkdirs() }
-        val dest = File(destDir, safe)
-        val expected = fields.optString("file_size").toLongOrNull() ?: 0L
-        if (dest.isFile && (expected == 0L || dest.length() == expected)) return dest
-        val ok = try { com.winlator.star.contents.Downloader.downloadFile(url, dest) { } } catch (e: Exception) { Log.w(TAG, "mono download failed", e); false }
-        if (!ok || !dest.isFile || (expected > 0L && dest.length() != expected)) { dest.delete(); Log.w(TAG, "mono download incomplete"); return null }
-        return dest
+        val out = ArrayList<File>()
+        for (step in steps) {
+            val fields = step.obj.optJSONObject("environment") ?: step.obj
+            val url = fields.optString("mirror").ifEmpty { fields.optString("url") }
+            if (!url.startsWith("http")) { Log.w(TAG, "${comp.name}: msi step has no URL"); return emptyList() }
+            val rawName = fields.optString("rename").ifEmpty { fields.optString("file_name").ifEmpty { url.substringBefore('?').substringAfterLast('/') } }
+            val safe = rawName.replace(Regex("""[\\/:*?"<>|\s]"""), "_").ifEmpty { "component.msi" }
+            val dest = File(destDir, safe)
+            val expected = fields.optString("file_size").toLongOrNull() ?: 0L
+            if (!(dest.isFile && (expected == 0L || dest.length() == expected))) {
+                val ok = try { com.winlator.star.contents.Downloader.downloadFile(url, dest) { } } catch (e: Exception) { Log.w(TAG, "${comp.name}: download failed", e); false }
+                if (!ok || !dest.isFile || (expected > 0L && dest.length() != expected)) { dest.delete(); Log.w(TAG, "${comp.name}: download incomplete ($safe)"); return emptyList() }
+            }
+            out += dest
+        }
+        return out
     }
+
+    /** wine-mono MSI only (see [stageComponentMsis]). Null on failure. */
+    @JvmStatic
+    fun stageMonoMsi(context: Context, container: Container): File? =
+        stageComponentMsis(context, container, MONO_COMPONENTS).firstOrNull()
+
+    /** Catalog component providing Wine Gecko (x86 + x86_64 MSIs). */
+    private val GECKO_COMPONENTS = listOf("gecko")
+
+    /**
+     * True when a real Wine Gecko is installed for BOTH architectures (a versioned dir such as
+     * `gecko/2.47.4` under system32 AND syswow64 — the layer's prefix ships only a `plugin` stub).
+     * EA's MSI custom actions run under the 64-bit msiexec and need mshtml; device evidence
+     * (2026-09-05): the container that installed EA Desktop had both, the one that failed 0x8007065b
+     * had only the 32-bit half.
+     */
+    @JvmStatic
+    fun hasGecko(container: Container): Boolean {
+        fun real(dir: File) = dir.listFiles()?.any { it.isDirectory && it.name != "plugin" && it.name.firstOrNull()?.isDigit() == true } == true
+        val win = File(container.rootDir, ".wine/drive_c/windows")
+        return real(File(win, "system32/gecko")) && real(File(win, "syswow64/gecko"))
+    }
+
+    @JvmStatic
+    fun stageGeckoMsis(context: Context, container: Container): List<File> =
+        stageComponentMsis(context, container, GECKO_COMPONENTS)
 
     // ---- Readiness --------------------------------------------------------------------------------
 

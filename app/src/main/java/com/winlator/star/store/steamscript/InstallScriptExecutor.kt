@@ -416,7 +416,16 @@ object InstallScriptExecutor {
             // EAX_LAUNCH_CLIENT=0 IGNORE_INSTALLED=1 as command-line properties (that is how the
             // device-proven manual run passed them); an earlier revision split leading NAME=VALUE
             // tokens off as environment variables and the installer exited without installing.
-            val command = tokens.substituteWindows(rp.command).trim()
+            var command = tokens.substituteWindows(rp.command).trim()
+            // EA's bundled installer (WiX burn, custom EAXBA UI): its wizard aborts under Wine with a
+            // gdiplus assertion (dlls/gdiplus/region.c "x1_min > x") while redrawing after "Let's go" —
+            // exit code 3 = abort() — in 4 of 5 device sessions. Skip the wizard: ask burn for a quiet
+            // install (BOOTSTRAPPER_DISPLAY_NONE) unless the script already picked a UI mode. Also makes
+            // the step hands-off; the console + the HasRun wait below still show progress/completion.
+            if (EaSupport.runProcessNeedsMono(winProcess)) {
+                val hasUiFlag = command.split(Regex("\\s+")).any { it.lowercase() in setOf("/quiet", "/q", "/qn", "/silent", "/s", "/passive") }
+                if (!hasUiFlag) command = (command + " /quiet /norestart").trim()
+            }
 
             // One setup session driven by a batch file: (optional) silent wine-mono MSI, then the
             // bundled installer with `start /wait`, then an exit-code marker. Same shape as the

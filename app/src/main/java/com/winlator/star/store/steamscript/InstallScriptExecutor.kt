@@ -430,6 +430,7 @@ object InstallScriptExecutor {
             val lines = ArrayList<String>()
             lines += "@echo off"
             lines += "title Bannerlator setup - ${rp.name}"
+            lines += "if exist $exitMarker del $exitMarker"
             lines += "echo Bannerlator: running the Steam install script step \"${rp.name}\"."
             lines += "echo This window closes by itself when everything has finished. Please wait."
             val total = preMsis.size + 1
@@ -452,8 +453,11 @@ object InstallScriptExecutor {
             // the script's own HasRun registry value appears, or no installer-like process has been
             // seen for ~30 s, capped at 15 minutes.
             val exeBase = winProcess.substringAfterLast('\\').substringBeforeLast('.')
+            // findstr: ONLY the first bare quoted string is a pattern (the rest are FILE names) — every
+            // pattern must be its own /c:"…" (device test #10: the loop never matched, gave up after
+            // 30 s and the session closed mid-install).
             val procPattern = listOf(exeBase, "EAappOfflineInstaller", "EAappInstaller", "msiexec", "UbisoftConnectInstaller")
-                .distinct().joinToString(" ") { "\"$it\"" }
+                .distinct().joinToString(" ") { "/c:\"$it\"" }
             val guard = rp.hasRunKey?.trim()?.replace('/', '\\')
             val guardKey = guard?.substringBeforeLast('\\', "")?.takeIf { it.isNotEmpty() }
             val guardName = guard?.substringAfterLast('\\')
@@ -468,7 +472,7 @@ object InstallScriptExecutor {
             }
             lines += "tasklist 2>nul | findstr /i $procPattern >nul 2>&1"
             lines += "if errorlevel 1 (set /a BL_MISS+=1) else (set BL_MISS=0)"
-            lines += "if %BL_MISS% GEQ 6 goto bl_done"
+            lines += "if %BL_MISS% GEQ 12 goto bl_done"
             lines += "set /a BL_N+=1"
             lines += "if %BL_N% GEQ 180 goto bl_done"
             lines += "timeout /t 5 /nobreak >nul 2>&1"

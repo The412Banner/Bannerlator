@@ -104,7 +104,13 @@ object InstallScriptExecutor {
         if (steamAppId <= 0) return
         try {
             val installDir = locateInstallDir(File(exePath)) ?: return
-            execute(context, container, steamAppId, installDir, allowRunProcess = false)
+            // ALWAYS re-apply here (idempotent). This hook runs after the prefix is prepared and before
+            // Wine starts — the only moment a registry write is guaranteed to survive: writes made
+            // while a session is running are overwritten when wineserver saves its own copy at exit,
+            // and writes made before a brand-new prefix's first boot are lost to prefix creation
+            // (device-proven 2026-09-06: keys written at 00:51:44 during a session, system.reg rewritten
+            // 00:51:56, EA Desktop then reported the game as not installed).
+            execute(context, container, steamAppId, installDir, allowRunProcess = false, forceLocal = true)
         } catch (e: Exception) {
             Log.w(TAG, "applyLocalStagesForLaunch failed for appId $steamAppId", e)
         }
@@ -116,6 +122,7 @@ object InstallScriptExecutor {
      */
     fun execute(
         context: Context, container: Container, appId: Int, installDir: File, allowRunProcess: Boolean,
+        forceLocal: Boolean = false,
     ): Result {
         val scriptFile = locateScript(installDir) ?: return Result.NoScript
         val model = try {
@@ -130,7 +137,7 @@ object InstallScriptExecutor {
         // Local stages (idempotent). Registry only lands when the prefix has booted at least once,
         // else wineboot could clobber a hand-written hive; the launch-time hook re-applies then.
         var localComplete = true
-        if (!localDone(container, appId)) {
+        if (forceLocal || !localDone(container, appId)) {
             val registryApplied = applyRegistry(container, model, tokens)
             applyCopyFiles(model, tokens)
             localComplete = registryApplied || !model.hasRegistry

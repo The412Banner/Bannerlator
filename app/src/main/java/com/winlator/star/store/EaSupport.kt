@@ -67,7 +67,20 @@ object EaSupport {
     @JvmStatic
     fun installDirOf(shortcut: Shortcut): File? {
         val exe = try { WinePath.resolveAndroidPath(shortcut.container, shortcut.path) } catch (e: Exception) { null }
-        return exe?.let { InstallScriptExecutor.locateInstallDir(it) }
+        exe?.let { InstallScriptExecutor.locateInstallDir(it) }?.let { if (it.isDirectory) return it }
+        // Fallback straight from the Exec path: "...\steam_games\<folder>\..." -> <imagefs>/steam_games/<folder>.
+        // Covers a drive letter the resolver can't map (device-seen: Z: before it was taught the imagefs root).
+        val win = shortcut.path.replace('\\', '/')
+        val idx = win.indexOf("steam_games/", ignoreCase = true)
+        if (idx >= 0) {
+            val folder = win.substring(idx + "steam_games/".length).substringBefore('/')
+            val imagefs = shortcut.container.rootDir.parentFile?.parentFile
+            if (folder.isNotEmpty() && imagefs != null) {
+                File(imagefs, "steam_games/$folder").takeIf { it.isDirectory }?.let { return it }
+            }
+        }
+        Log.w(TAG, "installDirOf: could not resolve '${shortcut.path}' (container ${shortcut.container.id})")
+        return null
     }
 
     @JvmStatic

@@ -4647,6 +4647,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     ref.installDir,
                     isControllerPassthroughLaunch(),
                     agentPort,
+                    // The DB's install_dir is the HOST path after download (not PICS installdir); prepare()
+                    // ignores path-like values and derives the ASCII folder name from the display name.
                     row != null ? row.installDir : null,
                     realSteamEaChain);
 

@@ -202,9 +202,14 @@ public final class RealSteamLauncher {
             // "Counter-Strike_ Source"). We symlink it under a CLEANED name (illegal chars removed,
             // whitespace collapsed) which yields Valve's canonical installdir for the M4 test games
             // (L4D2 "Left 4 Dead 2", TF2 "Team Fortress 2", CS:S "Counter-Strike Source").
-            // Prefer Valve's own installdir (PICS) — it IS the canonical name — and keep the folder
-            // name ASCII either way: a ™/®/© in steamapps\common broke the game's module-path lookup.
-            String canonicalName = asciiFolderName(sanitizeFolderName(picsInstallDir));
+            // Prefer Valve's own installdir (PICS) when the caller has it — it IS the canonical name —
+            // and keep the folder name ASCII either way: a ™/®/© in steamapps\common broke the game's
+            // module-path lookup. NOTE: the store DB's install_dir column holds the HOST install path
+            // once a game is downloaded (markInstalled overwrites the PICS value), so anything that
+            // looks like a path is NOT a folder name and must be ignored here.
+            String canonicalName = "";
+            if (picsInstallDir != null && !picsInstallDir.contains("/") && !picsInstallDir.contains("\\"))
+                canonicalName = asciiFolderName(sanitizeFolderName(picsInstallDir));
             if (canonicalName.isEmpty()) canonicalName = asciiFolderName(sanitizeFolderName(displayName));
             if (canonicalName.isEmpty()) canonicalName = asciiFolderName(new File(hostInstallDir).getName());
             if (canonicalName.isEmpty()) canonicalName = "App_" + appId;

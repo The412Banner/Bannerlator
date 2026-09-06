@@ -445,7 +445,36 @@ object InstallScriptExecutor {
 
             lines += "start /wait \"\" %1 $command"
             lines += "echo %ERRORLEVEL% > $exitMarker"
-            lines += "echo Done (exit code %ERRORLEVEL%). Closing..."
+            // The bundled installer is usually a stub: `start /wait` returns as soon as it has spawned
+            // its real (clean-room / elevated) worker, and the session's process watch then saw
+            // nothing it recognised and closed the container 10 s into the install (device test #9).
+            // Keep this batch — and therefore the session — alive until the install is really done:
+            // the script's own HasRun registry value appears, or no installer-like process has been
+            // seen for ~30 s, capped at 15 minutes.
+            val exeBase = winProcess.substringAfterLast('\\').substringBeforeLast('.')
+            val procPattern = listOf(exeBase, "EAappOfflineInstaller", "EAappInstaller", "msiexec", "UbisoftConnectInstaller")
+                .distinct().joinToString(" ") { "\"$it\"" }
+            val guard = rp.hasRunKey?.trim()?.replace('/', '\\')
+            val guardKey = guard?.substringBeforeLast('\\', "")?.takeIf { it.isNotEmpty() }
+            val guardName = guard?.substringAfterLast('\\')
+            lines += "echo."
+            lines += "echo Waiting for the installer to finish - follow its prompts if it shows any..."
+            lines += "set BL_N=0"
+            lines += "set BL_MISS=0"
+            lines += ":bl_wait"
+            if (guardKey != null && !guardName.isNullOrEmpty()) {
+                lines += "reg query \"$guardKey\" /v \"$guardName\" >nul 2>&1"
+                lines += "if not errorlevel 1 goto bl_done"
+            }
+            lines += "tasklist 2>nul | findstr /i $procPattern >nul 2>&1"
+            lines += "if errorlevel 1 (set /a BL_MISS+=1) else (set BL_MISS=0)"
+            lines += "if %BL_MISS% GEQ 6 goto bl_done"
+            lines += "set /a BL_N+=1"
+            lines += "if %BL_N% GEQ 180 goto bl_done"
+            lines += "timeout /t 5 /nobreak >nul 2>&1"
+            lines += "goto bl_wait"
+            lines += ":bl_done"
+            lines += "echo Installer finished. Closing this window..."
             bat.writeText(lines.joinToString("\r\n") + "\r\n", Charsets.US_ASCII.takeIf { lines.all { l -> l.all { c -> c.code < 128 } } } ?: Charsets.UTF_8)
 
             val batWin = "C:\\" + bat.name

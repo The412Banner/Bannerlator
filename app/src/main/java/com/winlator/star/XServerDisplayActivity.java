@@ -11262,6 +11262,16 @@ return true;
             gameProcSeen = true;
             gameGoneTicks = 0;
         } else if (gameProcSeen) {
+            // EA launcher-chain titles hand the game exe off more than once (stub exe → EA Desktop
+            // relaunch, and again after a first-ever activation), with gaps longer than three ticks.
+            // The SteamLite agent (steam.exe) holds the Steam session through those gaps and bounds
+            // them itself (900 s for the first hand-off, 60 s for later ones), so while the agent is
+            // alive the game is not over; when the agent tears down, its exit ends the session through
+            // the guest termination callback. Closing here mid-hand-off killed the relaunch.
+            if (realSteamEaChain && gameTickNames.contains("steam.exe")) {
+                gameGoneTicks = 0;
+                return;
+            }
             gameGoneTicks++;
             // Require a few consecutive empty ticks so a brief gap (e.g. a loader that relaunches the
             // same exe) doesn't trigger an early close.

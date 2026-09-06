@@ -137,9 +137,20 @@ class InstallScriptModel private constructor(
                     }
                     for ((sub, subNode) in childNode.childNodes()) {
                         when {
-                            sub.equals(language, true) -> for ((name, value) in subNode.stringEntries()) {
-                                val regName = if (name.equals(DEFAULT_VALUE_NAME, true)) null else name
-                                out.add(RegistryWrite(hiveRoot, pathSoFar, regName, type, value))
+                            sub.equals(language, true) -> {
+                                // Twice: as values on the parent key (EA Desktop reads `Locale` +
+                                // `DisplayName` there to accept the entitlement) AND as the real
+                                // `<key>\<language>` subkey the Steam client also creates. EA's
+                                // Origin-era activation (Activation64 / ActivationUI) reads DisplayName
+                                // from that subkey; without it the dialog says "DisplayName field
+                                // missing from registry", the licence never binds to the product and
+                                // the sign-in comes back on every launch (Need for Speed Payback).
+                                val langPath = if (pathSoFar.isEmpty()) sub else "$pathSoFar\\$sub"
+                                for ((name, value) in subNode.stringEntries()) {
+                                    val regName = if (name.equals(DEFAULT_VALUE_NAME, true)) null else name
+                                    out.add(RegistryWrite(hiveRoot, pathSoFar, regName, type, value))
+                                    out.add(RegistryWrite(hiveRoot, langPath, regName, type, value))
+                                }
                             }
                             sub.lowercase() in STEAM_LANGUAGES -> { /* another language's block — skip */ }
                             else -> {

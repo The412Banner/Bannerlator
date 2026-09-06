@@ -199,12 +199,12 @@ object InstallScriptExecutor {
         // Group by hive file so each hive is opened/rewritten once (close() clones + renames).
         val byFile = HashMap<File, MutableList<Pair<InstallScriptTokens.RegTarget, InstallScriptModel.RegistryWrite>>>()
         for (w in model.registryWrites) {
-            val target = tokens.registryTarget(w.hiveRoot, w.keyPath)
-            if (target == null) {
+            val targets = tokens.registryTargets(w.hiveRoot, w.keyPath)
+            if (targets.isEmpty()) {
                 Log.w(TAG, "Unmapped hive root '${w.hiveRoot}' — skipping ${w.keyPath}\\${w.name}")
                 continue
             }
-            byFile.getOrPut(target.hiveFile) { ArrayList() }.add(target to w)
+            for (target in targets) byFile.getOrPut(target.hiveFile) { ArrayList() }.add(target to w)
         }
         for ((hiveFile, writes) in byFile) {
             try {

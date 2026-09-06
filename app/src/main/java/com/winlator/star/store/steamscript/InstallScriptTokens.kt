@@ -132,6 +132,25 @@ class InstallScriptTokens(
     }
 
     /**
+     * Every registry view a write must land in. The Steam client that runs installscripts on Windows
+     * is a 32-bit process, so a hive root WITHOUT a `_WOW64_32` / `_WOW64_64` suffix is written under
+     * WOW64 redirection: a plain `HKEY_LOCAL_MACHINE\\SOFTWARE\\Origin Games\\<id>` ends up in
+     * `Software\\Wow6432Node\\Origin Games\\<id>`, which is where 32-bit readers (EA's Origin-era
+     * `ActivationUI.exe`) look it up again, while a 64-bit reader sees the plain key. Writing only the
+     * native view left ActivationUI reporting "DisplayName field missing from registry" on every
+     * launch. Plain roots therefore go to BOTH views; explicit `_WOW64_32` / `_WOW64_64` roots stay
+     * single-view as written.
+     */
+    fun registryTargets(hiveRoot: String, keyPath: String): List<RegTarget> {
+        val primary = registryTarget(hiveRoot, keyPath) ?: return emptyList()
+        val h = hiveRoot.uppercase()
+        if (h.endsWith("_WOW64_32") || h.endsWith("_WOW64_64")) return listOf(primary)
+        val redirected = canonicalCase(toWow6432(keyPath))
+        if (redirected == primary.key) return listOf(primary)
+        return listOf(primary, RegTarget(primary.hiveFile, redirected))
+    }
+
+    /**
      * Wine's .reg files store well-known key segments in a fixed case (`Software`, `Wow6432Node`,
      * `Microsoft\\Windows\\CurrentVersion\\Uninstall`) and [WineRegistryEditor] matches section headers
      * byte-for-byte, while Steam scripts spell them `SOFTWARE\\…`. Device-proven miss (2026-09-05): EA

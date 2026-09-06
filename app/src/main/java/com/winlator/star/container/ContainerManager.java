@@ -321,7 +321,7 @@ public class ContainerManager {
                     }
                     else if (fileName.endsWith(".desktop")) {
                         // winemenubuilder writes its own .desktop entries (no .lnk sibling here — the
-                        // .lnk lives in C:\users\Public\Desktop) when a store client such as EA Desktop
+                        // .lnk lives in C:/users/Public/Desktop) when a store client such as EA Desktop
                         // installs, and it rewrites them on every client start. Those are launchers,
                         // not games — keep them out of the Games grid.
                         if (isVendorClientDesktopEntry(file)) continue;

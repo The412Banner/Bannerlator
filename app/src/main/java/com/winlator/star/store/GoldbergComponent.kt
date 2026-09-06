@@ -187,12 +187,25 @@ object GoldbergComponent {
                 }
             }
             val dest = installDir(context)
-            // Replace any stale copy so a re-download is clean.
-            if (dest.exists()) dest.deleteRecursively()
-            dest.mkdirs()
-            // The tar root holds the tier folders, so extract straight into the install dir.
-            if (!TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, archive, dest)) {
+            // Unpack into a sibling staging dir and swap it in only once it is complete, so a
+            // failed download/extract leaves the previously installed package untouched (the
+            // launch that follows a failed update really does run the installed copy).
+            val staging = File(dest.parentFile, dest.name + ".new")
+            if (staging.exists()) staging.deleteRecursively()
+            staging.mkdirs()
+            // The tar root holds the tier folders, so extract straight into the staging dir.
+            if (!TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, archive, staging)) {
+                staging.deleteRecursively()
                 return false to "Couldn't unpack the Steam Emulator package."
+            }
+            if (!File(staging, MARKER_REL).exists()) {
+                staging.deleteRecursively()
+                return false to "Steam Emulator package was missing expected files."
+            }
+            if (dest.exists()) dest.deleteRecursively()
+            if (!staging.renameTo(dest)) {
+                staging.deleteRecursively()
+                return false to "Couldn't install the Steam Emulator package."
             }
             if (!isInstalled(context)) {
                 return false to "Steam Emulator package was missing expected files."

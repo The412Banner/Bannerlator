@@ -230,6 +230,10 @@ public abstract class TarCompressorUtils {
                         FileUtils.symlink(entry.getLinkName(), file.getAbsolutePath());
                     }
                     else {
+                        // Archives need not carry directory entries (or may list a file before its
+                        // directory) — make the parent exist before writing.
+                        File parent = file.getParentFile();
+                        if (parent != null && !parent.isDirectory()) parent.mkdirs();
                         try (BufferedOutputStream outStream = new BufferedOutputStream(new FileOutputStream(file), StreamUtils.BUFFER_SIZE)) {
                             if (!StreamUtils.copy(tar, outStream)) return false;
                         }

@@ -226,12 +226,12 @@ object InstallScriptExecutor {
             "string", "expand_string", "multi_string" -> {
                 // expand_string/multi_string are written as REG_SZ (WineRegistryEditor has no native
                 // writer for them); Wine still expands %VARS% at read time. See TODO in the summary.
-                reg.setStringValue(key, w.name, tokens.substituteWindows(w.value))
+                reg.setStringValue(key, w.name, tokens.substituteWindowsForRegistry(w.value))
             }
-            "dword" -> reg.setDwordValue(key, w.name, parseInt(tokens.substituteWindows(w.value)))
-            "qword" -> reg.setStringValue(key, w.name, tokens.substituteWindows(w.value)) // no qword writer
-            "binary" -> reg.setHexValue(key, w.name, tokens.substituteWindows(w.value).replace(" ", ""))
-            else -> reg.setStringValue(key, w.name, tokens.substituteWindows(w.value))
+            "dword" -> reg.setDwordValue(key, w.name, parseInt(tokens.substituteWindowsForRegistry(w.value)))
+            "qword" -> reg.setStringValue(key, w.name, tokens.substituteWindowsForRegistry(w.value)) // no qword writer
+            "binary" -> reg.setHexValue(key, w.name, tokens.substituteWindowsForRegistry(w.value).replace(" ", ""))
+            else -> reg.setStringValue(key, w.name, tokens.substituteWindowsForRegistry(w.value))
         }
     }
 

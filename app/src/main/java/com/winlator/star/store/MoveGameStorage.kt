@@ -93,17 +93,23 @@ object MoveGameStorage {
     }
 
     /**
-     * True when this game can be offered a move at all: it's installed, its folder is really there,
-     * and — when it's currently internal — the device actually has a card to move it to. Cheap
-     * enough for the gear menu's enabled state, but it does touch the filesystem, so call it off the
-     * UI thread and cache the answer.
+     * The gear row's wording for this game — "Move to SD card" / "Move to internal storage" — or
+     * null when a move can't be offered: not installed, the folder isn't really there, or it's on
+     * internal storage and the device has no card to move it to.
+     *
+     * Reads the DATABASE row rather than the in-memory [SteamGame], deliberately: that object's
+     * `installDir` starts life as the PICS `config.installdir` folder NAME and only becomes a host
+     * path once `markInstalled` overwrites the column, so the row is the one authoritative answer to
+     * "where is this game". Touches the filesystem and the volume list — call it off the UI thread.
      */
-    fun canOffer(ctx: Context, appId: Int): Boolean = runCatching {
-        val row = SteamDatabase.getInstance(ctx).getGame(appId) ?: return false
-        if (!row.isInstalled || row.installDir.isNullOrBlank()) return false
-        if (!File(row.installDir).isDirectory) return false
-        placeOf(ctx, row.installDir) == Place.SD || SteamSdInstall.detect(ctx) != null
-    }.getOrDefault(false)
+    fun offerLabel(ctx: Context, appId: Int): String? = runCatching {
+        val row = SteamDatabase.getInstance(ctx).getGame(appId) ?: return null
+        if (!row.isInstalled || row.installDir.isNullOrBlank()) return null
+        if (!File(row.installDir).isDirectory) return null
+        val place = placeOf(ctx, row.installDir)
+        if (place == Place.INTERNAL && SteamSdInstall.detect(ctx) == null) return null
+        menuLabel(place)
+    }.getOrNull()
 
     /**
      * Builds the move for [appId] — always to the side it isn't on. Does the folder-size walk and

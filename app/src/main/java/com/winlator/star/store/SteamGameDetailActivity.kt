@@ -1046,17 +1046,16 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     // ── Storage move ────────────────────────────────────────────────────────────────────────
 
     /**
-     * Recomputes the gear row's direction for this game off the UI thread ([MoveGameStorage.canOffer]
-     * hits the filesystem and the volume list). Hidden entirely while a download is in flight — the
-     * installer is writing into the very folder a move would be copying.
+     * Recomputes the gear row's direction for this game off the UI thread
+     * ([MoveGameStorage.offerLabel] hits the database, the filesystem and the volume list). Hidden
+     * entirely while a download is in flight — the installer is writing into the very folder a move
+     * would be copying.
      */
-    private fun refreshMoveStorageOffer(g: SteamDatabase.GameRow) {
+    private fun refreshMoveStorageOffer(g: SteamGame) {
         if (!g.isInstalled || downloadHandle != null) { moveStorageLabel = null; return }
         Thread {
             val label = try {
-                if (MoveGameStorage.canOffer(this, g.appId))
-                    MoveGameStorage.menuLabel(MoveGameStorage.placeOf(this, g.installDir.orEmpty()))
-                else null
+                MoveGameStorage.offerLabel(this, g.appId)
             } catch (t: Throwable) {
                 Log.w("MoveGameStorage", "move offer check failed", t); null
             }

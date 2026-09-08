@@ -53,6 +53,10 @@ import com.winlator.star.core.FileUtils
 import com.winlator.star.core.StringUtils
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
+import com.winlator.star.container.Container
+import com.winlator.star.container.Shortcut
+import com.winlator.star.core.PresetOverrides
+import com.winlator.star.core.PresetScope
 import org.json.JSONArray
 import java.util.Locale
 
@@ -152,9 +156,22 @@ internal fun PresetEditDialog(
     presetId: String?,
     onDismiss: () -> Unit,
     onSaved: () -> Unit,
+    /**
+     * Who this edit belongs to. [PresetScope.GLOBAL] (the default, and what App Settings passes)
+     * keeps the original behaviour exactly: the shared preset is edited and Reset restores the
+     * values this build ships. The other two scopes store the values on the container or the
+     * shortcut instead, leaving the shared preset alone — see [PresetOverrides].
+     */
+    scope: PresetScope = PresetScope.GLOBAL,
+    container: Container? = null,
+    shortcut: Shortcut? = null,
+    /** A brand-new preset was created, so the caller can select it. Its id is passed. */
+    onCreated: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val prefix = kind.prefix
+    val isFex = kind == PresetKind.FEXCORE
+    val scoped = scope != PresetScope.GLOBAL
 
     val existingName = remember(presetId) {
         when {
@@ -171,32 +188,32 @@ internal fun PresetEditDialog(
     // Built-in presets are editable; their values are stored as an override so Reset can restore
     // the shipped ones. Only the NAME is locked, since it comes from a string resource.
     val isBuiltIn = presetId != null && !isCustom
-    var modified by remember(presetId) {
+    var modified by remember(presetId, scope) {
         mutableStateOf(
-            presetId != null && when (kind) {
-                PresetKind.BOX64 -> Box64PresetManager.hasOverride(prefix, context, presetId)
-                PresetKind.FEXCORE -> FEXCorePresetManager.hasOverride(context, presetId)
-            }
+            presetId != null &&
+                PresetOverrides.isCustomised(context, isFex, presetId, scope, container, shortcut)
         )
     }
 
     val specs = remember(prefix) { loadSpecs(context, prefix) }
 
-    // What this build ships for a built-in, ignoring any override — the reference Reset restores to
-    // and Save compares against.
-    val shipped = remember(presetId) {
-        if (presetId == null || presetId.startsWith(
+    // What this scope INHERITS if its own copy is dropped — the reference Reset restores to and Save
+    // compares against. Globally that is the values this build ships (the original behaviour); for a
+    // container it is the shared preset, and for a game its container. A custom preset has no
+    // inherited form at global scope, hence the null.
+    val shipped = remember(presetId, scope) {
+        if (presetId == null || (!scoped && presetId.startsWith(
                 if (kind == PresetKind.BOX64) Box64Preset.CUSTOM else FEXCorePreset.CUSTOM
-            )
+            ))
         ) null
-        else when (kind) {
-            PresetKind.BOX64 -> Box64PresetManager.getShippedEnvVars(prefix, context, presetId)
-            PresetKind.FEXCORE -> FEXCorePresetManager.getShippedEnvVars(context, presetId)
-        }
+        else PresetOverrides.inheritedBy(context, isFex, presetId, scope, container, shortcut)
     }
-    val current = remember(presetId) {
+    // The values in effect here right now: this scope's own copy if it has one, else what it inherits.
+    val current = remember(presetId, scope) {
         when {
             presetId == null -> null
+            scoped -> PresetOverrides.localOf(context, isFex, presetId, scope, container, shortcut)
+                ?: PresetOverrides.inheritedBy(context, isFex, presetId, scope, container, shortcut)
             kind == PresetKind.BOX64 -> Box64PresetManager.getEnvVars(prefix, context, presetId)
             else -> FEXCorePresetManager.getEnvVars(context, presetId)
         }
@@ -247,10 +264,25 @@ internal fun PresetEditDialog(
                         }
                     }
                 }
-                if (isBuiltIn) {
+                // Say plainly WHERE this edit will land. The whole point of scoping is that editing
+                // from a game changes that game alone, and the user can only rely on that if the
+                // editor says so at the moment of editing.
+                val scopeNote = when {
+                    scope == PresetScope.SHORTCUT && modified ->
+                        "Customised for this game. Reset makes it follow its container again."
+                    scope == PresetScope.SHORTCUT ->
+                        "Saved for this game only — no other game or container changes."
+                    scope == PresetScope.CONTAINER && modified ->
+                        "Customised for this container. Reset makes it follow the shared preset again."
+                    scope == PresetScope.CONTAINER ->
+                        "Saved for this container only — the shared preset is left alone."
+                    isBuiltIn && modified -> "Built-in preset — edited. Reset restores the original."
+                    isBuiltIn -> "Built-in preset — edits are saved separately and can be reset."
+                    else -> null
+                }
+                scopeNote?.let {
                     Text(
-                        if (modified) "Built-in preset — edited. Reset restores the original."
-                        else "Built-in preset — edits are saved separately and can be reset.",
+                        it,
                         fontSize = 11.sp,
                         color = if (modified) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -315,12 +347,21 @@ internal fun PresetEditDialog(
                 // preset, not against the shipped map directly: a preset only sets the variables it
                 // cares about (Extreme (TSO)-wn sets 11 of 17) while Save always writes all of them,
                 // so the two maps never match on size alone.
-                val unchanged = isBuiltIn && specs.all { spec ->
-                    val shippedSeed = shipped?.takeIf { it.has(spec.name) }?.get(spec.name)
+                // Scoped: a container/game only needs its own copy when the values differ from what
+                // it inherits — otherwise clear it and go back to following the level above. Global
+                // keeps its original meaning: matching the shipped values clears the override.
+                val unchanged = (scoped || isBuiltIn) && specs.all { spec ->
+                    val inheritedSeed = shipped?.takeIf { it.has(spec.name) }?.get(spec.name)
                         ?: spec.defaultValue
-                    (values[spec.name] ?: spec.defaultValue) == shippedSeed
+                    (values[spec.name] ?: spec.defaultValue) == inheritedSeed
                 }
                 when {
+                    scoped && presetId != null -> {
+                        if (unchanged) PresetOverrides.clearLocal(isFex, scope, container, shortcut)
+                        else PresetOverrides.writeLocal(
+                            isFex, presetId, scope, container, shortcut, envVars
+                        )
+                    }
                     unchanged -> when (kind) {
                         PresetKind.BOX64 -> Box64PresetManager.resetPreset(prefix, context, presetId)
                         PresetKind.FEXCORE -> FEXCorePresetManager.resetPreset(context, presetId)
@@ -328,6 +369,14 @@ internal fun PresetEditDialog(
                     kind == PresetKind.BOX64 ->
                         Box64PresetManager.editPreset(prefix, context, presetId, clean, envVars)
                     else -> FEXCorePresetManager.editPreset(context, presetId, clean, envVars)
+                }
+                // A brand-new preset always lands in the shared list (there is nothing to scope it
+                // to yet); tell the caller so it can select what was just created.
+                if (presetId == null) {
+                    val newId = if (kind == PresetKind.BOX64)
+                        Box64PresetManager.getPresets(prefix, context).lastOrNull()?.id
+                    else FEXCorePresetManager.getPresets(context).lastOrNull()?.id
+                    newId?.let(onCreated)
                 }
                 onSaved()
                 onDismiss()
@@ -337,9 +386,13 @@ internal fun PresetEditDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Reset only makes sense for a built-in that has actually been edited — a custom
                 // preset has no shipped original to go back to.
-                if (isBuiltIn && modified) {
+                // Scoped: Reset means "stop keeping my own copy and follow the level above", which
+                // applies to a custom preset just as much as a built-in — so the isBuiltIn gate is
+                // global-only.
+                if ((scoped || isBuiltIn) && modified) {
                     TextButton(onClick = {
-                        when (kind) {
+                        if (scoped) PresetOverrides.clearLocal(isFex, scope, container, shortcut)
+                        else when (kind) {
                             PresetKind.BOX64 -> Box64PresetManager.resetPreset(prefix, context, presetId)
                             PresetKind.FEXCORE -> FEXCorePresetManager.resetPreset(context, presetId)
                         }

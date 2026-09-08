@@ -1,6 +1,9 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 package com.winlator.star.ui.screens
 
+import androidx.compose.runtime.mutableIntStateOf
+import com.winlator.star.core.PresetScope
+import com.winlator.star.core.PresetOverrides
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
@@ -1883,6 +1886,27 @@ private fun AdvancedTab(
     // Per-field "?" help — centered scrollable Compose dialog (same as the General tab).
     var helpRes by remember { mutableStateOf<Int?>(null) }
     helpRes?.let { HelpDialog(it) { helpRes = null } }
+
+    // Bumped whenever a preset's values or the preset list change, so the "customised" badges
+    // re-evaluate. The badge state lives on the Container object rather than in Compose state, so
+    // there is nothing for Compose to observe on its own.
+    var presetRevision by remember { mutableIntStateOf(0) }
+    val box64PresetCustomised = remember(
+        presetRevision, viewModel.selectedBox64PresetIndex, viewModel.box64PresetEntries
+    ) {
+        PresetOverrides.isCustomised(
+            context, false, viewModel.selectedBox64PresetId,
+            PresetScope.CONTAINER, viewModel.container, null
+        )
+    }
+    val fexPresetCustomised = remember(
+        presetRevision, viewModel.selectedFEXCorePresetIndex, viewModel.fexCorePresetEntries
+    ) {
+        PresetOverrides.isCustomised(
+            context, true, viewModel.selectedFEXCorePresetId,
+            PresetScope.CONTAINER, viewModel.container, null
+        )
+    }
     // Flush legacy CPUListView selections back to the ViewModel before the tab
     // leaves composition, so a tab switch doesn't drop in-progress edits.
     DisposableEffect(Unit) {
@@ -1909,11 +1933,25 @@ private fun AdvancedTab(
                 ContentInstallGear(onDownloadFile = onShowBox64DownloadSheet)
             }
             Spacer(Modifier.height(8.dp))
-            LabeledDropdown(
-                label = "$emulatorLabel Preset",
-                options = viewModel.box64PresetEntries,
-                selectedOption = viewModel.box64PresetEntries.getOrElse(viewModel.selectedBox64PresetIndex) { "" },
-                onSelect = { opt -> viewModel.selectedBox64PresetIndex = viewModel.box64PresetEntries.indexOf(opt).coerceAtLeast(0) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LabeledDropdown(
+                    label = "$emulatorLabel Preset",
+                    options = viewModel.box64PresetEntries,
+                    selectedOption = viewModel.box64PresetEntries.getOrElse(viewModel.selectedBox64PresetIndex) { "" },
+                    onSelect = { opt -> viewModel.selectedBox64PresetIndex = viewModel.box64PresetEntries.indexOf(opt).coerceAtLeast(0) },
+                    modifier = Modifier.weight(1f)
+                )
+                if (box64PresetCustomised) PresetCustomBadge()
+            }
+            PresetEditorRow(
+                kind = PresetKind.BOX64,
+                selectedPresetId = viewModel.selectedBox64PresetId,
+                scope = PresetScope.CONTAINER,
+                container = viewModel.container,
+                shortcut = null,
+                onSelect = { viewModel.selectBox64PresetById(it) },
+                onListChanged = { viewModel.reloadPresetLists(context); presetRevision++ },
+                onValuesChanged = { presetRevision++ },
             )
         }
 
@@ -1945,7 +1983,20 @@ private fun AdvancedTab(
                     IconButton(onClick = { helpRes = R.string.help_fexcore_preset }) {
                         Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
                     }
+                    if (fexPresetCustomised) PresetCustomBadge()
                 }
+                // Edits made here belong to THIS container: they are stored on it and its games
+                // follow them, while the shared preset and every other container stay as they were.
+                PresetEditorRow(
+                    kind = PresetKind.FEXCORE,
+                    selectedPresetId = viewModel.selectedFEXCorePresetId,
+                    scope = PresetScope.CONTAINER,
+                    container = viewModel.container,
+                    shortcut = null,
+                    onSelect = { viewModel.selectFEXCorePresetById(it) },
+                    onListChanged = { viewModel.reloadPresetLists(context); presetRevision++ },
+                    onValuesChanged = { presetRevision++ },
+                )
             }
         }
 

@@ -2,6 +2,8 @@
 
 package com.winlator.star.ui.screens
 
+import com.winlator.star.core.PresetScope
+import com.winlator.star.core.PresetOverrides
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -7825,6 +7827,11 @@ internal fun ShortcutSettingsDialogScreen(
                         }
                             2 -> ScEnvVarsTab(envVarsStr, { envVarsStr = it }, gameDir)
                             3 -> ScAdvancedTab(
+            shortcut = shortcut,
+            onPresetListChanged = {
+                box64Presets = Box64PresetManager.getPresets("box64", context)
+                fexCorePresets = FEXCorePresetManager.getPresets(context)
+            },
             isArm64EC = isArm64EC,
             box64Versions = box64Versions,
             selectedBox64Version = selectedBox64Version,
@@ -8104,6 +8111,10 @@ private fun ScEnvVarsTab(
 
 @Composable
 private fun ScAdvancedTab(
+    /** The shortcut being edited — preset edits made here belong to THIS game and are stored on it. */
+    shortcut: Shortcut,
+    /** A preset was added / duplicated / removed / imported, so both lists need re-reading. */
+    onPresetListChanged: () -> Unit,
     isArm64EC: Boolean,
     box64Versions: List<String>,
     selectedBox64Version: String,
@@ -8142,6 +8153,10 @@ private fun ScAdvancedTab(
     onShowBox64DownloadSheet: () -> Unit = {},
     onShowFexCoreDownloadSheet: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    // Bumped when a preset's values or the preset list change, so the "customised" badges
+    // re-evaluate — that state lives on the Shortcut, which Compose cannot observe by itself.
+    var presetRevision by remember { mutableIntStateOf(0) }
     // Flush legacy CPUListView selection back to the parent (Shortcut extras)
     // before the tab leaves composition, so a tab switch doesn't drop edits.
     DisposableEffect(Unit) {
@@ -8180,11 +8195,36 @@ private fun ScAdvancedTab(
             }
             Spacer(Modifier.height(8.dp))
             val presetNames = box64Presets.map { it.name }
-            LabeledDropdown(
-                label = "$emulatorLabel Preset",
-                options = presetNames,
-                selectedOption = presetNames.getOrElse(selectedBox64PresetIndex) { "" },
-                onSelect = { opt -> onBox64PresetIndexChange(presetNames.indexOf(opt).coerceAtLeast(0)) }
+            val b64Id = box64Presets.getOrNull(selectedBox64PresetIndex)?.id ?: ""
+            val b64Customised = remember(presetRevision, b64Id) {
+                b64Id.isNotEmpty() && PresetOverrides.isCustomised(
+                    context, false, b64Id, PresetScope.SHORTCUT, shortcut.container, shortcut
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LabeledDropdown(
+                    label = "$emulatorLabel Preset",
+                    options = presetNames,
+                    selectedOption = presetNames.getOrElse(selectedBox64PresetIndex) { "" },
+                    onSelect = { opt -> onBox64PresetIndexChange(presetNames.indexOf(opt).coerceAtLeast(0)) },
+                    modifier = Modifier.weight(1f)
+                )
+                if (b64Customised) PresetCustomBadge()
+            }
+            // Scoped to this game: the shared preset, its container and every other game stay as
+            // they are. Values ride this dialog's OK, like every other field here.
+            PresetEditorRow(
+                kind = PresetKind.BOX64,
+                selectedPresetId = b64Id,
+                scope = PresetScope.SHORTCUT,
+                container = shortcut.container,
+                shortcut = shortcut,
+                onSelect = { id ->
+                    box64Presets.indexOfFirst { it.id == id }
+                        .takeIf { it >= 0 }?.let(onBox64PresetIndexChange)
+                },
+                onListChanged = { onPresetListChanged(); presetRevision++ },
+                onValuesChanged = { presetRevision++ },
             )
         }
 
@@ -8213,6 +8253,12 @@ private fun ScAdvancedTab(
                 }
                 Spacer(Modifier.height(8.dp))
                 val fexNames = fexCorePresets.map { it.name }
+                val fexId = fexCorePresets.getOrNull(selectedFexPresetIndex)?.id ?: ""
+                val fexCustomised = remember(presetRevision, fexId) {
+                    fexId.isNotEmpty() && PresetOverrides.isCustomised(
+                        context, true, fexId, PresetScope.SHORTCUT, shortcut.container, shortcut
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(
                         label = stringResource(R.string.fexcore_preset),
@@ -8224,7 +8270,21 @@ private fun ScAdvancedTab(
                     IconButton(onClick = { helpRes = R.string.help_fexcore_preset }) {
                         Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
                     }
+                    if (fexCustomised) PresetCustomBadge()
                 }
+                PresetEditorRow(
+                    kind = PresetKind.FEXCORE,
+                    selectedPresetId = fexId,
+                    scope = PresetScope.SHORTCUT,
+                    container = shortcut.container,
+                    shortcut = shortcut,
+                    onSelect = { id ->
+                        fexCorePresets.indexOfFirst { it.id == id }
+                            .takeIf { it >= 0 }?.let(onFexPresetIndexChange)
+                    },
+                    onListChanged = { onPresetListChanged(); presetRevision++ },
+                    onValuesChanged = { presetRevision++ },
+                )
             }
         }
 

@@ -117,6 +117,15 @@ public class Container {
     private String fexcoreVersion;
     private String fexcorePreset = FEXCorePreset.INTERMEDIATE;
     private String box64Preset = Box64Preset.COMPATIBILITY;
+    /**
+     * This container's OWN copy of a preset's values, as {@code presetId|VARS}, or null while it is
+     * still following the shared preset. Written when the preset is edited from Edit Container, so
+     * the change stays in this container instead of moving every container using that preset. Games
+     * in this container inherit it unless they carry their own copy. See
+     * {@link com.winlator.star.core.PresetOverrides}, which owns the format and the resolution order.
+     */
+    public String fexcorePresetVars = null;
+    public String box64PresetVars = null;
     private File rootDir;
     private JSONObject extraData;
     private String midiSoundFont = "";
@@ -1107,6 +1116,10 @@ public class Container {
             data.put("fexcorePreset", fexcorePreset);
             data.put("fexcoreVersion", fexcoreVersion);
             data.put("box64Preset", box64Preset);
+            // Only written once the container actually carries its own values, so an untouched
+            // container's config file is byte-identical to before this existed.
+            if (fexcorePresetVars != null) data.put("fexcorePresetVars", fexcorePresetVars);
+            if (box64PresetVars != null) data.put("box64PresetVars", box64PresetVars);
             data.put("desktopTheme", desktopTheme);
             if (extraData != null) data.put("extraData", extraData);
             data.put("midiSoundFont", midiSoundFont);
@@ -1222,6 +1235,12 @@ public class Container {
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));
+                    break;
+                case "fexcorePresetVars" :
+                    fexcorePresetVars = data.getString(key);
+                    break;
+                case "box64PresetVars" :
+                    box64PresetVars = data.getString(key);
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));

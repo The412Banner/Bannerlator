@@ -1402,4 +1402,46 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             drives[i] = drives[i].copy(path = path)
         }
     }
+
+    // ── Preset ids, for the editor row ──────────────────────────────────────────────────────
+    // The dropdowns work in display NAMES, but everything about editing a preset - which one to
+    // open, where its values are stored, whether it carries a local copy - is keyed by ID. These
+    // expose the selection as an id without making the id lists writable from outside.
+
+    /** Id of the Box64 preset currently selected, or "" when the list has not loaded. */
+    val selectedBox64PresetId: String
+        get() = box64PresetIds.getOrElse(selectedBox64PresetIndex) { "" }
+
+    /** Id of the FEXCore preset currently selected, or "" when the list has not loaded. */
+    val selectedFEXCorePresetId: String
+        get() = fexCorePresetIds.getOrElse(selectedFEXCorePresetIndex) { "" }
+
+    fun selectBox64PresetById(id: String) {
+        box64PresetIds.indexOf(id).takeIf { it >= 0 }?.let { selectedBox64PresetIndex = it }
+    }
+
+    fun selectFEXCorePresetById(id: String) {
+        fexCorePresetIds.indexOf(id).takeIf { it >= 0 }?.let { selectedFEXCorePresetIndex = it }
+    }
+
+    /**
+     * Re-read both preset lists after one is added, duplicated, removed or imported, keeping the
+     * current selection on the same preset where it still exists (the index would otherwise point
+     * at a different preset, or off the end).
+     */
+    fun reloadPresetLists(context: Context) {
+        val keepB64 = selectedBox64PresetId
+        val keepFex = selectedFEXCorePresetId
+
+        val b64 = Box64PresetManager.getPresets("box64", context)
+        box64PresetEntries = b64.map { it.name }
+        box64PresetIds = b64.map { it.id }
+        selectedBox64PresetIndex = box64PresetIds.indexOf(keepB64).takeIf { it >= 0 } ?: 0
+
+        val fex = FEXCorePresetManager.getPresets(context)
+        fexCorePresetEntries = fex.map { it.name }
+        fexCorePresetIds = fex.map { it.id }
+        selectedFEXCorePresetIndex = fexCorePresetIds.indexOf(keepFex).takeIf { it >= 0 } ?: 0
+    }
+
 }

@@ -346,6 +346,19 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
 
+    /**
+     * Values to apply INSTEAD of looking the preset id up in the shared preset list — set when the
+     * container or the game carries its own copy of that preset
+     * ({@link com.winlator.star.core.PresetOverrides}). Null (the normal case) keeps the previous
+     * behaviour exactly: resolve the id through the preset manager.
+     */
+    private EnvVars box64PresetVars = null;
+    private EnvVars fexcorePresetVars = null;
+
+    public void setBox64PresetVars(EnvVars envVars) { this.box64PresetVars = envVars; }
+
+    public void setFEXCorePresetVars(EnvVars envVars) { this.fexcorePresetVars = envVars; }
+
     private int execGuestProgram() {
         Context context = environment.getContext();
         ImageFs imageFs = environment.getImageFs();
@@ -366,7 +379,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         EnvVars envVars = new EnvVars();
 
         addBox64EnvVars(envVars, enableBox64Logs);
-        envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
+        envVars.putAll(fexcorePresetVars != null
+                ? fexcorePresetVars : FEXCorePresetManager.getEnvVars(context, fexcorePreset));
 
         String renderer = GPUInformation.getRenderer(null, null);
 
@@ -599,7 +613,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             envVars.put("BOX64_DYNAREC_MISSING", "1");
         }
 
-        envVars.putAll(Box64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
+        envVars.putAll(box64PresetVars != null ? box64PresetVars
+                : Box64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
         envVars.put("BOX64_X11GLX", "1");
         envVars.put("BOX64_NORCFILES", "1");
     }

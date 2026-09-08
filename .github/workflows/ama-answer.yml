@@ -200,8 +200,22 @@ jobs:
         # reasoning the model narrated before it ("Let me write the answer",
         # "I now have everything I need") never reaches the issue. If the model
         # forgot the marker, fall back to dropping leading narration lines.
-        if printf '%s' "$ANSWER" | grep -q '<<<ANSWER>>>'; then
-          ANSWER=$(printf '%s\n' "$ANSWER" | awk '/<<<ANSWER>>>/{buf=""; next} {buf=buf $0 "\n"} END{printf "%s", buf}')
+        #
+        # The pattern is deliberately loose (`<<+ ... >>+`, optional inner
+        # spaces): the model has emitted `<<<ANSWER>>` with only two closing
+        # angles, which the old exact-literal grep missed, so the marker shipped
+        # to the issue glued to the first sentence. It has also put the marker
+        # and the reply on the SAME line, so drop only up to the marker on that
+        # line and keep the remainder — never the whole line.
+        if printf '%s' "$ANSWER" | grep -qE '<<+[[:space:]]*ANSWER[[:space:]]*>>+'; then
+          ANSWER=$(printf '%s\n' "$ANSWER" | awk '
+            /<<+[[:space:]]*ANSWER[[:space:]]*>>+/ {
+              sub(/^.*<<+[[:space:]]*ANSWER[[:space:]]*>>+[[:space:]]*/, "")
+              buf = ($0 == "" ? "" : $0 "\n")
+              next
+            }
+            { buf = buf $0 "\n" }
+            END { printf "%s", buf }')
         else
           ANSWER=$(printf '%s\n' "$ANSWER" | awk '
             BEGIN{skip=1}
@@ -216,6 +230,19 @@ jobs:
 
         # Defense in depth: scrub anything that looks like a secret key.
         ANSWER=$(printf '%s' "$ANSWER" | sed -E 's/sk-[A-Za-z0-9_-]{16,}/[redacted]/g')
+
+        # Last resort: if a marker survived the split above in some shape we did
+        # not anticipate, never let it reach the issue.
+        ANSWER=$(printf '%s' "$ANSWER" | sed -E 's/<<+[[:space:]]*ANSWER[[:space:]]*>>+[[:space:]]*//g')
+
+        # The Gradle `namespace` is com.winlator.star but the installed
+        # `applicationId` is com.winlator.banner (app/build.gradle:61 vs :149),
+        # so the model reads the source tree and hands users adb/run-as commands
+        # for a package that is not on their device. Rewrite the bare package id
+        # only; the negative lookahead leaves Java FQNs
+        # (com.winlator.star.ui.Foo) and source paths (com/winlator/star/...)
+        # untouched. The persona also states this, this is belt and braces.
+        ANSWER=$(printf '%s' "$ANSWER" | perl -0777 -pe 's/\bcom\.winlator\.star(?![.\w])/com.winlator.banner/g')
 
         {
           echo "ans<<__ANS_EOF__"

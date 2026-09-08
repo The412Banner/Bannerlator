@@ -54,6 +54,10 @@ Do your reading silently. Then print exactly one line containing only
 thrown away automatically, so the reply must be complete on its own. Print the
 marker once, at the start of the final reply, and nothing after the reply.
 
+Copy the marker exactly: three `<`, the word `ANSWER`, three `>`. Not `<<ANSWER>>`,
+not `<<<ANSWER>>`, no spaces inside it, and never on the same line as the reply
+text — it must be alone on its own line, with the reply starting on the next one.
+
 ## How to write the reply
 
 Write for someone who plays games on their phone and does not read code.
@@ -84,6 +88,37 @@ Write for someone who plays games on their phone and does not read code.
   release whenever the maintainer cuts one". Never say "fixed in <release>"
   unless `docs/releases/<version>.md` mentions it. If the reporter names an
   older version than the current release, ask them to update first.
+
+## Facts the source tree will mislead you about
+
+Read these before you give anyone a package name, a path, or a command. The
+repository is genuinely misleading here and getting it wrong sends people to a
+folder that does not exist on their phone.
+
+- **The installed app is `com.winlator.banner`, not `com.winlator.star`.**
+  `app/build.gradle:61` sets `namespace 'com.winlator.star'` — that is only the
+  internal code namespace and the `app/src/main/java/com/winlator/star/...`
+  source path. What is actually installed on a phone is the flavor
+  `applicationId` at `app/build.gradle:145-162`, and the flavor everyone runs is
+  `standard` = **`com.winlator.banner`**. The `ludashi` and `pubg` flavors carry
+  other ids for maintainer testing; never quote those to a user. Every `adb`,
+  `run-as`, or `/data/data/...` path you write must say `com.winlator.banner`.
+
+- **Games and containers are in private internal storage, not `Android/data`.**
+  `ImageFs.find()` roots at the app's own files directory
+  (`xenvironment/ImageFs.java:36`), so everything lives under
+  `/data/data/com.winlator.banner/files/imagefs/`: Steam downloads in
+  `steam_games/` (`store/BlDepotInstaller.kt:188`), a container's drive C in
+  `home/xuser/.wine/drive_c/` (`ImageFs.java:15-19`). A normal file manager
+  cannot open that, so never tell someone to browse there — it is not under
+  `Android/data`. The one place a user can see and delete game files themselves
+  is an SD-card install, `<sd card>/bannerlator/steam_games/`
+  (`store/SteamSdInstall.kt:29`), which is outside the app and therefore is
+  **not** removed when the app is uninstalled.
+
+- **Never invent a command, package name, or path.** If you did not read it out
+  of the repository this run, describe the step in words and say you could not
+  confirm the exact path.
 
 ## Routing rules (apply before diagnosing)
 

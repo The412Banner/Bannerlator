@@ -145,6 +145,7 @@ internal object KnownEnvVars {
         // Our own NtYieldExecution gate (proton-wine fcbe8302). Off by default in the layer; this
         // is the only way to discover it from inside the app.
         KnownEnvVar("WINE_FAST_YIELD", EnvVarType.CHECKBOX, listOf("0", "1")),
+        KnownEnvVar("FEX_DISKCACHE", EnvVarType.CHECKBOX, listOf("0", "1")),
         KnownEnvVar("WINEDEBUG", EnvVarType.SELECT, listOf("-all", "fixme-all", "+seh", "+relay", "warn+all")),
         KnownEnvVar(DllOverrides.VAR, EnvVarType.TEXT),
         KnownEnvVar("WINE_FULLSCREEN_FSR", EnvVarType.CHECKBOX, listOf("0", "1")),

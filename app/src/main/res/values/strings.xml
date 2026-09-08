@@ -1986,6 +1986,19 @@ Pair it with WRAPPER_EMULATE_BCN=0 so the work is not done twice. Unnecessary on
 <b>When to change:</b> Mali devices only, and required for many DX11 and DX12 games there. It does
 nothing on Adreno.
         ]]></string>
+    <string name="env_var_help__fex_diskcache"><![CDATA[
+        Whether FEX saves the x86 code it has translated to disk so later runs start warm. Translation
+normally happens fresh every launch and is thrown away when the game closes.<br /><br />
+<b>0</b> : Off, translate everything again each run. (default)<br />
+<b>1</b> : On, reuse what was translated before.<br /><br />
+<b>When to change:</b> turn it on for a game that stutters as new areas load, or one with a long
+first-time load. The gain shows on the second and later launches, once the cache has something in
+it. Needs FEXCore 2609 or newer; older builds ignore the variable.<br /><br />
+<b>Risk:</b> upstream has not added any cleanup yet, so the cache has no size limit and never drops
+old entries — it only grows, and grows fastest on games that generate their own code as they run. It
+may also miss that a game has been updated and keep stale entries. The cache lives in the container
+AppData folder; delete it if space runs short or a game misbehaves after an update.
+        ]]></string>
     <string name="env_var_help__fd_dev_features"><![CDATA[
         Overrides device feature flags in the freedreno/Turnip driver.<br /><br />
 <b>enable_tp_ubwc_flag_hint=1</b> and <b>storage_8bit=1</b> switch on capabilities the driver

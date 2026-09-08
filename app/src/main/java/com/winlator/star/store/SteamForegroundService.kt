@@ -74,6 +74,12 @@ class SteamForegroundService : Service() {
                 Log.i(TAG, "stopIfIdle skipped — download in flight")
                 return
             }
+            // A storage move is a long file copy with no download row behind it, so it has to be
+            // asked about separately or an unrelated stopIfIdle would drop the wakelock mid-copy.
+            if (try { MoveGameStorage.moveInProgress } catch (t: Throwable) { false }) {
+                Log.i(TAG, "stopIfIdle skipped — storage move in flight")
+                return
+            }
             stop(ctx)
         }
     }
@@ -124,6 +130,12 @@ class SteamForegroundService : Service() {
         super.onTaskRemoved(rootIntent)
         if (hasActiveDownload()) {
             Log.i(TAG, "Task removed — staying up for an active download")
+            return
+        }
+        // Same for a storage move: killing the process mid-copy would strand a half-copied folder
+        // (recoverable — the source is only deleted once the copy verifies — but it wastes the work).
+        if (try { MoveGameStorage.moveInProgress } catch (t: Throwable) { false }) {
+            Log.i(TAG, "Task removed — staying up for a storage move")
             return
         }
         Log.i(TAG, "Task removed — stopping")

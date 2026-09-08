@@ -265,17 +265,48 @@ object CopyGameToDriveC {
      * drive (e.g. every drive letter is taken) or the file has no Exec line — in which case nothing
      * was written, so the caller can warn and abort with the shortcut left untouched.
      *
-     * Used by both copy-to-C's [repoint] and the "Change executable" flow so the rewrite logic never
-     * forks.
+     * [imageFsRoot], when given, applies the shortcut WRITER's rule for a target under `imagefs/`
+     * (see StarLaunchBridge's Exec builder): that tree is the container's fixed `Z:` drive, so it is
+     * addressed as `Z:\…` rather than pushed through the drive map. Without it a target on
+     * app-private storage — which isn't a storage volume — would fall back to mounting the exe's own
+     * parent folder and burn a fresh drive letter per game. Callers repointing INTO imagefs (moving
+     * a game back to internal storage) must pass it; callers that never target imagefs, like
+     * copy-to-C and "Change executable", leave it null and keep their previous behaviour exactly.
+     *
+     * Used by copy-to-C's [repoint], the "Change executable" flow and
+     * [com.winlator.star.store.MoveGameStorage] so the rewrite logic never forks.
      */
-    fun setShortcutExe(shortcut: Shortcut, newExeAndroid: File, argsSuffix: String): String? {
+    @JvmOverloads
+    fun setShortcutExe(
+        shortcut: Shortcut,
+        newExeAndroid: File,
+        argsSuffix: String,
+        imageFsRoot: File? = null,
+    ): String? {
         val newWin = runCatching {
-            WinePath.resolveWindowsPath(shortcut.container, newExeAndroid.absolutePath)
+            winPathFor(shortcut, newExeAndroid, imageFsRoot)
         }.getOrNull() ?: return null
         val newExecValue = WinePath.escapeForExec(newWin) + argsSuffix
         if (!rewriteExecLine(shortcut.file, newExecValue)) return null
         Log.d(TAG, "setShortcutExe '${shortcut.name}': ${shortcut.path} -> $newWin")
         return newWin
+    }
+
+    /**
+     * The Wine-side path to write for [newExeAndroid]: `Z:\…` when it lives under [imageFsRoot]
+     * (the container's implicit imagefs drive), otherwise through the container's drive map. Mirrors
+     * the rule StarLaunchBridge applies when it first writes a Steam shortcut, so a repointed
+     * shortcut is byte-identical to a freshly created one for the same target.
+     */
+    private fun winPathFor(shortcut: Shortcut, newExeAndroid: File, imageFsRoot: File?): String {
+        val path = newExeAndroid.absolutePath
+        if (imageFsRoot != null) {
+            val root = imageFsRoot.absolutePath.trimEnd('/')
+            if (path.startsWith("$root/")) {
+                return "Z:\\" + path.substring(root.length + 1).replace("/", "\\")
+            }
+        }
+        return WinePath.resolveWindowsPath(shortcut.container, path)
     }
 
     /** Rewrites the single `Exec=` line to `Exec=wine <value>`. Returns false if there was none. */

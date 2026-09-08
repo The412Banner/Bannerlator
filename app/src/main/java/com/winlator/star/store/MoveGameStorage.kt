@@ -246,7 +246,14 @@ object MoveGameStorage {
                 }
 
                 // ── 4. The database pointer. Same call the installer makes on completion. ───────
-                SteamDatabase.getInstance(ctx).markInstalled(plan.appId, plan.dest.absolutePath, plan.sizeBytes)
+                // Keep the row's EXISTING size: `size_bytes` means the Steam manifest install size
+                // everywhere else (BlDepotInstaller passes the install total), and a move doesn't
+                // change how big a game is. Writing the folder-walk total here put on-disk bytes in
+                // a manifest-bytes column until the size resolver happened to correct it.
+                val db = SteamDatabase.getInstance(ctx)
+                val knownSize = runCatching { db.getGame(plan.appId)?.sizeBytes }.getOrNull()
+                    ?.takeIf { it > 0L } ?: plan.sizeBytes
+                db.markInstalled(plan.appId, plan.dest.absolutePath, knownSize)
                 // markInstalled (unlike markUninstalled) doesn't invalidate, and the library list
                 // caches install_dir — refresh it so the SD badge and paths repaint immediately.
                 runCatching { SteamRepository.getInstance().invalidateGameCache() }
@@ -273,33 +280,54 @@ object MoveGameStorage {
     }
 
     /**
-     * Cheap structural check that [dest] really is [src]: same number of files, same total bytes.
-     * Not a hash (re-reading tens of GB over FUSE would double an already slow move), but it catches
-     * the failure that matters — a copy that ended early without throwing.
+     * Structural check that [dest] really is [src], compared **per file**: every relative path
+     * present on both sides, with the same length. Deliberately NOT a hash — re-reading tens of GB
+     * back off a FUSE-backed card would roughly double the time of every move, so byte-level
+     * re-reading belongs behind an explicit "thorough check" opt-in, not in the default path.
+     *
+     * Per-file rather than totals: comparing only (count, total bytes) can be fooled by two errors
+     * that cancel out — one file short, another long — and it can't name what went wrong. Walking
+     * both trees into a path→size map costs the same two directory walks and catches a single
+     * truncated or missing file, which is the realistic failure here.
      */
     private fun verifyCopy(src: File, dest: File) {
-        val (srcFiles, srcBytes) = countTree(src)
-        val (destFiles, destBytes) = countTree(dest)
-        if (srcFiles != destFiles || srcBytes != destBytes) {
-            runCatching { dest.deleteRecursively() }
-            throw MoveException(
-                "The copy didn't come out complete ($destFiles of $srcFiles files, " +
-                    "${SteamSdInstall.fmtBytes(destBytes)} of ${SteamSdInstall.fmtBytes(srcBytes)}). " +
-                    "Nothing was moved — the game is still where it was."
-            )
+        val srcFiles = fileSizesByRelPath(src)
+        val destFiles = fileSizesByRelPath(dest)
+
+        val missing = srcFiles.keys.asSequence().filter { it !in destFiles }.take(5).toList()
+        val mismatched = srcFiles.asSequence()
+            .filter { (rel, size) -> destFiles[rel]?.let { it != size } == true }
+            .map { it.key }.take(5).toList()
+
+        if (missing.isEmpty() && mismatched.isEmpty() && srcFiles.size == destFiles.size) return
+
+        runCatching { dest.deleteRecursively() }
+        val detail = when {
+            missing.isNotEmpty() ->
+                "${srcFiles.size - destFiles.size} file(s) didn't arrive, e.g. ${missing.first()}"
+            mismatched.isNotEmpty() ->
+                "${mismatched.size} file(s) came out the wrong size, e.g. ${mismatched.first()}"
+            else -> "${destFiles.size} files arrived, expected ${srcFiles.size}"
         }
+        throw MoveException(
+            "The copy didn't come out complete ($detail). " +
+                "Nothing was moved — the game is still where it was."
+        )
     }
 
-    /** (file count, total bytes) of a tree. */
-    private fun countTree(dir: File): Pair<Int, Long> {
-        var files = 0
-        var bytes = 0L
+    /** Every file under [dir] as `relative/path` → length. Directories are structure, not content. */
+    private fun fileSizesByRelPath(dir: File): Map<String, Long> {
+        val root = dir.absolutePath.trimEnd('/')
+        val out = HashMap<String, Long>()
         val stack = ArrayDeque<File>().apply { addLast(dir) }
         while (stack.isNotEmpty()) {
             val kids = stack.removeLast().listFiles() ?: continue
-            for (k in kids) if (k.isDirectory) stack.addLast(k) else { files++; bytes += k.length() }
+            for (k in kids) {
+                if (k.isDirectory) stack.addLast(k)
+                else out[k.absolutePath.removePrefix(root).removePrefix("/")] = k.length()
+            }
         }
-        return files to bytes
+        return out
     }
 
     /**

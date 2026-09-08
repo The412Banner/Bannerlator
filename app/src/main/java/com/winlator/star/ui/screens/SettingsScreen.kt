@@ -1515,7 +1515,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
  * secondary "Pick via system…" option (issue #73).
  */
 @Composable
-private fun ImportSourceIconButton(
+internal fun ImportSourceIconButton(
     icon: ImageVector,
     contentDescription: String,
     tint: Color,

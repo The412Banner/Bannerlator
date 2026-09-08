@@ -1,5 +1,8 @@
 package com.winlator.star.ui.screens
 
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.Box
 import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -172,25 +175,32 @@ internal fun PresetEditorRow(
     }
 }
 
-/** One labelled action: icon above, short label under, sharing the row's width evenly. */
+/**
+ * The visual for one action — icon above, short label under.
+ *
+ * Every one of the six goes through this, import included. Import used to wrap
+ * [ImportSourceIconButton], which is an `IconButton` and therefore carries Material's 48 dp minimum
+ * touch target: its icon sat centred in a taller box, so it rendered lower than its five neighbours
+ * and its label was pushed out of alignment. Sharing one composable is what keeps the row level.
+ */
 @Composable
-private fun androidx.compose.foundation.layout.RowScope.PresetAction(
+private fun PresetActionContent(
     icon: ImageVector,
-    labelRes: Int,
-    tint: Color = MaterialTheme.colorScheme.onSurface,
+    label: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val label = androidx.compose.ui.res.stringResource(labelRes)
     Surface(
         onClick = onClick,
-        modifier = Modifier.weight(1f),
+        modifier = modifier,
         shape = RoundedCornerShape(10.dp),
         color = Color.Transparent,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(1.dp),
-            modifier = Modifier.padding(vertical = 6.dp),
+            modifier = Modifier.padding(vertical = 6.dp, horizontal = 1.dp),
         ) {
             Icon(icon, label, tint = tint, modifier = Modifier.size(20.dp))
             Text(
@@ -199,37 +209,63 @@ private fun androidx.compose.foundation.layout.RowScope.PresetAction(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
+                softWrap = false,
             )
         }
     }
 }
 
-/** Import needs the in-app / system picker choice, so it wraps the shared source menu. */
+/** One labelled action, sharing the row's width evenly with its neighbours. */
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.PresetAction(
+    icon: ImageVector,
+    labelRes: Int,
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+    onClick: () -> Unit,
+) {
+    PresetActionContent(
+        icon = icon,
+        label = androidx.compose.ui.res.stringResource(labelRes),
+        tint = tint,
+        modifier = Modifier.weight(1f),
+        onClick = onClick,
+    )
+}
+
+/**
+ * Import is the one action with a choice behind it — browse in-app, or hand off to the system
+ * picker. It uses the same [PresetActionContent] as the other five and anchors the source menu to
+ * it, rather than swapping in a differently-sized button.
+ */
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.PresetImportAction(
     onInApp: () -> Unit,
     onSystem: () -> Unit,
 ) {
     val label = androidx.compose.ui.res.stringResource(R.string.preset_action_import)
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(1.dp),
-        modifier = Modifier.weight(1f).padding(vertical = 6.dp),
-    ) {
-        ImportSourceIconButton(
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.weight(1f)) {
+        PresetActionContent(
             icon = Icons.Default.FileDownload,
-            contentDescription = label,
+            label = label,
             tint = MaterialTheme.colorScheme.onSurface,
-            onInApp = onInApp,
-            onSystem = onSystem,
-        )
-        Text(
-            text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
+            modifier = Modifier.fillMaxWidth(),
+        ) { expanded = true }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.outlinedMenuCard(),
+        ) {
+            DropdownMenuItem(
+                text = { Text("Browse files") },
+                onClick = { expanded = false; onInApp() },
+            )
+            MenuItemDivider()
+            DropdownMenuItem(
+                text = { Text("Pick via system…") },
+                onClick = { expanded = false; onSystem() },
+            )
+        }
     }
 }
 

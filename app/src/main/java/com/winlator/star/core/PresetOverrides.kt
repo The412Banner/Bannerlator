@@ -162,9 +162,14 @@ object PresetOverrides {
     // ── Writing ─────────────────────────────────────────────────────────────────────────────
 
     /**
-     * Store [envVars] as [scope]'s own values for [presetId]. The caller is responsible for
-     * persisting the owner afterwards ([Container.saveData] / [Shortcut.saveData]) — batched by the
-     * screens so one Save writes the file once.
+     * Store [envVars] as [scope]'s own values for [presetId] **and persist the owner immediately**.
+     *
+     * Device-proven trap this avoids (2026-09-08): the preset editor is a modal with its own Save
+     * button, so pressing Save reads as committed. When the write only went to memory, the
+     * "customised" badge appeared while nothing reached disk, and backing out of the parent screen
+     * silently discarded the edit — the UI claimed a change that did not exist. Consistency with the
+     * screen's other fields matters less than consistency with *having pressed Save*, so this
+     * commits on the spot.
      *
      * [PresetScope.GLOBAL] is not handled here: the shared preset keeps its existing path through
      * the preset managers, which also maintains the custom-preset list and its names.
@@ -180,13 +185,14 @@ object PresetOverrides {
     ) {
         val stored = presetId + SEP + envVars.toString()
         when (scope) {
-            PresetScope.CONTAINER -> container?.setPresetVars(isFex, stored)
-            PresetScope.SHORTCUT -> shortcut?.putExtra(keyOf(isFex), stored)
+            PresetScope.CONTAINER -> container?.let { it.setPresetVars(isFex, stored); it.saveData() }
+            PresetScope.SHORTCUT -> shortcut?.let { it.putExtra(keyOf(isFex), stored); it.saveData() }
             PresetScope.GLOBAL -> Unit
         }
     }
 
-    /** Drop [scope]'s own values so it inherits again. The caller persists the owner. */
+    /** Drop [scope]'s own values so it inherits again, persisting the owner immediately — Reset
+     *  commits for the same reason Save does (see [writeLocal]). */
     @JvmStatic
     fun clearLocal(
         isFex: Boolean,
@@ -195,8 +201,8 @@ object PresetOverrides {
         shortcut: Shortcut?,
     ) {
         when (scope) {
-            PresetScope.CONTAINER -> container?.setPresetVars(isFex, null)
-            PresetScope.SHORTCUT -> shortcut?.removeExtra(keyOf(isFex))
+            PresetScope.CONTAINER -> container?.let { it.setPresetVars(isFex, null); it.saveData() }
+            PresetScope.SHORTCUT -> shortcut?.let { it.removeExtra(keyOf(isFex)); it.saveData() }
             PresetScope.GLOBAL -> Unit
         }
     }

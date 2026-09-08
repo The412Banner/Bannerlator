@@ -68,9 +68,9 @@ import com.winlator.star.util.InAppFilePicker
  * Reset inside it) is scope-aware.
  *
  * @param onListChanged the preset list changed (added/removed/imported) — reload the dropdown.
- * @param onValuesChanged this preset's values changed at [scope] — re-read the badge and persist the
- *   owner ([Container.saveData] / [Shortcut.saveData]); the row never writes the file itself so a
- *   screen can batch one save.
+ * @param onValuesChanged this preset's values changed at [scope] — re-read the badge. The write is
+ *   already on disk by this point: [com.winlator.star.core.PresetOverrides] commits when the editor's
+ *   Save is pressed, so an edit cannot be lost by backing out of the screen behind it.
  */
 @Composable
 internal fun PresetEditorRow(

@@ -6611,11 +6611,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             guestProgramLauncherComponent.setBindingPaths(bindingPaths.toArray(new String[0]));
 
-            guestProgramLauncherComponent.setBox64Preset(
-                    shortcut != null
-                            ? shortcut.getExtra("box64Preset", container.getBox64Preset())
-                            : container.getBox64Preset()
-            );
+            String box64Preset = shortcut != null
+                    ? shortcut.getExtra("box64Preset", container.getBox64Preset())
+                    : container.getBox64Preset();
+            guestProgramLauncherComponent.setBox64Preset(box64Preset);
+            // A preset edited from Edit Container or from this game's own settings keeps its values
+            // there rather than in the shared preset, so resolve game -> container -> shared. Null
+            // (nothing customised) leaves the launcher on its original preset-manager lookup.
+            guestProgramLauncherComponent.setBox64PresetVars(
+                    com.winlator.star.core.PresetOverrides.localEffective(
+                            this, false, box64Preset, container, shortcut));
 
             String fexPreset = shortcut != null
                     ? shortcut.getExtra("fexcorePreset", container.getFEXCorePreset())
@@ -6630,6 +6635,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
             }
             guestProgramLauncherComponent.setFEXCorePreset(fexPreset);
+            // Same three-tier resolve for FEXCore. Deliberately AFTER the EA clamp above, so a
+            // clamped launch looks up the values of the preset it was clamped TO — otherwise an
+            // Extreme customisation would be re-applied on top of the Performance twin and put
+            // FEX_SMCCHECKS=none straight back, which is exactly what the clamp exists to prevent.
+            guestProgramLauncherComponent.setFEXCorePresetVars(
+                    com.winlator.star.core.PresetOverrides.localEffective(
+                            this, true, fexPreset, container, shortcut));
         }
 
         // Merge overrideEnvVars if present

@@ -121,7 +121,7 @@ add_library(vulkan_renderer SHARED
 #                    configure time. This one cannot rot - edit any chain file
 #                    and it changes, including a local edit that never went
 #                    upstream, which is exactly the case a hand-set tag hides.
-set(WINFG_UPSTREAM "v0.2.1-5-g1cf96cf")
+set(WINFG_UPSTREAM "v0.3.0")
 set(WINFG_CHAIN_SRC
         winlator/winfg/framegen.cpp
         winlator/winfg/framegen.hpp

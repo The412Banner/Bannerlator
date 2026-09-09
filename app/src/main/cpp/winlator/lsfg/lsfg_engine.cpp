@@ -181,6 +181,9 @@ bool Engine::prepare(uint32_t width, uint32_t height, VkFormat format) {
     builtFormat_    = format;
     builtFlowScale_ = scale;
     frameCount_ = 0;
+    lastCopiedCount_ = 0;
+    haveCopied_ = false;
+    primeHistory_ = false;
     planCalls_  = 0;
     warmStreak_ = 0;
     warm_ = false;
@@ -218,6 +221,22 @@ uint32_t Engine::plan(uint32_t capacity, uint64_t sourceFrames) {
     warmStreak_ = warm_ ? warmStreak_ + 1 : 0;
     generating_ = warm_ && warmStreak_ >= kRecurrenceFrames && plan_.generations > 0;
 
+    // The ring is only seeded while generating, so the first frame after any
+    // gap - arming, or a pacer discontinuity after a hitch - would interpolate
+    // between this frame and whatever the other slot held when generation last
+    // stopped. That is a visible warp, and it happens every time the engine
+    // starts. Spend this frame filling the ring instead and generate from the
+    // next one, when both slots are genuinely consecutive.
+    primeHistory_ = false;
+    if (generating_ && !historyFresh()) {
+        primeHistory_ = true;
+        generating_ = false;
+        if ((primeLogCount_++ % 60) == 0)
+            LSFG_LOGI("priming the input ring (last copied frame %llu, now at %llu)",
+                      (unsigned long long)(haveCopied_ ? lastCopiedCount_ : 0),
+                      (unsigned long long)frameCount_);
+    }
+
     if ((planCalls_++ % kTelemetryInterval) == 0) {
         const LsfgPacerStats stats = pacer_.Stats();
         const float wanted = stats.source_rate * (float)(plan_.generations + 1);
@@ -246,12 +265,16 @@ void Engine::process(VkCommandBuffer cmd, VkImage source, uint32_t width, uint32
 
     // Seeding the input ring is a full-resolution image copy every frame, so it
     // is NOT free at 100 fps - it was costing real frame rate while producing
-    // nothing. Copy only when generating, or while the governor is warming up
-    // towards a probe, so the ring is populated by the time it is needed.
-    const bool needHistory = generations > 0
+    // nothing. Copy only when generating, on the one priming frame that
+    // precedes generation, or while the governor is warming up towards a
+    // probe - so the ring is populated by the time it is needed.
+    const bool needHistory = generations > 0 || primeHistory_
         || (governorEnabled_ && governor_.wantsHistory());
-    if (needHistory)
+    if (needHistory) {
         copyPresentedFrame(cmd, source, chain_->Input(count), VkExtent2D{width, height});
+        lastCopiedCount_ = count;
+        haveCopied_ = true;
+    }
 
     // The SHARED chain is 24 of the 25 shaders - the whole flow pyramid - and
     // only `generate` runs per generated frame. Running it while producing
@@ -284,6 +307,9 @@ void Engine::reset() {
     pacer_.Reset();
     governor_.reset();
     peakGuestExtent_ = VkExtent2D{};
+    lastCopiedCount_ = 0;
+    haveCopied_ = false;
+    primeHistory_ = false;
     warmStreak_ = 0;
     warm_ = false;
     generating_ = false;

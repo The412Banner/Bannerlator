@@ -185,7 +185,7 @@ object GameSaveBackup {
             val backupId = EmuAccountIdentity.readId(staging, emu) ?: continue
             val currentId = EmuAccountIdentity.readId(profile, emu)
             if (currentId == null || currentId == backupId) {
-                applied += copyTree(stagedDir, File(profile, emu.root))
+                applied += applyIdentity(stagedDir, File(profile, emu.root), emu)
             } else {
                 conflicts += EmuIdConflict(
                     label = emu.label,
@@ -208,10 +208,27 @@ object GameSaveBackup {
     fun applyEmuIdentity(conflict: EmuIdConflict): Boolean {
         val staged = File(conflict.stagedDir)
         if (!staged.isDirectory) return false
+        val emu = EmuAccountIdentity.emuForRoot(conflict.root) ?: return false
         val target = File(File(conflict.containerRootDir), ".wine/drive_c/users/${ImageFs.USER}/${conflict.root}")
-        val written = copyTree(staged, target)
+        val written = applyIdentity(staged, target, emu)
         discardEmuIdentity(conflict)
         return written > 0
+    }
+
+    /**
+     * Writes one emulator's identity from [staged] over [target].
+     *
+     * Copying alone is not enough. These emulators accept the account id under several filenames and
+     * read them in a fixed order, so a stale file the backup doesn't supply but that OUTRANKS what it
+     * does supply would keep winning: the user would be told the account was switched while the game
+     * carried on under the old one. Only those shadowing leftovers are deleted; anything the backup's file
+     * already outranks stays, so lower-priority files and the shared settings living beside them
+     * (language, ip_country in Goldberg's configs.user.ini) survive untouched.
+     */
+    private fun applyIdentity(staged: File, target: File, emu: EmuAccountIdentity.Emu): Int {
+        val supplied = emu.idFiles.indexOfFirst { File(staged, it).isFile }
+        if (supplied > 0) emu.idFiles.take(supplied).forEach { File(target, it).delete() }
+        return copyTree(staged, target)
     }
 
     /** Drops a held-back identity's staged copy; the prefix keeps the id it already had. */

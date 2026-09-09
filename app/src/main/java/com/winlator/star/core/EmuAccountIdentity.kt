@@ -73,6 +73,9 @@ object EmuAccountIdentity {
     /** True when [relPath] is part of some emulator's identity store rather than save data. */
     fun isIdentityPath(relPath: String): Boolean = emuFor(relPath) != null
 
+    /** The emulator whose store is rooted exactly at [root]. */
+    fun emuForRoot(root: String): Emu? = EMULATORS.firstOrNull { it.root.equals(root, ignoreCase = true) }
+
     /**
      * The account id [emu] is pinned to under [profile] (a Wine user profile dir, or a staging dir
      * mirroring one), or null when nothing readable is stored there.

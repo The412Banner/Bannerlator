@@ -3080,6 +3080,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             resolvedFrameGenModel(), resolvedFrameGenPerfPreset());
     }
 
+    /** Win-FG Native is Performance-only; see applyWinFgNative. 2 = Performance. */
+    private static final int WINFG_PERF_PRESET = 2;
+
     /** Select win-fg in the renderer, push its knobs, and arm it at `multiplier` (0 = off). */
     private void applyWinFgNative(int multiplier, float flowScale, int model, int perfPreset) {
         com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
@@ -3089,10 +3092,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return;
         }
         Log.i("XServerDisplayActivity", "applyWinFgNative: multiplier=" + multiplier
-            + " flow=" + flowScale + " model=" + model + " preset=" + perfPreset
+            + " flow=" + flowScale + " model=" + model
+            + " preset=" + WINFG_PERF_PRESET + " (pinned; requested " + perfPreset + ")"
             + " refresh=" + currentDisplayRefreshHz());
         vkr.setFrameGenEngine(com.winlator.star.renderer.vulkan.VulkanRenderer.FG_ENGINE_WINFG);
-        vkr.setWinFgTuning(model, perfPreset);
+        // Win-FG Native runs on the Performance preset permanently (user decision,
+        // 2026-09-09). The preset picks the finest pyramid level the flow search
+        // reaches, and changing it live tears down and rebuilds the whole chain -
+        // visible in a device log as three rebuilds in twenty seconds while the
+        // chips were being tried. Pinned here rather than only hiding the UI, so a
+        // container or shortcut still carrying an older value cannot reinstate it.
+        vkr.setWinFgTuning(model, WINFG_PERF_PRESET);
         vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
         vkr.setFrameGenArmed(multiplier >= 2, multiplier);
         // Identical follow-through to LSFG Native: fifo while multiplying, the

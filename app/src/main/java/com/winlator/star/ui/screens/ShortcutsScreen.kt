@@ -240,6 +240,7 @@ import com.winlator.star.core.GameSaveBackup
 import com.winlator.star.core.KeyValueSet
 import com.winlator.star.ui.components.ContainerGlossarySheet
 import com.winlator.star.ui.components.DraggableAddButton
+import com.winlator.star.ui.components.EmuAccountConflictDialog
 import com.winlator.star.ui.theme.DangerRed
 import com.winlator.star.core.LogInventory
 import com.winlator.star.core.LogLocation
@@ -325,6 +326,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // label of the game the restore was launched from (shown in the container picker title).
     var restoreZipUri by remember { mutableStateOf<Uri?>(null) }
     var restoreForName by remember { mutableStateOf("") }
+    // Emulator account ids a restore held back because the container already runs a different one.
+    var emuConflicts by remember { mutableStateOf<List<GameSaveBackup.EmuIdConflict>>(emptyList()) }
     // The shortcut whose "Back up saves" layout-choice dialog is open (Winlator vs GameHub).
     var backupFormatShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var settingsShortcut by remember { mutableStateOf<Shortcut?>(null) }
@@ -1789,9 +1792,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         else "Restore failed: ${r.error ?: "unknown error"}",
                         Toast.LENGTH_LONG,
                     ).show()
+                    emuConflicts = r.emuConflicts
                 }
             },
         )
+    }
+
+    EmuAccountConflictDialog(conflicts = emuConflicts) { applied, _ ->
+        emuConflicts = emptyList()
+        if (applied > 0) {
+            Toast.makeText(
+                context,
+                "Emulator account switched to the backup's — relaunch the game",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
     }
 
     // Save Backup: choose the archive layout before backing up (mirrors the Containers backup menu's

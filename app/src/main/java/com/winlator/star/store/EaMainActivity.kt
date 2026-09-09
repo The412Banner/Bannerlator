@@ -87,7 +87,7 @@ private fun EaScreen(onBack: () -> Unit) {
     var showModes by remember { mutableStateOf(false) }
     var mode by remember { mutableStateOf(EaLaunchSession.mode(ctx)) }
 
-    val titles = remember { scanEaTitles(creds.isSignedIn) }
+    val titles = remember { scanEaTitles(ctx, creds.isSignedIn) }
 
     Column(
         Modifier
@@ -300,7 +300,35 @@ private fun ModeDialog(
  * The EA titles currently visible to us.
  *
  * Reads the shortcuts the launcher already tags as EA rather than asking EA anything, so the list is
- * correct with no account and no network. Titles with Javelin anti-cheat are listed as blocked
- * because they cannot run under this runtime at all — better to say so here than at launch.
+ * right with no account and no network — which matters, because the licence path this screen
+ * describes is meant to work without either.
+ *
+ * Titles carrying Javelin anti-cheat are shown as blocked. That is not our licence problem and no
+ * amount of signing in changes it: the anti-cheat needs a Windows kernel driver, which cannot exist
+ * here. Saying so on this screen is kinder than letting someone discover it at launch.
  */
-private fun scanEaTitles(signedIn: Boolean): List<EaTitle> = emptyList()
+private fun scanEaTitles(ctx: android.content.Context, signedIn: Boolean): List<EaTitle> = try {
+    val manager = com.winlator.star.container.ContainerManager(ctx)
+    manager.loadShortcuts()
+        .filter { EaSupport.isTagged(it) }
+        .map { shortcut ->
+            val javelin = shortcut.getExtra(EaSupport.EXTRA_JAVELIN, "") == "1"
+            val appId = runCatching {
+                EaSupport.resolveSteamAppId(shortcut, EaSupport.installDirOf(shortcut))
+            }.getOrDefault(0)
+            when {
+                javelin -> EaTitle(
+                    shortcut.name, appId, LaunchState.BLOCKED,
+                    "Javelin anti-cheat — cannot run under this runtime",
+                )
+                else -> EaTitle(
+                    shortcut.name, appId, LaunchState.READY,
+                    if (signedIn) "Ready to launch" else "Ready to launch — no EA sign-in needed",
+                )
+            }
+        }
+        .sortedBy { it.name.lowercase() }
+} catch (t: Throwable) {
+    android.util.Log.w("BL_EA", "could not list EA titles", t)
+    emptyList()
+}

@@ -161,4 +161,37 @@ object EaLaunchSession {
     /** True while a launch is being served or captured. */
     @JvmStatic
     fun isActive(): Boolean = active != null
+
+    /**
+     * End the session, and put what was said somewhere it can be read afterwards.
+     *
+     * This is the reason capture ships in the finished build rather than being a separate
+     * experiment: when a launch misbehaves, the transcript already exists. Diagnosing it costs
+     * nothing extra — and on this feature an extra attempt is genuinely expensive, because every EA
+     * launch is spent against an allowance that refills slowly.
+     *
+     * Written to `filesDir/ea/lsx-<time>.log` and echoed to logcat a line at a time, so the built-in
+     * log capture picks it up without any line being truncated.
+     */
+    @JvmStatic
+    fun finishAndLog(ctx: Context) {
+        val transcript = finish()
+        if (transcript.isBlank()) return
+
+        for (line in transcript.lineSequence()) {
+            if (line.isNotBlank()) Log.i(TAG, line)
+        }
+
+        try {
+            val dir = java.io.File(ctx.filesDir, "ea").apply { mkdirs() }
+            // Keep only the last few. A transcript is worth having; a folder of them is not.
+            dir.listFiles { f -> f.name.startsWith("lsx-") }
+                ?.sortedByDescending { it.lastModified() }
+                ?.drop(4)
+                ?.forEach { it.delete() }
+            java.io.File(dir, "lsx-${System.currentTimeMillis()}.log").writeText(transcript)
+        } catch (t: Throwable) {
+            Log.w(TAG, "could not save LSX transcript", t)
+        }
+    }
 }

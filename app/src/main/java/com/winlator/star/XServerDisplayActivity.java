@@ -5930,6 +5930,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             steamLiteAchievementWatcher = null;
         }
         steamLiteAchievementWatcherArmed = false;
+        // Release the EA licence socket and keep what was said on it. Leaving the listener bound
+        // would hold a port and its threads past the game, and the transcript is the whole reason
+        // recording ships in the build: when a launch misbehaves the evidence already exists, so
+        // diagnosing it costs no further EA activations.
+        try { com.winlator.star.store.EaLaunchSession.finishAndLog(this); } catch (Throwable ignored) {}
         // Drop the failure-card callbacks so this activity isn't retained via the static holder.
         com.winlator.star.core.PreloaderState.setOnClose(null);
         com.winlator.star.core.PreloaderState.setOnOpenLog(null);

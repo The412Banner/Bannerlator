@@ -5,6 +5,22 @@ import android.util.Log
 import java.io.Closeable
 
 /**
+ * ## Parked — nothing calls this today
+ *
+ * Built to answer an EA game's licence check from inside the app so EA Desktop need not run. It
+ * works, and its 30 tests pass, but device testing on 2026-09-09 established that the titles which
+ * demand a sign-in every launch — Payback, NFS 2015, Rivals — never ask a local launcher at all:
+ * they carry their own activation client in `Core/` and talk straight to EA over HTTPS. The one
+ * title that does use the launcher path, Hot Pursuit Remastered, already keeps its licence and
+ * never prompts. So on this library the server has nothing to answer.
+ *
+ * Kept rather than deleted for two reasons: [startCapture] is a working record-and-forward relay
+ * for any local protocol, useful whenever we need to see what two processes say to each other; and
+ * if EA ever moves a title onto the launcher path, this is ready. It ships dormant — no launch path
+ * references it, so it costs nothing but binary size.
+ *
+ * ---
+ *
  * The socket an EA game asks for permission on.
  *
  * An EA-published title does not phone EA when it starts. It looks for its launcher on a loopback

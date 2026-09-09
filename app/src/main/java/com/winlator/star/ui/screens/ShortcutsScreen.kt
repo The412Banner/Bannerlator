@@ -5114,9 +5114,12 @@ private fun ShortcutItemLayoutL(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
+                val eaBadges = rememberEaBadges(shortcut)
                 ShortcutBadgeOverlay(
                     showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
                     showEa = remember(shortcut) { EaSupport.isTagged(shortcut) },
+                    showEaSignIn = eaBadges.first,
+                    showEaBlocked = eaBadges.second,
                     showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
                     showEos = rememberEosBadge(shortcut),
                     showGog = remember(shortcut) { isGogShortcut(shortcut) },
@@ -5375,9 +5378,12 @@ private fun ShortcutGridItem(
 
         // Store badges overlaid top-left on the cover: EPIC (storeSource==epic) then EOS, then GOG
         // (storeSource==gog or gog_games exec path).
+        val eaBadges2 = rememberEaBadges(shortcut)
         ShortcutBadgeOverlay(
             showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
             showEa = remember(shortcut) { EaSupport.isTagged(shortcut) },
+            showEaSignIn = eaBadges2.first,
+            showEaBlocked = eaBadges2.second,
             showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
             showEos = rememberEosBadge(shortcut),
             showGog = remember(shortcut) { isGogShortcut(shortcut) },
@@ -9148,6 +9154,54 @@ private fun ChangeExecutableCoordinator(
  * it launches via SteamLite and needs the one-time EA setup. EA-brand red pill, sized like the others.
  */
 @Composable
+/**
+ * "Signs in each launch" — the title carries its own activation client and will ask EA for
+ * permission every time it starts.
+ *
+ * Amber rather than red because the game does run; it just makes you sign in first. Saying so on
+ * the card is the only honest option, since nothing on the device can prevent it.
+ */
+@Composable
+private fun EaSignInBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF8A5A12))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "SIGN-IN",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+/**
+ * "Won't run" — anti-cheat that needs a Windows kernel driver, which cannot exist here.
+ *
+ * Worth surfacing on the card rather than at launch: no setting, container or driver changes it, so
+ * letting someone install and launch it first only wastes their time.
+ */
+@Composable
+private fun EaBlockedBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF7A2A24))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "WON'T RUN",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+@Composable
 private fun EaBadge(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
@@ -9173,12 +9227,16 @@ private fun ShortcutBadgeOverlay(
     showAmazon: Boolean = false,
     showCustom: Boolean = false,
     showEa: Boolean = false,
+    showEaSignIn: Boolean = false,
+    showEaBlocked: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showCustom && !showEa) return
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (showSteam) SteamBadge()
         if (showEa) EaBadge()
+        // Blocked outranks sign-in: if it cannot run at all, how it authenticates is moot.
+        if (showEaBlocked) EaBlockedBadge() else if (showEaSignIn) EaSignInBadge()
         if (showEpic) EpicBadge()
         if (showEos) EosBadge()
         if (showGog) GogBadge()
@@ -9204,6 +9262,41 @@ private fun rememberEosBadge(shortcut: Shortcut): Boolean {
         }
     }
     return eos
+}
+
+/**
+ * The EA facts behind the card badges: read cheaply, completed off the render path.
+ *
+ * Same shape as [rememberEosBadge] and for the same reason — deciding this needs the game folder,
+ * which must never be touched while composing. Cached extras answer immediately; when they have
+ * never been computed, one background pass fills them in and the badges appear a moment later.
+ *
+ * That deferred pass is also the fix for a real trap: a shortcut tagged EA at creation but never
+ * scanned reports "no anti-cheat" because the field is absent, not because the game is clean. That
+ * is exactly how Unbound came to be listed as launchable when it can never run.
+ *
+ * @return (signs in every launch, cannot run at all)
+ */
+@Composable
+private fun rememberEaBadges(shortcut: Shortcut): Pair<Boolean, Boolean> {
+    var signIn by remember(shortcut.path) {
+        mutableStateOf(shortcut.getExtra(EaSupport.EXTRA_OWN_ACTIVATION, "") == "1")
+    }
+    var blocked by remember(shortcut.path) {
+        mutableStateOf(shortcut.getExtra(EaSupport.EXTRA_JAVELIN, "") == "1")
+    }
+    LaunchedEffect(shortcut.path) {
+        if (EaSupport.isTagged(shortcut) &&
+            shortcut.getExtra(EaSupport.EXTRA_PROFILE_V2, "") != "1"
+        ) {
+            withContext(Dispatchers.IO) {
+                runCatching { EaSupport.detectForShortcut(shortcut) }
+            }
+            signIn = shortcut.getExtra(EaSupport.EXTRA_OWN_ACTIVATION, "") == "1"
+            blocked = shortcut.getExtra(EaSupport.EXTRA_JAVELIN, "") == "1"
+        }
+    }
+    return signIn to blocked
 }
 
 @Composable

@@ -3,9 +3,6 @@ package com.winlator.star.store
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,53 +10,49 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winlator.star.container.ContainerManager
 import com.winlator.star.core.AppOrientation
 import com.winlator.star.ui.theme.WinlatorTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
- * The EA section.
+ * The EA section — a reference page, not a shop.
  *
- * Unlike the other stores this is not a shop — EA games arrive through Steam, and nothing is bought
- * or downloaded here. What EA controls is *permission*: whether a copy of an EA-published game
- * sitting in a Steam library is allowed to start. So this screen shows the two things that decide
- * that and are otherwise invisible:
+ * EA games arrive through Steam; nothing is bought, downloaded or signed into here. What EA
+ * controls is *permission*, and this screen answers the one question you could otherwise only
+ * settle by launching: **what will this title do when I start it?**
  *
- *  - whether an EA account is signed in and linked to Steam, and
- *  - for each EA title in the Steam library, whether it can currently be launched.
+ * Three answers, each read from files already on the device — no EA account, no network:
  *
- * The cog mirrors Steam's: link accounts, choose how launches are handled, sign out.
+ * - **Signs in every launch.** The game carries its own activation client (`Core/ActivationUI.exe`
+ *   plus the Qt web stack) and asks EA directly, every time. Nothing on the device changes that: it
+ *   is the game's own protection and it consults no local launcher at all.
+ * - **Licence kept on device.** No such client, so the title goes through EA Desktop, which stores
+ *   the licence and stops asking.
+ * - **Cannot run.** Anti-cheat needing a Windows kernel driver, which cannot exist under this
+ *   runtime. No container, driver or setting changes it.
+ *
+ * That split is the whole content of the screen, and it is why it earns its place: before it, the
+ * only way to learn which group a title fell into was to install it, launch it and find out.
  */
 class EaMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,194 +62,84 @@ class EaMainActivity : ComponentActivity() {
     }
 }
 
-/** One EA title in the Steam library, with the only status that matters: can it start. */
-data class EaTitle(
-    val name: String,
-    val steamAppId: Int,
-    val state: LaunchState,
-    val detail: String,
-)
+/** What a title does when you start it. Declared worst-surprise-first — that is the display order. */
+private enum class EaBehaviour { SIGN_IN_EACH_LAUNCH, LICENCE_KEPT, CANNOT_RUN }
 
-enum class LaunchState { READY, NEEDS_SIGN_IN, BLOCKED }
+private data class EaTitle(val name: String, val container: String, val behaviour: EaBehaviour)
 
 @Composable
 private fun EaScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
-    val creds = remember { EaCredentialStore.load(ctx) }
-    var menuOpen by remember { mutableStateOf(false) }
-    var showModes by remember { mutableStateOf(false) }
-    var showSignInInfo by remember { mutableStateOf(false) }
-    var mode by remember { mutableStateOf(EaLaunchSession.mode(ctx)) }
 
-    val titles = remember { scanEaTitles(ctx, creds.isSignedIn) }
+    // Scanning reads game folders, so it runs off the main thread and the list appears when ready.
+    val titles by produceState(initialValue = emptyList<EaTitle>(), ctx) {
+        value = withContext(Dispatchers.IO) { scanEaTitles(ctx) }
+    }
 
-    // A Surface, not a bare background modifier. Painting the background by hand leaves
-    // LocalContentColor at whatever the caller had, which is how the game titles ended up darker
-    // than their own subtitles; Surface pairs the colour with its matching content colour.
-    androidx.compose.material3.Surface(
+    Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "EA",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.weight(1f))
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = "EA settings",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(if (creds.isLinked) "Linked to Steam" else "Link Steam account")
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Link, null, tint = MaterialTheme.colorScheme.primary)
-                        },
-                        enabled = creds.isSignedIn,
-                        onClick = { menuOpen = false },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("How launches are handled") },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Tune, null, tint = MaterialTheme.colorScheme.primary)
-                        },
-                        onClick = { menuOpen = false; showModes = true },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Refresh licences") },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Refresh, null, tint = MaterialTheme.colorScheme.primary)
-                        },
-                        enabled = creds.isSignedIn,
-                        onClick = { menuOpen = false },
-                    )
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = { Text("Sign out") },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null) },
-                        enabled = creds.isSignedIn,
-                        onClick = { menuOpen = false; EaCredentialStore.clear(ctx) },
-                    )
+                Text(
+                    "EA",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            if (titles.isEmpty()) {
+                Text(
+                    "No EA games found. They appear here once an EA-published title from your Steam " +
+                        "library is installed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            } else {
+                LazyColumn(Modifier.fillMaxSize()) {
+                    for (group in EaBehaviour.values()) {
+                        val inGroup = titles.filter { it.behaviour == group }
+                        if (inGroup.isEmpty()) continue
+                        item(key = "h-${group.name}") { GroupHeader(group) }
+                        items(inGroup, key = { "${group.name}|${it.container}|${it.name}" }) {
+                            TitleRow(it)
+                        }
+                    }
                 }
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        if (!creds.isSignedIn) SignedOutBanner(onSignIn = { showSignInInfo = true })
-
-        Text(
-            "EA GAMES IN YOUR STEAM LIBRARY",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 6.dp),
-        )
-
-        if (titles.isEmpty()) {
-            Text(
-                "No EA-published games found. They appear here once an EA title is installed from your Steam library.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
-            )
-        } else {
-            LazyColumn(Modifier.fillMaxSize()) {
-                items(titles) { title -> TitleRow(title) }
-            }
-        }
-    }
-    }
-
-    if (showSignInInfo) SignInInfoDialog(onDismiss = { showSignInInfo = false })
-
-    if (showModes) {
-        ModeDialog(
-            current = mode,
-            onPick = { picked ->
-                mode = picked
-                EaLaunchSession.setMode(ctx, picked)
-                showModes = false
-            },
-            onDismiss = { showModes = false },
-        )
     }
 }
 
 @Composable
-private fun SignedOutBanner(onSignIn: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
-            .padding(14.dp)
-    ) {
-        Text(
-            "Not signed in to EA",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Signing in lets Bannerlator see which EA games you own and link them to Steam. " +
-                "Games that do not need a licence can still launch without it.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(10.dp))
-        Button(onClick = { onSignIn() }) { Text("About EA sign-in") }
-    }
-}
-
-/**
- * Says plainly what signing in would and would not change.
- *
- * Worth its own dialog because the honest answer is counter-intuitive: the thing people most want
- * fixed — being asked to sign in on every single launch — is fixed by the part that needs no
- * account at all.
- */
-@Composable
-private fun SignInInfoDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("EA sign-in") },
-        text = {
-            Text(
-                "Signing in to EA is not part of this build yet.\n\n" +
-                    "It is not needed to launch. Bannerlator answers the game's licence check " +
-                    "itself, which is what stops EA asking you to sign in every time you play.\n\n" +
-                    "An account will matter later, for games that carry Denuvo and for linking " +
-                    "your EA and Steam accounts — neither of which changes anything today."
-            )
+private fun GroupHeader(group: EaBehaviour) {
+    Text(
+        when (group) {
+            EaBehaviour.SIGN_IN_EACH_LAUNCH -> "SIGNS IN EVERY LAUNCH"
+            EaBehaviour.LICENCE_KEPT -> "LICENCE KEPT ON DEVICE"
+            EaBehaviour.CANNOT_RUN -> "CANNOT RUN HERE"
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } },
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 16.dp, top = 18.dp, bottom = 6.dp),
     )
 }
 
 @Composable
 private fun TitleRow(title: EaTitle) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -268,116 +151,54 @@ private fun TitleRow(title: EaTitle) {
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                title.detail,
+                when (title.behaviour) {
+                    EaBehaviour.SIGN_IN_EACH_LAUNCH ->
+                        "Has its own activation client — asks EA directly, every time"
+                    EaBehaviour.LICENCE_KEPT ->
+                        "Goes through EA Desktop, which keeps the licence"
+                    EaBehaviour.CANNOT_RUN ->
+                        "Anti-cheat needs a Windows driver — no setting changes this"
+                },
                 style = MaterialTheme.typography.bodySmall,
-                color = when (title.state) {
-                    LaunchState.BLOCKED -> MaterialTheme.colorScheme.error
+                color = when (title.behaviour) {
+                    EaBehaviour.CANNOT_RUN -> MaterialTheme.colorScheme.error
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
         }
-        Text(
-            when (title.state) {
-                LaunchState.READY -> "Ready"
-                LaunchState.NEEDS_SIGN_IN -> "Sign in"
-                LaunchState.BLOCKED -> "Won't run"
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = when (title.state) {
-                LaunchState.BLOCKED -> MaterialTheme.colorScheme.error
-                LaunchState.READY -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
+        if (title.container.isNotEmpty()) {
+            Text(
+                title.container,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-@Composable
-private fun ModeDialog(
-    current: EaLaunchSession.Mode,
-    onPick: (EaLaunchSession.Mode) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val options = listOf(
-        Triple(
-            EaLaunchSession.Mode.SERVE,
-            "Handle it ourselves",
-            "Bannerlator answers the game directly, so EA Desktop never has to start.",
-        ),
-        Triple(
-            EaLaunchSession.Mode.CAPTURE,
-            "Watch and record",
-            "EA Desktop still handles the launch. Bannerlator records the exchange so a failure can be explained.",
-        ),
-        Triple(
-            EaLaunchSession.Mode.OFF,
-            "Stay out of it",
-            "Launch exactly the way it worked before this feature existed.",
-        ),
-    )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("How launches are handled") },
-        text = {
-            Column {
-                options.forEach { (value, label, blurb) ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        RadioButton(selected = current == value, onClick = { onPick(value) })
-                        Column(Modifier.padding(start = 4.dp)) {
-                            Text(label, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                blurb,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
-    )
-}
-
 /**
- * The EA titles currently visible to us.
+ * Every EA-tagged shortcut, sorted into the three behaviours.
  *
- * Reads the shortcuts the launcher already tags as EA rather than asking EA anything, so the list is
- * right with no account and no network — which matters, because the licence path this screen
- * describes is meant to work without either.
- *
- * Titles carrying Javelin anti-cheat are shown as blocked. That is not our licence problem and no
- * amount of signing in changes it: the anti-cheat needs a Windows kernel driver, which cannot exist
- * here. Saying so on this screen is kinder than letting someone discover it at launch.
+ * Goes through [EaSupport.detectForShortcut] rather than reading the tags directly, because that is
+ * what re-reads the game folder for a shortcut written before the richer detection existed. Reading
+ * the tags alone reports "no anti-cheat" for those, which is not a negative result — it is an
+ * unasked question, and it is how Unbound came to be listed as launchable.
  */
-private fun scanEaTitles(ctx: android.content.Context, signedIn: Boolean): List<EaTitle> = try {
-    val manager = com.winlator.star.container.ContainerManager(ctx)
-    manager.loadShortcuts()
+private fun scanEaTitles(ctx: android.content.Context): List<EaTitle> = try {
+    ContainerManager(ctx).loadShortcuts()
         .filter { EaSupport.isTagged(it) }
         .map { shortcut ->
-            // detectForShortcut re-reads the game folder when the shortcut carries no anti-cheat
-            // tag, which is the common case for anything added before that tag existed. Trusting
-            // the tag alone showed Unbound as launchable when it cannot run at all.
-            val javelin = runCatching {
-                EaSupport.detectForShortcut(shortcut)?.javelinAntiCheat == true
-            }.getOrDefault(shortcut.getExtra(EaSupport.EXTRA_JAVELIN, "") == "1")
-            val appId = runCatching {
-                EaSupport.resolveSteamAppId(shortcut, EaSupport.installDirOf(shortcut))
-            }.getOrDefault(0)
-            when {
-                javelin -> EaTitle(
-                    shortcut.name, appId, LaunchState.BLOCKED,
-                    "Javelin anti-cheat — cannot run under this runtime",
-                )
-                else -> EaTitle(
-                    shortcut.name, appId, LaunchState.READY,
-                    if (signedIn) "Ready to launch" else "Ready to launch — no EA sign-in needed",
-                )
-            }
+            val profile = runCatching { EaSupport.detectForShortcut(shortcut) }.getOrNull()
+            EaTitle(
+                name = shortcut.name,
+                container = runCatching { shortcut.container?.getName().orEmpty() }.getOrDefault(""),
+                behaviour = when {
+                    profile?.javelinAntiCheat == true -> EaBehaviour.CANNOT_RUN
+                    profile?.ownActivationClient == true -> EaBehaviour.SIGN_IN_EACH_LAUNCH
+                    else -> EaBehaviour.LICENCE_KEPT
+                },
+            )
         }
         .sortedBy { it.name.lowercase() }
 } catch (t: Throwable) {

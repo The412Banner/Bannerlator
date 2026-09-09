@@ -350,18 +350,6 @@ public final class RealSteamLauncher {
             // EA launcher chain (agent p5): without this the agent treats the stub exe's exit during the
             // Link2EA → EADesktop → EASteamProxy hand-off as "game exited" and tears the session down.
             if (eaChain) env.put(EaSupport.CHAIN_ENV, EaSupport.CHAIN_VALUE);
-            // Our own licence server, when it can start. An EA game asks a socket named by
-            // EALsxPort whether it may run; serving that ourselves keeps EA Desktop out of the
-            // launch entirely. prepare() returns an empty map for every failure and whenever the
-            // feature is off, so the absent variable simply leaves today's EA Desktop path in
-            // charge -- nothing that launches now can stop launching because of this.
-            if (eaChain) {
-                try {
-                    env.putAll(com.winlator.star.store.EaLaunchSession.prepare(ctx));
-                } catch (Throwable t) {
-                    Log.w(TAG, "EA LSX prepare failed, continuing with EA Desktop", t);
-                }
-            }
             // Agent appmanifest contract: InstalledDepots (depot:manifest:size,…) so the genuine client
             // sees a complete install (the agent writes appmanifest_<id>.acf from these).
             try {

@@ -35,6 +35,17 @@ object EaSupport {
     /** Shortcut [Extra Data] tags, stamped at shortcut write (StarLaunchBridge) like storeSource/steamAppId. */
     const val EXTRA_EA = "eaSupport"
     const val EXTRA_JAVELIN = "eaAntiCheat"
+    /** Ships `Core/ActivationUI.exe` + Qt — asks EA itself, every launch. */
+    const val EXTRA_OWN_ACTIVATION = "eaOwnActivation"
+    /**
+     * Marks that the richer profile (anti-cheat + own-activation) has actually been computed from
+     * disk for this shortcut.
+     *
+     * Without it the fast path is a trap: a shortcut stamped `eaSupport=1` at creation but never
+     * disk-scanned reports "no anti-cheat" simply because the field was never filled in, which is
+     * how Unbound came to be listed as launchable when it can never run.
+     */
+    const val EXTRA_PROFILE_V2 = "eaProfileV2"
 
     /** Catalog component names that provide wine-mono, most preferred first (10.4.1 = device-proven). */
     private val MONO_COMPONENTS = listOf("mono-10.4.1", "mono-10.3.0", "mono-10.1.0", "mono")
@@ -44,6 +55,18 @@ object EaSupport {
         val eaChain: Boolean,
         /** Ships EA Javelin anti-cheat (kernel driver) — unsupported under Wine. */
         val javelinAntiCheat: Boolean,
+        /**
+         * Ships its own activation client in `Core/` — so it asks EA for permission itself, every
+         * launch, and will show a sign-in page each time.
+         *
+         * Device-established 2026-09-09. These titles carry `Core/ActivationUI.exe` alongside Qt4
+         * (`QtNetwork4.dll`, `QtWebKit4.dll`): a self-contained web client that talks straight to
+         * EA over HTTPS and consults no local launcher at all. That is why they prompt on every
+         * launch while a title without it — Hot Pursuit Remastered — keeps its licence on disk and
+         * never prompts. Nothing on the device can change this; it is the game's own DRM, so the
+         * honest thing is to say so before someone launches it.
+         */
+        val ownActivationClient: Boolean = false,
     )
 
     // ---- Detection ------------------------------------------------------------------------------
@@ -66,10 +89,15 @@ object EaSupport {
             hasEaInstaller(File(installDir, "__Installer")) ||
             installScriptMentionsEa(installDir)
         if (!ea) return null
+        // The game's own activation client: ActivationUI.exe plus the Qt network/web stack it needs
+        // to reach EA by itself. Both are required — `Core/` alone means nothing, several titles
+        // ship one for unrelated reasons.
+        val ownActivation = File(installDir, "Core/ActivationUI.exe").isFile &&
+            File(installDir, "Core/QtNetwork4.dll").isFile
         val javelin = File(installDir, "EAAntiCheat.GameServiceLauncher.exe").isFile ||
             File(installDir, "__Installer/EAAntiCheat").isDirectory ||
             File(installDir, "EAAntiCheat").isDirectory
-        return Profile(eaChain = true, javelinAntiCheat = javelin)
+        return Profile(eaChain = true, javelinAntiCheat = javelin, ownActivationClient = ownActivation)
     }
 
     /** True when an `EAappInstaller*.exe` (or `EADesktop*.exe`) exists up to 4 levels below [dir]. */
@@ -169,13 +197,21 @@ object EaSupport {
      */
     @JvmStatic
     fun detectForShortcut(shortcut: Shortcut): Profile? {
-        if (isTagged(shortcut)) {
-            return Profile(eaChain = true, javelinAntiCheat = shortcut.getExtra(EXTRA_JAVELIN, "") == "1")
+        // Only trust the tags once the richer profile has actually been computed; otherwise an
+        // absent field is indistinguishable from a negative result.
+        if (isTagged(shortcut) && shortcut.getExtra(EXTRA_PROFILE_V2, "") == "1") {
+            return Profile(
+                eaChain = true,
+                javelinAntiCheat = shortcut.getExtra(EXTRA_JAVELIN, "") == "1",
+                ownActivationClient = shortcut.getExtra(EXTRA_OWN_ACTIVATION, "") == "1",
+            )
         }
         val fromDisk = detect(installDirOf(shortcut)) ?: return null
         try {
             shortcut.putExtra(EXTRA_EA, "1")
             if (fromDisk.javelinAntiCheat) shortcut.putExtra(EXTRA_JAVELIN, "1")
+            if (fromDisk.ownActivationClient) shortcut.putExtra(EXTRA_OWN_ACTIVATION, "1")
+            shortcut.putExtra(EXTRA_PROFILE_V2, "1")
             shortcut.saveData()
         } catch (e: Exception) { Log.w(TAG, "could not stamp EA tag on ${shortcut.name}", e) }
         return fromDisk

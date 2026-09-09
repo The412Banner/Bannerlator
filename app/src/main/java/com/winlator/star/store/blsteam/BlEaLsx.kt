@@ -79,6 +79,15 @@ class BlEaLsx private constructor(private var handle: Long) : Closeable {
         if (handle != 0L) nativePutToken(handle, contentId, token)
     }
 
+    /**
+     * How many times the game connected to us.
+     *
+     * Zero after a launch is the most useful thing this class can report: our licence answer was
+     * never asked for, so it cannot be the reason the launch behaved as it did.
+     */
+    val connections: Long
+        get() = if (handle == 0L) 0L else nativeConnections(handle)
+
     /** Everything recorded since the last call, then cleared. */
     fun drainTranscript(): String =
         if (handle == 0L) "" else nativeDrainTranscript(handle).orEmpty()
@@ -118,6 +127,7 @@ class BlEaLsx private constructor(private var handle: Long) : Closeable {
         @JvmStatic private external fun nativeStop(handle: Long)
         @JvmStatic private external fun nativePort(handle: Long): Int
         @JvmStatic private external fun nativePutToken(handle: Long, contentId: String, token: String)
+        @JvmStatic private external fun nativeConnections(handle: Long): Long
         @JvmStatic private external fun nativeLastError(handle: Long): String?
         @JvmStatic private external fun nativeDrainTranscript(handle: Long): String?
     }

@@ -41,6 +41,11 @@ pub enum Direction {
     FromGame,
     /// Launcher → game. In capture mode, EA Desktop's real answers.
     ToGame,
+    /// Not traffic — a lifecycle note (a connection arriving, a session ending).
+    ///
+    /// Worth its own variant because the single most valuable thing a transcript can say is
+    /// "the game connected" or, far more usefully when a launch misbehaves, that it never did.
+    Note,
 }
 
 impl Direction {
@@ -48,6 +53,7 @@ impl Direction {
         match self {
             Direction::FromGame => "game->lsx",
             Direction::ToGame => "lsx->game",
+            Direction::Note => "note",
         }
     }
 }
@@ -159,6 +165,15 @@ impl LsxServer {
         *self.port.lock().expect("lsx poisoned")
     }
 
+    /// How many guest connections have been accepted.
+    ///
+    /// Zero after a launch is the loudest diagnosis available: the game never spoke to us, so
+    /// nothing about our licence answer is implicated and the fault is upstream — most likely that
+    /// the game was handed a different port than the one we published.
+    pub fn connections(&self) -> u64 {
+        *self.conn_seq.lock().expect("lsx poisoned")
+    }
+
     pub fn last_error(&self) -> String {
         self.last_error.lock().expect("lsx poisoned").clone()
     }
@@ -210,6 +225,10 @@ fn spawn_accept_loop(
                         *seq += 1;
                         *seq
                     };
+                    let cb = transcript.lock().expect("lsx poisoned").clone();
+                    if let Some(cb) = cb {
+                        cb(id, Direction::Note, b"connection accepted from the guest".to_vec());
+                    }
                     conns.push(spawn_connection(
                         stream,
                         id,

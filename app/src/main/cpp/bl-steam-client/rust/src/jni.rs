@@ -5841,10 +5841,16 @@ fn ea_attach_transcript(h: &EaLsxHandle) {
             }
             _ => format!("<{} bytes> {}", bytes.len(), crate::ea::crypto::hex_encode(&bytes)),
         };
+        let line = format!("[{id}] {} {body}", dir.as_str());
+        // Stream it, don't bank it. The buffered copy is only for the file written at teardown, and
+        // teardown is exactly what we cannot rely on: the transcript's whole purpose is explaining a
+        // launch that ended badly, and those are the launches least likely to run onDestroy. Logging
+        // each line as it happens means the evidence exists the moment it is produced.
+        android_log("BL_EA_LSX", &line);
         if let Ok(mut log) = sink.lock() {
             // Bound the log. A launch that loops could otherwise fill memory with transcript.
             if log.len() < 2000 {
-                log.push(format!("[{id}] {} {body}", dir.as_str()));
+                log.push(line);
             }
         }
     });
@@ -5969,6 +5975,16 @@ pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativePutTok
             tokens.insert(content_id, token);
         }
     }
+}
+
+/// How many times the guest connected. Zero is the diagnosis, not the absence of one.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeConnections(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jlong {
+    ea_handle(handle).map(|h| h.server.connections() as jlong).unwrap_or(0)
 }
 
 #[no_mangle]

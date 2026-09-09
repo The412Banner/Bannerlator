@@ -112,11 +112,40 @@ object EaLaunchSession {
 
         active = lsx
         activeMode = mode
+        startWatchdog(lsx)
 
         val env = LinkedHashMap<String, String>()
         env["EALsxPort"] = port.toString()
         Log.i(TAG, "EALsxPort=$port mode=$mode")
         return env
+    }
+
+    /**
+     * Report progress while the launch is happening, instead of only at the end.
+     *
+     * The end is precisely what cannot be relied on: the teardown that flushes the transcript lives
+     * in `onDestroy`, and Android does not promise to call it — least of all for a session that
+     * ended badly, which is the only kind worth diagnosing. A launch that produced no evidence
+     * because the evidence was still buffered is worse than no recorder at all, because it costs a
+     * whole test run to discover.
+     *
+     * So this says the one thing that matters, every 20 seconds, straight to the log: has the game
+     * connected yet. A run of "connections=0" lines is a complete diagnosis on its own — it means
+     * the game was never pointed at us, and nothing about our licence answer is implicated.
+     */
+    private fun startWatchdog(lsx: BlEaLsx) {
+        Thread({
+            var lastReported = -1L
+            while (active === lsx) {
+                val n = try { lsx.connections } catch (_: Throwable) { break }
+                if (n != lastReported) {
+                    Log.i(TAG, "LSX connections=$n port=${lsx.port}")
+                    lastReported = n
+                }
+                if (n == 0L) Log.i(TAG, "LSX still waiting — the game has not connected to us yet")
+                try { Thread.sleep(20_000) } catch (_: InterruptedException) { break }
+            }
+        }, "ea-lsx-watchdog").apply { isDaemon = true }.start()
     }
 
     /**
@@ -143,8 +172,14 @@ object EaLaunchSession {
         val transcript = try {
             val summary = lsx.lastError
             val body = lsx.drainTranscript()
+            val n = lsx.connections
             buildString {
-                append("EA LSX session (").append(activeMode).append(")\n")
+                append("EA LSX session (").append(activeMode).append(") connections=").append(n).append('\n')
+                if (n == 0L) {
+                    append("VERDICT: the game never connected. Our licence answer was never asked ")
+                    append("for, so it cannot explain this launch — the game was pointed at a ")
+                    append("different port than the one we published.\n")
+                }
                 if (summary.isNotEmpty()) append(summary).append('\n')
                 if (body.isNotEmpty()) append(body)
             }

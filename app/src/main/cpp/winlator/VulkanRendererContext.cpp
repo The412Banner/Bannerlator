@@ -2297,22 +2297,35 @@ ok=true;}catch(...){}
             fgFlowScale_.load(std::memory_order_relaxed),
             fgRefreshHz_.load(std::memory_order_relaxed));
     }
-    if (compositeActive() && ensureLsfgEngine() &&
-        lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
-        // The governor judges whether an extra generated frame paid off, so it
-        // must be given the rate that actually reaches the PANEL, not the guest
-        // rate wearing a different name.
-        lsfgEngine_->setPresentedRate(fgPresentedRate_);
-        // Tell the engine how large the GUEST actually renders. Without this the
-        // flow pyramid is built at full composite resolution regardless - the
-        // device log read "flow 1920x1080 scale 1.00 (guest 0x0)" - which is the
-        // most expensive setting available and was never intended as a default.
+    if (compositeActive() && ensureLsfgEngine()) {
+        // Tell the engine how large the GUEST actually renders BEFORE asking it
+        // to build anything. The flow pyramid's resolution is derived from that
+        // ratio, so preparing first builds the most expensive chain there is -
+        // the pyramid at full composite resolution - and then throws all 25
+        // pipelines away one frame later, when the guest extent arrives and the
+        // scale changes. Both calls were already here; only the order was
+        // wrong, and it cost an entire second chain build every time frame
+        // generation armed.
+        //
+        // Device log 2026-09-09, arming at 1080p on a 720p game:
+        //   16:49:51.400  chain built ... flow 1920x1080 scale 1.00 (guest 0x0)
+        //   16:49:53.769  chain built ... flow 1344x756  scale 0.70 (guest 1280x720)
+        // ~2.4 s apiece, and the game visibly froze for about five seconds on
+        // the toggle. containerWidth/Height are set in the constructor, so a
+        // real guest extent is always available here - no first frame
+        // legitimately needs the 0x0 path.
         if (containerWidth > 0 && containerHeight > 0)
             lsfgEngine_->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
-        const uint32_t capacity = (uint32_t)std::min<size_t>(
-            kMaxPresentsPerFrame - 1,
-            compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
-        fgPlan_.generations = lsfgEngine_->plan(capacity, ++fgSourceFrames_);
+        if (lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+            // The governor judges whether an extra generated frame paid off, so it
+            // must be given the rate that actually reaches the PANEL, not the guest
+            // rate wearing a different name.
+            lsfgEngine_->setPresentedRate(fgPresentedRate_);
+            const uint32_t capacity = (uint32_t)std::min<size_t>(
+                kMaxPresentsPerFrame - 1,
+                compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
+            fgPlan_.generations = lsfgEngine_->plan(capacity, ++fgSourceFrames_);
+        }
     }
     fgPlan_.presents = fgPlan_.generations + 1;
 
@@ -2344,6 +2357,11 @@ ok=true;}catch(...){}
         if (idx >= swapchainFBs.size() || idx >= swapchainImages.size()) {
             RLOG_E("renderFrame: invalid acquired image index=%u (fb=%zu images=%zu)",
                 idx, swapchainFBs.size(), swapchainImages.size());
+            // Everything acquired so far has a signalled image-available
+            // semaphore that nothing will ever wait on. Leaving one behind is
+            // the swapchain-recreate freeze, so ask for the rebuild that
+            // recreates the semaphores rather than just dropping the frame.
+            fbResized.store(true);
             return;
         }
         fgPlan_.imgIdx[k] = idx;
@@ -2360,6 +2378,10 @@ ok=true;}catch(...){}
             if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, imgInFlight[idx]) == VK_NOT_READY) {
                 if (vk_.WaitForFences(device,1,&imgInFlight[idx],VK_TRUE,2000000000ULL) != VK_SUCCESS) {
                     RLOG_E("renderFrame: in-flight image fence wait timed out (2s), skipping frame");
+                    // Same reasoning as the acquire failures above: this frame
+                    // has already acquired every image it planned to present,
+                    // and returning here strands their semaphores signalled.
+                    fbResized.store(true);
                     return;
                 }
             }

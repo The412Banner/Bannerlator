@@ -513,13 +513,28 @@ mod tests {
         game.write_all(b"<RequestLicense/>").unwrap();
         game.flush().unwrap();
 
-        let (_, d1, b1) = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-        assert_eq!(d1, Direction::FromGame);
-        assert_eq!(b1, b"<RequestLicense/>");
-
-        let (_, d2, b2) = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-        assert_eq!(d2, Direction::ToGame);
-        assert_eq!(b2, b"<RequestLicenseResponse/>");
+        // Collect both, then match by direction rather than by arrival order. The two directions
+        // are pumped by separate threads, and each forwards its bytes BEFORE recording them — so
+        // the upstream reply can reach the transcript ahead of the request that caused it. That
+        // ordering is genuinely not guaranteed, and a test that assumed it was is the reason this
+        // one failed in CI while the relay itself was behaving correctly.
+        let mut seen: Vec<(Direction, Vec<u8>)> = Vec::new();
+        for _ in 0..2 {
+            let (_, dir, bytes) = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+            seen.push((dir, bytes));
+        }
+        let from_game = seen.iter().find(|(d, _)| *d == Direction::FromGame);
+        let to_game = seen.iter().find(|(d, _)| *d == Direction::ToGame);
+        assert_eq!(
+            from_game.map(|(_, b)| b.as_slice()),
+            Some(&b"<RequestLicense/>"[..]),
+            "transcript: {seen:?}"
+        );
+        assert_eq!(
+            to_game.map(|(_, b)| b.as_slice()),
+            Some(&b"<RequestLicenseResponse/>"[..]),
+            "transcript: {seen:?}"
+        );
 
         // And the game really received it, not just the transcript.
         let mut back = [0u8; 64];

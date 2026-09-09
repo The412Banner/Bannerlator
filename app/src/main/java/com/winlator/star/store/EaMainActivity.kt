@@ -90,11 +90,15 @@ private fun EaScreen(onBack: () -> Unit) {
 
     val titles = remember { scanEaTitles(ctx, creds.isSignedIn) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+    // A Surface, not a bare background modifier. Painting the background by hand leaves
+    // LocalContentColor at whatever the caller had, which is how the game titles ended up darker
+    // than their own subtitles; Surface pairs the colour with its matching content colour.
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
+    Column(Modifier.fillMaxSize()) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -104,7 +108,12 @@ private fun EaScreen(onBack: () -> Unit) {
             IconButton(onClick = onBack) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
             }
-            Text("EA", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
+            Text(
+                "EA",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             Spacer(Modifier.weight(1f))
             Box {
                 IconButton(onClick = { menuOpen = true }) {
@@ -174,6 +183,7 @@ private fun EaScreen(onBack: () -> Unit) {
             }
         }
     }
+    }
 
     if (showSignInInfo) SignInInfoDialog(onDismiss = { showSignInInfo = false })
 
@@ -199,7 +209,11 @@ private fun SignedOutBanner(onSignIn: () -> Unit) {
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
             .padding(14.dp)
     ) {
-        Text("Not signed in to EA", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "Not signed in to EA",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             "Signing in lets Bannerlator see which EA games you own and link them to Steam. " +
@@ -246,7 +260,12 @@ private fun TitleRow(title: EaTitle) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title.name, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                title.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             Spacer(Modifier.height(2.dp))
             Text(
                 title.detail,
@@ -340,7 +359,12 @@ private fun scanEaTitles(ctx: android.content.Context, signedIn: Boolean): List<
     manager.loadShortcuts()
         .filter { EaSupport.isTagged(it) }
         .map { shortcut ->
-            val javelin = shortcut.getExtra(EaSupport.EXTRA_JAVELIN, "") == "1"
+            // detectForShortcut re-reads the game folder when the shortcut carries no anti-cheat
+            // tag, which is the common case for anything added before that tag existed. Trusting
+            // the tag alone showed Unbound as launchable when it cannot run at all.
+            val javelin = runCatching {
+                EaSupport.detectForShortcut(shortcut)?.javelinAntiCheat == true
+            }.getOrDefault(shortcut.getExtra(EaSupport.EXTRA_JAVELIN, "") == "1")
             val appId = runCatching {
                 EaSupport.resolveSteamAppId(shortcut, EaSupport.installDirOf(shortcut))
             }.getOrDefault(0)

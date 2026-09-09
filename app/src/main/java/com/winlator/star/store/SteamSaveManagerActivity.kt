@@ -88,6 +88,7 @@ import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.winlator.star.ui.components.EmuAccountConflictDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
@@ -875,6 +876,8 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
     var restoreChooser by remember { mutableStateOf<CustomSaveVault.CustomGameStatus?>(null) }
     var fileRestoreFor by remember { mutableStateOf<CustomSaveVault.CustomGameStatus?>(null) }
     var pickedSaveUri by remember { mutableStateOf<Uri?>(null) }
+    // Emulator account ids a restore held back because the container already runs a different one.
+    var emuConflicts by remember { mutableStateOf<List<GameSaveBackup.EmuIdConflict>>(emptyList()) }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = if (result.resultCode == Activity.RESULT_OK) InAppFilePicker.pickedUri(result.data) else null
         if (uri != null) pickedSaveUri = uri else fileRestoreFor = null
@@ -913,6 +916,7 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
                 if (r.ok) "Restored ${r.filesWritten} files to \"${target.name}\""
                 else "Restore failed: ${r.error ?: "unknown error"}",
             )
+            emuConflicts = r.emuConflicts
             busyKeys = busyKeys - key
             scope.launch { reload() }
         }
@@ -928,6 +932,7 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
                 if (r.ok) "Restored ${r.filesWritten} files to \"${target.name}\""
                 else "Restore failed: ${r.error ?: "unknown error"}",
             )
+            emuConflicts = r.emuConflicts
             busyKeys = busyKeys - key
             scope.launch { reload() }
         }
@@ -960,6 +965,11 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
                 }
             }
         }
+    }
+
+    EmuAccountConflictDialog(conflicts = emuConflicts) { applied, _ ->
+        emuConflicts = emptyList()
+        if (applied > 0) onMessage("Emulator account switched to the backup's — relaunch the game")
     }
 
     // Backup layout picker (Winlator / GameHub) — mirrors the shortcut ⋮ menu's choice.

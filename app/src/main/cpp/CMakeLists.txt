@@ -107,6 +107,43 @@ add_library(vulkan_renderer SHARED
         scanout/ScanoutContext.cpp
 )
 
+# --- win-fg chain provenance -------------------------------------------------
+# The win-fg chain is COPIED into this tree from github.com/The412Banner/win-fg
+# rather than linked, so nothing about it self-identifies: a device log could
+# say which Bannerlator commit it came from, but not which win-fg. The layer
+# build solves this by stamping `git describe` into libwin_fg.so; the native
+# path needs its own answer.
+#
+# Two halves, deliberately:
+#   WINFG_UPSTREAM   the upstream tag the sources were copied from. Hand-set,
+#                    so UPDATE IT when you re-copy the chain.
+#   WINFG_CHAIN_HASH a hash over the chain sources themselves, computed here at
+#                    configure time. This one cannot rot - edit any chain file
+#                    and it changes, including a local edit that never went
+#                    upstream, which is exactly the case a hand-set tag hides.
+set(WINFG_UPSTREAM "v0.2.1-5-g1cf96cf")
+set(WINFG_CHAIN_SRC
+        winlator/winfg/framegen.cpp
+        winlator/winfg/framegen.hpp
+        winlator/winfg/record_impl.inc
+        winlator/winfg/config.hpp
+        winlator/winfg/embedded_shaders.hpp
+        winlator/winfg/winfg_engine.cpp
+)
+set(WINFG_HASH_INPUT "")
+foreach(f ${WINFG_CHAIN_SRC})
+    file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${f}" _h)
+    string(APPEND WINFG_HASH_INPUT "${_h}")
+endforeach()
+string(SHA256 WINFG_CHAIN_HASH_FULL "${WINFG_HASH_INPUT}")
+string(SUBSTRING "${WINFG_CHAIN_HASH_FULL}" 0 12 WINFG_CHAIN_HASH)
+message(STATUS "win-fg chain: ${WINFG_UPSTREAM} (src ${WINFG_CHAIN_HASH})")
+
+target_compile_definitions(vulkan_renderer PRIVATE
+        WINFG_UPSTREAM="${WINFG_UPSTREAM}"
+        WINFG_CHAIN_HASH="${WINFG_CHAIN_HASH}"
+)
+
 target_compile_options(vulkan_renderer PRIVATE
         -Wall -Wextra -fvisibility=hidden -std=c++17
 )

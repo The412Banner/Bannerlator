@@ -4,6 +4,16 @@
 #include "lsfg/lsfg_engine.h"
 #include "lsfg/lsfg_vkd.h"
 #include "winfg/winfg_engine.h"
+
+// Set by CMake from the copied win-fg chain (upstream tag + a hash over the
+// chain sources). Defaulted so this still compiles if it is ever built without
+// them - an "unknown" in a log is a missing stamp, not a broken build.
+#ifndef WINFG_UPSTREAM
+#define WINFG_UPSTREAM "unknown"
+#endif
+#ifndef WINFG_CHAIN_HASH
+#define WINFG_CHAIN_HASH "unknown"
+#endif
 #include <stdexcept>
 #include <cstdlib>
 #include <cstring>
@@ -942,7 +952,9 @@ bool VulkanRendererContext::ensureWinFgEngine() {
     }
     winfgEngine_ = std::move(engine);
     fgConfigDirty_.store(true, std::memory_order_relaxed);
-    RLOG("winfg-native: engine ready");
+    // Says WHICH win-fg is running. The chain is copied into this tree rather
+    // than linked, so without this a log can only name the Bannerlator commit.
+    RLOG("winfg-native: engine ready (chain %s, src %s)", WINFG_UPSTREAM, WINFG_CHAIN_HASH);
     return true;
 }
 

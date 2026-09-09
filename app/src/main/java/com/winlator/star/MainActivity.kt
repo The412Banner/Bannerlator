@@ -75,6 +75,7 @@ import com.winlator.star.core.WineThemeManager
 import com.winlator.star.core.WinFgDiag
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.store.AmazonMainActivity
+import com.winlator.star.store.EaMainActivity
 import com.winlator.star.store.EpicMainActivity
 import com.winlator.star.store.GogMainActivity
 import com.winlator.star.store.SteamMainActivity
@@ -294,6 +295,7 @@ class MainActivity : AppCompatActivity() {
             Screen.Epic   -> EpicMainActivity::class.java
             Screen.Amazon -> AmazonMainActivity::class.java
             Screen.Steam  -> SteamMainActivity::class.java
+            Screen.Ea     -> EaMainActivity::class.java
             else          -> return
         }
         startActivity(Intent(this, cls))

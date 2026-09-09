@@ -40,6 +40,7 @@ pub mod proto_envelope;
 pub mod proto_wire;
 pub mod rsa_password;
 pub mod steam_directory;
+pub mod ea;
 pub mod store_dl;
 pub mod ticket_cache;
 pub mod transport;

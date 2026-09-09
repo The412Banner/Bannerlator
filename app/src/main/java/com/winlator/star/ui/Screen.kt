@@ -17,6 +17,9 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
     object Epic   : Screen("epic",   "Epic Games",   "storefront")
     object Amazon : Screen("amazon", "Amazon Games", "storefront")
     object Steam  : Screen("steam",  "Steam",        "storefront")
+    // EA is a store destination, not a shop: it lists the EA-published titles the user already
+    // owns on Steam and what each one's EA licence looks like. Nothing is bought here.
+    object Ea     : Screen("ea",     "EA",           "storefront")
 
     object ContainerDetail : Screen("container_detail?id={id}", "Container", "")
 
@@ -31,7 +34,7 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
             listOf(Games, Containers, FileManager, Settings, Appearance, InputControls, Contents, Saves)
         }
         val storeItems by lazy {
-            listOf(Gog, Epic, Amazon, Steam)
+            listOf(Gog, Epic, Amazon, Steam, Ea)
         }
     }
 }

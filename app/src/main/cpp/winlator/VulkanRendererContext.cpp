@@ -2344,6 +2344,11 @@ ok=true;}catch(...){}
         if (idx >= swapchainFBs.size() || idx >= swapchainImages.size()) {
             RLOG_E("renderFrame: invalid acquired image index=%u (fb=%zu images=%zu)",
                 idx, swapchainFBs.size(), swapchainImages.size());
+            // Everything acquired so far has a signalled image-available
+            // semaphore that nothing will ever wait on. Leaving one behind is
+            // the swapchain-recreate freeze, so ask for the rebuild that
+            // recreates the semaphores rather than just dropping the frame.
+            fbResized.store(true);
             return;
         }
         fgPlan_.imgIdx[k] = idx;
@@ -2360,6 +2365,10 @@ ok=true;}catch(...){}
             if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, imgInFlight[idx]) == VK_NOT_READY) {
                 if (vk_.WaitForFences(device,1,&imgInFlight[idx],VK_TRUE,2000000000ULL) != VK_SUCCESS) {
                     RLOG_E("renderFrame: in-flight image fence wait timed out (2s), skipping frame");
+                    // Same reasoning as the acquire failures above: this frame
+                    // has already acquired every image it planned to present,
+                    // and returning here strands their semaphores signalled.
+                    fbResized.store(true);
                     return;
                 }
             }

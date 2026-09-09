@@ -24,6 +24,8 @@
 
 pub mod crypto;
 pub mod lsx;
+pub mod proto;
+pub mod serve;
 
 /// Environment the game process needs so its Origin SDK talks to us instead of EA Desktop.
 ///

@@ -26,6 +26,7 @@
 //! Capture mode is protocol-agnostic on purpose. It parses nothing, so it cannot be wrong about a
 //! format nobody here has verified yet; it moves bytes and writes down what it saw.
 
+use super::serve::{LicenceSource, LicenceStrategy, Session, Step};
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -54,12 +55,18 @@ impl Direction {
 /// Observer for captured bytes: `(connection id, direction, bytes)`.
 type Transcript = Arc<dyn Fn(u64, Direction, Vec<u8>) + Send + Sync + 'static>;
 
+/// Builds a fresh licence source per connection.
+///
+/// A factory rather than a shared object because each game connection gets its own [`Session`], and
+/// because it keeps [`LsxConfig`] a plain value that can stay `Clone`/`Debug`/`PartialEq`.
+type LicenceFactory = Arc<dyn Fn() -> Box<dyn LicenceSource> + Send + Sync + 'static>;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Mode {
     /// Relay to the real EA Desktop on `upstream_port`, copying both directions to the transcript.
     Capture { upstream_port: u16 },
-    /// Answer the game ourselves. Not reachable until a captured transcript defines the format.
-    Serve,
+    /// Answer the game ourselves — no EA Desktop in the launch at all.
+    Serve { strategy: LicenceStrategy },
 }
 
 #[derive(Clone, Debug)]
@@ -92,6 +99,7 @@ pub struct LsxServer {
     port: Arc<Mutex<u16>>,
     last_error: Arc<Mutex<String>>,
     transcript: Arc<Mutex<Option<Transcript>>>,
+    licences: Arc<Mutex<Option<LicenceFactory>>>,
     conn_seq: Arc<Mutex<u64>>,
     thread: Option<JoinHandle<()>>,
 }
@@ -127,6 +135,7 @@ impl LsxServer {
             config,
             Arc::clone(&self.running),
             Arc::clone(&self.transcript),
+            Arc::clone(&self.licences),
             Arc::clone(&self.conn_seq),
             Arc::clone(&self.last_error),
         ));
@@ -161,6 +170,15 @@ impl LsxServer {
         *self.transcript.lock().expect("lsx poisoned") = Some(Arc::new(observer));
     }
 
+    /// Supply held licences. Without this, serve mode answers every title with an empty licence —
+    /// which is the cheap path, and correct for any title that does not need a Denuvo token.
+    pub fn set_licences<F>(&self, factory: F)
+    where
+        F: Fn() -> Box<dyn LicenceSource> + Send + Sync + 'static,
+    {
+        *self.licences.lock().expect("lsx poisoned") = Some(Arc::new(factory));
+    }
+
     fn set_error(&self, error: String) {
         *self.last_error.lock().expect("lsx poisoned") = error;
     }
@@ -177,6 +195,7 @@ fn spawn_accept_loop(
     config: LsxConfig,
     running: Arc<AtomicBool>,
     transcript: Arc<Mutex<Option<Transcript>>>,
+    licences: Arc<Mutex<Option<LicenceFactory>>>,
     conn_seq: Arc<Mutex<u64>>,
     last_error: Arc<Mutex<String>>,
 ) -> JoinHandle<()> {
@@ -197,6 +216,7 @@ fn spawn_accept_loop(
                         config.clone(),
                         Arc::clone(&running),
                         Arc::clone(&transcript),
+                        Arc::clone(&licences),
                         Arc::clone(&last_error),
                     ));
                 }
@@ -218,6 +238,7 @@ fn spawn_connection(
     config: LsxConfig,
     running: Arc<AtomicBool>,
     transcript: Arc<Mutex<Option<Transcript>>>,
+    licences: Arc<Mutex<Option<LicenceFactory>>>,
     last_error: Arc<Mutex<String>>,
 ) -> JoinHandle<()> {
     thread::spawn(move || match config.mode {
@@ -235,17 +256,103 @@ fn spawn_connection(
                 }
             }
         }
-        Mode::Serve => {
-            // Deliberately unimplemented. Serving a licence means answering RequestLicense in a
-            // format we have not yet observed; guessing it would produce a launch failure that
-            // looks like a licence refusal and would send us chasing the wrong bug. Until a capture
-            // defines the format, close cleanly so the caller's fallback puts EA Desktop back in
-            // the path.
-            *last_error.lock().expect("lsx poisoned") =
-                "serve mode not implemented — capture a transcript first".to_string();
-            let _ = game.shutdown(Shutdown::Both);
+        Mode::Serve { strategy } => {
+            let source = match licences.lock().expect("lsx poisoned").clone() {
+                Some(factory) => factory(),
+                None => Box::new(super::serve::NoTokens) as Box<dyn LicenceSource>,
+            };
+            serve(
+                game,
+                Session::new(strategy, source),
+                id,
+                config.chunk_limit,
+                running,
+                transcript,
+                last_error,
+            );
         }
     })
+}
+
+/// Drive a [`Session`] over one game connection.
+///
+/// Unlike the capture relay this is half-duplex by nature: the SDK asks, we answer. The greeting
+/// goes out first, unprompted, because the game waits to be challenged before it says anything.
+///
+/// Every exit path closes the socket. A launch that is waiting on a launcher which has silently
+/// stopped answering is the one failure this feature must never cause — better a clean refusal the
+/// caller can fall back from.
+fn serve(
+    mut game: TcpStream,
+    mut session: Session,
+    id: u64,
+    chunk_limit: usize,
+    running: Arc<AtomicBool>,
+    transcript: Arc<Mutex<Option<Transcript>>>,
+    last_error: Arc<Mutex<String>>,
+) {
+    let note = |dir: Direction, bytes: &[u8]| {
+        let cb = transcript.lock().expect("lsx poisoned").clone();
+        if let Some(cb) = cb {
+            cb(id, dir, bytes[..bytes.len().min(chunk_limit)].to_vec());
+        }
+    };
+
+    let greeting = session.greeting();
+    if game.write_all(&greeting).is_err() {
+        return;
+    }
+    let _ = game.flush();
+    note(Direction::ToGame, &greeting);
+
+    let _ = game.set_read_timeout(Some(Duration::from_millis(250)));
+    let mut pending: Vec<u8> = Vec::new();
+    let mut buf = vec![0u8; 16 * 1024];
+
+    while running.load(Ordering::Relaxed) {
+        match game.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => pending.extend_from_slice(&buf[..n]),
+            Err(err) => match err.kind() {
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut => continue,
+                _ => break,
+            },
+        }
+
+        // One read can carry several messages, or half of one. Drain whole frames only.
+        while let Some((payload, used)) = super::proto::take_frame(&pending) {
+            pending.drain(..used);
+            note(Direction::FromGame, &payload);
+            match session.handle_frame(&payload) {
+                Step::Send(bytes) => {
+                    note(Direction::ToGame, &bytes);
+                    if game.write_all(&bytes).is_err() {
+                        let _ = game.shutdown(Shutdown::Both);
+                        return;
+                    }
+                    let _ = game.flush();
+                }
+                Step::Nothing => {}
+                Step::Close(why) => {
+                    *last_error.lock().expect("lsx poisoned") = why;
+                    let _ = game.shutdown(Shutdown::Both);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Record how far the conversation got: "never handshook" and "handshook then went quiet" are
+    // very different diagnoses when a launch fails.
+    let summary = format!(
+        "session ended: handshaked={} title={:?} contentId={:?}\n{}",
+        session.handshaked(),
+        session.title(),
+        session.content_id(),
+        session.log().join("\n")
+    );
+    *last_error.lock().expect("lsx poisoned") = summary;
+    let _ = game.shutdown(Shutdown::Both);
 }
 
 /// Full-duplex byte pump between the game and real EA Desktop, copying both directions out.
@@ -416,13 +523,54 @@ mod tests {
     }
 
     #[test]
-    fn serve_mode_refuses_until_a_transcript_defines_the_format() {
+    fn serve_mode_greets_then_answers_a_licence_request() {
+        use super::super::crypto;
+        use super::super::proto::{self, Incoming};
+
         let mut server = LsxServer::default();
-        assert!(server.start(LsxConfig { mode: Mode::Serve, ..Default::default() }));
+        assert!(server.start(LsxConfig {
+            mode: Mode::Serve { strategy: LicenceStrategy::Auto },
+            ..Default::default()
+        }));
+
         let mut game = TcpStream::connect(("127.0.0.1", server.port())).unwrap();
-        let mut buf = [0u8; 8];
-        assert_eq!(game.read(&mut buf).unwrap(), 0);
-        assert!(server.last_error().contains("not implemented"));
+        game.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+
+        // The launcher speaks first, unprompted.
+        let mut buf = [0u8; 4096];
+        let n = game.read(&mut buf).unwrap();
+        let (payload, _) = proto::take_frame(&buf[..n]).unwrap();
+        let greeting = String::from_utf8(payload).unwrap();
+        assert!(greeting.contains("<Challenge"), "got {greeting}");
+        let nonce = Incoming::parse(&greeting)
+            .unwrap()
+            .payload
+            .attr("key")
+            .unwrap()
+            .to_string();
+
+        // Answer the challenge the way the SDK would.
+        let cr = format!(
+            "<LSX><Request recipient=\"Game\" id=\"1\"><ChallengeResponse response=\"{}\" key=\"k\" version=\"2\"><ContentId>1035208</ContentId><Title>Payback</Title></ChallengeResponse></Request></LSX>",
+            crypto::make_challenge_response(&nonce)
+        );
+        game.write_all(&proto::frame(&cr, None)).unwrap();
+        let n = game.read(&mut buf).unwrap();
+        let (payload, _) = proto::take_frame(&buf[..n]).unwrap();
+        let accepted = String::from_utf8(payload).unwrap();
+        assert!(accepted.contains("ChallengeAccepted"), "got {accepted}");
+
+        // From here the conversation is encrypted under the fixed key (version 2 -> seed 0).
+        let key = crypto::CRYPTO_KEY;
+        let req = "<LSX><Request id=\"2\"><RequestLicense UserId=\"1\" RequestTicket=\"t\"/></Request></LSX>";
+        game.write_all(&proto::frame(req, Some(&key))).unwrap();
+        let n = game.read(&mut buf).unwrap();
+        let (payload, _) = proto::take_frame(&buf[..n]).unwrap();
+        let xml = proto::unframe(&payload, Some(&key)).unwrap();
+        let reply = Incoming::parse(&xml).unwrap().payload;
+        assert_eq!(reply.name, "RequestLicenseResponse");
+        assert_eq!(reply.attr("License"), Some(""), "cheap path: empty licence");
+
         server.stop();
     }
 }

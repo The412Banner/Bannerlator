@@ -5788,3 +5788,208 @@ mod tests {
         );
     }
 }
+
+// ── EA storefront: the LSX listener ────────────────────────────────────────────────────────────
+//
+// The Kotlin side owns the lifecycle: it starts a listener just before a launch, reads back the
+// port to put in `EALsxPort`, and stops it when the game exits. Everything here is deliberately
+// total — no export can panic across the JNI boundary, and a failure returns a value the caller can
+// act on (port 0, an error string) rather than an exception, because the caller's response to any
+// failure is the same: leave `EALsxPort` unset and let EA Desktop handle the launch.
+
+struct EaLsxHandle {
+    server: crate::ea::lsx::LsxServer,
+    tokens: Arc<Mutex<std::collections::HashMap<String, String>>>,
+    transcript: Arc<Mutex<Vec<String>>>,
+}
+
+impl EaLsxHandle {
+    fn new() -> Self {
+        Self {
+            server: crate::ea::lsx::LsxServer::default(),
+            tokens: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            transcript: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+}
+
+/// Held licences, looked up by the content id the game announced during the handshake.
+struct EaMapTokens(Arc<Mutex<std::collections::HashMap<String, String>>>);
+
+impl crate::ea::serve::LicenceSource for EaMapTokens {
+    fn token_for(&mut self, content_id: &str, _request_ticket: &str) -> Option<String> {
+        self.0.lock().ok()?.get(content_id).cloned()
+    }
+}
+
+fn ea_handle<'a>(handle: jlong) -> Option<&'a mut EaLsxHandle> {
+    if handle == 0 {
+        return None;
+    }
+    unsafe { (handle as *mut EaLsxHandle).as_mut() }
+}
+
+/// Attach the transcript observer. Bytes are recorded as text when they are printable and as a hex
+/// summary when they are not, so an encrypted frame still shows up as evidence of traffic rather
+/// than vanishing from the log.
+fn ea_attach_transcript(h: &EaLsxHandle) {
+    let sink = Arc::clone(&h.transcript);
+    h.server.set_transcript(move |id, dir, bytes| {
+        let body = match std::str::from_utf8(&bytes) {
+            Ok(text) if text.chars().all(|c| !c.is_control() || c == '\n' || c == '\t') => {
+                text.to_string()
+            }
+            _ => format!("<{} bytes> {}", bytes.len(), crate::ea::crypto::hex_encode(&bytes)),
+        };
+        if let Ok(mut log) = sink.lock() {
+            // Bound the log. A launch that loops could otherwise fill memory with transcript.
+            if log.len() < 2000 {
+                log.push(format!("[{id}] {} {body}", dir.as_str()));
+            }
+        }
+    });
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeCreate(
+    _env: JNIEnv,
+    _class: JClass,
+) -> jlong {
+    Box::into_raw(Box::new(EaLsxHandle::new())) as jlong
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeDestroy(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) {
+    if handle == 0 {
+        return;
+    }
+    unsafe {
+        let mut boxed = Box::from_raw(handle as *mut EaLsxHandle);
+        boxed.server.stop();
+    }
+}
+
+/// Start answering the game ourselves. Returns the bound port, or 0 if we could not start — in
+/// which case the caller must not set `EALsxPort`.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeStartServe(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    strategy: jint,
+) -> jint {
+    let Some(h) = ea_handle(handle) else { return 0 };
+    let strategy = match strategy {
+        1 => crate::ea::serve::LicenceStrategy::AlwaysEmpty,
+        2 => crate::ea::serve::LicenceStrategy::RequireToken,
+        _ => crate::ea::serve::LicenceStrategy::Auto,
+    };
+    ea_attach_transcript(h);
+    let tokens = Arc::clone(&h.tokens);
+    h.server.set_licences(move || {
+        Box::new(EaMapTokens(Arc::clone(&tokens))) as Box<dyn crate::ea::serve::LicenceSource>
+    });
+    let ok = h.server.start(crate::ea::lsx::LsxConfig {
+        mode: crate::ea::lsx::Mode::Serve { strategy },
+        ..Default::default()
+    });
+    if ok {
+        h.server.port() as jint
+    } else {
+        0
+    }
+}
+
+/// Start in record-and-forward mode against a real EA Desktop on `upstream_port`. Same contract.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeStartCapture(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    upstream_port: jint,
+) -> jint {
+    let Some(h) = ea_handle(handle) else { return 0 };
+    ea_attach_transcript(h);
+    let ok = h.server.start(crate::ea::lsx::LsxConfig {
+        mode: crate::ea::lsx::Mode::Capture { upstream_port: upstream_port as u16 },
+        ..Default::default()
+    });
+    if ok {
+        h.server.port() as jint
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeStop(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) {
+    if let Some(h) = ea_handle(handle) {
+        h.server.stop();
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativePort(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jint {
+    ea_handle(handle).map(|h| h.server.port() as jint).unwrap_or(0)
+}
+
+/// Record a licence token for a title. Passing an empty token forgets it, so a licence that turns
+/// out to be stale can be cleared without tearing down the listener.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativePutToken(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    content_id: JString,
+    token: JString,
+) {
+    let Some(h) = ea_handle(handle) else { return };
+    let (Some(content_id), Some(token)) = (
+        jstring_to_string(&mut env, &content_id),
+        jstring_to_string(&mut env, &token),
+    ) else {
+        return;
+    };
+    if let Ok(mut tokens) = h.tokens.lock() {
+        if token.is_empty() {
+            tokens.remove(&content_id);
+        } else {
+            tokens.insert(content_id, token);
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeLastError(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    let text = ea_handle(handle).map(|h| h.server.last_error()).unwrap_or_default();
+    new_string_or_null(&mut env, &text)
+}
+
+/// Take everything recorded so far and clear it, so repeated polling does not re-report old lines.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_store_blsteam_BlEaLsx_nativeDrainTranscript(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    let text = ea_handle(handle)
+        .and_then(|h| h.transcript.lock().ok().map(|mut log| std::mem::take(&mut *log).join("\n")))
+        .unwrap_or_default();
+    new_string_or_null(&mut env, &text)
+}

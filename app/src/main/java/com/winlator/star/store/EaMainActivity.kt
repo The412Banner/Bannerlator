@@ -85,6 +85,7 @@ private fun EaScreen(onBack: () -> Unit) {
     val creds = remember { EaCredentialStore.load(ctx) }
     var menuOpen by remember { mutableStateOf(false) }
     var showModes by remember { mutableStateOf(false) }
+    var showSignInInfo by remember { mutableStateOf(false) }
     var mode by remember { mutableStateOf(EaLaunchSession.mode(ctx)) }
 
     val titles = remember { scanEaTitles(ctx, creds.isSignedIn) }
@@ -151,7 +152,7 @@ private fun EaScreen(onBack: () -> Unit) {
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        if (!creds.isSignedIn) SignedOutBanner()
+        if (!creds.isSignedIn) SignedOutBanner(onSignIn = { showSignInInfo = true })
 
         Text(
             "EA GAMES IN YOUR STEAM LIBRARY",
@@ -174,6 +175,8 @@ private fun EaScreen(onBack: () -> Unit) {
         }
     }
 
+    if (showSignInInfo) SignInInfoDialog(onDismiss = { showSignInInfo = false })
+
     if (showModes) {
         ModeDialog(
             current = mode,
@@ -188,7 +191,7 @@ private fun EaScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun SignedOutBanner() {
+private fun SignedOutBanner(onSignIn: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -205,8 +208,33 @@ private fun SignedOutBanner() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(10.dp))
-        Button(onClick = { }, enabled = false) { Text("Sign in to EA") }
+        Button(onClick = { onSignIn() }) { Text("About EA sign-in") }
     }
+}
+
+/**
+ * Says plainly what signing in would and would not change.
+ *
+ * Worth its own dialog because the honest answer is counter-intuitive: the thing people most want
+ * fixed — being asked to sign in on every single launch — is fixed by the part that needs no
+ * account at all.
+ */
+@Composable
+private fun SignInInfoDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("EA sign-in") },
+        text = {
+            Text(
+                "Signing in to EA is not part of this build yet.\n\n" +
+                    "It is not needed to launch. Bannerlator answers the game's licence check " +
+                    "itself, which is what stops EA asking you to sign in every time you play.\n\n" +
+                    "An account will matter later, for games that carry Denuvo and for linking " +
+                    "your EA and Steam accounts — neither of which changes anything today."
+            )
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } },
+    )
 }
 
 @Composable

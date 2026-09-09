@@ -1,0 +1,31 @@
+{
+  "id": "2026-09-09T16-31-43-ab596c",
+  "created": "2026-09-09T16:31:43.098Z",
+  "ip_hash": "4Y1zH6aj/H",
+  "fields": {
+    "reporter_name": "Ayush",
+    "device_model": "Vivo Y19 5G",
+    "soc": "Mediatek Dimensity 6300",
+    "gpu": "Mali G57 MC2",
+    "android": "Android 15",
+    "ram": "8 GB",
+    "app_version": "3.0.8",
+    "install_source": "GitHub release",
+    "game_name": "Grand Theft Auto V",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "GTAV. exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Crashes in the main menu",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1-sarek",
+    "proton": "Wine-9.0-X86_64-1",
+    "box64": "Performance (Mali) / Performance TSO",
+    "resolution": "854x480",
+    "framegen": "ON  win-fg",
+    "repro": "First Waiting For few minutes and then Black Screen problem and Game crash",
+    "tried": "Tried Many Best Settings but Then also\nNo Changes"
+  },
+  "logs": []
+}

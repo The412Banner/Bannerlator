@@ -1524,6 +1524,17 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="contact_us">Help and Support</string>
     <string name="graphics_driver_show_incompatible">Show incompatible drivers</string>
 
+    <!-- Emulator account id carried in save backups (see EmuAccountIdentity) -->
+    <string name="emu_id_conflict_title">This backup uses a different %1$s account</string>
+    <string name="emu_id_conflict_body">Cracked games name their save folder after the account number they run under, and refuse a save made under a different one. The saves you just restored will only load under the account stored in the backup.</string>
+    <string name="emu_id_conflict_from_backup">In this backup</string>
+    <string name="emu_id_conflict_in_container">In this container now</string>
+    <string name="emu_id_conflict_account">%1$s: %2$s</string>
+    <string name="emu_id_conflict_account_with_folder">%1$s: %2$s (save folder %3$s)</string>
+    <string name="emu_id_conflict_warning">The account is shared by every emulated game in this container. Switching it makes the restored saves load, but any other cracked game here that saved under the current account will stop finding its saves.</string>
+    <string name="emu_id_conflict_apply">Use backup\'s account</string>
+    <string name="emu_id_conflict_keep">Keep current</string>
+
     <!-- Per-game save backup -->
     <string name="save_flow_caution_title">Not foolproof yet — verify before you wipe anything</string>
     <string name="save_flow_caution_body">Some games keep saves outside the folders we back up (the game\'s install directory, the Windows registry, or Steam Cloud), so a backup may not capture everything. Always double-check a backup — or copy the files yourself — and test that a restore works before deleting your original saves.</string>

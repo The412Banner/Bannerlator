@@ -105,6 +105,7 @@ import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.core.SaveLocator
 import com.winlator.star.core.StringUtils
 import com.winlator.star.store.UninstallResultBar
+import com.winlator.star.ui.components.EmuAccountConflictDialog
 import com.winlator.star.store.download.InstallProgressDialog
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.coroutines.Dispatchers
@@ -160,6 +161,8 @@ fun ContainersScreen(
     var saveFlow by remember { mutableStateOf<SaveFlow?>(null) }
     var busyMessage by remember { mutableStateOf<String?>(null) }
     var resultMessage by remember { mutableStateOf<String?>(null) }
+    // Emulator account ids a restore held back because the container already runs a different one.
+    var emuConflicts by remember { mutableStateOf<List<GameSaveBackup.EmuIdConflict>>(emptyList()) }
     var pendingRestoreContainer by remember { mutableStateOf<Container?>(null) }
 
     // Restore a GameHub backup .zip. Shared for both the in-app picker (file:// path) and SAF.
@@ -578,6 +581,7 @@ fun ContainersScreen(
                         busyMessage = null
                         resultMessage = if (r.ok) "Restored ${r.filesWritten} files to \"${c.name}\""
                         else "Restore failed: ${r.error ?: "unknown error"}"
+                        emuConflicts = r.emuConflicts
                     }
                 }) { Text("Restore") }
             },
@@ -665,6 +669,11 @@ fun ContainersScreen(
     }
 
     busyMessage?.let { SaveFlowProgressDialog(message = it) }
+
+    EmuAccountConflictDialog(conflicts = emuConflicts) { applied, _ ->
+        emuConflicts = emptyList()
+        if (applied > 0) resultMessage = "Emulator account switched to the backup's — relaunch the game"
+    }
 }
 
 @Composable

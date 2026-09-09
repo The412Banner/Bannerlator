@@ -497,8 +497,12 @@ mod tests {
 
         let mut server = LsxServer::default();
         let (tx, rx) = mpsc::channel();
+        // Lifecycle notes (the accept announcement) are not traffic — drop them here so this test
+        // asserts on the bytes that actually crossed the wire.
         server.set_transcript(move |id, dir, bytes| {
-            tx.send((id, dir, bytes)).unwrap();
+            if dir != Direction::Note {
+                tx.send((id, dir, bytes)).unwrap();
+            }
         });
         assert!(server.start(LsxConfig {
             mode: Mode::Capture { upstream_port },
@@ -522,6 +526,25 @@ mod tests {
         let n = game.read(&mut back).unwrap();
         assert_eq!(&back[..n], b"<RequestLicenseResponse/>");
 
+        server.stop();
+    }
+
+    #[test]
+    fn connections_counts_arrivals_and_starts_at_zero() {
+        // Zero is the diagnosis this counter exists to deliver: it is how "the game never spoke to
+        // us" gets told apart from "we answered it badly".
+        let mut server = LsxServer::default();
+        assert!(server.start(LsxConfig {
+            mode: Mode::Serve { strategy: LicenceStrategy::Auto },
+            ..Default::default()
+        }));
+        assert_eq!(server.connections(), 0);
+        let _game = TcpStream::connect(("127.0.0.1", server.port())).unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(3);
+        while server.connections() == 0 && std::time::Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(20));
+        }
+        assert_eq!(server.connections(), 1);
         server.stop();
     }
 

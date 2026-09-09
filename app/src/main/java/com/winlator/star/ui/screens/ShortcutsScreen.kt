@@ -9168,7 +9168,6 @@ private fun ChangeExecutableCoordinator(
  * Marks a Steam title that runs through EA Desktop (shortcut tag `eaSupport=1`, see [EaSupport]) —
  * it launches via SteamLite and needs the one-time EA setup. EA-brand red pill, sized like the others.
  */
-@Composable
 /**
  * "Signs in each launch" — the title carries its own activation client and will ask EA for
  * permission every time it starts.

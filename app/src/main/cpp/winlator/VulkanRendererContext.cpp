@@ -3,6 +3,17 @@
 #include "VulkanRendererContext.h"
 #include "lsfg/lsfg_engine.h"
 #include "lsfg/lsfg_vkd.h"
+#include "winfg/winfg_engine.h"
+
+// Set by CMake from the copied win-fg chain (upstream tag + a hash over the
+// chain sources). Defaulted so this still compiles if it is ever built without
+// them - an "unknown" in a log is a missing stamp, not a broken build.
+#ifndef WINFG_UPSTREAM
+#define WINFG_UPSTREAM "unknown"
+#endif
+#ifndef WINFG_CHAIN_HASH
+#define WINFG_CHAIN_HASH "unknown"
+#endif
 #include <stdexcept>
 #include <cstdlib>
 #include <cstring>
@@ -148,6 +159,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     for (size_t i = 0; i < inFlightFences.size(); i++)
         vk_.DestroyFence(device, inFlightFences[i], nullptr);
     lsfgEngine_.reset();
+    winfgEngine_.reset();
     destroyFgQueryPool();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
     vk_.DestroyRenderPass(device, renderPass, nullptr);
@@ -236,6 +248,8 @@ void VulkanRendererContext::loadDeviceDispatch() {
     LOAD_D2(CmdDispatch);
     LOAD_D2(CreateComputePipelines);
     LOAD_D2(UnmapMemory);
+    LOAD_D2(CmdClearColorImage);
+    LOAD_D2(ResetDescriptorPool);
     LOAD_D2(ResetCommandBuffer);
     LOAD_D2(CmdBeginRenderPass);
     LOAD_D2(CmdEndRenderPass);
@@ -926,8 +940,55 @@ void VulkanRendererContext::readFgQueryResult() {
              perGen, (float)ms, fgQueryGens_[currentFrame], fgChainMsPerGen_);
 }
 
+bool VulkanRendererContext::ensureWinFgEngine() {
+    if (winfgEngine_) return winfgEngine_->valid();
+    if (winfgEngineTried_) return false;     // failed once; don't retry every frame
+    winfgEngineTried_ = true;
+
+    auto engine = std::make_unique<winfg::Engine>();
+    if (!engine->init(vk_, physicalDevice, device, graphicsQueueFamilyIndex, graphicsQueue)) {
+        RLOG_E("winfg-native: engine init failed");
+        return false;
+    }
+    winfgEngine_ = std::move(engine);
+    fgConfigDirty_.store(true, std::memory_order_relaxed);
+    // Says WHICH win-fg is running. The chain is copied into this tree rather
+    // than linked, so without this a log can only name the Bannerlator commit.
+    RLOG("winfg-native: engine ready (chain %s, src %s)", WINFG_UPSTREAM, WINFG_CHAIN_HASH);
+    return true;
+}
+
+bool VulkanRendererContext::fgCapsOk() const {
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 1)
+        return lsfgCaps_.storageOnSwapchainFormat;
+    return lsfgCaps_.supported();
+}
+
+void VulkanRendererContext::setFrameGenEngine(int kind) {
+    std::lock_guard<std::mutex> lk(renderMutex);
+    const int was = fgEngineKind_.exchange(kind, std::memory_order_relaxed);
+    if (was == kind) return;
+    RLOG("native-fg: engine %s -> %s", was == 1 ? "win-fg" : "lsfg", kind == 1 ? "win-fg" : "lsfg");
+    // Only one engine holds GPU resources at a time; the other is rebuilt on
+    // demand if the user switches back.
+    lsfgEngine_.reset();   lsfgEngineTried_ = false;
+    winfgEngine_.reset();  winfgEngineTried_ = false;
+    fgConfigDirty_.store(true, std::memory_order_relaxed);
+}
+
+void VulkanRendererContext::setWinFgTuning(int model, int perfPreset) {
+    fgModel_.store(model, std::memory_order_relaxed);
+    fgPerfPreset_.store(perfPreset, std::memory_order_relaxed);
+    fgConfigDirty_.store(true, std::memory_order_relaxed);
+}
+
 void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
-    if (!compositeActive() || !lsfgEngine_ || compositeTargets.empty()) return;
+    // Which engine generates is a runtime choice: LSFG needs the user's
+    // Lossless.dll, win-fg carries its own shaders. They are mutually
+    // exclusive and only one holds GPU resources at a time.
+    const bool useWinFg = fgEngineKind_.load(std::memory_order_relaxed) == 1;
+    if (!compositeActive() || compositeTargets.empty()) return;
+    if (useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
     const CompositeTarget& src = compositeTargets[compositeIndex];
     ensureFgQueryPool();
     if (fgQueryPool_ != VK_NULL_HANDLE && fgPlan_.generations > 0) {
@@ -936,11 +997,14 @@ void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
     }
     // Take frame N as the chain's newest input and run everything that is
     // shared across generations (mipmaps -> alpha -> beta -> gamma -> delta).
-    lsfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
+    if (useWinFg) winfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
+    else          lsfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
 }
 
 void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_t g) {
-    if (!compositeActive() || !lsfgEngine_ || compositeTargets.empty()) return;
+    const bool useWinFg = fgEngineKind_.load(std::memory_order_relaxed) == 1;
+    if (!compositeActive() || compositeTargets.empty()) return;
+    if (useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
     if (g >= fgPlan_.generations) return;
     const uint32_t w = compositeW, h = compositeH;
     {
@@ -948,7 +1012,8 @@ void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_
         const CompositeTarget& dst = compositeTargets[slot];
         if (dst.img == VK_NULL_HANDLE || dst.storageView == VK_NULL_HANDLE) return;
 
-        lsfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
+        if (useWinFg) winfgEngine_->generateInto(cb, g, fgPlan_.generations, dst.img, dst.storageView, w, h);
+        else          lsfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
 
         if (fgQueryPool_ != VK_NULL_HANDLE && g + 1 == fgPlan_.generations) {
             vk_.CmdWriteTimestamp(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, fgQueryPool_, currentFrame * 2 + 1);
@@ -1140,6 +1205,13 @@ void VulkanRendererContext::frameGenStats(float out[6]) const {
     // from inside the guest. It is reported even with no LSFG engine present.
     out[3] = fgPresentedRate_;
     out[5] = fgChainMsPerGen_;
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
+        // win-fg has no governor: what is planned is what is generated.
+        if (!winfgEngine_) return;
+        out[0] = out[1] = (float)fgPlan_.generations;
+        out[2] = fgSourceRate_;
+        return;
+    }
     if (!lsfgEngine_) return;
     out[0] = (float)lsfgEngine_->acceptedGenerations();
     out[1] = (float)fgPlan_.generations;
@@ -1153,8 +1225,10 @@ void VulkanRendererContext::trackPresentedRate(uint32_t presents) {
         fgRateWindowStart_ = now;
         fgRateWindowOpen_  = true;
         fgPresentAccum_    = 0;
+        fgSourceAccum_     = 0;
     }
     fgPresentAccum_ += presents;
+    fgSourceAccum_  += 1;
 
     const float elapsed = std::chrono::duration<float>(now - fgRateWindowStart_).count();
     if (elapsed < 0.5f) return;                    // half-second window
@@ -1163,8 +1237,13 @@ void VulkanRendererContext::trackPresentedRate(uint32_t presents) {
     fgPresentedRate_ = fgPresentedRate_ > 0.0f
         ? fgPresentedRate_ + (rate - fgPresentedRate_) * 0.25f
         : rate;
+    const float srcRate = (float)fgSourceAccum_ / elapsed;
+    fgSourceRate_ = fgSourceRate_ > 0.0f
+        ? fgSourceRate_ + (srcRate - fgSourceRate_) * 0.25f
+        : srcRate;
     fgRateWindowStart_ = now;
     fgPresentAccum_    = 0;
+    fgSourceAccum_     = 0;
 }
 
 void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
@@ -1178,12 +1257,12 @@ void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
         // Logged because a multiplier change that does NOT flip the armed state
         // takes the early return below and was previously invisible - exactly
         // the case the r3 run could not explain.
-        RLOG("lsfg-native: multiplier %d -> %d (armed=%d)", wasMult, multiplier, (int)armed);
+        RLOG("native-fg: multiplier %d -> %d (armed=%d)", wasMult, multiplier, (int)armed);
     }
     if (was == armed) return;
 
     fgArmed_.store(armed, std::memory_order_relaxed);
-    RLOG("lsfg-native: frame gen %s (multiplier=%d) - recreating swapchain",
+    RLOG("native-fg: frame gen %s (multiplier=%d) - recreating swapchain",
          armed ? "ARMED" : "disarmed", multiplier);
     // The swapchain's usage flags and image count both depend on this, so it
     // has to be rebuilt. The existing resize path already does that safely.
@@ -1194,7 +1273,7 @@ void VulkanRendererContext::setFrameGenArmed(bool armed, int multiplier) {
 bool VulkanRendererContext::compositeActive() const {
     // Every gate must hold, or we run the pre-LSFG path unchanged.
     if (!fgArmed_.load(std::memory_order_relaxed)) return false;
-    if (!lsfgCaps_.supported()) return false;
+    if (!fgCapsOk()) return false;
     if (scanoutActive.load()) return false;   // direct scanout bypasses the compositor entirely
     return compositeArmed;
 }
@@ -2273,7 +2352,7 @@ ok=true;}catch(...){}
     // --- Frame gen: decide whether THIS frame composites off-swapchain. The
     // targets are created lazily on the first armed frame and torn down when it
     // disarms, so a session that never turns frame gen on never allocates them.
-    if (fgArmed_.load(std::memory_order_relaxed) && lsfgCaps_.supported() && !scanoutActive.load()) {
+    if (fgArmed_.load(std::memory_order_relaxed) && fgCapsOk() && !scanoutActive.load()) {
         const int mult = fgMultiplier_.load(std::memory_order_relaxed);
         const uint32_t want = (uint32_t)std::min(std::max(mult, 2), 4) + 1u;
         compositeArmed = ensureCompositeTargets(swapchainExt.width, swapchainExt.height, want);
@@ -2291,42 +2370,61 @@ ok=true;}catch(...){}
     // --- Frame gen: decide how many frames to synthesise for this source
     // frame, BEFORE acquiring, since that sets how many images we need.
     fgPlan_ = FrameGenPlan{};
-    if (lsfgEngine_ && fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
-        lsfgEngine_->configure(
-            (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2), 0,
-            fgFlowScale_.load(std::memory_order_relaxed),
-            fgRefreshHz_.load(std::memory_order_relaxed));
-    }
-    if (compositeActive() && ensureLsfgEngine()) {
-        // Tell the engine how large the GUEST actually renders BEFORE asking it
-        // to build anything. The flow pyramid's resolution is derived from that
-        // ratio, so preparing first builds the most expensive chain there is -
-        // the pyramid at full composite resolution - and then throws all 25
-        // pipelines away one frame later, when the guest extent arrives and the
-        // scale changes. Both calls were already here; only the order was
-        // wrong, and it cost an entire second chain build every time frame
-        // generation armed.
-        //
-        // Device log 2026-09-09, arming at 1080p on a 720p game:
-        //   16:49:51.400  chain built ... flow 1920x1080 scale 1.00 (guest 0x0)
-        //   16:49:53.769  chain built ... flow 1344x756  scale 0.70 (guest 1280x720)
-        // ~2.4 s apiece, and the game visibly froze for about five seconds on
-        // the toggle. containerWidth/Height are set in the constructor, so a
-        // real guest extent is always available here - no first frame
-        // legitimately needs the 0x0 path.
-        if (containerWidth > 0 && containerHeight > 0)
-            lsfgEngine_->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
-        if (lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
-            // The governor judges whether an extra generated frame paid off, so it
-            // must be given the rate that actually reaches the PANEL, not the guest
-            // rate wearing a different name.
-            lsfgEngine_->setPresentedRate(fgPresentedRate_);
-            const uint32_t capacity = (uint32_t)std::min<size_t>(
-                kMaxPresentsPerFrame - 1,
-                compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
-            fgPlan_.generations = lsfgEngine_->plan(capacity, ++fgSourceFrames_);
+    const uint32_t fgCapacity = (uint32_t)std::min<size_t>(
+        kMaxPresentsPerFrame - 1,
+        compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
+        // win-fg: no cache, no governor, no pacer. Configure AFTER ensure so a
+        // freshly built engine is prepared at the right preset straight away
+        // instead of at the default and then rebuilt one frame later.
+        if (compositeActive() && ensureWinFgEngine()) {
+            if (fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
+                winfgEngine_->configure(
+                    (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2),
+                    fgModel_.load(std::memory_order_relaxed),
+                    fgPerfPreset_.load(std::memory_order_relaxed),
+                    fgFlowScale_.load(std::memory_order_relaxed));
+            }
+            if (winfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+                fgPlan_.generations = winfgEngine_->plan(fgCapacity);
+                ++fgSourceFrames_;
+            }
         }
-    }
+    } else {
+        if (lsfgEngine_ && fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
+            lsfgEngine_->configure(
+                (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2), 0,
+                fgFlowScale_.load(std::memory_order_relaxed),
+                fgRefreshHz_.load(std::memory_order_relaxed));
+        }
+        if (compositeActive() && ensureLsfgEngine()) {
+            // Tell the engine how large the GUEST actually renders BEFORE asking
+            // it to build anything. The flow pyramid's resolution is derived from
+            // that ratio, so preparing first builds the most expensive chain
+            // there is - the pyramid at full composite resolution - and then
+            // throws all 25 pipelines away one frame later, when the guest extent
+            // arrives and the scale changes. Both calls were already here; only
+            // the order was wrong, and it cost an entire second chain build every
+            // time frame generation armed.
+            //
+            // Device log 2026-09-09, arming at 1080p on a 720p game:
+            //   16:49:51.400  chain built ... flow 1920x1080 scale 1.00 (guest 0x0)
+            //   16:49:53.769  chain built ... flow 1344x756  scale 0.70 (guest 1280x720)
+            // ~2.4 s apiece, and the game visibly froze for about five seconds on
+            // the toggle. containerWidth/Height are set in the constructor, so a
+            // real guest extent is always available here - no first frame
+            // legitimately needs the 0x0 path.
+            if (containerWidth > 0 && containerHeight > 0)
+                lsfgEngine_->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
+            if (lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+                // The governor judges whether an extra generated frame paid off,
+                // so it must be given the rate that actually reaches the PANEL,
+                // not the guest rate wearing a different name.
+                lsfgEngine_->setPresentedRate(fgPresentedRate_);
+                fgPlan_.generations = lsfgEngine_->plan(fgCapacity, ++fgSourceFrames_);
+            }
+        }
+    }   // lsfg
     fgPlan_.presents = fgPlan_.generations + 1;
 
     // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.

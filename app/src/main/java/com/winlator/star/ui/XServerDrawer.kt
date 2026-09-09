@@ -1395,6 +1395,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val engine by state.frameGenEngine.collectAsState()
     val layerActive by state.bionicFgActive.collectAsState()
     val initLsfgPerf by state.lsfgPerformanceMode.collectAsState()
+    val winFgNative by state.winFgNative.collectAsState()
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -1402,7 +1403,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val engineLabel = when (engine) {
         "lsfg"        -> "lsfg-vk"
         "lsfg-native" -> "LSFG Native"
-        "bionic"      -> "win-fg"
+        "bionic"      -> if (winFgNative) "Win-FG Native" else "win-fg"
         else          -> "Off"
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0
@@ -1496,36 +1497,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
             }
         }
 
-        // Performance preset, win-fg only. Writes conf.toml `perf_preset` (0 Quality / 1 Balanced /
-        // 2 Performance). Like a model change, this fires the full presentation reset from
-        // onBionicFgConfigChange — safe now that the win-fg .so re-reads the conf on the swapchain
-        // recreate (so the layer's own perf_preset rebuild doesn't ALSO fire and collide with the
-        // teardown, which was the Fold-8 freeze). Hidden while frame gen is Off.
-        AnimatedVisibility(
-            visible = engine == "bionic" && fgMult > 0,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            Column {
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "Performance preset",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
-                )
-                FgPerfPresetButtons(fgPreset) { newPreset ->
-                    fgPreset = newPreset; applyFg()
-                    // Preset change → full presentation reset, fired from onBionicFgConfigChange.
-                }
-                Text(
-                    "Quality favors image fidelity; Performance favors FPS. Balanced is the default.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-                )
-            }
-        }
+        // The Quality / Balanced / Performance preset row used to live here.
+        // Removed at the user's decision (2026-09-09): Win-FG Native runs on
+        // Performance permanently. Each preset change rebuilt the whole flow
+        // pyramid live, and Performance is the setting the engine is device-
+        // proven at. applyWinFgNative pins the value, so nothing a container or
+        // shortcut carries from before can put it back.
 
         // Flow Scale only matters with frame gen actually on -> collapse it while Off.
         AnimatedVisibility(
@@ -1618,44 +1595,6 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
     }
 }
 
-// Quality / Balanced / Performance segmented button row (win-fg perf_preset 0/1/2). Same styling as
-// FgModelButtons; selected = filled accent. Balanced (1) is the default.
-@Composable
-private fun FgPerfPresetButtons(selected: Int, onSelect: (Int) -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
-    val accentDim = LocalAccentDim.current
-    val options = listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance")
-    val sel = selected.coerceIn(0, 2)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        options.forEach { (preset, label) ->
-            val isSel = sel == preset
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSel) accent else Color.Black)
-                    .border(
-                        width = 1.dp,
-                        color = if (isSel) accent else accentDim,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { onSelect(preset) }
-                    .padding(vertical = 9.dp)
-            ) {
-                Text(
-                    label,
-                    color = if (isSel) Color.Black else accent,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun FgMultiplierButtons(selected: Int, engine: String, onSelect: (Int) -> Unit) {

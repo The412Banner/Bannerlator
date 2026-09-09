@@ -179,12 +179,12 @@ Also rolled up from the **`3.0.1`** point release on 3.0.0: **swipeable on-scree
 
 | Engine | Where it runs | Needs |
 |---|---|---|
-| **win-fg** | inside the game (Wine side) | nothing — Bannerlator's own, weightless |
+| **Win-FG Native** | inside Bannerlator's compositor (Android side) | nothing — Bannerlator's own, weightless |
 | **LSFG Native** | inside Bannerlator's compositor (Android side) | your own `Lossless.dll` |
 
 *(The older **lsfg-vk** engine, which ran the same shaders as a layer inside the game, is retired: its generated frames were routinely lost on the way to the screen. LSFG Native uses the same DLL and replaces it; containers still set to lsfg-vk run LSFG Native.)*
 
-**LSFG Native** is the one to reach for on a game you've capped: lock the game at **30**, pick **4×**, and the panel gets **120** — with the game itself untouched, the device cooler than running it uncapped, and the in-game HUD showing `30→120`. It works best at or under **panel ÷ 4** (36 fps on a 144 Hz screen fills every refresh).
+Both engines are what to reach for on a game you've capped: lock the game at **30**, pick **4×**, and the panel gets **120** — with the game itself untouched, the device cooler than running it uncapped, and the in-game HUD showing `30→120`. They work best at or under **panel ÷ 4** (36 fps on a 144 Hz screen fills every refresh). **Win-FG Native** needs no files at all; **LSFG Native** runs the Lossless Scaling shaders out of your own DLL.
 
 **Present mode** decides how finished frames are handed to your screen:
 
@@ -194,14 +194,14 @@ Also rolled up from the **`3.0.1`** point release on 3.0.0: **swipeable on-scree
 | **Mailbox** | "Fast vsync" — never makes the game wait, still tear-free. |
 | **Immediate** | "Vsync off" — lowest input lag, but can tear. |
 
-Bannerlator handles the present mode for you. **LSFG Native forces FIFO** while it's generating — it queues the real and generated frames together and needs FIFO to show them one per refresh; under Mailbox the display would keep only the newest and discard the rest. Your chosen mode is restored the moment frame generation turns off. While LSFG Native is generating it also **locks the FPS limiter on** and **Auto refresh (VRR) off** — that's the configuration it was proven in, and both controls come back as you had them when it stops. You can also switch modes live from the **Present Mode selector** in the in-game Graphics tab, and every mode is explained by a **"?"** button and in the in-app **"What is all this?"** glossary.
+Bannerlator handles the present mode for you. **Both native engines force FIFO** while they're generating — they queue the real and generated frames together and need FIFO to show them one per refresh; under Mailbox the display would keep only the newest and discard the rest. Your chosen mode is restored the moment frame generation turns off. While a native engine is generating it also **locks the FPS limiter on** and **Auto refresh (VRR) off** — that's the configuration they were proven in, and both controls come back as you had them when it stops. You can also switch modes live from the **Present Mode selector** in the in-game Graphics tab, and every mode is explained by a **"?"** button and in the in-app **"What is all this?"** glossary.
 
 ### Why is my FPS reading different from another emulator?
 
 With frame generation on, two apps' FPS numbers can look very different — because they **count frames at different points in the pipeline**:
 
 - An app that reads the game's **raw output** shows a clean **2× / 3× / 4×** — impressive, but it counts frames your screen never actually displays.
-- Bannerlator's HUD counts the frames the **game** delivers. With **LSFG Native** the generated frames are added *after* that point, so every HUD style shows both numbers — **`30→120`** — the game's rate and what actually reaches the panel. With win-fg the same arrow appears only if frames are being *lost* between the game and the panel (e.g. `70→35`), which is a problem rather than a feature.
+- Bannerlator's HUD counts the frames the **game** delivers. With either native engine the generated frames are added *after* that point, so every HUD style shows both numbers — **`30→120`** — the game's rate and what actually reaches the panel. On a guest-side layer (the frame-gen training-capture path) the same arrow appears only if frames are being *lost* between the game and the panel (e.g. `70→35`), which is a problem rather than a feature.
 
 **Neither number is "frames on glass."** Your panel's refresh rate (e.g. 120 or 144 Hz) is the true ceiling — above it, frames are generated but not shown. A result like **65 → 107 fps at 2×** on a demanding game, with the frametime roughly **halving**, is frame generation working correctly.
 

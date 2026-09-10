@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🔍 **"SGSR HQ" scaling mode** (branch `feat/sgsr-quality-mode` off main `6aed4f4c`, worktree `bl-gfx-upgrades`, commit `7e71cb8f`, CI run 34498197469)
+> Item 1 of 3 from the upstream graphics survey (SGSR HQ, texture filtering control, screen size by panel aspect), each on its own branch off main.
+> - New scaling mode **8 "SGSR HQ"**, placed next to SGSR in the drawer picker, on **both** the Vulkan compositor and the GL EffectComposer. Port of Qualcomm's `sgsr1_shader_mobile_edge_direction.frag` (SnapdragonGameStudios/snapdragon-gsr): same single pass / inputs / Sharpness slider as SGSR; Lanczos weights stretched along the local edge direction + the reference's retuned contrast term `(10.14185/sum)^2`. Qualcomm: "minimal cost increase". No motion vectors.
+> - Vulkan: new `sgsr_quality.frag` + generated `sgsr_quality_frag.h` (glslangValidator, `spirv-val` clean), `sgsrQualityPipeline`, reuses `SgsrPushConstants` + fit-rect path; `setUpscaler` clamps 0-8. `UPMODE_DOWNSCALE`=10 so no collision.
+> - GL: `SGSREffect(boolean quality)`; both GL variants compile as GLSL ES 3.00 and the **mode-3 GL shader text is byte-identical** to main (checked). `EffectComposer` case 8. `EffectComposer.java` is CRLF — preserved (532/532).
+> - Mode 3 SGSR untouched on both paths. Mode ints are persisted per game (`scalingMode` extra, carried by community-config export), so 8 is appended rather than renumbering; `resolveScalingMode` accepts 0-8, older builds fall back to Linear on 8.
+> - Picker: 3 rows × 3 chips (None/Linear/Nearest · SGSR/SGSR HQ/FSR · FSR (Fit)/Sharpen/NIS). Sharpness slider shows for 3..8.
+> - ⏳ CI running; NOT device-proven. Test: a game at 1280x720 on a higher-res panel → drawer Scaling mode → SGSR vs SGSR HQ A/B (diagonal edges, text); check fps cost on both renderers.
+
 ## 2026-09-10 — 🔀 **MERGED to main: Frame Generation help + Present Mode note** (branch `fix/fg-help-text`)
 > - `help_frame_generation` (Win-FG Native / LSFG Native, requirements, setup) and the `help_fps_limiter` note: built and staged as r1 (`e12e78be`, sha `bdbc21a4…`). The user confirmed on device that the new "?" text shows in Brawlhalla's per-game settings.
 > - Added before merge: `renderer_present_mode_fg_note` (`42af374f`) said only LSFG Native forces FIFO and "the other engines leave your choice alone". `effectivePresentMode` forces FIFO for any `nativeFrameGenEngine()` while armed, so it now names both. String-only; strings.xml validated (parses, no bare apostrophes); main CI builds it.

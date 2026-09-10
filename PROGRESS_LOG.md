@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🅿️ **PARKED: even frame pacing via `VK_GOOGLE_display_timing`** (research only — nothing built)
+> The user asked what the extension is and whether it's worth the latency, then parked it. Recorded so it can be picked up cold.
+> - **The problem:** LSFG Native / Win-FG Native present each real frame's burst on consecutive vblanks, which is uneven on non-exact fits (30×2 on 120 Hz shows 1,3, not 2,2). That is why the screen fit never picks a multiple.
+> - **The extension:** `vkGetRefreshCycleDurationGOOGLE` (refresh period), `VkPresentTimesInfoGOOGLE` (per-present "not before" `desiredPresentTime`, ns, SurfaceFlinger holds the buffer) and `vkGetPastPresentationTimingGOOGLE` (real on-glass times). Swappy (Android Frame Pacing) uses it for Vulkan. Successor: `VK_EXT_present_timing`.
+> - **Evidence:** the renderer has zero uses of display_timing / present_wait / present_timing. adrenotools loads `/system/lib64/libvulkan.so`, so the WSI + this extension come from Android's loader whichever Renderer Driver is picked. The loader offers it when `service.sf.present_timestamp=1`; the **Pocket FIT reports 1** (Android 14). Strong evidence, not proof → confirm at runtime.
+> - **Latency:** the real frame is delayed by (m−1)·(I/m − 1) refreshes → **0 on exact fits** (already even), ≈2 ms at 50×2@120, ≈4 ms at 30×4@144, ≈6 ms at 30×3@120, ≈8 ms at 30×2@120. Frame gen itself adds ~1 base frame (33 ms at 30 fps).
+> - **Plan when resumed:** (1) probe + enable, log timings, show the REAL on-screen fps (no latency cost); (2) spacing via `desiredPresentTime` on the vblank grid only for non-exact fits, drift-corrected from past timings, +1–2 swapchain images; (3) an "Even pacing" toggle. If it lands, the never-a-multiple rule can relax.
+
 ## 2026-09-10 — 🔀 **MERGED to main: SGSR HQ + texture filtering + screen size by panel aspect (all with "?" help)** (merge commits `9c20bd42` SGSR HQ, `050ead70` texture filtering, `3ece26e8` screen size, on top of `766fa09c`)
 > - User go ("merge it to main"). Each feature merged from its own branch with its own merge commit, so any one can be reverted alone: `git revert -m 1 9c20bd42` (SGSR HQ + Scaling mode help), `git revert -m 1 050ead70` (texture filtering + help), `git revert -m 1 3ece26e8` (screen size default + 1280x960 + help). `combined/gfx-upgrades` stays a test-only branch.
 > - Verified before push: 18 files, all belonging to the three features (no PROGRESS_LOG/foreign files); **merged `app/` is byte-identical to combined r2 `161f24ff`** (CI 34504842018 green, staged sha `2e66abf9…`); versionCode untouched (vc83). Main CI 34508073321 (headSha `3ece26e8` verified) running.

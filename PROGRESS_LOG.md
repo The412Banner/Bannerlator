@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **Steam Controller r2: CI green + pubg staged** (branch `feat/steam-controller-sdl`, head `7961c4bd`, CI run 34510309898)
+> - CI ✅ standard/ludashi/pubg, headSha `7961c4bd` verified. Staged `/sdcard/Download/Bannerlator-steamctrl-r2-pubg.apk` sha256 `7c3a53b2acff…acbc` (download and staged copy match).
+> - Checked inside the APK: `lib/arm64-v8a/libSDL3.so` 2.38 MB (stripped), `libsteamctrl.so` NEEDED `libSDL3.so` and exports all 6 `SteamControllerBackend` JNI functions (NDK r29; prefab accepted SDL's r28c build). Dex has `org.libsdl.app.{SDL,HIDDeviceManager,HIDDeviceBLESteamController}`, `SteamControllerBackend` and the setting strings. Manifest has BLUETOOTH, BLUETOOTH_CONNECT, bluetooth_le, usb.host (none required).
+> - NOT device-tested. Community tester (paired over BLE) gets the standard flavor. Local check: setting off = unchanged; on = SDL starts, other pads unaffected.
+
 ## 2026-09-10 — 📦 **Main build staged (artifacts only)** (main `3ece26e8`, CI run 34508073321)
 > - User: "just build the main as artifacts only for right now". The post-merge artifacts build of main was already green, and main's app/ is unchanged since `3ece26e8` (newer main commits are PROGRESS_LOG only, from this and other sessions), so its artifact is current main. No new run.
 > - Staged `/sdcard/Download/Bannerlator-main-gfx3-pubg.apk` sha256 `84ab7412290e…` (download and staged copy match; the first download hit a connection reset, retry OK). Checked: 4/4 help strings, "SGSR HQ" label. No release; vc83.

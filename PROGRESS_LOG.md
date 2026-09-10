@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🔀 **MERGED to main: frame-gen over-limit warning + screen fit** (merge commits `02330d9f` warning, `f8036a56` screen fit, on top of `9c3143a7`)
+> - Both branches merged with separate merge commits, so either can be reverted alone (`git revert -m 1 f8036a56` removes only the screen fit). The merged app code is byte-identical to the device-proven build `2c57b3f8` (`git diff 2c57b3f8 HEAD -- app/` is empty). versionCode untouched (vc83).
+> - Device proof: the Pocket FIT run below (7 screenshots, installed sha `0cd13a06…` == staged).
+> - Follow-ups: update the public guide (`docs/lsfg-native-guide.html` says Auto is locked off during LSFG Native) when this ships in a release, and put it in the next release notes. Proposed next: turn Auto on automatically when frame gen starts, with a user opt-out.
+
 ## 2026-09-10 — 🖥️🎞️ **Frame gen: the screen now fits itself to Max FPS × multiplier** (branch `feat/fg-vrr-match`, stacked on `feat/fg-over-limit-warning`; code commit `2c57b3f8`, CI run 34478284133)
 > The user's idea: instead of the panel sitting at its top rate while LSFG Native / Win-FG Native generate, let **Auto (match FPS)** fit the screen to the numbers the user picked — with rules that hold on any device.
 > - **Auto (match FPS) is no longer locked off under native frame gen.** With it on (the default), `applyVrr` asks for a rate from the display's own list at the current resolution: **exactly** cap × mult if it has it (30 × 2 → 60 Hz), else the **closest rate above** (50 × 2 = 100 → 120 Hz) — never below, which would overrun the panel. Nothing at or above (80 × 2 on 144) → no vote, panel stays at max, the warning shows.

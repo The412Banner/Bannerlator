@@ -1396,12 +1396,14 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val layerActive by state.bionicFgActive.collectAsState()
     val initLsfgPerf by state.lsfgPerformanceMode.collectAsState()
     val winFgNative by state.winFgNative.collectAsState()
-    // For the over-limit warning under the multiplier buttons.
+    // For the fit advice under the multiplier buttons.
     val nativeFgLocks by state.nativeFgLocks.collectAsState()
     val fpsCap by state.fpsLimit.collectAsState()
     val displayTargetHz by state.displayTargetHz.collectAsState()
     val supportedRates by state.supportedRefreshRates.collectAsState()
     val liveRate by state.currentRefreshRate.collectAsState()
+    val matchRefresh by state.matchRefreshRate.collectAsState()
+    val vrrOk by state.vrrSupported.collectAsState()
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -1480,12 +1482,13 @@ private fun FrameGenSection(state: XServerDrawerState) {
             // nothing extra fires here.
         }
 
-        // Same over-limit warning as under Max FPS, shown where the multiplier is picked.
+        // Same fit advice as under Max FPS, shown where the multiplier is picked.
         // nativeFgLocks = LSFG Native or Win-FG Native is generating right now.
         if (nativeFgLocks) {
-            FgOverLimitWarning(
+            FgFitAdvice(
                 cap = fpsCap, mult = fgMult,
-                screenHz = fgScreenHz(displayTargetHz, supportedRates, liveRate),
+                screen = rememberFgScreen(displayTargetHz, supportedRates, liveRate),
+                supported = supportedRates, autoOn = matchRefresh && vrrOk,
                 canChangeMult = engine == "lsfg-native"
             ) { fix ->
                 state.setFpsLimit(fix)
@@ -1573,49 +1576,125 @@ private fun FrameGenSection(state: XServerDrawerState) {
     }
 }
 
-// Hz the display runs at while native frame gen presents: what the activity asked the display for
-// (manual lock or panel max), else the panel's top mode, else the live reading. 0 = unknown.
-private fun fgScreenHz(target: Int, supported: List<Int>, current: Int): Int =
-    if (target > 0) target else supported.maxOrNull() ?: current
+// What the display is really doing, for the frame-gen advice. `asked` = the rate the activity asked
+// for (Auto's pick, a manual lock, or the top rate). If the display sits below that for longer than
+// a normal mode switch, the device is holding it there (battery saver, a vendor refresh tool, an
+// Android 11 panel that only switches seamlessly) and the advice uses the real rate instead.
+private data class FgScreen(val hz: Int, val asked: Int, val held: Boolean)
 
-// Shown while LSFG Native or Win-FG Native is generating and the game's real frames (the FPS cap)
-// times the multiplier is more than the display can show. Both present one frame per refresh under
-// FIFO, so the surplus queues: the compositor falls behind the game and real frames arrive late or
-// get dropped - stutter and input lag, not extra smoothness. Draws nothing when the math fits or
-// the display rate is unknown. canChangeMult = false for Win-FG Native, which is fixed at 2x.
 @Composable
-private fun FgOverLimitWarning(
-    cap: Int, mult: Int, screenHz: Int, canChangeMult: Boolean, onSetCap: (Int) -> Unit
+private fun rememberFgScreen(target: Int, supported: List<Int>, current: Int): FgScreen {
+    val asked = if (target > 0) target else supported.maxOrNull() ?: current
+    var held by remember { mutableStateOf(false) }
+    LaunchedEffect(asked, current) {
+        held = false
+        if (asked > 0 && current in 1 until asked - 1) {
+            delay(2500)   // a mode switch in flight settles well inside this
+            held = true
+        }
+    }
+    return FgScreen(if (held) current else asked, asked, held)
+}
+
+@Composable
+private fun FgFixButton(label: String, color: Color, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, color, RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(label, color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// Frame-gen fit advice, shown under Max FPS and under the multiplier buttons while LSFG Native or
+// Win-FG Native is generating. Over the display's rate: the over-limit warning. Under it with Auto
+// (match FPS) on: the activity put the display on the closest rate ABOVE cap x multiplier
+// (pickNativeFgRefresh), which still leaves repeat gaps, so offer a cap that fits a display rate
+// exactly - the lower one first, since a game holds a lower cap more easily.
+@Composable
+private fun FgFitAdvice(
+    cap: Int, mult: Int, screen: FgScreen, supported: List<Int>, autoOn: Boolean,
+    canChangeMult: Boolean, onSetCap: (Int) -> Unit
 ) {
-    if (cap <= 0 || mult < 2 || screenHz <= 0 || cap * mult <= screenHz) return
-    val error = MaterialTheme.colorScheme.error
-    val fixCap = maxOf(10, screenHz / mult)
-    val fitMult = if (canChangeMult) (mult - 1 downTo 2).firstOrNull { cap * it <= screenHz } else null
+    if (cap <= 0 || mult < 2 || screen.hz <= 0) return
+    val made = cap * mult
+    if (made > screen.hz) {
+        FgOverLimitWarning(cap, mult, screen, canChangeMult, onSetCap)
+        return
+    }
+    if (!autoOn || screen.held || made == screen.hz) return
+    // Exact fits this multiplier can reach on this display: (cap, rate), ascending.
+    val fits = supported.filter { it % mult == 0 && it / mult >= 10 }.map { (it / mult) to it }
+    val lower = fits.lastOrNull { it.first <= cap }
+    val higher = fits.firstOrNull { it.first > cap }
+    val pick = lower ?: higher ?: return
+    val accent = MaterialTheme.colorScheme.primary
     Column(
         modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
-            "⚠ $cap × $mult = ${cap * mult}: more than your $screenHz Hz screen can show. " +
-                "The extra frames pile up, so expect stutter and laggy controls.",
-            color = error,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold
+            "Screen set to ${screen.hz} Hz, the closest speed above $cap × $mult = $made. " +
+                "A few refreshes repeat a picture. For a perfect fit:",
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            fontSize = 11.sp
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, error, RoundedCornerShape(8.dp))
-                    .clickable { onSetCap(fixCap) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Text("Set Max FPS to $fixCap", color = error, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            FgFixButton("Set Max FPS to ${pick.first} → ${pick.second} Hz", accent) { onSetCap(pick.first) }
+            if (lower != null && higher != null) {
+                Text(
+                    "or ${higher.first} → ${higher.second} Hz if the game holds it",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    fontSize = 11.sp
+                )
             }
+        }
+    }
+}
+
+// Shown while LSFG Native or Win-FG Native is generating and the game's real frames (the FPS cap)
+// times the multiplier is more than the display can show. Both present one frame per refresh under
+// FIFO, so the surplus queues: the compositor falls behind the game and real frames arrive late or
+// get dropped - stutter and input lag, not extra smoothness. canChangeMult = false for Win-FG
+// Native, which is fixed at 2x.
+@Composable
+private fun FgOverLimitWarning(
+    cap: Int, mult: Int, screen: FgScreen, canChangeMult: Boolean, onSetCap: (Int) -> Unit
+) {
+    val error = MaterialTheme.colorScheme.error
+    val fixCap = maxOf(10, screen.hz / mult)
+    val fitMult = if (canChangeMult) (mult - 1 downTo 2).firstOrNull { cap * it <= screen.hz } else null
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            "⚠ $cap × $mult = ${cap * mult}: more than your ${screen.hz} Hz screen can show. " +
+                "The extra frames pile up, so expect stutter and laggy controls.",
+            color = error,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        if (screen.held) {
+            Text(
+                "Your device is keeping the screen at ${screen.hz} Hz (Bannerlator asked for ${screen.asked} Hz). " +
+                    "Battery saver or your device's own refresh-rate setting may be holding it.",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                fontSize = 11.sp
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            FgFixButton("Set Max FPS to $fixCap", error) { onSetCap(fixCap) }
             if (fitMult != null) {
                 Text(
                     "or pick ${fitMult}×",
@@ -2888,10 +2967,11 @@ private fun HudContent(state: XServerDrawerState) {
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)
             )
             if (nativeFgLocks) {
-                // limitVal tracks the slider while dragging, so the warning updates live.
-                FgOverLimitWarning(
+                // limitVal tracks the slider while dragging, so the advice updates live.
+                FgFitAdvice(
                     cap = limitVal, mult = fgMult,
-                    screenHz = fgScreenHz(displayTargetHz, supportedRefreshRates, currentRefreshRate),
+                    screen = rememberFgScreen(displayTargetHz, supportedRefreshRates, currentRefreshRate),
+                    supported = supportedRefreshRates, autoOn = matchRefreshOn && vrrSupported,
                     canChangeMult = fgEngine == "lsfg-native"
                 ) { fix -> limitVal = fix; applyLimiter() }
             }
@@ -2900,11 +2980,10 @@ private fun HudContent(state: XServerDrawerState) {
         Spacer(Modifier.height(14.dp))
         Text("Refresh rate", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
-        // Auto (match FPS) == the existing VRR toggle; behavior unchanged.
+        // Auto (match FPS) == the existing VRR toggle. It stays usable while native frame gen runs:
+        // then the activity fits the display to Max FPS x multiplier (pickNativeFgRefresh).
         val nativeFgLocksVrr by state.nativeFgLocks.collectAsState()
-        // Locked OFF while LSFG Native generates - see XServerDrawerState.nativeFgLocks.
-        ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported && !nativeFgLocksVrr,
-                  enabled = vrrSupported && !nativeFgLocksVrr) {
+        ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported, enabled = vrrSupported) {
             matchRefreshOn = it
             state.setMatchRefreshRate(it)
             state.onMatchRefreshChange?.run()
@@ -2921,6 +3000,8 @@ private fun HudContent(state: XServerDrawerState) {
             when {
                 !vrrSupported ->
                     "Unavailable — this display has a single refresh rate, so there's nothing to match."
+                matchRefreshOn && nativeFgLocksVrr ->
+                    "Auto is on — with frame generation running, the display follows Max FPS × multiplier."
                 matchRefreshOn ->
                     "Auto is on — the display follows your FPS."
                 manualRefreshRate > 0 ->

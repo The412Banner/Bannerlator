@@ -244,8 +244,30 @@ public class XServerView extends FrameLayout {
     public static boolean isDisplayVrrCapable(android.view.Display display) {
         if (Build.VERSION.SDK_INT < 30 || display == null) return false;
         java.util.HashSet<Integer> rates = new java.util.HashSet<>();
-        for (android.view.Display.Mode m : display.getSupportedModes()) rates.add(Math.round(m.getRefreshRate()));
+        for (float r : getSupportedRefreshRatesPrecise(display)) rates.add(Math.round(r));
         return rates.size() > 1;
+    }
+
+    /** Refresh rates the display offers at its CURRENT resolution, exact (e.g. 59.94, 120.00001),
+     *  distinct, ascending. Some panels list rates that only exist at another resolution; asking
+     *  for one of those would be ignored or switch resolution, so they are left out. Empty below
+     *  API 30 (no Surface.setFrameRate to ask with). */
+    public static float[] getSupportedRefreshRatesPrecise(android.view.Display display) {
+        if (Build.VERSION.SDK_INT < 30 || display == null) return new float[0];
+        android.view.Display.Mode cur = display.getMode();
+        java.util.TreeSet<Float> rates = new java.util.TreeSet<>();
+        for (android.view.Display.Mode m : display.getSupportedModes()) {
+            if (cur != null && (m.getPhysicalWidth() != cur.getPhysicalWidth()
+                    || m.getPhysicalHeight() != cur.getPhysicalHeight())) continue;
+            float r = m.getRefreshRate();
+            boolean dup = false;
+            for (float have : rates) if (Math.abs(have - r) < 0.5f) { dup = true; break; }
+            if (!dup) rates.add(r);
+        }
+        float[] out = new float[rates.size()];
+        int i = 0;
+        for (float r : rates) out[i++] = r;
+        return out;
     }
 
     /** The display's current (live) refresh rate, rounded. 0 if unavailable. Reflects the panel's
@@ -260,8 +282,7 @@ public class XServerView extends FrameLayout {
     /** Distinct supported refresh rates (rounded, ascending). Empty if <2 (nothing to pick). */
     public static java.util.List<Integer> getSupportedRefreshRates(android.view.Display display) {
         java.util.TreeSet<Integer> rates = new java.util.TreeSet<>();
-        if (Build.VERSION.SDK_INT >= 30 && display != null)
-            for (android.view.Display.Mode m : display.getSupportedModes()) rates.add(Math.round(m.getRefreshRate()));
+        for (float r : getSupportedRefreshRatesPrecise(display)) rates.add(Math.round(r));
         return rates.size() > 1 ? new java.util.ArrayList<>(rates) : new java.util.ArrayList<>();
     }
 }

@@ -1803,6 +1803,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // refresh rate live (applyVrr). Independent of frame-gen; works on all 3 host renderers.
         state.onMatchRefreshChange = () -> {
             boolean on = XServerDrawerState.INSTANCE.getMatchRefreshRate().getValue();
+            if (nativeFgLocksHeld) {
+                // Frame gen is running, so this is the frame-gen Auto (applyNativeFgLocks). Off =
+                // opt out for THIS GAME: remembered on the shortcut only, never the container, so
+                // other games made from it keep getting Auto during frame gen. On = clear it.
+                // Launched without a shortcut: the choice lasts for this session only.
+                nativeFgAutoOn = on;
+                XServerDrawerState.INSTANCE.setFgAutoTurnedOn(false);
+                if (shortcut != null) {
+                    if (on) shortcut.removeExtra(FG_AUTO_OPT_OUT);
+                    else shortcut.putExtra(FG_AUTO_OPT_OUT, "1");
+                    shortcut.saveData();
+                }
+                Log.i("XServerDisplayActivity", "native-fg auto " + (on ? "on" : "off")
+                    + (shortcut != null ? " (remembered for this game)" : " (this session only, no shortcut)"));
+                reapplyFpsLimit();
+                return;
+            }
             container.setMatchRefreshRate(on);
             container.saveData();
             // reapplyFpsLimit, not just reapplyVrr: under native frame gen the display
@@ -3201,10 +3218,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * uncapped guest times the multiplier overruns the panel and FIFO stalls the
      * compositor. If no cap was set, 30 is used: it is the case this was proven on.
      *
-     * Auto refresh (VRR) used to be locked OFF here too. It is now left to the
-     * user: with Auto on, applyVrr fits the display to cap x multiplier (see
-     * pickNativeFgRefresh), switching only when the cap, multiplier or frame gen
-     * changes - never following the live frame rate.
+     * Auto refresh (VRR) used to be locked OFF here too. Now it is switched ON
+     * for the frame-gen session instead, whatever the saved setting says, so
+     * applyVrr fits the display to cap x multiplier (pickNativeFgRefresh). The
+     * user can turn it off during frame gen; that opt-out is remembered on the
+     * game's SHORTCUT only (FG_AUTO_OPT_OUT), never the container, so other games
+     * made from the same container keep getting it. When frame gen stops, Auto
+     * goes back to the saved setting.
      */
     private void applyNativeFgLocks(boolean lock) {
         XServerDrawerState s = XServerDrawerState.INSTANCE;
@@ -3213,22 +3233,51 @@ public class XServerDisplayActivity extends AppCompatActivity {
             nativeFgSavedLimit        = s.getFpsLimit().getValue();
             nativeFgLocksHeld = true;
 
+            boolean savedAuto = resolvedMatchRefreshRate();
+            boolean canMatch = com.winlator.star.widget.XServerView.isDisplayVrrCapable(
+                getWindowManager().getDefaultDisplay());
+            nativeFgAutoOn = canMatch && !fgAutoOptedOut();
+            s.setMatchRefreshRate(nativeFgAutoOn);
+            s.setFgAutoTurnedOn(nativeFgAutoOn && !savedAuto);
+            s.setFgAutoPerGame(shortcut != null);
+
             int cap = nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 30;
             s.setFpsLimiterEnabled(true);
             s.setFpsLimit(cap);
             s.setNativeFgLocks(true);
             Log.i("XServerDisplayActivity", "native-fg locks ON: limiter=" + cap
-                + " (was limiter=" + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0) + ")");
+                + " (was limiter=" + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0) + ")"
+                + " auto=" + nativeFgAutoOn + " (saved=" + savedAuto + " optOut=" + fgAutoOptedOut()
+                + " canMatch=" + canMatch + ")");
             applyFpsLimit(cap);
         } else if (!lock && nativeFgLocksHeld) {
             nativeFgLocksHeld = false;
+            nativeFgAutoOn = false;
             s.setNativeFgLocks(false);
+            s.setFgAutoTurnedOn(false);
+            s.setMatchRefreshRate(resolvedMatchRefreshRate());
             s.setFpsLimiterEnabled(nativeFgSavedLimiterOn);
             s.setFpsLimit(nativeFgSavedLimit);
             Log.i("XServerDisplayActivity", "native-fg locks OFF: restored limiter="
-                + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0));
+                + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0) + " auto=" + resolvedMatchRefreshRate());
             applyFpsLimit(nativeFgSavedLimiterOn && nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 0);
         }
+    }
+
+    // Auto (match FPS) for the current native frame-gen session (see applyNativeFgLocks).
+    private boolean nativeFgAutoOn = false;
+
+    /** Shortcut extra: the user turned Auto off during frame gen for this game. */
+    private static final String FG_AUTO_OPT_OUT = "fgAutoRefreshOptOut";
+
+    private boolean fgAutoOptedOut() {
+        return shortcut != null && "1".equals(shortcut.getExtra(FG_AUTO_OPT_OUT, "0"));
+    }
+
+    /** Auto (match FPS) as it applies right now: the frame-gen session's value while native
+     *  frame gen holds its locks, the saved container/shortcut setting otherwise. */
+    private boolean autoRefreshActive() {
+        return nativeFgLocksHeld ? nativeFgAutoOn : resolvedMatchRefreshRate();
     }
 
     /** Extra room below an exact display fit - see pacedLimitWithSlack. */
@@ -3263,7 +3312,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private float nativeFgDisplayRate(int cap, int mult) {
         float[] rates = displayRatesPrecise();
         float top = rates.length > 0 ? rates[rates.length - 1] : pickHighestRefreshRate();
-        if (container != null && resolvedMatchRefreshRate()) {
+        if (container != null && autoRefreshActive()) {
             float r = pickNativeFgRefresh(cap * mult);
             return r > 0f ? r : top;
         }
@@ -10533,12 +10582,15 @@ return true;
         // action, never a chase of the live frame rate. Nothing at or above the
         // wanted rate -> no vote, the panel stays at its max, and the drawer warns.
         final boolean nativeFgGenerating = nativeFrameGenEngine() && frameGenMultipliesDisplay();
-        if (container != null && resolvedMatchRefreshRate() && nativeFgGenerating) {
+        // Under native frame gen this is the session's Auto (on unless this game opted out),
+        // otherwise the saved setting - see applyNativeFgLocks.
+        final boolean autoOn = autoRefreshActive();
+        if (container != null && autoOn && nativeFgGenerating) {
             int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
             vrrRate = cap > 0 ? pickNativeFgRefresh(cap * mult) : 0.0f;
             Log.i("XServerDisplayActivity", "native-fg vrr: " + cap + " x " + mult + " = " + (cap * mult)
                 + " -> display " + (vrrRate > 0f ? vrrRate + " Hz" : "top rate (nothing at or above)"));
-        } else if (container != null && resolvedMatchRefreshRate()) {
+        } else if (container != null && autoOn) {
             // Auto (match FPS): vote the panel cadence to follow the displayed FPS while capping.
             if (cap > 0) {
                 if (frameGenMultipliesDisplay()) {

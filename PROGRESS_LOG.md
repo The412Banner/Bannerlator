@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🎮 **Steam Controller r6: trackpad mouse Right / Left / Both / Off (CI running); line-ending cleanup** (branch `feat/steam-controller-sdl` head `31ede2c4`, CI run 34544484648, label `steamctrl-r6`, NOT merged)
+> - Tester ask: make the left trackpad useful, either instead of the right one or both at once. "Right trackpad moves the mouse" becomes "Trackpad mouse": Right / Left / Both / Off (the old on/off seeds it). A mouse pad's click = left click; with Both, the left pad clicks right. Includes r5's 18-input controller test (r5 34543635744 cancelled, superseded).
+> - Pre-merge audit caught line-ending damage: a scripted edit had flipped all-CRLF `WinHandler.java` to LF (fixed by amend + force-push with lease), and an earlier edit had normalised mixed-EOL `InputControlsView.java` to all-CRLF (in r3–r5; restored to main's bytes in no-code commit `31ede2c4`). Branch vs main is now 1,593+/51− with no whole-file churn.
+
 ## 2026-09-10 — 🎮 **Steam Controller r4: settings Test dialog ✅ for the tester; r5 counts the "…" button (CI running)** (branch `feat/steam-controller-sdl` head `3d243e48`, CI run 34543635744, label `steamctrl-r5`, NOT merged)
 > - Tester on r4 (screenshot): Input Controls → Test shows "Steam Controller" with Steam art, registers inputs (LB/L1), Identify enabled. His ask: "xx/18 instead of xx/17".
 > - r5: the test snapshot gets a `quickAccess` flag (default off, so existing callers are unchanged), fed from SDL in both the settings dialog and the in-game Players test. A detected Steam Controller counts 18 inputs with "…" lit on the Steam art; other pads still count 17.

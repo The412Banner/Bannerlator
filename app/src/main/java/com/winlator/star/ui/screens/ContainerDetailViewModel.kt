@@ -453,8 +453,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         containerName = if (c != null) c.name else "${context.getString(R.string.container)}-${manager.getNextContainerId()}"
         wineVersionEnabled = !isEditMode
 
-        // Screen size
-        val ssValue = seed?.screenSize ?: Container.DEFAULT_SCREEN_SIZE
+        // Screen size: the real container / saved defaults profile wins; otherwise fit this device's
+        // panel shape (1280x720 on 16:9 and wider, 1280x800 on 16:10, 1280x960 on 4:3).
+        val ssValue = seed?.screenSize ?: Container.defaultScreenSizeFor(context)
         val ssFound = screenSizeEntries.indexOfFirst {
             StringUtils.parseIdentifier(it).equals(ssValue, ignoreCase = true)
         }
@@ -1226,7 +1227,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                 val wi = w.toInt(); val hi = h.toInt()
                 if (wi % 2 == 0 && hi % 2 == 0) return "${wi}x${hi}"
             }
-            return Container.DEFAULT_SCREEN_SIZE
+            return Container.defaultScreenSizeFor(context)
         }
         return StringUtils.parseIdentifier(selectedScreenSize)
     }

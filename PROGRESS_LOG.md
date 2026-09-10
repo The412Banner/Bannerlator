@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 📦 **Combined gfx build r1 staged** (`combined/gfx-upgrades` `a9853720`, CI 34502407175)
+> - Staged `/sdcard/Download/Bannerlator-gfx3-r1-pubg.apk` sha256 `9978e2f7b7a4…` (download and staged copy match; 1306 entries).
+> - Checked inside the APK: SGSR HQ SPIR-V in `libvulkan_renderer.so`; dex has "SGSR HQ", the GL edge-direction shader, "TEXTURE FILTERING", "Anisotropic filtering", "Auto (match scaling mode)", `d3d11.samplerLodBias = `, the `Texture filtering: [` log marker and `1280x960`; `resources.arsc` has the "1280x960 (4:3)" list entry.
+> - NOT device-proven for texture filtering / screen size. Test plan: DiRT Showdown → DX Wrapper Config → Anisotropic 16x + Texture sharpness Auto (with SGSR HQ) → logcat `Texture filtering: [...]` + visual; new container → default size 1280x720 on the 16:9 Pocket FIT, 1280x960 pickable.
+
 ## 2026-09-10 — ✅ **Combined gfx build r1 CI green** (branch `combined/gfx-upgrades`, head `a9853720`, CI run 34502407175)
 > - CI ✅ ludashi/standard/pubg, headSha `a9853720` verified. Artifact `Bannerlator-gfx3-r1-pubg` (504 MB) downloading for staging (the SGSR-only r1 download was deleted from the scratchpad; that APK stays staged on the device).
 

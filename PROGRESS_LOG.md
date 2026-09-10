@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **SGSR HQ r1 device session closed** (DiRT Showdown)
+> - Watcher final: one session 12:11:43 → 12:31:39 (~20 min), **one pid throughout** (no crash across 5 mode switches), shortcut `scalingMode=8` saved at exit. Relaunch-persistence step skipped (the user moved to the combined build); the stored value is correct and `resolveScalingMode` accepts 0-8, but a relaunch was not observed.
+> - Verdict: SGSR HQ is DEVICE-PROVEN to run on the Vulkan path (Adreno 750) with no instability; the visual gain is real but subtle (see the zoom comparison entry). GL path and cost under an uncapped load are still untested.
+
 ## 2026-09-10 — 🧩 **Combined test build: SGSR HQ + texture filtering + screen size** (branch `combined/gfx-upgrades` off main `a7c3a9f9`, head `a9853720`, CI run 34502407175)
 > - User ask: one build with all three. Three `--no-ff` merges (`d7ff0007` SGSR HQ, `e1c9d5ec` texture filtering, `a9853720` screen size), all clean (git auto-merged `XServerDisplayActivity.java`, the only file two branches touch).
 > - Verified before push: combined-vs-main file list == union of the three branches (17 files, +856/-41). 16 files byte-identical to their own branch; the shared file carries both changes (`m <= 8` clamp + 3 `autoTextureLodBias` refs). Only PROGRESS_LOG commits had landed on main since the branch bases.

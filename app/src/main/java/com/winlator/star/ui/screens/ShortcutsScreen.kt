@@ -6944,13 +6944,19 @@ internal fun ShortcutSettingsDialogScreen(
                     }
 
                     // Screen size
-                    DpDrop(
-                        dp, "screenSize",
-                        label = stringResource(R.string.screen_size),
-                        options = screenSizeEntries,
-                        selected = selectedScreenSize,
-                        onSelect = { selectedScreenSize = it }
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        DpDrop(
+                            dp, "screenSize",
+                            label = stringResource(R.string.screen_size),
+                            options = screenSizeEntries,
+                            selected = selectedScreenSize,
+                            onSelect = { selectedScreenSize = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { helpRes = R.string.help_screen_size }) {
+                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        }
+                    }
                     if (selectedScreenSize == "Custom") {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             DpField(

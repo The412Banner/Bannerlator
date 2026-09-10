@@ -161,6 +161,12 @@
     <string name="disabled">Disabled</string>
     <string name="container">Container</string>
     <string name="screen_size">Screen Size</string>
+    <string name="help_screen_size"><![CDATA[
+        <b>Screen Size</b><br /><br />
+        The resolution the game runs at. Lower is faster but less sharp; higher is sharper but heavier. The picture is then scaled to fit your screen, and the Scaling mode in the game side menu (for example SGSR HQ) decides how.<br /><br />
+        New containers start at a size that matches your screen shape — 1280x720 on 16:9 and wider screens, 1280x800 on 16:10 and 1280x960 on 4:3 — so the picture can fill the screen.<br /><br />
+        <b>Examples:</b> a heavy game stutters → try 960x544 or 854x480 with SGSR HQ. A light game on a 1080p screen → 1920x1080 for full sharpness. A 4:3 handheld → 1280x960.
+    ]]></string>
     <string name="new_environment_variable">New Environment Variable</string>
     <string name="environment_variables">Environment Variables</string>
     <string name="value">Value</string>

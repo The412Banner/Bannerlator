@@ -1059,11 +1059,11 @@ private fun GraphicsContent(state: XServerDrawerState) {
             XServerDialogState.onGlUpscalerApply?.invoke(it)
         }
         // "Sharpness" drives SGSR EdgeSharpness / FSR RCAS / CAS / NIS, for the sharpening modes.
-        if (glUpscalerMode == 3 || glUpscalerMode == 4 || glUpscalerMode == 5 || glUpscalerMode == 6 || glUpscalerMode == 7) {
+        if (glUpscalerMode in 3..8) {
             val initGlUpscaleSharpness by XServerDialogState.glUpscaleSharpness.collectAsState()
             var glUpscaleSharpness by remember(initGlUpscaleSharpness) { mutableIntStateOf(initGlUpscaleSharpness) }
             Spacer(Modifier.height(4.dp))
-            // Continuous for SGSR/FSR (3/4/5); snapped to 5 stops {0,25,50,75,100} for
+            // Continuous for SGSR/FSR/NIS/SGSR HQ (3/4/5/7/8); snapped to 5 stops {0,25,50,75,100} for
             // Sharpen mode (6), where stop 0 = OFF (no CAS pass).
             IntSlider("Sharpness", glUpscaleSharpness, 0..100,
                 onValueChange = { glUpscaleSharpness = it },
@@ -1246,8 +1246,8 @@ private fun GraphicsContent(state: XServerDrawerState) {
         }
 
         // "Sharpness" controls the REAL upscaler sharpness (RCAS stops / SGSR EdgeSharpness /
-        // NIS sharpness) and only applies to the sharpening scaling modes (SGSR/FSR/FSR-Fit/Sharpen/NIS).
-        if (upscalerMode == 3 || upscalerMode == 4 || upscalerMode == 5 || upscalerMode == 6 || upscalerMode == 7) {
+        // NIS sharpness) and only applies to the sharpening scaling modes (SGSR/FSR/FSR-Fit/Sharpen/NIS/SGSR HQ).
+        if (upscalerMode in 3..8) {
             val initUpscaleSharpness by XServerDialogState.upscaleSharpness.collectAsState()
             var upscaleSharpness by remember(initUpscaleSharpness) { mutableIntStateOf(initUpscaleSharpness) }
             Spacer(Modifier.height(4.dp))
@@ -2246,9 +2246,10 @@ private fun GradientSlider(
     }
 }
 
-// Scaling-mode picker: 7 options (0=None 1=Linear 2=Nearest 3=SGSR 4=FSR 5=FSR Fit
-// 6=Sharpen) laid out as rows of four segmented chips (same box-chip idiom as
-// FgMultiplierButtons). Grayed out when the active host renderer is not Vulkan.
+// Scaling-mode picker: 9 options (0=None 1=Linear 2=Nearest 3=SGSR 8=SGSR HQ 4=FSR
+// 5=FSR Fit 6=Sharpen 7=NIS) laid out as rows of three segmented chips (same box-chip
+// idiom as FgMultiplierButtons). SGSR HQ sits next to SGSR; its int is 8 because the
+// mode ints are persisted per game and must never be renumbered.
 // Terminal debanding controls (toggle + optional dither-strength slider), shared by the
 // GL and Vulkan graphics blocks. Reads/writes the single _debandEnabled/_debandStrength
 // state and fires onDebandApply; only one renderer block is shown per session, so the
@@ -2424,10 +2425,11 @@ private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int)
     val accentDim = LocalAccentDim.current
     val options = listOf(
         0 to "None", 1 to "Linear", 2 to "Nearest",
-        3 to "SGSR", 4 to "FSR", 5 to "FSR (Fit)", 6 to "Sharpen", 7 to "NIS"
+        3 to "SGSR", 8 to "SGSR HQ", 4 to "FSR",
+        5 to "FSR (Fit)", 6 to "Sharpen", 7 to "NIS"
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        options.chunked(4).forEach { row ->
+        options.chunked(3).forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -2466,7 +2468,7 @@ private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int)
 }
 
 // Per-container rumble target picker (Off/Controller/Device/Both) — same segmented-chip style as
-// UpscalerModeButtons above, just a fixed 4-wide row instead of chunked(4). "Device" = the phone's
+// UpscalerModeButtons above, just a fixed 4-wide row instead of chunked(3). "Device" = the phone's
 // own vibrator (Container.VIBRATION_MODE_DEVICE); "Both" drives the physical controller AND the
 // phone together (Container.VIBRATION_MODE_BOTH).
 @Composable

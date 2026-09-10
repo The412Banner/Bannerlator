@@ -21,18 +21,36 @@ import com.winlator.star.renderer.material.ShaderMaterial;
 //   - the source is the EffectComposer low-res render target (input res = srcResolution);
 //     EdgeSharpness is driven live by the drawer "Sharpness" slider via the `sharpness`
 //     uniform (0..1).
+//
+//  Quality variant (scaling mode 8, `new SGSREffect(true)`): Qualcomm's
+//  sgsr1_shader_mobile_edge_direction.frag path — Lanczos weights stretched along the
+//  local edge direction plus the reference's retuned contrast term (10.14185 / sum)^2.
+//  Mirrors app/src/main/cpp/winlator/sgsr_quality.frag. Mode 3 is unchanged.
 // =============================================================================
 
 public class SGSREffect extends Effect {
 
+    private final boolean quality;
+
+    public SGSREffect() {
+        this(false);
+    }
+
+    public SGSREffect(boolean quality) {
+        this.quality = quality;
+    }
+
     @Override
     protected ShaderMaterial createMaterial() {
-        return new SGSRMaterial();
+        return new SGSRMaterial(quality);
     }
 
     private static class SGSRMaterial extends ScreenMaterial {
-        SGSRMaterial() {
+        private final boolean quality;
+
+        SGSRMaterial(boolean quality) {
             super();
+            this.quality = quality;
             // resolution = output size, srcResolution = low-res input size, sharpness 0..1.
             setUniformNames("resolution", "screenTexture", "srcResolution", "sharpness");
         }
@@ -50,6 +68,42 @@ public class SGSREffect extends Effect {
                 "}"
             });
         }
+
+        // Mode 3 (fast): the original single-float weight, byte-identical to before.
+        private static final String WEIGHT_Y_FAST = String.join("\n", new CharSequence[]{
+            "vec2 weightY(float dx, float dy, float c, float std) {",
+            "    float x = ((dx * dx) + (dy * dy)) * 0.55 + clamp(abs(c) * std, 0.0, 1.0);",
+            "    float w = fastLanczos2(x);",
+            "    return vec2(w, w * c);",
+            "}"
+        });
+
+        // Mode 8 (quality): data.x = contrast term, data.yz = normalised edge direction.
+        private static final String WEIGHT_Y_QUALITY = String.join("\n", new CharSequence[]{
+            "vec2 weightY(float dx, float dy, float c, vec3 data) {",
+            "    float std = data.x;",
+            "    vec2  dir = data.yz;",
+            "    float edgeDis = (dx * dir.y) + (dy * dir.x);",
+            "    float x = ((dx * dx) + (dy * dy))",
+            "            + ((edgeDis * edgeDis) * ((clamp((c * c) * std, 0.0, 1.0) * 0.7) - 1.0));",
+            "    float w = fastLanczos2(x);",
+            "    return vec2(w, w * c);",
+            "}",
+            "vec2 edgeDirection(vec4 left, vec4 right) {",
+            "    float RxLz = right.x - left.z;",
+            "    float RwLy = right.w - left.y;",
+            "    vec2 delta = vec2(RxLz + RwLy, RxLz - RwLy);",
+            "    float lengthInv = inversesqrt((delta.x * delta.x + 3.075740e-05) + (delta.y * delta.y));",
+            "    return delta * lengthInv;",
+            "}"
+        });
+
+        private static final String STD_FAST = "        float std = 2.181818 / sum;";
+
+        private static final String STD_QUALITY = String.join("\n", new CharSequence[]{
+            "        float sumMean = 1.014185e+01 / sum;",
+            "        vec3 std = vec3(sumMean * sumMean, edgeDirection(left, right));"
+        });
 
         @Override
         protected String getFragmentShader() {
@@ -71,11 +125,7 @@ public class SGSREffect extends Effect {
                 "    return wB * wA;",
                 "}",
 
-                "vec2 weightY(float dx, float dy, float c, float std) {",
-                "    float x = ((dx * dx) + (dy * dy)) * 0.55 + clamp(abs(c) * std, 0.0, 1.0);",
-                "    float w = fastLanczos2(x);",
-                "    return vec2(w, w * c);",
-                "}",
+                quality ? WEIGHT_Y_QUALITY : WEIGHT_Y_FAST,
 
                 // textureGather(ps0, coord, 1) emulation (green channel) for ES 3.0.
                 "vec4 gatherG(vec2 coord) {",
@@ -126,7 +176,7 @@ public class SGSREffect extends Effect {
                 "        float sum = (((((abs(left.x) + abs(left.y)) + abs(left.z)) + abs(left.w))",
                 "                   + (((abs(right.x) + abs(right.y)) + abs(right.z)) + abs(right.w)))",
                 "                   + (((abs(upDown.x) + abs(upDown.y)) + abs(upDown.z)) + abs(upDown.w)));",
-                "        float std = 2.181818 / sum;",
+                quality ? STD_QUALITY : STD_FAST,
 
                 "        vec2 aWY  = weightY(pl.x,       pl.y + 1.0, upDown.x, std);",
                 "        aWY      += weightY(pl.x - 1.0, pl.y + 1.0, upDown.y, std);",

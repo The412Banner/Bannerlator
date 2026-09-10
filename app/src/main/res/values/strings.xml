@@ -633,6 +633,18 @@
         <b>System</b> (default) uses Android\'s own Vulkan driver — the safe, always-compatible choice. Picking an installed <b>Turnip</b> points the compositor at that build instead. It mostly affects present/compatibility behaviour, not your game\'s FPS (the compositor isn\'t where rendering happens).<br /><br />
         Leave it on <b>System</b> unless you know you need otherwise: a Turnip compositor can black-screen on builds whose window-system support doesn\'t match your device. Vulkan renderer only — has no effect on SurfaceFlinger or OpenGL.
     ]]></string>
+    <string name="help_scaling_mode"><![CDATA[
+        <b>Scaling mode</b><br /><br />
+        How the game picture is stretched to fill your screen. The upscalers matter most when a game runs below your screen resolution (for example 1280x720 on a 1080p screen), which is the usual way to get more FPS.<br /><br />
+        <b>None / Linear / Nearest</b> — plain stretching. Linear is smooth; Nearest keeps hard pixel edges.<br />
+        <b>SGSR</b> — Snapdragon upscaler. Rebuilds edges so a lower resolution looks sharper. Very light.<br />
+        <b>SGSR HQ</b> — SGSR with cleaner diagonal and curved edges, for about the same cost.<br />
+        <b>FSR / FSR (Fit)</b> — AMD upscaler, a little heavier. FSR fills the whole screen (may stretch); FSR (Fit) keeps the shape and adds black bars.<br />
+        <b>NIS</b> — NVIDIA upscaler, similar to FSR.<br />
+        <b>Sharpen</b> — no upscaling, only sharpens. Works at any resolution.<br /><br />
+        <b>Examples:</b> a heavy game at 720p on a 1080p screen → SGSR HQ. A pixel-art or retro game → Nearest. A game already at your screen resolution → None, or Sharpen for extra crispness.<br /><br />
+        <b>Sharpness</b> sets how strong the sharpening is. Your choice is remembered for this game.
+    ]]></string>
     <string name="help_fps_limiter"><![CDATA[
         <b>FPS Limiter</b><br /><br />
         Loads the frame-rate limiter for this game. Turning it on just enables the feature — you set the actual cap (10–200 fps) live from the in-game FPS menu. Capping fps can cut heat and battery use, and smooth out an unstable frame rate. (While LSFG Native or Win-FG Native is running, the limiter is switched on automatically — frame generation needs a steady cap — so you only need this on its own for a cap without frame generation.)

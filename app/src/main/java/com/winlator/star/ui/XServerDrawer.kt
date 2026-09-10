@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlipToFront
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Memory
@@ -116,6 +117,7 @@ import com.winlator.star.perf.RootManager
 import com.winlator.star.reshade.ReshadeLoadout
 import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.ui.components.ColorPicker
+import com.winlator.star.ui.screens.HelpDialog
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.WatchdogSection
 import com.winlator.star.ui.screens.outlinedMenuCard
@@ -515,8 +517,8 @@ private fun TvContent(state: XServerDrawerState) {
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
             modifier = Modifier.padding(top = 4.dp))
     } else {
-        Text("Scaling filter", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+        ScalingModeHeader("Scaling filter", MaterialTheme.colorScheme.onSurface,
+            Modifier.padding(top = 4.dp, bottom = 6.dp))
         val initGlUpscalerMode by XServerDialogState.glUpscalerMode.collectAsState()
         var glUpscalerMode by remember(initGlUpscalerMode) { mutableIntStateOf(initGlUpscalerMode) }
         UpscalerModeButtons(glUpscalerMode, true) {
@@ -1050,8 +1052,8 @@ private fun GraphicsContent(state: XServerDrawerState) {
             if (ScreenEffectLooks.LOOKS.getOrNull(selectedLook ?: -1)?.scalingMode != null) selectedLook = null
         }
 
-        Text("Scaling mode", color = glHeaderColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-        Spacer(Modifier.height(8.dp))
+        ScalingModeHeader("Scaling mode", glHeaderColor)
+        Spacer(Modifier.height(2.dp))
         UpscalerModeButtons(glUpscalerMode, glEnabled) {
             glUpscalerMode = it
             XServerDialogState.setGlUpscalerMode(it)
@@ -1236,8 +1238,8 @@ private fun GraphicsContent(state: XServerDrawerState) {
             if (ScreenEffectLooks.LOOKS.getOrNull(selectedLook ?: -1)?.scalingMode != null) selectedLook = null
         }
 
-        Text("Scaling mode", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-        Spacer(Modifier.height(8.dp))
+        ScalingModeHeader("Scaling mode", accent)
+        Spacer(Modifier.height(2.dp))
         UpscalerModeButtons(upscalerMode, true) {
             upscalerMode = it
             XServerDialogState.setUpscalerMode(it)
@@ -2417,6 +2419,20 @@ private fun ScreenAlignmentButtons(selected: Int, enabled: Boolean = true, onSel
             }
         }
     }
+}
+
+// Scaling-mode section header with a small "?" that explains every mode (help_scaling_mode).
+// The help stays available while the picker itself is greyed out.
+@Composable
+private fun ScalingModeHeader(title: String, color: Color, modifier: Modifier = Modifier) {
+    var showHelp by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Text(title, color = color, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        IconButton(onClick = { showHelp = true }, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Help, contentDescription = "What is this?", tint = color, modifier = Modifier.size(16.dp))
+        }
+    }
+    if (showHelp) HelpDialog(R.string.help_scaling_mode) { showHelp = false }
 }
 
 @Composable

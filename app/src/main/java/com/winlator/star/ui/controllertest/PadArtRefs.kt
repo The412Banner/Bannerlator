@@ -246,6 +246,8 @@ internal val PAD_REFS: Map<PadArt, PadArtRef> = mapOf(
             "lstick" to Triple(200.0f, 148.0f, 19.0f),
             "lt" to Triple(175.0f, 72.0f, 12.0f),
             "menu" to Triple(278.0f, 120.0f, 6.0f),
+            // "…" (Quick Access) pill between the trackpads (pad_steam.png 380,293 at 760x532).
+            "qam" to Triple(250.0f, 193.0f, 9.0f),
             "r3" to Triple(300.0f, 148.0f, 11.0f),
             "rb" to Triple(325.0f, 86.0f, 14.0f),
             "rstick" to Triple(300.0f, 148.0f, 19.0f),

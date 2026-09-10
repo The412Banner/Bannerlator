@@ -81,10 +81,11 @@ public final class SteamControllerBackend {
 
         void onSteamPadDisconnected(ExternalController pad);
 
-        /** pad.state changed (back buttons mapped to gamepad buttons already merged in). guideDown is
-         *  the Steam button, which GamepadState has no bit for. pressedKeyCodes are the held buttons as
-         *  Android keycodes, for the profile bindings. */
-        void onSteamPadState(ExternalController pad, boolean guideDown, int[] pressedKeyCodes);
+        /** pad.state changed (extra buttons mapped to gamepad buttons already merged in). guideDown is
+         *  the Steam button, which GamepadState has no bit for; quickAccessDown is the physical "…"
+         *  button (for the controller test). pressedKeyCodes are the held buttons as Android keycodes,
+         *  for the profile bindings. */
+        void onSteamPadState(ExternalController pad, boolean guideDown, boolean quickAccessDown, int[] pressedKeyCodes);
 
         /** A back button mapped to a keyboard key or mouse button went down / up. */
         void onSteamPadBinding(Binding binding, boolean down);
@@ -409,7 +410,8 @@ public final class SteamControllerBackend {
             s.dpad[1] = bit(effective, B_DPAD_RIGHT);
             s.dpad[2] = bit(effective, B_DPAD_DOWN);
             s.dpad[3] = bit(effective, B_DPAD_LEFT);
-            listener.onSteamPadState(pad.controller, bit(effective, B_GUIDE), pressedKeyCodes(effective));
+            listener.onSteamPadState(pad.controller, bit(effective, B_GUIDE), bit(buttons, B_QAM),
+                    pressedKeyCodes(effective));
         }
         if (trackpadMouse)
             applyTrackpadMouse(pad, buttons, floats, base);

@@ -372,6 +372,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onSteamPadState(
                     pad: com.winlator.star.inputcontrols.ExternalController,
                     guideDown: Boolean,
+                    quickAccessDown: Boolean,
                     pressedKeyCodes: IntArray,
                 ) {
                     if (!settingsTestArmed()) return
@@ -390,7 +391,8 @@ class MainActivity : AppCompatActivity() {
                             pad.name ?: "Steam Controller",
                             com.winlator.star.ui.controllertest.PadArt.STEAM.ordinal,
                             -1,
-                            true
+                            true,
+                            quickAccessDown
                         )
                     )
                 }

@@ -9398,12 +9398,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onSteamPadState(ExternalController pad, boolean guideDown, int[] pressedKeyCodes) {
+            public void onSteamPadState(ExternalController pad, boolean guideDown, boolean quickAccessDown, int[] pressedKeyCodes) {
                 if (inGameControlsEditor != null) return;
                 if (controllerTestActive) {
                     controllerTestController.state.copy(pad.state);
                     controllerTestGuideDown = guideDown;
-                    controllerTestPublishSteamPad(pad);
+                    controllerTestPublishSteamPad(pad, quickAccessDown);
                     return;
                 }
                 // The profile's Default / Any Controller bindings, like an unconfigured Android pad;
@@ -9453,7 +9453,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /** controllerTestPublishSnapshot for a Steam Controller read through SDL (no InputDevice). */
-    private void controllerTestPublishSteamPad(ExternalController pad) {
+    private void controllerTestPublishSteamPad(ExternalController pad, boolean quickAccess) {
         com.winlator.star.inputcontrols.GamepadState st = controllerTestController.state;
         XServerDialogState.INSTANCE.setControllerTestSnapshot(new com.winlator.star.ui.controllertest.ControllerTestSnapshot(
                 st.buttons & 0xFFFF,
@@ -9465,7 +9465,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 pad.getName() != null ? pad.getName() : "Steam Controller",
                 com.winlator.star.ui.controllertest.PadArt.STEAM.ordinal(),
                 -1,
-                true));
+                true,
+                quickAccess));
     }
 
     // ---- Controller-test panel input fork (gated on controllerTestActive; see field docs) ----

@@ -7722,6 +7722,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return container != null && container.getRendererFilterMode() == 2 ? 2 : 1;
     }
 
+    // Texture sharpness "Auto" (dxwrapperConfig lodBias=auto): the mip LOD bias that matches the scaling
+    // mode this game starts with. Only the spatial upscalers count (3 SGSR, 4 FSR, 5 FSR-Fit, 7 NIS,
+    // 8 SGSR HQ); Sharpen/Linear/Nearest/None give 0. DXVK reads it once at device creation, so a
+    // scaling mode changed later in the drawer applies from the next launch.
+    private float autoTextureLodBias() {
+        int mode = resolveScalingMode();
+        boolean spatial = mode == 3 || mode == 4 || mode == 5 || mode == 7 || mode == 8;
+        if (!spatial || xServer == null) return 0f;
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+        return DXVKConfigDialog.autoLodBias(xServer.screenInfo.width, xServer.screenInfo.height,
+                dm.widthPixels, dm.heightPixels);
+    }
+
     // --- Generic drawer graphics quick-settings persistence (per game) -------------------------
     // The upscale/CAS/HDR sharpness sliders + SGSR/deband toggles mirror a live renderer config, so
     // an in-game change must stick per game the same way the scaling-mode picker does (#scaling-persist).
@@ -8885,7 +8899,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     // Original logic for DXWrapper and environment variables
     if (dxwrapper.contains("dxvk")) {
-        DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars, dxvkLogDir());
+        DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars, dxvkLogDir(), autoTextureLodBias());
         String version = dxwrapperConfig.get("version");
         if (version != null && version.equals("1.11.1-sarek")) {
             Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
@@ -8893,7 +8907,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
     else if (dxwrapper.contains("vegas")) {
-        DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars, dxvkLogDir());
+        DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars, dxvkLogDir(), autoTextureLodBias());
     }
     else {
         WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);

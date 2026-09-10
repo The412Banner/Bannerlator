@@ -3589,6 +3589,20 @@ internal fun DxvkConfigDialog(
     }
     var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
     var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
+    // Texture filtering: labels index-aligned with DXVKConfigDialog.ANISOTROPY_VALUES / LOD_BIAS_VALUES.
+    val anisotropyLabels = remember { listOf("Game default", "2x", "4x", "8x", "16x") }
+    val lodBiasLabels = remember {
+        listOf("Game default", "Auto (match scaling mode)", "Sharper (-0.25)", "Sharper (-0.5)",
+               "Sharper (-0.75)", "Sharpest (-1.0)")
+    }
+    var selectedAnisotropy by remember {
+        val i = DXVKConfigDialog.ANISOTROPY_VALUES.indexOf(config.get("anisotropy"))
+        mutableStateOf(anisotropyLabels[if (i >= 0) i else 0])
+    }
+    var selectedLodBias by remember {
+        val i = DXVKConfigDialog.LOD_BIAS_VALUES.indexOf(config.get("lodBias"))
+        mutableStateOf(lodBiasLabels[if (i >= 0) i else 0])
+    }
 
     // VEGAS knowledge layer: bundled asset or null (null -> unclassified fallback).
     val vegasKnowledge = remember {
@@ -4183,6 +4197,20 @@ internal fun DxvkConfigDialog(
                     Spacer(Modifier.height(8.dp))
                 }
                 LabeledDropdown(stringResource(R.string.frame_rate), framerateEntries, selectedFramerate, { selectedFramerate = it })
+                Spacer(Modifier.height(8.dp))
+                SectionLabel("TEXTURE FILTERING")
+                LabeledDropdown("Anisotropic filtering", anisotropyLabels, selectedAnisotropy, { selectedAnisotropy = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown("Texture sharpness", lodBiasLabels, selectedLodBias, { selectedLodBias = it })
+                Text(
+                    "DirectX 9-11 games only. Anisotropic filtering keeps floors and roads sharp at an " +
+                        "angle and costs little. Auto sharpens textures to suit the SGSR, FSR or NIS scaling " +
+                        "mode the game starts with (about -0.58 for 720p on a 1080p screen); sharper textures " +
+                        "can shimmer.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
                 Spacer(Modifier.height(8.dp))
                 SectionLabel("API FEATURE LEVEL")
                 LabeledDropdown("", featureLevelEntries, selectedFeatureLevel, { selectedFeatureLevel = it })
@@ -5022,6 +5050,8 @@ internal fun DxvkConfigDialog(
                 cfg.put("framerate", StringUtils.parseNumber(selectedFramerate))
                 cfg.put("async", if (asyncEnabled && dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) "1" else "0")
                 cfg.put("asyncCache", if (asyncCacheEnabled && dxvkType == DXVKConfigDialog.DXVK_TYPE_GPLASYNC) "1" else "0")
+                cfg.put("anisotropy", DXVKConfigDialog.ANISOTROPY_VALUES[anisotropyLabels.indexOf(selectedAnisotropy).coerceAtLeast(0)])
+                cfg.put("lodBias", DXVKConfigDialog.LOD_BIAS_VALUES[lodBiasLabels.indexOf(selectedLodBias).coerceAtLeast(0)])
                 cfg.put("vkd3dVersion", selectedVkd3d)
                 cfg.put("vkd3dLevel", selectedFeatureLevel)
                 cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))

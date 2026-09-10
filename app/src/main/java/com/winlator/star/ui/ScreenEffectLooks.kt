@@ -50,7 +50,7 @@ object ScreenEffectLooks {
 
     // Scaling-mode integers. BOTH renderer paths render their picker with the same
     // UpscalerModeButtons list (0=None 1=Linear 2=Nearest 3=SGSR 4=FSR 5=FSR(Fit)
-    // 6=Sharpen 7=NIS) and both feed a "mode" int straight to their apply callback,
+    // 6=Sharpen 7=NIS 8=SGSR HQ) and both feed a "mode" int straight to their apply callback,
     // so one constant serves GL and Vulkan alike — no per-path resolver needed.
     // If the two pickers ever diverge, this is the single place to fork them.
     const val SCALING_NEAREST = 2

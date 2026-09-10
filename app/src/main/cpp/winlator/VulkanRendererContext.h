@@ -433,7 +433,8 @@ private:
     //   5 = fsr_fit  (AMD FSR1 EASU+RCAS; two passes; aspect-fit / letterbox)
     //   6 = sharpen  (RCAS-only; any resolution; aspect-fit / letterbox)
     //   7 = nis      (NVIDIA Image Scaling NVScaler; single pass; aspect-fit)
-    // Shader upscaling only engages for modes 3-7 AND when the game render
+    //   8 = sgsr_quality (SGSR 1 edge-direction variant; single pass; aspect-fit)
+    // Shader upscaling only engages for modes 3-8 AND when the game render
     // resolution (container) is smaller than the swapchain. Otherwise the
     // existing direct-to-swapchain path is used unchanged.
     int               upscalerMode      = 0;
@@ -631,6 +632,7 @@ private:
     VkPipelineLayout  postPipeLayout    = VK_NULL_HANDLE;
     VkPipeline        sgsrPipeline      = VK_NULL_HANDLE;
     VkPipeline        nisPipeline       = VK_NULL_HANDLE; // NVIDIA Image Scaling (mode 7)
+    VkPipeline        sgsrQualityPipeline = VK_NULL_HANDLE; // SGSR 1 edge-direction (mode 8)
     VkPipeline        easuPipeline      = VK_NULL_HANDLE;
     VkPipeline        rcasPipeline      = VK_NULL_HANDLE;
     VkPipeline        downscalePipeline = VK_NULL_HANDLE;
@@ -688,7 +690,7 @@ private:
     int               fx2W = 0, fx2H = 0;
 
     // Per-frame upscale plan, computed in renderFrame, consumed by recordCmdBuf.
-    // upFrame.mode reuses the upscalerMode enum (3=sgsr,4=fsr,5=fsr_fit,6=sharpen)
+    // upFrame.mode reuses the upscalerMode enum (3=sgsr,4=fsr,5=fsr_fit,6=sharpen,7=nis,8=sgsr_quality)
     // plus an internal sentinel (UPMODE_DOWNSCALE) for the supersampling path.
     struct UpscaleFrame {
         bool active = false;

@@ -7695,7 +7695,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    // Scaling/upscaler mode (0-7: None/Linear/Nearest/SGSR/FSR/FSR-Fit/Sharpen/NIS) persistence.
+    // Scaling/upscaler mode (0-8: None/Linear/Nearest/SGSR/FSR/FSR-Fit/Sharpen/NIS/SGSR HQ) persistence.
     // In-game picks are remembered PER GAME (shortcut override, else container) so the drawer's
     // "Scaling mode" picker is sticky across relaunch — matching the fullscreen-mode behavior.
     private void persistScalingMode(int mode) {
@@ -7716,7 +7716,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (sm != null && !sm.isEmpty()) {
             try {
                 int m = Integer.parseInt(sm);
-                if (m >= 0 && m <= 7) return m;
+                if (m >= 0 && m <= 8) return m;
             } catch (NumberFormatException ignored) {}
         }
         return container != null && container.getRendererFilterMode() == 2 ? 2 : 1;
@@ -7936,7 +7936,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // it's a no-op (and no repeated toast) when native is already off — important because
             // onVulkanScreenEffectsApply fires continuously during slider drags.
             ds.onUpscalerApply = (mode) -> {
-                if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen
+                if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS 8=SGSR HQ
                 vkr.setUpscaler(mode);
                 persistScalingMode(mode);   // remember the pick per game (#scaling-persist)
             };
@@ -8394,7 +8394,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // GL native (direct scanout) bypasses — so engaging one turns Native Rendering off.
             // Guarded inside disableNativeRenderingForPreset(), so this no-ops when native is already
             // off (and the drawer greys these controls out while native is on, so it rarely fires).
-            if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS
+            if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS 8=SGSR HQ
             // None/Linear/spatial/sharpen -> linear base sampler; Nearest -> point.
             glRenderer.setFilterMode(mode == 2 ? 2 : 1);
             glRenderer.getEffectComposer().setUpscaler(mode); // keeps the current sharpness

@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **Steam Controller r2 WORKS for the community tester** (2026 model over Bluetooth, branch `feat/steam-controller-sdl` `7961c4bd`, NOT merged)
+> - User-relayed: "everything is working for the user perfectly fine". First real-pad proof of the SDL3 backend. No logs seen here.
+> - Tester's next ask: customize the 4 back buttons. The bridge already reads them (L4/L5/R4/R5 bits); nothing maps them yet. Proposed: a "Back buttons" mapping in the Steam Controller settings.
+
 ## 2026-09-10 — ✅ **Steam Controller r2: CI green + pubg staged** (branch `feat/steam-controller-sdl`, head `7961c4bd`, CI run 34510309898)
 > - CI ✅ standard/ludashi/pubg, headSha `7961c4bd` verified. Staged `/sdcard/Download/Bannerlator-steamctrl-r2-pubg.apk` sha256 `7c3a53b2acff…acbc` (download and staged copy match).
 > - Checked inside the APK: `lib/arm64-v8a/libSDL3.so` 2.38 MB (stripped), `libsteamctrl.so` NEEDED `libSDL3.so` and exports all 6 `SteamControllerBackend` JNI functions (NDK r29; prefab accepted SDL's r28c build). Dex has `org.libsdl.app.{SDL,HIDDeviceManager,HIDDeviceBLESteamController}`, `SteamControllerBackend` and the setting strings. Manifest has BLUETOOTH, BLUETOOTH_CONNECT, bluetooth_le, usb.host (none required).

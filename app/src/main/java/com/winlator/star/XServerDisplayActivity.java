@@ -10500,6 +10500,8 @@ return true;
         runOnUiThread(() -> {
             android.view.WindowManager.LayoutParams p = getWindow().getAttributes();
             float desired = vrrRate > 0f ? vrrRate : pickHighestRefreshRate();
+            // The drawer's frame-gen over-limit warning compares cap x multiplier against this.
+            XServerDrawerState.INSTANCE.setDisplayTargetHz(Math.round(desired));
             if (p.preferredRefreshRate != desired) {
                 p.preferredRefreshRate = desired;
                 getWindow().setAttributes(p);

@@ -1396,6 +1396,12 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val layerActive by state.bionicFgActive.collectAsState()
     val initLsfgPerf by state.lsfgPerformanceMode.collectAsState()
     val winFgNative by state.winFgNative.collectAsState()
+    // For the over-limit warning under the multiplier buttons.
+    val nativeFgLocks by state.nativeFgLocks.collectAsState()
+    val fpsCap by state.fpsLimit.collectAsState()
+    val displayTargetHz by state.displayTargetHz.collectAsState()
+    val supportedRates by state.supportedRefreshRates.collectAsState()
+    val liveRate by state.currentRefreshRate.collectAsState()
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -1472,6 +1478,19 @@ private fun FrameGenSection(state: XServerDrawerState) {
             // onBionicFgConfigChange in the activity (win-fg on an On/Off/multiplier/model/preset
             // change, lsfg on a level change). The old soft pulseFgReset for win-fg is retired, so
             // nothing extra fires here.
+        }
+
+        // Same over-limit warning as under Max FPS, shown where the multiplier is picked.
+        // nativeFgLocks = LSFG Native or Win-FG Native is generating right now.
+        if (nativeFgLocks) {
+            FgOverLimitWarning(
+                cap = fpsCap, mult = fgMult,
+                screenHz = fgScreenHz(displayTargetHz, supportedRates, liveRate),
+                canChangeMult = engine == "lsfg-native"
+            ) { fix ->
+                state.setFpsLimit(fix)
+                state.onFpsLimitChange?.run()
+            }
         }
 
         // Interpolation model, win-fg only. The layer rebuilds its framegen context when the
@@ -1551,6 +1570,60 @@ private fun FrameGenSection(state: XServerDrawerState) {
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 4.dp, top = 2.dp)
         )
+    }
+}
+
+// Hz the display runs at while native frame gen presents: what the activity asked the display for
+// (manual lock or panel max), else the panel's top mode, else the live reading. 0 = unknown.
+private fun fgScreenHz(target: Int, supported: List<Int>, current: Int): Int =
+    if (target > 0) target else supported.maxOrNull() ?: current
+
+// Shown while LSFG Native or Win-FG Native is generating and the game's real frames (the FPS cap)
+// times the multiplier is more than the display can show. Both present one frame per refresh under
+// FIFO, so the surplus queues: the compositor falls behind the game and real frames arrive late or
+// get dropped - stutter and input lag, not extra smoothness. Draws nothing when the math fits or
+// the display rate is unknown. canChangeMult = false for Win-FG Native, which is fixed at 2x.
+@Composable
+private fun FgOverLimitWarning(
+    cap: Int, mult: Int, screenHz: Int, canChangeMult: Boolean, onSetCap: (Int) -> Unit
+) {
+    if (cap <= 0 || mult < 2 || screenHz <= 0 || cap * mult <= screenHz) return
+    val error = MaterialTheme.colorScheme.error
+    val fixCap = maxOf(10, screenHz / mult)
+    val fitMult = if (canChangeMult) (mult - 1 downTo 2).firstOrNull { cap * it <= screenHz } else null
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            "⚠ $cap × $mult = ${cap * mult}: more than your $screenHz Hz screen can show. " +
+                "The extra frames pile up, so expect stutter and laggy controls.",
+            color = error,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, error, RoundedCornerShape(8.dp))
+                    .clickable { onSetCap(fixCap) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text("Set Max FPS to $fixCap", color = error, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            if (fitMult != null) {
+                Text(
+                    "or pick ${fitMult}×",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    fontSize = 11.sp
+                )
+            }
+        }
     }
 }
 
@@ -2584,8 +2657,9 @@ private fun HudContent(state: XServerDrawerState) {
 
     SectionHeader("HUD")
 
-    // ── FPS Limiter state (standalone host-side cap; output-cap = on-screen fps, independent of
-    //    frame gen). Declared here; its UI lives in the Performance accordion section below. ──
+    // ── FPS Limiter state (caps the game's own frames; with LSFG Native / Win-FG Native the screen
+    //    gets cap x multiplier, and it steps aside while lsfg-vk multiplies). Declared here; its UI
+    //    lives in the Performance accordion section below. ──
     val fpsLimiterEnabled by state.fpsLimiterEnabled.collectAsState()
     val initFpsLimit by state.fpsLimit.collectAsState()
     var limiterOn by remember(fpsLimiterEnabled) { mutableStateOf(fpsLimiterEnabled) }
@@ -2764,11 +2838,17 @@ private fun HudContent(state: XServerDrawerState) {
         Text("FPS Limiter", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
         val nativeFgLocks by state.nativeFgLocks.collectAsState()
-        // Locked ON while LSFG Native generates - see XServerDrawerState.nativeFgLocks.
+        val fgEngine by state.frameGenEngine.collectAsState()
+        val fgEnabled by state.frameGenEnabled.collectAsState()
+        val fgMult by state.frameGenMultiplier.collectAsState()
+        val displayTargetHz by state.displayTargetHz.collectAsState()
+        // nativeFgLocks covers both compositor engines; name the one actually running.
+        val nativeFgName = if (fgEngine == "lsfg-native") "LSFG Native" else "Win-FG Native"
+        // Locked ON while native frame gen generates - see XServerDrawerState.nativeFgLocks.
         ToggleRow("Limit FPS", limiterOn, enabled = !nativeFgLocks) { limiterOn = it; applyLimiter() }
         if (nativeFgLocks) {
             Text(
-                "Locked on while LSFG Native is generating",
+                "Locked on while $nativeFgName is generating",
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 fontSize = 10.sp
             )
@@ -2788,12 +2868,33 @@ private fun HudContent(state: XServerDrawerState) {
                 },
                 perRow = 4
             )
+            // What the cap means depends on where the extra frames are made. LSFG Native and
+            // Win-FG Native generate in our compositor ON TOP of the capped game, so the screen
+            // gets cap x multiplier. lsfg-vk paces itself while multiplying, so the cap steps
+            // aside (XServerDisplayActivity.lsfgGovernsFps).
+            val lsfgVkMultiplying = fgEngine == "lsfg" && fgEnabled && fgMult >= 2
             Text(
-                "Caps on-screen FPS. Works with any frame-gen engine or none.",
+                when {
+                    nativeFgLocks ->
+                        "Caps the game's real frames. $nativeFgName adds its own on top, so you'll see up to " +
+                            "$limitVal × $fgMult = ${limitVal * fgMult}."
+                    lsfgVkMultiplying ->
+                        "Not applied while lsfg-vk is multiplying: it paces frames itself."
+                    else ->
+                        "Caps the game's frame rate. With LSFG Native or Win-FG Native on, you'll see Max FPS × the multiplier."
+                },
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)
             )
+            if (nativeFgLocks) {
+                // limitVal tracks the slider while dragging, so the warning updates live.
+                FgOverLimitWarning(
+                    cap = limitVal, mult = fgMult,
+                    screenHz = fgScreenHz(displayTargetHz, supportedRefreshRates, currentRefreshRate),
+                    canChangeMult = fgEngine == "lsfg-native"
+                ) { fix -> limitVal = fix; applyLimiter() }
+            }
         }
 
         Spacer(Modifier.height(14.dp))

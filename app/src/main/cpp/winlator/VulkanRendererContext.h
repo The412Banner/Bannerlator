@@ -308,6 +308,10 @@ public:
     //   [4] thermal status, -1 when the device gives no signal
     //   [5] GPU milliseconds the chain spends per generated frame, -1 unknown
     void frameGenStats(float out[6]) const;
+    // Why the selected native frame-gen engine cannot run here, for the UI:
+    // -1 not known yet (caps not probed), 0 fine, 1 this driver lacks what the
+    // engine needs (lsfgCaps().reason says which gate), 2 the engine failed to start.
+    int frameGenProblem() const;
     // Path to the SPIR-V cache built from the user's Lossless.dll. Setting it
     // drops any existing engine so the next armed frame rebuilds from it.
     void setLsfgCachePath(const char* path);

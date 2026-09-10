@@ -205,6 +205,15 @@ object XServerDrawerState {
     private val _fgAutoPerGame = MutableStateFlow(false)
     val fgAutoPerGame: StateFlow<Boolean> = _fgAutoPerGame
 
+    // Why the selected native frame-gen engine (LSFG Native / Win-FG Native) cannot run in this
+    // session, in plain words with the fix; "" = nothing wrong (or not known yet). The drawer
+    // greys the multiplier buttons out while it is set. The detail line is the renderer's own
+    // technical verdict (e.g. "device Vulkan version below 1.3"), for support threads.
+    private val _fgUnavailableReason = MutableStateFlow("")
+    val fgUnavailableReason: StateFlow<String> = _fgUnavailableReason
+    private val _fgUnavailableDetail = MutableStateFlow("")
+    val fgUnavailableDetail: StateFlow<String> = _fgUnavailableDetail
+
     // Current fullscreen aspect-ratio mode (#71): Container.FULLSCREEN_OFF/FIT/STRETCH. Shown next
     // to the in-game "Toggle Fullscreen" row so the user sees which mode the cycle landed on.
     private val _fullscreenMode = MutableStateFlow(0)
@@ -485,6 +494,10 @@ object XServerDrawerState {
     fun setDisplayTargetHz(v: Int)         { _displayTargetHz.value = v }
     fun setFgAutoTurnedOn(v: Boolean)      { _fgAutoTurnedOn.value = v }
     fun setFgAutoPerGame(v: Boolean)       { _fgAutoPerGame.value = v }
+    fun setFgUnavailable(reason: String, detail: String) {
+        _fgUnavailableReason.value = reason
+        _fgUnavailableDetail.value = detail
+    }
 
     fun setFpsExpanded(v: Boolean) { _fpsExpanded.value = v }
     fun setFpsConfig(v: String) { _fpsConfig.value = v }
@@ -605,6 +618,8 @@ object XServerDrawerState {
         _displayTargetHz.value = 0
         _fgAutoTurnedOn.value = false
         _fgAutoPerGame.value = false
+        _fgUnavailableReason.value = ""
+        _fgUnavailableDetail.value = ""
         _cursorExpanded.value = false
         _swipeButtons.value = true
         _swipeDpad.value = false

@@ -964,6 +964,18 @@ bool VulkanRendererContext::fgCapsOk() const {
     return lsfgCaps_.supported();
 }
 
+int VulkanRendererContext::frameGenProblem() const {
+    // explain() replaces "not probed" once the swapchain format has been checked;
+    // before that the caps are incomplete, so "unsupported" would be a guess.
+    if (std::strcmp(lsfgCaps_.reason, "not probed") == 0) return -1;
+    if (!fgCapsOk()) return 1;
+    // Read without renderMutex, like frameGenStats: a stale answer here only
+    // delays the notice by one poll.
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 1)
+        return (winfgEngineTried_ && !winfgEngine_) ? 2 : 0;
+    return (lsfgEngineTried_ && !lsfgEngine_) ? 2 : 0;
+}
+
 void VulkanRendererContext::setFrameGenEngine(int kind) {
     std::lock_guard<std::mutex> lk(renderMutex);
     const int was = fgEngineKind_.exchange(kind, std::memory_order_relaxed);

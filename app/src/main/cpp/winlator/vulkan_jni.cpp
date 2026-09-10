@@ -381,6 +381,14 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgCapsReason(JNIEn
     return env->NewStringUTF(r->lsfgCaps().reason);
 }
 
+// Why native frame gen cannot run: -1 unknown yet, 0 fine, 1 driver lacks what the
+// selected engine needs, 2 the engine failed to start. See frameGenProblem().
+extern "C" JNIEXPORT jint JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeFrameGenProblem(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jint)r->frameGenProblem() : (jint)-1;
+}
+
 // --- Native LSFG frame generation: arming and tuning ------------------------
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenArmed(

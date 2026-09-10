@@ -1659,6 +1659,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean fgOn   = s.getFrameGenEnabled().getValue();
             int   mult     = fgOn ? s.getFrameGenMultiplier().getValue() : 0;
             float flow     = s.getFrameGenFlowScale().getValue();
+            // Native frame gen that can't run here stays Off, with the reason. The drawer greys
+            // the buttons out too; this covers a tap that landed before the notice did.
+            String fgProblem = s.getFgUnavailableReason().getValue();
+            if (mult >= 2 && !fgProblem.isEmpty() && nativeFrameGenEngine()) {
+                s.setFrameGenMultiplier(0);
+                Toast.makeText(this, fgProblem, Toast.LENGTH_LONG).show();
+                return;
+            }
             // Route the single in-game multiplier/flow control to whichever engine is running this
             // session (honors a per-game engine override, else the container's engine).
             if (resolvedFrameGenEngine().equals("lsfg-native")) {
@@ -3045,6 +3053,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (!com.winlator.star.core.LsfgNative.isDllAvailable(this)) {
             Log.w("XServerDisplayActivity",
                 "LSFG Native selected but no Lossless.dll imported (Settings) - leaving frame gen off");
+            lsfgNativeStatus = com.winlator.star.core.LsfgNative.STATUS_NOT_INSTALLED;
+            refreshNativeFgAvailability(true, 0);
             return;
         }
         // Every launch starts with frame generation OFF; the user arms it from the
@@ -3058,12 +3068,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             final int status = com.winlator.star.core.LsfgNative.ensureCache(
                 XServerDisplayActivity.this, /*preferFp16=*/false);
             runOnUiThread(() -> {
+                lsfgNativeStatus = status;
                 if (status != com.winlator.star.core.LsfgNative.STATUS_OK) {
                     Log.e("XServerDisplayActivity", "LSFG Native unavailable: "
                         + com.winlator.star.core.LsfgNative.explain(status));
+                    refreshNativeFgAvailability(true, 0);
                     return;
                 }
                 applyLsfgNative(launchMult, flow);
+                refreshNativeFgAvailability(true, NATIVE_FG_CHECK_TRIES);
             });
         }, "lsfg-native-cache").start();
     }
@@ -3097,6 +3110,101 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void prepareWinFgNative() {
         applyWinFgNative(0, container.getFrameGenFlowScale(),
             resolvedFrameGenModel(), resolvedFrameGenPerfPreset());
+        refreshNativeFgAvailability(true, NATIVE_FG_CHECK_TRIES);
+    }
+
+    // ── Native frame gen that cannot run: say so instead of failing silently ──
+    // A community report (Adreno 710): LSFG Native did nothing because the Renderer
+    // Driver was the stock "System" driver (Vulkan 1.1); it needs 1.3. The chain ran
+    // in no frame, the drawer still offered 2x/3x/4x, and only logcat knew why.
+
+    // LsfgNative.ensureCache result for this session; -1 = not checked yet.
+    private int lsfgNativeStatus = -1;
+    // One launch-time notice per session; the drawer keeps showing the reason.
+    private boolean nativeFgProblemAnnounced = false;
+    // The renderer and its swapchain come up after launch prep; retry this many
+    // times, 1.5 s apart, before giving up on a verdict (the drawer then stays quiet).
+    private static final int NATIVE_FG_CHECK_TRIES = 10;
+    private final android.os.Handler fgCheckHandler =
+        new android.os.Handler(android.os.Looper.getMainLooper());
+
+    /**
+     * Why the selected native frame-gen engine cannot run in this session, in plain
+     * words with the fix. "" = nothing wrong; null = not known yet (the renderer or its
+     * swapchain is still coming up).
+     */
+    private String nativeFgProblemReason() {
+        final String engine = resolvedFrameGenEngine();
+        final boolean lsfg = "lsfg-native".equals(engine);
+        final boolean winfg = "bionic".equals(engine) && winFgNativeSession;
+        if (!lsfg && !winfg) return "";
+        final String name = lsfg ? "LSFG Native" : "Win-FG Native";
+        if (lsfg && lsfgNativeStatus > com.winlator.star.core.LsfgNative.STATUS_OK)
+            return "LSFG Native can't start: "
+                + com.winlator.star.core.LsfgNative.explain(lsfgNativeStatus) + ".";
+        if (!"vulkan".equalsIgnoreCase(resolvedRenderer()))
+            return getString(R.string.frame_generation_requires_vulkan)
+                + " Change Renderer in this container's settings, then relaunch the game.";
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+        if (vkr == null) return null;
+        switch (vkr.getFrameGenProblem()) {
+            case com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_DRIVER: {
+                String caps = vkr.getLsfgCapsReason();
+                boolean version = caps != null && caps.contains("Vulkan version below");
+                return name + " can't run on this Renderer Driver: "
+                    + (version ? "it needs Vulkan 1.3, which this driver doesn't provide."
+                               : "this driver is missing a feature it needs.")
+                    + " In this container's settings, set Renderer Driver to a Turnip driver,"
+                    + " then relaunch the game.";
+            }
+            case com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_START_FAILED:
+                return name + " couldn't start on this Renderer Driver. In this container's"
+                    + " settings, try a Turnip driver under Renderer Driver, then relaunch the game.";
+            case com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_NONE:
+                return "";
+            default:
+                return null;
+        }
+    }
+
+    /** Work out whether native frame gen can run and publish it; retries while unknown. */
+    private void refreshNativeFgAvailability(boolean announce, int triesLeft) {
+        String reason = nativeFgProblemReason();
+        if (reason == null) {
+            if (triesLeft > 0)
+                fgCheckHandler.postDelayed(() -> refreshNativeFgAvailability(announce, triesLeft - 1), 1500);
+            return;
+        }
+        setNativeFgProblem(reason, announce);
+    }
+
+    private void setNativeFgProblem(String reason, boolean announce) {
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+        String detail = (!reason.isEmpty() && vkr != null
+                && vkr.getFrameGenProblem() == com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_DRIVER)
+            ? vkr.getLsfgCapsReason() : "";
+        XServerDrawerState.INSTANCE.setFgUnavailable(reason, detail);
+        if (reason.isEmpty()) return;
+        Log.w("XServerDisplayActivity", "native frame gen unavailable: " + reason
+            + (detail.isEmpty() ? "" : " [" + detail + "]"));
+        if (announce && !nativeFgProblemAnnounced) {
+            nativeFgProblemAnnounced = true;
+            Toast.makeText(this, reason, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** The armed engine stopped or never started generating: publish why and go back to Off,
+     *  so the drawer and the HUD stop claiming frame gen is running. */
+    private void onNativeFgFailed() {
+        String reason = nativeFgProblemReason();
+        if (reason == null || reason.isEmpty())
+            reason = "Frame generation couldn't start on this device.";
+        setNativeFgProblem(reason, true);
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        s.setFrameGenMultiplier(0);
+        float flow = s.getFrameGenFlowScale().getValue();
+        if ("lsfg-native".equals(resolvedFrameGenEngine())) applyLsfgNative(0, flow);
+        else applyWinFgNative(0, flow, resolvedFrameGenModel(), resolvedFrameGenPerfPreset());
     }
 
     /** Win-FG Native is Performance-only; see applyWinFgNative. 2 = Performance. */
@@ -3148,6 +3256,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
         lsfgStatsTick = new Runnable() {
             @Override public void run() {
                 com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+                // Armed but the engine can't generate here (driver lacks what it needs, or
+                // it failed to start): stop pretending, say why, and go back to Off.
+                if (vkr != null && nativeFgLocksHeld) {
+                    int p = vkr.getFrameGenProblem();
+                    if (p == com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_DRIVER
+                            || p == com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_START_FAILED) {
+                        onNativeFgFailed();
+                        return;
+                    }
+                }
                 float[] st = (vkr != null) ? vkr.getFrameGenStats() : null;
                 if (st != null && st.length >= 5) {
                     // st[1] is what is actually planned for this frame. st[0] is

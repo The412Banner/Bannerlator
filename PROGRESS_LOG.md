@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **Main CI green after the graphics merge** (main `3ece26e8`, CI run 34508073321)
+> - ludashi / pubg / standard all green, headSha `3ece26e8` verified. Main builds as merged: SGSR HQ, texture filtering and screen size by panel aspect, each with its "?" help. No release cut; vc83 unchanged.
+> - DiRT perf A/B recorder still armed (since 13:18:57, 30-min window), waiting for the user's 2-minute drive.
+
 ## 2026-09-10 — 🅿️ **PARKED: even frame pacing via `VK_GOOGLE_display_timing`** (research only — nothing built)
 > The user asked what the extension is and whether it's worth the latency, then parked it. Recorded so it can be picked up cold.
 > - **The problem:** LSFG Native / Win-FG Native present each real frame's burst on consecutive vblanks, which is uneven on non-exact fits (30×2 on 120 Hz shows 1,3, not 2,2). That is why the screen fit never picks a multiple.

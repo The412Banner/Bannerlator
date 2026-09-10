@@ -4659,6 +4659,8 @@ private fun configSummaryLines(config: ShortcutConfig): List<Pair<String, String
     config.dxwrapperConfig["version"]?.takeIf { it.isNotBlank() }?.let { out.add("DXVK" to it) }
     config.dxwrapperConfig["vkd3dVersion"]?.takeIf { it.isNotBlank() }?.let { out.add("VKD3D" to it) }
     config.dxwrapperConfig["async"]?.let { out.add("DXVK async" to if (it == "1") "on" else "off") }
+    config.dxwrapperConfig["anisotropy"]?.takeIf { it.isNotBlank() && it != "0" }?.let { out.add("Anisotropic filtering" to "${it}x") }
+    config.dxwrapperConfig["lodBias"]?.takeIf { it.isNotBlank() && it != "0" }?.let { out.add("Texture sharpness" to it) }
     config.graphicsDriverConfig["version"]?.takeIf { it.isNotBlank() }?.let { out.add("Turnip driver" to it) }
     config.scalars["dxwrapper"]?.takeIf { it.isNotBlank() }?.let { out.add("DX wrapper" to it) }
     config.scalars["emulator"]?.let { emu ->

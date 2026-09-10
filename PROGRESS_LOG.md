@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🧵 **Per-game texture filtering (anisotropic filtering + texture sharpness)** (branch `feat/texture-filtering` off main `5a4d6d53`, worktree `bl-gfx-upgrades`, commit `035d7165`, CI run 34499009543)
+> Item 2 of 3 from the upstream graphics survey (StevenMXZ's VkGHL layer does this at the Vulkan layer; we do it in the DXVK config we already generate).
+> - DXVK/VEGAS config sheet (shared by container + game shortcut) gains **TEXTURE FILTERING**: *Anisotropic filtering* Game default/2x/4x/8x/16x → `d3d9/d3d11.samplerAnisotropy`; *Texture sharpness* Game default/Auto/-0.25/-0.5/-0.75/-1.0 → `d3d9/d3d11.samplerLodBias` (added to the game's own bias).
+> - **Auto** = log2(render / output) for the spatial scaling mode the game **starts** with (3/4/5/7, and 8 SGSR HQ once that merges), aspect-fit vs the real panel (`getRealMetrics`), clamped ≥ -2. AMD FSR 1 guidance: 720p on 1080p → -0.58. 0 when not upscaling or supersampling. DXVK reads it at device creation, so a drawer mode change applies next launch.
+> - Stored as `dxwrapperConfig` keys `anisotropy` / `lodBias` → a shortcut overrides the container, and community-config export carries them. Emitted via `DXVK_CONFIG`: appended to the stock options, or **alone** when a custom DXVK config file is selected (DXVK applies DXVK_CONFIG per key over the file). Nothing emitted at Game default. `Locale.US` formatting. Release-visible logcat marker: `Texture filtering: [...]` (tag DXVKConfigDialog). Import summary lists the two keys.
+> - Logic checked off-device: the real `autoLodBias`/`textureFilteringOptions` compiled standalone with `javac`, 16/16 cases pass (720p→1080p -0.58, 2400x1080 panel -0.58, same res 0, supersampled 0, portrait panel, clamp -2, German locale keeps `.`).
+> - ⏳ CI running; NOT device-proven. Test: a DX11 game with a slanted floor → 16x AF vs default; SGSR/FSR + Auto → look for the `Texture filtering:` line, then compare texture detail.
+
 ## 2026-09-10 — 🔍 **"SGSR HQ" scaling mode** (branch `feat/sgsr-quality-mode` off main `6aed4f4c`, worktree `bl-gfx-upgrades`, commit `7e71cb8f`, CI run 34498197469)
 > Item 1 of 3 from the upstream graphics survey (SGSR HQ, texture filtering control, screen size by panel aspect), each on its own branch off main.
 > - New scaling mode **8 "SGSR HQ"**, placed next to SGSR in the drawer picker, on **both** the Vulkan compositor and the GL EffectComposer. Port of Qualcomm's `sgsr1_shader_mobile_edge_direction.frag` (SnapdragonGameStudios/snapdragon-gsr): same single pass / inputs / Sharpness slider as SGSR; Lanczos weights stretched along the local edge direction + the reference's retuned contrast term `(10.14185/sum)^2`. Qualcomm: "minimal cost increase". No motion vectors.

@@ -50,7 +50,28 @@ public final class SteamControllerBackend {
     private static final int F_RPAD_DOWN = 6, F_RPAD_X = 7, F_RPAD_Y = 8, F_STRIDE = 12;
     private static final int B_A = 0, B_B = 1, B_X = 2, B_Y = 3, B_LB = 4, B_RB = 5, B_BACK = 6,
             B_START = 7, B_LSTICK = 8, B_RSTICK = 9, B_GUIDE = 10, B_DPAD_UP = 11, B_DPAD_DOWN = 12,
-            B_DPAD_LEFT = 13, B_DPAD_RIGHT = 14, B_RPAD_CLICK = 20;
+            B_DPAD_LEFT = 13, B_DPAD_RIGHT = 14, B_R4 = 16, B_L4 = 17, B_R5 = 18, B_L5 = 19,
+            B_RPAD_CLICK = 20;
+
+    /** Back buttons in settings order: L4 (upper left), L5 (lower left), R4 (upper right), R5 (lower right). */
+    public static final int PADDLE_COUNT = 4;
+    private static final int[] PADDLE_BITS = { B_L4, B_L5, B_R4, B_R5 };
+
+    // Face/shoulder/menu/stick-click bits -> the Android keycodes the profile bindings are keyed on.
+    // D-pad, sticks and triggers reach the bindings through the pad state instead (hat / axis codes).
+    private static final int[][] BUTTON_KEYCODES = {
+            { B_A, android.view.KeyEvent.KEYCODE_BUTTON_A },
+            { B_B, android.view.KeyEvent.KEYCODE_BUTTON_B },
+            { B_X, android.view.KeyEvent.KEYCODE_BUTTON_X },
+            { B_Y, android.view.KeyEvent.KEYCODE_BUTTON_Y },
+            { B_LB, android.view.KeyEvent.KEYCODE_BUTTON_L1 },
+            { B_RB, android.view.KeyEvent.KEYCODE_BUTTON_R1 },
+            { B_BACK, android.view.KeyEvent.KEYCODE_BUTTON_SELECT },
+            { B_START, android.view.KeyEvent.KEYCODE_BUTTON_START },
+            { B_LSTICK, android.view.KeyEvent.KEYCODE_BUTTON_THUMBL },
+            { B_RSTICK, android.view.KeyEvent.KEYCODE_BUTTON_THUMBR },
+            { B_GUIDE, android.view.KeyEvent.KEYCODE_BUTTON_MODE },
+    };
 
     /** Main-thread callbacks. */
     public interface Listener {
@@ -58,8 +79,13 @@ public final class SteamControllerBackend {
 
         void onSteamPadDisconnected(ExternalController pad);
 
-        /** pad.state changed. guideDown is the Steam button, which GamepadState has no bit for. */
-        void onSteamPadState(ExternalController pad, boolean guideDown);
+        /** pad.state changed (back buttons mapped to gamepad buttons already merged in). guideDown is
+         *  the Steam button, which GamepadState has no bit for. pressedKeyCodes are the held buttons as
+         *  Android keycodes, for the profile bindings. */
+        void onSteamPadState(ExternalController pad, boolean guideDown, int[] pressedKeyCodes);
+
+        /** A back button mapped to a keyboard key or mouse button went down / up. */
+        void onSteamPadBinding(Binding binding, boolean down);
 
         /** Right trackpad moved while touched (only when trackpad-as-mouse is on). */
         void onSteamPadMouseMove(int dx, int dy);
@@ -70,10 +96,13 @@ public final class SteamControllerBackend {
 
     private static boolean librariesLoaded;
     private static boolean jniReady; // SDL.setupJNI() re-creates SDL's mutexes, so once per process
+    // SDL is one per process: the game session and the settings test dialog can't both own it.
+    private static SteamControllerBackend running_;
 
     private final Activity activity;
     private final Listener listener;
     private final boolean trackpadMouse;
+    private final Binding[] paddleBindings = new Binding[PADDLE_COUNT];
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private HIDDeviceManager hidManager;
@@ -102,16 +131,23 @@ public final class SteamControllerBackend {
         boolean padDown;
         float padX, padY, accX, accY;
         boolean clickDown;
+        final boolean[] paddleDown = new boolean[PADDLE_COUNT];
 
         Pad(ExternalController controller) {
             this.controller = controller;
         }
     }
 
-    public SteamControllerBackend(Activity activity, boolean trackpadMouse, Listener listener) {
+    /** paddles: what each back button does (L4, L5, R4, R5; null / NONE = nothing). Gamepad targets are
+     *  merged into the pad state; keyboard / mouse targets are reported through onSteamPadBinding. */
+    public SteamControllerBackend(Activity activity, boolean trackpadMouse, Binding[] paddles, Listener listener) {
         this.activity = activity;
         this.trackpadMouse = trackpadMouse;
         this.listener = listener;
+        for (int i = 0; i < PADDLE_COUNT; i++) {
+            Binding b = paddles != null && i < paddles.length ? paddles[i] : null;
+            paddleBindings[i] = (b == null || b == Binding.SHOW_ANDROID_KEYBOARD) ? Binding.NONE : b;
+        }
     }
 
     /** True when SDL may use Bluetooth: BLUETOOTH_CONNECT on Android 12+, BLUETOOTH below. */
@@ -125,6 +161,10 @@ public final class SteamControllerBackend {
     public boolean start() {
         if (running)
             return true;
+        if (running_ != null && running_ != this) {
+            Log.i(TAG, "Taking SDL over from the previous owner");
+            running_.stop();
+        }
         if (!loadLibraries())
             return false;
         try {
@@ -143,6 +183,7 @@ public final class SteamControllerBackend {
         // requestPermission). Never prompt in-game: run USB-only instead, the setting asks for it.
         final boolean bluetooth = hasBluetoothPermission(activity);
         running = true;
+        running_ = this;
         pollThread = new Thread(() -> pollLoop(bluetooth), "SteamCtrlPoll");
         pollThread.start();
         Log.i(TAG, "Started (bluetooth " + bluetooth + ", trackpad mouse " + trackpadMouse + ")");
@@ -162,6 +203,8 @@ public final class SteamControllerBackend {
         if (pollThread.isAlive())
             Log.w(TAG, "Poll thread still shutting SDL down after 1.5 s");
         pollThread = null;
+        if (running_ == this)
+            running_ = null;
         mainHandler.removeCallbacks(applyFrame);
         pads.clear();
         if (hidManager != null) {
@@ -276,7 +319,7 @@ public final class SteamControllerBackend {
             if (!present) {
                 Pad pad = pads.valueAt(i);
                 pads.removeAt(i);
-                releaseTrackpadButton(pad);
+                releaseHeld(pad);
                 Log.i(TAG, "Disconnected: " + pad.controller.getName() + " (" + pad.controller.getId() + ")");
                 listener.onSteamPadDisconnected(pad.controller);
             }
@@ -317,33 +360,87 @@ public final class SteamControllerBackend {
         }
         if (changed) {
             pad.buttons = buttons;
+            // Back buttons: gamepad targets act as that button (so profile bindings see them too);
+            // keyboard / mouse targets fire on their own edges.
+            int effective = buttons;
+            float lt = floats[base + F_LT];
+            float rt = floats[base + F_RT];
+            for (int i = 0; i < PADDLE_COUNT; i++) {
+                boolean down = bit(buttons, PADDLE_BITS[i]);
+                Binding target = paddleBindings[i];
+                if (target == Binding.NONE) {
+                    pad.paddleDown[i] = down;
+                    continue;
+                }
+                if (target.isGamepad()) {
+                    if (down) {
+                        if (target == Binding.GAMEPAD_BUTTON_L2) lt = 1f;
+                        else if (target == Binding.GAMEPAD_BUTTON_R2) rt = 1f;
+                        else effective |= gamepadTargetBits(target);
+                    }
+                } else if (down != pad.paddleDown[i]) {
+                    listener.onSteamPadBinding(target, down);
+                }
+                pad.paddleDown[i] = down;
+            }
+
             GamepadState s = pad.controller.state;
             s.thumbLX = deadZone(floats[base + F_LX]);
             s.thumbLY = deadZone(floats[base + F_LY]);
             s.thumbRX = deadZone(floats[base + F_RX]);
             s.thumbRY = deadZone(floats[base + F_RY]);
-            s.triggerL = floats[base + F_LT];
-            s.triggerR = floats[base + F_RT];
-            s.setPressed(ExternalController.IDX_BUTTON_A, bit(buttons, B_A));
-            s.setPressed(ExternalController.IDX_BUTTON_B, bit(buttons, B_B));
-            s.setPressed(ExternalController.IDX_BUTTON_X, bit(buttons, B_X));
-            s.setPressed(ExternalController.IDX_BUTTON_Y, bit(buttons, B_Y));
-            s.setPressed(ExternalController.IDX_BUTTON_L1, bit(buttons, B_LB));
-            s.setPressed(ExternalController.IDX_BUTTON_R1, bit(buttons, B_RB));
-            s.setPressed(ExternalController.IDX_BUTTON_SELECT, bit(buttons, B_BACK));
-            s.setPressed(ExternalController.IDX_BUTTON_START, bit(buttons, B_START));
-            s.setPressed(ExternalController.IDX_BUTTON_L3, bit(buttons, B_LSTICK));
-            s.setPressed(ExternalController.IDX_BUTTON_R3, bit(buttons, B_RSTICK));
+            s.triggerL = lt;
+            s.triggerR = rt;
+            s.setPressed(ExternalController.IDX_BUTTON_A, bit(effective, B_A));
+            s.setPressed(ExternalController.IDX_BUTTON_B, bit(effective, B_B));
+            s.setPressed(ExternalController.IDX_BUTTON_X, bit(effective, B_X));
+            s.setPressed(ExternalController.IDX_BUTTON_Y, bit(effective, B_Y));
+            s.setPressed(ExternalController.IDX_BUTTON_L1, bit(effective, B_LB));
+            s.setPressed(ExternalController.IDX_BUTTON_R1, bit(effective, B_RB));
+            s.setPressed(ExternalController.IDX_BUTTON_SELECT, bit(effective, B_BACK));
+            s.setPressed(ExternalController.IDX_BUTTON_START, bit(effective, B_START));
+            s.setPressed(ExternalController.IDX_BUTTON_L3, bit(effective, B_LSTICK));
+            s.setPressed(ExternalController.IDX_BUTTON_R3, bit(effective, B_RSTICK));
             s.setPressed(ExternalController.IDX_BUTTON_L2, s.triggerL >= TRIGGER_FULL);
             s.setPressed(ExternalController.IDX_BUTTON_R2, s.triggerR >= TRIGGER_FULL);
-            s.dpad[0] = bit(buttons, B_DPAD_UP);
-            s.dpad[1] = bit(buttons, B_DPAD_RIGHT);
-            s.dpad[2] = bit(buttons, B_DPAD_DOWN);
-            s.dpad[3] = bit(buttons, B_DPAD_LEFT);
-            listener.onSteamPadState(pad.controller, bit(buttons, B_GUIDE));
+            s.dpad[0] = bit(effective, B_DPAD_UP);
+            s.dpad[1] = bit(effective, B_DPAD_RIGHT);
+            s.dpad[2] = bit(effective, B_DPAD_DOWN);
+            s.dpad[3] = bit(effective, B_DPAD_LEFT);
+            listener.onSteamPadState(pad.controller, bit(effective, B_GUIDE), pressedKeyCodes(effective));
         }
         if (trackpadMouse)
             applyTrackpadMouse(pad, buttons, floats, base);
+    }
+
+    /** Button bits a back-button gamepad target presses (L2/R2 are handled as full trigger pulls). */
+    private static int gamepadTargetBits(Binding target) {
+        switch (target) {
+            case GAMEPAD_BUTTON_A: return 1 << B_A;
+            case GAMEPAD_BUTTON_B: return 1 << B_B;
+            case GAMEPAD_BUTTON_X: return 1 << B_X;
+            case GAMEPAD_BUTTON_Y: return 1 << B_Y;
+            case GAMEPAD_BUTTON_L1: return 1 << B_LB;
+            case GAMEPAD_BUTTON_R1: return 1 << B_RB;
+            case GAMEPAD_BUTTON_SELECT: return 1 << B_BACK;
+            case GAMEPAD_BUTTON_START: return 1 << B_START;
+            case GAMEPAD_BUTTON_L3: return 1 << B_LSTICK;
+            case GAMEPAD_BUTTON_R3: return 1 << B_RSTICK;
+            case GAMEPAD_DPAD_UP: return 1 << B_DPAD_UP;
+            case GAMEPAD_DPAD_DOWN: return 1 << B_DPAD_DOWN;
+            case GAMEPAD_DPAD_LEFT: return 1 << B_DPAD_LEFT;
+            case GAMEPAD_DPAD_RIGHT: return 1 << B_DPAD_RIGHT;
+            default: return 0; // stick directions aren't offered for back buttons
+        }
+    }
+
+    private static int[] pressedKeyCodes(int buttons) {
+        int n = 0;
+        for (int[] m : BUTTON_KEYCODES) if (bit(buttons, m[0])) n++;
+        int[] out = new int[n];
+        n = 0;
+        for (int[] m : BUTTON_KEYCODES) if (bit(buttons, m[0])) out[n++] = m[1];
+        return out;
     }
 
     private void applyTrackpadMouse(Pad pad, int buttons, float[] floats, int base) {
@@ -375,10 +472,17 @@ public final class SteamControllerBackend {
         }
     }
 
-    private void releaseTrackpadButton(Pad pad) {
+    /** A pad went away mid-press: release its trackpad click and any key / mouse back button. */
+    private void releaseHeld(Pad pad) {
         if (pad.clickDown) {
             pad.clickDown = false;
             listener.onSteamPadMouseButton(false);
+        }
+        for (int i = 0; i < PADDLE_COUNT; i++) {
+            Binding target = paddleBindings[i];
+            if (pad.paddleDown[i] && target != Binding.NONE && !target.isGamepad())
+                listener.onSteamPadBinding(target, false);
+            pad.paddleDown[i] = false;
         }
     }
 

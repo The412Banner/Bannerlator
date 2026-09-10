@@ -1204,6 +1204,21 @@ public class WinHandler {
         if (controller == null)
             return;
 
+        // Steam Controller (SDL): no profile lookup. The raw pad object sends its own state; the
+        // bindings view InputControlsView runs for it (same synthetic deviceId, see onSteamPadState)
+        // sends its remapped output.
+        int deviceId = controller.getDeviceId();
+        if (deviceId <= SteamControllerBackend.DEVICE_ID_BASE) {
+            ExternalController sdlPad = sdlPads.get(deviceId);
+            if (sdlPad == null && !deviceToSlot.containsKey(deviceId))
+                return; // gone and already released — never claim a slot for it
+            gyroTargetController = controller;
+            int slot = assignSlot(deviceId);
+            writeSlotState(slot, deviceId,
+                    getOutputGamepadState(controller == sdlPad ? controller.state : controller.remappedState));
+            return;
+        }
+
         // Remember the live controller so the gyro can re-push through it between input events.
         gyroTargetController = controller;
 

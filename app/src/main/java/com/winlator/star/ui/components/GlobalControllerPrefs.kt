@@ -3,6 +3,7 @@ package com.winlator.star.ui.components
 import android.content.Context
 import androidx.preference.PreferenceManager
 import com.winlator.star.container.Container
+import com.winlator.star.inputcontrols.Binding
 
 // ───── Global (app-drawer) Player-Slots defaults ─────
 // A single global default for the controller Player-Slots pins and the On-screen priority mode, edited
@@ -89,6 +90,28 @@ object GlobalControllerPrefs {
         PreferenceManager.getDefaultSharedPreferences(context)
             .edit()
             .putBoolean(KEY_STEAM_TRACKPAD_MOUSE, enabled)
+            .apply()
+    }
+
+    // Back buttons, in SteamControllerBackend's order: L4 (upper left), L5 (lower left), R4 (upper
+    // right), R5 (lower right). Stored as Binding enum names; missing / unknown = NONE (does nothing).
+    private val KEY_STEAM_PADDLES = arrayOf(
+        "steam_controller_paddle_l4", "steam_controller_paddle_l5",
+        "steam_controller_paddle_r4", "steam_controller_paddle_r5",
+    )
+
+    @JvmStatic
+    fun getSteamPaddleBindings(context: Context): Array<Binding> {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        return Array(KEY_STEAM_PADDLES.size) { i -> Binding.fromString(prefs.getString(KEY_STEAM_PADDLES[i], null)) }
+    }
+
+    @JvmStatic
+    fun setSteamPaddleBinding(context: Context, index: Int, binding: Binding) {
+        if (index !in KEY_STEAM_PADDLES.indices) return
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putString(KEY_STEAM_PADDLES[index], binding.name)
             .apply()
     }
 }

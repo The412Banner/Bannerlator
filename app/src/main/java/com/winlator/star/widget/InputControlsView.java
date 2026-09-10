@@ -137,6 +137,11 @@ public class InputControlsView extends View {
     private final Map<Binding, Integer> activeControllerBindingCounts = new EnumMap<>(Binding.class);
     private final Map<ExternalController, ControllerPulseState> controllerPulseStates = new IdentityHashMap<>();
     private final Map<ExternalController, Integer> controllerDeviceIds = new IdentityHashMap<>();
+    // Steam Controller (SDL) bindings views, keyed by the pad's "sdl:" descriptor. Each is a private
+    // ExternalController carrying the pad's synthetic deviceId and a copy of the profile's Default / Any
+    // Controller bindings, run through the same processControllerMappings as an Android pad. Never
+    // added to the profile, so it is never saved.
+    private final Map<String, ExternalController> steamPadViews = new HashMap<>();
 
     private static class ControllerPulseState {
         SparseArray<Binding> previousSources = new SparseArray<>();
@@ -1496,6 +1501,66 @@ public class InputControlsView extends View {
             timeoutHandler.removeCallbacks(hideControlsRunnable);
             timeoutHandler.postDelayed(hideControlsRunnable, 5000); 
         }
+    }
+
+    /**
+     * One Steam Controller (SDL) frame. A Steam Controller has no Android InputDevice, so the profile's
+     * per-device lookup never finds it; it uses the profile's Default / Any Controller bindings (the same
+     * template every unconfigured pad inherits). Runs them exactly like onKeyEvent / onGenericMotionEvent
+     * do for an Android pad: sticks, triggers and D-pad through the pad state, buttons as held keycodes.
+     * Returns false when there are no such bindings (or no physical profile), and the caller sends the
+     * pad's raw state instead.
+     */
+    public boolean onSteamPadState(ExternalController sdlPad, int[] pressedKeyCodes) {
+        ExternalController template = (!editMode && physicalProfile != null)
+                ? physicalProfile.getController(ControlsProfile.DEFAULT_CONTROLLER_ID) : null;
+        if (template == null || template.getControllerBindingCount() == 0) {
+            // Bindings removed mid-session: let go of anything the view still holds.
+            ExternalController stale = steamPadViews.remove(sdlPad.getId());
+            if (stale != null) releaseControllerMappings(stale);
+            return false;
+        }
+        ExternalController view = steamPadViews.get(sdlPad.getId());
+        if (view == null) {
+            view = new ExternalController();
+            view.setId(sdlPad.getId());
+            view.setName(sdlPad.getName());
+            steamPadViews.put(sdlPad.getId(), view);
+        }
+        view.setDeviceId(sdlPad.getDeviceId());
+        if (!sameBindings(view, template))
+            view.copyBindingsFrom(template); // picks up in-game binder edits live
+        view.state.copy(sdlPad.state);
+        controllerDeviceIds.put(view, sdlPad.getDeviceId());
+
+        Set<Integer> activeKeys = null;
+        for (int keyCode : pressedKeyCodes) {
+            if (view.getControllerBinding(keyCode) == null) continue;
+            if (activeKeys == null) activeKeys = new HashSet<>();
+            activeKeys.add(keyCode);
+        }
+        if (activeKeys == null) activeControllerKeys.remove(view);
+        else activeControllerKeys.put(view, activeKeys);
+
+        processControllerMappings(view);
+        return true;
+    }
+
+    /** The Steam Controller went away: release whatever its bindings were holding. */
+    public void onSteamPadDisconnected(ExternalController sdlPad) {
+        ExternalController view = steamPadViews.remove(sdlPad.getId());
+        if (view != null) releaseControllerMappings(view);
+    }
+
+    private static boolean sameBindings(ExternalController a, ExternalController b) {
+        int n = a.getControllerBindingCount();
+        if (n != b.getControllerBindingCount()) return false;
+        for (int i = 0; i < n; i++) {
+            ExternalControllerBinding x = a.getControllerBindingAt(i);
+            ExternalControllerBinding y = b.getControllerBindingAt(i);
+            if (x.getKeyCode() != y.getKeyCode() || x.getBinding() != y.getBinding()) return false;
+        }
+        return true;
     }
 
     public boolean onKeyEvent(KeyEvent event) {

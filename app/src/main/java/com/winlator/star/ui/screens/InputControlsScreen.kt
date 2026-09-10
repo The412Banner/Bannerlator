@@ -87,6 +87,7 @@ import com.winlator.star.core.AppUtils
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GyroCalibrator
 import com.winlator.star.core.HttpUtils
+import com.winlator.star.inputcontrols.Binding
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
@@ -1283,6 +1284,32 @@ private fun SteamControllerSection() {
                     com.winlator.star.ui.components.GlobalControllerPrefs.setSteamTrackpadMouseEnabled(context, trackpadMouse)
                 },
             )
+            Spacer(Modifier.height(12.dp))
+            Text("Back buttons", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "What each of the four back buttons does, in every game. To change what the other buttons " +
+                    "do, bind them on the Controller tab under Default / Any Controller (the Steam " +
+                    "Controller uses those bindings).",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
+            )
+            val paddleOptions = remember { steamPaddleOptions() }
+            val paddleLabels = remember { paddleOptions.map { it.first } }
+            var paddles by remember {
+                mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getSteamPaddleBindings(context).toList())
+            }
+            STEAM_PADDLE_NAMES.forEachIndexed { i, name ->
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(
+                    label = name,
+                    options = paddleLabels,
+                    selectedOption = paddleOptions.firstOrNull { it.second == paddles[i] }?.first ?: paddleLabels[0],
+                    onSelect = { label ->
+                        val binding = paddleOptions.firstOrNull { it.first == label }?.second ?: Binding.NONE
+                        paddles = paddles.toMutableList().also { it[i] = binding }
+                        com.winlator.star.ui.components.GlobalControllerPrefs.setSteamPaddleBinding(context, i, binding)
+                    },
+                )
+            }
             if (!bluetoothGranted) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -1295,6 +1322,32 @@ private fun SteamControllerSection() {
             }
         }
     }
+}
+
+// SteamControllerBackend's back-button order.
+private val STEAM_PADDLE_NAMES = listOf("L4 (upper left)", "L5 (lower left)", "R4 (upper right)", "R5 (lower right)")
+
+/** Targets a back button can take: nothing, a gamepad button, a mouse click, or any keyboard key. */
+private fun steamPaddleOptions(): List<Pair<String, Binding>> {
+    val out = ArrayList<Pair<String, Binding>>()
+    out += "Nothing" to Binding.NONE
+    out += listOf(
+        "A" to Binding.GAMEPAD_BUTTON_A, "B" to Binding.GAMEPAD_BUTTON_B,
+        "X" to Binding.GAMEPAD_BUTTON_X, "Y" to Binding.GAMEPAD_BUTTON_Y,
+        "LB" to Binding.GAMEPAD_BUTTON_L1, "RB" to Binding.GAMEPAD_BUTTON_R1,
+        "LT" to Binding.GAMEPAD_BUTTON_L2, "RT" to Binding.GAMEPAD_BUTTON_R2,
+        "L3 (stick click)" to Binding.GAMEPAD_BUTTON_L3, "R3 (stick click)" to Binding.GAMEPAD_BUTTON_R3,
+        "Start" to Binding.GAMEPAD_BUTTON_START, "Back" to Binding.GAMEPAD_BUTTON_SELECT,
+        "D-Pad Up" to Binding.GAMEPAD_DPAD_UP, "D-Pad Down" to Binding.GAMEPAD_DPAD_DOWN,
+        "D-Pad Left" to Binding.GAMEPAD_DPAD_LEFT, "D-Pad Right" to Binding.GAMEPAD_DPAD_RIGHT,
+        "Mouse left click" to Binding.MOUSE_LEFT_BUTTON,
+        "Mouse right click" to Binding.MOUSE_RIGHT_BUTTON,
+        "Mouse middle click" to Binding.MOUSE_MIDDLE_BUTTON,
+    )
+    for (b in Binding.keyboardBindingValues()) {
+        if (b != Binding.NONE && b != Binding.SHOW_ANDROID_KEYBOARD) out += "Key: $b" to b
+    }
+    return out
 }
 
 /**

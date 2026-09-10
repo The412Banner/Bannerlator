@@ -9383,7 +9383,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (steamControllerBackend != null || winHandler == null || isFinishing()) return;
         if (!com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(this)) return;
         boolean trackpadMouse = com.winlator.star.ui.components.GlobalControllerPrefs.isSteamTrackpadMouseEnabled(this);
-        SteamControllerBackend backend = new SteamControllerBackend(this, trackpadMouse, new SteamControllerBackend.Listener() {
+        com.winlator.star.inputcontrols.Binding[] paddles =
+                com.winlator.star.ui.components.GlobalControllerPrefs.getSteamPaddleBindings(this);
+        SteamControllerBackend backend = new SteamControllerBackend(this, trackpadMouse, paddles, new SteamControllerBackend.Listener() {
             @Override
             public void onSteamPadConnected(ExternalController pad) {
                 if (winHandler != null) winHandler.onSdlPadConnected(pad);
@@ -9391,11 +9393,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             @Override
             public void onSteamPadDisconnected(ExternalController pad) {
+                if (inputControlsView != null) inputControlsView.onSteamPadDisconnected(pad);
                 if (winHandler != null) winHandler.onSdlPadDisconnected(pad);
             }
 
             @Override
-            public void onSteamPadState(ExternalController pad, boolean guideDown) {
+            public void onSteamPadState(ExternalController pad, boolean guideDown, int[] pressedKeyCodes) {
                 if (inGameControlsEditor != null) return;
                 if (controllerTestActive) {
                     controllerTestController.state.copy(pad.state);
@@ -9403,7 +9406,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     controllerTestPublishSteamPad(pad);
                     return;
                 }
+                // The profile's Default / Any Controller bindings, like an unconfigured Android pad;
+                // raw state when there are none.
+                if (inputControlsView != null && inputControlsView.onSteamPadState(pad, pressedKeyCodes)) return;
                 if (winHandler != null) winHandler.sendGamepadState(pad);
+            }
+
+            @Override
+            public void onSteamPadBinding(com.winlator.star.inputcontrols.Binding binding, boolean down) {
+                // Back button mapped to a key / mouse button. Always deliver a release so nothing sticks.
+                if (down && (inGameControlsEditor != null || controllerTestActive)) return;
+                if (inputControlsView != null) inputControlsView.handleInputEvent(binding, down);
             }
 
             @Override

@@ -1,11 +1,13 @@
 package com.winlator.star.ui.screens
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color as AColor
 import android.net.Uri
+import android.os.Build
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -88,6 +90,7 @@ import com.winlator.star.core.HttpUtils
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
+import com.winlator.star.inputcontrols.SteamControllerBackend
 import com.winlator.star.ui.components.PlayerSlotsEditor
 import com.winlator.star.ui.controllertest.SettingsControllerTestDialog
 import com.winlator.star.util.InAppFilePicker
@@ -936,8 +939,12 @@ fun InputControlsScreen() {
                     // ── Assign: global default player slots for new containers ──
                     2 -> GlobalPlayerSlotsSection()
 
-                    // ── Device: gyroscope calibration ────────────────────
-                    3 -> GyroscopeSection()
+                    // ── Device: gyroscope calibration + Steam Controller ──
+                    3 -> {
+                        GyroscopeSection()
+                        Spacer(Modifier.height(16.dp))
+                        SteamControllerSection()
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -1217,6 +1224,75 @@ private fun GyroscopeSection() {
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                 modifier = Modifier.weight(1f)
             ) { Text("Reset", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
+        }
+    }
+}
+
+/**
+ * Device-level Steam Controller support (SDL3's HIDAPI Steam drivers, see SteamControllerBackend).
+ * Unlike the Player-Slots defaults this is LIVE: every game launch reads it. Off by default, and when
+ * off SDL is never loaded. Turning it on asks for the Nearby-devices (Bluetooth) permission on
+ * Android 12+; without it only a USB-connected controller works (the game session never prompts).
+ */
+@Composable
+private fun SteamControllerSection() {
+    val context = LocalContext.current
+    var enabled by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(context))
+    }
+    var trackpadMouse by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.isSteamTrackpadMouseEnabled(context))
+    }
+    var bluetoothGranted by remember { mutableStateOf(SteamControllerBackend.hasBluetoothPermission(context)) }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        bluetoothGranted = SteamControllerBackend.hasBluetoothPermission(context)
+    }
+    fun requestBluetooth() {
+        if (Build.VERSION.SDK_INT >= 31 && !bluetoothGranted)
+            permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
+
+    Text("Steam Controller", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    FieldSet {
+        Text(
+            "Reads the Steam Controller directly, the way Steam does, so it works as a normal gamepad in " +
+                "games. Pair it in Android's Bluetooth settings first, or connect it by USB. Other " +
+                "controllers are not affected. Takes effect the next time a game starts.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        val onOff = listOf("On", "Off")
+        LabeledDropdown(
+            label = "Steam Controller support",
+            options = onOff,
+            selectedOption = if (enabled) onOff[0] else onOff[1],
+            onSelect = {
+                enabled = it == onOff[0]
+                com.winlator.star.ui.components.GlobalControllerPrefs.setSteamControllerEnabled(context, enabled)
+                if (enabled) requestBluetooth()
+            },
+        )
+        if (enabled) {
+            Spacer(Modifier.height(8.dp))
+            LabeledDropdown(
+                label = "Right trackpad moves the mouse",
+                options = onOff,
+                selectedOption = if (trackpadMouse) onOff[0] else onOff[1],
+                onSelect = {
+                    trackpadMouse = it == onOff[0]
+                    com.winlator.star.ui.components.GlobalControllerPrefs.setSteamTrackpadMouseEnabled(context, trackpadMouse)
+                },
+            )
+            if (!bluetoothGranted) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Bluetooth permission is off, so only a USB-connected controller will work.",
+                    color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp
+                )
+                if (Build.VERSION.SDK_INT >= 31) {
+                    TextButton(onClick = { requestBluetooth() }) { Text("Allow Bluetooth") }
+                }
+            }
         }
     }
 }

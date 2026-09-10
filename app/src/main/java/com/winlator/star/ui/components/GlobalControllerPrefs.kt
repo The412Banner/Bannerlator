@@ -58,4 +58,37 @@ object GlobalControllerPrefs {
             .putBoolean(KEY_AUTO_HIDE_ON_PAD, enabled)
             .apply()
     }
+
+    // ───── Steam Controller support (device-level, LIVE — read at every game launch) ─────
+    // Unlike the seed-only keys above, these apply to every session: they describe the phone's
+    // hardware, not a container. OFF by default: when off, SDL is never loaded and the normal input
+    // path is byte-for-byte unchanged (see SteamControllerBackend).
+    private const val KEY_STEAM_CONTROLLER = "steam_controller_sdl_enabled"
+    // Right trackpad drives the mouse, click = left button (Steam's default). Only used when the
+    // Steam Controller support itself is on.
+    private const val KEY_STEAM_TRACKPAD_MOUSE = "steam_controller_trackpad_mouse"
+
+    @JvmStatic
+    fun isSteamControllerEnabled(context: Context): Boolean =
+        PreferenceManager.getDefaultSharedPreferences(context).getBoolean(KEY_STEAM_CONTROLLER, false)
+
+    @JvmStatic
+    fun setSteamControllerEnabled(context: Context, enabled: Boolean) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putBoolean(KEY_STEAM_CONTROLLER, enabled)
+            .apply()
+    }
+
+    @JvmStatic
+    fun isSteamTrackpadMouseEnabled(context: Context): Boolean =
+        PreferenceManager.getDefaultSharedPreferences(context).getBoolean(KEY_STEAM_TRACKPAD_MOUSE, true)
+
+    @JvmStatic
+    fun setSteamTrackpadMouseEnabled(context: Context, enabled: Boolean) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .edit()
+            .putBoolean(KEY_STEAM_TRACKPAD_MOUSE, enabled)
+            .apply()
+    }
 }

@@ -106,6 +106,7 @@ import com.winlator.star.core.WineUtils;
 import com.winlator.star.inputcontrols.ControlsProfile;
 import com.winlator.star.inputcontrols.ExternalController;
 import com.winlator.star.inputcontrols.InputControlsManager;
+import com.winlator.star.inputcontrols.SteamControllerBackend;
 import com.winlator.star.inputcontrols.VisualStyle;
 import com.winlator.star.math.Mathf;
 import com.winlator.star.math.XForm;
@@ -239,6 +240,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // diagnostic (the folded-in spike) to once per second.
     private boolean controllerTestActive = false;
     private final ExternalController controllerTestController = new ExternalController();
+
+    // Optional Steam Controller support (Input Controls → Device → Steam Controller). Null unless the
+    // setting is on AND SDL came up; when null the input path below is unchanged. Main-thread only.
+    private SteamControllerBackend steamControllerBackend;
     private boolean controllerTestGuideDown = false;
     private long lastControllerTestAxisLogMs = 0L;
 
@@ -4630,6 +4635,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (midiHandler != null) midiHandler.stop();
                 // Unregister sensor listener to avoid memory leaks
                 if (environment != null) environment.stopEnvironmentComponents();
+                // Release the Steam Controller (SDL closes it, so it drops back to its own
+                // keyboard/mouse mode) before WinHandler tears the slots down.
+                stopSteamControllerSupport();
                 if (winHandler != null) winHandler.stop();
                 if (wineRequestHandler != null) wineRequestHandler.stop();
                 /* Gracefully terminate all running wine processes */
@@ -6202,6 +6210,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         try { if (castSession != null) { castSession.close(); castSession = null; } } catch (Exception ignored) {}
         try { if (castHttp != null) { castHttp.stop(); castHttp = null; } } catch (Exception ignored) {}
+        stopSteamControllerSupport();
         // Controller-status toast: drop the listener + any pending debounced toast so a late callback
         // can't run against a tearing-down activity.
         if (winHandler != null) winHandler.setControllerAssignmentListener(null);
@@ -7108,6 +7117,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         // Start the WinHandler (writes events to the file)
         winHandler.start();
+        // Steam Controller support (no-op unless the setting is on) — after WinHandler so pads that
+        // are already paired seat straight into its slots.
+        runOnUiThread(this::startSteamControllerSupport);
 
         // If this session was launched to run a component installer, watch for it to finish and
         // auto-close the container (see componentInstallerExe / installerWatchRunnable).
@@ -9286,6 +9298,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             super.dispatchGenericMotionEvent(event);
             return true;
         }
+        if (isSteamControllerShadowEvent(event.getDevice())) return true;
         // Controller-test isolation: while the Players popup is open, a game-controller AXIS event
         // drives ONLY the throwaway visualizer snapshot and is swallowed here — it never reaches
         // winHandler / touchpadView / the guest. Strictly gated on controllerTestActive so the normal
@@ -9332,6 +9345,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             super.dispatchKeyEvent(event);
             return true;
         }
+        if (isSteamControllerShadowEvent(event.getDevice())) return true;
 
         // Controller-test isolation: while the Players popup is open, a game-controller BUTTON event
         // drives ONLY the throwaway visualizer snapshot and is swallowed here (before the drawer-open
@@ -9357,6 +9371,88 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     public InputControlsView getInputControlsView() {
         return inputControlsView;
+    }
+
+    // ---- Steam Controller support (SDL3 HIDAPI, see SteamControllerBackend) ----
+
+    /** Starts SDL for this session when Input Controls → Device → Steam Controller is on. Off (the
+     *  default) = never loaded. SDL pads join WinHandler's slots like hot-plugged pads; their state
+     *  follows the same routing as a physical pad (visualizer only while the Players test is open,
+     *  nothing while the in-game controls editor is open). Main thread. */
+    private void startSteamControllerSupport() {
+        if (steamControllerBackend != null || winHandler == null || isFinishing()) return;
+        if (!com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(this)) return;
+        boolean trackpadMouse = com.winlator.star.ui.components.GlobalControllerPrefs.isSteamTrackpadMouseEnabled(this);
+        SteamControllerBackend backend = new SteamControllerBackend(this, trackpadMouse, new SteamControllerBackend.Listener() {
+            @Override
+            public void onSteamPadConnected(ExternalController pad) {
+                if (winHandler != null) winHandler.onSdlPadConnected(pad);
+            }
+
+            @Override
+            public void onSteamPadDisconnected(ExternalController pad) {
+                if (winHandler != null) winHandler.onSdlPadDisconnected(pad);
+            }
+
+            @Override
+            public void onSteamPadState(ExternalController pad, boolean guideDown) {
+                if (inGameControlsEditor != null) return;
+                if (controllerTestActive) {
+                    controllerTestController.state.copy(pad.state);
+                    controllerTestGuideDown = guideDown;
+                    controllerTestPublishSteamPad(pad);
+                    return;
+                }
+                if (winHandler != null) winHandler.sendGamepadState(pad);
+            }
+
+            @Override
+            public void onSteamPadMouseMove(int dx, int dy) {
+                if (inGameControlsEditor != null || controllerTestActive) return;
+                if (winHandler != null) winHandler.steamPadMouseMove(dx, dy);
+            }
+
+            @Override
+            public void onSteamPadMouseButton(boolean down) {
+                // Always deliver a release so a click held while a panel opens can't stick.
+                if (down && (inGameControlsEditor != null || controllerTestActive)) return;
+                if (winHandler != null) winHandler.steamPadMouseButton(down);
+            }
+        });
+        if (!backend.start()) return;
+        steamControllerBackend = backend;
+        winHandler.setSteamControllerBackend(backend);
+    }
+
+    private void stopSteamControllerSupport() {
+        if (steamControllerBackend == null) return;
+        if (winHandler != null) winHandler.setSteamControllerBackend(null);
+        steamControllerBackend.stop();
+        steamControllerBackend = null;
+    }
+
+    /** While SDL owns a Steam Controller, whatever Android still reports for it (its keyboard/mouse
+     *  "lizard mode", or a HID gamepad collection) is the same physical pad: swallow it so it can't
+     *  type, click or take a second player slot. Valve devices pass through untouched otherwise. */
+    private boolean isSteamControllerShadowEvent(android.view.InputDevice device) {
+        return steamControllerBackend != null && winHandler != null && winHandler.hasSdlPads()
+                && device != null && device.getVendorId() == SteamControllerBackend.VALVE_VENDOR_ID;
+    }
+
+    /** controllerTestPublishSnapshot for a Steam Controller read through SDL (no InputDevice). */
+    private void controllerTestPublishSteamPad(ExternalController pad) {
+        com.winlator.star.inputcontrols.GamepadState st = controllerTestController.state;
+        XServerDialogState.INSTANCE.setControllerTestSnapshot(new com.winlator.star.ui.controllertest.ControllerTestSnapshot(
+                st.buttons & 0xFFFF,
+                st.dpad[0], st.dpad[1], st.dpad[2], st.dpad[3],
+                st.thumbLX, st.thumbLY, st.thumbRX, st.thumbRY,
+                st.triggerL, st.triggerR,
+                controllerTestGuideDown,
+                pad.getDeviceId(),
+                pad.getName() != null ? pad.getName() : "Steam Controller",
+                com.winlator.star.ui.controllertest.PadArt.STEAM.ordinal(),
+                -1,
+                true));
     }
 
     // ---- Controller-test panel input fork (gated on controllerTestActive; see field docs) ----

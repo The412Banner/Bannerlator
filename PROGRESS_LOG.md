@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 📐 **New containers default to a screen size that fits the panel** (branch `feat/screen-size-by-aspect` off main `0db2ed3a`, worktree `bl-gfx-upgrades`, commit `2136efc8`, CI run 34499354338)
+> Item 3 of 3 from the upstream graphics survey (same idea as GameNative #1730, 960p for the Retroid Pocket Nova).
+> - `Container.DEFAULT_SCREEN_SIZE` was 1280x720 on every device, so 4:3 and 16:10 screens were letterboxed from the first launch. New `Container.defaultScreenSizeFor(context)` (DisplayManager DEFAULT_DISPLAY real metrics, long/short ratio): **16:9 and wider → 1280x720 (unchanged, phones)**, 16:10 and 3:2 → 1280x800, 4:3 and squarer → 1280x960. Cuts halfway between the buckets (1.467, 1.689).
+> - `screen_size_entries` gains **1280x960 (4:3)** (no 4:3 option above 1024x768 before). `arrays.xml` is CRLF — preserved (365/365), parses.
+> - Only the new-container default (`ContainerDetailViewModel` seed when no saved defaults profile) and the invalid-custom-size fallback change. A saved new-container defaults profile still wins; existing containers and shortcuts untouched.
+> - Mapping checked off-device (javac on the real method): 13/13 panels (1920x1080, 2400x1080, portrait metrics, 2560x1440 → 720; 1280x960 Nova, 1240x1080 RP Classic/DMG, 2208x1840 fold inner → 960; 2560x1600, 1920x1200, 960x640, 2000x1200 → 800; no display → 720).
+> - Also: **SGSR HQ r1 CI 34498197469 ✅ green** (all three flavors, headSha `7e71cb8f` verified, ~9.5 min); pubg artifact downloading for staging.
+> - ⏳ CI running; NOT device-proven. Test: on the Pocket FIT (16:9) a new container must still say 1280x720; the new 1280x960 entry must be pickable.
+
 ## 2026-09-10 — 🧵 **Per-game texture filtering (anisotropic filtering + texture sharpness)** (branch `feat/texture-filtering` off main `5a4d6d53`, worktree `bl-gfx-upgrades`, commit `035d7165`, CI run 34499009543)
 > Item 2 of 3 from the upstream graphics survey (StevenMXZ's VkGHL layer does this at the Vulkan layer; we do it in the DXVK config we already generate).
 > - DXVK/VEGAS config sheet (shared by container + game shortcut) gains **TEXTURE FILTERING**: *Anisotropic filtering* Game default/2x/4x/8x/16x → `d3d9/d3d11.samplerAnisotropy`; *Texture sharpness* Game default/Auto/-0.25/-0.5/-0.75/-1.0 → `d3d9/d3d11.samplerLodBias` (added to the game's own bias).

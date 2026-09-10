@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **SGSR HQ r1 green + staged** (branch `feat/sgsr-quality-mode`, commit `7e71cb8f`, CI run 34498197469)
+> - CI ✅ all three flavors, headSha `7e71cb8f` verified. Staged `/sdcard/Download/Bannerlator-sgsr-hq-r1-pubg.apk` sha256 `2fdcd1aed20c…` (download and staged copy match; 1306 entries).
+> - Checked inside the APK: `libvulkan_renderer.so` contains the exact SPIR-V of both `sgsr_quality_frag.h` (new) and `sgsr_frag.h`; the dex has the "SGSR HQ" label and the GL edge-direction shader text (`classes3.dex`).
+> - NOT device-proven. Installs as `com.tencent.ig`.
+
 ## 2026-09-10 — 📐 **New containers default to a screen size that fits the panel** (branch `feat/screen-size-by-aspect` off main `0db2ed3a`, worktree `bl-gfx-upgrades`, commit `2136efc8`, CI run 34499354338)
 > Item 3 of 3 from the upstream graphics survey (same idea as GameNative #1730, 960p for the Retroid Pocket Nova).
 > - `Container.DEFAULT_SCREEN_SIZE` was 1280x720 on every device, so 4:3 and 16:10 screens were letterboxed from the first launch. New `Container.defaultScreenSizeFor(context)` (DisplayManager DEFAULT_DISPLAY real metrics, long/short ratio): **16:9 and wider → 1280x720 (unchanged, phones)**, 16:10 and 3:2 → 1280x800, 4:3 and squarer → 1280x960. Cuts halfway between the buckets (1.467, 1.689).

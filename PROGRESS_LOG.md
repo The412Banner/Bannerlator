@@ -1,8 +1,9 @@
 # Star-Compose — Progress Log
 
-## 2026-09-10 — 🎮 **Steam Controller r3 ✅ for the tester; r4 adds the "…" button (CI running)** (branch `feat/steam-controller-sdl` head `d03f6b16`, CI run 34541852626, label `steamctrl-r4`, NOT merged)
+## 2026-09-10 — 🎮 **Steam Controller r3 ✅ for the tester; r4 adds the "…" button: CI ✅ green + staged** (branch `feat/steam-controller-sdl` head `d03f6b16`, CI run 34541852626, label `steamctrl-r4`, NOT merged)
 > - Tester on r3 (user-relayed): "Rebind: Works. Back 4 customisation: works" (controller buttons and keyboard keys like 'A' show up in-game). His settings Test-dialog result was cut off in the screenshot. A video shows a game on an external monitor with the pad.
 > - His ask: the "…" (Quick Access) button between the trackpads. r4 makes it the 5th extra button (same targets: nothing / gamepad button / mouse click / any key); the section is now "Extra buttons". The bridge already read it (SDL MISC1).
+> - CI r4 34541852626 ✅ standard/ludashi/pubg, headSha `d03f6b16` verified. Staged `/sdcard/Download/Bannerlator-steamctrl-r4-pubg.apk` sha256 `759c527b1bf8…f461` (download and staged copy match). The tester gets `Bannerlator-steamctrl-r4-standard`. NOT device-tested.
 
 ## 2026-09-10 — ⏸️ **CHECKPOINT: Steam Controller r3 CI green + staged; paused until tonight** (branch `feat/steam-controller-sdl` head `6d3b2a73`, rebased on main `f1ed20e4`, NOT merged)
 > - CI r3 34518065712 ✅ standard/ludashi/pubg, headSha `6d3b2a73` verified. Staged `/sdcard/Download/Bannerlator-steamctrl-r3-pubg.apk` sha256 `02f546b6d507…5dd0` (download and staged copy match; `libSDL3.so` + `libsteamctrl.so` present; dex has the Back buttons UI).

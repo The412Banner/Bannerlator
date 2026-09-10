@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **Combined gfx build r1 CI green** (branch `combined/gfx-upgrades`, head `a9853720`, CI run 34502407175)
+> - CI ✅ ludashi/standard/pubg, headSha `a9853720` verified. Artifact `Bannerlator-gfx3-r1-pubg` (504 MB) downloading for staging (the SGSR-only r1 download was deleted from the scratchpad; that APK stays staged on the device).
+
 ## 2026-09-10 — ✅ **SGSR HQ r1 device session closed** (DiRT Showdown)
 > - Watcher final: one session 12:11:43 → 12:31:39 (~20 min), **one pid throughout** (no crash across 5 mode switches), shortcut `scalingMode=8` saved at exit. Relaunch-persistence step skipped (the user moved to the combined build); the stored value is correct and `resolveScalingMode` accepts 0-8, but a relaunch was not observed.
 > - Verdict: SGSR HQ is DEVICE-PROVEN to run on the Vulkan path (Adreno 750) with no instability; the visual gain is real but subtle (see the zoom comparison entry). GL path and cost under an uncapped load are still untested.

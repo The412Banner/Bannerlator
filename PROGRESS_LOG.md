@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🔍 **SGSR HQ device evidence (DiRT Showdown, r1 `2fdcd1ae…`)**
+> - Watcher (shortcut `scalingMode` + `showdown.exe`): 6→3→0→**8**→3→**8** while the game ran, one pid throughout (no crash across 5 switches). Mode 8 is written and read like the other modes.
+> - User screenshots 12:14:04 (SGSR) / 12:14:26 (SGSR HQ), same static scene: both 60.0 fps (capped); HUD GPU 77% vs 81% (single sample, clouds animate, so not a cost measurement).
+> - Crops of static objects (ImageMagick, 2% fuzz): 19% of car pixels, 18% of the excavator crop and 5% of the pipe crop differ, so mode 8 ran its own shader on the device (identical output would mean neither upscaler engaged). Laplacian stddev (edge energy) is 1–4% lower on HQ in all 5 regions (excavator 345.8→333.5, banner 498.7→480.8, Monster 544.9→541.8, pipe 217.1→206.7, windows 266.7→259.6). At 3x the HQ diagonals/curves (excavator arm, pipe rim) show fewer stair-steps, and lettering is about the same. Subtle at normal viewing distance.
+> - Zoom comparison saved for the user: `/sdcard/Download/sgsr-vs-sgsrhq-zoom.png`. Relaunch-persistence step still pending.
+
 ## 2026-09-10 — ✅ **Texture filtering r1 + screen size r1 CI green; SGSR HQ on device** (branches `feat/texture-filtering` `035d7165`, `feat/screen-size-by-aspect` `2136efc8`)
 > - CI 34499009543 (texture filtering) ✅ all three flavors, headSha `035d7165` verified, ~9.5 min. CI 34499354338 (screen size) ✅ all three flavors, headSha `2136efc8` verified, ~11.5 min. Artifacts `Bannerlator-texfilter-r1-pubg`, `Bannerlator-screensize-r1-pubg` (504 MB each); download held until the SGSR HQ test ends (same device, keeps FPS readings clean).
 > - SGSR HQ r1 installed by the user: installed sha `2fdcd1ae…` VERIFIED == staged. Test game DiRT Showdown (xuser-3, 1280x720 on the 1920x1080 panel, Vulkan; was on Sharpen). Watcher on `showdown.exe` + the shortcut's `scalingMode`; session 1 started 12:11:43.

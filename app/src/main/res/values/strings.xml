@@ -635,14 +635,16 @@
     ]]></string>
     <string name="help_fps_limiter"><![CDATA[
         <b>FPS Limiter</b><br /><br />
-        Loads the frame-rate limiter for this game. Turning it on just enables the feature — you set the actual cap (10–200 fps) live from the in-game FPS menu. Capping fps can cut heat and battery use, and smooth out an unstable frame rate. (Frame Generation loads the same limiter, so you only need this on its own if you want a cap without frame generation.)
+        Loads the frame-rate limiter for this game. Turning it on just enables the feature — you set the actual cap (10–200 fps) live from the in-game FPS menu. Capping fps can cut heat and battery use, and smooth out an unstable frame rate. (While LSFG Native or Win-FG Native is running, the limiter is switched on automatically — frame generation needs a steady cap — so you only need this on its own for a cap without frame generation.)
     ]]></string>
     <string name="help_frame_generation"><![CDATA[
         <b>Frame Generation</b><br /><br />
-        Inserts AI-generated in-between frames to make a game look smoother than it actually renders. Two engines:<br /><br />
-        <b>bionic-fg</b> — built in, no extra files needed.<br />
-        <b>lsfg-vk</b> — uses Lossless Scaling; needs a Lossless.dll you import in Settings.<br /><br />
-        Needs the Vulkan renderer. Still experimental — it can add visible artefacts or cost more than it gains, so try it per game. The multiplier and flow scale are tuned live from the in-game side menu.
+        Adds made-up frames between the ones your game draws, so motion looks smoother. It can\'t make the game respond faster, and it adds a little input delay. Two engines:<br /><br />
+        <b>Win-FG Native</b> — built in, nothing to buy or import. Always 2×.<br />
+        <b>LSFG Native</b> — Lossless Scaling\'s frame generation. Needs your own Lossless.dll, imported at the bottom of Settings. 2×, 3× or 4×.<br /><br />
+        Both need the Vulkan renderer. LSFG Native also needs a <b>Renderer Driver</b> with Vulkan 1.3 — on older Adreno GPUs, pick a Turnip driver there. If something is missing, the game\'s side menu says what and how to fix it.<br /><br />
+        <b>Getting it right:</b> in the game\'s side menu, set <b>Max FPS</b> to a number the game can always hold, then pick a multiplier so Max FPS × multiplier fits your screen\'s refresh rate (for example 48 × 3 = 144 Hz). Going over causes stutter and lag; the side menu warns you and offers a fix. <b>Auto (match FPS)</b> turns on while frame generation runs, fitting the screen to your numbers — turn it off there if you prefer.<br /><br />
+        Frame generation starts Off each launch; turn it on from the side menu. It\'s still new: if a game looks worse with it, leave it off for that game.
     ]]></string>
     <string name="help_audio_driver"><![CDATA[
         <b>Audio Driver</b><br /><br />

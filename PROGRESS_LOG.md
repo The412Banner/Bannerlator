@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🧩 **Combined test build: SGSR HQ + texture filtering + screen size** (branch `combined/gfx-upgrades` off main `a7c3a9f9`, head `a9853720`, CI run 34502407175)
+> - User ask: one build with all three. Three `--no-ff` merges (`d7ff0007` SGSR HQ, `e1c9d5ec` texture filtering, `a9853720` screen size), all clean (git auto-merged `XServerDisplayActivity.java`, the only file two branches touch).
+> - Verified before push: combined-vs-main file list == union of the three branches (17 files, +856/-41). 16 files byte-identical to their own branch; the shared file carries both changes (`m <= 8` clamp + 3 `autoTextureLodBias` refs). Only PROGRESS_LOG commits had landed on main since the branch bases.
+> - Test-only branch; each feature still merges to main from its own branch. The separate texfilter-r1 / screensize-r1 artifacts won't be staged (superseded by this build). Artifact `Bannerlator-gfx3-r1-pubg`.
+> - ⏳ CI running (headSha `a9853720` verified). NOT device-proven. SGSR HQ r1 test: session 1 still open, relaunch check pending.
+
 ## 2026-09-10 — 🔍 **SGSR HQ device evidence (DiRT Showdown, r1 `2fdcd1ae…`)**
 > - Watcher (shortcut `scalingMode` + `showdown.exe`): 6→3→0→**8**→3→**8** while the game ran, one pid throughout (no crash across 5 switches). Mode 8 is written and read like the other modes.
 > - User screenshots 12:14:04 (SGSR) / 12:14:26 (SGSR HQ), same static scene: both 60.0 fps (capped); HUD GPU 77% vs 81% (single sample, clouds animate, so not a cost measurement).

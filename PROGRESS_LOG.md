@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 📦 **Main build staged (artifacts only)** (main `3ece26e8`, CI run 34508073321)
+> - User: "just build the main as artifacts only for right now". The post-merge artifacts build of main was already green, and main's app/ is unchanged since `3ece26e8` (newer main commits are PROGRESS_LOG only, from this and other sessions), so its artifact is current main. No new run.
+> - Staged `/sdcard/Download/Bannerlator-main-gfx3-pubg.apk` sha256 `84ab7412290e…` (download and staged copy match; the first download hit a connection reset, retry OK). Checked: 4/4 help strings, "SGSR HQ" label. No release; vc83.
+> - DiRT perf A/B recorder stopped (user postponed the drive test; it captured 0 frames). Re-arm when the user wants to test.
+
 ## 2026-09-10 — 🎮 **Steam Controller support via SDL3 (opt-in): built, CI running** (branch `feat/steam-controller-sdl` off main `885ed124`, head `7961c4bd`, CI run 34510309898, label `steamctrl-r2`; r1 34509905239 cancelled, superseded by r2's poll-thread name/path fetch)
 > - Why: a community user's 2026 Steam Controller (BLE, PID 0x1303) is a keyboard + mouse to Android ("lizard mode"), so no XInput slot. A third-party SDL tester app reads it fine through SDL's own BLE GATT path (its "Serial 12345" is SDL's hardcoded BLE serial).
 > - What: the official SDL 3.4.16 Android AAR, vendored unmodified in `vendor/maven` (sha256 `03710fc7…e61c`), plus a JNI bridge `libsteamctrl.so` linked through prefab. Only the HIDAPI Steam drivers are enabled, and SDL opens a HID device only when an enabled driver claims it, so no other pad is touched. SDL pads enter WinHandler as synthetic deviceIds with `sdl:<path>` descriptors (pins, On-screen Yield/Share, Players list, toast, Reset Input, rumble via SDL). Android's Valve 0x28DE devices are swallowed while SDL owns a pad. Right trackpad moves the mouse (sub-toggle).

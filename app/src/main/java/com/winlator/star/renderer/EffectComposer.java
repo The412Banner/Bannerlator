@@ -24,7 +24,7 @@ public class EffectComposer {
 
     // ---- GL spatial-upscaler (SGSR / FSR) state ----------------------------------------
     // Mirrors the Vulkan "Scaling mode" picker: 0=None 1=Linear 2=Nearest 3=SGSR 4=FSR
-    // 5=FSR(Fit) 6=Sharpen(CAS) 7=NIS. Only the spatial modes (3/4/5/7) use the low-res
+    // 5=FSR(Fit) 6=Sharpen(CAS) 7=NIS 8=SGSR Quality. Only the spatial modes (3/4/5/7/8) use the low-res
     // render target below; None/Linear/Nearest drive GLRenderer.setFilterMode and Sharpen reuses
     // the existing CAS post-effect, so for those the upscaler slots stay null and render()
     // falls through to the unchanged default path. Drawer-only / session-live.
@@ -356,7 +356,7 @@ public class EffectComposer {
     // Select the scaling mode. Modes 0/1/2 (None/Linear/Nearest) and 6 (Sharpen/CAS) are
     // NOT spatial upscalers and leave the dedicated slots null (None/Linear/Nearest are
     // handled by GLRenderer.setFilterMode; Sharpen by the existing CAS post-effect). The
-    // spatial modes 3 (SGSR) / 4 (FSR) / 5 (FSR-Fit) / 7 (NIS) build their pass(es) below. Sharpness
+    // spatial modes 3 (SGSR) / 4 (FSR) / 5 (FSR-Fit) / 7 (NIS) / 8 (SGSR Quality) build their pass(es) below. Sharpness
     // is 0..1 and drives SGSR EdgeSharpness / FSR RCAS at draw time. Session-live.
     public synchronized void setUpscaler(int mode, float sharpness01) {
         this.upscalerMode = mode;
@@ -367,6 +367,9 @@ public class EffectComposer {
         switch (mode) {
             case 3: // SGSR
                 upscalePrimary = new com.winlator.star.renderer.effects.SGSREffect();
+                break;
+            case 8: // SGSR Quality (edge-direction variant) — single pass, same uniforms as SGSR.
+                upscalePrimary = new com.winlator.star.renderer.effects.SGSREffect(true);
                 break;
             case 7: // NIS (NVIDIA Image Scaling NVScaler) — single pass, like SGSR.
                 upscalePrimary = new com.winlator.star.renderer.effects.NISEffect();

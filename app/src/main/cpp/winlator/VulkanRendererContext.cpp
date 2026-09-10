@@ -25,6 +25,7 @@
 #include "window_frag.h"
 #include "upscale_vert.h"
 #include "sgsr_frag.h"
+#include "sgsr_quality_frag.h"
 #include "nis_frag.h"
 #include "fsr_easu_frag.h"
 #include "fsr_rcas_frag.h"
@@ -121,6 +122,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     destroyColorTarget(fx1Img, fx1Mem, fx1View, fx1FB, fx1DS);
     destroyColorTarget(fx2Img, fx2Mem, fx2View, fx2FB, fx2DS);
     if (sgsrPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrPipeline, nullptr);
+    if (sgsrQualityPipeline != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrQualityPipeline, nullptr);
     if (nisPipeline       != VK_NULL_HANDLE) vk_.DestroyPipeline(device, nisPipeline, nullptr);
     if (easuPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, easuPipeline, nullptr);
     if (rcasPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, rcasPipeline, nullptr);
@@ -681,6 +683,8 @@ void VulkanRendererContext::createPostPipelines() {
     // SGSR & RCAS write the swapchain -> renderPass.
     easuPipeline = createPostPipeline(fsr_easu_code, sizeof(fsr_easu_code), offscreenRenderPass);
     sgsrPipeline = createPostPipeline(sgsr_code,     sizeof(sgsr_code),     renderPass);
+    // SGSR Quality (mode 8): same single pass + push constants, edge-direction weights.
+    sgsrQualityPipeline = createPostPipeline(sgsr_quality_code, sizeof(sgsr_quality_code), renderPass);
     // NIS NVScaler is single-pass and writes the swapchain directly -> renderPass.
     nisPipeline  = createPostPipeline(nis_code,      sizeof(nis_code),      renderPass);
     rcasPipeline = createPostPipeline(fsr_rcas_code, sizeof(fsr_rcas_code), renderPass);
@@ -1912,7 +1916,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     const VkViewport fullVp{0,0,(float)swapchainExt.width,(float)swapchainExt.height,0,1};
     const VkRect2D   fullSc{{0,0},swapchainExt};
 
-    const bool hasScaling = (upFrame.mode>=3 && upFrame.mode<=7) || upFrame.mode==UPMODE_DOWNSCALE;
+    const bool hasScaling = (upFrame.mode>=3 && upFrame.mode<=8) || upFrame.mode==UPMODE_DOWNSCALE;
     // Must include EVERY chainable effect (matches planUpscaleFrame's fxOn) — else a
     // scaling mode (SGSR/FSR/Sharpen/downscale) treats the scale as final and writes
     // straight to the swapchain, skipping the effect chain (CRT/NTSC/etc. silently dropped).
@@ -1993,13 +1997,14 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
         // exact pattern the composite stage already uses (window `pipeline` -> offscreen).
         const bool scaleFinal = !fxOn;
         VkFramebuffer stFB = scaleFinal ? targetFramebuffer(imgIdx) : fx1FB;
-        if (upFrame.mode==3 || upFrame.mode==6 || upFrame.mode==7 || upFrame.mode==UPMODE_DOWNSCALE) {
+        if (upFrame.mode==3 || upFrame.mode==6 || upFrame.mode==7 || upFrame.mode==8 || upFrame.mode==UPMODE_DOWNSCALE) {
             VkPipeline   pl   = (upFrame.mode==3) ? sgsrPipeline
+                              : (upFrame.mode==8) ? sgsrQualityPipeline
                               : (upFrame.mode==7) ? nisPipeline
                               : (upFrame.mode==6) ? rcasPipeline
                               :                     downscalePipeline;
             const void*  pcd; uint32_t pcsz;
-            if (upFrame.mode==3)      { pcd=&upFrame.sgsrPC; pcsz=sizeof(upFrame.sgsrPC); }
+            if (upFrame.mode==3 || upFrame.mode==8) { pcd=&upFrame.sgsrPC; pcsz=sizeof(upFrame.sgsrPC); }
             else if (upFrame.mode==7) { pcd=&upFrame.nisPC;  pcsz=sizeof(upFrame.nisPC);  }
             else if (upFrame.mode==6) { pcd=&upFrame.rcasPC; pcsz=sizeof(upFrame.rcasPC); }
             else                      { pcd=&upFrame.dsPC;   pcsz=sizeof(upFrame.dsPC);   }
@@ -2128,7 +2133,7 @@ void VulkanRendererContext::planUpscaleFrame() {
             int outX,outY,outW,outH;
             if (mode==4) {                               // fsr (fill / stretch)
                 outX=0; outY=0; outW=(int)swapchainExt.width; outH=(int)swapchainExt.height;
-            } else {                                     // sgsr(3) / fsr_fit(5) / sharpen(6)
+            } else {                                     // sgsr(3/8) / fsr_fit(5) / sharpen(6) / nis(7)
                 fitRect(outX,outY,outW,outH);
             }
             bool ok = (outW>0 && outH>0) && ensureOffscreen(containerWidth,containerHeight);
@@ -2139,7 +2144,7 @@ void VulkanRendererContext::planUpscaleFrame() {
                 upFrame.active=true; upFrame.mode=mode; scaling=true;
                 upFrame.outX=outX; upFrame.outY=outY; upFrame.outW=outW; upFrame.outH=outH;
 
-                if (mode==3) {
+                if (mode==3 || mode==8) {                // sgsr / sgsr quality share the layout
                     SgsrPushConstants& p=upFrame.sgsrPC;
                     p.ndc[0]=nx0; p.ndc[1]=ny0; p.ndc[2]=nx1; p.ndc[3]=ny1;
                     p.viewportInfo[0]=1.f/(float)containerWidth;
@@ -2940,7 +2945,7 @@ void VulkanRendererContext::setFilterMode(int mode) {
 }
 
 void VulkanRendererContext::setUpscaler(int mode) {
-    if (mode<0||mode>7) mode=0;   // 0=none 1=linear 2=nearest 3=sgsr 4=fsr 5=fsr_fit 6=sharpen 7=nis
+    if (mode<0||mode>8) mode=0;   // 0=none 1=linear 2=nearest 3=sgsr 4=fsr 5=fsr_fit 6=sharpen 7=nis 8=sgsr_quality
     if (upscalerMode==mode) { RLOG("setUpscaler: already %d, skipping", mode); return; }
     RLOG("setUpscaler: %d -> %d", upscalerMode, mode);
     upscalerMode=mode;

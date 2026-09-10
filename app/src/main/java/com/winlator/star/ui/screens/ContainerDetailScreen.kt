@@ -811,12 +811,18 @@ private fun TopLevelFields(
         }
 
         // Screen Size
-        LabeledDropdown(
-            label = stringResource(R.string.screen_size),
-            options = viewModel.screenSizeEntries,
-            selectedOption = viewModel.selectedScreenSize,
-            onSelect = { viewModel.selectedScreenSize = it }
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            LabeledDropdown(
+                label = stringResource(R.string.screen_size),
+                options = viewModel.screenSizeEntries,
+                selectedOption = viewModel.selectedScreenSize,
+                onSelect = { viewModel.selectedScreenSize = it },
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = { helpRes = R.string.help_screen_size }) {
+                Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+            }
+        }
         if (viewModel.selectedScreenSize.equals("custom", ignoreCase = true)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(

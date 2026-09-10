@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 📦 **Combined r2 (with "?" help) staged; perf A/B armed** (`combined/gfx-upgrades` `161f24ff`, CI 34504842018)
+> - Staged `/sdcard/Download/Bannerlator-gfx3-r2-pubg.apk` sha256 `2e66abf9a853…` (download and staged copy match). `resources.arsc` has all four help strings (names and text).
+> - User report while on r1: brief random slow-motion + FPS dips during fast driving in DiRT; asks whether AF16/texture sharpness cause it. Perf A/B recorder (SF frame times + GPU busy/clock/temp/throttle + game CPU + disk reads; 2 min from first frame, then Termux pull-back) re-armed for run A (AF16 + Auto + SGSR HQ); run B = both texture options at Game default.
+
 ## 2026-09-10 — ✅ **Texture filtering DEVICE-PROVEN (DiRT Showdown, combined r1 `9978e2f7…`)** + "?" help build r2 dispatched
 > - Installed sha `9978e2f7…` VERIFIED == staged gfx3-r1. The user set DiRT's shortcut DX Wrapper Config → Anisotropic 16x + Texture sharpness Auto; shortcut `dxwrapperConfig` has `anisotropy=16,lodBias=auto`, `scalingMode=8`.
 > - **DXVK confirms** (game `wine_debug.log`, 12:49:34 launch): `Found config env: d3d9.samplerAnisotropy = 16; d3d11.samplerAnisotropy = 16; d3d9.samplerLodBias = -0.58; d3d11.samplerLodBias = -0.58; dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto`, each key parsed. Auto resolved -0.58 from SGSR HQ (mode 8), 1280x720 → 1920x1080. The previous session's log (12:48) had only the two stock keys, so the A/B is clean. (The app-side `Texture filtering:` logcat line had already rotated out of the buffer.)

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🎮 **Steam Controller r3: back buttons + bindings + settings Test dialog (CI running)** (branch `feat/steam-controller-sdl` REBASED onto main `f1ed20e4`, head `6d3b2a73`, CI run 34518065712, label `steamctrl-r3`)
+> - Tester asks: "the bind part is the only broken thing" (Space bound to a button did nothing) and the Input Controls Test dialog never saw the controller (0/17 verified). Plus remappable back buttons.
+> - Back buttons (Input Controls → Device → Steam Controller): L4/L5/R4/R5 → nothing / gamepad button / mouse click / any key, in every game.
+> - Bindings: Steam Controllers now use the profile's Default / Any Controller bindings through the same `processControllerMappings` path as an Android pad, via a per-pad view that is never saved. WinHandler routes Steam Controller ids without a profile lookup.
+> - Settings Test/Bind dialog: SDL runs while it is open, so the controller verifies inputs with Steam art and rumbles on Identify.
+> - Rebased so the branch carries main's SGSR HQ / texture filtering / screen-size work (old r2 tip kept as local `backup/steamctrl-r2-7961c4bd`). NOT device-tested yet.
+
 ## 2026-09-10 — ✅ **Steam Controller r2 WORKS for the community tester** (2026 model over Bluetooth, branch `feat/steam-controller-sdl` `7961c4bd`, NOT merged)
 > - User-relayed: "everything is working for the user perfectly fine". First real-pad proof of the SDL3 backend. No logs seen here.
 > - Tester's next ask: customize the 4 back buttons. The bridge already reads them (L4/L5/R4/R5 bits); nothing maps them yet. Proposed: a "Back buttons" mapping in the Steam Controller settings.

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🔀 **MERGED to main: SGSR HQ + texture filtering + screen size by panel aspect (all with "?" help)** (merge commits `9c20bd42` SGSR HQ, `050ead70` texture filtering, `3ece26e8` screen size, on top of `766fa09c`)
+> - User go ("merge it to main"). Each feature merged from its own branch with its own merge commit, so any one can be reverted alone: `git revert -m 1 9c20bd42` (SGSR HQ + Scaling mode help), `git revert -m 1 050ead70` (texture filtering + help), `git revert -m 1 3ece26e8` (screen size default + 1280x960 + help). `combined/gfx-upgrades` stays a test-only branch.
+> - Verified before push: 18 files, all belonging to the three features (no PROGRESS_LOG/foreign files); **merged `app/` is byte-identical to combined r2 `161f24ff`** (CI 34504842018 green, staged sha `2e66abf9…`); versionCode untouched (vc83). Main CI 34508073321 (headSha `3ece26e8` verified) running.
+> - Device status: SGSR HQ ✅ (DiRT, stable 20 min, subtle gain); texture filtering ✅ (DXVK logged `samplerAnisotropy = 16` / `samplerLodBias = -0.58`, far-ground detail +41%); "?" help screens CI-built, **not yet seen on device**; screen-size default **not device-tested** (the Pocket FIT is 16:9, so it keeps 1280x720; no 4:3/16:10 device available). Texture options default to Game default, so nothing changes for users who don't turn them on.
+> - Open: perf A/B on DiRT (user saw brief slow-motion dips in fast driving with AF16 + Auto) — recorder armed, run A pending. Next release notes: SGSR HQ (Qualcomm snapdragon-gsr), texture filtering, screen size default (same idea as GameNative #1730).
+
 ## 2026-09-10 — 📦 **Combined r2 (with "?" help) staged; perf A/B armed** (`combined/gfx-upgrades` `161f24ff`, CI 34504842018)
 > - Staged `/sdcard/Download/Bannerlator-gfx3-r2-pubg.apk` sha256 `2e66abf9a853…` (download and staged copy match). `resources.arsc` has all four help strings (names and text).
 > - User report while on r1: brief random slow-motion + FPS dips during fast driving in DiRT; asks whether AF16/texture sharpness cause it. Perf A/B recorder (SF frame times + GPU busy/clock/temp/throttle + game CPU + disk reads; 2 min from first frame, then Termux pull-back) re-armed for run A (AF16 + Auto + SGSR HQ); run B = both texture options at Game default.

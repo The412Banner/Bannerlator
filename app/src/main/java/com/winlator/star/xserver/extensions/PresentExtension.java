@@ -96,7 +96,19 @@ public class PresentExtension implements Extension {
     // Mechanism (IdleNotify-delay pacing + WindowTiming) ported from GameNative
     // (https://github.com/utkarshdalal/GameNative). See README Credits.
     private volatile int frameRateLimit = 0;
-    public void setFrameRateLimit(int limit) { this.frameRateLimit = Math.max(0, limit); }
+    // Pacing interval. Normally 1e9 / frameRateLimit; the float overload sets a fractional rate
+    // (native frame gen runs the game a hair under an exact display fit - see
+    // XServerDisplayActivity.pacedLimitWithSlack). 0 = derive from frameRateLimit.
+    private volatile long frameIntervalNs = 0;
+    public void setFrameRateLimit(int limit) {
+        this.frameRateLimit = Math.max(0, limit);
+        this.frameIntervalNs = limit > 0 ? 1_000_000_000L / limit : 0;
+    }
+    public void setFrameRateLimit(float fps) {
+        if (!(fps > 0f)) { setFrameRateLimit(0); return; }
+        this.frameIntervalNs = Math.round(1_000_000_000.0 / fps);
+        this.frameRateLimit = Math.max(1, (int) Math.ceil(fps));
+    }
 
     private static final long FIRE_EARLY_NS = 700_000L; // 0.7 ms
 
@@ -132,7 +144,8 @@ public class PresentExtension implements Extension {
                                  int targetFps, com.winlator.star.renderer.vulkan.VulkanRenderer renderer) {
         if (targetFps <= 0) { sendIdleNotify(window, pixmap, serial, idleFence); return; }
 
-        final long frameNs = 1_000_000_000L / targetFps;
+        final long interval = frameIntervalNs;
+        final long frameNs = interval > 0 ? interval : 1_000_000_000L / targetFps;
         long now = System.nanoTime();
         WindowTiming wt = windowTimings.computeIfAbsent(window.id, k -> new WindowTiming());
         if (wt.nextIdleNs <= now - frameNs) wt.nextIdleNs = now + frameNs;

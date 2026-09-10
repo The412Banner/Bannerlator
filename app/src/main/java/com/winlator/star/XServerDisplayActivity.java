@@ -1805,7 +1805,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean on = XServerDrawerState.INSTANCE.getMatchRefreshRate().getValue();
             container.setMatchRefreshRate(on);
             container.saveData();
-            reapplyVrr();
+            // reapplyFpsLimit, not just reapplyVrr: under native frame gen the display
+            // rate decides whether the cap is an exact fit, which sets the pacer slack.
+            reapplyFpsLimit();
         };
         // Manual refresh-rate lock (Auto OFF). Persists the chosen rate and re-applies the panel vote
         // live (reapplyVrr reads the limiter state; applyVrr uses the manual rate when Auto is off).
@@ -1813,7 +1815,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int rate = XServerDrawerState.INSTANCE.getManualRefreshRate().getValue();
             container.setManualRefreshRate(rate);
             container.saveData();
-            reapplyVrr();
+            reapplyFpsLimit();   // display rate feeds the native-FG pacer slack too
         };
         // Drawer HUD/FPS tab opened — refresh the live display-rate readout.
         state.onRefreshRatePoll = this::updateCurrentRefreshRate;
@@ -3188,48 +3190,107 @@ public class XServerDisplayActivity extends AppCompatActivity {
         XServerDrawerState.INSTANCE.setFrameGenReadout("");
     }
 
-    // The user's limiter/VRR choices from before native FG took them over, so
-    // they come back exactly as they were when it is turned off.
+    // The user's limiter choice from before native FG took it over, so it comes
+    // back exactly as it was when it is turned off.
     private boolean nativeFgSavedLimiterOn = false;
     private int     nativeFgSavedLimit     = 0;
-    private boolean nativeFgSavedMatchRefresh = false;
     private boolean nativeFgLocksHeld = false;
 
     /**
-     * While LSFG Native generates: FPS limiter locked ON and Auto refresh (VRR)
-     * locked OFF. That is the configuration the engine was device-proven in and
-     * the only one that behaves - an uncapped guest times the multiplier overruns
-     * the panel and FIFO stalls the compositor, and a VRR mode switch mid-game
-     * stutters. If no cap was set, 30 is used: it is the case this was proven on.
+     * While LSFG Native or Win-FG Native generates: FPS limiter locked ON. An
+     * uncapped guest times the multiplier overruns the panel and FIFO stalls the
+     * compositor. If no cap was set, 30 is used: it is the case this was proven on.
+     *
+     * Auto refresh (VRR) used to be locked OFF here too. It is now left to the
+     * user: with Auto on, applyVrr fits the display to cap x multiplier (see
+     * pickNativeFgRefresh), switching only when the cap, multiplier or frame gen
+     * changes - never following the live frame rate.
      */
     private void applyNativeFgLocks(boolean lock) {
         XServerDrawerState s = XServerDrawerState.INSTANCE;
         if (lock && !nativeFgLocksHeld) {
             nativeFgSavedLimiterOn    = s.getFpsLimiterEnabled().getValue();
             nativeFgSavedLimit        = s.getFpsLimit().getValue();
-            nativeFgSavedMatchRefresh = s.getMatchRefreshRate().getValue();
             nativeFgLocksHeld = true;
 
             int cap = nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 30;
             s.setFpsLimiterEnabled(true);
             s.setFpsLimit(cap);
-            s.setMatchRefreshRate(false);
             s.setNativeFgLocks(true);
-            Log.i("XServerDisplayActivity", "native-fg locks ON: limiter=" + cap + " vrr=off"
-                + " (was limiter=" + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
-                + " vrr=" + nativeFgSavedMatchRefresh + ")");
+            Log.i("XServerDisplayActivity", "native-fg locks ON: limiter=" + cap
+                + " (was limiter=" + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0) + ")");
             applyFpsLimit(cap);
         } else if (!lock && nativeFgLocksHeld) {
             nativeFgLocksHeld = false;
             s.setNativeFgLocks(false);
             s.setFpsLimiterEnabled(nativeFgSavedLimiterOn);
             s.setFpsLimit(nativeFgSavedLimit);
-            s.setMatchRefreshRate(nativeFgSavedMatchRefresh);
             Log.i("XServerDisplayActivity", "native-fg locks OFF: restored limiter="
-                + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0)
-                + " vrr=" + nativeFgSavedMatchRefresh);
+                + (nativeFgSavedLimiterOn ? nativeFgSavedLimit : 0));
             applyFpsLimit(nativeFgSavedLimiterOn && nativeFgSavedLimit > 0 ? nativeFgSavedLimit : 0);
         }
+    }
+
+    /** Extra room below an exact display fit - see pacedLimitWithSlack. */
+    private static final float NATIVE_FG_FIT_SLACK = 0.003f;
+
+    /** Display rates at the current resolution, exact and ascending. */
+    private float[] displayRatesPrecise() {
+        return com.winlator.star.widget.XServerView.getSupportedRefreshRatesPrecise(
+            getWindowManager().getDefaultDisplay());
+    }
+
+    /**
+     * The display rate native frame gen should run at for `wanted` = cap x
+     * multiplier, from the display's own list: exactly `wanted` if it has it,
+     * else the closest rate ABOVE it (a rate below would overrun the panel).
+     * 0 = nothing at or above: the display stays at its top rate and the
+     * drawer's over-limit warning takes over.
+     *
+     * Never a multiple. LSFG Native and Win-FG Native present each real frame's
+     * burst on back-to-back refreshes, so 30 x 2 on 120 Hz shows as 1,3 (quick
+     * pair, long pause); only an exact fit is even.
+     */
+    private float pickNativeFgRefresh(int wanted) {
+        if (wanted <= 0) return 0f;
+        for (float r : displayRatesPrecise()) {
+            if (Math.abs(r - wanted) < 0.5f || r > wanted) return r;
+        }
+        return 0f;
+    }
+
+    /** The rate the display will be asked to run at while native frame gen generates. */
+    private float nativeFgDisplayRate(int cap, int mult) {
+        float[] rates = displayRatesPrecise();
+        float top = rates.length > 0 ? rates[rates.length - 1] : pickHighestRefreshRate();
+        if (container != null && resolvedMatchRefreshRate()) {
+            float r = pickNativeFgRefresh(cap * mult);
+            return r > 0f ? r : top;
+        }
+        int manual = resolvedManualRefreshRate();
+        if (manual > 0) {
+            for (float r : rates) if (Math.abs(r - manual) < 0.5f) return r;
+            return manual;
+        }
+        return top;
+    }
+
+    /**
+     * FPS to pace the game at. When cap x multiplier fills the display exactly,
+     * run the game a hair under the cap (0.3%) so the display always has room.
+     * Two things push an exact fit over: the game's timer and the display's
+     * clock are different clocks (a 59.94 Hz panel is 0.1% short of 30 x 2), and
+     * the limiter lets a late frame be followed by an early one. At an exact fit
+     * either one queues a frame that never drains - a frame of lag, then a skip.
+     * With the slack the worst case is one repeated refresh every few seconds.
+     * The cap the user sees and saves stays a whole number.
+     */
+    private float pacedLimitWithSlack(int fps) {
+        if (fps <= 0 || !(nativeFrameGenEngine() && frameGenMultipliesDisplay())) return fps;
+        int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
+        float display = nativeFgDisplayRate(fps, mult);
+        if (display <= 0f || Math.abs(fps * mult - display) >= 0.5f) return fps;
+        return display * (1f - NATIVE_FG_FIT_SLACK) / mult;
     }
 
     /** The panel's real refresh rate; the pacer never generates above it. */
@@ -10436,7 +10497,10 @@ return true;
         if (lsfgGovernsFps()) fps = 0;
         com.winlator.star.xserver.extensions.PresentExtension pe =
                 xServer.getExtension(com.winlator.star.xserver.extensions.PresentExtension.MAJOR_OPCODE);
-        if (pe != null) pe.setFrameRateLimit(fps);
+        float paced = pacedLimitWithSlack(fps);
+        if (paced != fps) Log.i("XServerDisplayActivity", "fps limit " + fps + " paced at " + paced
+            + " (exact display fit under native frame gen; slack " + NATIVE_FG_FIT_SLACK + ")");
+        if (pe != null) pe.setFrameRateLimit(paced);
         if (xServerView != null) {
             HostRenderer r = xServerView.getRenderer();
             if (r != null) r.setFpsLimit(fps);
@@ -10460,18 +10524,20 @@ return true;
     private void applyVrr(int cap) {
         if (xServerView == null) return;
         float vrrRate = 0.0f;
-        // LSFG Native generating: VRR stays OUT of it. The native path presents
-        // real + generated frames under FIFO against a fixed panel cadence, and
-        // that is the configuration that was device-proven (30 -> 118 with the
-        // panel pinned at 144 for the whole run). Letting VRR re-vote the panel
-        // to cap x multiplier would (a) trigger a display mode switch mid-game,
-        // which stutters or black-flashes on many panels, and (b) chase a number
-        // that is only the REQUESTED multiplier, not what is actually presented.
-        // Fixed max refresh is the predictable choice here; the user's manual
-        // lock, if any, is still honoured below.
+        // LSFG Native / Win-FG Native generating with Auto on: fit the display to
+        // cap x multiplier, picked from the display's own rates (exact, else the
+        // closest above; see pickNativeFgRefresh). The two reasons this used to be
+        // left out no longer hold as they did: the fixed-multiplier pacer now
+        // presents exactly the requested multiplier, and the vote only changes
+        // when the cap, multiplier or frame gen changes - one mode switch per user
+        // action, never a chase of the live frame rate. Nothing at or above the
+        // wanted rate -> no vote, the panel stays at its max, and the drawer warns.
         final boolean nativeFgGenerating = nativeFrameGenEngine() && frameGenMultipliesDisplay();
         if (container != null && resolvedMatchRefreshRate() && nativeFgGenerating) {
-            vrrRate = 0.0f;   // no vote: panel stays at its max
+            int mult = XServerDrawerState.INSTANCE.getFrameGenMultiplier().getValue();
+            vrrRate = cap > 0 ? pickNativeFgRefresh(cap * mult) : 0.0f;
+            Log.i("XServerDisplayActivity", "native-fg vrr: " + cap + " x " + mult + " = " + (cap * mult)
+                + " -> display " + (vrrRate > 0f ? vrrRate + " Hz" : "top rate (nothing at or above)"));
         } else if (container != null && resolvedMatchRefreshRate()) {
             // Auto (match FPS): vote the panel cadence to follow the displayed FPS while capping.
             if (cap > 0) {

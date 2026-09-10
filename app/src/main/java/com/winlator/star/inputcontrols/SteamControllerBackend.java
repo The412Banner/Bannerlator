@@ -39,7 +39,7 @@ public final class SteamControllerBackend {
     public static final int DEVICE_ID_BASE = -1000;
 
     private static final long POLL_INTERVAL_MS = 4; // the 2026 pad reports at ~250 Hz
-    // Right-trackpad mouse: pixels moved by one full swipe across the pad.
+    // Trackpad mouse: pixels moved by one full swipe across a pad.
     private static final float TRACKPAD_PIXELS_PER_PAD = 900f;
     private static final float TRIGGER_FULL = 0.98f; // L2/R2 "pressed" like the Android path's == 1.0
 
@@ -47,11 +47,16 @@ public final class SteamControllerBackend {
     private static final int MAX_PADS = 4;
     private static final int I_ID = 0, I_BUTTONS = 1, I_STRIDE = 2;
     private static final int F_LX = 0, F_LY = 1, F_RX = 2, F_RY = 3, F_LT = 4, F_RT = 5;
-    private static final int F_RPAD_DOWN = 6, F_RPAD_X = 7, F_RPAD_Y = 8, F_STRIDE = 12;
+    private static final int F_RPAD_DOWN = 6, F_LPAD_DOWN = 9, F_STRIDE = 12; // each pad: down, x, y
     private static final int B_A = 0, B_B = 1, B_X = 2, B_Y = 3, B_LB = 4, B_RB = 5, B_BACK = 6,
             B_START = 7, B_LSTICK = 8, B_RSTICK = 9, B_GUIDE = 10, B_DPAD_UP = 11, B_DPAD_DOWN = 12,
             B_DPAD_LEFT = 13, B_DPAD_RIGHT = 14, B_QAM = 15, B_R4 = 16, B_L4 = 17, B_R5 = 18, B_L5 = 19,
-            B_RPAD_CLICK = 20;
+            B_RPAD_CLICK = 20, B_LPAD_CLICK = 21;
+
+    /** Which trackpad(s) move the mouse. A mouse pad's click is a left click; with BOTH, the left pad
+     *  clicks right so both buttons are there. */
+    public static final int TRACKPAD_MOUSE_OFF = 0, TRACKPAD_MOUSE_RIGHT = 1, TRACKPAD_MOUSE_LEFT = 2,
+            TRACKPAD_MOUSE_BOTH = 3;
 
     /** Mappable extra buttons in settings order: L4 (upper left), L5 (lower left), R4 (upper right),
      *  R5 (lower right), then the "…" Quick Access button between the trackpads. None has an Xbox
@@ -90,11 +95,12 @@ public final class SteamControllerBackend {
         /** A back button mapped to a keyboard key or mouse button went down / up. */
         void onSteamPadBinding(Binding binding, boolean down);
 
-        /** Right trackpad moved while touched (only when trackpad-as-mouse is on). */
+        /** A mouse trackpad moved while touched (only when a trackpad mouse mode is on). */
         void onSteamPadMouseMove(int dx, int dy);
 
-        /** Right trackpad clicked / released (only when trackpad-as-mouse is on). */
-        void onSteamPadMouseButton(boolean down);
+        /** A mouse trackpad clicked / released. secondary = the right mouse button (the left pad when
+         *  both pads are mice); otherwise the left mouse button. */
+        void onSteamPadMouseButton(boolean secondary, boolean down);
     }
 
     private static boolean librariesLoaded;
@@ -104,7 +110,7 @@ public final class SteamControllerBackend {
 
     private final Activity activity;
     private final Listener listener;
-    private final boolean trackpadMouse;
+    private final int trackpadMode;
     private final Binding[] paddleBindings = new Binding[PADDLE_COUNT];
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -131,9 +137,8 @@ public final class SteamControllerBackend {
         final ExternalController controller;
         int buttons = -1; // force the first frame through
         final float[] axes = new float[6];
-        boolean padDown;
-        float padX, padY, accX, accY;
-        boolean clickDown;
+        final Trackpad right = new Trackpad();
+        final Trackpad left = new Trackpad();
         final boolean[] paddleDown = new boolean[PADDLE_COUNT];
 
         Pad(ExternalController controller) {
@@ -141,11 +146,17 @@ public final class SteamControllerBackend {
         }
     }
 
-    /** paddles: what each extra button does (L4, L5, R4, R5, "…"; null / NONE = nothing). Gamepad targets are
+    private static final class Trackpad {
+        boolean down, clickDown;
+        float x, y, accX, accY;
+    }
+
+    /** trackpadMode: TRACKPAD_MOUSE_*. paddles: what each extra button does (L4, L5, R4, R5, "…"; null / NONE = nothing). Gamepad targets are
      *  merged into the pad state; keyboard / mouse targets are reported through onSteamPadBinding. */
-    public SteamControllerBackend(Activity activity, boolean trackpadMouse, Binding[] paddles, Listener listener) {
+    public SteamControllerBackend(Activity activity, int trackpadMode, Binding[] paddles, Listener listener) {
         this.activity = activity;
-        this.trackpadMouse = trackpadMouse;
+        this.trackpadMode = (trackpadMode < TRACKPAD_MOUSE_OFF || trackpadMode > TRACKPAD_MOUSE_BOTH)
+                ? TRACKPAD_MOUSE_RIGHT : trackpadMode;
         this.listener = listener;
         for (int i = 0; i < PADDLE_COUNT; i++) {
             Binding b = paddles != null && i < paddles.length ? paddles[i] : null;
@@ -189,7 +200,7 @@ public final class SteamControllerBackend {
         running_ = this;
         pollThread = new Thread(() -> pollLoop(bluetooth), "SteamCtrlPoll");
         pollThread.start();
-        Log.i(TAG, "Started (bluetooth " + bluetooth + ", trackpad mouse " + trackpadMouse + ")");
+        Log.i(TAG, "Started (bluetooth " + bluetooth + ", trackpad mouse mode " + trackpadMode + ")");
         return true;
     }
 
@@ -413,8 +424,11 @@ public final class SteamControllerBackend {
             listener.onSteamPadState(pad.controller, bit(effective, B_GUIDE), bit(buttons, B_QAM),
                     pressedKeyCodes(effective));
         }
-        if (trackpadMouse)
-            applyTrackpadMouse(pad, buttons, floats, base);
+        if (trackpadMode == TRACKPAD_MOUSE_RIGHT || trackpadMode == TRACKPAD_MOUSE_BOTH)
+            applyTrackpad(pad.right, floats, base + F_RPAD_DOWN, bit(buttons, B_RPAD_CLICK), false);
+        if (trackpadMode == TRACKPAD_MOUSE_LEFT || trackpadMode == TRACKPAD_MOUSE_BOTH)
+            applyTrackpad(pad.left, floats, base + F_LPAD_DOWN, bit(buttons, B_LPAD_CLICK),
+                    trackpadMode == TRACKPAD_MOUSE_BOTH);
     }
 
     /** Button bits a back-button gamepad target presses (L2/R2 are handled as full trigger pulls). */
@@ -447,40 +461,45 @@ public final class SteamControllerBackend {
         return out;
     }
 
-    private void applyTrackpadMouse(Pad pad, int buttons, float[] floats, int base) {
-        boolean down = floats[base + F_RPAD_DOWN] > 0.5f;
-        float x = floats[base + F_RPAD_X];
-        float y = floats[base + F_RPAD_Y];
-        if (down && pad.padDown) {
-            pad.accX += (x - pad.padX) * TRACKPAD_PIXELS_PER_PAD;
-            pad.accY += (y - pad.padY) * TRACKPAD_PIXELS_PER_PAD;
-            int dx = (int) pad.accX;
-            int dy = (int) pad.accY;
+    /** One mouse trackpad: finger movement moves the mouse, clicking it presses a mouse button.
+     *  off = the pad's {down, x, y} slot in the frame. */
+    private void applyTrackpad(Trackpad t, float[] floats, int off, boolean click, boolean secondary) {
+        boolean down = floats[off] > 0.5f;
+        float x = floats[off + 1];
+        float y = floats[off + 2];
+        if (down && t.down) {
+            t.accX += (x - t.x) * TRACKPAD_PIXELS_PER_PAD;
+            t.accY += (y - t.y) * TRACKPAD_PIXELS_PER_PAD;
+            int dx = (int) t.accX;
+            int dy = (int) t.accY;
             if (dx != 0 || dy != 0) {
-                pad.accX -= dx;
-                pad.accY -= dy;
+                t.accX -= dx;
+                t.accY -= dy;
                 listener.onSteamPadMouseMove(dx, dy);
             }
         } else {
-            pad.accX = 0;
-            pad.accY = 0;
+            t.accX = 0;
+            t.accY = 0;
         }
-        pad.padDown = down;
-        pad.padX = x;
-        pad.padY = y;
+        t.down = down;
+        t.x = x;
+        t.y = y;
 
-        boolean click = bit(buttons, B_RPAD_CLICK);
-        if (click != pad.clickDown) {
-            pad.clickDown = click;
-            listener.onSteamPadMouseButton(click);
+        if (click != t.clickDown) {
+            t.clickDown = click;
+            listener.onSteamPadMouseButton(secondary, click);
         }
     }
 
     /** A pad went away mid-press: release its trackpad click and any key / mouse back button. */
     private void releaseHeld(Pad pad) {
-        if (pad.clickDown) {
-            pad.clickDown = false;
-            listener.onSteamPadMouseButton(false);
+        if (pad.right.clickDown) {
+            pad.right.clickDown = false;
+            listener.onSteamPadMouseButton(false, false);
+        }
+        if (pad.left.clickDown) {
+            pad.left.clickDown = false;
+            listener.onSteamPadMouseButton(trackpadMode == TRACKPAD_MOUSE_BOTH, false);
         }
         for (int i = 0; i < PADDLE_COUNT; i++) {
             Binding target = paddleBindings[i];

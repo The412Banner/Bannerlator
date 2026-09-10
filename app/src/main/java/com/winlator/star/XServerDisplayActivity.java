@@ -9382,10 +9382,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void startSteamControllerSupport() {
         if (steamControllerBackend != null || winHandler == null || isFinishing()) return;
         if (!com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(this)) return;
-        boolean trackpadMouse = com.winlator.star.ui.components.GlobalControllerPrefs.isSteamTrackpadMouseEnabled(this);
+        int trackpadMode = com.winlator.star.ui.components.GlobalControllerPrefs.getSteamTrackpadMouseMode(this);
         com.winlator.star.inputcontrols.Binding[] paddles =
                 com.winlator.star.ui.components.GlobalControllerPrefs.getSteamPaddleBindings(this);
-        SteamControllerBackend backend = new SteamControllerBackend(this, trackpadMouse, paddles, new SteamControllerBackend.Listener() {
+        SteamControllerBackend backend = new SteamControllerBackend(this, trackpadMode, paddles, new SteamControllerBackend.Listener() {
             @Override
             public void onSteamPadConnected(ExternalController pad) {
                 if (winHandler != null) winHandler.onSdlPadConnected(pad);
@@ -9426,10 +9426,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onSteamPadMouseButton(boolean down) {
+            public void onSteamPadMouseButton(boolean secondary, boolean down) {
                 // Always deliver a release so a click held while a panel opens can't stick.
                 if (down && (inGameControlsEditor != null || controllerTestActive)) return;
-                if (winHandler != null) winHandler.steamPadMouseButton(down);
+                if (winHandler != null) winHandler.steamPadMouseButton(secondary, down);
             }
         });
         if (!backend.start()) return;

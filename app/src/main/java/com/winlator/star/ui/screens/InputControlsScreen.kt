@@ -1241,8 +1241,8 @@ private fun SteamControllerSection() {
     var enabled by remember {
         mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(context))
     }
-    var trackpadMouse by remember {
-        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.isSteamTrackpadMouseEnabled(context))
+    var trackpadMode by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getSteamTrackpadMouseMode(context))
     }
     var bluetoothGranted by remember { mutableStateOf(SteamControllerBackend.hasBluetoothPermission(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -1275,14 +1275,25 @@ private fun SteamControllerSection() {
         )
         if (enabled) {
             Spacer(Modifier.height(8.dp))
+            // Order = the labels; values are SteamControllerBackend.TRACKPAD_MOUSE_*.
+            val trackpadLabels = listOf("Right trackpad", "Left trackpad", "Both trackpads", "Off")
+            val trackpadModes = listOf(
+                SteamControllerBackend.TRACKPAD_MOUSE_RIGHT, SteamControllerBackend.TRACKPAD_MOUSE_LEFT,
+                SteamControllerBackend.TRACKPAD_MOUSE_BOTH, SteamControllerBackend.TRACKPAD_MOUSE_OFF,
+            )
             LabeledDropdown(
-                label = "Right trackpad moves the mouse",
-                options = onOff,
-                selectedOption = if (trackpadMouse) onOff[0] else onOff[1],
+                label = "Trackpad mouse",
+                options = trackpadLabels,
+                selectedOption = trackpadLabels[trackpadModes.indexOf(trackpadMode).coerceAtLeast(0)],
                 onSelect = {
-                    trackpadMouse = it == onOff[0]
-                    com.winlator.star.ui.components.GlobalControllerPrefs.setSteamTrackpadMouseEnabled(context, trackpadMouse)
+                    trackpadMode = trackpadModes[trackpadLabels.indexOf(it).coerceAtLeast(0)]
+                    com.winlator.star.ui.components.GlobalControllerPrefs.setSteamTrackpadMouseMode(context, trackpadMode)
                 },
+            )
+            Text(
+                "Which trackpad moves the mouse. Clicking it is a left click; with both, the left trackpad " +
+                    "clicks right.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
             )
             Spacer(Modifier.height(12.dp))
             Text("Extra buttons", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)

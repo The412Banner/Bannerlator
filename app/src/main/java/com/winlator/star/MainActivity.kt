@@ -358,7 +358,7 @@ class MainActivity : AppCompatActivity() {
         if (settingsSteamBackend != null) return
         if (!com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(this)) return
         val backend = com.winlator.star.inputcontrols.SteamControllerBackend(
-            this, false,
+            this, com.winlator.star.inputcontrols.SteamControllerBackend.TRACKPAD_MOUSE_OFF,
             com.winlator.star.ui.components.GlobalControllerPrefs.getSteamPaddleBindings(this),
             object : com.winlator.star.inputcontrols.SteamControllerBackend.Listener {
                 override fun onSteamPadConnected(pad: com.winlator.star.inputcontrols.ExternalController) {
@@ -399,7 +399,7 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onSteamPadBinding(binding: com.winlator.star.inputcontrols.Binding, down: Boolean) {}
                 override fun onSteamPadMouseMove(dx: Int, dy: Int) {}
-                override fun onSteamPadMouseButton(down: Boolean) {}
+                override fun onSteamPadMouseButton(secondary: Boolean, down: Boolean) {}
             }
         )
         if (backend.start()) settingsSteamBackend = backend

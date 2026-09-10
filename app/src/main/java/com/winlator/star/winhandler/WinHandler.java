@@ -2822,17 +2822,19 @@ public class WinHandler {
         queueGyroMouseEvent(dx, dy);
     }
 
-    /** Right-trackpad click = left mouse button (Steam's default trackpad-as-mouse behavior). */
-    public void steamPadMouseButton(boolean down) {
+    /** A mouse trackpad's click: the left mouse button, or the right one for the secondary pad (the
+     *  left pad when both pads move the mouse). */
+    public void steamPadMouseButton(boolean secondary, boolean down) {
         XServer xServer = activity != null ? activity.getXServer() : null;
         if (xServer == null)
             return;
+        Pointer.Button button = secondary ? Pointer.Button.BUTTON_RIGHT : Pointer.Button.BUTTON_LEFT;
         if (xServer.isRelativeMouseMovement())
-            mouseEvent(MouseEventFlags.getFlagFor(Pointer.Button.BUTTON_LEFT, down), 0, 0, 0);
+            mouseEvent(MouseEventFlags.getFlagFor(button, down), 0, 0, 0);
         else if (down)
-            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+            xServer.injectPointerButtonPress(button);
         else
-            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            xServer.injectPointerButtonRelease(button);
     }
 
     /** Descriptor for any deviceId: the SDL pad's "sdl:" key, else the Android device descriptor. */

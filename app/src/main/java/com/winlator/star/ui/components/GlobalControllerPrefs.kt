@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.preference.PreferenceManager
 import com.winlator.star.container.Container
 import com.winlator.star.inputcontrols.Binding
+import com.winlator.star.inputcontrols.SteamControllerBackend
 
 // ───── Global (app-drawer) Player-Slots defaults ─────
 // A single global default for the controller Player-Slots pins and the On-screen priority mode, edited
@@ -65,8 +66,9 @@ object GlobalControllerPrefs {
     // hardware, not a container. OFF by default: when off, SDL is never loaded and the normal input
     // path is byte-for-byte unchanged (see SteamControllerBackend).
     private const val KEY_STEAM_CONTROLLER = "steam_controller_sdl_enabled"
-    // Right trackpad drives the mouse, click = left button (Steam's default). Only used when the
-    // Steam Controller support itself is on.
+    // Which trackpad(s) move the mouse: SteamControllerBackend.TRACKPAD_MOUSE_* (0 off, 1 right,
+    // 2 left, 3 both). Replaces the r1-r5 on/off "right trackpad" boolean, which still seeds it.
+    private const val KEY_STEAM_TRACKPAD_MODE = "steam_controller_trackpad_mode"
     private const val KEY_STEAM_TRACKPAD_MOUSE = "steam_controller_trackpad_mouse"
 
     @JvmStatic
@@ -82,14 +84,20 @@ object GlobalControllerPrefs {
     }
 
     @JvmStatic
-    fun isSteamTrackpadMouseEnabled(context: Context): Boolean =
-        PreferenceManager.getDefaultSharedPreferences(context).getBoolean(KEY_STEAM_TRACKPAD_MOUSE, true)
+    fun getSteamTrackpadMouseMode(context: Context): Int {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        if (prefs.contains(KEY_STEAM_TRACKPAD_MODE))
+            return prefs.getInt(KEY_STEAM_TRACKPAD_MODE, SteamControllerBackend.TRACKPAD_MOUSE_RIGHT)
+                .coerceIn(SteamControllerBackend.TRACKPAD_MOUSE_OFF, SteamControllerBackend.TRACKPAD_MOUSE_BOTH)
+        return if (prefs.getBoolean(KEY_STEAM_TRACKPAD_MOUSE, true)) SteamControllerBackend.TRACKPAD_MOUSE_RIGHT
+        else SteamControllerBackend.TRACKPAD_MOUSE_OFF
+    }
 
     @JvmStatic
-    fun setSteamTrackpadMouseEnabled(context: Context, enabled: Boolean) {
+    fun setSteamTrackpadMouseMode(context: Context, mode: Int) {
         PreferenceManager.getDefaultSharedPreferences(context)
             .edit()
-            .putBoolean(KEY_STEAM_TRACKPAD_MOUSE, enabled)
+            .putInt(KEY_STEAM_TRACKPAD_MODE, mode)
             .apply()
     }
 

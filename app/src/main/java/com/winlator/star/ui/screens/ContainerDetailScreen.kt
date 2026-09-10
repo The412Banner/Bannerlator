@@ -3603,6 +3603,9 @@ internal fun DxvkConfigDialog(
         val i = DXVKConfigDialog.LOD_BIAS_VALUES.indexOf(config.get("lodBias"))
         mutableStateOf(lodBiasLabels[if (i >= 0) i else 0])
     }
+    // "?" help for the two texture-filtering rows (opens above this sheet).
+    var textureHelpRes by remember { mutableStateOf<Int?>(null) }
+    textureHelpRes?.let { HelpDialog(it) { textureHelpRes = null } }
 
     // VEGAS knowledge layer: bundled asset or null (null -> unclassified fallback).
     val vegasKnowledge = remember {
@@ -4199,14 +4202,23 @@ internal fun DxvkConfigDialog(
                 LabeledDropdown(stringResource(R.string.frame_rate), framerateEntries, selectedFramerate, { selectedFramerate = it })
                 Spacer(Modifier.height(8.dp))
                 SectionLabel("TEXTURE FILTERING")
-                LabeledDropdown("Anisotropic filtering", anisotropyLabels, selectedAnisotropy, { selectedAnisotropy = it })
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LabeledDropdown("Anisotropic filtering", anisotropyLabels, selectedAnisotropy, { selectedAnisotropy = it },
+                        modifier = Modifier.weight(1f))
+                    IconButton(onClick = { textureHelpRes = R.string.help_anisotropic_filtering }) {
+                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
-                LabeledDropdown("Texture sharpness", lodBiasLabels, selectedLodBias, { selectedLodBias = it })
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LabeledDropdown("Texture sharpness", lodBiasLabels, selectedLodBias, { selectedLodBias = it },
+                        modifier = Modifier.weight(1f))
+                    IconButton(onClick = { textureHelpRes = R.string.help_texture_sharpness }) {
+                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                    }
+                }
                 Text(
-                    "DirectX 9-11 games only. Anisotropic filtering keeps floors and roads sharp at an " +
-                        "angle and costs little. Auto sharpens textures to suit the SGSR, FSR or NIS scaling " +
-                        "mode the game starts with (about -0.58 for 720p on a 1080p screen); sharper textures " +
-                        "can shimmer.",
+                    "DirectX 9-11 games only. Applies the next time the game starts.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)

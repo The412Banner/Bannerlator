@@ -484,6 +484,20 @@
         <i><b>VKD3D</b></i> is a translation layer for Direct3D 12 API to Vulkan.<br /><br />
         <i><b>CNC DDraw</b></i> is an implementation of DirectDraw for better compatibility with classic games.
     ]]></string>
+    <string name="help_anisotropic_filtering"><![CDATA[
+        <b>Anisotropic filtering</b><br /><br />
+        Keeps textures sharp when you see them at an angle — the road ahead of a car, floors, walls running into the distance. Without it they turn blurry a short way ahead.<br /><br />
+        <b>Game default</b> leaves it to the game. <b>2x to 16x</b> forces it on; higher stays sharp further away. It costs little on most devices; if you lose FPS, try 4x or 8x.<br /><br />
+        <b>Example:</b> the track in a racing game looks smeared just ahead of the car → 16x.<br /><br />
+        DirectX 9–11 games only (DXVK / VEGAS). Applies the next time the game starts.
+    ]]></string>
+    <string name="help_texture_sharpness"><![CDATA[
+        <b>Texture sharpness</b><br /><br />
+        Makes the game use its more detailed textures. Most useful when the game runs below your screen resolution with an upscaler on, where textures otherwise look softer than the rest of the picture.<br /><br />
+        <b>Game default</b> changes nothing. <b>Auto</b> picks the right amount for the Scaling mode the game starts with (set in the game side menu: SGSR, SGSR HQ, FSR or NIS) — about -0.58 for 720p on a 1080p screen — and does nothing without one. <b>Sharper / Sharpest</b> use a fixed amount; a bigger number is sharper.<br /><br />
+        <b>Example:</b> a game at 720p with SGSR HQ on a 1080p screen → Auto.<br /><br />
+        Too sharp makes fine detail (gravel, fences, grass) shimmer while moving — step back if you see that. DirectX 9–11 games only. Applies the next time the game starts.
+    ]]></string>
     <string name="help_wine_version"><![CDATA[
         <b>Wine version</b><br /><br />
         The compatibility layer that runs the Windows game — it translates Windows into Android without a real Windows install. <i><b>Proton</b></i> is a gaming-tuned build of Wine. Newer builds fix more games; leave it on the default unless a game needs a specific one.

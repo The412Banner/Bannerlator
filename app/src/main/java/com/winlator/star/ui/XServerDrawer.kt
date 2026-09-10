@@ -1404,6 +1404,9 @@ private fun FrameGenSection(state: XServerDrawerState) {
     val liveRate by state.currentRefreshRate.collectAsState()
     val matchRefresh by state.matchRefreshRate.collectAsState()
     val vrrOk by state.vrrSupported.collectAsState()
+    // Set when LSFG Native / Win-FG Native can't run in this session (driver, DLL, renderer).
+    val fgUnavailable by state.fgUnavailableReason.collectAsState()
+    val fgUnavailableDetail by state.fgUnavailableDetail.collectAsState()
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -1474,7 +1477,24 @@ private fun FrameGenSection(state: XServerDrawerState) {
             state.onBionicFgConfigChange?.run()
         }
 
-        FgMultiplierButtons(fgMult, engine) { newMult ->
+        if (fgUnavailable.isNotEmpty()) {
+            Text(
+                "⚠ $fgUnavailable",
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            )
+            if (fgUnavailableDetail.isNotEmpty()) {
+                Text(
+                    "Driver check: $fgUnavailableDetail",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                )
+            }
+        }
+        FgMultiplierButtons(fgMult, engine, enabled = fgUnavailable.isEmpty()) { newMult ->
             fgMult = newMult; applyFg()
             // Both engines now do the FULL surface-teardown reset with a Resume prompt, driven from
             // onBionicFgConfigChange in the activity (win-fg on an On/Off/multiplier/model/preset
@@ -1749,9 +1769,10 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
 
 
 @Composable
-private fun FgMultiplierButtons(selected: Int, engine: String, onSelect: (Int) -> Unit) {
+private fun FgMultiplierButtons(selected: Int, engine: String, enabled: Boolean = true, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
+    val dimmed = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
     // win-fg is a simple Off / On toggle for now (On = 2×); selecting On reveals the
     // model + flow-scale controls (gated on multiplier > 0). lsfg-vk keeps 2×/3×/4×.
     val options = if (engine == "bionic")
@@ -1763,8 +1784,9 @@ private fun FgMultiplierButtons(selected: Int, engine: String, onSelect: (Int) -
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         options.forEach { (mult, label) ->
-            val isSel = selected == mult
+            val isSel = selected == mult && enabled
             // Unselected: black fill, dark-blue outline. Selected: solid blue fill, black text.
+            // Disabled (the engine can't run here): all dimmed, nothing clickable.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -1773,15 +1795,15 @@ private fun FgMultiplierButtons(selected: Int, engine: String, onSelect: (Int) -
                     .background(if (isSel) accent else Color.Black)
                     .border(
                         width = 1.dp,
-                        color = if (isSel) accent else accentDim,
+                        color = if (isSel) accent else if (enabled) accentDim else dimmed,
                         shape = RoundedCornerShape(8.dp)
                     )
-                    .clickable { onSelect(mult) }
+                    .clickable(enabled = enabled) { onSelect(mult) }
                     .padding(vertical = 9.dp)
             ) {
                 Text(
                     label,
-                    color = if (isSel) Color.Black else accent,
+                    color = if (isSel) Color.Black else if (enabled) accent else dimmed,
                     fontSize = 13.sp,
                     fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium
                 )

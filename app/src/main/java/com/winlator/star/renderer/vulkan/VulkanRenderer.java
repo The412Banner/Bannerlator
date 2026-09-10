@@ -132,6 +132,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     // swapchain creation; see cpp/winlator/lsfg/lsfg_probe.h.
     private native boolean nativeLsfgSupported(long handle);
     private native String nativeLsfgCapsReason(long handle);
+    private native int nativeFrameGenProblem(long handle);
     private native void nativeSetFrameGenArmed(long handle, boolean armed, int multiplier);
     private native void nativeSetLsfgCachePath(long handle, String path);
     private native void nativeSetFrameGenTuning(long handle, float flowScale, float refreshHz);
@@ -974,6 +975,23 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         synchronized (lock) {
             if (nativeHandle != 0) nativeSetWinFgTuning(nativeHandle, model, perfPreset);
         }
+    }
+
+    /** Frame-gen problem codes from {@link #getFrameGenProblem()}. */
+    public static final int FG_PROBLEM_UNKNOWN = -1, FG_PROBLEM_NONE = 0,
+                            FG_PROBLEM_DRIVER = 1, FG_PROBLEM_START_FAILED = 2;
+
+    /**
+     * Why the selected native frame-gen engine (LSFG Native or Win-FG Native) cannot
+     * run: FG_PROBLEM_UNKNOWN while the renderer or its swapchain is not up yet,
+     * FG_PROBLEM_DRIVER when this Vulkan driver lacks what the engine needs (see
+     * getLsfgCapsReason), FG_PROBLEM_START_FAILED when the engine failed to start.
+     */
+    public int getFrameGenProblem() {
+        synchronized (lock) {
+            if (nativeHandle != 0) return nativeFrameGenProblem(nativeHandle);
+        }
+        return FG_PROBLEM_UNKNOWN;
     }
 
     /** Human-readable verdict, naming the first gate that failed. */

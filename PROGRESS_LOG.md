@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **Texture filtering r1 + screen size r1 CI green; SGSR HQ on device** (branches `feat/texture-filtering` `035d7165`, `feat/screen-size-by-aspect` `2136efc8`)
+> - CI 34499009543 (texture filtering) ✅ all three flavors, headSha `035d7165` verified, ~9.5 min. CI 34499354338 (screen size) ✅ all three flavors, headSha `2136efc8` verified, ~11.5 min. Artifacts `Bannerlator-texfilter-r1-pubg`, `Bannerlator-screensize-r1-pubg` (504 MB each); download held until the SGSR HQ test ends (same device, keeps FPS readings clean).
+> - SGSR HQ r1 installed by the user: installed sha `2fdcd1ae…` VERIFIED == staged. Test game DiRT Showdown (xuser-3, 1280x720 on the 1920x1080 panel, Vulkan; was on Sharpen). Watcher on `showdown.exe` + the shortcut's `scalingMode`; session 1 started 12:11:43.
+
 ## 2026-09-10 — ✅ **SGSR HQ r1 green + staged** (branch `feat/sgsr-quality-mode`, commit `7e71cb8f`, CI run 34498197469)
 > - CI ✅ all three flavors, headSha `7e71cb8f` verified. Staged `/sdcard/Download/Bannerlator-sgsr-hq-r1-pubg.apk` sha256 `2fdcd1aed20c…` (download and staged copy match; 1306 entries).
 > - Checked inside the APK: `libvulkan_renderer.so` contains the exact SPIR-V of both `sgsr_quality_frag.h` (new) and `sgsr_frag.h`; the dex has the "SGSR HQ" label and the GL edge-direction shader text (`classes3.dex`).

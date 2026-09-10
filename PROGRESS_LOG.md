@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🔀 **MERGED to main: Auto on for frame gen (per-game opt-out) + the "can't run here" notice** (merge commits `7cfde0a0` auto-Auto, `4b2320ae` notice, on top of `be94d171`)
+> - Separate merge commits, so either can be reverted alone (`git revert -m 1 4b2320ae` removes only the notice). The merged app/ is byte-identical to the device-tested build `4cd5ea9c` (installed sha `88befdb2…`). versionCode untouched (vc83).
+> - Tested: Auto turns on at frame-gen start and the opt-out sticks per game shortcut (Pocket FIT). The notice stays quiet on a working 1.3 driver. The notice's failure path is untested on a <1.3 driver (the A710 reporter).
+> - Next: the Frame Generation "?" help in container/shortcut settings still describes bionic-fg / lsfg-vk → fixing on its own branch.
+
 ## 2026-09-10 — ⚠️🎞️ **Native frame gen no longer fails silently** (branch `feat/fg-unavailable-notice`, stacked on `feat/fg-auto-refresh-optout`; code commit `4cd5ea9c`, CI run 34484942005)
 > Community report (Adreno 710): LSFG Native did nothing. The Renderer Driver was the stock "System" driver (Vulkan 1.1) and the chain needs 1.3; switching Renderer Driver to Turnip fixed it. Their ask: an error, or frame gen disabled until a supporting driver is picked.
 > - **Found in code:** `VulkanRenderer.isLsfgNativeSupported()` / `getLsfgCapsReason()` existed with **zero callers**. String `frame_generation_lsfg_native_unsupported` was unused. `ensureLsfgEngine` gives up after one try with only a logcat line. Lossless.dll cache failures were log-only (`prepareLsfgNative`). The drawer kept offering 2×/3×/4×.

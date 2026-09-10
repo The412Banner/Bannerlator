@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ⏸️ **CHECKPOINT: Steam Controller r3 CI green + staged; paused until tonight** (branch `feat/steam-controller-sdl` head `6d3b2a73`, rebased on main `f1ed20e4`, NOT merged)
+> - CI r3 34518065712 ✅ standard/ludashi/pubg, headSha `6d3b2a73` verified. Staged `/sdcard/Download/Bannerlator-steamctrl-r3-pubg.apk` sha256 `02f546b6d507…5dd0` (download and staged copy match; `libSDL3.so` + `libsteamctrl.so` present; dex has the Back buttons UI).
+> - r3 = back buttons (L4/L5/R4/R5 → gamepad button / mouse click / key), Default / Any Controller bindings for the Steam Controller (the tester's "Space on a button did nothing"), and SDL in the settings Test/Bind dialog (his 0/17 screenshot). NOT device-tested.
+> - Resume: send the tester `Bannerlator-steamctrl-r3-standard` (run 34518065712), with notes: bindings live under Default / Any Controller; after any binding use "Fill rest → native Xbox"; try the USB puck / cable once. Merge to main on his OK.
+> - The "everything on main since 3.0.9" list was handed over in chat for the next release notes (8 feature merges + LSFG guide; Steam Controller not merged yet).
+
 ## 2026-09-10 — 🎮 **Steam Controller r3: back buttons + bindings + settings Test dialog (CI running)** (branch `feat/steam-controller-sdl` REBASED onto main `f1ed20e4`, head `6d3b2a73`, CI run 34518065712, label `steamctrl-r3`)
 > - Tester asks: "the bind part is the only broken thing" (Space bound to a button did nothing) and the Input Controls Test dialog never saw the controller (0/17 verified). Plus remappable back buttons.
 > - Back buttons (Input Controls → Device → Steam Controller): L4/L5/R4/R5 → nothing / gamepad button / mouse click / any key, in every game.

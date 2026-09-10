@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 📘 **LSFG Native guide: 3.1.0 version prepared, held for the release** (branch `docs/lsfg-guide-3.1.0`, commit `b56c7723` — NOT merged)
+> - The live guide (Pages, `main:/docs`) describes 3.0.9. The user asked for it to be updated when 3.1.0 ships, and ready before then. **Merge `docs/lsfg-guide-3.1.0` at the 3.1.0 release**, not before. It touches only `docs/lsfg-native-guide.html`, so the merge is clean.
+> - Changes: Auto (match FPS) described as switched on during frame gen with a per-game opt-out (was "locked off"); setup steps 2/3/6; the "Too few" example; cheat-sheet intro; the in-menu warning / fit suggestion / can't-run notice; two new quick fixes; footer 3.1.0. The checker gains an Auto switch that picks the exact or closest-above speed and suggests exact fits.
+> - Preview: `/sdcard/Download/LSFG-Native-Made-Simple-3.1.0-preview.html`. The release-time checklist is in memory (`project_bannerlator_310_release_prep`).
+
 ## 2026-09-10 — ✅ **Main CI green after the graphics merge** (main `3ece26e8`, CI run 34508073321)
 > - ludashi / pubg / standard all green, headSha `3ece26e8` verified. Main builds as merged: SGSR HQ, texture filtering and screen size by panel aspect, each with its "?" help. No release cut; vc83 unchanged.
 > - DiRT perf A/B recorder still armed (since 13:18:57, 30-min window), waiting for the user's 2-minute drive.

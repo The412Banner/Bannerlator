@@ -1285,10 +1285,10 @@ private fun SteamControllerSection() {
                 },
             )
             Spacer(Modifier.height(12.dp))
-            Text("Back buttons", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("Extra buttons", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                "What each of the four back buttons does, in every game. To change what the other buttons " +
-                    "do, bind them on the Controller tab under Default / Any Controller (the Steam " +
+                "What the four back buttons and the … button do, in every game. To change what the other " +
+                    "buttons do, bind them on the Controller tab under Default / Any Controller (the Steam " +
                     "Controller uses those bindings).",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
             )
@@ -1324,8 +1324,11 @@ private fun SteamControllerSection() {
     }
 }
 
-// SteamControllerBackend's back-button order.
-private val STEAM_PADDLE_NAMES = listOf("L4 (upper left)", "L5 (lower left)", "R4 (upper right)", "R5 (lower right)")
+// SteamControllerBackend's extra-button order.
+private val STEAM_PADDLE_NAMES = listOf(
+    "L4 (upper left)", "L5 (lower left)", "R4 (upper right)", "R5 (lower right)",
+    "… button (between the trackpads)",
+)
 
 /** Targets a back button can take: nothing, a gamepad button, a mouse click, or any keyboard key. */
 private fun steamPaddleOptions(): List<Pair<String, Binding>> {

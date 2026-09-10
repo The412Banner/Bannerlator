@@ -50,12 +50,14 @@ public final class SteamControllerBackend {
     private static final int F_RPAD_DOWN = 6, F_RPAD_X = 7, F_RPAD_Y = 8, F_STRIDE = 12;
     private static final int B_A = 0, B_B = 1, B_X = 2, B_Y = 3, B_LB = 4, B_RB = 5, B_BACK = 6,
             B_START = 7, B_LSTICK = 8, B_RSTICK = 9, B_GUIDE = 10, B_DPAD_UP = 11, B_DPAD_DOWN = 12,
-            B_DPAD_LEFT = 13, B_DPAD_RIGHT = 14, B_R4 = 16, B_L4 = 17, B_R5 = 18, B_L5 = 19,
+            B_DPAD_LEFT = 13, B_DPAD_RIGHT = 14, B_QAM = 15, B_R4 = 16, B_L4 = 17, B_R5 = 18, B_L5 = 19,
             B_RPAD_CLICK = 20;
 
-    /** Back buttons in settings order: L4 (upper left), L5 (lower left), R4 (upper right), R5 (lower right). */
-    public static final int PADDLE_COUNT = 4;
-    private static final int[] PADDLE_BITS = { B_L4, B_L5, B_R4, B_R5 };
+    /** Mappable extra buttons in settings order: L4 (upper left), L5 (lower left), R4 (upper right),
+     *  R5 (lower right), then the "…" Quick Access button between the trackpads. None has an Xbox
+     *  equivalent, so they're mapped here rather than through the profile bindings. */
+    public static final int PADDLE_COUNT = 5;
+    private static final int[] PADDLE_BITS = { B_L4, B_L5, B_R4, B_R5, B_QAM };
 
     // Face/shoulder/menu/stick-click bits -> the Android keycodes the profile bindings are keyed on.
     // D-pad, sticks and triggers reach the bindings through the pad state instead (hat / axis codes).
@@ -138,7 +140,7 @@ public final class SteamControllerBackend {
         }
     }
 
-    /** paddles: what each back button does (L4, L5, R4, R5; null / NONE = nothing). Gamepad targets are
+    /** paddles: what each extra button does (L4, L5, R4, R5, "…"; null / NONE = nothing). Gamepad targets are
      *  merged into the pad state; keyboard / mouse targets are reported through onSteamPadBinding. */
     public SteamControllerBackend(Activity activity, boolean trackpadMouse, Binding[] paddles, Listener listener) {
         this.activity = activity;

@@ -93,11 +93,13 @@ object GlobalControllerPrefs {
             .apply()
     }
 
-    // Back buttons, in SteamControllerBackend's order: L4 (upper left), L5 (lower left), R4 (upper
-    // right), R5 (lower right). Stored as Binding enum names; missing / unknown = NONE (does nothing).
+    // Extra buttons, in SteamControllerBackend's order: L4 (upper left), L5 (lower left), R4 (upper
+    // right), R5 (lower right), "…" (Quick Access). Stored as Binding enum names; missing / unknown =
+    // NONE (does nothing).
     private val KEY_STEAM_PADDLES = arrayOf(
         "steam_controller_paddle_l4", "steam_controller_paddle_l5",
         "steam_controller_paddle_r4", "steam_controller_paddle_r5",
+        "steam_controller_button_qam",
     )
 
     @JvmStatic

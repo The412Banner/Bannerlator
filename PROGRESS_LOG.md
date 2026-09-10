@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 📝 **Frame Generation "?" help brought up to date** (branch `fix/fg-help-text` off main `a82f13c7`, commit `e12e78be`, CI run 34493738619)
+> - The user's screenshot (DiRT Showdown per-game settings): the "?" next to Frame Generation still described **bionic-fg** and **lsfg-vk** and said "AI-generated". The dropdown has been Off / Win-FG Native / LSFG Native since lsfg-vk left the list on 2026-09-05.
+> - `help_frame_generation` (shared by ContainerDetailScreen and ShortcutsScreen) now covers: the two real engines (Win-FG Native: built in, 2×; LSFG Native: own Lossless.dll, 2×/3×/4×); requirements (Vulkan renderer; a Vulkan 1.3 Renderer Driver for LSFG Native, Turnip on older Adreno; the side menu names anything missing); setup (a holdable Max FPS, Max FPS × multiplier fitting the screen, the warning + fix, Auto (match FPS) on while it runs); starts Off each launch.
+> - `help_fps_limiter`: "Frame Generation loads the same limiter" (true of the old layer) → the limiter is switched on automatically while LSFG Native / Win-FG Native runs.
+> - Not done: a link to the guide. `HelpDialog` renders only bold/italic, and Compose BOM 2024.02 has no `LinkAnnotation`, so a URL would be dead text.
+> - ✅ **CI 34493738619 green**, headSha `e12e78be` verified. Staged `Bannerlator-fg-help-r1-pubg.apk` sha256 `bdbc21a481e1…` (download and staged copy match). Main CI 34493506689 (`a82f13c7`) also ✅ green. Awaiting the user's look, then merge.
+
 ## 2026-09-10 — 🔀 **MERGED to main: Auto on for frame gen (per-game opt-out) + the "can't run here" notice** (merge commits `7cfde0a0` auto-Auto, `4b2320ae` notice, on top of `be94d171`)
 > - Separate merge commits, so either can be reverted alone (`git revert -m 1 4b2320ae` removes only the notice). The merged app/ is byte-identical to the device-tested build `4cd5ea9c` (installed sha `88befdb2…`). versionCode untouched (vc83).
 > - Tested: Auto turns on at frame-gen start and the opt-out sticks per game shortcut (Pocket FIT). The notice stays quiet on a working 1.3 driver. The notice's failure path is untested on a <1.3 driver (the A710 reporter).

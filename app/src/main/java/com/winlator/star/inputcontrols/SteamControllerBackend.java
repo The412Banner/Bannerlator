@@ -81,10 +81,13 @@ public final class SteamControllerBackend {
     private volatile boolean running;
 
     // Poll thread -> main thread hand-off: the poll thread publishes its newest frame and posts the
-    // apply runnable only when none is queued, so a busy main thread coalesces frames.
+    // apply runnable only when none is queued, so a busy main thread coalesces frames. The main thread
+    // never calls into SDL (the poll thread holds the bridge lock during SDL updates).
     private final Object frameLock = new Object();
     private int[] frameInts;
     private float[] frameFloats;
+    private String[] frameNames;
+    private String[] framePaths;
     private int frameCount;
     private boolean applyQueued;
     private final Runnable applyFrame = this::applyFrame;
@@ -199,16 +202,29 @@ public final class SteamControllerBackend {
         }
         int[] ints = new int[MAX_PADS * I_STRIDE];
         float[] floats = new float[MAX_PADS * F_STRIDE];
+        String[] names = new String[MAX_PADS];
+        String[] paths = new String[MAX_PADS];
         int[] lastInts = new int[ints.length];
         float[] lastFloats = new float[floats.length];
         int lastCount = 0;
+        SparseArray<String[]> identities = new SparseArray<>(); // SDL id -> {name, path}
         while (running) {
             int count = nativePoll(ints, floats);
             if (count < 0)
                 break;
             // Idle pads produce identical frames; only hand real changes to the main thread.
             if (count != lastCount || !Arrays.equals(ints, lastInts) || !Arrays.equals(floats, lastFloats)) {
-                publish(ints, floats, count);
+                for (int p = 0; p < count; p++) {
+                    int id = ints[p * I_STRIDE + I_ID];
+                    String[] identity = identities.get(id);
+                    if (identity == null) {
+                        identity = new String[] { nativeGetName(id), nativeGetPath(id) };
+                        identities.put(id, identity);
+                    }
+                    names[p] = identity[0];
+                    paths[p] = identity[1];
+                }
+                publish(ints, floats, names, paths, count);
                 System.arraycopy(ints, 0, lastInts, 0, ints.length);
                 System.arraycopy(floats, 0, lastFloats, 0, floats.length);
                 lastCount = count;
@@ -218,10 +234,12 @@ public final class SteamControllerBackend {
         nativeShutdown();
     }
 
-    private void publish(int[] ints, float[] floats, int count) {
+    private void publish(int[] ints, float[] floats, String[] names, String[] paths, int count) {
         synchronized (frameLock) {
             frameInts = ints.clone();
             frameFloats = floats.clone();
+            frameNames = names.clone();
+            framePaths = paths.clone();
             frameCount = count;
             if (applyQueued)
                 return;
@@ -235,10 +253,14 @@ public final class SteamControllerBackend {
     private void applyFrame() {
         int[] ints;
         float[] floats;
+        String[] names;
+        String[] paths;
         int count;
         synchronized (frameLock) {
             ints = frameInts;
             floats = frameFloats;
+            names = frameNames;
+            paths = framePaths;
             count = frameCount;
             applyQueued = false;
         }
@@ -264,7 +286,7 @@ public final class SteamControllerBackend {
             int id = ints[p * I_STRIDE + I_ID];
             Pad pad = pads.get(id);
             if (pad == null) {
-                pad = new Pad(createController(id));
+                pad = new Pad(createController(id, names[p], paths[p]));
                 pads.put(id, pad);
                 Log.i(TAG, "Connected: " + pad.controller.getName() + " (" + pad.controller.getId()
                         + ", deviceId " + pad.controller.getDeviceId() + ")");
@@ -274,10 +296,10 @@ public final class SteamControllerBackend {
         }
     }
 
-    private ExternalController createController(int sdlId) {
+    private static ExternalController createController(int sdlId, String name, String path) {
         ExternalController controller = new ExternalController();
-        String name = nativeGetName(sdlId);
-        String path = nativeGetPath(sdlId);
+        if (name == null || name.isEmpty())
+            name = "Steam Controller";
         controller.setName(name);
         // Stable per controller (BLE path = "SteamController.<MAC>"), so Players-tab pins persist.
         controller.setId("sdl:" + (path != null && !path.isEmpty() ? path : name + "#" + sdlId));

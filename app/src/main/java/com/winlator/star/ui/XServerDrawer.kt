@@ -2980,9 +2980,12 @@ private fun HudContent(state: XServerDrawerState) {
         Spacer(Modifier.height(14.dp))
         Text("Refresh rate", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
-        // Auto (match FPS) == the existing VRR toggle. It stays usable while native frame gen runs:
-        // then the activity fits the display to Max FPS x multiplier (pickNativeFgRefresh).
+        // Auto (match FPS) == the existing VRR toggle. While native frame gen runs it is the
+        // session's Auto: switched on at start unless this game opted out, and toggling it off
+        // opts this game out (applyNativeFgLocks / onMatchRefreshChange in the activity).
         val nativeFgLocksVrr by state.nativeFgLocks.collectAsState()
+        val fgAutoTurnedOn by state.fgAutoTurnedOn.collectAsState()
+        val fgAutoPerGame by state.fgAutoPerGame.collectAsState()
         ToggleRow("Auto (match FPS)", matchRefreshOn && vrrSupported, enabled = vrrSupported) {
             matchRefreshOn = it
             state.setMatchRefreshRate(it)
@@ -3000,8 +3003,17 @@ private fun HudContent(state: XServerDrawerState) {
             when {
                 !vrrSupported ->
                     "Unavailable — this display has a single refresh rate, so there's nothing to match."
+                matchRefreshOn && nativeFgLocksVrr && fgAutoTurnedOn ->
+                    "Auto was turned on for frame generation — the display follows Max FPS × multiplier. " +
+                        (if (fgAutoPerGame) "Turn it off if you prefer; this game will remember."
+                         else "Turn it off if you prefer (for this session).")
                 matchRefreshOn && nativeFgLocksVrr ->
                     "Auto is on — with frame generation running, the display follows Max FPS × multiplier."
+                nativeFgLocksVrr ->
+                    (if (fgAutoPerGame) "Auto is off for this game while frame generation runs. "
+                     else "Auto is off while frame generation runs. ") +
+                        "Turn it on to fit the screen to Max FPS × multiplier." +
+                        (if (manualRefreshRate > 0) " Display locked to ${manualRefreshRate} Hz." else "")
                 matchRefreshOn ->
                     "Auto is on — the display follows your FPS."
                 manualRefreshRate > 0 ->

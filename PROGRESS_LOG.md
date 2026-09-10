@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🖥️🔁 **Frame gen switches Auto (match FPS) on by itself, with a per-game opt-out** (branch `feat/fg-auto-refresh-optout` off main `be94d171`, code commit `e7c03345`, CI run 34482280355)
+> User ask: turn Auto on automatically when frame gen starts, let the user opt out, and have the **game shortcut** remember the opt-out rather than the container, so new games made from that container don't inherit it.
+> - **On start** (LSFG Native or Win-FG Native starts generating): Auto is switched on for the session regardless of the saved setting — unless this game opted out, or the display has a single rate. When that changes the setting, the drawer says so: "Auto was turned on for frame generation … Turn it off if you prefer; this game will remember."
+> - **Opt-out:** turning Auto off while frame gen runs writes shortcut extra `fgAutoRefreshOptOut=1` (never the container); turning it back on removes it. No shortcut (launched from the container) → session only. With the opt-out set, the drawer says "Auto is off for this game while frame generation runs. Turn it on to fit the screen…".
+> - **On stop:** Auto returns to the saved container/shortcut setting, like the FPS limiter.
+> - Mechanics: `applyNativeFgLocks` sets `nativeFgAutoOn` and restores on release; `autoRefreshActive()` (the session value while the locks are held, the saved setting otherwise) feeds `applyVrr` + `nativeFgDisplayRate`; `onMatchRefreshChange` routes to the opt-out while frame gen runs.
+> - ⏳ CI running; NOT device-proven. Test: turn off Auto on a container → start LSFG Native → Auto flips on + note → turn it off → stop/start FG (or relaunch the game) → stays off for that game; a different game from the same container still flips on.
+
 ## 2026-09-10 — 🔀 **MERGED to main: frame-gen over-limit warning + screen fit** (merge commits `02330d9f` warning, `f8036a56` screen fit, on top of `9c3143a7`)
 > - Both branches merged with separate merge commits, so either can be reverted alone (`git revert -m 1 f8036a56` removes only the screen fit). The merged app code is byte-identical to the device-proven build `2c57b3f8` (`git diff 2c57b3f8 HEAD -- app/` is empty). versionCode untouched (vc83).
 > - Device proof: the Pocket FIT run below (7 screenshots, installed sha `0cd13a06…` == staged).

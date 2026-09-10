@@ -195,6 +195,16 @@ object XServerDrawerState {
     private val _displayTargetHz = MutableStateFlow(0)
     val displayTargetHz: StateFlow<Int> = _displayTargetHz
 
+    // Native frame gen switched Auto (match FPS) on by itself for this session (the user's saved
+    // setting was off). Drives the "Auto turned on for frame generation" note until the user acts.
+    private val _fgAutoTurnedOn = MutableStateFlow(false)
+    val fgAutoTurnedOn: StateFlow<Boolean> = _fgAutoTurnedOn
+
+    // Whether turning Auto off during frame gen is remembered: true when the game was launched
+    // from a shortcut (the opt-out lives on the shortcut, never the container).
+    private val _fgAutoPerGame = MutableStateFlow(false)
+    val fgAutoPerGame: StateFlow<Boolean> = _fgAutoPerGame
+
     // Current fullscreen aspect-ratio mode (#71): Container.FULLSCREEN_OFF/FIT/STRETCH. Shown next
     // to the in-game "Toggle Fullscreen" row so the user sees which mode the cycle landed on.
     private val _fullscreenMode = MutableStateFlow(0)
@@ -473,6 +483,8 @@ object XServerDrawerState {
     fun setSupportedRefreshRates(v: List<Int>) { _supportedRefreshRates.value = v }
     fun setCurrentRefreshRate(v: Int)      { _currentRefreshRate.value = v }
     fun setDisplayTargetHz(v: Int)         { _displayTargetHz.value = v }
+    fun setFgAutoTurnedOn(v: Boolean)      { _fgAutoTurnedOn.value = v }
+    fun setFgAutoPerGame(v: Boolean)       { _fgAutoPerGame.value = v }
 
     fun setFpsExpanded(v: Boolean) { _fpsExpanded.value = v }
     fun setFpsConfig(v: String) { _fpsConfig.value = v }
@@ -591,6 +603,8 @@ object XServerDrawerState {
         _supportedRefreshRates.value = emptyList()
         _currentRefreshRate.value = 0
         _displayTargetHz.value = 0
+        _fgAutoTurnedOn.value = false
+        _fgAutoPerGame.value = false
         _cursorExpanded.value = false
         _swipeButtons.value = true
         _swipeDpad.value = false

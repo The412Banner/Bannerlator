@@ -188,6 +188,13 @@ object XServerDrawerState {
     private val _currentRefreshRate = MutableStateFlow(0)
     val currentRefreshRate: StateFlow<Int> = _currentRefreshRate
 
+    // The refresh rate (Hz) the activity is currently asking the display for: the user's manual
+    // lock, a VRR vote, or the panel's top mode. 0 = not published yet. The frame-gen over-limit
+    // warning checks cap x multiplier against this, because it is the cadence native frame gen
+    // presents at under FIFO.
+    private val _displayTargetHz = MutableStateFlow(0)
+    val displayTargetHz: StateFlow<Int> = _displayTargetHz
+
     // Current fullscreen aspect-ratio mode (#71): Container.FULLSCREEN_OFF/FIT/STRETCH. Shown next
     // to the in-game "Toggle Fullscreen" row so the user sees which mode the cycle landed on.
     private val _fullscreenMode = MutableStateFlow(0)
@@ -465,6 +472,7 @@ object XServerDrawerState {
     fun setManualRefreshRate(v: Int)       { _manualRefreshRate.value = v }
     fun setSupportedRefreshRates(v: List<Int>) { _supportedRefreshRates.value = v }
     fun setCurrentRefreshRate(v: Int)      { _currentRefreshRate.value = v }
+    fun setDisplayTargetHz(v: Int)         { _displayTargetHz.value = v }
 
     fun setFpsExpanded(v: Boolean) { _fpsExpanded.value = v }
     fun setFpsConfig(v: String) { _fpsConfig.value = v }
@@ -582,6 +590,7 @@ object XServerDrawerState {
         _manualRefreshRate.value = 0
         _supportedRefreshRates.value = emptyList()
         _currentRefreshRate.value = 0
+        _displayTargetHz.value = 0
         _cursorExpanded.value = false
         _swipeButtons.value = true
         _swipeDpad.value = false

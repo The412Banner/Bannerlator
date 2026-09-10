@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🔀 **MERGED to main: Frame Generation help + Present Mode note** (branch `fix/fg-help-text`)
+> - `help_frame_generation` (Win-FG Native / LSFG Native, requirements, setup) and the `help_fps_limiter` note: built and staged as r1 (`e12e78be`, sha `bdbc21a4…`). The user confirmed on device that the new "?" text shows in Brawlhalla's per-game settings.
+> - Added before merge: `renderer_present_mode_fg_note` (`42af374f`) said only LSFG Native forces FIFO and "the other engines leave your choice alone". `effectivePresentMode` forces FIFO for any `nativeFrameGenEngine()` while armed, so it now names both. String-only; strings.xml validated (parses, no bare apostrophes); main CI builds it.
+
 ## 2026-09-10 — 📝 **Frame Generation "?" help brought up to date** (branch `fix/fg-help-text` off main `a82f13c7`, commit `e12e78be`, CI run 34493738619)
 > - The user's screenshot (DiRT Showdown per-game settings): the "?" next to Frame Generation still described **bionic-fg** and **lsfg-vk** and said "AI-generated". The dropdown has been Off / Win-FG Native / LSFG Native since lsfg-vk left the list on 2026-09-05.
 > - `help_frame_generation` (shared by ContainerDetailScreen and ShortcutsScreen) now covers: the two real engines (Win-FG Native: built in, 2×; LSFG Native: own Lossless.dll, 2×/3×/4×); requirements (Vulkan renderer; a Vulkan 1.3 Renderer Driver for LSFG Native, Turnip on older Adreno; the side menu names anything missing); setup (a holdable Max FPS, Max FPS × multiplier fitting the screen, the warning + fix, Auto (match FPS) on while it runs); starts Off each launch.

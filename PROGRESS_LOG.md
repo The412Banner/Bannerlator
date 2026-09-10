@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🎮 **Steam Controller support via SDL3 (opt-in): built, CI running** (branch `feat/steam-controller-sdl` off main `885ed124`, commit `eee66b90`, CI run 34509905239, label `steamctrl-r1`)
+> - Why: a community user's 2026 Steam Controller (BLE, PID 0x1303) is a keyboard + mouse to Android ("lizard mode"), so no XInput slot. A third-party SDL tester app reads it fine through SDL's own BLE GATT path (its "Serial 12345" is SDL's hardcoded BLE serial).
+> - What: the official SDL 3.4.16 Android AAR, vendored unmodified in `vendor/maven` (sha256 `03710fc7…e61c`), plus a JNI bridge `libsteamctrl.so` linked through prefab. Only the HIDAPI Steam drivers are enabled, and SDL opens a HID device only when an enabled driver claims it, so no other pad is touched. SDL pads enter WinHandler as synthetic deviceIds with `sdl:<path>` descriptors (pins, On-screen Yield/Share, Players list, toast, Reset Input, rumble via SDL). Android's Valve 0x28DE devices are swallowed while SDL owns a pad. Right trackpad moves the mouse (sub-toggle).
+> - Setting: Input Controls → Device → Steam Controller (OFF by default; off = SDL never loaded). Bluetooth permission is asked by the setting, never in-game (USB-only without it).
+> - ⏳ CI running, headSha verified. NOT device-tested. To check: APK contains `libSDL3.so` + `libsteamctrl.so`. On-device (no Steam Controller here): off = unchanged; on = SDL comes up, no crash, normal pads unaffected. Real-pad proof needs the community user.
+
 ## 2026-09-10 — 📘 **LSFG Native guide: 3.1.0 version prepared, held for the release** (branch `docs/lsfg-guide-3.1.0`, commit `b56c7723` — NOT merged)
 > - The live guide (Pages, `main:/docs`) describes 3.0.9. The user asked for it to be updated when 3.1.0 ships, and ready before then. **Merge `docs/lsfg-guide-3.1.0` at the 3.1.0 release**, not before. It touches only `docs/lsfg-native-guide.html`, so the merge is clean.
 > - Changes: Auto (match FPS) described as switched on during frame gen with a per-game opt-out (was "locked off"); setup steps 2/3/6; the "Too few" example; cheat-sheet intro; the in-menu warning / fit suggestion / can't-run notice; two new quick fixes; footer 3.1.0. The checker gains an Auto switch that picks the exact or closest-above speed and suggests exact fits.

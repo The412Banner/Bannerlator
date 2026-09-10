@@ -7,7 +7,9 @@
 > - **Which Hz:** the rate the activity asks the display for — the manual lock if set, otherwise the panel's top mode — published from `applyWindowPreferredRefreshRate` into new `XServerDrawerState.displayTargetHz`. That is the cadence native FG presents at under FIFO.
 > - Also: the "Locked on while LSFG Native is generating" note now says Win-FG Native when that's the engine running (the lock always covered both).
 > - Not changed: the default cap of 30 when none is set (still under-fills a 144 Hz panel) and the pacer itself. App-side UI only; no native changes.
-> - ⏳ CI dispatched after push (run id in memory); staging the `pubg` APK. NOT device-proven.
+> - ✅ **CI 34472999340 green, all three flavors**, headSha `4984e1f4` verified == pushed. Staged `Bannerlator-fg-overlimit-r1-pubg.apk` to `/sdcard/Download/`, sha256 `2d96d893acae…` (download and staged copy match). versionCode untouched (vc83).
+> - ⏭️ **Device check:** LSFG Native 4× with Max FPS 60 on the 144 Hz Pocket FIT → red warning under Max FPS and under the multiplier buttons, with "Set Max FPS to 36 / or pick 2×". Tap it → the warning clears and the hint reads "…36 × 4 = 144". Win-FG Native with Max FPS 90 → the warning, no "or pick". NOT device-proven yet; merge only after the user OKs it.
+> - 📘 Same day: the guide link was added as a callout above "What's New" in the release notes of 3.0.6, 3.0.7, 3.0.8 and 3.0.9 (every release since LSFG Native landed).
 
 ## 2026-09-09 — 🎞️🛠️ **LSFG Native: a freeze that could still strand a semaphore, and a ghost on every start** (branch `fix/lsfg-native-freeze-stale-history` off main `8bb3c0bf`, CI run 34381133472)
 > Both came out of a read-through of the whole native LSFG path rather than a bug report, so neither is device-proven — they are reasoned from the code and from what earlier device runs already taught us about these two failure modes.

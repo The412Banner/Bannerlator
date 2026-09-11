@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 📄 **Release pages: collapsed Proton 9 + Credits now enforced** (merge `b25498c8`)
+> - Merged `ci/release-notes-collapsible`. A stable cut now requires "Where to get Proton 9" and "Credits" as collapsed tap-to-expand sections (as on the live 3.1.0 page); the old `##` heading form fails the release check. `scripts/new_release_notes.py` writes the collapsed form for the next release, and `docs/releases/3.1.0.md` matches the live page.
+> - Checked on the merged tree (3.1.0 passes; heading form rejected; a 3.1.1 starter comes out collapsed and is refused until its placeholders are filled) and in CI: release-notes dry run 34552283208 ✅ on `b25498c8`. The push only triggered the Pages deploy. The branch is merged but not deleted.
+
 ## 2026-09-11 — 🧹 **USB cable in the 3.1.0 notes; merged branches deleted (with backups)**
 > - 3.1.0 notes now say the Steam Controller is tested over Bluetooth **and a USB cable**; the wireless puck is still untested. Updated on the live release page, `docs/releases/3.1.0.md` and the README (`7f44c20f`). `update.json` unchanged.
 > - GitHub: **97 merged branches deleted** (87 fully in main + 10 whose content is all on main), each first backed up to `refs/backup/20260911/heads/<branch>` and deleted with a lease on its checked SHA. 72 remain: main, 67 unmerged, and 4 whose commits were copied to main but whose content still differs from it (`feat/bake-aio-2.0.0`, `feat/container-layer-update`, `feat/steam-cloud-saves`, `fix/rust-depot-autoresume`).

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🌑 **XP controls: dark mode, Silver, toolbars/status bars/rebars device-proven** (proton-wine `aio-eanet/xp-controls` `4c64baf0eef`, CI 34617530378)
+> - Dark mode now has its own XP artwork (XP never had one): dark buttons, tabs, headers and check boxes with light text, dark scroll bars and tracks, keeping the scheme accents and orange hover rings. Explorer picks the dark variant automatically when the app is in its dark theme. Light mode is unchanged.
+> - Readability fixes: tab labels (the selected one vanished), labels on tab pages (drawn black on dark), and group titles (dark variants use light titles). The Wine fixes are in uxtheme (`dialog.c` text colour) and comctl32 (`tab.c` uses the theme text colour); both also help Wine's own Light theme in dark mode.
+> - New parts: toolbar buttons with translucent faces that suit both modes, separators, split-button arrows, status bar separators and grip, rebar grippers and chevrons.
+> - Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-controls.wcp` sha `e553647f…` (theme 2 MB, 230 bitmaps from `genimages.py`). Container-8 left in light mode, Blue, XP controls on.
+
 ## 2026-09-11 — ✅🎨 **XP-styled buttons and controls device-proven** (proton-wine `aio-eanet/xp-controls` `35007f51ef1`, CI 34612146587)
 > - Wine Configuration and Display Properties draw with the XP theme: tabs with the orange top, rounded buttons with the default ring, green check marks, blue gel scroll bars and combo buttons, spin buttons, list headers, the green-tipped slider, blue group titles. Wine lists it as "Wine XP / Default (blue)".
 > - Live switching works: unticking "XP style buttons and controls" and pressing Apply turns the open dialog back to Wine's Light theme immediately; ticking it again with Olive Green turns the taskbar, the window frames and the controls olive in one go.

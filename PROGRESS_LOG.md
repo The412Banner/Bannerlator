@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🍾 **Layers v7 pre-release: the Wine XP desktop in all seven layers** ([`build-bionic-layers-20260911-xp`](https://github.com/The412Banner/proton-wine/releases/tag/build-bionic-layers-20260911-xp))
+> - Every Proton / GE-Proton layer (GE 11.0-6 / 11.0-5 / 11.0-3 / 10.0-34, Proton 11.0-1 / 11.0-2 / 10.0-4, plus the 11.0-2 x86_64 build) is its v6 build plus the Wine XP desktop, as versionCode 7. The Wine 10 layers needed a small port. All eight packages were checked for the version stamp, unchanged layer names and the XP pieces compiled in, then published server-side from their CI runs (byte-identical to the checked files).
+> - A brand-new container comes up in the full XP desktop in Blue (XP title bars now on by default); device-proven on GE 11.0-6 with a container created in the app.
+> - Pre-release only: v6 stays Latest and the in-app catalog default until testers confirm it. All seven parent branches were fast-forwarded to the v7 sources.
+
 ## 2026-09-11 — 🧭 **CHECKPOINT: layers v7 (v6 + the Wine XP desktop) in flight for all 7** (proton-wine `aio-eanet/xp-<parent>` staging branches)
 > - User go: every layer becomes v6 + all XP work as versionCode 7, published like v6 and merged to the parent branches; a brand-new container gets the whole Wine XP desktop in Blue (XP title bars now on by default too).
 > - The 5 Wine 11 layers take the XP series cleanly and are building (runs 34629988483, 34630031659, 34630044726, 34630056346, 34630060475). The 2 Wine 10 layers need a port (older explorer, no split v6 comctl32, different GPU-window handling).

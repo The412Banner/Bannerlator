@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🪟 **XP (Luna) taskbar + clock + double-row drag, built into Wine explorer (v6 GE 11.0-6)** (proton-wine branch `aio-eanet/xp-taskbar`)
+> User: rebuild parts of Wine so the desktop looks like XP; XP first, taskbar + clock first, hand over a working wcp, test on the device over root.
+> - **Where:** `programs/explorer/systray.c` (the Shell_TrayWnd taskbar). Start menu (`startmenu.c`) and window frames (`dlls/win32u/defwnd.c`, uxtheme has no title-bar theming) are later phases.
+> - **Built:** Luna bar/notify gradients, green rounded start button (Wine logo, no MS flag), rounded task buttons with the exe's icon, clock (time; time/weekday/date at 2+ rows) + long-date tooltip, drag the bar to 1-3 rows, right-click menu (Taskbar Size / Task Manager / Lock the Taskbar), WinEvent-driven live buttons. `HKCU\Software\Wine\Explorer\Taskbar` Style/Rows/Locked; `Style=classic` or `WINE_TASKBAR_STYLE=classic` = stock taskbar.
+> - Commits `57cdec651c9` + `264a5b5680a` (test identity versionCode 9 → installs as `11.0-6-arm64ec-9`, wcp `GE-proton-11.0-6-arm64ec-xp-taskbar.wcp`). CI run `34582670587` in progress. Not device-tested yet.
+
 ## 2026-09-11 — 📄 **Release pages: collapsed Proton 9 + Credits now enforced** (merge `b25498c8`)
 > - Merged `ci/release-notes-collapsible`. A stable cut now requires "Where to get Proton 9" and "Credits" as collapsed tap-to-expand sections (as on the live 3.1.0 page); the old `##` heading form fails the release check. `scripts/new_release_notes.py` writes the collapsed form for the next release, and `docs/releases/3.1.0.md` matches the live page.
 > - Checked on the merged tree (3.1.0 passes; heading form rejected; a 3.1.1 starter comes out collapsed and is refused until its placeholders are filled) and in CI: release-notes dry run 34552283208 ✅ on `b25498c8`. The push only triggered the Pages deploy. The branch is merged but not deleted.

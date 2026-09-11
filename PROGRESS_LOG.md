@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🪟 **XP window frames, new Wine logo and light/dark Wine XP wallpaper, device-proven** (proton-wine `aio-eanet/xp-taskbar` `9d9f36596cc`)
+> - **XP window frames** in `dlls/win32u/defwnd.c`, opt-in from Display Properties ("XP style title bars and window frames", off by default): Luna caption gradient, bold title with shadow, rounded caption buttons (red close), blue / olive green / silver frames following the color scheme. Paint-only, the frame and caption sizes are the usual metrics so window and client sizes don't change. Setting read at most once a second; explorer repaints every frame 1.2 s after Apply. Device: file manager frame switched to Silver and to Blue live.
+> - **New Wine logo** (user's `WINE-logo.svg`) on the start button and the start menu tile.
+> - **Wine XP desktop background** from the user's `wine-xp-light.jpg` / `wine-xp-dark.jpg`: emblem stored as 300x300 bitmaps, bands rebuilt at the desktop size (fits any aspect ratio), light or dark picked from the theme's window color, only replaces the app's default wallpaper. Device: light and dark both shown on Container-8 (theme flipped and restored).
+> - Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-taskbar.wcp` sha `d520eb18…` (versionCode 9). Wallpaper side request: `/sdcard/Download/desktop_wallpaper*.png`.
+
 ## 2026-09-11 — ✅🪟 **XP shell: tray icons, live XP↔Classic switch proven; desktop-disabled-after-dialog bug fixed** (proton-wine `aio-eanet/xp-taskbar` `b5ca9e1156e`)
 > - Proven on Container-8: Task Manager's tray icon sits next to the clock; Display Properties switches XP → Classic and back without a restart; the chosen style survives a restart.
 > - Bug found while testing: after Display Properties closed, the desktop ignored the mouse (no right-click menu, no double-click on desktop icons). The dialog was owned by the desktop window; Wine disables the owner when a modal dialog opens, but a window parented to the desktop gets no owner, so EndDialog never re-enabled it. Fixed by creating the dialog without an owner (CI `34593092062`), verified on the device.

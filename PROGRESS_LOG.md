@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — ✅ **Steam Controller support MERGED to main** (merge `c2acbbd1` = `feat/steam-controller-sdl` @ `31ede2c4`, main CI run 34546109943)
+> - User: "all works, merge it to main". The community tester confirmed r6 on a 2026 Steam Controller over Bluetooth: in-game play, profile bindings, extra buttons (L4/L5/R4/R5 + "…"), trackpad mouse Right / Left / Both, and the settings Test/Bind dialog (18 inputs). User-relayed; no logs seen here.
+> - Checked before push: 20 files, all feature files; identical stat with `--ignore-cr-at-eol` (no line-ending churn); the merged tree is byte-identical to the tested r6 build (excluding PROGRESS_LOG). Main CI dispatched, headSha `c2acbbd1` verified.
+> - Opt-in: Input Controls → Device → Steam Controller (off = SDL never loaded). Revert just this: `git revert -m 1 c2acbbd1`. Not released yet; goes in the next cut after 3.0.9.
+> - Still untested: USB cable / puck. Not done: gyro, left-trackpad scroll/D-pad, Steam button as XInput guide. Branch, worktree and backup kept.
+
 ## 2026-09-10 — 🎮 **Steam Controller r6: trackpad mouse Right / Left / Both / Off (CI ✅ green + staged); line-ending cleanup** (branch `feat/steam-controller-sdl` head `31ede2c4`, CI run 34544484648, label `steamctrl-r6`, NOT merged)
 > - Tester ask: make the left trackpad useful, either instead of the right one or both at once. "Right trackpad moves the mouse" becomes "Trackpad mouse": Right / Left / Both / Off (the old on/off seeds it). A mouse pad's click = left click; with Both, the left pad clicks right. Includes r5's 18-input controller test (r5 34543635744 cancelled, superseded).
 > - Pre-merge audit caught line-ending damage: a scripted edit had flipped all-CRLF `WinHandler.java` to LF (fixed by amend + force-push with lease), and an earlier edit had normalised mixed-EOL `InputControlsView.java` to all-CRLF (in r3–r5; restored to main's bytes in no-code commit `31ede2c4`). Branch vs main is now 1,593+/51− with no whole-file churn.

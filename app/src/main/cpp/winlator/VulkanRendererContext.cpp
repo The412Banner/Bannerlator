@@ -1510,19 +1510,8 @@ bool VulkanRendererContext::createAiPipelines() {
     cli.setLayoutCount=1; cli.pSetLayouts=&aiCompDSLayout; cli.pushConstantRangeCount=1; cli.pPushConstantRanges=&cpc;
     if (vk_.CreatePipelineLayout(device,&cli,nullptr,&aiCompPipeLayout)!=VK_SUCCESS) { aiCompPipeLayout=VK_NULL_HANDLE; return false; }
 
-    auto makeCompute=[&](const uint32_t* code, size_t sz, VkPipeline& out)->bool{
-        VkShaderModule m=makeShader(code,sz);   // throws on failure (caught in ensureAiUpscale)
-        VkComputePipelineCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        ci.stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        ci.stage.stage=VK_SHADER_STAGE_COMPUTE_BIT; ci.stage.module=m; ci.stage.pName="main";
-        ci.layout=aiCompPipeLayout;
-        VkResult r=vk_.CreateComputePipelines(device,VK_NULL_HANDLE,1,&ci,nullptr,&out);
-        vk_.DestroyShaderModule(device,m,nullptr);
-        if (r!=VK_SUCCESS) { out=VK_NULL_HANDLE; return false; }
-        return true;
-    };
-    if (!makeCompute(ai_upscale_fast_code, sizeof(ai_upscale_fast_code), aiFastPipeline)) return false;
-    if (!makeCompute(ai_upscale_hq_code,   sizeof(ai_upscale_hq_code),   aiHqPipeline))   return false;
+    // The two compute pipelines are built on demand (createAiComputePipeline): picking
+    // AI compiles only the small net (~27 ms on Adreno 750), AI HQ only the big one (~140 ms).
 
     // Final pass layout: set 0 = offscreen (offscreenDS), set 1 = residual (aiResidualDS),
     // both the ordinary one-sampler dsLayout; push constants shaped like SGSR's.
@@ -1536,6 +1525,22 @@ bool VulkanRendererContext::createAiPipelines() {
     // offscreen/fx passes and the frame-gen composite pass, so it is valid in all of them.
     aiFinalPipeline = createPostPipeline(ai_upscale_final_code, sizeof(ai_upscale_final_code),
                                          renderPass, aiFinalPipeLayout);   // throws on failure
+    return true;
+}
+
+// Build the compute pipeline for one network on first use (see createAiPipelines).
+bool VulkanRendererContext::createAiComputePipeline(bool hq) {
+    VkPipeline& out = hq ? aiHqPipeline : aiFastPipeline;
+    if (out!=VK_NULL_HANDLE) return true;
+    VkShaderModule m = hq ? makeShader(ai_upscale_hq_code,   sizeof(ai_upscale_hq_code))    // throws on
+                          : makeShader(ai_upscale_fast_code, sizeof(ai_upscale_fast_code)); // failure (caught)
+    VkComputePipelineCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    ci.stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    ci.stage.stage=VK_SHADER_STAGE_COMPUTE_BIT; ci.stage.module=m; ci.stage.pName="main";
+    ci.layout=aiCompPipeLayout;
+    VkResult r=vk_.CreateComputePipelines(device,VK_NULL_HANDLE,1,&ci,nullptr,&out);
+    vk_.DestroyShaderModule(device,m,nullptr);
+    if (r!=VK_SUCCESS) { out=VK_NULL_HANDLE; return false; }
     return true;
 }
 
@@ -1589,7 +1594,7 @@ void VulkanRendererContext::destroyAiUpscale() {
 // after ensureOffscreen(w,h) succeeded. false = run SGSR HQ this frame; aiFailed
 // tells whether that is now permanent (it is for every failure except "offscreen
 // not ready", which cannot happen after a successful ensureOffscreen).
-bool VulkanRendererContext::ensureAiUpscale(int w, int h) {
+bool VulkanRendererContext::ensureAiUpscale(int w, int h, bool hq) {
     if (aiFailed) return false;
     if (w<=0 || h<=0 || offscreenView==VK_NULL_HANDLE) return false;
     try {
@@ -1599,6 +1604,7 @@ bool VulkanRendererContext::ensureAiUpscale(int w, int h) {
             if (!createAiPipelines()) { aiFallback("pipeline/descriptor creation failed"); return false; }
             aiPipelinesReady = true;
         }
+        if (!createAiComputePipeline(hq)) { aiFallback("compute pipeline creation failed"); return false; }
         bool resChanged = false;
         if (aiResImg==VK_NULL_HANDLE || aiResW!=w || aiResH!=h) {
             // The previous frames may still be writing/reading the old residual.
@@ -2432,7 +2438,7 @@ void VulkanRendererContext::planUpscaleFrame() {
             if (ok && (mode==4||mode==5)) ok = ensureMid(outW,outH);
             // AI: residual image + descriptor sets at game res. On failure run SGSR HQ,
             // which needs only the offscreen that is already in place.
-            if (ok && (mode==9||mode==10) && !ensureAiUpscale(containerWidth,containerHeight)) mode=8;
+            if (ok && (mode==9||mode==10) && !ensureAiUpscale(containerWidth,containerHeight,mode==10)) mode=8;
             if (ok) {
                 float nx0=(float)outX/scW*2.f-1.f, ny0=(float)outY/scH*2.f-1.f;
                 float nx1=(float)(outX+outW)/scW*2.f-1.f, ny1=(float)(outY+outH)/scH*2.f-1.f;

@@ -822,9 +822,10 @@ private:
     bool ensureFx2(int w, int h);
     // AI upscale (modes 9/10). ensureAiUpscale runs on the render thread after
     // ensureOffscreen; false = use SGSR HQ this frame (aiFailed says whether for good).
-    bool ensureAiUpscale(int w, int h);
+    bool ensureAiUpscale(int w, int h, bool hq);   // hq = mode 10 (AI HQ)
     const char* aiCapsProblem(char* buf, size_t bufSz);   // nullptr = device can run it
     bool createAiPipelines();
+    bool createAiComputePipeline(bool hq);           // on first use of that mode
     bool createAiResidual(int w, int h);
     void destroyAiResidual();
     void destroyAiUpscale();

@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define CK(x) do { VkResult r_ = (x); if (r_ != VK_SUCCESS) { \
     fprintf(stderr, "FAIL %s = %d (line %d)\n", #x, (int)r_, __LINE__); exit(1); } } while (0)
@@ -177,8 +178,10 @@ int main(int argc, char** argv) {
     cpci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; cpci.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     cpci.stage.module = mkShader(compPath); cpci.stage.pName = "main"; cpci.layout = cpl;
     printf("stage: compute pipeline\n");
+    struct timespec t0, t1; clock_gettime(CLOCK_MONOTONIC, &t0);
     VkPipeline cpipe; CK(vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &cpci, NULL, &cpipe));
-    printf("stage: compute pipeline ok\n");
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    printf("PIPELINE compute create %.1f ms\n", (t1.tv_sec - t0.tv_sec) * 1e3 + (t1.tv_nsec - t0.tv_nsec) / 1e6);
 
     // final pass pipeline (optional)
     Img out = {0}; Buf outRb = {0}; VkRenderPass rp = VK_NULL_HANDLE; VkFramebuffer fbo = VK_NULL_HANDLE;

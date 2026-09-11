@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🪟 **Game window title bars fixed, device-proven** (proton-wine `aio-eanet/xp-taskbar` `390b251b805`, CI 34605682766)
+> - Game Controller Tester (32-bit, VKD3D) opens with a full XP title bar on its first paint: gradient, icon, title, rounded buttons. AIO Graphics Test (DXVK) gets the XP frame and buttons; its title is empty on purpose, since the app draws its own title inside the window. Inactive XP titles are readable.
+> - With XP frames switched off, the same game window gets the normal Wine title bar in the app's theme colours instead of black or white, so the plain Wine title bars were fixed too.
+> - Last piece: a window that switches to Vulkan/OpenGL output after its first paint now gets its frame repainted (`update_window_state`). Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-titlebars.wcp` sha `3c9bfa9a…`; the earlier checkpoint wcp is untouched.
+
 ## 2026-09-11 — 🎯🪟 **Blank title bars on game windows: cause found, fix building** (proton-wine `aio-eanet/xp-taskbar` `de58ddace7c`, CI 34604357716)
 > - Windows that draw through Vulkan or OpenGL (every DXVK/VKD3D/GL game) get no Wine-side surface, so Wine sends their frame to the app's X server one drawing request at a time. That X server fills rectangles with the background colour instead of the fill colour, skips line segments and has no RENDER extension, so the frame came out white and the caption blank. Plain Wine frames on game windows were affected the same way; this predates the XP work.
 > - Fix: for those windows, draw the frame into a bitmap and copy it over as an image, which this X server handles correctly. The XP caption buttons are always drawn in a bitmap too, so hover and press repaints work as well. The faint text on inactive XP title bars is now white with a shadow (dark grey on Silver).

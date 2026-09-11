@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧭 **CHECKPOINT: navy + moss dark twins, Wordpad icon — CI in flight** (proton-wine `aio-eanet/xp-controls` `a318a1ff477`, CI 34624854833)
+> - Blue and Olive Green now get dark twins in the app's dark theme, like Silver's graphite: **navy** and **moss** title bars and frames (win32u `0d5d6b88306`), taskbars, start menus and cascades, and the Display Properties preview (explorer `7fdb0448255`; the preview window body now uses the button-face colour). Palettes are ordered light Blue/Olive/Silver then dark navy/moss/graphite, so dark = scheme + 3. The XP control artwork already had BlueDark/OliveDark.
+> - Wordpad's start menu shortcut showed a blank icon because the app's shortcut targets `C:\windows\system32\write.exe`, Wine's launcher with no icon. `write.exe` now carries the Wordpad icon like on Windows (`a318a1ff477`). Installed programs are unaffected: their shortcuts already show their own icons (Pale Moon proves it).
+> - Pale Moon: `browser.tabs.drawInTitlebar=false` written to its profile `user.js` so it uses the XP title bar (its own Windows 10-style bar is dark-on-dark here because Wine reports DWM composition on but stubs `DwmExtendFrameIntoClientArea`). User then said to drop Pale Moon.
+
 ## 2026-09-11 — ✅🖤 **Silver goes graphite in dark mode** (proton-wine `aio-eanet/xp-controls` `60b599c901b`, CI 34619805498)
 > - With the app's dark theme, the Silver scheme now turns graphite everywhere it was still bright: window title bars and frames (win32u), the taskbar and its buttons, the start menu and All Programs cascades, and the Display Properties preview. Light titles and text, the green start button and red close button kept. Blue and Olive keep their colours.
 > - Device-proven in the user's dark + Silver container together with the dark control artwork. Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-controls.wcp` sha `77c762ee…`.

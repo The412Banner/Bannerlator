@@ -9,9 +9,10 @@ release-notes-check.yml for a dry run that publishes nothing.
 
 Stable releases: docs/releases/<release_number>.md is REQUIRED. It must carry the standard
 layout (logo + version badge, title, "What's New — everything since <previous stable>" naming
-the real previous stable tag, Carried over, Where to get Proton 9, Credits) and no unfinished
-TODO(notes) placeholders. The complete list of merged work since the previous stable tag is
-appended in a collapsible section, so nothing merged is ever left off the page.
+the real previous stable tag, Carried over, and Where to get Proton 9 + Credits as collapsed
+tap-to-expand <details> blocks) and no unfinished TODO(notes) placeholders. The complete list
+of merged work since the previous stable tag is appended in a collapsible section, so nothing
+merged is ever left off the page.
 
 Pre-releases: the notes file is used when present; otherwise the --fallback text is the body,
 as before.
@@ -29,6 +30,9 @@ REPO_URL = "%s/%s" % (os.environ.get("GITHUB_SERVER_URL", "https://github.com"),
                       os.environ.get("GITHUB_REPOSITORY", "The412Banner/Bannerlator"))
 STABLE_TAG = re.compile(r"^\d+\.\d+(\.\d+)?$")
 PLACEHOLDER = "TODO(notes)"
+# The two standing sections every stable page carries, collapsed behind a tap-to-expand summary.
+PROTON_SUMMARY = "<summary><b>📦 Where to get Proton 9</b> (tap to expand)</summary>"
+CREDITS_SUMMARY = "<summary><b>🙏 Credits</b> (tap to expand)</summary>"
 
 # First-parent commits that are bookkeeping, not work a user would see.
 SKIP_SUBJECT = re.compile(
@@ -107,16 +111,25 @@ def changes_section(prev, items):
 
 
 def insert_before_credits(body, section):
-    """Put the change list just above the '---' that opens the Credits block."""
+    """Put the change list just above the Credits block (and the '---' that opens it)."""
     lines = body.split("\n")
     try:
-        credits = next(i for i, l in enumerate(lines) if l.startswith("## 🙏 Credits"))
+        credits = next(i for i, l in enumerate(lines)
+                       if "🙏 Credits" in l and (l.startswith("## ") or l.startswith("<summary>")))
     except StopIteration:
         return body.rstrip("\n") + "\n\n" + section
+
+    def prev_nonblank(i):
+        i -= 1
+        while i >= 0 and not lines[i].strip():
+            i -= 1
+        return i
+
     at = credits
-    j = credits - 1
-    while j >= 0 and not lines[j].strip():
-        j -= 1
+    j = prev_nonblank(at)
+    if lines[credits].startswith("<summary>") and j >= 0 and lines[j].strip() == "<details>":
+        at = j
+        j = prev_nonblank(at)
     if j >= 0 and lines[j].strip() == "---":
         at = j
     return "\n".join(lines[:at] + [section.rstrip("\n"), ""] + lines[at:])
@@ -178,8 +191,8 @@ def main():
                 ("What's New since the previous stable (%s)" % prev,
                  "# What's New — everything since %s" % prev),
                 ("the Carried over section", "## ⚠️ Carried over — still open"),
-                ("the Proton 9 section", "## 📦 Where to get Proton 9"),
-                ("the Credits section", "## 🙏 Credits"),
+                ("the collapsed Proton 9 section", PROTON_SUMMARY.split("</b>")[0] + "</b>"),
+                ("the collapsed Credits section", CREDITS_SUMMARY.split("</b>")[0] + "</b>"),
             ]
             missing = [name for name, needle in required if needle not in body]
             if missing:

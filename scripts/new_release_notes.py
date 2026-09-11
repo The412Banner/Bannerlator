@@ -4,8 +4,8 @@
     python3 scripts/new_release_notes.py <version> [--prev <tag>]
 
 Copies the house layout from docs/releases/<prev>.md: the logo + badges header, the standing
-LSFG guide callout, Carried over, Where to get Proton 9, the upstream credits list, the
-trademark line and the footer, re-pointed at the new version. Leaves TODO(notes) placeholders
+LSFG guide callout, Carried over, Where to get Proton 9 and the upstream credits list +
+trademark line (both collapsed, tap to expand), and the footer, re-pointed at the new version. Leaves TODO(notes) placeholders
 for the parts only a person can write (the lead paragraph and one section per change), and
 lists every change merged since <prev> as a checklist to write from. release_notes.py refuses
 to publish while any TODO(notes) remains.
@@ -42,6 +42,29 @@ def find(secs, prefix):
     return None, ""
 
 
+def block(text, marker):
+    """A standing section's content, whether the old notes had it as a '## ' heading or as a
+    collapsed <details> block (<summary> line ... </details>). Trailing '---' is dropped."""
+    lines = text.split("\n")
+    for i, l in enumerate(lines):
+        if marker not in l:
+            continue
+        if l.startswith("<summary>"):
+            end = next((k for k in range(i + 1, len(lines)) if lines[k].strip() == "</details>"),
+                       len(lines))
+        elif l.startswith("## "):
+            end = next((k for k in range(i + 1, len(lines))
+                        if lines[k].startswith("## ") or lines[k].startswith("# ")
+                        or lines[k].startswith("<details>")), len(lines))
+        else:
+            continue
+        body = lines[i + 1:end]
+        while body and body[-1].strip() in ("", "---"):
+            body.pop()
+        return "\n".join(body).strip("\n")
+    return ""
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("version")
@@ -65,12 +88,11 @@ def main():
     header = header.replace('alt="%s"' % prev, 'alt="%s"' % ver)
 
     guide = next((l for l in old.split("\n") if l.startswith("> 📘")), "")
-    _, carried = find(secs, "## ⚠️ Carried over")
-    _, proton = find(secs, "## 📦 Where to get Proton 9")
+    carried = block(old, "## ⚠️ Carried over")
+    proton = block(old, "📦 Where to get Proton 9")
     proton = re.sub(r"Updating from [0-9.]+ changes nothing", "Updating from %s changes nothing" % prev, proton)
-    _, credits = find(secs, "## 🙏 Credits")
+    credits = block(old, "🙏 Credits")
     built_on = credits[credits.find("Built on the work"):] if "Built on the work" in credits else credits
-    built_on = built_on.split("\n---")[0].rstrip()
 
     changes = "\n".join(rn.change_list(prev)) or "- (nothing merged since %s)" % prev
 
@@ -105,23 +127,30 @@ Run Windows apps and games on Android — no PC and no root required.
 <!-- {todo}: check each item is still open; drop what this release fixed. Then delete this comment. -->
 {carried}
 
-## 📦 Where to get Proton 9
+<details>
+{proton_summary}
 
 {proton}
 
+</details>
+
 ---
 
-## 🙏 Credits
+<details>
+{credits_summary}
 
 **{todo}: thank this release's testers and reporters by name** (issue links + handles where they came from GitHub).
 
 {built_on}
 
+</details>
+
 ---
 
 *Entirely app-side — no ImageFS reinstall. Install over {prev}; everything carries over.*
 """.format(header=header, ver=ver, prev=prev, todo=TODO, guide=guide, changes=changes,
-           carried=carried, proton=proton, built_on=built_on)
+           carried=carried, proton=proton, built_on=built_on,
+           proton_summary=rn.PROTON_SUMMARY, credits_summary=rn.CREDITS_SUMMARY)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     with open(dst, "w", encoding="utf-8") as f:
         f.write(doc)

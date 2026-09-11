@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🔌 **Start menu "Turn Off" really ends the container** (proton-wine `aio-eanet/xp-controls` `59a707401ac`, CI 34626910674)
+> - Device-proven in container 8: Turn Off → Yes returns to the app's Games screen within seconds with no Wine processes left, and the registry is saved on the way out (settings kept). Before, the app's background `winhandler.exe` kept an empty desktop running forever.
+> - Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-controls.wcp` sha `d10172a2…`.
+
 ## 2026-09-11 — 🧭 **CHECKPOINT: start menu "Turn Off" never ended the container — root-caused, fix in CI** (proton-wine `aio-eanet/xp-controls` `59a707401ac`, CI 34626910674)
 > - Reproduced on device: Turn Off → Yes closed File Manager but left an empty desktop running. Wine's `ExitWindows()` only asks programs that own windows to close; the app's background helper `winhandler.exe` has none, so it kept the Wine desktop (and the app's session) alive. Pre-existing Wine behaviour, the stock start menu does the same.
 > - Fix: the start menu now runs `wineboot --end-session --force --kill --shutdown`: windowed programs still get the normal end-session messages (and can still cancel, e.g. "save changes?"), then everything left is stopped, desktop last, so the session ends and the app returns to its screen.

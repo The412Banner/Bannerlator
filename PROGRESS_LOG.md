@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🪟 **XP shell: tray icons, live XP↔Classic switch proven; desktop-disabled-after-dialog bug fixed** (proton-wine `aio-eanet/xp-taskbar` `b5ca9e1156e`)
+> - Proven on Container-8: Task Manager's tray icon sits next to the clock; Display Properties switches XP → Classic and back without a restart; the chosen style survives a restart.
+> - Bug found while testing: after Display Properties closed, the desktop ignored the mouse (no right-click menu, no double-click on desktop icons). The dialog was owned by the desktop window; Wine disables the owner when a modal dialog opens, but a window parented to the desktop gets no owner, so EndDialog never re-enabled it. Fixed by creating the dialog without an owner (CI `34593092062`), verified on the device.
+> - Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-taskbar.wcp` sha `76fdae36…` (versionCode 9). Test-only touchscreen preference reverted.
+
 ## 2026-09-11 — ✅🪟 **XP start menu, All Programs cascade and desktop Display Properties device-proven; V6 merged into all 7 layer parents**
 > - proton-wine `aio-eanet/xp-taskbar` tip `003ee5adcd9` (CI `34590929309`): Wine glass logo on the start button; XP start menu (user tile + name, pinned File Manager / Command Prompt, Start Menu shortcuts with their target icons, All Programs, My Documents / Pictures / Music / Computer, Control Panel, Task Manager, Wine Configuration, Run, Turn Off Computer); All Programs drawn as XP cascading menus (Wine's owner-draw menus box the submenu arrow in system colors, so custom popups); desktop right-click → Refresh / Display Properties (XP or classic, Blue / Olive Green / Silver, taskbar size, lock, clock, live preview). All device-tested on Container-8 with the user.
 > - V6 xinput fix fast-forwarded into every parent branch (proton_11.6-GE `349547afa45`, 11.5-GE `10a0c55dd5e`, 11.3-GE `a2989497d55`, 11.0 `ac81a5255df`, 11.0-2 `217ce2f1e83`, 10.34-GE `af34ea7adf1`, 10.0 `a7309bbc730`); the XP branch sits directly on proton_11.6-GE.

@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🖤 **Silver goes graphite in dark mode** (proton-wine `aio-eanet/xp-controls` `60b599c901b`, CI 34619805498)
+> - With the app's dark theme, the Silver scheme now turns graphite everywhere it was still bright: window title bars and frames (win32u), the taskbar and its buttons, the start menu and All Programs cascades, and the Display Properties preview. Light titles and text, the green start button and red close button kept. Blue and Olive keep their colours.
+> - Device-proven in the user's dark + Silver container together with the dark control artwork. Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-controls.wcp` sha `77c762ee…`.
+
 ## 2026-09-11 — ✅🌑 **XP controls: dark mode, Silver, toolbars/status bars/rebars device-proven** (proton-wine `aio-eanet/xp-controls` `4c64baf0eef`, CI 34617530378)
 > - Dark mode now has its own XP artwork (XP never had one): dark buttons, tabs, headers and check boxes with light text, dark scroll bars and tracks, keeping the scheme accents and orange hover rings. Explorer picks the dark variant automatically when the app is in its dark theme. Light mode is unchanged.
 > - Readability fixes: tab labels (the selected one vanished), labels on tab pages (drawn black on dark), and group titles (dark variants use light titles). The Wine fixes are in uxtheme (`dialog.c` text colour) and comctl32 (`tab.c` uses the theme text colour); both also help Wine's own Light theme in dark mode.

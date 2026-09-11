@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧭 **Checkpoint: 3.1.0 shipped; open items**
+> - **Shipped in 3.1.0** (Latest, versionCode 84, tag → `a9659fe3`): Steam Controller support (SDL3, opt-in; TAR-tested over Bluetooth), frame-gen screen fit / over-limit warning / Auto opt-out / can't-run notice / help, SGSR HQ, per-game texture filtering, screen size by panel aspect, the 3.1.0 LSFG Native guide, and README + `docs/releases/3.0.9.md` / `3.1.0.md`.
+> - **Release tooling on main:** `release.yml` builds the page from `docs/releases/<number>.md` in the house layout plus an automatic "Every change since <previous>" list, checked before the build (`30bb6466`); dry-run `release-notes-check.yml` (manual, or push `notes-check/<number>`); `scripts/new_release_notes.py` starts the next notes file.
+> - **Open, for the user:** (1) merge `ci/release-notes-collapsible` (`4a0aa927`, tested) so future pages collapse "Where to get Proton 9" and "Credits" like the hand-edited 3.1.0 page; until then the check expects plain headings. (2) `fix/ama-package-name` (AMA bot: wrong package name, leaked marker; workflow-only, never merged). (3) Which of the "untested" 3.1.0 items the user covered ("it all works I tested it").
+> - **Still untested:** Steam Controller over USB cable / puck; the frame-gen can't-run message on a driver without Vulkan 1.3; screen size on 4:3 / 16:10 panels. Not built: Steam Controller gyro, left-trackpad scroll/D-pad, Steam button as Guide.
+> - **Fork check:** clintOnSky/Bannerlator has nothing to pull (PR #96 closed 07-24; its fixes landed individually or were declined).
+> - Kept per the hiatus rule: branches `feat/steam-controller-sdl`, `ci/release-notes-from-docs`, `release/3.1.0-readme`, `notes-check/3.1.0`; worktrees `bl-steamctrl`, `bl-relnotes`, `bl-rel310`, `bl-merge-main`.
+
 ## 2026-09-11 — 🏁 **3.1.0 RELEASED** (Latest, versionCode 84, tag `3.1.0` → `a9659fe3`, run 34548941959)
 > - Cut via `bl-release-prep/cut-3.1.0.sh` on the user's go: merged the LSFG guide (`b56c7723`) and README/docs (`aeb65978`), bumped to 84 / 3.1.0, dispatched. All green: notes, 3 builds, release. Verified: tag == pushed commit, not a pre-release, 3 APKs + update.json, `releases/latest` update.json = 84 / 3.1.0, 3.1.0 marked Latest. Guide page live ("Written for Bannerlator 3.1.0").
 > - First release whose page the workflow wrote itself: `docs/releases/3.1.0.md` in the house layout + an 11-item "Every change since 3.0.9" list; the in-app line came from the update-summary comment. The live page matched the dry run.

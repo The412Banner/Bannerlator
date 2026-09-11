@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧭 **CHECKPOINT: layers v7 (v6 + the Wine XP desktop) in flight for all 7** (proton-wine `aio-eanet/xp-<parent>` staging branches)
+> - User go: every layer becomes v6 + all XP work as versionCode 7, published like v6 and merged to the parent branches; a brand-new container gets the whole Wine XP desktop in Blue (XP title bars now on by default too).
+> - The 5 Wine 11 layers take the XP series cleanly and are building (runs 34629988483, 34630031659, 34630044726, 34630056346, 34630060475). The 2 Wine 10 layers need a port (older explorer, no split v6 comctl32, different GPU-window handling).
+
 ## 2026-09-11 — ✅🔌 **Start menu "Turn Off" really ends the container** (proton-wine `aio-eanet/xp-controls` `59a707401ac`, CI 34626910674)
 > - Device-proven in container 8: Turn Off → Yes returns to the app's Games screen within seconds with no Wine processes left, and the registry is saved on the way out (settings kept). Before, the app's background `winhandler.exe` kept an empty desktop running forever.
 > - Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-controls.wcp` sha `d10172a2…`.

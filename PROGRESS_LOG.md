@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🌊🌿 **Navy and moss (dark Blue and Olive Green) + Wordpad icon device-proven** (proton-wine `aio-eanet/xp-controls` `a318a1ff477`, CI 34624854833)
+> - In the app's dark theme every XP colour scheme now has a dark twin: Blue → navy, Olive Green → moss, Silver → graphite. Title bars (active and inactive), frames, taskbar and task buttons, start menu, All Programs cascades and the Display Properties preview all follow; switching schemes in Display Properties changes them live. Device-checked with the dark control artwork in the user's container.
+> - Wordpad's start menu entry has its icon: `write.exe` (what the app's Wordpad shortcut points at) now carries the Wordpad icon, as on Windows. Installed programs already showed their own icons.
+> - Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-controls.wcp` sha `6da1d183…`. Container left on dark + Silver.
+
 ## 2026-09-11 — 🧭 **CHECKPOINT: navy + moss dark twins, Wordpad icon — CI in flight** (proton-wine `aio-eanet/xp-controls` `a318a1ff477`, CI 34624854833)
 > - Blue and Olive Green now get dark twins in the app's dark theme, like Silver's graphite: **navy** and **moss** title bars and frames (win32u `0d5d6b88306`), taskbars, start menus and cascades, and the Display Properties preview (explorer `7fdb0448255`; the preview window body now uses the button-face colour). Palettes are ordered light Blue/Olive/Silver then dark navy/moss/graphite, so dark = scheme + 3. The XP control artwork already had BlueDark/OliveDark.
 > - Wordpad's start menu shortcut showed a blank icon because the app's shortcut targets `C:\windows\system32\write.exe`, Wine's launcher with no icon. `write.exe` now carries the Wordpad icon like on Windows (`a318a1ff477`). Installed programs are unaffected: their shortcuts already show their own icons (Pale Moon proves it).

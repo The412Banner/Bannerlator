@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🪟 **XP taskbar device-proven on the Pocket FIT; paused before the Wine-logo start icon + XP start menu**
+> - Container-8 (`Proton-11.0-6-arm64ec-9`): Luna bar, green start (pressed while the menu is open), task button with the exe icon + live active/inactive sync, clock matching device time (EDT) and ticking, drag to 2 and 3 rows (clock shows time/weekday/date), right-click Taskbar Size / Task Manager / Lock the Taskbar all working.
+> - First "closed immediately" launch = container defaulted to a FEX build that is not installed (`FEX-2608+229-Nightly-abec31472`) → no `libarm64ecfex.dll` in system32 → x64 winhandler/wfm died (`c0000135`). Switched Container-8 to `FEXCore-2609-stable-unix-0`. App bug: the launcher stamps an uninstalled FEX as "applied" (`GuestProgramLauncherComponent` extraData gate) and never retries.
+> - Start icon shows a blank window: Wine's `IDI_WINLOGO` is a generic window icon. Next (user ask): embed the Wine glass logo + XP-style start menu. Not started — user paused (losing Wi-Fi).
+
 ## 2026-09-11 — 🪟 **XP (Luna) taskbar + clock + double-row drag, built into Wine explorer (v6 GE 11.0-6)** (proton-wine branch `aio-eanet/xp-taskbar`)
 > User: rebuild parts of Wine so the desktop looks like XP; XP first, taskbar + clock first, hand over a working wcp, test on the device over root.
 > - **Where:** `programs/explorer/systray.c` (the Shell_TrayWnd taskbar). Start menu (`startmenu.c`) and window frames (`dlls/win32u/defwnd.c`, uxtheme has no title-bar theming) are later phases.

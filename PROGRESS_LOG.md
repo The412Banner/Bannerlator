@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🏁 **3.1.0 RELEASED** (Latest, versionCode 84, tag `3.1.0` → `a9659fe3`, run 34548941959)
+> - Cut via `bl-release-prep/cut-3.1.0.sh` on the user's go: merged the LSFG guide (`b56c7723`) and README/docs (`aeb65978`), bumped to 84 / 3.1.0, dispatched. All green: notes, 3 builds, release. Verified: tag == pushed commit, not a pre-release, 3 APKs + update.json, `releases/latest` update.json = 84 / 3.1.0, 3.1.0 marked Latest. Guide page live ("Written for Bannerlator 3.1.0").
+> - First release whose page the workflow wrote itself: `docs/releases/3.1.0.md` in the house layout + an 11-item "Every change since 3.0.9" list; the in-app line came from the update-summary comment. The live page matched the dry run.
+> - Then hand-edited on the user's call: "Where to get Proton 9" and "Credits" are collapsed tap-to-expand sections (only those two wraps changed). Enforcing that in the workflow is parked on `ci/release-notes-collapsible` (`4a0aa927`, tested, not merged).
+> - Staged `/sdcard/Download/Bannerlator-3.1.0-pubg.apk` sha256 `3e12c460…a38f`.
+
 ## 2026-09-10 — 📝 **Release pages in the house layout, enforced by the workflow (merged `30bb6466`)**; cutting 3.1.0 with it
 > - User rule: every stable release description uses the same layout as previous releases and lists all new work since the prior release, hard-coded into the workflow. `release.yml` now builds the page from `docs/releases/<number>.md` in a first job (fails fast, before the build) and appends every change merged since the previous stable. A stable cut refuses a missing notes file, missing standard sections, the wrong "since", or leftover TODO(notes). The in-app update line comes from an update-summary comment. Scripts: `scripts/release_notes.py`, `scripts/new_release_notes.py`. Dry-run workflow `release-notes-check.yml`; dry run 34548746453 ✅ (layout OK, 11 changes since 3.0.9).
 > - 3.1.0 cut starting now via `bl-release-prep/cut-3.1.0.sh` (merges the LSFG guide `b56c7723` and README/docs `aeb65978`, bumps to versionCode 84 / 3.1.0, dispatches, verifies the page). Fallback if the page comes out wrong: `gh release edit` with the notes file.

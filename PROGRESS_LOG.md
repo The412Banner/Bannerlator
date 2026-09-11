@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅🪟 **XP start menu, All Programs cascade and desktop Display Properties device-proven; V6 merged into all 7 layer parents**
+> - proton-wine `aio-eanet/xp-taskbar` tip `003ee5adcd9` (CI `34590929309`): Wine glass logo on the start button; XP start menu (user tile + name, pinned File Manager / Command Prompt, Start Menu shortcuts with their target icons, All Programs, My Documents / Pictures / Music / Computer, Control Panel, Task Manager, Wine Configuration, Run, Turn Off Computer); All Programs drawn as XP cascading menus (Wine's owner-draw menus box the submenu arrow in system colors, so custom popups); desktop right-click → Refresh / Display Properties (XP or classic, Blue / Olive Green / Silver, taskbar size, lock, clock, live preview). All device-tested on Container-8 with the user.
+> - V6 xinput fix fast-forwarded into every parent branch (proton_11.6-GE `349547afa45`, 11.5-GE `10a0c55dd5e`, 11.3-GE `a2989497d55`, 11.0 `ac81a5255df`, 11.0-2 `217ce2f1e83`, 10.34-GE `af34ea7adf1`, 10.0 `a7309bbc730`); the XP branch sits directly on proton_11.6-GE.
+> - Staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-taskbar.wcp` (versionCode 9, sha `42a5bb2b…`).
+
 ## 2026-09-11 — ✅🪟 **XP taskbar device-proven on the Pocket FIT; paused before the Wine-logo start icon + XP start menu**
 > - Container-8 (`Proton-11.0-6-arm64ec-9`): Luna bar, green start (pressed while the menu is open), task button with the exe icon + live active/inactive sync, clock matching device time (EDT) and ticking, drag to 2 and 3 rows (clock shows time/weekday/date), right-click Taskbar Size / Task Manager / Lock the Taskbar all working.
 > - First "closed immediately" launch = container defaulted to a FEX build that is not installed (`FEX-2608+229-Nightly-abec31472`) → no `libarm64ecfex.dll` in system32 → x64 winhandler/wfm died (`c0000135`). Switched Container-8 to `FEXCore-2609-stable-unix-0`. App bug: the launcher stamps an uninstalled FEX as "applied" (`GuestProgramLauncherComponent` extraData gate) and never retries.

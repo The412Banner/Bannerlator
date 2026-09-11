@@ -222,6 +222,45 @@ tbody tr:last-child th,tbody tr:last-child td{border-bottom:0}
 .fixlist dt{font-weight:700;color:var(--ink);margin-bottom:4px}
 .fixlist dd{margin:0;color:var(--ink-2)}
 
+/* Old engine vs new */
+.sec a,footer a{color:var(--real);font-weight:700;text-underline-offset:3px}
+.route-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+@media (max-width:760px){.route-pair{grid-template-columns:minmax(0,1fr)}}
+.route-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:clamp(16px,3vw,24px);display:flex;flex-direction:column;gap:18px;min-width:0}
+.route-head{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.route-head h3{font-size:clamp(20px,2.6vw,24px);font-stretch:110%}
+.route{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.route li{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:0 0 20px 28px}
+.route li:last-child{padding-bottom:0}
+.route li::before{content:"";position:absolute;left:4px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--line)}
+.route li::after{content:"";position:absolute;left:9px;top:19px;bottom:3px;width:2px;background:var(--line)}
+.route li:last-child::after{display:none}
+.route li.make::before{background:var(--real);border-color:var(--real)}
+.stop{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stop-name{font-weight:700;color:var(--ink);line-height:1.35}
+.stop-sub{font-size:14px;line-height:1.4;color:var(--muted)}
+.stop-tag{font:700 11px/1.3 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--real);margin-top:4px}
+.frames{display:flex;gap:4px;flex:none;padding-top:1px}
+.fr{position:relative;display:block;width:22px;height:22px;border-radius:3px;background:var(--gen)}
+.fr.real{background:var(--real)}
+.fr.lost{background:transparent;border:2px dashed var(--gen)}
+.fr.lost::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font:700 13px/1 var(--f-mono);color:var(--over)}
+.route-foot{font-size:15px;line-height:1.5;color:var(--ink-2);border-top:1px solid var(--line);padding-top:14px;margin-top:auto}
+.compare th,.compare td{font:400 15px/1.5 var(--f-body);color:var(--ink-2);padding:14px 16px}
+.compare thead th{font:700 12px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.compare tbody th{font-weight:700;color:var(--ink);white-space:normal;width:24%}
+@media (max-width:640px){
+  .compare,.compare tbody,.compare caption{display:block}
+  .compare thead{display:none}
+  .compare tr{display:block;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .compare tbody tr:last-child{border-bottom:0}
+  .compare th,.compare td{display:block;border:0;padding:0;width:auto}
+  .compare tbody th{margin-bottom:8px;width:auto}
+  .compare td + td{margin-top:10px}
+  .compare td::before{content:attr(data-label);display:block;font:700 11px/1.3 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+}
+.same{display:flex;flex-direction:column;gap:12px}
+
 footer{border-top:1px solid var(--line);padding-top:22px;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:8px;max-width:76ch}
 footer b{color:var(--ink-2)}
 
@@ -424,7 +463,7 @@ footer b{color:var(--ink-2)}
       </li>
       <li>
         <h3>Choose LSFG Native</h3>
-        <p>In the container's settings (or the game's own settings), set the <b>Renderer</b> to <b>Vulkan</b> and <b>Frame Generation</b> to <b>LSFG Native (Lossless Scaling)</b>. LSFG Native also needs a <b>Renderer Driver</b> with Vulkan 1.3; on older Adreno GPUs, pick a Turnip driver there. The first launch afterwards may show "Preparing frame-generation shaders…". Let it finish. If anything is missing, the side menu tells you what and how to fix it.</p>
+        <p>In the container's settings (or the game's own settings), set the <b>Renderer</b> to <b>Vulkan</b> and <b>Frame Generation</b> to <b>LSFG Native (Lossless Scaling)</b>. LSFG Native also needs a <b>Renderer Driver</b> with Vulkan 1.3; on older Adreno GPUs, pick a Turnip driver there. The first launch afterwards may show "Preparing frame-generation shaders…". Let it finish. If anything is missing, the side menu tells you what and how to fix it. Used lsfg-vk before? <a href="#vk-h">Here's what changed.</a></p>
       </li>
       <li>
         <h3>Let the screen fit itself</h3>
@@ -571,6 +610,103 @@ footer b{color:var(--ink-2)}
       <div><dt>The screen blinked when I turned frame generation on</dt><dd>That's Auto (match FPS) switching your screen to fit your numbers. It happens once per change. Prefer the screen left alone? Turn Auto off in the side menu, and that game remembers.</dd></div>
       <div><dt>The 2× / 3× / 4× buttons are greyed out, with a red message</dt><dd>Frame generation can't run with your current setup, and the message says why. Most often, LSFG Native needs a Renderer Driver with Vulkan 1.3: in the container's settings, set Renderer Driver to a Turnip driver, then relaunch the game.</dd></div>
     </dl>
+  </section>
+
+  <section class="sec" aria-labelledby="vk-h">
+    <div class="sec-head">
+      <p class="eyebrow">Old engine vs new</p>
+      <h2 id="vk-h">LSFG Native vs the old lsfg-vk</h2>
+      <div class="prose">
+        <p>Before 3.0.6, Bannerlator ran Lossless Scaling's frame generation through <b>lsfg-vk</b>. <b>LSFG Native</b> replaced it. Both use the frame generator from your Lossless.dll. What changed is <b>where</b> the made-up frames are made, and that decides whether you actually get to see them.</p>
+        <p>Every picture takes the same road: from the game, through Bannerlator's virtual display, to the compositor, which hands one picture to your screen each refresh.</p>
+      </div>
+    </div>
+    <div class="route-pair">
+      <div class="route-card">
+        <div class="route-head">
+          <span class="mini-k">Before 3.0.6</span>
+          <h3>lsfg-vk</h3>
+          <span class="pill" data-tone="over">Made-up frames lost on the way</span>
+        </div>
+        <ol class="route">
+          <li class="make">
+            <div class="stop"><span class="stop-name">The game</span><span class="stop-sub">running in Wine</span><span class="stop-tag">Frame generation happens here</span></div>
+            <div class="frames" role="img" aria-label="A made-up frame and a real frame"><span class="fr"></span><span class="fr real"></span></div>
+          </li>
+          <li>
+            <div class="stop"><span class="stop-name">Virtual display</span><span class="stop-sub">both arrive about 1 ms apart</span></div>
+            <div class="frames" role="img" aria-label="A made-up frame and a real frame"><span class="fr"></span><span class="fr real"></span></div>
+          </li>
+          <li>
+            <div class="stop"><span class="stop-name">Compositor</span><span class="stop-sub">shows the newest picture at each refresh, so the real frame replaces the made-up one before it's seen</span></div>
+            <div class="frames" role="img" aria-label="The made-up frame is thrown away and the real frame is kept"><span class="fr lost"></span><span class="fr real"></span></div>
+          </li>
+          <li>
+            <div class="stop"><span class="stop-name">Your screen</span><span class="stop-sub">often gets only the real frame</span></div>
+            <div class="frames" role="img" aria-label="Only the real frame"><span class="fr real"></span></div>
+          </li>
+        </ol>
+        <p class="route-foot">Frame counters could say 60 while your screen showed about 30.</p>
+      </div>
+      <div class="route-card">
+        <div class="route-head">
+          <span class="mini-k">3.0.6 and later</span>
+          <h3>LSFG Native</h3>
+          <span class="pill" data-tone="good">What it makes, you see</span>
+        </div>
+        <ol class="route">
+          <li>
+            <div class="stop"><span class="stop-name">The game</span><span class="stop-sub">running in Wine</span></div>
+            <div class="frames" role="img" aria-label="A real frame"><span class="fr real"></span></div>
+          </li>
+          <li>
+            <div class="stop"><span class="stop-name">Virtual display</span><span class="stop-sub">only real frames travel this far</span></div>
+            <div class="frames" role="img" aria-label="A real frame"><span class="fr real"></span></div>
+          </li>
+          <li class="make">
+            <div class="stop"><span class="stop-name">Compositor</span><span class="stop-sub">makes the made-up frames, then lines them up one per refresh</span><span class="stop-tag">Frame generation happens here</span></div>
+            <div class="frames" role="img" aria-label="A made-up frame and a real frame"><span class="fr"></span><span class="fr real"></span></div>
+          </li>
+          <li>
+            <div class="stop"><span class="stop-name">Your screen</span><span class="stop-sub">every frame gets its own refresh</span></div>
+            <div class="frames" role="img" aria-label="A made-up frame and a real frame"><span class="fr"></span><span class="fr real"></span></div>
+          </li>
+        </ol>
+        <p class="route-foot">Measured on an Adreno 750: a game held at 30 shows about 120 on screen at 4×.</p>
+      </div>
+    </div>
+    <ul class="legend">
+      <li><span class="sw real"></span>Real frame (from the game)</li>
+      <li><span class="sw gen"></span>Made-up frame</li>
+      <li><span class="sw-x">✕</span>Thrown away before the screen</li>
+    </ul>
+    <div class="table-wrap">
+      <table class="compare">
+        <caption>Side by side</caption>
+        <thead><tr><th scope="col"></th><th scope="col">lsfg-vk (before 3.0.6)</th><th scope="col">LSFG Native (3.0.6 and later)</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Where the made-up frames are made</th><td data-label="lsfg-vk">Inside the game. Wine loads lsfg-vk into it as a Vulkan layer.</td><td data-label="LSFG Native">In Bannerlator's compositor, the last stop before your screen.</td></tr>
+          <tr><th scope="row">Do they reach your screen?</th><td data-label="lsfg-vk">Often not. Many were thrown away on the way.</td><td data-label="LSFG Native">Yes. Each one gets its own screen refresh.</td></tr>
+          <tr><th scope="row">What the counters show</th><td data-label="lsfg-vk">Could count frames that never reached the screen.</td><td data-label="LSFG Native">The side-menu readout shows real → shown, and "shown" is what actually reaches your screen.</td></tr>
+          <tr><th scope="row">Max FPS</th><td data-label="lsfg-vk">Switched off while it ran, so nothing kept the game's beat steady.</td><td data-label="LSFG Native">Stays on while it runs (30 if you never set one), so real frames arrive on a steady beat.</td></tr>
+          <tr><th scope="row">What it needs</th><td data-label="lsfg-vk">A game that draws with Vulkan (most do here, through DXVK or VKD3D). It ran on the game's <b>Graphics Driver</b>.</td><td data-label="LSFG Native">The <b>Vulkan</b> renderer, and a <b>Renderer Driver</b> with Vulkan 1.3 (on older Adreno GPUs, pick a Turnip driver there).</td></tr>
+          <tr><th scope="row">Where to find it</th><td data-label="lsfg-vk">Gone from the menu since 3.0.6. Containers and games still set to it run LSFG Native instead.</td><td data-label="LSFG Native">Frame Generation → <b>LSFG Native (Lossless Scaling)</b>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="same">
+      <h3>What stayed the same</h3>
+      <ul class="points">
+        <li><strong>The same Lossless.dll.</strong> Nothing to re-import, and you still need to own Lossless Scaling.</li>
+        <li><strong>The same controls.</strong> 2×, 3× and 4×, and Flow Scale, all changeable while you play.</li>
+        <li><strong>About one frame of extra input delay.</strong> Every frame generator adds this, because it has to wait for the next real frame before it can fill the gap.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <span class="note-k">Why lsfg-vk was retired</span>
+      <p>We did get lsfg-vk's made-up frames to the screen in testing, but only by adding workarounds all along the road. LSFG Native avoids the problem by making its frames at the last stop, so it replaced lsfg-vk in 3.0.6. lsfg-vk's code is parked, not deleted.</p>
+      <p><b>Win-FG Native</b>, the built-in engine, also makes its frames in the compositor, so everything on this page applies to it too.</p>
+    </div>
   </section>
 
   <footer>

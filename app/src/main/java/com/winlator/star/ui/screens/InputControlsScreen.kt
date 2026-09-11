@@ -1,11 +1,13 @@
 package com.winlator.star.ui.screens
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color as AColor
 import android.net.Uri
+import android.os.Build
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,9 +87,11 @@ import com.winlator.star.core.AppUtils
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GyroCalibrator
 import com.winlator.star.core.HttpUtils
+import com.winlator.star.inputcontrols.Binding
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
+import com.winlator.star.inputcontrols.SteamControllerBackend
 import com.winlator.star.ui.components.PlayerSlotsEditor
 import com.winlator.star.ui.controllertest.SettingsControllerTestDialog
 import com.winlator.star.util.InAppFilePicker
@@ -936,8 +940,12 @@ fun InputControlsScreen() {
                     // ── Assign: global default player slots for new containers ──
                     2 -> GlobalPlayerSlotsSection()
 
-                    // ── Device: gyroscope calibration ────────────────────
-                    3 -> GyroscopeSection()
+                    // ── Device: gyroscope calibration + Steam Controller ──
+                    3 -> {
+                        GyroscopeSection()
+                        Spacer(Modifier.height(16.dp))
+                        SteamControllerSection()
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -1219,6 +1227,141 @@ private fun GyroscopeSection() {
             ) { Text("Reset", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
         }
     }
+}
+
+/**
+ * Device-level Steam Controller support (SDL3's HIDAPI Steam drivers, see SteamControllerBackend).
+ * Unlike the Player-Slots defaults this is LIVE: every game launch reads it. Off by default, and when
+ * off SDL is never loaded. Turning it on asks for the Nearby-devices (Bluetooth) permission on
+ * Android 12+; without it only a USB-connected controller works (the game session never prompts).
+ */
+@Composable
+private fun SteamControllerSection() {
+    val context = LocalContext.current
+    var enabled by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(context))
+    }
+    var trackpadMode by remember {
+        mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getSteamTrackpadMouseMode(context))
+    }
+    var bluetoothGranted by remember { mutableStateOf(SteamControllerBackend.hasBluetoothPermission(context)) }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        bluetoothGranted = SteamControllerBackend.hasBluetoothPermission(context)
+    }
+    fun requestBluetooth() {
+        if (Build.VERSION.SDK_INT >= 31 && !bluetoothGranted)
+            permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
+
+    Text("Steam Controller", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    FieldSet {
+        Text(
+            "Reads the Steam Controller directly, the way Steam does, so it works as a normal gamepad in " +
+                "games. Pair it in Android's Bluetooth settings first, or connect it by USB. Other " +
+                "controllers are not affected. Takes effect the next time a game starts.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        val onOff = listOf("On", "Off")
+        LabeledDropdown(
+            label = "Steam Controller support",
+            options = onOff,
+            selectedOption = if (enabled) onOff[0] else onOff[1],
+            onSelect = {
+                enabled = it == onOff[0]
+                com.winlator.star.ui.components.GlobalControllerPrefs.setSteamControllerEnabled(context, enabled)
+                if (enabled) requestBluetooth()
+            },
+        )
+        if (enabled) {
+            Spacer(Modifier.height(8.dp))
+            // Order = the labels; values are SteamControllerBackend.TRACKPAD_MOUSE_*.
+            val trackpadLabels = listOf("Right trackpad", "Left trackpad", "Both trackpads", "Off")
+            val trackpadModes = listOf(
+                SteamControllerBackend.TRACKPAD_MOUSE_RIGHT, SteamControllerBackend.TRACKPAD_MOUSE_LEFT,
+                SteamControllerBackend.TRACKPAD_MOUSE_BOTH, SteamControllerBackend.TRACKPAD_MOUSE_OFF,
+            )
+            LabeledDropdown(
+                label = "Trackpad mouse",
+                options = trackpadLabels,
+                selectedOption = trackpadLabels[trackpadModes.indexOf(trackpadMode).coerceAtLeast(0)],
+                onSelect = {
+                    trackpadMode = trackpadModes[trackpadLabels.indexOf(it).coerceAtLeast(0)]
+                    com.winlator.star.ui.components.GlobalControllerPrefs.setSteamTrackpadMouseMode(context, trackpadMode)
+                },
+            )
+            Text(
+                "Which trackpad moves the mouse. Clicking it is a left click; with both, the left trackpad " +
+                    "clicks right.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("Extra buttons", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "What the four back buttons and the … button do, in every game. To change what the other " +
+                    "buttons do, bind them on the Controller tab under Default / Any Controller (the Steam " +
+                    "Controller uses those bindings).",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
+            )
+            val paddleOptions = remember { steamPaddleOptions() }
+            val paddleLabels = remember { paddleOptions.map { it.first } }
+            var paddles by remember {
+                mutableStateOf(com.winlator.star.ui.components.GlobalControllerPrefs.getSteamPaddleBindings(context).toList())
+            }
+            STEAM_PADDLE_NAMES.forEachIndexed { i, name ->
+                Spacer(Modifier.height(8.dp))
+                LabeledDropdown(
+                    label = name,
+                    options = paddleLabels,
+                    selectedOption = paddleOptions.firstOrNull { it.second == paddles[i] }?.first ?: paddleLabels[0],
+                    onSelect = { label ->
+                        val binding = paddleOptions.firstOrNull { it.first == label }?.second ?: Binding.NONE
+                        paddles = paddles.toMutableList().also { it[i] = binding }
+                        com.winlator.star.ui.components.GlobalControllerPrefs.setSteamPaddleBinding(context, i, binding)
+                    },
+                )
+            }
+            if (!bluetoothGranted) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Bluetooth permission is off, so only a USB-connected controller will work.",
+                    color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp
+                )
+                if (Build.VERSION.SDK_INT >= 31) {
+                    TextButton(onClick = { requestBluetooth() }) { Text("Allow Bluetooth") }
+                }
+            }
+        }
+    }
+}
+
+// SteamControllerBackend's extra-button order.
+private val STEAM_PADDLE_NAMES = listOf(
+    "L4 (upper left)", "L5 (lower left)", "R4 (upper right)", "R5 (lower right)",
+    "… button (between the trackpads)",
+)
+
+/** Targets a back button can take: nothing, a gamepad button, a mouse click, or any keyboard key. */
+private fun steamPaddleOptions(): List<Pair<String, Binding>> {
+    val out = ArrayList<Pair<String, Binding>>()
+    out += "Nothing" to Binding.NONE
+    out += listOf(
+        "A" to Binding.GAMEPAD_BUTTON_A, "B" to Binding.GAMEPAD_BUTTON_B,
+        "X" to Binding.GAMEPAD_BUTTON_X, "Y" to Binding.GAMEPAD_BUTTON_Y,
+        "LB" to Binding.GAMEPAD_BUTTON_L1, "RB" to Binding.GAMEPAD_BUTTON_R1,
+        "LT" to Binding.GAMEPAD_BUTTON_L2, "RT" to Binding.GAMEPAD_BUTTON_R2,
+        "L3 (stick click)" to Binding.GAMEPAD_BUTTON_L3, "R3 (stick click)" to Binding.GAMEPAD_BUTTON_R3,
+        "Start" to Binding.GAMEPAD_BUTTON_START, "Back" to Binding.GAMEPAD_BUTTON_SELECT,
+        "D-Pad Up" to Binding.GAMEPAD_DPAD_UP, "D-Pad Down" to Binding.GAMEPAD_DPAD_DOWN,
+        "D-Pad Left" to Binding.GAMEPAD_DPAD_LEFT, "D-Pad Right" to Binding.GAMEPAD_DPAD_RIGHT,
+        "Mouse left click" to Binding.MOUSE_LEFT_BUTTON,
+        "Mouse right click" to Binding.MOUSE_RIGHT_BUTTON,
+        "Mouse middle click" to Binding.MOUSE_MIDDLE_BUTTON,
+    )
+    for (b in Binding.keyboardBindingValues()) {
+        if (b != Binding.NONE && b != Binding.SHOW_ANDROID_KEYBOARD) out += "Key: $b" to b
+    }
+    return out
 }
 
 /**

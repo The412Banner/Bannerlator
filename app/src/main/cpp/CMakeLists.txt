@@ -236,3 +236,19 @@ target_link_libraries(pasink
         log
         dl
 )
+
+# steamctrl — optional Steam Controller support (2015 + 2026 models, Bluetooth LE / USB). A small
+# JNI bridge over SDL3's gamepad API; SDL3 comes from the vendored official release AAR through
+# prefab (buildFeatures.prefab). Linking SDL3::SDL3 is also what packages libSDL3.so into the APK
+# (the AAR has no jni/ folder). Only SDL's HIDAPI Steam drivers are enabled at runtime, so SDL opens
+# no other controller — see steamctrl/steam_controller_bridge.cpp.
+find_package(SDL3 REQUIRED CONFIG)
+
+add_library(steamctrl SHARED
+        steamctrl/steam_controller_bridge.cpp
+)
+
+target_link_libraries(steamctrl
+        SDL3::SDL3
+        log
+)

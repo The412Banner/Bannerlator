@@ -89,6 +89,8 @@ android {
     buildFeatures {
         compose true
         buildConfig true
+        // Exposes the SDL3 AAR's prefab package to CMake (libsteamctrl.so links SDL3::SDL3).
+        prefab true
     }
 
     compileOptions {
@@ -244,6 +246,10 @@ dependencies {
     // reaches Sonatype at all; transitive deps still come from mavenCentral.
     implementation 'io.github.joshuatam:javasteam:1.8.0.1-26-20260801.180149-1'
     implementation 'io.github.joshuatam:javasteam-depotdownloader:1.8.0.1-26-20260801.180149-1'
+    // SDL3 (official 3.4.16 Android release AAR, vendored unmodified under vendor/maven/) for the
+    // optional Steam Controller support: only its HIDAPI Steam drivers are enabled at runtime, see
+    // SteamControllerBackend. @aar: upstream publishes no POM/module, so ask for the AAR explicitly.
+    implementation 'org.libsdl.android:SDL3:3.4.16@aar'
     // JavaSteam pulls protobuf-java only at runtime scope, so the generated proto supertypes
     // (com.google.protobuf.GeneratedMessage / MessageOrBuilder) aren't on the COMPILE classpath.
     // Building a proto request directly from Kotlin (the chat-image web-token mint) needs them

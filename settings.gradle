@@ -27,6 +27,15 @@ dependencyResolutionManagement {
             url = uri("${rootDir}/vendor/maven")
             content { includeGroup 'io.github.joshuatam' }
         }
+        // SDL3 official Android release AAR (Steam Controller support). SDL ships it only as a GitHub
+        // release asset, so it is VENDORED unmodified (see vendor/maven/README.md); exclusive so the
+        // group is never looked up on a remote repository.
+        exclusiveContent {
+            forRepository {
+                maven { url = uri("${rootDir}/vendor/maven") }
+            }
+            filter { includeGroup 'org.libsdl.android' }
+        }
     }
 }
 

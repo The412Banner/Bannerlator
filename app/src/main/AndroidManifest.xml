@@ -23,6 +23,13 @@
     <uses-feature
         android:name="android.hardware.microphone"
         android:required="false" />
+    <!-- Steam Controller support (opt-in, Input Controls → Device): Bluetooth LE or USB, neither required. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
 
     <!-- Permissions (unique, no duplicates) -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -35,6 +42,11 @@
     <!-- Opt-in per-container/shortcut Microphone: granted only when the user enables the toggle;
          the DirectAudio driver opens the AAudio INPUT stream (the app never records itself). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Opt-in Steam Controller support: SDL connects to an already-paired Steam Controller over
+         Bluetooth LE (no scanning). BLUETOOTH covers targetSdk < 31; BLUETOOTH_CONNECT is the Android 12+
+         runtime permission, requested only when the user turns the setting on. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />

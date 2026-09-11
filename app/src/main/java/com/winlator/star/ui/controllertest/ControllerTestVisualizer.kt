@@ -82,7 +82,7 @@ import kotlin.math.roundToInt
  *  (ExternalController IDX_* bit positions); dpad up/right/down/left match GamepadState.dpad[0..3].
  *  `padArt` is PadArt.ordinal (which drawn family to show). Produced by whichever Activity owns input;
  *  consumed only for drawing — it never reaches the guest. */
-data class ControllerTestSnapshot(
+data class ControllerTestSnapshot @JvmOverloads constructor(
     val buttons: Int,
     val dpadUp: Boolean,
     val dpadRight: Boolean,
@@ -100,6 +100,8 @@ data class ControllerTestSnapshot(
     val padArt: Int,
     val batteryPct: Int,   // -1 when unknown; 0..100 otherwise
     val hasVibrator: Boolean,
+    // Steam Controller "…" (Quick Access) button, read through SDL. Always false for other pads.
+    val quickAccess: Boolean = false,
 )
 
 /**
@@ -206,6 +208,8 @@ private val ALL_ELEMENTS = listOf(
     "a", "b", "x", "y", "lb", "rb", "lt", "rt",
     "back", "start", "l3", "r3", "dup", "ddown", "dleft", "dright", "guide"
 )
+// A Steam Controller also has the "…" (Quick Access) button between the trackpads.
+private val STEAM_ELEMENTS = ALL_ELEMENTS + "qam"
 
 private fun friendlyName(id: String): String = when (id) {
     "a" -> "A / ✕"; "b" -> "B / ○"; "x" -> "X / □"; "y" -> "Y / △"
@@ -213,7 +217,7 @@ private fun friendlyName(id: String): String = when (id) {
     "back" -> "View / Share"; "start" -> "Menu / Options"
     "l3" -> "L-stick click"; "r3" -> "R-stick click"
     "dup" -> "D-Up"; "ddown" -> "D-Down"; "dleft" -> "D-Left"; "dright" -> "D-Right"
-    "guide" -> "Guide"; else -> id
+    "guide" -> "Guide"; "qam" -> "… (Quick Access)"; else -> id
 }
 
 internal fun pressedSet(snap: ControllerTestSnapshot?): Set<String> {
@@ -229,6 +233,7 @@ internal fun pressedSet(snap: ControllerTestSnapshot?): Set<String> {
     if (snap.dpadUp) s.add("dup"); if (snap.dpadDown) s.add("ddown")
     if (snap.dpadLeft) s.add("dleft"); if (snap.dpadRight) s.add("dright")
     if (snap.guide) s.add("guide")
+    if (snap.quickAccess) s.add("qam")
     return s
 }
 
@@ -267,11 +272,13 @@ fun ControllerTestPanel(
     val art = manualArt ?: autoArt
 
     val pressed = pressedSet(snapshot)
+    // What the tally counts follows the DETECTED pad (not a manual art pick): 18 for a Steam Controller.
+    val elements = if (autoArt == PadArt.STEAM) STEAM_ELEMENTS else ALL_ELEMENTS
     val seen = remember(resetKey) { mutableStateListOf<String>() }
     var lastInput by remember(resetKey) { mutableStateOf("—") }
     LaunchedEffect(pressed) {
-        pressed.forEach { if (it !in seen && it in ALL_ELEMENTS) seen.add(it) }
-        pressed.firstOrNull { it in ALL_ELEMENTS }?.let { lastInput = friendlyName(it) }
+        pressed.forEach { if (it !in seen && it in elements) seen.add(it) }
+        pressed.firstOrNull { it in elements }?.let { lastInput = friendlyName(it) }
     }
 
     Column(modifier) {
@@ -365,13 +372,13 @@ fun ControllerTestPanel(
 
         // Verified tally + footer actions — PINNED below the scroll (always visible in landscape).
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-            val done = seen.count { it in ALL_ELEMENTS }
+            val done = seen.count { it in elements }
             Text(
-                if (done >= ALL_ELEMENTS.size) "All inputs registering (${ALL_ELEMENTS.size} tested)"
-                else "$done / ${ALL_ELEMENTS.size} inputs verified",
+                if (done >= elements.size) "All inputs registering (${elements.size} tested)"
+                else "$done / ${elements.size} inputs verified",
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (done >= ALL_ELEMENTS.size) Color(0xFF57C777) else cs.onSurfaceVariant,
+                color = if (done >= elements.size) Color(0xFF57C777) else cs.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             if (onIdentify != null) {
@@ -444,6 +451,7 @@ private fun highlightManifest(ref: PadArtRef, logical: String): String? {
         "back" -> listOf("back", "select", "share", "minus", "view")
         "start" -> listOf("start", "options", "plus", "menu")
         "guide" -> listOf("guide", "home")
+        "qam" -> listOf("qam")
         else -> emptyList()
     }
     return cands.firstOrNull { ref.el.containsKey(it) }

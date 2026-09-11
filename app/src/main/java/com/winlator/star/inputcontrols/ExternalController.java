@@ -47,6 +47,12 @@ public class ExternalController {
         this.id = id;
     }
 
+    /** Pins the deviceId for a pad with no Android InputDevice (a Steam Controller read through SDL,
+     *  see SteamControllerBackend.DEVICE_ID_BASE), so getDeviceId() never scans for it. */
+    public void setDeviceId(int deviceId) {
+        this.deviceId = deviceId;
+    }
+
     public int getDeviceId() {
         if (this.deviceId == -1) {
             for (int deviceId : InputDevice.getDeviceIds()) {

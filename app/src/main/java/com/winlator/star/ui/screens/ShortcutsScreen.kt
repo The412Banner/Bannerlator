@@ -171,6 +171,7 @@ import com.winlator.star.ui.AccountUiBus
 import com.winlator.star.ui.ComponentReturnBus
 import com.winlator.star.ui.EmulatorLabels
 import com.winlator.star.ui.LocalTopBarActions
+import com.winlator.star.ui.LocalTopBarTransparent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -952,6 +953,13 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     val topBarActions = LocalTopBarActions.current
+    // The XMB view draws its own backdrop, so it asks for a see-through top bar (MainActivity only
+    // honours that on the Games route). Dropped when leaving XMB or this screen.
+    val topBarTransparent = LocalTopBarTransparent.current
+    LaunchedEffect(viewMode, shortcuts.isEmpty()) {
+        topBarTransparent.value = viewMode == ShortcutViewMode.XMB && shortcuts.isNotEmpty()
+    }
+    DisposableEffect(Unit) { onDispose { topBarTransparent.value = false } }
     // LaunchedEffect — not SideEffect — so this runs in the same dispatcher queue as
     // MainActivity's route-change clear (which is a LaunchedEffect). Parent enqueues
     // first and runs first (clears); we enqueue second and run after (sets). A
@@ -5889,6 +5897,8 @@ private class SettingsDpad {
     var menuOnSelect: (String) -> Unit = {}
     val actions = HashMap<String, ControlActions>()
     val rootFocus = FocusRequester()
+    // Previous/next section with wrap-around, published by [DpTabs]; L1/R1 call it from anywhere.
+    var tabStep: ((Int) -> Unit)? = null
 
     fun isFocused(id: String) = focusedId == id
     fun openMenu(id: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
@@ -5931,6 +5941,10 @@ private fun Modifier.settingsDpad(dp: SettingsDpad, ids: () -> List<String>, onD
                 Key.DirectionRight -> { dp.focusedId?.takeIf { it in order }?.let { dp.actions[it]?.onRight?.invoke() }; true }
                 Key.ButtonA, Key.Enter, Key.DirectionCenter -> { dp.focusedId?.takeIf { it in order }?.let { dp.actions[it]?.activate?.invoke() }; true }
                 Key.ButtonB, Key.Back -> { onDismiss(); true }
+                // Shoulder buttons switch sections from anywhere (the landscape rail is otherwise
+                // only reachable at the very end of the D-pad order).
+                Key.ButtonL1 -> { dp.tabStep?.invoke(-1); true }
+                Key.ButtonR1 -> { dp.tabStep?.invoke(1); true }
                 else -> false
             }
         }
@@ -6091,6 +6105,7 @@ private fun DpTabs(dp: SettingsDpad, id: String, selected: Int, count: Int, onSe
             onLeft = { if (selected > 0) onSelect(selected - 1) },
             onRight = { if (selected < count - 1) onSelect(selected + 1) },
         )
+        dp.tabStep = { step -> if (count > 0) onSelect(((selected + step) % count + count) % count) }
     }
     DpadHighlight(focused = dp.isFocused(id), modifier = Modifier.dpadBringIntoView(dp, id)) { content() }
 }
@@ -6779,6 +6794,13 @@ internal fun ShortcutSettingsDialogScreen(
             }
         }
         add("tabs"); add("cancel"); add("ok")
+    }
+    // After a section switch (L1/R1 or touch) the D-pad cursor may point at a control the new section
+    // doesn't have: move it to that section's first control (index 1, just past the title close).
+    // Untouched for touch users, whose cursor stays null.
+    LaunchedEffect(selectedTab) {
+        val f = dp.focusedId
+        if (f != null && f !in dpadIds) dp.focusedId = dpadIds.getOrNull(1)
     }
     // Seed the root focus so the editor receives D-pad from the first frame (it's its own Dialog window).
     LaunchedEffect(Unit) { runCatching { dp.rootFocus.requestFocus() } }
@@ -7963,7 +7985,7 @@ internal fun ShortcutSettingsDialogScreen(
                 // Portrait: the tab strip is pinned across the TOP (mirrors the container editor's
                 // top tab bar via the shared RailTopTabs). Landscape: the shared collapsible left rail
                 // beside the content. Left/Right on the focused "tabs" node still switches tabs for
-                // D-pad/controller users in both orientations.
+                // D-pad/controller users in both orientations, and L1/R1 switch from anywhere.
                 val railState = rememberRailState("shortcut")
                 val railItems = tabTitles.mapIndexed { index, tab ->
                     RailItem(tab, shortcutTabIcon(tab), index == selectedTab) { selectedTab = index }

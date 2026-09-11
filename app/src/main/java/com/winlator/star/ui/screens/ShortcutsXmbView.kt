@@ -1,6 +1,7 @@
 package com.winlator.star.ui.screens
 
 import android.content.Context
+import android.content.res.Configuration
 import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Handler
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -94,18 +96,25 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.LifecycleEventObserver
 import com.winlator.star.container.Shortcut
 import com.winlator.star.inputcontrols.ExternalController
+import com.winlator.star.ui.LocalTopBarOverlayInset
+import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.DangerRed
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -209,6 +218,28 @@ internal fun ShortcutsXmbView(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Landscape XMB is a couch front end: the Android nav buttons are hidden (an edge swipe brings them
+    // back briefly). Shown again on rotating to portrait, switching view, or leaving the tab.
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val view = LocalView.current
+    DisposableEffect(landscape, lifecycleOwner) {
+        val window = context.findActivity()?.window
+        val bars = if (landscape && window != null) WindowCompat.getInsetsController(window, view) else null
+        val hideNav = {
+            bars?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            bars?.hide(WindowInsetsCompat.Type.navigationBars())
+        }
+        hideNav()
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) hideNav() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            bars?.show(WindowInsetsCompat.Type.navigationBars())
+        }
+    }
+    // Space under a see-through top bar: the backdrop fills it, the bar/cover layout starts below it.
+    val topInset = LocalTopBarOverlayInset.current
+
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(15_000L) } }
     val clock = remember(now / 60_000L) {
@@ -220,7 +251,7 @@ internal fun ShortcutsXmbView(
     val hasPad = rememberGamepadConnected()
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val m = remember(maxWidth, maxHeight) { XmbMetrics(maxWidth.value, maxHeight.value) }
+        val m = remember(maxWidth, maxHeight, topInset) { XmbMetrics(maxWidth.value, maxHeight.value - topInset.value) }
         val pitchPx = with(density) { m.pitch.dp.toPx() }
         val rowPx = with(density) { m.rowH.dp.toPx() }
         val wPx = with(density) { maxWidth.toPx() }
@@ -294,101 +325,107 @@ internal fun ShortcutsXmbView(
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.55f), 0.55f to Color.Black.copy(alpha = 0.1f), 1f to Color.Black.copy(alpha = 0.45f))))
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f))))
             XmbWaves(accent, Modifier.fillMaxSize())
-
-            // Top line: controller hints (only with a pad attached) · position · clock.
-            Row(
-                Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (hasPad) {
-                    XmbHint("A", Color(0xFF3DDC84), actions[actIdx].label)
-                    XmbHint("B", Color(0xFFFF5252), "Back")
-                    if (!m.port && m.w >= 600f) {
-                        XmbKeyHint("◀ ▶", "Games"); XmbKeyHint("▲ ▼", "Options"); XmbKeyHint("L1 R1", "Jump")
-                    }
-                }
-            }
-            Row(
-                Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text("${target + 1} / $n", color = Color(0xFFAAAAAA), fontSize = 12.sp)
-                Text(clock, color = Color(0xFFDDDDDD), fontSize = 12.sp, fontWeight = FontWeight.Light)
+            // Faint shade behind a see-through top bar so its title and buttons stay readable.
+            if (topInset > 0.dp) {
+                Box(Modifier.fillMaxWidth().height(topInset + 24.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent))))
             }
 
-            // The bar. Only covers near the cross are composed; each one's placement is read from
-            // `pos` in its graphics layer, so a swipe re-draws without recomposing.
-            val baseIdx by remember { derivedStateOf { floor(pos.floatValue).toInt() } }
-            val ahead = ceil((m.w - m.cross) / m.pitch).toInt() + 1
-            for (i in (baseIdx - 3).coerceAtLeast(0)..(baseIdx + ahead + 1).coerceAtMost(n - 1)) {
-                val s = shortcuts[i]
-                key(s.file.path) {
-                    XmbCover(
-                        shortcut = s, index = i, pos = pos, m = m, accent = accent,
-                        focused = i == target, selectionMode = selectionMode, selected = s.file.path in selectedPaths,
-                        onClick = { if (i == target) { if (selectionMode) onToggleSelect(s) else onPlay(s) } else settleTo(i) },
-                    )
-                }
-            }
-
-            // Focused game's name + "container · resolution", right of its cover under the rest of the bar.
-            AnimatedContent(
-                targetState = focused,
-                contentKey = { it.file.path },
-                transitionSpec = { (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 6 }) togetherWith fadeOut(tween(90)) },
-                label = "xmbTitle",
-                modifier = Modifier.offset(m.titleX.dp, m.titleY.dp).width(m.titleW.dp),
-            ) { s ->
-                val meta = remember(s) { buildLaunchSpec(s, context.resources).meta }
-                Column {
-                    Text(
-                        s.name, color = Color.White, fontSize = m.titleSize.sp, lineHeight = (m.titleSize * 1.15f).sp,
-                        maxLines = m.titleLines, overflow = TextOverflow.Ellipsis,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (meta.isNotEmpty()) {
-                            Text(
-                                meta, color = Color(0xFFC4C4C4), fontSize = 12.sp, maxLines = 1,
-                                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-                            )
+            Box(Modifier.fillMaxSize().padding(top = topInset)) {
+                // Top line: controller hints (only with a pad attached) · position · clock.
+                Row(
+                    Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (hasPad) {
+                        XmbHint("A", Color(0xFF3DDC84), actions[actIdx].label)
+                        XmbHint("B", Color(0xFFFF5252), "Back")
+                        if (!m.port && m.w >= 600f) {
+                            XmbKeyHint("◀ ▶", "Games"); XmbKeyHint("▲ ▼", "Options"); XmbKeyHint("L1 R1", "Jump")
                         }
-                        sdBadge(s)
                     }
                 }
-            }
+                Row(
+                    Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("${target + 1} / $n", color = Color(0xFFAAAAAA), fontSize = 12.sp)
+                    Text(clock, color = Color(0xFFDDDDDD), fontSize = 12.sp, fontWeight = FontWeight.Light)
+                }
 
-            // The cross: the chosen option always sits in the first slot under the bar. Options
-            // you pass slide up behind it and fade; the next few stay visible below.
-            Box(
-                Modifier
-                    .offset(m.colX.dp, m.colTop.dp)
-                    .width((m.iconBox + 12f + m.labelW).dp)
-                    .height((m.nVis * m.rowH + m.extra).dp)
-                    .draggable(vDrag, Orientation.Vertical, onDragStarted = { vAcc = 0f }),
-            ) {
-                actions.forEachIndexed { i, a ->
-                    key(a.label) {
-                        val d = i - actIdx
-                        val vis = d in 0 until m.nVis
-                        val y by animateFloatAsState(d * m.rowH + if (d > 0) m.extra else 0f, spring(dampingRatio = 0.9f, stiffness = 500f), label = "xmbRowY")
-                        val a2 by animateFloatAsState(if (!vis) 0f else if (d == 0) 1f else max(0.35f, 1f - d * 0.13f), tween(220), label = "xmbRowA")
-                        val src = remember { MutableInteractionSource() }
-                        XmbActionRow(
-                            action = a, selected = d == 0, accent = accent, iconBox = m.iconBox,
-                            modifier = Modifier
-                                .graphicsLayer { translationY = y.dp.toPx(); alpha = a2 }
-                                .then(if (vis) Modifier.clickable(src, null) { act = i; a.onClick() } else Modifier),
+                // The bar. Only covers near the cross are composed; each one's placement is read from
+                // `pos` in its graphics layer, so a swipe re-draws without recomposing.
+                val baseIdx by remember { derivedStateOf { floor(pos.floatValue).toInt() } }
+                val ahead = ceil((m.w - m.cross) / m.pitch).toInt() + 1
+                for (i in (baseIdx - 3).coerceAtLeast(0)..(baseIdx + ahead + 1).coerceAtMost(n - 1)) {
+                    val s = shortcuts[i]
+                    key(s.file.path) {
+                        XmbCover(
+                            shortcut = s, index = i, pos = pos, m = m, accent = accent,
+                            focused = i == target, selectionMode = selectionMode, selected = s.file.path in selectedPaths,
+                            onClick = { if (i == target) { if (selectionMode) onToggleSelect(s) else onPlay(s) } else settleTo(i) },
                         )
                     }
                 }
-            }
 
-            if (m.infoW >= 120f && m.infoH >= 40f) {
-                Column(
-                    Modifier.offset(m.infoX.dp, m.infoY.dp).width(m.infoW.dp).height(m.infoH.dp).clipToBounds(),
+                // Focused game's name + "container · resolution", right of its cover under the rest of the bar.
+                AnimatedContent(
+                    targetState = focused,
+                    contentKey = { it.file.path },
+                    transitionSpec = { (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 6 }) togetherWith fadeOut(tween(90)) },
+                    label = "xmbTitle",
+                    modifier = Modifier.offset(m.titleX.dp, m.titleY.dp).width(m.titleW.dp),
+                ) { s ->
+                    val meta = remember(s) { buildLaunchSpec(s, context.resources).meta }
+                    Column {
+                        Text(
+                            s.name, color = Color.White, fontSize = m.titleSize.sp, lineHeight = (m.titleSize * 1.15f).sp,
+                            maxLines = m.titleLines, overflow = TextOverflow.Ellipsis,
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (meta.isNotEmpty()) {
+                                Text(
+                                    meta, color = Color(0xFFC4C4C4), fontSize = 12.sp, maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                                )
+                            }
+                            sdBadge(s)
+                        }
+                    }
+                }
+
+                // The cross: the chosen option always sits in the first slot under the bar. Options
+                // you pass slide up behind it and fade; the next few stay visible below.
+                Box(
+                    Modifier
+                        .offset(m.colX.dp, m.colTop.dp)
+                        .width((m.iconBox + 12f + m.labelW).dp)
+                        .height((m.nVis * m.rowH + m.extra).dp)
+                        .draggable(vDrag, Orientation.Vertical, onDragStarted = { vAcc = 0f }),
                 ) {
-                    XmbInfo(focused, playtime, if (m.port) 6 else 3, storeBadges)
+                    actions.forEachIndexed { i, a ->
+                        key(a.label) {
+                            val d = i - actIdx
+                            val vis = d in 0 until m.nVis
+                            val y by animateFloatAsState(d * m.rowH + if (d > 0) m.extra else 0f, spring(dampingRatio = 0.9f, stiffness = 500f), label = "xmbRowY")
+                            val a2 by animateFloatAsState(if (!vis) 0f else if (d == 0) 1f else max(0.35f, 1f - d * 0.13f), tween(220), label = "xmbRowA")
+                            val src = remember { MutableInteractionSource() }
+                            XmbActionRow(
+                                action = a, selected = d == 0, accent = accent, iconBox = m.iconBox,
+                                modifier = Modifier
+                                    .graphicsLayer { translationY = y.dp.toPx(); alpha = a2 }
+                                    .then(if (vis) Modifier.clickable(src, null) { act = i; a.onClick() } else Modifier),
+                            )
+                        }
+                    }
+                }
+
+                if (m.infoW >= 120f && m.infoH >= 40f) {
+                    Column(
+                        Modifier.offset(m.infoX.dp, m.infoY.dp).width(m.infoW.dp).height(m.infoH.dp).clipToBounds(),
+                    ) {
+                        XmbInfo(focused, playtime, if (m.port) 6 else 3, storeBadges)
+                    }
                 }
             }
         }

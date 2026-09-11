@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧭 **CHECKPOINT: XMB r2 — controller + chrome polish from the first device test** (`feat/games-xmb-view`)
+> - User device test of r1 in landscape: "everything looks beautiful". Three asks, all in r2:
+> - **Per-game settings: L1/R1 switch sections** (General / Win Components / Env Vars / Advanced / Controller) from anywhere in the editor, wrapping around, both orientations. The landscape rail was only reachable at the very end of the D-pad order, then Left/Right. After a switch the D-pad cursor lands on the new section's first control.
+> - **See-through top bar in XMB:** the Games / Steam pill / buttons band is transparent and the XMB backdrop runs up behind it (a faint shade keeps it readable); the layout below the bar is unchanged. Games tab + XMB only, and not while the update banner shows; every other screen and view keeps the normal bar.
+> - **Landscape XMB hides the Android nav buttons** (an edge swipe brings them back briefly). They come back in portrait, in the other views and on other tabs, and are re-hidden when returning from a game.
+> - Status: compile pending in CI; not device-proven.
+
 ## 2026-09-11 — 🧭 **CHECKPOINT: Games tab XMB view built, CI in flight** (`feat/games-xmb-view` off main `cebde01e`)
 > - New 4th Games-tab layout, **XMB** (PS3 cross media bar): the view button now cycles List → Grid → Compact → XMB. Games run left/right along a bar with the focused one enlarged at the cross; the column under it is that game's ⋮ menu with **Play** on top and **Remove** moved to the bottom. Top bar, sort, select mode and the + button are unchanged.
 > - Portrait and landscape are the same code: every size comes from the screen box, so rotating just re-measures. Touch: swipe (with fling), tap a cover to focus it, tap the focused cover to launch, swipe or tap the options. Controller: D-pad/stick left-right = games, up-down = options, A = select, B = back to Play, L1/R1 = jump 5; Up on Play hands focus to the top bar. A/B hints only show when a controller is connected.

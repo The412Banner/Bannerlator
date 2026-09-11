@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🔬🪟 **XP title bars unreadable in some programs: investigating** (proton-wine `aio-eanet/xp-debug` `1a7f9b391ba`, diagnostic only)
+> - User report 08:41: the file manager's inactive XP title text is too faint, and in the Game Controller Tester and AIO Graphics Test the title bar is blank (white, or black with only the button outlines).
+> - Reproduced on Container-8. The broken windows are 32-bit programs that draw through Vulkan (DXVK/VKD3D). In AIO the XP button outlines do draw, so the XP code runs there, but the filled areas never show. On the stock layer (Sep 7) a DXVK window had a normal, readable Wine title bar.
+> - Diagnostic build (CI 34602652462) logs each title bar paint and reads the pixels back, to tell a drawing failure from a display failure. Controls work is paused until this is fixed.
+
 ## 2026-09-11 — 🛟🪟 **CHECKPOINT before XP-styled controls** (proton-wine `aio-eanet/xp-taskbar` `9d9f36596cc`)
 > - Keep-state if the next stage is dropped: branch `aio-eanet/xp-taskbar` @ `9d9f36596cc` (left untouched), backup ref `refs/backup/20260911/xp-taskbar-pre-controls`, staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-taskbar.wcp` sha `d520eb18a48608d0…` (versionCode 9). All of it device-proven; the light/dark wallpaper was confirmed by the user's screenshots, and a close check of the emblem edges found no seam (≤2/255).
 > - Taller XP title bars: skipped by the user. The XP work stays paint-only, so nothing a game can measure (window sizes, client areas, system metrics) changes.

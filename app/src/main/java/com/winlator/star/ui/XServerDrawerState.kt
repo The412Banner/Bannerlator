@@ -157,6 +157,11 @@ object XServerDrawerState {
     private val _lsfgPerformanceMode = MutableStateFlow(false)
     val lsfgPerformanceMode: StateFlow<Boolean> = _lsfgPerformanceMode
 
+    // LSFG Native experimental capture resolution (FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED): "panel" / "game" /
+    // "WxH". Seeded from the container, tuned live.
+    private val _fgCaptureResolution = MutableStateFlow("panel")
+    val fgCaptureResolution: StateFlow<String> = _fgCaptureResolution
+
     private val _fpsLimiterEnabled = MutableStateFlow(false)
     val fpsLimiterEnabled: StateFlow<Boolean> = _fpsLimiterEnabled
 
@@ -484,6 +489,7 @@ object XServerDrawerState {
     fun setFrameGenEngine(v: String)       { _frameGenEngine.value = v }
     fun setFrameGenReadout(v: String)      { _frameGenReadout.value = v }
     fun setLsfgPerformanceMode(v: Boolean) { _lsfgPerformanceMode.value = v }
+    fun setFgCaptureResolution(v: String)  { _fgCaptureResolution.value = v.ifEmpty { "panel" } }
     fun setFpsLimiterEnabled(v: Boolean)   { _fpsLimiterEnabled.value = v }
     fun setFpsLimit(v: Int)                { _fpsLimit.value = v }
     fun setMatchRefreshRate(v: Boolean)    { _matchRefreshRate.value = v }
@@ -608,6 +614,7 @@ object XServerDrawerState {
         _winFgNative.value = false
         _rendererIsVulkan.value = false
         _lsfgPerformanceMode.value = false
+        _fgCaptureResolution.value = "panel"
         _fpsLimiterEnabled.value = false
         _fpsLimit.value = 60
         _matchRefreshRate.value = true

@@ -1311,6 +1311,74 @@ private fun TopLevelFields(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
             )
+            // Experimental LSFG Native knobs, shown while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED
+            // is on. Each is independent so they can be tested one at a time.
+            if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.fg_experimental_header),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                // 1. Capture resolution: Panel / Game / the Screen Size list (+ Custom W×H).
+                val capPanel = stringResource(R.string.fg_capture_panel)
+                val capGame  = stringResource(R.string.fg_capture_game)
+                val capOptions = listOf(capPanel, capGame) + viewModel.screenSizeEntries
+                val capSelected = when (viewModel.fgCaptureSelection) {
+                    Container.FG_CAPTURE_PANEL -> capPanel
+                    Container.FG_CAPTURE_GAME  -> capGame
+                    else -> viewModel.fgCaptureSelection
+                }
+                LabeledDropdown(
+                    label = stringResource(R.string.fg_capture_resolution),
+                    options = capOptions,
+                    selectedOption = capSelected,
+                    onSelect = {
+                        viewModel.fgCaptureSelection = when (it) {
+                            capPanel -> Container.FG_CAPTURE_PANEL
+                            capGame  -> Container.FG_CAPTURE_GAME
+                            else     -> it
+                        }
+                    }
+                )
+                if (viewModel.fgCaptureSelection.equals("custom", ignoreCase = true)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = viewModel.fgCaptureCustomWidth,
+                            onValueChange = { viewModel.fgCaptureCustomWidth = it },
+                            label = { Text(stringResource(R.string.width)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = viewModel.fgCaptureCustomHeight,
+                            onValueChange = { viewModel.fgCaptureCustomHeight = it },
+                            label = { Text(stringResource(R.string.height)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.fg_capture_resolution_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 4.dp)
+                )
+                // 2. Vulkan 1.1 compat — launch-time only (device creation), so no drawer control.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = viewModel.lsfgVk11Compat,
+                        onCheckedChange = { viewModel.lsfgVk11Compat = it }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.lsfg_vk11_compat), modifier = Modifier.weight(1f))
+                }
+                Text(
+                    text = stringResource(R.string.lsfg_vk11_compat_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
+                )
+            }
         }
         if (viewModel.frameGenEngine == "lsfg") {
             Text(

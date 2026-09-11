@@ -109,4 +109,16 @@ DllStatus loadModules(const std::string& cachePath, ModuleSet& outSet);
 // Which producer built an existing cache, without loading the modules.
 DllStatus cacheVariant(const std::string& cachePath, Variant& outVariant);
 
+// Experimental Vulkan 1.1 / 1.2 compat: lower a module's declared SPIR-V
+// version to `targetVersion` (0x00010400 = 1.4, 0x00010500 = 1.5) and declare
+// the extensions that the lowered version needs for capabilities that only
+// became core later (VulkanMemoryModel -> SPV_KHR_vulkan_memory_model, and
+// DemoteToHelperInvocation -> SPV_EXT_demote_to_helper_invocation). The cache
+// is built without a device in hand, always at the translator's native 1.6,
+// so this runs at load time against whatever the device can take. A module
+// already at or below the target is left untouched. Returns false only for a
+// malformed module or a target below 1.4; whether the device then accepts the
+// result is vkCreateShaderModule's verdict.
+bool downgradeSpirv(std::vector<uint32_t>& words, uint32_t targetVersion);
+
 } // namespace lsfg

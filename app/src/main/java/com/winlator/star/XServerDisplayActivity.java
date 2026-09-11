@@ -1689,6 +1689,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 applyLsfgNative(mult, flow);
                 if (fgOn) container.setFrameGenMultiplier(mult);
                 container.setFrameGenFlowScale(flow);
+                if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
+                    // The experimental knob rides the same live path and persists with it.
+                    container.setFgCaptureResolution(s.getFgCaptureResolution().getValue());
+                }
                 container.saveData();
                 // The limiter guard still has to see the >=2 threshold crossing.
                 reapplyFpsLimit();
@@ -2153,6 +2157,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         winFgNativeSession = computeWinFgNativeSession();
         XServerDrawerState.INSTANCE.setWinFgNative(winFgNativeSession);
         XServerDrawerState.INSTANCE.setLsfgPerformanceMode(container.isLsfgPerformanceMode());
+        // LSFG Native experimental capture resolution (FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED;
+        // with the flag off the seed is always panel, whatever the container stored).
+        XServerDrawerState.INSTANCE.setFgCaptureResolution(
+            com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED ? container.getFgCaptureResolution() : Container.FG_CAPTURE_PANEL);
         XServerDrawerState.INSTANCE.setFpsLimiterEnabled(fpsLimOn);
         XServerDrawerState.INSTANCE.setFpsLimit(resolvedFpsLimiterValue());
         XServerDrawerState.INSTANCE.setMatchRefreshRate(resolvedMatchRefreshRate());
@@ -3086,6 +3094,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }, "lsfg-native-cache").start();
     }
 
+    /**
+     * The experimental tuning that rides along with flow scale: the capture height
+     * (0 = panel). It comes from the drawer state, which is seeded from the container and
+     * only ever non-default while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED is on.
+     */
+    private void pushNativeFgTuning(com.winlator.star.renderer.vulkan.VulkanRenderer vkr,
+                                    float flowScale) {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        int captureHeight = 0;
+        if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
+            int gameH = Container.fgCaptureHeightFor(container != null ? container.getScreenSize() : null, 0);
+            captureHeight = Container.fgCaptureHeightFor(s.getFgCaptureResolution().getValue(), gameH);
+        }
+        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz(), captureHeight);
+    }
+
     /** Point the renderer at the cache and arm it at `multiplier` (0 = off). */
     private void applyLsfgNative(int multiplier, float flowScale) {
         com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
@@ -3095,10 +3119,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return;
         }
         Log.i("XServerDisplayActivity", "applyLsfgNative: multiplier=" + multiplier
-            + " flow=" + flowScale + " refresh=" + currentDisplayRefreshHz());
+            + " flow=" + flowScale + " refresh=" + currentDisplayRefreshHz()
+            + " capture=" + XServerDrawerState.INSTANCE.getFgCaptureResolution().getValue());
         vkr.setLsfgCachePath(
             com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
-        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
+        pushNativeFgTuning(vkr, flowScale);
         vkr.setFrameGenArmed(multiplier >= 2, multiplier);
         // Present mode has to follow the armed state: fifo while multiplying,
         // back to the user's choice when off.
@@ -3156,10 +3181,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
             case com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_DRIVER: {
                 String caps = vkr.getLsfgCapsReason();
                 boolean version = caps != null && caps.contains("Vulkan version below");
+                // The experimental compat switch is the other way out for LSFG Native on a
+                // Vulkan 1.1/1.2 driver; name it only while it is off and actually offered.
+                boolean offerCompat = lsfg && version
+                    && com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED
+                    && container != null && !container.isLsfgVk11Compat();
                 return name + " can't run on this Renderer Driver: "
                     + (version ? "it needs Vulkan 1.3, which this driver doesn't provide."
                                : "this driver is missing a feature it needs.")
                     + " In this container's settings, set Renderer Driver to a Turnip driver,"
+                    + (offerCompat
+                        ? " or turn on \"" + getString(R.string.lsfg_vk11_compat) + "\","
+                        : "")
                     + " then relaunch the game.";
             }
             case com.winlator.star.renderer.vulkan.VulkanRenderer.FG_PROBLEM_START_FAILED:
@@ -7212,6 +7245,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (useVulkan && renderer instanceof com.winlator.star.renderer.vulkan.VulkanRenderer) {
             com.winlator.star.renderer.vulkan.VulkanRenderer vkRenderer =
                 (com.winlator.star.renderer.vulkan.VulkanRenderer) renderer;
+            // Experimental (FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED): let the LSFG probe accept
+            // a Vulkan 1.1/1.2 compositor driver via extensions. Must precede nativeInit like the
+            // driver info below.
+            vkRenderer.setLsfgVk11Compat(
+                com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED && container.isLsfgVk11Compat());
             // Compositor (present-layer) Vulkan driver. "system"/empty => leave driverPath null so
             // nativeInit falls back to the system libvulkan (the safe default). An installed Turnip =>
             // point the compositor at it. Vulkan-renderer only (SurfaceFlinger/OpenGL composite through

@@ -108,6 +108,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import com.winlator.star.BuildConfig
 import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.perf.PerfGpuTurbo
@@ -1570,6 +1571,38 @@ private fun FrameGenSection(state: XServerDrawerState) {
             }
         }
 
+        // LSFG Native experimental capture resolution (FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED). Live: the
+        // activity's lsfg-native branch of onBionicFgConfigChange reads it from the state,
+        // persists it and pushes it to the renderer with the multiplier/flow.
+        if (engine == "lsfg-native" && com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
+            val capture by state.fgCaptureResolution.collectAsState()
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Experimental",
+                color = accent,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            )
+            Text(
+                "Capture resolution",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+            )
+            FgCaptureChips(capture) { newValue ->
+                state.setFgCaptureResolution(newValue)
+                applyFg()
+            }
+            Text(
+                "Height the frame-gen chain runs at (width follows the screen). Lower = far " +
+                    "cheaper on the GPU, softer picture. Panel = full resolution.",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            )
+        }
+
         // lsfg-vk only: performance_mode (bionic-fg has no such setting). Toggling rewrites conf.toml
         // via the same applyFg -> onBionicFgConfigChange path (mtime bump -> layer re-reads live) and
         // persists to the container there.
@@ -1769,6 +1802,60 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
     }
 }
 
+
+/**
+ * Experimental capture-resolution picker: Panel, Game, then every distinct height from the
+ * container Screen Size list (R.array.screen_size_entries), as scrollable chips. Stored value is
+ * "panel" / "game" / the bare height ("720"); Container.fgCaptureHeightFor understands all three
+ * (and the "WxH" form the container settings write).
+ */
+@Composable
+private fun FgCaptureChips(selected: String, onSelect: (String) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val accentDim = LocalAccentDim.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val heights = remember {
+        context.resources.getStringArray(R.array.screen_size_entries)
+            .filterNot { it.equals("custom", ignoreCase = true) }
+            .map { Container.fgCaptureHeightFor(it.substringBefore(" "), 0) }
+            .filter { it > 0 }
+            .distinct()
+            .sorted()
+    }
+    val options = listOf(Container.FG_CAPTURE_PANEL to "Panel", Container.FG_CAPTURE_GAME to "Game") +
+        heights.map { it.toString() to "${it}p" }
+    val selectedHeight = Container.fgCaptureHeightFor(selected, -1)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        options.forEach { (value, label) ->
+            val isSel = when (value) {
+                Container.FG_CAPTURE_PANEL, Container.FG_CAPTURE_GAME -> selected == value
+                else -> selected != Container.FG_CAPTURE_PANEL && selected != Container.FG_CAPTURE_GAME
+                    && selectedHeight == value.toInt()
+            }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSel) accent else Color.Black)
+                    .border(1.dp, if (isSel) accent else accentDim, RoundedCornerShape(8.dp))
+                    .clickable { onSelect(value) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    label,
+                    color = if (isSel) Color.Black else accent,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun FgMultiplierButtons(selected: Int, engine: String, enabled: Boolean = true, onSelect: (Int) -> Unit) {

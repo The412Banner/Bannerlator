@@ -173,6 +173,46 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // from launch instead of off. Only meaningful when frameGenEngine == "lsfg". Default ON (matches
     // GameNative; see loadContainerData) — initial value mirrors that.
     var lsfgAutoEnable by mutableStateOf(true)
+    // LSFG Native experimental knobs (only shown while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED). The capture
+    // selection is a UI label: "panel", "game", "custom" or one of screenSizeEntries; it is turned
+    // into the stored "panel" / "game" / "WxH" value by resolvedFgCaptureResolution().
+    var fgCaptureSelection by mutableStateOf(Container.FG_CAPTURE_PANEL)
+    var fgCaptureCustomWidth by mutableStateOf("")
+    var fgCaptureCustomHeight by mutableStateOf("")
+    var lsfgVk11Compat by mutableStateOf(false)
+
+    fun resolvedFgCaptureResolution(): String = when {
+        fgCaptureSelection == Container.FG_CAPTURE_PANEL -> Container.FG_CAPTURE_PANEL
+        fgCaptureSelection == Container.FG_CAPTURE_GAME  -> Container.FG_CAPTURE_GAME
+        fgCaptureSelection.equals("custom", ignoreCase = true) -> {
+            val w = fgCaptureCustomWidth.trim().toIntOrNull()
+            val h = fgCaptureCustomHeight.trim().toIntOrNull()
+            if (w != null && h != null && w > 0 && h > 0) "${w}x${h}" else Container.FG_CAPTURE_PANEL
+        }
+        else -> StringUtils.parseIdentifier(fgCaptureSelection)   // "1280x720 (16:9)" -> "1280x720"
+    }
+
+    private fun seedFgCaptureSelection(stored: String?) {
+        val v = stored ?: Container.FG_CAPTURE_PANEL
+        fgCaptureCustomWidth = ""; fgCaptureCustomHeight = ""
+        fgCaptureSelection = when {
+            v == Container.FG_CAPTURE_PANEL || v.isEmpty() -> Container.FG_CAPTURE_PANEL
+            v == Container.FG_CAPTURE_GAME -> Container.FG_CAPTURE_GAME
+            else -> {
+                val h = Container.fgCaptureHeightFor(v, 0)
+                val match = screenSizeEntries.firstOrNull {
+                    !it.equals("custom", ignoreCase = true) && Container.fgCaptureHeightFor(StringUtils.parseIdentifier(it), 0) == h
+                        && StringUtils.parseIdentifier(it) == v
+                }
+                if (match != null) match else {
+                    val parts = v.split("x")
+                    fgCaptureCustomWidth  = parts.getOrElse(0) { "" }
+                    fgCaptureCustomHeight = parts.getOrElse(1) { "" }
+                    screenSizeEntries.firstOrNull { it.equals("custom", ignoreCase = true) } ?: "Custom"
+                }
+            }
+        }
+    }
     // NOTE: the power-user performance toggles are intentionally NOT edited here. Their model is
     // global-default (App Settings > Performance, com.winlator.star.perf.PerformanceSettings) +
     // optional per-game override (ShortcutsScreen / in-game drawer) — no container level.
@@ -516,6 +556,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         frameGenModel      = seed?.frameGenModel ?: 0
         lsfgPerformanceMode = seed?.isLsfgPerformanceMode != false   // default ON for new/unset containers
         lsfgAutoEnable      = seed?.isLsfgAutoEnable != false   // default ON for new/unset containers (GameNative parity)
+        seedFgCaptureSelection(seed?.fgCaptureResolution)
+        lsfgVk11Compat      = seed?.isLsfgVk11Compat == true
         fpsLimiterEnabled  = seed?.isFpsLimiterEnabled == true
         matchRefreshRate   = seed?.isMatchRefreshRate != false   // default ON for new/unset containers
         manualRefreshRate  = seed?.manualRefreshRate ?: 0
@@ -939,6 +981,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setFrameGenModel(frameGenModel)
             c.setLsfgPerformanceMode(lsfgPerformanceMode)
             c.setLsfgAutoEnable(lsfgAutoEnable)
+            c.setFgCaptureResolution(resolvedFgCaptureResolution())
+            c.setLsfgVk11Compat(lsfgVk11Compat)
             c.setFpsLimiterEnabled(fpsLimiterEnabled)
             c.setMatchRefreshRate(matchRefreshRate)
             c.setManualRefreshRate(manualRefreshRate)
@@ -1006,6 +1050,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                     created.setFrameGenModel(frameGenModel)
                     created.setLsfgPerformanceMode(lsfgPerformanceMode)
                     created.setLsfgAutoEnable(lsfgAutoEnable)
+                    created.setFgCaptureResolution(resolvedFgCaptureResolution())
+                    created.setLsfgVk11Compat(lsfgVk11Compat)
                     created.setVibrationMode(vibrationMode)
                     created.setVibrationIntensity(vibrationIntensity)
                     // Player Slots + On-screen mode: a NEW container is SEEDED from the app-drawer global
@@ -1166,6 +1212,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             template.setFrameGenModel(frameGenModel)
             template.setLsfgPerformanceMode(lsfgPerformanceMode)
             template.setLsfgAutoEnable(lsfgAutoEnable)
+            template.setFgCaptureResolution(resolvedFgCaptureResolution())
+            template.setLsfgVk11Compat(lsfgVk11Compat)
             template.setVibrationMode(vibrationMode)
             template.setVibrationIntensity(vibrationIntensity)
             template.setControllerSlotOverrides(controllerSlotOverridesJson)

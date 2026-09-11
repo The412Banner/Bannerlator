@@ -53,7 +53,7 @@ static void* openAdrenotoolsDriver(const char* driverPath, const char* libraryNa
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeInit(
     JNIEnv* env, jobject, jobject surface, jint w, jint h,
-    jstring jDriverPath, jstring jLibraryName, jstring jNativeLibDir)
+    jstring jDriverPath, jstring jLibraryName, jstring jNativeLibDir, jboolean jLsfgVk11Compat)
 {
     ANativeWindow* win = ANativeWindow_fromSurface(env, surface);
     if (!win) return 0;
@@ -67,7 +67,8 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeInit(
         env->ReleaseStringUTFChars(jLibraryName,  lib);
         env->ReleaseStringUTFChars(jNativeLibDir, nld);
     }
-    try { return reinterpret_cast<jlong>(new VulkanRendererContext(win, w, h, adrenotoolsHandle)); }
+    try { return reinterpret_cast<jlong>(new VulkanRendererContext(win, w, h, adrenotoolsHandle,
+                                                                   jLsfgVk11Compat == JNI_TRUE)); }
     catch (...) {
         ANativeWindow_release(win);
         if (adrenotoolsHandle) dlclose(adrenotoolsHandle);
@@ -411,9 +412,11 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetLsfgCachePath(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
-        JNIEnv*, jobject, jlong handle, jfloat flowScale, jfloat refreshHz) {
+        JNIEnv*, jobject, jlong handle, jfloat flowScale, jfloat refreshHz,
+        jint captureHeight) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
-    if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz);
+    if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz,
+                                captureHeight > 0 ? (uint32_t)captureHeight : 0u);
 }
 
 // Which native engine generates (0 = LSFG, 1 = win-fg) and win-fg's own knobs.

@@ -15,7 +15,7 @@ namespace dxvk {
     const DxbcAnalysisInfo&   analysis)
   : m_moduleInfo (moduleInfo),
     m_programInfo(programInfo),
-    m_module     (spvVersion(1, 6)),
+    m_module     (moduleInfo.spirvVersion ? moduleInfo.spirvVersion : spvVersion(1, 6)),
     m_isgn       (isgn),
     m_osgn       (osgn),
     m_psgn       (psgn),
@@ -33,6 +33,12 @@ namespace dxvk {
     // Set the memory model. This is the same for all shaders.
     m_module.enableCapability(
       spv::CapabilityVulkanMemoryModel);
+
+    // Bannerlator: below SPIR-V 1.5 the Vulkan memory model is not core and
+    // must be declared as an extension (VK_KHR_vulkan_memory_model on the
+    // device side).
+    if (moduleInfo.spirvVersion && moduleInfo.spirvVersion < spvVersion(1, 5))
+      m_module.enableExtension("SPV_KHR_vulkan_memory_model");
 
     m_module.setMemoryModel(
       spv::AddressingModelLogical,

@@ -614,4 +614,93 @@ DllStatus loadModules(const std::string& cachePath, ModuleSet& outSet) {
     return status;
 }
 
+// ---- SPIR-V version lowering (Vulkan 1.1/1.2 compat) ----------------------
+
+namespace {
+
+constexpr uint32_t kSpirvOpExtension    = 10u;
+constexpr uint32_t kSpirvOpExtInstImport= 11u;
+constexpr uint32_t kSpirvOpMemoryModel  = 14u;
+constexpr uint32_t kSpirvOpCapability   = 17u;
+constexpr uint32_t kSpirvV14            = 0x00010400u;
+constexpr uint32_t kSpirvV15            = 0x00010500u;
+
+// Capabilities that are core in the version the translator emits but need an
+// OpExtension declaration once the header says 1.4.
+constexpr uint32_t kCapVulkanMemoryModel            = 5345u;
+constexpr uint32_t kCapVulkanMemoryModelDeviceScope = 5346u;
+constexpr uint32_t kCapDemoteToHelperInvocation     = 5379u;
+
+std::vector<uint32_t> encodeOpExtension(const char* name) {
+    const size_t len = strlen(name) + 1;                 // incl. NUL
+    const size_t strWords = (len + 3) / 4;
+    std::vector<uint32_t> ins(1 + strWords, 0u);
+    ins[0] = ((uint32_t)(1 + strWords) << kSpirvWordCountShift) | kSpirvOpExtension;
+    memcpy(&ins[1], name, len);
+    return ins;
+}
+
+bool hasOpExtension(const std::vector<uint32_t>& w, const char* name) {
+    size_t off = kSpirvHeaderWords;
+    while (off < w.size()) {
+        const uint32_t length = w[off] >> kSpirvWordCountShift;
+        const uint32_t opcode = w[off] & kSpirvOpcodeMask;
+        if (length == 0 || off + length > w.size()) return false;
+        if (opcode == kSpirvOpFunction || opcode == kSpirvOpMemoryModel) break;
+        if (opcode == kSpirvOpExtension && length >= 2) {
+            const char* s = reinterpret_cast<const char*>(&w[off + 1]);
+            if (strncmp(s, name, (length - 1) * 4) == 0) return true;
+        }
+        off += length;
+    }
+    return false;
+}
+
+} // namespace
+
+bool downgradeSpirv(std::vector<uint32_t>& w, uint32_t targetVersion) {
+    if (w.size() < kSpirvHeaderWords || w[0] != kSpirvMagic) return false;
+    if (targetVersion < kSpirvV14) return false;
+    if (w[1] <= targetVersion) return true;             // already low enough
+
+    w[1] = targetVersion;
+    if (targetVersion >= kSpirvV15) return true;        // 1.5 has everything we emit as core
+
+    // Walk the preamble: note which extension-gated capabilities are declared
+    // and where the capability block ends (OpExtension must follow every
+    // OpCapability and precede OpExtInstImport / OpMemoryModel).
+    bool needMemoryModel = false, needDemote = false;
+    size_t insertAt = kSpirvHeaderWords;
+    size_t off = kSpirvHeaderWords;
+    while (off < w.size()) {
+        const uint32_t length = w[off] >> kSpirvWordCountShift;
+        const uint32_t opcode = w[off] & kSpirvOpcodeMask;
+        if (length == 0 || off + length > w.size()) return false;
+        if (opcode == kSpirvOpCapability && length >= 2) {
+            const uint32_t cap = w[off + 1];
+            if (cap == kCapVulkanMemoryModel || cap == kCapVulkanMemoryModelDeviceScope) needMemoryModel = true;
+            if (cap == kCapDemoteToHelperInvocation) needDemote = true;
+            insertAt = off + length;
+        } else if (opcode == kSpirvOpExtension) {
+            insertAt = off + length;
+        } else if (opcode == kSpirvOpExtInstImport || opcode == kSpirvOpMemoryModel
+                   || opcode == kSpirvOpFunction) {
+            break;
+        }
+        off += length;
+    }
+
+    std::vector<uint32_t> extra;
+    if (needMemoryModel && !hasOpExtension(w, "SPV_KHR_vulkan_memory_model")) {
+        const auto e = encodeOpExtension("SPV_KHR_vulkan_memory_model");
+        extra.insert(extra.end(), e.begin(), e.end());
+    }
+    if (needDemote && !hasOpExtension(w, "SPV_EXT_demote_to_helper_invocation")) {
+        const auto e = encodeOpExtension("SPV_EXT_demote_to_helper_invocation");
+        extra.insert(extra.end(), e.begin(), e.end());
+    }
+    if (!extra.empty()) w.insert(w.begin() + (std::ptrdiff_t)insertAt, extra.begin(), extra.end());
+    return true;
+}
+
 } // namespace lsfg

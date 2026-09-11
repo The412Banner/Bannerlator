@@ -36,4 +36,19 @@ public final class FeatureFlags {
      * Wine bring-up. Flip to true once that wrapper lands and the overlay is device-proven to render.
      */
     public static final boolean EPIC_OVERLAY_ENABLED = false;
+
+    /**
+     * LSFG Native low-end experiments: the per-container "Capture resolution" (the frame-gen
+     * chain runs below panel resolution and is blitted up; also live in the in-game drawer) and
+     * "LSFG on Vulkan 1.1 drivers (compat)" (the capability probe accepts a Vulkan 1.1/1.2
+     * compositor driver that offers VK_KHR_spirv_1_4 + VK_KHR_vulkan_memory_model, and the cached
+     * SPIR-V 1.6 modules are lowered at load). Capture defaults to Panel and compat to off, so a
+     * container that never touches them behaves exactly as before. See
+     * docs/lsfg-native-lowend-perf-plan.md.
+     *
+     * OFF = the feature behaves as if it does not exist: both controls are hidden, the capture
+     * resolution is forced to the panel and the compat switch to off whatever a container has
+     * stored, so device creation, the probe verdict and the composite ring are unchanged.
+     */
+    public static final boolean LSFG_NATIVE_EXPERIMENTS_ENABLED = true;
 }

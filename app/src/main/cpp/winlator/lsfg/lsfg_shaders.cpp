@@ -18,7 +18,8 @@
 
 namespace lsfg {
 
-LsfgShaders::LsfgShaders(const Device& device_, const std::string& cache_path)
+LsfgShaders::LsfgShaders(const Device& device_, const std::string& cache_path,
+                         uint32_t spirv_target)
     : device{device_.Handle()} {
     ModuleSet set;
     const DllStatus status = loadModules(cache_path, set);
@@ -26,6 +27,23 @@ LsfgShaders::LsfgShaders(const Device& device_, const std::string& cache_path)
         SHADER_LOGE("Shader cache unusable (%s)", statusName(status));
         return;
     }
+
+    // Vulkan 1.1/1.2 compat: the cache is always built at the translator's
+    // native SPIR-V 1.6 (no device exists at import time), so lower each module
+    // to what THIS device accepts. A no-op on 1.3+ devices.
+    uint32_t lowered = 0;
+    for (Module& module : set.modules) {
+        if (module.words.size() > 1 && module.words[1] > spirv_target) {
+            if (!downgradeSpirv(module.words, spirv_target)) {
+                SHADER_LOGE("shader %u: could not lower SPIR-V 0x%x to 0x%x",
+                            module.id, module.words[1], spirv_target);
+                return;
+            }
+            lowered++;
+        }
+    }
+    if (lowered)
+        SHADER_LOGI("Lowered %u modules to SPIR-V 0x%x for this device", lowered, spirv_target);
 
     for (const Module& module : set.modules) {
         VkShaderModuleCreateInfo module_ci{};

@@ -8,7 +8,12 @@
 // StorageImageWriteWithoutFormat. Three consequences, all checked here:
 //
 //   * SPIR-V 1.6 will not load on a Vulkan 1.1 device, so the DEVICE (not just
-//     the instance) must report 1.3+.
+//     the instance) must report 1.3+ ... OR, on the experimental Vulkan 1.1
+//     compat path, offer VK_KHR_spirv_1_4 + VK_KHR_vulkan_memory_model so the
+//     same modules can be handed over as SPIR-V 1.4 (see downgradeSpirv in
+//     lsfg_dll.h). The stock Qualcomm driver on Adreno 7xx phones reports
+//     1.1.128 yet carries every one of those extensions (measured on an
+//     Adreno 710 / HyperOS device with `cmd gpu vkjson`).
 //   * vulkanMemoryModel, shaderStorageImageWriteWithoutFormat and
 //     shaderStorageImageExtendedFormats must be ENABLED at device creation.
 //     Today the renderer enables no features at all, so all three are off.
@@ -23,10 +28,16 @@
 
 #include <vulkan/vulkan.h>
 #include <cstdint>
+#include <vector>
 
 struct VkTable;
 
 namespace lsfg {
+
+// SPIR-V version words the engine may hand to vkCreateShaderModule.
+constexpr uint32_t kSpirv14 = 0x00010400u;
+constexpr uint32_t kSpirv15 = 0x00010500u;
+constexpr uint32_t kSpirv16 = 0x00010600u;
 
 // Which of the three required features the physical device OFFERS. Queried
 // before vkCreateDevice; what we actually enable is recorded in Caps below.
@@ -39,9 +50,18 @@ struct FeatureSupport {
     bool storageImageExtendedFormats = false;
     uint32_t deviceApiVersion        = 0;
 
+    // Experimental Vulkan 1.1 compat: the device is below 1.3 but offers the
+    // extensions that make the chain loadable. When set, the renderer must
+    // enable those extensions at device creation (see extensionNames) and the
+    // modules are downgraded to `spirvTarget` at load.
+    bool     extensionPath   = false;
+    bool     hasSpirv14      = false;   // VK_KHR_spirv_1_4 (+ VK_KHR_shader_float_controls)
+    bool     hasMemoryModelExt = false; // VK_KHR_vulkan_memory_model
+    uint32_t spirvTarget     = kSpirv16;
+
     // Every hard device-level gate passes (format is checked separately).
     bool deviceGatesPass() const {
-        return queried && apiAtLeast13 && vulkanMemoryModel
+        return queried && (apiAtLeast13 || extensionPath) && vulkanMemoryModel
             && storageImageWriteWithoutFormat && storageImageExtendedFormats;
     }
 };
@@ -62,9 +82,19 @@ struct Caps {
 
 // Ask the physical device which of the required features it offers.
 // Safe on any driver: if vkGetPhysicalDeviceFeatures2 cannot be resolved, or
-// the device reports below Vulkan 1.2, nothing is chained and `queried` is
-// left false — the caller then creates the device exactly as it always has.
-FeatureSupport queryFeatures(const VkTable& vk, VkPhysicalDevice pd);
+// the device reports below Vulkan 1.2 and `allowVk11` is false, nothing is
+// chained and `queried` is left false — the caller then creates the device
+// exactly as it always has. With `allowVk11`, a 1.1 device is accepted when
+// `deviceExtensions` lists VK_KHR_spirv_1_4, VK_KHR_shader_float_controls and
+// VK_KHR_vulkan_memory_model, and the memory-model features are queried
+// through the KHR struct instead of VkPhysicalDeviceVulkan12Features.
+FeatureSupport queryFeatures(const VkTable& vk, VkPhysicalDevice pd,
+                             const std::vector<VkExtensionProperties>& deviceExtensions,
+                             bool allowVk11);
+
+// The device extensions the extension path needs enabled, in the order they
+// should be pushed onto VkDeviceCreateInfo. Empty unless extensionPath.
+std::vector<const char*> extensionNames(const FeatureSupport& f);
 
 // Probe VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT on the live swapchain format.
 // `generate` writes into an image of this format via a compute dispatch.

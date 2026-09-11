@@ -20,7 +20,10 @@ class Device;
 class LsfgShaders {
 public:
     LsfgShaders() = default;
-    LsfgShaders(const Device& device, const std::string& cache_path);
+    // `spirv_target` is the highest SPIR-V version the device accepts (see
+    // lsfg_probe.h); cached modules above it are lowered before creation.
+    LsfgShaders(const Device& device, const std::string& cache_path,
+                uint32_t spirv_target = 0x00010600u);
     ~LsfgShaders();
 
     LsfgShaders(const LsfgShaders&) = delete;

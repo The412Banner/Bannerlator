@@ -604,6 +604,51 @@ public class Container {
         putExtra("lsfgAutoEnable", autoEnable ? "1" : "0");
     }
 
+    // --- LSFG Native experimental knobs (default to today's behaviour; only surfaced and
+    // honoured while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED is on) ---
+
+    // Capture resolution the frame-gen chain runs at: "panel" (default, today's behaviour),
+    // "game" (this container's screen height) or "WxH" from the screen-size list / custom.
+    // The HEIGHT is what is used; the width follows the phone screen's aspect so nothing is
+    // stretched. See fgCaptureHeightFor.
+    public static final String FG_CAPTURE_PANEL = "panel";
+    public static final String FG_CAPTURE_GAME  = "game";
+
+    public String getFgCaptureResolution() {
+        String v = getExtra("fgCaptureResolution", FG_CAPTURE_PANEL);
+        return v == null || v.isEmpty() ? FG_CAPTURE_PANEL : v;
+    }
+
+    public void setFgCaptureResolution(String value) {
+        putExtra("fgCaptureResolution", value == null || value.isEmpty() ? FG_CAPTURE_PANEL : value);
+    }
+
+    /** Resolve a capture-resolution value to a pixel height; 0 = panel resolution. */
+    public static int fgCaptureHeightFor(String value, int gameHeight) {
+        if (value == null || value.isEmpty() || FG_CAPTURE_PANEL.equals(value)) return 0;
+        if (FG_CAPTURE_GAME.equals(value)) return Math.max(0, gameHeight);
+        try {
+            String s = value.trim();
+            int x = s.indexOf('x');
+            if (x >= 0) s = s.substring(x + 1);
+            int sp = s.indexOf(' ');
+            if (sp >= 0) s = s.substring(0, sp);
+            return Math.max(0, Integer.parseInt(s.trim()));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    // Vulkan 1.1 compat: let LSFG Native run on a compositor driver that only reports Vulkan 1.1
+    // (e.g. the stock Adreno driver) when it offers the extensions the chain needs. Read at launch.
+    public boolean isLsfgVk11Compat() {
+        return getExtra("lsfgVk11Compat", "0").equals("1");
+    }
+
+    public void setLsfgVk11Compat(boolean on) {
+        putExtra("lsfgVk11Compat", on ? "1" : "0");
+    }
+
     // NOTE: the power-user performance toggles (sustainedPerfMode / perfPriorityBoost / preferBigCores)
     // are deliberately NOT container-level. The locked resolution model is two levels only —
     // per-game shortcut override -> global default (com.winlator.star.perf.PerformanceSettings).

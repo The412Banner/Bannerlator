@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — ✅ **Steam Controller over USB cable verified** (tester TAR, user-relayed); branch census
+> - The USB cable path works: tester-verified on the 3.1.0 build. The wireless puck is still untested. The live 3.1.0 notes still say USB is untested (update offered).
+> - Branch census vs main (nothing deleted; hiatus rule): 168 GitHub branches besides main. 87 fully merged, 14 merged as copied commits (same patches on main), 67 not merged (incl. `test` from June, 1,092 commits ahead, and the parked `feat/ea-storefront`, `fix/ama-package-name`, `feat/steam-lobby-invites`, `ci/release-notes-collapsible`). Local: 173 branches, 79 fully merged. GitHub Pages serves from main `/docs` (no gh-pages branch).
+
 ## 2026-09-11 — 🧭 **Checkpoint: 3.1.0 shipped; open items**
 > - **Shipped in 3.1.0** (Latest, versionCode 84, tag → `a9659fe3`): Steam Controller support (SDL3, opt-in; TAR-tested over Bluetooth), frame-gen screen fit / over-limit warning / Auto opt-out / can't-run notice / help, SGSR HQ, per-game texture filtering, screen size by panel aspect, the 3.1.0 LSFG Native guide, and README + `docs/releases/3.0.9.md` / `3.1.0.md`.
 > - **Release tooling on main:** `release.yml` builds the page from `docs/releases/<number>.md` in the house layout plus an automatic "Every change since <previous>" list, checked before the build (`30bb6466`); dry-run `release-notes-check.yml` (manual, or push `notes-check/<number>`); `scripts/new_release_notes.py` starts the next notes file.

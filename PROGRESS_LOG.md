@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-10 — 🚀 **3.1.0 release PREPPED (not cut)** — waiting for the user's go
+> - Notes `bl-release-prep/notes-3.1.0.md` (3.0.9 house style, guide callout, TAR credited for Steam Controller testing, honest tested/untested callouts). README + release docs on branch `release/3.1.0-readme` (`fdbc5697`): What's New 3.1.0, and 3.0.9 (never added before) + 3.0.8 under Earlier. The FG section no longer claims Auto refresh is locked off. New Full Features bullets; SDL3 + TAR credits; `docs/releases/3.1.0.md` + the missing `3.0.9.md`.
+> - Cut script `bl-release-prep/cut-3.1.0.sh`, rehearsed without pushing (the rehearsal caught a locale-sort bug in its own file check, now fixed): merges the LSFG guide (`b56c7723`) and README branch with file-list checks, refuses if app/ differs from the CI-green merge `c2acbbd1`, bumps to versionCode 84 / 3.1.0, dispatches release.yml with explicit tag + title, applies the full notes via `gh release edit`, and verifies tag / assets / update.json.
+> - Staged the post-merge main build `/sdcard/Download/Bannerlator-main-c2acbbd1-pubg.apk` sha256 `ad3a11ad…4b51`.
+
 ## 2026-09-10 — ✅ **Steam Controller support MERGED to main** (merge `c2acbbd1` = `feat/steam-controller-sdl` @ `31ede2c4`, main CI run 34546109943)
 > - User: "all works, merge it to main". The community tester confirmed r6 on a 2026 Steam Controller over Bluetooth: in-game play, profile bindings, extra buttons (L4/L5/R4/R5 + "…"), trackpad mouse Right / Left / Both, and the settings Test/Bind dialog (18 inputs). User-relayed; no logs seen here.
 > - Checked before push: 20 files, all feature files; identical stat with `--ignore-cr-at-eol` (no line-ending churn); the merged tree is byte-identical to the tested r6 build (excluding PROGRESS_LOG). Main CI run 34546109943 ✅ standard/ludashi/pubg, headSha `c2acbbd1` verified.

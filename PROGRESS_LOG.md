@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧭 **CHECKPOINT: start menu "Turn Off" never ended the container — root-caused, fix in CI** (proton-wine `aio-eanet/xp-controls` `59a707401ac`, CI 34626910674)
+> - Reproduced on device: Turn Off → Yes closed File Manager but left an empty desktop running. Wine's `ExitWindows()` only asks programs that own windows to close; the app's background helper `winhandler.exe` has none, so it kept the Wine desktop (and the app's session) alive. Pre-existing Wine behaviour, the stock start menu does the same.
+> - Fix: the start menu now runs `wineboot --end-session --force --kill --shutdown`: windowed programs still get the normal end-session messages (and can still cancel, e.g. "save changes?"), then everything left is stopped, desktop last, so the session ends and the app returns to its screen.
+
 ## 2026-09-11 — ✅🌊🌿 **Navy and moss (dark Blue and Olive Green) + Wordpad icon device-proven** (proton-wine `aio-eanet/xp-controls` `a318a1ff477`, CI 34624854833)
 > - In the app's dark theme every XP colour scheme now has a dark twin: Blue → navy, Olive Green → moss, Silver → graphite. Title bars (active and inactive), frames, taskbar and task buttons, start menu, All Programs cascades and the Display Properties preview all follow; switching schemes in Display Properties changes them live. Device-checked with the dark control artwork in the user's container.
 > - Wordpad's start menu entry has its icon: `write.exe` (what the app's Wordpad shortcut points at) now carries the Wordpad icon, as on Windows. Installed programs already showed their own icons.

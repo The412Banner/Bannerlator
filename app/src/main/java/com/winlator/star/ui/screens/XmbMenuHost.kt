@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -125,6 +126,11 @@ internal fun xmbConfirmMenu(nav: XmbNavState, c: XmbConfirm, onOk: () -> Unit): 
             XmbRow.Action("cancel", "Cancel", Icons.Filled.Close) { nav.pop() },
         )
     }
+
+/** A tap target that never takes D-pad focus: the XMB's single root owns the keys, and a focused row
+ *  that scrolls out of composition would strand focus (Android then parks it on the top bar). */
+internal fun Modifier.xmbClick(src: MutableInteractionSource, onClick: () -> Unit): Modifier =
+    this.focusProperties { canFocus = false }.clickable(src, null, onClick = onClick)
 
 // ── row helpers ──
 private fun XmbRow.disabled(): String? = when (this) {
@@ -341,13 +347,13 @@ internal fun XmbNestedLayer(
             }
             val tap = remember { MutableInteractionSource() }
             Text(gameName, color = Color(0xFFBBBBBB), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(tap, null) { nav.popTo(0) })
+                modifier = Modifier.xmbClick(tap) { nav.popTo(0) })
             nav.stack.forEachIndexed { i, menu ->
                 Text("›", color = Color(0xFF888888), fontSize = 14.sp)
                 val t = remember { MutableInteractionSource() }
                 Text(menu.title, color = if (i == nav.depth - 1) Color.White else Color(0xFFBBBBBB), fontSize = 14.sp,
                     fontWeight = if (i == nav.depth - 1) FontWeight.Medium else FontWeight.Normal, maxLines = 1,
-                    modifier = Modifier.clickable(t, null) { nav.popTo(i + 1) })
+                    modifier = Modifier.xmbClick(t) { nav.popTo(i + 1) })
             }
             val flash = nav.savedAt
             var showSaved by remember { mutableStateOf(false) }
@@ -414,9 +420,9 @@ internal fun XmbNestedLayer(
                             nav = nav, xmb = xmb, accent = accent, height = hh,
                             modifier = Modifier
                                 .graphicsLayer { translationY = ay.dp.toPx(); alpha = ao }
-                                .clickable(src, null) {
-                                    if (r is XmbRow.Header) return@clickable
-                                    if (nav.picker != null) { nav.picker = null; return@clickable }
+                                .xmbClick(src) {
+                                    if (r is XmbRow.Header) return@xmbClick
+                                    if (nav.picker != null) { nav.picker = null; return@xmbClick }
                                     m.selKey = r.key
                                     nav.activate(r, xmb)
                                 },
@@ -447,7 +453,7 @@ private fun XmbStrip(icons: List<ImageVector>, sel: Int, x: Float, anchor: Float
                     .size(34.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .then(if (d == 0) Modifier.background(accent.copy(alpha = 0.2f)).border(1.5.dp, accent.copy(alpha = 0.75f), RoundedCornerShape(10.dp)) else Modifier)
-                    .clickable(src, null, onClick = onTap),
+                    .xmbClick(src, onTap),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(ic, null, tint = if (d == 0) Color.White else Color(0xFFCFCFCF), modifier = Modifier.size(18.dp))
@@ -608,7 +614,7 @@ private fun XmbPickerPanel(
                         .fillMaxWidth()
                         .height(36.dp)
                         .background(if (isSel) accent.copy(alpha = 0.32f) else Color.Transparent)
-                        .clickable(src, null) { p.sel = j; nav.onKey(XmbKey.A, xmb) }
+                        .xmbClick(src) { p.sel = j; nav.onKey(XmbKey.A, xmb) }
                         .padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),

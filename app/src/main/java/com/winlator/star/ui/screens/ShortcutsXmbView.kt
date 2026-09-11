@@ -242,6 +242,7 @@ internal fun ShortcutsXmbView(
 
     // Take D-pad focus on entry and again whenever the app comes back (e.g. after a game exits).
     val focusRequester = remember { FocusRequester() }
+    nav.refocus = { runCatching { focusRequester.requestFocus() } }
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -314,8 +315,6 @@ internal fun ShortcutsXmbView(
             Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .focusRequester(focusRequester)
-                .focusable()
                 .onPreviewKeyEvent { e ->
                     if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     if (nav.depth > 0) {
@@ -394,7 +393,9 @@ internal fun ShortcutsXmbView(
                 Box(Modifier.fillMaxWidth().height(topInset + 24.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent))))
             }
 
-            Box(Modifier.fillMaxSize().padding(top = topInset)) {
+            // The focus target starts BELOW the see-through top bar: D-pad focus search skips a target that
+            // overlaps the bar, so Down from the top-bar buttons could never come back to the XMB.
+            Box(Modifier.fillMaxSize().padding(top = topInset).focusRequester(focusRequester).focusable()) {
                 // Top line: controller hints (only with a pad attached) · position · clock.
                 Row(
                     Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 8.dp),
@@ -489,7 +490,7 @@ internal fun ShortcutsXmbView(
                                 action = a, selected = d == 0, accent = accent, iconBox = m.iconBox,
                                 modifier = Modifier
                                     .graphicsLayer { translationY = y.dp.toPx(); alpha = a2 }
-                                    .then(if (vis && !nested) Modifier.clickable(src, null) { act = i; runAction(a) } else Modifier),
+                                    .then(if (vis && !nested) Modifier.xmbClick(src) { act = i; runAction(a) } else Modifier),
                             )
                         }
                     }
@@ -584,7 +585,7 @@ private fun XmbCover(
                     else -> Modifier
                 }
             )
-            .clickable(src, null, onClick = onClick),
+            .xmbClick(src, onClick),
     ) {
         val bmp = shortcut.icon
         if (bmp != null) {

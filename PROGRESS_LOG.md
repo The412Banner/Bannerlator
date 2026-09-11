@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🛟🪟 **CHECKPOINT before XP-styled controls** (proton-wine `aio-eanet/xp-taskbar` `9d9f36596cc`)
+> - Keep-state if the next stage is dropped: branch `aio-eanet/xp-taskbar` @ `9d9f36596cc` (left untouched), backup ref `refs/backup/20260911/xp-taskbar-pre-controls`, staged `/sdcard/Download/GE-proton-11.0-6-arm64ec-xp-taskbar.wcp` sha `d520eb18a48608d0…` (versionCode 9). All of it device-proven; the light/dark wallpaper was confirmed by the user's screenshots, and a close check of the emblem edges found no seam (≤2/255).
+> - Taller XP title bars: skipped by the user. The XP work stays paint-only, so nothing a game can measure (window sizes, client areas, system metrics) changes.
+> - Next: XP-styled controls (buttons, check boxes, scroll bars, menus) on a new branch `aio-eanet/xp-controls`, staged under a different wcp name.
+
 ## 2026-09-11 — ✅🪟 **XP window frames, new Wine logo and light/dark Wine XP wallpaper, device-proven** (proton-wine `aio-eanet/xp-taskbar` `9d9f36596cc`)
 > - **XP window frames** in `dlls/win32u/defwnd.c`, opt-in from Display Properties ("XP style title bars and window frames", off by default): Luna caption gradient, bold title with shadow, rounded caption buttons (red close), blue / olive green / silver frames following the color scheme. Paint-only, the frame and caption sizes are the usual metrics so window and client sizes don't change. Setting read at most once a second; explorer repaints every frame 1.2 s after Apply. Device: file manager frame switched to Silver and to Blue live.
 > - **New Wine logo** (user's `WINE-logo.svg`) on the start button and the start menu tile.

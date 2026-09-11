@@ -98,6 +98,17 @@ fieldset{border:0;margin:0;padding:0;min-width:0}
 .range-row input:focus-visible{outline:2px solid var(--real);outline-offset:3px;border-radius:4px}
 .big-out{font:700 30px/1 var(--f-mono);min-width:3ch;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
 .example-note{font-size:14px;color:var(--muted);margin-top:-8px}
+.auto-row{position:relative;display:flex;align-items:flex-start;gap:12px;cursor:pointer;color:var(--ink-2);font-size:15px;line-height:1.45}
+.auto-row input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.auto-switch{flex:none;width:42px;height:24px;border-radius:12px;background:var(--sunk);border:1px solid var(--line);position:relative;margin-top:1px;transition:background-color .15s ease}
+.auto-switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .15s ease,background-color .15s ease}
+.auto-row input:checked + .auto-switch{background:var(--real);border-color:var(--real)}
+.auto-row input:checked + .auto-switch::after{transform:translateX(18px);background:var(--surface)}
+.auto-row input:focus-visible + .auto-switch{outline:2px solid var(--real);outline-offset:2px}
+.auto-row b{color:var(--ink)}
+.auto-sub{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.screen-line{font-size:15px;color:var(--ink-2);margin-bottom:10px}
+.screen-line b{color:var(--ink)}
 
 /* Refresh strip */
 .strip{display:flex;flex-direction:column;gap:4px}
@@ -257,7 +268,7 @@ footer b{color:var(--ink-2)}
     <div class="panel">
       <div class="controls">
         <fieldset>
-          <legend class="ctl-label">Your screen</legend>
+          <legend class="ctl-label">Your screen (top speed)</legend>
           <div class="chips">
             <label class="chip"><input type="radio" name="hz" id="hz-60" value="60"><span>60 Hz</span></label>
             <label class="chip"><input type="radio" name="hz" id="hz-90" value="90"><span>90 Hz</span></label>
@@ -282,9 +293,16 @@ footer b{color:var(--ink-2)}
           </div>
         </fieldset>
       </div>
+      <label class="auto-row" for="auto">
+        <input type="checkbox" id="auto" checked>
+        <span class="auto-switch" aria-hidden="true"></span>
+        <span><b>Auto (match FPS)</b> — switched on by itself while frame generation runs. Bannerlator moves your screen to exactly Max FPS × multiplier if it has that speed, otherwise to the closest speed above.
+          <span class="auto-sub">This checker assumes your screen offers 60, 90, 120… up to its top speed. Some phones only have 60 and 120.</span></span>
+      </label>
       <p class="example-note" id="example-note">This starts on a common mistake. Tap one of the suggested combos below to fix it.</p>
 
       <div>
+        <p class="screen-line" id="screen-line">Your screen runs at <b>144 Hz</b>.</p>
         <div class="strip" id="live-strip"></div>
         <div class="axis mono"><span>0 ms</span><span id="axis-mid">each box = 6.9 ms</span><span id="axis-end">167 ms</span></div>
       </div>
@@ -357,7 +375,7 @@ footer b{color:var(--ink-2)}
         <div class="row-text">
           <h3>Too few</h3>
           <span class="mono">30 × 2 = 60 on a 144 Hz screen</span>
-          <p>Two frames go out back-to-back, then the screen repeats the last one until the next real frame arrives (the stripes). Motion goes smooth, stop, smooth. Nothing's broken, but most of your screen is wasted. A bigger multiplier fills the gaps: 36 × 4 = 144.</p>
+          <p>Two frames go out back-to-back, then the screen repeats the last one until the next real frame arrives (the stripes). Motion goes smooth, stop, smooth. Nothing's broken, but most of your screen is wasted. Two ways out: a bigger multiplier fills the gaps (36 × 4 = 144), or the screen drops to 60 Hz so 30 × 2 fits exactly. Bannerlator does the second one for you while frame generation runs (Auto (match FPS), below).</p>
         </div>
         <figure class="mini" data-hz="144" data-fps="30" data-mult="2">
           <figcaption><span class="pill"></span><span class="mini-stats"></span></figcaption>
@@ -406,11 +424,11 @@ footer b{color:var(--ink-2)}
       </li>
       <li>
         <h3>Choose LSFG Native</h3>
-        <p>In the container's settings (or the game's own settings), set the <b>Renderer</b> to <b>Vulkan</b> and <b>Frame Generation</b> to <b>LSFG Native (Lossless Scaling)</b>. The first launch afterwards may show "Preparing frame-generation shaders…". Let it finish.</p>
+        <p>In the container's settings (or the game's own settings), set the <b>Renderer</b> to <b>Vulkan</b> and <b>Frame Generation</b> to <b>LSFG Native (Lossless Scaling)</b>. LSFG Native also needs a <b>Renderer Driver</b> with Vulkan 1.3; on older Adreno GPUs, pick a Turnip driver there. The first launch afterwards may show "Preparing frame-generation shaders…". Let it finish. If anything is missing, the side menu tells you what and how to fix it.</p>
       </li>
       <li>
-        <h3>Run your screen at full speed</h3>
-        <p>Set your device's display to its highest refresh rate, not a 60 Hz battery-saver mode. On handhelds with their own refresh control, set it to the highest rate or Auto. If you've locked the display to a lower rate with Bannerlator's Refresh rate slider, that lower number is your limit.</p>
+        <h3>Let the screen fit itself</h3>
+        <p>You don't need to set the refresh rate yourself. When frame generation starts, <b>Auto (match FPS)</b> switches on and moves your screen to exactly Max FPS × multiplier if it has that speed, otherwise to the closest speed above. Just make sure your device isn't holding the screen at 60 Hz: turn off battery saver's 60 Hz mode, and on handhelds with their own refresh control, set it to Auto.</p>
       </li>
       <li>
         <h3>Find your steady number</h3>
@@ -422,7 +440,7 @@ footer b{color:var(--ink-2)}
       </li>
       <li>
         <h3>Pick the multiplier</h3>
-        <p>Choose the multiplier where Max FPS × multiplier lands on your screen's Hz, or just under it. The cheat sheet below has the numbers.</p>
+        <p>Choose the multiplier where Max FPS × multiplier lands on one of your screen's speeds, or just under the top one. The cheat sheet below has the numbers. If you go over, the side menu shows a red warning with a one-tap fix; if the numbers don't fit a screen speed exactly, it suggests the Max FPS that does.</p>
       </li>
       <li>
         <h3>Turn it on</h3>
@@ -435,7 +453,7 @@ footer b{color:var(--ink-2)}
     </ol>
     <div class="note">
       <span class="note-k">Heads up</span>
-      <p><b>Two settings get locked while LSFG Native runs.</b> Bannerlator keeps <b>Limit FPS</b> on and <b>Auto (match FPS)</b> off, because that's the setup LSFG Native works properly in. You can still move Max FPS. If you never set a Max FPS, it uses 30. Both settings go back to how you had them when you turn frame generation off.</p>
+      <p><b>Two settings change while LSFG Native or Win-FG Native runs.</b> <b>Limit FPS</b> stays on, because frame generation needs a steady cap; you can still move Max FPS, and if you never set one it uses 30. <b>Auto (match FPS)</b> switches on to fit your screen to your numbers. You can turn Auto off in the side menu, and that game remembers your choice (games started without a shortcut remember it for that session only). Both go back to your normal settings when you turn frame generation off.</p>
     </div>
     <div class="prose">
       <p><b>The other dial, Flow Scale</b> (0.20 to 1.00), controls how closely LSFG studies the motion between frames. Higher gives cleaner made-up frames but costs more power. If "real" drops after you turn frame generation on, lower it.</p>
@@ -446,7 +464,7 @@ footer b{color:var(--ink-2)}
     <div class="sec-head">
       <p class="eyebrow">Cheat sheet</p>
       <h2 id="sheet-h">The Max FPS to set</h2>
-      <p class="prose">Find your screen's row. Go along it and pick the biggest number your game can hold without dipping under. For example, on a 144 Hz screen: if the game never drops below 50, use 48 with 3×. If it never drops below 40, use 36 with 4×.</p>
+      <p class="prose">Find your screen's row. Go along it and pick the biggest number your game can hold without dipping under. For example, on a 144 Hz screen: if the game never drops below 50, use 48 with 3×. If it never drops below 40, use 36 with 4×. With Auto (match FPS) on, the rows for lower speeds work on your screen too: on a 144 Hz screen, 30 × 2 runs it at 60 Hz, and 45 × 2 runs it at 90 Hz, both perfect fits (as long as your screen offers those speeds).</p>
     </div>
     <div class="table-wrap">
       <table>
@@ -474,8 +492,8 @@ footer b{color:var(--ink-2)}
         <div class="case-text">
           <h3>"I picked 4×. It got worse."</h3>
           <p class="case-setup">144 Hz handheld · game holds 60 · 4×</p>
-          <p>60 × 4 = 240 frames a second for a screen that shows 144, so 96 a second have nowhere to go. It stutters every time you turn the camera, and the controls feel a beat late.</p>
-          <p class="case-fix"><b>Fix:</b> set Max FPS to 36 and keep 4× (36 × 4 = 144), or set 48 and use 3×.</p>
+          <p>60 × 4 = 240 frames a second for a screen that shows 144, so 96 a second have nowhere to go. It stutters every time you turn the camera, and the controls feel a beat late. The side menu flags this in red.</p>
+          <p class="case-fix"><b>Fix:</b> tap <b>Set Max FPS to 36</b> in the warning and keep 4× (36 × 4 = 144), or set 48 and use 3×.</p>
         </div>
         <div class="case-strips">
           <figure class="mini" data-hz="144" data-fps="60" data-mult="4"><figcaption><span class="mini-k">Before</span><span class="mono">60 × 4 = 240</span><span class="pill"></span></figcaption><div class="strip compact"></div></figure>
@@ -549,12 +567,14 @@ footer b{color:var(--ink-2)}
       <div><dt>Edges wobble around my character or the HUD</dt><dd>That's normal for made-up frames, and it gets worse at a low base or in very fast motion. Raise the base, or raise Flow Scale if your device has power to spare.</dd></div>
       <div><dt>The readout shows fewer real frames than my Max FPS</dt><dd>The game can't keep up with frame generation running. Lower Flow Scale, then drop Max FPS a step.</dd></div>
       <div><dt>The readout says "throttling"</dt><dd>Your device is hot and slowing itself down. Drop the multiplier or Max FPS a step, or give it a break.</dd></div>
-      <div><dt>I can't turn Limit FPS off</dt><dd>That's on purpose while LSFG Native runs. Turn frame generation off and your old setting comes back.</dd></div>
+      <div><dt>I can't turn Limit FPS off</dt><dd>That's on purpose while LSFG Native or Win-FG Native runs. Turn frame generation off and your old setting comes back.</dd></div>
+      <div><dt>The screen blinked when I turned frame generation on</dt><dd>That's Auto (match FPS) switching your screen to fit your numbers. It happens once per change. Prefer the screen left alone? Turn Auto off in the side menu, and that game remembers.</dd></div>
+      <div><dt>The 2× / 3× / 4× buttons are greyed out, with a red message</dt><dd>Frame generation can't run with your current setup, and the message says why. Most often, LSFG Native needs a Renderer Driver with Vulkan 1.3: in the container's settings, set Renderer Driver to a Turnip driver, then relaunch the game.</dd></div>
     </dl>
   </section>
 
   <footer>
-    <p>Written for <b>Bannerlator 3.0.9</b>. <b>Win-FG Native</b> (built in, nothing to buy) follows the same rule. It always runs at 2×, so use the 2× column.</p>
+    <p>Written for <b>Bannerlator 3.1.0</b>. <b>Win-FG Native</b> (built in, nothing to buy) follows the same rules. It always runs at 2×, so use the 2× column.</p>
     <p>LSFG Native needs your own copy of Lossless Scaling's Lossless.dll. Bannerlator doesn't include it.</p>
   </footer>
 
@@ -666,9 +686,29 @@ footer b{color:var(--ink-2)}
     return 0;
   }
 
+  // Screen speeds assumed for a screen with this top speed (the checker's stand-in for the
+  // device's own list; some phones only have 60 and 120).
+  var SPEEDS = [60, 90, 120, 144, 165];
+  var autoBox = document.getElementById('auto');
+
   function update() {
-    var hz = checked(hzInputs), mult = checked(multInputs), fps = +base.value;
-    var made = fps * mult, res = run(hz, mult, fps, null);
+    var maxHz = checked(hzInputs), mult = checked(multInputs), fps = +base.value;
+    var made = fps * mult, autoOn = autoBox.checked;
+    var rates = SPEEDS.filter(function (r) { return r <= maxHz; });
+    // Auto (match FPS) under frame gen, as Bannerlator 3.1.0 does it: exactly cap x multiplier
+    // if the screen has that speed, else the closest speed above; nothing above = top speed.
+    var hz = maxHz;
+    if (autoOn) {
+      for (var i = 0; i < rates.length; i++) if (rates[i] >= made) { hz = rates[i]; break; }
+    }
+    var res = run(hz, mult, fps, null);
+
+    var line = el('screen-line');
+    if (!autoOn) line.innerHTML = 'Auto is off, so your screen stays at its top speed, <b>' + maxHz + ' Hz</b>.';
+    else if (hz < maxHz) line.innerHTML = 'Your screen runs at <b>' + hz + ' Hz</b>. Auto moved it down from ' + maxHz +
+      ' Hz to fit ' + fps + ' × ' + mult + ' = ' + made + '.';
+    else if (made > maxHz) line.innerHTML = 'Your screen runs at its top speed, <b>' + maxHz + ' Hz</b>. There is no faster speed to fit ' + made + '.';
+    else line.innerHTML = 'Your screen runs at <b>' + hz + ' Hz</b>.';
 
     el('base-out').textContent = fps;
     renderStrip(el('live-strip'), res);
@@ -696,19 +736,23 @@ footer b{color:var(--ink-2)}
       head = "Your screen can't keep up.";
       body = fps + ' × ' + mult + ' = ' + made + ' frames a second, but a ' + hz + ' Hz screen only has ' + hz +
         ' slots. The other ' + (made - hz) + ' wait in line, so what you see runs behind what you press, and real frames get skipped to catch up (about ' +
-        res.skipped + ' a second here). That’s the stutter and the laggy feel.';
+        res.skipped + ' a second here). That’s the stutter and the laggy feel. Bannerlator’s side menu shows this warning too, with a one-tap fix.';
     } else if (j[1] === 'Perfect fit') {
       head = 'Perfect fit.';
-      body = fps + ' × ' + mult + ' = ' + hz + '. Every refresh gets a new picture, evenly spaced. It stays that way as long as the game really holds ' +
+      body = (autoOn && hz < maxHz ? 'Auto set your screen to exactly ' + hz + ' Hz. ' : '') +
+        fps + ' × ' + mult + ' = ' + hz + '. Every refresh gets a new picture, evenly spaced. It stays that way as long as the game really holds ' +
         fps + ', so pick a number it never dips under.';
     } else if (j[0] === 'good') {
       head = 'Good fit.';
-      body = made + ' of your screen’s ' + hz + ' refreshes a second get a new picture. About ' + res.repeats +
+      body = (autoOn ? 'Auto set your screen to ' + hz + ' Hz, the closest speed above ' + made + '. ' : '') +
+        made + ' of your screen’s ' + hz + ' refreshes a second get a new picture. About ' + res.repeats +
         ' times a second a picture stays up one extra refresh, which is hard to notice.';
     } else {
       head = 'Gaps between the bursts.';
-      body = 'Only ' + made + ' of your screen’s ' + hz + ' refreshes a second get a new picture. Each burst goes out back-to-back, then the screen repeats the last picture until the next real frame, ' +
-        res.repeats + ' times a second. Motion goes smooth, stop, smooth.';
+      body = (autoOn ? 'Auto set your screen to ' + hz + ' Hz, the closest speed above ' + made + ', and it still doesn’t fit well. ' : '') +
+        'Only ' + made + ' of your screen’s ' + hz + ' refreshes a second get a new picture. Each burst goes out back-to-back, then the screen repeats the last picture until the next real frame, ' +
+        res.repeats + ' times a second. Motion goes smooth, stop, smooth.' +
+        (autoOn ? '' : ' Turning Auto on would move the screen closer to your numbers.');
     }
     var v = el('verdict');
     v.dataset.tone = j[0];
@@ -719,21 +763,37 @@ footer b{color:var(--ink-2)}
     el('v-low').hidden = fps >= 30;
     el('v-low-pill').textContent = fps < 30 ? 'Low base' : '';
 
-    el('fixes-k').textContent = (j[0] === 'good' ? 'Other combos that fill a ' : 'Try one of these on a ') + hz + ' Hz screen';
+    // Suggestions. With Auto on: every exact fit this multiplier can reach on this screen's
+    // speeds (what the side menu suggests). Otherwise, or if none: one combo per multiplier
+    // that fills the top speed.
+    var fits = [];
+    if (autoOn) {
+      rates.forEach(function (r) {
+        if (r % mult === 0 && r / mult >= 30) fits.push({ cap: r / mult, m: mult, hz: r });
+      });
+    }
+    var exactFits = fits.length > 0;
+    if (!exactFits) {
+      [2, 3, 4].forEach(function (m) {
+        var cap = Math.floor(maxHz / m);
+        if (cap >= 30) fits.push({ cap: cap, m: m, hz: cap * m });
+      });
+    }
+    el('fixes-k').textContent = exactFits
+      ? 'Perfect fits at ' + mult + '× on this screen (Auto picks the speed)'
+      : (j[0] === 'good' ? 'Other combos that fill a ' : 'Try one of these on a ') + maxHz + ' Hz screen';
     var box = el('combos');
     box.replaceChildren();
-    [2, 3, 4].forEach(function (m) {
-      var cap = Math.floor(hz / m);
-      if (cap < 30) return;
+    fits.forEach(function (f, i) {
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'combo';
-      b.id = 'combo-' + m;
-      b.textContent = cap + ' × ' + m + ' = ' + cap * m;
-      b.setAttribute('aria-pressed', String(cap === fps && m === mult));
+      b.id = 'combo-' + i;
+      b.textContent = exactFits ? f.cap + ' × ' + f.m + ' → ' + f.hz + ' Hz' : f.cap + ' × ' + f.m + ' = ' + f.cap * f.m;
+      b.setAttribute('aria-pressed', String(f.cap === fps && f.m === mult));
       b.addEventListener('click', function () {
-        base.value = cap;
-        el('m-' + m).checked = true;
+        base.value = f.cap;
+        el('m-' + f.m).checked = true;
         markTouched();
         update();
       });
@@ -750,6 +810,7 @@ footer b{color:var(--ink-2)}
   base.addEventListener('input', function () { markTouched(); update(); });
   hzInputs.forEach(function (i) { i.addEventListener('change', function () { markTouched(); update(); }); });
   multInputs.forEach(function (i) { i.addEventListener('change', function () { markTouched(); update(); }); });
+  autoBox.addEventListener('change', function () { markTouched(); update(); });
   update();
 })();
 </script>

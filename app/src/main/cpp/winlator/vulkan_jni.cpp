@@ -249,7 +249,7 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFilterMode(JNIEnv
 
 // Scaling mode enum (see VulkanRendererContext::upscalerMode):
 //   0=none 1=linear 2=nearest 3=sgsr 4=fsr(fill) 5=fsr_fit(letterbox)
-//   6=sharpen 7=nis 8=sgsr_quality
+//   6=sharpen 7=nis 8=sgsr_quality 9=ai 10=ai_hq (AI falls back to 8 if the device can't run it)
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetUpscaler(JNIEnv*, jobject, jlong handle, jint mode) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);

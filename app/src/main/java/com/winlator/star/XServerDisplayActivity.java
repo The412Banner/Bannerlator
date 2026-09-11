@@ -7305,9 +7305,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (renderer instanceof GLRenderer) {
             GLRenderer glr = (GLRenderer) renderer;
             // Per-game scaling mode restore: base sampler is Nearest for mode 2, else Linear; the
-            // spatial/preset part (modes 3-7) is seeded into the EffectComposer where the drawer
+            // spatial/preset part (modes 3-8) is seeded into the EffectComposer where the drawer
             // callbacks are wired (see resolveScalingMode() / ds.setGlUpscalerMode below).
-            int glInitialMode = resolveScalingMode();
+            // AI / AI HQ (9/10) are Vulkan-only -> SGSR HQ on GL (glScalingMode).
+            int glInitialMode = glScalingMode(resolveScalingMode());
             glr.setFilterMode(glInitialMode == 2 ? 2 : 1);
             // GL Native Rendering (direct scanout) lifecycle — mirror the Vulkan launch wiring. Must
             // run before the surface is created so GLRenderer.onSurfaceCreated builds the scanout
@@ -7707,7 +7708,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    // Scaling/upscaler mode (0-8: None/Linear/Nearest/SGSR/FSR/FSR-Fit/Sharpen/NIS/SGSR HQ) persistence.
+    // Scaling/upscaler mode (0-10: None/Linear/Nearest/SGSR/FSR/FSR-Fit/Sharpen/NIS/SGSR HQ/AI/AI HQ)
+    // persistence. AI/AI HQ (9/10) are Vulkan-only; the GL renderer runs SGSR HQ for them (glScalingMode).
     // In-game picks are remembered PER GAME (shortcut override, else container) so the drawer's
     // "Scaling mode" picker is sticky across relaunch — matching the fullscreen-mode behavior.
     private void persistScalingMode(int mode) {
@@ -7728,19 +7730,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (sm != null && !sm.isEmpty()) {
             try {
                 int m = Integer.parseInt(sm);
-                if (m >= 0 && m <= 8) return m;
+                if (m >= 0 && m <= 10) return m;
             } catch (NumberFormatException ignored) {}
         }
         return container != null && container.getRendererFilterMode() == 2 ? 2 : 1;
     }
 
+    // The GL EffectComposer has no AI pass: AI / AI HQ (9/10, Vulkan-only) run SGSR HQ (8) there.
+    // Only the value handed to the GL side is mapped; the saved per-game pick stays 9/10, so the
+    // same game on a Vulkan container still gets AI.
+    private static int glScalingMode(int mode) {
+        return (mode == 9 || mode == 10) ? 8 : mode;
+    }
+
     // Texture sharpness "Auto" (dxwrapperConfig lodBias=auto): the mip LOD bias that matches the scaling
     // mode this game starts with. Only the spatial upscalers count (3 SGSR, 4 FSR, 5 FSR-Fit, 7 NIS,
-    // 8 SGSR HQ); Sharpen/Linear/Nearest/None give 0. DXVK reads it once at device creation, so a
-    // scaling mode changed later in the drawer applies from the next launch.
+    // 8 SGSR HQ, 9 AI, 10 AI HQ — AI upscales from the same below-display render as SGSR HQ, and
+    // runs SGSR HQ itself where it can't run); Sharpen/Linear/Nearest/None give 0. DXVK reads it
+    // once at device creation, so a scaling mode changed later in the drawer applies from the next launch.
     private float autoTextureLodBias() {
         int mode = resolveScalingMode();
-        boolean spatial = mode == 3 || mode == 4 || mode == 5 || mode == 7 || mode == 8;
+        boolean spatial = mode == 3 || mode == 4 || mode == 5 || mode == 7 || mode == 8
+                || mode == 9 || mode == 10;
         if (!spatial || xServer == null) return 0f;
         android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         getWindowManager().getDefaultDisplay().getRealMetrics(dm);
@@ -7951,7 +7962,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Scaling mode (spatial upscaler) is a Vulkan-only control — the inverse of the GL-only
         // effects above. Flag it for the drawer gate and wire the apply callback here, BEFORE the
         // GL-only early return below, so it works on the Vulkan renderer. setUpscaler covers
-        // modes 0..5 and drives the base sampler filter for modes 1/2 (single source of truth).
+        // modes 0..10 and drives the base sampler filter for modes 1/2 (single source of truth).
         boolean vulkanActive = renderer instanceof com.winlator.star.renderer.vulkan.VulkanRenderer;
         ds.setVulkanSupported(vulkanActive);
         if (vulkanActive) {
@@ -7962,7 +7973,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // it's a no-op (and no repeated toast) when native is already off — important because
             // onVulkanScreenEffectsApply fires continuously during slider drags.
             ds.onUpscalerApply = (mode) -> {
-                if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS 8=SGSR HQ
+                if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS 8=SGSR HQ 9=AI 10=AI HQ
                 vkr.setUpscaler(mode);
                 persistScalingMode(mode);   // remember the pick per game (#scaling-persist)
             };
@@ -8407,9 +8418,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // method already returned for non-GL above), so these never fire on Vulkan/ASR.
         // Seed the picker to match the base sampler filter the launch already applied
         // (container filter mode), mirroring the Vulkan seed: Nearest -> 2, else Linear (1).
-        // Restore the per-game scaling mode (0-7) into the drawer picker + composer so an in-game
+        // Restore the per-game scaling mode (0-8) into the drawer picker + composer so an in-game
         // SGSR/FSR/etc. choice survives relaunch (not just the Linear/Nearest base filter).
-        int glSeedMode = resolveScalingMode();
+        // A saved AI / AI HQ (9/10, Vulkan-only) seeds SGSR HQ here — the GL picker has no AI chips.
+        int glSeedMode = glScalingMode(resolveScalingMode());
         int glUpscaleSharpness = resolveExtraInt("glUpscaleSharpness", 75); // remembered per game (#382)
         ds.setGlUpscalerMode(glSeedMode);
         ds.setGlUpscaleSharpness(glUpscaleSharpness);
@@ -8420,10 +8432,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // GL native (direct scanout) bypasses — so engaging one turns Native Rendering off.
             // Guarded inside disableNativeRenderingForPreset(), so this no-ops when native is already
             // off (and the drawer greys these controls out while native is on, so it rarely fires).
-            if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS 8=SGSR HQ
+            if (mode >= 3) disableNativeRenderingForPreset(); // 3=SGSR 4=FSR 5=FSR-Fit 6=Sharpen 7=NIS 8=SGSR HQ (9/10 AI -> 8)
             // None/Linear/spatial/sharpen -> linear base sampler; Nearest -> point.
             glRenderer.setFilterMode(mode == 2 ? 2 : 1);
-            glRenderer.getEffectComposer().setUpscaler(mode); // keeps the current sharpness
+            // The GL picker offers no AI chips, but never hand 9/10 to the composer: SGSR HQ instead.
+            glRenderer.getEffectComposer().setUpscaler(glScalingMode(mode)); // keeps the current sharpness
             persistScalingMode(mode);   // remember the pick per game (#scaling-persist)
         };
         ds.onGlUpscaleSharpnessApply = (sharpness) -> {

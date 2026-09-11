@@ -52,7 +52,9 @@ object ScreenEffectLooks {
     // UpscalerModeButtons list (0=None 1=Linear 2=Nearest 3=SGSR 4=FSR 5=FSR(Fit)
     // 6=Sharpen 7=NIS 8=SGSR HQ) and both feed a "mode" int straight to their apply callback,
     // so one constant serves GL and Vulkan alike — no per-path resolver needed.
-    // If the two pickers ever diverge, this is the single place to fork them.
+    // The Vulkan picker additionally offers 9=AI 10=AI HQ (Vulkan-only, so no Look names
+    // them); a live 9/10 simply fails to match the two Looks that do name a mode.
+    // If the two pickers ever diverge further, this is the single place to fork them.
     const val SCALING_NEAREST = 2
     const val SCALING_FSR = 4
 

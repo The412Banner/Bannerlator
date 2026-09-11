@@ -15,6 +15,7 @@
 #define WINFG_CHAIN_HASH "unknown"
 #endif
 #include <stdexcept>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -38,10 +39,20 @@
 #include "ntsc_frag.h"
 #include "crt_frag.h"
 #include "deband_frag.h"
+#include "ai_upscale_fast_comp.h"
+#include "ai_upscale_hq_comp.h"
+#include "ai_upscale_final_frag.h"
 
 // Internal sentinel for upFrame.mode: high-quality supersampling downscale.
-// (Not a user-selectable upscalerMode; gated by the hqDownscale flag.)
-static constexpr int UPMODE_DOWNSCALE = 10;
+// (Not a user-selectable upscalerMode; gated by the hqDownscale flag.) Only ever
+// referenced by name. It was 10 until mode 10 became AI HQ; keep it well outside
+// the user-selectable range (0..10) so the two can never collide again.
+static constexpr int UPMODE_DOWNSCALE = 100;
+
+// The AI final pass reuses the SGSR push-constant layout byte for byte.
+static_assert(sizeof(AiUpscalePushConstants) == sizeof(SgsrPushConstants),
+              "AI final push constants must match the SGSR layout");
+static_assert(sizeof(AiComputePushConstants) == 8, "AI compute push constants are ivec2");
 
 // ---- CPU-side FSR1 constant setup (mirrors ffx_fsr1.h FsrEasuCon/FsrRcasCon) ----
 static inline uint32_t fsrPackF(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }
@@ -121,6 +132,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     destroyColorTarget(midImg, midMem, midView, midFB, midDS);
     destroyColorTarget(fx1Img, fx1Mem, fx1View, fx1FB, fx1DS);
     destroyColorTarget(fx2Img, fx2Mem, fx2View, fx2FB, fx2DS);
+    destroyAiUpscale();   // AI upscale (modes 9/10): residual, own pool/sets, pipelines, layouts
     if (sgsrPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrPipeline, nullptr);
     if (sgsrQualityPipeline != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrQualityPipeline, nullptr);
     if (nisPipeline       != VK_NULL_HANDLE) vk_.DestroyPipeline(device, nisPipeline, nullptr);
@@ -646,7 +658,8 @@ void VulkanRendererContext::createOffscreenRenderPass() {
         throw std::runtime_error("offscreen renderpass");
 }
 
-VkPipeline VulkanRendererContext::createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp) {
+VkPipeline VulkanRendererContext::createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp,
+                                                     VkPipelineLayout layout) {
     auto vert=makeShader(upscale_vert_code,sizeof(upscale_vert_code));
     auto frag=makeShader(fragCode,fragSz);
     VkPipelineShaderStageCreateInfo stages[2]{};
@@ -664,7 +677,8 @@ VkPipeline VulkanRendererContext::createPostPipeline(const uint32_t* fragCode, s
     VkGraphicsPipelineCreateInfo pi{}; pi.sType=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pi.stageCount=2; pi.pStages=stages; pi.pVertexInputState=&vi; pi.pInputAssemblyState=&ia;
     pi.pViewportState=&vp; pi.pRasterizationState=&rast; pi.pMultisampleState=&ms;
-    pi.pColorBlendState=&cb; pi.pDynamicState=&ds; pi.layout=postPipeLayout; pi.renderPass=rp; pi.subpass=0;
+    pi.pColorBlendState=&cb; pi.pDynamicState=&ds; pi.renderPass=rp; pi.subpass=0;
+    pi.layout = (layout!=VK_NULL_HANDLE) ? layout : postPipeLayout;
     VkPipeline out=VK_NULL_HANDLE;
     VkResult r=vk_.CreateGraphicsPipelines(device,VK_NULL_HANDLE,1,&pi,nullptr,&out);
     vk_.DestroyShaderModule(device,frag,nullptr); vk_.DestroyShaderModule(device,vert,nullptr);
@@ -1374,6 +1388,7 @@ bool VulkanRendererContext::ensureOffscreen(int w, int h) {
         return false;
     }
     offscreenW=w; offscreenH=h;
+    ++offscreenGen;   // AI upscale descriptor sets reference offscreenView -> rewrite them
     return true;
 }
 
@@ -1414,6 +1429,214 @@ bool VulkanRendererContext::ensureFx2(int w, int h) {
     }
     fx2W=w; fx2H=h;
     return true;
+}
+
+// ============================ AI upscale (modes 9/10) ============================
+// See VulkanRendererContext.h. Runs on the render thread, from planUpscaleFrame
+// (and the destructor). Nothing may throw out of ensureAiUpscale: planUpscaleFrame
+// runs after the swapchain image was acquired and renderLoop swallows exceptions,
+// so an escaping throw would drop every frame. Any failure becomes the SGSR HQ
+// fallback instead.
+
+void VulkanRendererContext::aiFallback(const char* why) {
+    if (aiFailed) return;
+    aiFailed = true;
+    RLOG_E("AI upscale: fallback to SGSR HQ (%s)", why ? why : "unknown");
+    // Free whatever was created. A command buffer still in flight may reference
+    // the sets or the residual, so the GPU has to be idle first.
+    vk_.DeviceWaitIdle(device);
+    destroyAiUpscale();
+}
+
+// Device gate for the compute network. Returns nullptr when the device can run it,
+// else a reason written into buf.
+const char* VulkanRendererContext::aiCapsProblem(char* buf, size_t bufSz) {
+    VkPhysicalDeviceProperties props{};
+    vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
+    const VkPhysicalDeviceLimits& L = props.limits;
+    if (L.maxComputeWorkGroupInvocations < 256) {
+        snprintf(buf, bufSz, "maxComputeWorkGroupInvocations=%u < 256", L.maxComputeWorkGroupInvocations);
+        return buf;
+    }
+    if (L.maxComputeWorkGroupSize[0] < 16 || L.maxComputeWorkGroupSize[1] < 16) {
+        snprintf(buf, bufSz, "maxComputeWorkGroupSize=%ux%u < 16x16",
+                 L.maxComputeWorkGroupSize[0], L.maxComputeWorkGroupSize[1]);
+        return buf;
+    }
+    if (L.maxComputeSharedMemorySize < 16384) {
+        snprintf(buf, bufSz, "maxComputeSharedMemorySize=%u < 16384", L.maxComputeSharedMemorySize);
+        return buf;
+    }
+    if (vk_.GetPhysicalDeviceFormatProperties) {
+        VkFormatProperties fp{};
+        vk_.GetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_R16G16B16A16_SFLOAT, &fp);
+        const VkFormatFeatureFlags need = VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+        if ((fp.optimalTilingFeatures & need) != need) {
+            snprintf(buf, bufSz, "R16G16B16A16_SFLOAT optimal features 0x%x lack storage+sampled",
+                     (unsigned)fp.optimalTilingFeatures);
+            return buf;
+        }
+    }
+    return nullptr;
+}
+
+bool VulkanRendererContext::createAiPipelines() {
+    // Compute set: b0 = offscreen composite (sampler2D, texelFetch), b1 = residual (rgba16f storage).
+    VkDescriptorSetLayoutBinding b[2]{};
+    b[0].binding=0; b[0].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; b[0].descriptorCount=1; b[0].stageFlags=VK_SHADER_STAGE_COMPUTE_BIT;
+    b[1].binding=1; b[1].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;          b[1].descriptorCount=1; b[1].stageFlags=VK_SHADER_STAGE_COMPUTE_BIT;
+    VkDescriptorSetLayoutCreateInfo lci{}; lci.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    lci.bindingCount=2; lci.pBindings=b;
+    if (vk_.CreateDescriptorSetLayout(device,&lci,nullptr,&aiCompDSLayout)!=VK_SUCCESS) { aiCompDSLayout=VK_NULL_HANDLE; return false; }
+
+    // A private pool for the two AI sets, so they never take a slot from winTexPool
+    // (which every window texture and AHB import draws from).
+    VkDescriptorPoolSize ps[2]{};
+    ps[0].type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; ps[0].descriptorCount=2;  // compute b0 + residual set
+    ps[1].type=VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;          ps[1].descriptorCount=1;  // compute b1
+    VkDescriptorPoolCreateInfo pci{}; pci.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pci.maxSets=2; pci.poolSizeCount=2; pci.pPoolSizes=ps;
+    if (vk_.CreateDescriptorPool(device,&pci,nullptr,&aiDescPool)!=VK_SUCCESS) { aiDescPool=VK_NULL_HANDLE; return false; }
+    VkDescriptorSetLayout setLayouts[2]={aiCompDSLayout, dsLayout};
+    VkDescriptorSet sets[2]={VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkDescriptorSetAllocateInfo dsai{}; dsai.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    dsai.descriptorPool=aiDescPool; dsai.descriptorSetCount=2; dsai.pSetLayouts=setLayouts;
+    if (vk_.AllocateDescriptorSets(device,&dsai,sets)!=VK_SUCCESS) return false;
+    aiCompDS=sets[0]; aiResidualDS=sets[1];
+
+    // Compute layout: the set above + ivec2 size.
+    VkPushConstantRange cpc{}; cpc.stageFlags=VK_SHADER_STAGE_COMPUTE_BIT; cpc.offset=0; cpc.size=sizeof(AiComputePushConstants);
+    VkPipelineLayoutCreateInfo cli{}; cli.sType=VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    cli.setLayoutCount=1; cli.pSetLayouts=&aiCompDSLayout; cli.pushConstantRangeCount=1; cli.pPushConstantRanges=&cpc;
+    if (vk_.CreatePipelineLayout(device,&cli,nullptr,&aiCompPipeLayout)!=VK_SUCCESS) { aiCompPipeLayout=VK_NULL_HANDLE; return false; }
+
+    auto makeCompute=[&](const uint32_t* code, size_t sz, VkPipeline& out)->bool{
+        VkShaderModule m=makeShader(code,sz);   // throws on failure (caught in ensureAiUpscale)
+        VkComputePipelineCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        ci.stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        ci.stage.stage=VK_SHADER_STAGE_COMPUTE_BIT; ci.stage.module=m; ci.stage.pName="main";
+        ci.layout=aiCompPipeLayout;
+        VkResult r=vk_.CreateComputePipelines(device,VK_NULL_HANDLE,1,&ci,nullptr,&out);
+        vk_.DestroyShaderModule(device,m,nullptr);
+        if (r!=VK_SUCCESS) { out=VK_NULL_HANDLE; return false; }
+        return true;
+    };
+    if (!makeCompute(ai_upscale_fast_code, sizeof(ai_upscale_fast_code), aiFastPipeline)) return false;
+    if (!makeCompute(ai_upscale_hq_code,   sizeof(ai_upscale_hq_code),   aiHqPipeline))   return false;
+
+    // Final pass layout: set 0 = offscreen (offscreenDS), set 1 = residual (aiResidualDS),
+    // both the ordinary one-sampler dsLayout; push constants shaped like SGSR's.
+    VkDescriptorSetLayout finalSets[2]={dsLayout, dsLayout};
+    VkPushConstantRange fpc{}; fpc.stageFlags=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
+    fpc.offset=0; fpc.size=sizeof(AiUpscalePushConstants);
+    VkPipelineLayoutCreateInfo fli{}; fli.sType=VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    fli.setLayoutCount=2; fli.pSetLayouts=finalSets; fli.pushConstantRangeCount=1; fli.pPushConstantRanges=&fpc;
+    if (vk_.CreatePipelineLayout(device,&fli,nullptr,&aiFinalPipeLayout)!=VK_SUCCESS) { aiFinalPipeLayout=VK_NULL_HANDLE; return false; }
+    // Built against renderPass (swapchain format) like SGSR: format-identical to the
+    // offscreen/fx passes and the frame-gen composite pass, so it is valid in all of them.
+    aiFinalPipeline = createPostPipeline(ai_upscale_final_code, sizeof(ai_upscale_final_code),
+                                         renderPass, aiFinalPipeLayout);   // throws on failure
+    return true;
+}
+
+bool VulkanRendererContext::createAiResidual(int w, int h) {
+    VkImageCreateInfo ii{}; ii.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO; ii.imageType=VK_IMAGE_TYPE_2D;
+    ii.extent={(uint32_t)w,(uint32_t)h,1}; ii.mipLevels=1; ii.arrayLayers=1;
+    ii.format=VK_FORMAT_R16G16B16A16_SFLOAT; ii.tiling=VK_IMAGE_TILING_OPTIMAL;
+    ii.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+    ii.usage=VK_IMAGE_USAGE_STORAGE_BIT|VK_IMAGE_USAGE_SAMPLED_BIT;
+    ii.samples=VK_SAMPLE_COUNT_1_BIT; ii.sharingMode=VK_SHARING_MODE_EXCLUSIVE;
+    if (vk_.CreateImage(device,&ii,nullptr,&aiResImg)!=VK_SUCCESS) { aiResImg=VK_NULL_HANDLE; return false; }
+    VkMemoryRequirements req; vk_.GetImageMemoryRequirements(device,aiResImg,&req);
+    VkMemoryAllocateInfo mai{}; mai.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO; mai.allocationSize=req.size;
+    mai.memoryTypeIndex=findMemType(req.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);   // throws if none
+    if (vk_.AllocateMemory(device,&mai,nullptr,&aiResMem)!=VK_SUCCESS) { aiResMem=VK_NULL_HANDLE; destroyAiResidual(); return false; }
+    if (vk_.BindImageMemory(device,aiResImg,aiResMem,0)!=VK_SUCCESS) { destroyAiResidual(); return false; }
+    VkImageViewCreateInfo vci{}; vci.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO; vci.image=aiResImg;
+    vci.viewType=VK_IMAGE_VIEW_TYPE_2D; vci.format=VK_FORMAT_R16G16B16A16_SFLOAT;
+    vci.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    vci.components={VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY};
+    if (vk_.CreateImageView(device,&vci,nullptr,&aiResView)!=VK_SUCCESS) { aiResView=VK_NULL_HANDLE; destroyAiResidual(); return false; }
+    aiResW=w; aiResH=h;
+    return true;
+}
+
+void VulkanRendererContext::destroyAiResidual() {
+    if (aiResView!=VK_NULL_HANDLE) { vk_.DestroyImageView(device,aiResView,nullptr); aiResView=VK_NULL_HANDLE; }
+    if (aiResImg !=VK_NULL_HANDLE) { vk_.DestroyImage(device,aiResImg,nullptr);      aiResImg =VK_NULL_HANDLE; }
+    if (aiResMem !=VK_NULL_HANDLE) { vk_.FreeMemory(device,aiResMem,nullptr);        aiResMem =VK_NULL_HANDLE; }
+    aiResW=aiResH=0;
+    aiDSWritten=false;   // the sets now point at a dead view
+}
+
+void VulkanRendererContext::destroyAiUpscale() {
+    destroyAiResidual();
+    if (aiFinalPipeline  !=VK_NULL_HANDLE) { vk_.DestroyPipeline(device,aiFinalPipeline,nullptr); aiFinalPipeline=VK_NULL_HANDLE; }
+    if (aiFastPipeline   !=VK_NULL_HANDLE) { vk_.DestroyPipeline(device,aiFastPipeline,nullptr);  aiFastPipeline =VK_NULL_HANDLE; }
+    if (aiHqPipeline     !=VK_NULL_HANDLE) { vk_.DestroyPipeline(device,aiHqPipeline,nullptr);    aiHqPipeline   =VK_NULL_HANDLE; }
+    if (aiFinalPipeLayout!=VK_NULL_HANDLE) { vk_.DestroyPipelineLayout(device,aiFinalPipeLayout,nullptr); aiFinalPipeLayout=VK_NULL_HANDLE; }
+    if (aiCompPipeLayout !=VK_NULL_HANDLE) { vk_.DestroyPipelineLayout(device,aiCompPipeLayout,nullptr);  aiCompPipeLayout =VK_NULL_HANDLE; }
+    // Destroying the pool frees aiCompDS + aiResidualDS with it.
+    if (aiDescPool       !=VK_NULL_HANDLE) { vk_.DestroyDescriptorPool(device,aiDescPool,nullptr); aiDescPool=VK_NULL_HANDLE; }
+    aiCompDS=VK_NULL_HANDLE; aiResidualDS=VK_NULL_HANDLE;
+    if (aiCompDSLayout   !=VK_NULL_HANDLE) { vk_.DestroyDescriptorSetLayout(device,aiCompDSLayout,nullptr); aiCompDSLayout=VK_NULL_HANDLE; }
+    aiDSWritten=false; aiDSOffscreenView=VK_NULL_HANDLE; aiDSOffscreenGen=0; aiDSResView=VK_NULL_HANDLE;
+    aiPipelinesReady=false;
+}
+
+// Make sure the AI pass can record this frame: pipelines (first use), the residual
+// at the offscreen size, and both descriptor sets pointing at the live views. Call
+// after ensureOffscreen(w,h) succeeded. false = run SGSR HQ this frame; aiFailed
+// tells whether that is now permanent (it is for every failure except "offscreen
+// not ready", which cannot happen after a successful ensureOffscreen).
+bool VulkanRendererContext::ensureAiUpscale(int w, int h) {
+    if (aiFailed) return false;
+    if (w<=0 || h<=0 || offscreenView==VK_NULL_HANDLE) return false;
+    try {
+        if (!aiPipelinesReady) {
+            char why[160];
+            if (const char* p = aiCapsProblem(why, sizeof(why))) { aiFallback(p); return false; }
+            if (!createAiPipelines()) { aiFallback("pipeline/descriptor creation failed"); return false; }
+            aiPipelinesReady = true;
+        }
+        bool resChanged = false;
+        if (aiResImg==VK_NULL_HANDLE || aiResW!=w || aiResH!=h) {
+            // The previous frames may still be writing/reading the old residual.
+            if (aiResImg!=VK_NULL_HANDLE) { vk_.DeviceWaitIdle(device); destroyAiResidual(); }
+            if (!createAiResidual(w,h)) {
+                char why[96]; snprintf(why, sizeof(why), "residual image %dx%d creation failed", w, h);
+                aiFallback(why); return false;
+            }
+            resChanged = true;
+        }
+        if (resChanged || !aiDSWritten || aiDSResView!=aiResView ||
+            aiDSOffscreenView!=offscreenView || aiDSOffscreenGen!=offscreenGen) {
+            // Both sets may be bound by a command buffer still in flight, and updating
+            // a set in use is invalid. This happens on the first AI frame and on a
+            // resize only, so simply idle the GPU first.
+            vk_.DeviceWaitIdle(device);
+            VkDescriptorImageInfo src{};
+            src.sampler=upscaleSampler; src.imageView=offscreenView; src.imageLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            VkDescriptorImageInfo resStorage{};
+            resStorage.imageView=aiResView; resStorage.imageLayout=VK_IMAGE_LAYOUT_GENERAL;
+            VkDescriptorImageInfo resSampled{};
+            resSampled.sampler=upscaleSampler; resSampled.imageView=aiResView; resSampled.imageLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            VkWriteDescriptorSet wr[3]{};
+            for (auto& x : wr) { x.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; x.descriptorCount=1; }
+            wr[0].dstSet=aiCompDS;     wr[0].dstBinding=0; wr[0].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wr[0].pImageInfo=&src;
+            wr[1].dstSet=aiCompDS;     wr[1].dstBinding=1; wr[1].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;          wr[1].pImageInfo=&resStorage;
+            wr[2].dstSet=aiResidualDS; wr[2].dstBinding=0; wr[2].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wr[2].pImageInfo=&resSampled;
+            vk_.UpdateDescriptorSets(device,3,wr,0,nullptr);
+            aiDSWritten=true; aiDSResView=aiResView; aiDSOffscreenView=offscreenView; aiDSOffscreenGen=offscreenGen;
+        }
+        return true;
+    } catch (const std::exception& e) {
+        char why[160]; snprintf(why, sizeof(why), "exception: %s", e.what());
+        aiFallback(why);
+    } catch (...) {
+        aiFallback("unknown exception");
+    }
+    return false;
 }
 
 void VulkanRendererContext::createWinTexPool() {
@@ -1916,7 +2139,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     const VkViewport fullVp{0,0,(float)swapchainExt.width,(float)swapchainExt.height,0,1};
     const VkRect2D   fullSc{{0,0},swapchainExt};
 
-    const bool hasScaling = (upFrame.mode>=3 && upFrame.mode<=8) || upFrame.mode==UPMODE_DOWNSCALE;
+    const bool hasScaling = (upFrame.mode>=3 && upFrame.mode<=10) || upFrame.mode==UPMODE_DOWNSCALE;
     // Must include EVERY chainable effect (matches planUpscaleFrame's fxOn) — else a
     // scaling mode (SGSR/FSR/Sharpen/downscale) treats the scale as final and writes
     // straight to the swapchain, skipping the effect chain (CRT/NTSC/etc. silently dropped).
@@ -2009,6 +2232,72 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
             else if (upFrame.mode==6) { pcd=&upFrame.rcasPC; pcsz=sizeof(upFrame.rcasPC); }
             else                      { pcd=&upFrame.dsPC;   pcsz=sizeof(upFrame.dsPC);   }
             postPass(pl, stFB, scaleFinal, offscreenDS, pcd, pcsz);
+        } else if (upFrame.mode==9 || upFrame.mode==10) {
+            // AI upscale: a compute pass writes the residual at game res, then one
+            // graphics pass bilinear-upscales the offscreen into the fit rect and adds
+            // it. (planUpscaleFrame only plans 9/10 when ensureAiUpscale succeeded.)
+            const bool hq = (upFrame.mode==10);
+            const int  inW = upFrame.aiCompPC.size[0], inH = upFrame.aiCompPC.size[1];
+            if (aiLogMode!=upFrame.mode || aiLogInW!=inW || aiLogInH!=inH ||
+                aiLogOutW!=upFrame.outW || aiLogOutH!=upFrame.outH || aiLogDetail!=upFrame.aiPC.detail) {
+                RLOG("AI upscale: mode=%d net=%s in=%dx%d out=%dx%d detail=%.2f",
+                     upFrame.mode, hq ? "hq" : "fast", inW, inH, upFrame.outW, upFrame.outH,
+                     (double)upFrame.aiPC.detail);
+                aiLogMode=upFrame.mode; aiLogInW=inW; aiLogInH=inH;
+                aiLogOutW=upFrame.outW; aiLogOutH=upFrame.outH; aiLogDetail=upFrame.aiPC.detail;
+            }
+
+            VkImageMemoryBarrier pre[2]{};
+            for (auto& x : pre) {
+                x.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                x.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; x.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+                x.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+            }
+            // [0] offscreen: the composite pass already left it SHADER_READ_ONLY_OPTIMAL,
+            //     but its render-pass dependency only covers FRAGMENT; make the colour
+            //     writes visible to the compute read (no layout change). The FRAGMENT
+            //     src bit below also chains this after that pass's final transition.
+            pre[0].image=offscreenImg;
+            pre[0].oldLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; pre[0].newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            pre[0].srcAccessMask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; pre[0].dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
+            // [1] residual: the previous frame's final pass sampled it (FRAGMENT); the
+            //     dispatch rewrites every texel, so discard it (UNDEFINED -> GENERAL).
+            pre[1].image=aiResImg;
+            pre[1].oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; pre[1].newLayout=VK_IMAGE_LAYOUT_GENERAL;
+            pre[1].srcAccessMask=0; pre[1].dstAccessMask=VK_ACCESS_SHADER_WRITE_BIT;
+            vk_.CmdPipelineBarrier(cb,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT|VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,nullptr, 0,nullptr, 2,pre);
+
+            vk_.CmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_COMPUTE, hq ? aiHqPipeline : aiFastPipeline);
+            vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,aiCompPipeLayout,0,1,&aiCompDS,0,nullptr);
+            vk_.CmdPushConstants(cb,aiCompPipeLayout,VK_SHADER_STAGE_COMPUTE_BIT,0,
+                                 sizeof(upFrame.aiCompPC),&upFrame.aiCompPC);
+            vk_.CmdDispatch(cb, ((uint32_t)inW+15u)/16u, ((uint32_t)inH+15u)/16u, 1);
+
+            // residual: compute writes -> final-pass sampling.
+            VkImageMemoryBarrier post=pre[1];
+            post.oldLayout=VK_IMAGE_LAYOUT_GENERAL; post.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            post.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT; post.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
+            vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0, 0,nullptr, 0,nullptr, 1,&post);
+
+            // Final pass: postPass with the AI pipeline/layout and TWO sets
+            // (set 0 = offscreen, set 1 = residual). Same target selection as postPass,
+            // so the frame-gen composite redirection (targetRenderPass) applies.
+            VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rpi.renderPass = scaleFinal ? targetRenderPass() : offscreenRenderPass;
+            rpi.framebuffer=stFB; rpi.renderArea={{0,0},swapchainExt};
+            rpi.clearValueCount=1; rpi.pClearValues=&blk;
+            vk_.CmdBeginRenderPass(cb,&rpi,VK_SUBPASS_CONTENTS_INLINE);
+            vk_.CmdSetViewport(cb,0,1,&fullVp); vk_.CmdSetScissor(cb,0,1,&fullSc);
+            vk_.CmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,aiFinalPipeline);
+            const VkDescriptorSet aiSets[2]={offscreenDS, aiResidualDS};
+            vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,aiFinalPipeLayout,0,2,aiSets,0,nullptr);
+            vk_.CmdPushConstants(cb,aiFinalPipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,
+                                 sizeof(upFrame.aiPC),&upFrame.aiPC);
+            vk_.CmdDraw(cb,4,1,0,0);
+            vk_.CmdEndRenderPass(cb);
         } else {
             // FSR: EASU offscreen -> mid (at output res, mid viewport), then RCAS mid -> stFB.
             VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2129,15 +2418,21 @@ void VulkanRendererContext::planUpscaleFrame() {
         // Upscale modes 3-5 need the game to render below display; mode 6 (sharpen)
         // runs at any resolution (it is a pure sharpen / cheap scale+sharpen).
         int mode=upscalerMode;
+        // AI (9/10) runs SGSR HQ (8) for the rest of the session once the device failed
+        // the gate or an AI resource could not be created (logged once, see aiFallback).
+        if ((mode==9 || mode==10) && aiFailed) mode=8;
         if (mode>=3 && (mode==6 || renderBelowDisplay)) {
             int outX,outY,outW,outH;
             if (mode==4) {                               // fsr (fill / stretch)
                 outX=0; outY=0; outW=(int)swapchainExt.width; outH=(int)swapchainExt.height;
-            } else {                                     // sgsr(3/8) / fsr_fit(5) / sharpen(6) / nis(7)
+            } else {                                     // sgsr(3/8) / fsr_fit(5) / sharpen(6) / nis(7) / ai(9/10)
                 fitRect(outX,outY,outW,outH);
             }
             bool ok = (outW>0 && outH>0) && ensureOffscreen(containerWidth,containerHeight);
             if (ok && (mode==4||mode==5)) ok = ensureMid(outW,outH);
+            // AI: residual image + descriptor sets at game res. On failure run SGSR HQ,
+            // which needs only the offscreen that is already in place.
+            if (ok && (mode==9||mode==10) && !ensureAiUpscale(containerWidth,containerHeight)) mode=8;
             if (ok) {
                 float nx0=(float)outX/scW*2.f-1.f, ny0=(float)outY/scH*2.f-1.f;
                 float nx1=(float)(outX+outW)/scW*2.f-1.f, ny1=(float)(outY+outH)/scH*2.f-1.f;
@@ -2173,6 +2468,21 @@ void VulkanRendererContext::planUpscaleFrame() {
                     p.viewportInfo[2]=(float)containerWidth;
                     p.viewportInfo[3]=(float)containerHeight;
                     p.sharpness = upscaleSharpness01;
+                } else if (mode==9 || mode==10) {
+                    // AI: the compute pass writes the residual over the whole offscreen
+                    // (game res); the final pass bilinear-upscales the offscreen into the
+                    // fit rect and adds the residual. ViewportInfo mirrors SGSR.
+                    AiUpscalePushConstants& p=upFrame.aiPC;
+                    p.ndc[0]=nx0; p.ndc[1]=ny0; p.ndc[2]=nx1; p.ndc[3]=ny1;
+                    p.viewportInfo[0]=1.f/(float)containerWidth;
+                    p.viewportInfo[1]=1.f/(float)containerHeight;
+                    p.viewportInfo[2]=(float)containerWidth;
+                    p.viewportInfo[3]=(float)containerHeight;
+                    // Residual gain from the slider ("Detail"): the 0.75 default -> 1.0
+                    // (as trained), 0 -> plain bilinear (A/B), 1.0 -> 1.33.
+                    p.detail = std::min(std::max(upscaleSharpness01 / 0.75f, 0.f), 1.4f);
+                    upFrame.aiCompPC.size[0]=containerWidth;
+                    upFrame.aiCompPC.size[1]=containerHeight;
                 } else {                                     // fsr (4) / fsr_fit (5)
                     EasuPushConstants& e=upFrame.easuPC;
                     e.ndc[0]=-1.f; e.ndc[1]=-1.f; e.ndc[2]=1.f; e.ndc[3]=1.f; // full mid target
@@ -2945,7 +3255,7 @@ void VulkanRendererContext::setFilterMode(int mode) {
 }
 
 void VulkanRendererContext::setUpscaler(int mode) {
-    if (mode<0||mode>8) mode=0;   // 0=none 1=linear 2=nearest 3=sgsr 4=fsr 5=fsr_fit 6=sharpen 7=nis 8=sgsr_quality
+    if (mode<0||mode>10) mode=0;  // 0=none 1=linear 2=nearest 3=sgsr 4=fsr 5=fsr_fit 6=sharpen 7=nis 8=sgsr_quality 9=ai 10=ai_hq
     if (upscalerMode==mode) { RLOG("setUpscaler: already %d, skipping", mode); return; }
     RLOG("setUpscaler: %d -> %d", upscalerMode, mode);
     upscalerMode=mode;

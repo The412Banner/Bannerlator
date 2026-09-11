@@ -359,6 +359,9 @@ public class EffectComposer {
     // spatial modes 3 (SGSR) / 4 (FSR) / 5 (FSR-Fit) / 7 (NIS) / 8 (SGSR Quality) build their pass(es) below. Sharpness
     // is 0..1 and drives SGSR EdgeSharpness / FSR RCAS at draw time. Session-live.
     public synchronized void setUpscaler(int mode, float sharpness01) {
+        // AI / AI HQ (9/10) are Vulkan-only (a compute pass in the native compositor). The GL
+        // composer has no AI pass, so a 9/10 that ever reaches it runs SGSR HQ (8) instead.
+        if (mode == 9 || mode == 10) mode = 8;
         this.upscalerMode = mode;
         this.upscaleSharpness = sharpness01;
         upscalePrimary = null;

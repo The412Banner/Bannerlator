@@ -659,11 +659,13 @@
         <b>None / Linear / Nearest</b> — plain stretching. Linear is smooth; Nearest keeps hard pixel edges.<br />
         <b>SGSR</b> — Snapdragon upscaler. Rebuilds edges so a lower resolution looks sharper. Very light.<br />
         <b>SGSR HQ</b> — SGSR with cleaner diagonal and curved edges, for about the same cost.<br />
+        <b>AI</b> — a small AI model trained on game footage rebuilds fine detail when the game runs below your screen resolution (like the other upscalers, set the game’s Screen size lower than your display). Sharper and cleaner than SGSR. Costs a little GPU time — if your FPS drops, use SGSR HQ. Vulkan renderer only; a device that can’t run it gets SGSR HQ instead.<br />
+        <b>AI HQ</b> — a bigger version of the AI model: more detail, more GPU time. Best when your game already has FPS to spare.<br />
         <b>FSR / FSR (Fit)</b> — AMD upscaler, a little heavier. FSR fills the whole screen (may stretch); FSR (Fit) keeps the shape and adds black bars.<br />
         <b>NIS</b> — NVIDIA upscaler, similar to FSR.<br />
         <b>Sharpen</b> — no upscaling, only sharpens. Works at any resolution.<br /><br />
         <b>Examples:</b> a heavy game at 720p on a 1080p screen → SGSR HQ. A pixel-art or retro game → Nearest. A game already at your screen resolution → None, or Sharpen for extra crispness.<br /><br />
-        <b>Sharpness</b> sets how strong the sharpening is. Your choice is remembered for this game.
+        <b>Sharpness</b> sets how strong the sharpening is. With AI or AI HQ the same slider is called <b>Detail</b> and sets how much detail the model adds (0 = off, handy for comparing). Your choice is remembered for this game.
     ]]></string>
     <string name="help_fps_limiter"><![CDATA[
         <b>FPS Limiter</b><br /><br />

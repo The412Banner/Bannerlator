@@ -812,8 +812,10 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     // Scaling mode (spatial upscaler). Enum mirrors the native side:
     //   0=none 1=linear 2=nearest 3=sgsr 4=fsr(fill) 5=fsr_fit(letterbox)
     //   6=sharpen 7=nis 8=sgsr_quality (SGSR 1 edge-direction variant)
-    // Modes 1/2 also set the base sampler filter natively; modes 3-5/7/8 run the
-    // SGSR/FSR/NIS shader passes (only when the game renders below display res).
+    //   9=ai 10=ai_hq (learned SR: compute residual + final pass; natively falls back
+    //   to 8 when the device can't run it)
+    // Modes 1/2 also set the base sampler filter natively; modes 3-5/7-10 run the
+    // SGSR/FSR/NIS/AI shader passes (only when the game renders below display res).
     public void setUpscaler(int mode) {
         pendingUpscaler = mode;
         synchronized (lock) { if (nativeHandle != 0) nativeSetUpscaler(nativeHandle, mode); }

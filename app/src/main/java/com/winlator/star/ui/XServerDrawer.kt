@@ -1240,7 +1240,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
         ScalingModeHeader("Scaling mode", accent)
         Spacer(Modifier.height(2.dp))
-        UpscalerModeButtons(upscalerMode, true) {
+        UpscalerModeButtons(upscalerMode, true, showAi = true) {
             upscalerMode = it
             XServerDialogState.setUpscalerMode(it)
             lookTouchedScaling()
@@ -1249,11 +1249,13 @@ private fun GraphicsContent(state: XServerDrawerState) {
 
         // "Sharpness" controls the REAL upscaler sharpness (RCAS stops / SGSR EdgeSharpness /
         // NIS sharpness) and only applies to the sharpening scaling modes (SGSR/FSR/FSR-Fit/Sharpen/NIS/SGSR HQ).
-        if (upscalerMode in 3..8) {
+        // For AI / AI HQ (9/10) the same slider is "Detail": how much of the network's residual is
+        // added (default 75 = as trained, 0 = off, i.e. plain bilinear for comparison).
+        if (upscalerMode in 3..10) {
             val initUpscaleSharpness by XServerDialogState.upscaleSharpness.collectAsState()
             var upscaleSharpness by remember(initUpscaleSharpness) { mutableIntStateOf(initUpscaleSharpness) }
             Spacer(Modifier.height(4.dp))
-            IntSlider("Sharpness", upscaleSharpness, 0..100, { upscaleSharpness = it }, {
+            IntSlider(if (upscalerMode >= 9) "Detail" else "Sharpness", upscaleSharpness, 0..100, { upscaleSharpness = it }, {
                 XServerDialogState.onUpscaleSharpnessApply?.invoke(upscaleSharpness)
             })
         }
@@ -2251,7 +2253,8 @@ private fun GradientSlider(
 // Scaling-mode picker: 9 options (0=None 1=Linear 2=Nearest 3=SGSR 8=SGSR HQ 4=FSR
 // 5=FSR Fit 6=Sharpen 7=NIS) laid out as rows of three segmented chips (same box-chip
 // idiom as FgMultiplierButtons). SGSR HQ sits next to SGSR; its int is 8 because the
-// mode ints are persisted per game and must never be renumbered.
+// mode ints are persisted per game and must never be renumbered. The Vulkan picker adds
+// a fourth row, 9=AI 10=AI HQ (showAi) — the GL renderer has no AI pass.
 // Terminal debanding controls (toggle + optional dither-strength slider), shared by the
 // GL and Vulkan graphics blocks. Reads/writes the single _debandEnabled/_debandStrength
 // state and fires onDebandApply; only one renderer block is shown per session, so the
@@ -2436,14 +2439,17 @@ private fun ScalingModeHeader(title: String, color: Color, modifier: Modifier = 
 }
 
 @Composable
-private fun UpscalerModeButtons(selected: Int, enabled: Boolean, onSelect: (Int) -> Unit) {
+private fun UpscalerModeButtons(selected: Int, enabled: Boolean, showAi: Boolean = false, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
-    val options = listOf(
+    val baseOptions = listOf(
         0 to "None", 1 to "Linear", 2 to "Nearest",
         3 to "SGSR", 8 to "SGSR HQ", 4 to "FSR",
         5 to "FSR (Fit)", 6 to "Sharpen", 7 to "NIS"
     )
+    // AI / AI HQ (9/10) run only in the Vulkan compositor, so only the Vulkan picker shows
+    // them; after the nine above they land on a row of their own.
+    val options = if (showAi) baseOptions + listOf(9 to "AI", 10 to "AI HQ") else baseOptions
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         options.chunked(3).forEach { row ->
             Row(

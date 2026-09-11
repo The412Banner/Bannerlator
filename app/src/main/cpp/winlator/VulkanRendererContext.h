@@ -213,6 +213,17 @@ struct DebandPushConstants {               // 28 bytes
     float resolution[2];                   // input texture size in px (layout parity)
     float strength;                        // dither amplitude in LSBs (1.0 = +/-1/255)
 };
+// AI upscale (modes 9/10). The final pass is byte-identical to SgsrPushConstants;
+// its last float is the residual gain (the "Detail" slider) instead of EdgeSharpness.
+struct AiUpscalePushConstants {            // 36 bytes
+    float ndc[4];
+    float viewportInfo[4];                 // xy = 1/inputSize, zw = inputSize px
+    float detail;                          // residual gain; 0 = plain bilinear
+};
+// The compute pass that writes the residual: just the offscreen (game res) size.
+struct AiComputePushConstants {            // 8 bytes
+    int32_t size[2];
+};
 
 class VulkanRendererContext {
 public:
@@ -434,7 +445,10 @@ private:
     //   6 = sharpen  (RCAS-only; any resolution; aspect-fit / letterbox)
     //   7 = nis      (NVIDIA Image Scaling NVScaler; single pass; aspect-fit)
     //   8 = sgsr_quality (SGSR 1 edge-direction variant; single pass; aspect-fit)
-    // Shader upscaling only engages for modes 3-8 AND when the game render
+    //   9 = ai       (small learned SR net: compute residual @ game res, then one
+    //                 bilinear+residual pass; aspect-fit). Falls back to 8 if unsupported.
+    //  10 = ai_hq    (same as 9, bigger network)
+    // Shader upscaling only engages for modes 3-10 AND when the game render
     // resolution (container) is smaller than the swapchain. Otherwise the
     // existing direct-to-swapchain path is used unchanged.
     int               upscalerMode      = 0;
@@ -664,6 +678,41 @@ private:
     VkFramebuffer     offscreenFB   = VK_NULL_HANDLE;
     VkDescriptorSet   offscreenDS   = VK_NULL_HANDLE;
     int               offscreenW = 0, offscreenH = 0;
+    // Bumped every time ensureOffscreen (re)creates the target. The AI upscale
+    // descriptor sets hold offscreenView, and a recreated view can come back with
+    // the SAME handle value, so the handle alone cannot tell that they went stale.
+    uint64_t          offscreenGen = 0;
+
+    // ---- AI upscale (modes 9 = AI, 10 = AI HQ) ----
+    // A compute pass runs a small learned SR network over the offscreen composite
+    // (game res) and writes an RGBA16F residual image of the SAME size; one graphics
+    // pass then bilinear-upscales the offscreen into the fit rect and adds the
+    // residual. Created lazily on the first AI frame (ensureAiUpscale). If the device
+    // fails the gate or any creation fails, aiFailed latches (logged once) and modes
+    // 9/10 run the SGSR HQ (mode 8) path for the rest of the session.
+    VkDescriptorSetLayout aiCompDSLayout    = VK_NULL_HANDLE; // b0 sampler2D src, b1 rgba16f storage
+    VkDescriptorPool      aiDescPool        = VK_NULL_HANDLE; // owns aiCompDS + aiResidualDS
+    VkDescriptorSet       aiCompDS          = VK_NULL_HANDLE; // offscreen + residual (storage)
+    VkDescriptorSet       aiResidualDS      = VK_NULL_HANDLE; // dsLayout: residual as sampler2D (final pass set 1)
+    VkPipelineLayout      aiCompPipeLayout  = VK_NULL_HANDLE;
+    VkPipeline            aiFastPipeline    = VK_NULL_HANDLE; // mode 9 compute
+    VkPipeline            aiHqPipeline      = VK_NULL_HANDLE; // mode 10 compute
+    VkPipelineLayout      aiFinalPipeLayout = VK_NULL_HANDLE; // {dsLayout, dsLayout} + AiUpscalePushConstants
+    VkPipeline            aiFinalPipeline   = VK_NULL_HANDLE; // upscale.vert + ai_upscale_final.frag (renderPass)
+    VkImage               aiResImg  = VK_NULL_HANDLE;         // R16G16B16A16_SFLOAT @ offscreen size
+    VkDeviceMemory        aiResMem  = VK_NULL_HANDLE;
+    VkImageView           aiResView = VK_NULL_HANDLE;
+    int                   aiResW = 0, aiResH = 0;
+    // What the two descriptor sets were last written with.
+    bool                  aiDSWritten       = false;
+    VkImageView           aiDSOffscreenView = VK_NULL_HANDLE;
+    uint64_t              aiDSOffscreenGen  = 0;
+    VkImageView           aiDSResView       = VK_NULL_HANDLE;
+    bool                  aiPipelinesReady  = false;
+    bool                  aiFailed          = false;          // latched: modes 9/10 -> SGSR HQ
+    // One status log line per change of mode / sizes / detail.
+    int                   aiLogMode = -1, aiLogInW = 0, aiLogInH = 0, aiLogOutW = 0, aiLogOutH = 0;
+    float                 aiLogDetail = -1.0f;
 
     // FSR intermediate (EASU output) @ upscale output resolution
     VkImage           midImg  = VK_NULL_HANDLE;
@@ -690,8 +739,9 @@ private:
     int               fx2W = 0, fx2H = 0;
 
     // Per-frame upscale plan, computed in renderFrame, consumed by recordCmdBuf.
-    // upFrame.mode reuses the upscalerMode enum (3=sgsr,4=fsr,5=fsr_fit,6=sharpen,7=nis,8=sgsr_quality)
-    // plus an internal sentinel (UPMODE_DOWNSCALE) for the supersampling path.
+    // upFrame.mode reuses the upscalerMode enum (3=sgsr,4=fsr,5=fsr_fit,6=sharpen,7=nis,8=sgsr_quality,
+    // 9=ai,10=ai_hq) plus an internal sentinel (UPMODE_DOWNSCALE) for the supersampling path.
+    // An AI mode that fell back is planned as 8, so upFrame.mode 9/10 always means "AI runs".
     struct UpscaleFrame {
         bool active = false;
         int  mode = 0;
@@ -717,6 +767,8 @@ private:
         NtscPushConstants      ntscPC{};
         CrtPushConstants       crtPC{};
         DebandPushConstants    debandPC{};
+        AiUpscalePushConstants aiPC{};      // AI final pass (modes 9/10)
+        AiComputePushConstants aiCompPC{};  // AI residual compute (modes 9/10)
     } upFrame;
 
     VkCommandPool                cmdPool = VK_NULL_HANDLE;
@@ -756,7 +808,10 @@ private:
     void createUpscaleSampler();
     void createOffscreenRenderPass();
     void createPostPipelines();
-    VkPipeline createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp);
+    // `layout` defaults to postPipeLayout (every existing post pass); the AI final
+    // pass supplies its own two-set layout.
+    VkPipeline createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp,
+                                  VkPipelineLayout layout = VK_NULL_HANDLE);
     bool createColorTarget(int w, int h, VkImage& img, VkDeviceMemory& mem,
                            VkImageView& view, VkFramebuffer& fb, VkDescriptorSet& ds);
     void destroyColorTarget(VkImage& img, VkDeviceMemory& mem, VkImageView& view,
@@ -765,6 +820,15 @@ private:
     bool ensureMid(int w, int h);
     bool ensureFx1(int w, int h);
     bool ensureFx2(int w, int h);
+    // AI upscale (modes 9/10). ensureAiUpscale runs on the render thread after
+    // ensureOffscreen; false = use SGSR HQ this frame (aiFailed says whether for good).
+    bool ensureAiUpscale(int w, int h);
+    const char* aiCapsProblem(char* buf, size_t bufSz);   // nullptr = device can run it
+    bool createAiPipelines();
+    bool createAiResidual(int w, int h);
+    void destroyAiResidual();
+    void destroyAiUpscale();
+    void aiFallback(const char* why);
     void recordUpscalePasses(VkCommandBuffer cb, uint32_t imgIdx,
                              const std::vector<DrawEntry>& draws, bool cursorDrawn,
                              short ptrX, short ptrY, short curHotX, short curHotY,

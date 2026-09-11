@@ -5,7 +5,7 @@
 > - **Per-game settings: L1/R1 switch sections** (General / Win Components / Env Vars / Advanced / Controller) from anywhere in the editor, wrapping around, both orientations. The landscape rail was only reachable at the very end of the D-pad order, then Left/Right. After a switch the D-pad cursor lands on the new section's first control.
 > - **See-through top bar in XMB:** the Games / Steam pill / buttons band is transparent and the XMB backdrop runs up behind it (a faint shade keeps it readable); the layout below the bar is unchanged. Games tab + XMB only, and not while the update banner shows; every other screen and view keeps the normal bar.
 > - **Landscape XMB hides the Android nav buttons** (an edge swipe brings them back briefly). They come back in portrait, in the other views and on other tabs, and are re-hidden when returning from a game.
-> - Status: compile pending in CI; not device-proven.
+> - ✅ CI-green on all 3 flavors (run 34649651575, commit `63e00dd2`). Staged `/sdcard/Download/Bannerlator-1.0-xmb-view-r2-pubg.apk` sha `3065540a…`. Not device-proven yet.
 
 ## 2026-09-11 — 🧭 **CHECKPOINT: Games tab XMB view built, CI in flight** (`feat/games-xmb-view` off main `cebde01e`)
 > - New 4th Games-tab layout, **XMB** (PS3 cross media bar): the view button now cycles List → Grid → Compact → XMB. Games run left/right along a bar with the focused one enlarged at the cross; the column under it is that game's ⋮ menu with **Play** on top and **Remove** moved to the bottom. Top bar, sort, select mode and the + button are unchanged.

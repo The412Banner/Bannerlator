@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧹 **USB cable in the 3.1.0 notes; merged branches deleted (with backups)**
+> - 3.1.0 notes now say the Steam Controller is tested over Bluetooth **and a USB cable**; the wireless puck is still untested. Updated on the live release page, `docs/releases/3.1.0.md` and the README (`7f44c20f`). `update.json` unchanged.
+> - GitHub: **97 merged branches deleted** (87 fully in main + 10 whose content is all on main), each first backed up to `refs/backup/20260911/heads/<branch>` and deleted with a lease on its checked SHA. 72 remain: main, 67 unmerged, and 4 whose commits were copied to main but whose content still differs from it (`feat/bake-aio-2.0.0`, `feat/container-layer-update`, `feat/steam-cloud-saves`, `fix/rust-depot-autoresume`).
+> - Local: **85 merged branches deleted** (backed up to `refs/backup/20260911/local/<branch>`), 43 clean worktrees on them removed. Kept: 3 merged branches whose worktrees hold work (`bl-wt-steam-vac` has 43 uncommitted files, `bannerlators-parity` has a scratchpad of .db files, `bl-combo` sits in another session's scratch folder). 89 local branches remain. Lists in `~/branch-cleanup-20260911/`.
+> - Restore any branch: `git fetch origin refs/backup/20260911/heads/<b>:refs/heads/<b>` (or `…/local/<b>`).
+
 ## 2026-09-11 — ✅ **Steam Controller over USB cable verified** (tester TAR, user-relayed); branch census
 > - The USB cable path works: tester-verified on the 3.1.0 build. The wireless puck is still untested. The live 3.1.0 notes still say USB is untested (update offered).
 > - Branch census vs main (nothing deleted; hiatus rule): 168 GitHub branches besides main. 87 fully merged, 14 merged as copied commits (same patches on main), 67 not merged (incl. `test` from June, 1,092 commits ahead, and the parked `feat/ea-storefront`, `fix/ama-package-name`, `feat/steam-lobby-invites`, `ci/release-notes-collapsible`). Local: 173 branches, 79 fully merged. GitHub Pages serves from main `/docs` (no gh-pages branch).

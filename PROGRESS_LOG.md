@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🎯🪟 **Blank title bars on game windows: cause found, fix building** (proton-wine `aio-eanet/xp-taskbar` `de58ddace7c`, CI 34604357716)
+> - Windows that draw through Vulkan or OpenGL (every DXVK/VKD3D/GL game) get no Wine-side surface, so Wine sends their frame to the app's X server one drawing request at a time. That X server fills rectangles with the background colour instead of the fill colour, skips line segments and has no RENDER extension, so the frame came out white and the caption blank. Plain Wine frames on game windows were affected the same way; this predates the XP work.
+> - Fix: for those windows, draw the frame into a bitmap and copy it over as an image, which this X server handles correctly. The XP caption buttons are always drawn in a bitmap too, so hover and press repaints work as well. The faint text on inactive XP title bars is now white with a shadow (dark grey on Silver).
+> - Follow-up for the app, not done: the Java X server's `PolyFillRectangle` should use the foreground colour, and `PolySegment`/`PolyRectangle`/clip rectangles are not implemented.
+
 ## 2026-09-11 — 🔬🪟 **XP title bars unreadable in some programs: investigating** (proton-wine `aio-eanet/xp-debug` `1a7f9b391ba`, diagnostic only)
 > - User report 08:41: the file manager's inactive XP title text is too faint, and in the Game Controller Tester and AIO Graphics Test the title bar is blank (white, or black with only the button outlines).
 > - Reproduced on Container-8. The broken windows are 32-bit programs that draw through Vulkan (DXVK/VKD3D). In AIO the XP button outlines do draw, so the XP code runs there, but the filled areas never show. On the stock layer (Sep 7) a DXVK window had a normal, readable Wine title bar.

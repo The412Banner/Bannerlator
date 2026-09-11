@@ -122,7 +122,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 // Serializes all native adrenotools probing (isDriverSupported + enumerateExtensions) off the
 // main thread. Serial = no concurrent AdrenoTools hooks (old SIGSEGV); off-main = no ANR.
-private val graphicsProbeMutex = Mutex()
+internal val graphicsProbeMutex = Mutex()
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable

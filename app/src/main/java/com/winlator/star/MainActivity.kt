@@ -16,6 +16,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.Image
@@ -49,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -60,6 +63,8 @@ import androidx.compose.runtime.setValue
 import com.winlator.star.core.UpdateManager
 import androidx.compose.runtime.rememberCoroutineScope
 import com.winlator.star.ui.LocalTopBarActions
+import com.winlator.star.ui.LocalTopBarOverlayInset
+import com.winlator.star.ui.LocalTopBarTransparent
 import com.winlator.star.ui.topBarActionsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -587,6 +592,7 @@ private fun AppShell(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val topBarActionsState = remember { topBarActionsState() }
+    val topBarTransparentState = remember { mutableStateOf(false) }
 
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route ?: startRoute
@@ -652,7 +658,13 @@ private fun AppShell(
         else -> Screen.drawerItems.firstOrNull { it.route == currentRoute }?.label ?: "Winlator"
     }
 
-    CompositionLocalProvider(LocalTopBarActions provides topBarActionsState) {
+    // The Games tab's XMB view asks for a see-through top bar; the screen is then laid out under the
+    // bar so its backdrop runs to the top. Games route only, and not while the update banner shows
+    // (it sits between the bar and the screen).
+    val barOverlay = currentRoute == Screen.Games.route && topBarTransparentState.value &&
+        !isFullBleed && !(bannerUpdate != null && !bannerDismissed)
+
+    CompositionLocalProvider(LocalTopBarActions provides topBarActionsState, LocalTopBarTransparent provides topBarTransparentState) {
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = !currentRoute.startsWith("container_detail") && !isFullBleed,
@@ -709,12 +721,25 @@ private fun AppShell(
                         titleTrailing = if (currentRoute == Screen.Games.route) {
                             { com.winlator.star.store.SteamConnectionPill() }
                         } else null,
+                        transparent = barOverlay,
                         actions = topBarActionsState.value,
                     )
                 }
             },
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(if (isFullBleed) PaddingValues(0.dp) else innerPadding)) {
+            val layoutDir = LocalLayoutDirection.current
+            val contentPadding = when {
+                isFullBleed -> PaddingValues(0.dp)
+                // Drawn under the see-through bar: every inset except the top.
+                barOverlay -> PaddingValues(
+                    start = innerPadding.calculateStartPadding(layoutDir),
+                    end = innerPadding.calculateEndPadding(layoutDir),
+                    bottom = innerPadding.calculateBottomPadding(),
+                )
+                else -> innerPadding
+            }
+            CompositionLocalProvider(LocalTopBarOverlayInset provides if (barOverlay) innerPadding.calculateTopPadding() else 0.dp) {
+            Column(modifier = Modifier.padding(contentPadding)) {
                 val upd = bannerUpdate
                 if (upd != null && !bannerDismissed && !isFullBleed) {
                     UpdateBanner(
@@ -740,6 +765,7 @@ private fun AppShell(
                     com.winlator.star.ui.UnpackProgressPill()
                 }
             }
+            } // end LocalTopBarOverlayInset
         }
     }
     } // end CompositionLocalProvider

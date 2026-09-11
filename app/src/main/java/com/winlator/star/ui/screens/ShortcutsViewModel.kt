@@ -60,9 +60,10 @@ enum class ShortcutSortOrder { NAME_ASC, NAME_DESC, CONTAINER }
 
 /**
  * How the games library is laid out. GRID is the original adaptive grid; GRID_COMPACT fixes four
- * columns so more covers fit at once. Ordinals are persisted — append, never reorder.
+ * columns so more covers fit at once; XMB is the PS3-style cross media bar (games across, that
+ * game's options down). Ordinals are persisted — append, never reorder.
  */
-enum class ShortcutViewMode { LIST, GRID, GRID_COMPACT }
+enum class ShortcutViewMode { LIST, GRID, GRID_COMPACT, XMB }
 
 sealed class ImportResult {
     /** [appId] = the Steam appId identified on disk (if any), so the confirm dialog can seed
@@ -948,7 +949,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putInt("view_mode", mode.ordinal).apply()
     }
 
-    /** Cycles list → grid → compact grid → list, driven by the single header button. */
+    /** Cycles list → grid → compact grid → XMB → list, driven by the single header button. */
     fun cycleViewMode() {
         val next = ShortcutViewMode.entries[(_viewMode.value.ordinal + 1) % ShortcutViewMode.entries.size]
         setViewMode(next)

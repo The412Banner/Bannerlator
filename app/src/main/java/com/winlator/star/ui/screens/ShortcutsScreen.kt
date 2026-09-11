@@ -78,6 +78,7 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CloudDownload
@@ -170,6 +171,7 @@ import com.winlator.star.ui.AccountUiBus
 import com.winlator.star.ui.ComponentReturnBus
 import com.winlator.star.ui.EmulatorLabels
 import com.winlator.star.ui.LocalTopBarActions
+import com.winlator.star.ui.LocalTopBarTransparent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -342,6 +344,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var gameDetailsShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var propertiesShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var logsShortcut by remember { mutableStateOf<Shortcut?>(null) }
+    // XMB view: a nested menu is open (hides the + button) / its "Manage wrappers" row asked for the dialog.
+    var xmbNested by remember { mutableStateOf(false) }
+    var showWrapperManagerXmb by remember { mutableStateOf(false) }
     // Steam launch-method popup (feature M3): the Steam-origin shortcut whose SteamLite-vs-Goldberg
     // chooser is open (null = closed). A Steam game routes through this before launching UNLESS it
     // already has a remembered choice (launchMode set + launchModeRemembered=="1").
@@ -951,6 +956,13 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     val topBarActions = LocalTopBarActions.current
+    // The XMB view draws its own backdrop, so it asks for a see-through top bar (MainActivity only
+    // honours that on the Games route). Dropped when leaving XMB or this screen.
+    val topBarTransparent = LocalTopBarTransparent.current
+    LaunchedEffect(viewMode, shortcuts.isEmpty()) {
+        topBarTransparent.value = viewMode == ShortcutViewMode.XMB && shortcuts.isNotEmpty()
+    }
+    DisposableEffect(Unit) { onDispose { topBarTransparent.value = false } }
     // LaunchedEffect — not SideEffect — so this runs in the same dispatcher queue as
     // MainActivity's route-change clear (which is a LaunchedEffect). Parent enqueues
     // first and runs first (clears); we enqueue second and run after (sets). A
@@ -996,19 +1008,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     tint = androidx.compose.ui.graphics.Color.White,
                 )
             }
-            // One button cycling list → grid → compact grid. The icon shows what you get NEXT,
+            // One button cycling list → grid → compact grid → XMB. The icon shows what you get NEXT,
             // matching how the two-state version behaved.
             IconButton(onClick = { vm.cycleViewMode() }) {
                 Icon(
                     imageVector = when (viewMode) {
                         ShortcutViewMode.LIST -> Icons.Filled.GridView
                         ShortcutViewMode.GRID -> Icons.Filled.Apps
-                        ShortcutViewMode.GRID_COMPACT -> Icons.Filled.ViewList
+                        ShortcutViewMode.GRID_COMPACT -> Icons.Filled.ViewCarousel
+                        ShortcutViewMode.XMB -> Icons.Filled.ViewList
                     },
                     contentDescription = when (viewMode) {
                         ShortcutViewMode.LIST -> "Grid view"
                         ShortcutViewMode.GRID -> "Compact grid view"
-                        ShortcutViewMode.GRID_COMPACT -> "List view"
+                        ShortcutViewMode.GRID_COMPACT -> "XMB view"
+                        ShortcutViewMode.XMB -> "List view"
                     },
                     tint = androidx.compose.ui.graphics.Color.White,
                 )
@@ -1052,6 +1066,38 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // XMB options column = a card's ⋮ menu, reordered for a D-pad (common first, Remove last). Items with
+    // a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbSettingsPhase2*.kt / XmbGameTools*.kt)
+    // instead of pop-ups; the three that hand off to Android or a full screen keep their handlers.
+    val xmbHost = XmbGameHost(
+        remove = { vm.remove(it, context) },
+        containers = { vm.containers() },
+        openWrapperManager = { showWrapperManagerXmb = true },
+    )
+    val xmbActionsFor: (Shortcut) -> List<XmbAction> = { shortcut ->
+        buildList {
+            add(XmbAction("Settings", Icons.Filled.Settings, "Display, graphics, controller…", menu = { xmbSettingsMenu(it, shortcut, xmbHost) }))
+            add(XmbAction("Game Details", Icons.Filled.Edit, "Name, genres, year, description", menu = { xmbGameDetailsMenu(it, shortcut) }))
+            if (isSteamOriginShortcut(shortcut)) {
+                add(XmbAction("Cloud Saves", Icons.Filled.CloudSync, "Steam Cloud sync — opens its own screen") { launchSaveManager(context, steamAppIdOf(shortcut)) })
+            }
+            if (isCustomShortcut(shortcut)) {
+                add(XmbAction("Back up saves", Icons.Filled.Archive, menu = { xmbBackupSavesMenu(it, shortcut) }))
+                add(XmbAction("Restore saves", Icons.Filled.Unarchive, menu = { xmbRestoreSavesMenu(it, shortcut) }))
+            }
+            add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for this game", menu = { xmbCommunityConfigsMenu(it, shortcut) }))
+            add(XmbAction("Scrape cover", Icons.Filled.Search, menu = { xmbScrapeCoverMenu(it, shortcut) }))
+            add(XmbAction("View logs", Icons.Filled.Description, menu = { xmbLogsMenu(it, shortcut) }))
+            add(XmbAction("Clone to container", Icons.Filled.ContentCopy, menu = { xmbCloneMenu(it, shortcut, xmbHost) }))
+            add(XmbAction("Copy to Drive C…", Icons.Filled.DriveFileMove, menu = { xmbCopyToDriveCMenu(it, shortcut) }))
+            add(XmbAction("Change executable…", Icons.Filled.SwapHoriz, menu = { xmbChangeExeMenu(it, shortcut) }))
+            add(XmbAction("Add to home screen", Icons.Filled.AddToHomeScreen, "Android's pin prompt") { addToHomeScreen(context, shortcut) })
+            add(XmbAction("Export", Icons.Filled.Upload) { exportShortcut(context, shortcut) })
+            add(XmbAction("Properties", Icons.Filled.Info, "Times played, playtime", menu = { xmbPropertiesMenu(it, shortcut) }))
+            add(XmbAction("Remove", Icons.Filled.Delete, "Asks to confirm first", danger = true, menu = { xmbRemoveMenu(it, shortcut, xmbHost) }))
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (shortcuts.isEmpty()) {
@@ -1062,7 +1108,35 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 )
             } else {
                 AnimatedContent(targetState = viewMode, label = "layout") { mode ->
-                    if (mode != ShortcutViewMode.LIST) {
+                    if (mode == ShortcutViewMode.XMB) {
+                        ShortcutsXmbView(
+                            shortcuts = shortcuts,
+                            selectionMode = selectionMode,
+                            selectedPaths = selectedPaths,
+                            onToggleSelect = { selectedPaths = selectedPaths.toggle(it.file.path) },
+                            onExitSelection = { selectionMode = false; selectedPaths = emptySet() },
+                            onPlay = { requestLaunch(it) },
+                            actionsFor = xmbActionsFor,
+                            storeBadges = { shortcut ->
+                                ShortcutBadgeOverlay(
+                                    showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
+                                    showEa = remember(shortcut) { EaSupport.isTagged(shortcut) },
+                                    showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
+                                    showEos = rememberEosBadge(shortcut),
+                                    showGog = remember(shortcut) { isGogShortcut(shortcut) },
+                                    showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
+                                    showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
+                                )
+                            },
+                            sdBadge = { shortcut ->
+                                if (remember(shortcut) { WinePath.isOnRemovableStorage(shortcut.container, shortcut.path) }) {
+                                    SdCardBadge(Modifier.padding(start = 6.dp))
+                                }
+                            },
+                            onReloadGames = { vm.refresh() },
+                            onNestedChange = { xmbNested = it },
+                        )
+                    } else if (mode != ShortcutViewMode.LIST) {
                         // Compact keeps a CONSTANT tile size across orientation: derive the column
                         // count from the shortest screen edge so portrait resolves to exactly 4 and
                         // landscape flows to more columns of the SAME width (was Fixed(4) → tiles
@@ -1152,8 +1226,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     }
                 }
             }
-            // Long-press and slide along the bottom to move it off a card's buttons.
-            DraggableAddButton(
+            // Long-press and slide along the bottom to move it off a card's buttons. Hidden while an XMB
+            // menu is open (it would sit on top of the menu's rows).
+            if (!(viewMode == ShortcutViewMode.XMB && xmbNested)) DraggableAddButton(
                 prefKey = "games",
                 onClick = { showImportContainerPicker = true },
                 outerPadding = 16.dp,
@@ -2870,6 +2945,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     // Game Details editor (Edit Game): name + Steam link/search + genres/description/year/metacritic.
+    if (showWrapperManagerXmb) WrapperManagerDialog(onDismiss = { showWrapperManagerXmb = false })
     gameDetailsShortcut?.let { s ->
         GameDetailsSheet(
             shortcut = s,
@@ -4642,7 +4718,7 @@ private fun CommunityDevicePanel(
 
 // Human display name for a config's meta.app_source — the actual project that produced it. BannerHub
 // and BannerHub Lite are distinct apps writing "bannerhub" / "bannerhub_lite"; ours would be "bannerlator".
-private fun communitySourceLabel(appSource: String?): String = when (appSource?.lowercase()?.trim()) {
+internal fun communitySourceLabel(appSource: String?): String = when (appSource?.lowercase()?.trim()) {
     "bannerhub" -> "BannerHub"
     "bannerhub_lite" -> "BannerHub Lite"
     "bannerlator" -> "Bannerlator"
@@ -4654,7 +4730,7 @@ private fun communitySourceLabel(appSource: String?): String = when (appSource?.
 // Turn a translated config into "what it sets" lines in OUR component terms (the same fields the apply
 // engine consumes). Only present fields are listed; Proton/wineVersion is advisory (container-only) so
 // it is surfaced separately, not here.
-private fun configSummaryLines(config: ShortcutConfig): List<Pair<String, String>> {
+internal fun configSummaryLines(config: ShortcutConfig): List<Pair<String, String>> {
     val out = ArrayList<Pair<String, String>>()
     config.dxwrapperConfig["version"]?.takeIf { it.isNotBlank() }?.let { out.add("DXVK" to it) }
     config.dxwrapperConfig["vkd3dVersion"]?.takeIf { it.isNotBlank() }?.let { out.add("VKD3D" to it) }
@@ -5833,6 +5909,8 @@ private class SettingsDpad {
     var menuOnSelect: (String) -> Unit = {}
     val actions = HashMap<String, ControlActions>()
     val rootFocus = FocusRequester()
+    // Previous/next section with wrap-around, published by [DpTabs]; L1/R1 call it from anywhere.
+    var tabStep: ((Int) -> Unit)? = null
 
     fun isFocused(id: String) = focusedId == id
     fun openMenu(id: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
@@ -5875,6 +5953,10 @@ private fun Modifier.settingsDpad(dp: SettingsDpad, ids: () -> List<String>, onD
                 Key.DirectionRight -> { dp.focusedId?.takeIf { it in order }?.let { dp.actions[it]?.onRight?.invoke() }; true }
                 Key.ButtonA, Key.Enter, Key.DirectionCenter -> { dp.focusedId?.takeIf { it in order }?.let { dp.actions[it]?.activate?.invoke() }; true }
                 Key.ButtonB, Key.Back -> { onDismiss(); true }
+                // Shoulder buttons switch sections from anywhere (the landscape rail is otherwise
+                // only reachable at the very end of the D-pad order).
+                Key.ButtonL1 -> { dp.tabStep?.invoke(-1); true }
+                Key.ButtonR1 -> { dp.tabStep?.invoke(1); true }
                 else -> false
             }
         }
@@ -5971,7 +6053,7 @@ private val ROOT_PERF_LABELS = mapOf(
 )
 
 /** Per-game override value to persist, or null (clear the extra) when it equals the global default. */
-private fun perfExtraOrNull(value: Boolean, global: Boolean): String? =
+internal fun perfExtraOrNull(value: Boolean, global: Boolean): String? =
     if (value == global) null else if (value) "1" else "0"
 
 /** A per-game perf toggle row with an override/inherit indicator and a per-toggle Reset. */
@@ -6035,6 +6117,7 @@ private fun DpTabs(dp: SettingsDpad, id: String, selected: Int, count: Int, onSe
             onLeft = { if (selected > 0) onSelect(selected - 1) },
             onRight = { if (selected < count - 1) onSelect(selected + 1) },
         )
+        dp.tabStep = { step -> if (count > 0) onSelect(((selected + step) % count + count) % count) }
     }
     DpadHighlight(focused = dp.isFocused(id), modifier = Modifier.dpadBringIntoView(dp, id)) { content() }
 }
@@ -6723,6 +6806,13 @@ internal fun ShortcutSettingsDialogScreen(
             }
         }
         add("tabs"); add("cancel"); add("ok")
+    }
+    // After a section switch (L1/R1 or touch) the D-pad cursor may point at a control the new section
+    // doesn't have: move it to that section's first control (index 1, just past the title close).
+    // Untouched for touch users, whose cursor stays null.
+    LaunchedEffect(selectedTab) {
+        val f = dp.focusedId
+        if (f != null && f !in dpadIds) dp.focusedId = dpadIds.getOrNull(1)
     }
     // Seed the root focus so the editor receives D-pad from the first frame (it's its own Dialog window).
     LaunchedEffect(Unit) { runCatching { dp.rootFocus.requestFocus() } }
@@ -7907,7 +7997,7 @@ internal fun ShortcutSettingsDialogScreen(
                 // Portrait: the tab strip is pinned across the TOP (mirrors the container editor's
                 // top tab bar via the shared RailTopTabs). Landscape: the shared collapsible left rail
                 // beside the content. Left/Right on the focused "tabs" node still switches tabs for
-                // D-pad/controller users in both orientations.
+                // D-pad/controller users in both orientations, and L1/R1 switch from anywhere.
                 val railState = rememberRailState("shortcut")
                 val railItems = tabTitles.mapIndexed { index, tab ->
                     RailItem(tab, shortcutTabIcon(tab), index == selectedTab) { selectedTab = index }
@@ -8453,7 +8543,7 @@ private fun downloadBitmapOrNull(url: String): Bitmap? = try {
  * sets its cover art — Steam CDN 600x900 portrait, falling back to the landscape header. Writes
  * both customCoverArt and the grid-tile icon PNG (keyed on the current base). Returns the bitmap or null.
  */
-private fun applySteamCover(container: Container, base: String, appId: Int): Bitmap? {
+internal fun applySteamCover(container: Container, base: String, appId: Int): Bitmap? {
     val shortcutFile = File(container.getDesktopDir(), "$base.desktop")
     if (!shortcutFile.isFile) return null
     val bmp = downloadBitmapOrNull(SteamStoreSearch.coverUrl(appId))

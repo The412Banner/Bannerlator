@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -45,13 +46,15 @@ fun AppTopBar(
     // the flexible gap that pushes [actions] to the far right. Used for the Steam connection pill on
     // the Games screen. Null = title only.
     titleTrailing: (@Composable () -> Unit)? = null,
+    // See-through band (the Games tab's XMB view draws its backdrop behind it).
+    transparent: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.surface)
             .padding(horizontal = 4.dp, vertical = 2.dp),
     ) {
         Box(

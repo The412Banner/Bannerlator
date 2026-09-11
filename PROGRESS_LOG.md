@@ -2,7 +2,7 @@
 
 ## 2026-09-10 — ✅ **Steam Controller support MERGED to main** (merge `c2acbbd1` = `feat/steam-controller-sdl` @ `31ede2c4`, main CI run 34546109943)
 > - User: "all works, merge it to main". The community tester confirmed r6 on a 2026 Steam Controller over Bluetooth: in-game play, profile bindings, extra buttons (L4/L5/R4/R5 + "…"), trackpad mouse Right / Left / Both, and the settings Test/Bind dialog (18 inputs). User-relayed; no logs seen here.
-> - Checked before push: 20 files, all feature files; identical stat with `--ignore-cr-at-eol` (no line-ending churn); the merged tree is byte-identical to the tested r6 build (excluding PROGRESS_LOG). Main CI dispatched, headSha `c2acbbd1` verified.
+> - Checked before push: 20 files, all feature files; identical stat with `--ignore-cr-at-eol` (no line-ending churn); the merged tree is byte-identical to the tested r6 build (excluding PROGRESS_LOG). Main CI run 34546109943 ✅ standard/ludashi/pubg, headSha `c2acbbd1` verified.
 > - Opt-in: Input Controls → Device → Steam Controller (off = SDL never loaded). Revert just this: `git revert -m 1 c2acbbd1`. Not released yet; goes in the next cut after 3.0.9.
 > - Still untested: USB cable / puck. Not done: gyro, left-trackpad scroll/D-pad, Steam button as XInput guide. Branch, worktree and backup kept.
 

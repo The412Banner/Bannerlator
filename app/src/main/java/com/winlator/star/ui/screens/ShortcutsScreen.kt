@@ -344,6 +344,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var gameDetailsShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var propertiesShortcut by remember { mutableStateOf<Shortcut?>(null) }
     var logsShortcut by remember { mutableStateOf<Shortcut?>(null) }
+    // XMB view: a nested menu is open (hides the + button) / its "Manage wrappers" row asked for the dialog.
+    var xmbNested by remember { mutableStateOf(false) }
+    var showWrapperManagerXmb by remember { mutableStateOf(false) }
     // Steam launch-method popup (feature M3): the Steam-origin shortcut whose SteamLite-vs-Goldberg
     // chooser is open (null = closed). A Steam game routes through this before launching UNLESS it
     // already has a remembered choice (launchMode set + launchModeRemembered=="1").
@@ -1063,30 +1066,35 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // XMB options column = a card's ⋮ menu with the same handlers and the same conditional
-    // entries, reordered for a D-pad: common actions first, Remove last. (Play/Select is added
-    // on top by the XMB view itself.)
+    // XMB options column = a card's ⋮ menu, reordered for a D-pad (common first, Remove last). Items with
+    // a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbSettingsPhase2*.kt / XmbGameTools*.kt)
+    // instead of pop-ups; the three that hand off to Android or a full screen keep their handlers.
+    val xmbHost = XmbGameHost(
+        remove = { vm.remove(it, context) },
+        containers = { vm.containers() },
+        openWrapperManager = { showWrapperManagerXmb = true },
+    )
     val xmbActionsFor: (Shortcut) -> List<XmbAction> = { shortcut ->
         buildList {
-            add(XmbAction("Settings", Icons.Filled.Settings, "Container, graphics, controls") { settingsShortcut = shortcut })
-            add(XmbAction("Game Details", Icons.Filled.Edit, "Genres, year, description") { gameDetailsShortcut = shortcut })
+            add(XmbAction("Settings", Icons.Filled.Settings, "Display, graphics, controller…", menu = { xmbSettingsMenu(it, shortcut, xmbHost) }))
+            add(XmbAction("Game Details", Icons.Filled.Edit, "Name, genres, year, description", menu = { xmbGameDetailsMenu(it, shortcut) }))
             if (isSteamOriginShortcut(shortcut)) {
-                add(XmbAction("Cloud Saves", Icons.Filled.CloudSync, "Steam Cloud sync") { launchSaveManager(context, steamAppIdOf(shortcut)) })
+                add(XmbAction("Cloud Saves", Icons.Filled.CloudSync, "Steam Cloud sync — opens its own screen") { launchSaveManager(context, steamAppIdOf(shortcut)) })
             }
             if (isCustomShortcut(shortcut)) {
-                add(XmbAction("Back up saves", Icons.Filled.Archive) { startSaveBackup(shortcut) })
-                add(XmbAction("Restore saves", Icons.Filled.Unarchive) { startSaveRestore(shortcut) })
+                add(XmbAction("Back up saves", Icons.Filled.Archive, menu = { xmbBackupSavesMenu(it, shortcut) }))
+                add(XmbAction("Restore saves", Icons.Filled.Unarchive, menu = { xmbRestoreSavesMenu(it, shortcut) }))
             }
-            add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for this game") { communityConfigsFor(shortcut) })
-            add(XmbAction("Scrape cover", Icons.Filled.Search) { scrapeCoverFor(shortcut) })
-            add(XmbAction("View logs", Icons.Filled.Description) { logsShortcut = shortcut })
-            add(XmbAction("Clone to container", Icons.Filled.ContentCopy) { cloneTarget = shortcut })
-            add(XmbAction("Copy to Drive C…", Icons.Filled.DriveFileMove) { copyToDriveCTarget = shortcut })
-            add(XmbAction("Change executable…", Icons.Filled.SwapHoriz) { changeExeTarget = shortcut })
-            add(XmbAction("Add to home screen", Icons.Filled.AddToHomeScreen) { addToHomeScreen(context, shortcut) })
+            add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for this game", menu = { xmbCommunityConfigsMenu(it, shortcut) }))
+            add(XmbAction("Scrape cover", Icons.Filled.Search, menu = { xmbScrapeCoverMenu(it, shortcut) }))
+            add(XmbAction("View logs", Icons.Filled.Description, menu = { xmbLogsMenu(it, shortcut) }))
+            add(XmbAction("Clone to container", Icons.Filled.ContentCopy, menu = { xmbCloneMenu(it, shortcut, xmbHost) }))
+            add(XmbAction("Copy to Drive C…", Icons.Filled.DriveFileMove, menu = { xmbCopyToDriveCMenu(it, shortcut) }))
+            add(XmbAction("Change executable…", Icons.Filled.SwapHoriz, menu = { xmbChangeExeMenu(it, shortcut) }))
+            add(XmbAction("Add to home screen", Icons.Filled.AddToHomeScreen, "Android's pin prompt") { addToHomeScreen(context, shortcut) })
             add(XmbAction("Export", Icons.Filled.Upload) { exportShortcut(context, shortcut) })
-            add(XmbAction("Properties", Icons.Filled.Info) { propertiesShortcut = shortcut })
-            add(XmbAction("Remove", Icons.Filled.Delete, "Asks to confirm first", danger = true) { confirmRemove = shortcut })
+            add(XmbAction("Properties", Icons.Filled.Info, "Times played, playtime", menu = { xmbPropertiesMenu(it, shortcut) }))
+            add(XmbAction("Remove", Icons.Filled.Delete, "Asks to confirm first", danger = true, menu = { xmbRemoveMenu(it, shortcut, xmbHost) }))
         }
     }
 
@@ -1125,6 +1133,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     SdCardBadge(Modifier.padding(start = 6.dp))
                                 }
                             },
+                            onReloadGames = { vm.refresh() },
+                            onNestedChange = { xmbNested = it },
                         )
                     } else if (mode != ShortcutViewMode.LIST) {
                         // Compact keeps a CONSTANT tile size across orientation: derive the column
@@ -1216,8 +1226,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     }
                 }
             }
-            // Long-press and slide along the bottom to move it off a card's buttons.
-            DraggableAddButton(
+            // Long-press and slide along the bottom to move it off a card's buttons. Hidden while an XMB
+            // menu is open (it would sit on top of the menu's rows).
+            if (!(viewMode == ShortcutViewMode.XMB && xmbNested)) DraggableAddButton(
                 prefKey = "games",
                 onClick = { showImportContainerPicker = true },
                 outerPadding = 16.dp,
@@ -2934,6 +2945,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     // Game Details editor (Edit Game): name + Steam link/search + genres/description/year/metacritic.
+    if (showWrapperManagerXmb) WrapperManagerDialog(onDismiss = { showWrapperManagerXmb = false })
     gameDetailsShortcut?.let { s ->
         GameDetailsSheet(
             shortcut = s,
@@ -4706,7 +4718,7 @@ private fun CommunityDevicePanel(
 
 // Human display name for a config's meta.app_source — the actual project that produced it. BannerHub
 // and BannerHub Lite are distinct apps writing "bannerhub" / "bannerhub_lite"; ours would be "bannerlator".
-private fun communitySourceLabel(appSource: String?): String = when (appSource?.lowercase()?.trim()) {
+internal fun communitySourceLabel(appSource: String?): String = when (appSource?.lowercase()?.trim()) {
     "bannerhub" -> "BannerHub"
     "bannerhub_lite" -> "BannerHub Lite"
     "bannerlator" -> "Bannerlator"
@@ -4718,7 +4730,7 @@ private fun communitySourceLabel(appSource: String?): String = when (appSource?.
 // Turn a translated config into "what it sets" lines in OUR component terms (the same fields the apply
 // engine consumes). Only present fields are listed; Proton/wineVersion is advisory (container-only) so
 // it is surfaced separately, not here.
-private fun configSummaryLines(config: ShortcutConfig): List<Pair<String, String>> {
+internal fun configSummaryLines(config: ShortcutConfig): List<Pair<String, String>> {
     val out = ArrayList<Pair<String, String>>()
     config.dxwrapperConfig["version"]?.takeIf { it.isNotBlank() }?.let { out.add("DXVK" to it) }
     config.dxwrapperConfig["vkd3dVersion"]?.takeIf { it.isNotBlank() }?.let { out.add("VKD3D" to it) }
@@ -6041,7 +6053,7 @@ private val ROOT_PERF_LABELS = mapOf(
 )
 
 /** Per-game override value to persist, or null (clear the extra) when it equals the global default. */
-private fun perfExtraOrNull(value: Boolean, global: Boolean): String? =
+internal fun perfExtraOrNull(value: Boolean, global: Boolean): String? =
     if (value == global) null else if (value) "1" else "0"
 
 /** A per-game perf toggle row with an override/inherit indicator and a per-toggle Reset. */
@@ -8531,7 +8543,7 @@ private fun downloadBitmapOrNull(url: String): Bitmap? = try {
  * sets its cover art — Steam CDN 600x900 portrait, falling back to the landscape header. Writes
  * both customCoverArt and the grid-tile icon PNG (keyed on the current base). Returns the bitmap or null.
  */
-private fun applySteamCover(container: Container, base: String, appId: Int): Bitmap? {
+internal fun applySteamCover(container: Container, base: String, appId: Int): Bitmap? {
     val shortcutFile = File(container.getDesktopDir(), "$base.desktop")
     if (!shortcutFile.isFile) return null
     val bmp = downloadBitmapOrNull(SteamStoreSearch.coverUrl(appId))

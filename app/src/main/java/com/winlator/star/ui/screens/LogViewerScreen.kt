@@ -72,7 +72,7 @@ import java.io.RandomAccessFile
  * minutes, and the interesting part of a log is always the end — so we read the last
  * [TAIL_BYTES] and say so rather than trying to hold the file in memory.
  */
-private const val TAIL_BYTES = 256L * 1024
+internal const val TAIL_BYTES = 256L * 1024
 private const val MAX_LINES = 4000
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -468,7 +468,7 @@ private fun ViewerAction(
  * Label for an archived run. Recent ones read better as an age ("2 hr ago"), older ones as a date —
  * "6 days ago" is not something anyone can line up against when a game broke.
  */
-private fun runLabel(millis: Long): String {
+internal fun runLabel(millis: Long): String {
     if (millis <= 0) return "earlier"
     val mins = (System.currentTimeMillis() - millis) / 60000
     return when {
@@ -482,7 +482,7 @@ private fun runLabel(millis: Long): String {
 }
 
 /** Severity colouring, matching the mockup: errors red, warnings amber, layer chatter blue. */
-private fun lineColor(line: String): Color {
+internal fun lineColor(line: String): Color {
     val l = line.lowercase()
     return when {
         l.contains(":err:") || l.contains("err:") || l.contains(" error") || l.contains("fatal") ->
@@ -499,7 +499,7 @@ private fun lineColor(line: String): Color {
  * Last [TAIL_BYTES] of the file as lines, plus the original size when we had to truncate (0 when
  * the whole file fitted). A partial first line is dropped rather than shown half-read.
  */
-private fun readTail(f: File): Pair<List<String>, Long> {
+internal fun readTail(f: File): Pair<List<String>, Long> {
     return try {
         val len = f.length()
         if (len == 0L) return emptyList<String>() to 0L
@@ -524,7 +524,7 @@ private fun readTail(f: File): Pair<List<String>, Long> {
  * into cacheDir first: logs can live on a user-chosen folder outside any path the provider
  * declares, and granting a chooser access to that folder is not something to do casually.
  */
-private fun shareLogFile(context: Context, file: File) {
+internal fun shareLogFile(context: Context, file: File) {
     try {
         val dir = File(context.cacheDir, "logs/share").apply { mkdirs() }
         val copy = File(dir, file.name)

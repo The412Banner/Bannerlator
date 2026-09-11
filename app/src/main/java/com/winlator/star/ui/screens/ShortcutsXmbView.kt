@@ -1,6 +1,8 @@
 package com.winlator.star.ui.screens
 
 import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import android.content.res.Configuration
 import android.hardware.input.InputManager
 import android.os.Build
@@ -70,6 +72,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -134,7 +137,9 @@ internal data class XmbAction(
     val icon: ImageVector,
     val subtitle: String? = null,
     val danger: Boolean = false,
-    val onClick: () -> Unit,
+    /** Opens a nested XMB column (Settings, Game Details, tools…) instead of running [onClick]. */
+    val menu: ((XmbScope) -> XmbMenu)? = null,
+    val onClick: () -> Unit = {},
 )
 
 /**
@@ -157,6 +162,10 @@ internal fun ShortcutsXmbView(
     actionsFor: (Shortcut) -> List<XmbAction>,
     storeBadges: @Composable (Shortcut) -> Unit,
     sdBadge: @Composable (Shortcut) -> Unit,
+    /** The game list changed (rename, clone, remove, new exe…): reload it. */
+    onReloadGames: () -> Unit = {},
+    /** True while a nested menu is open (the Games tab hides its + button). */
+    onNestedChange: (Boolean) -> Unit = {},
 ) {
     if (shortcuts.isEmpty()) return
     val context = LocalContext.current
@@ -206,6 +215,31 @@ internal fun ShortcutsXmbView(
     }
     val actIdx = act.coerceIn(0, actions.lastIndex)
 
+    // Nested XMB menus (Settings, Game Details, tools…): model in XmbModel.kt, drawing in XmbMenuHost.kt.
+    val nav = remember { XmbNavState() }
+    val nested = nav.depth > 0
+    val reload by rememberUpdatedState(onReloadGames)
+    val appCtx = context
+    val coScope = scope
+    val xmbScope = remember(nav) {
+        object : XmbScope {
+            override val context: Context get() = appCtx
+            override val scope: kotlinx.coroutines.CoroutineScope get() = coScope
+            override fun push(menu: XmbMenu) = nav.push(menu)
+            override fun pop() = nav.pop()
+            override fun popToRoot() = nav.popTo(0)
+            override fun refresh() = nav.bump()
+            override fun toast(message: String) { Toast.makeText(appCtx, message, Toast.LENGTH_SHORT).show() }
+            override fun saved() { nav.savedAt = System.currentTimeMillis() }
+            override fun confirm(confirm: XmbConfirm, onOk: () -> Unit) = nav.push(xmbConfirmMenu(nav, confirm, onOk))
+            override fun reloadGames() = reload()
+        }
+    }
+    fun runAction(a: XmbAction) { val mk = a.menu; if (mk != null) nav.push(mk(xmbScope)) else a.onClick() }
+    LaunchedEffect(nested) { onNestedChange(nested) }
+    DisposableEffect(Unit) { onDispose { onNestedChange(false) } }
+    BackHandler(enabled = nested) { nav.pop() }
+
     // Take D-pad focus on entry and again whenever the app comes back (e.g. after a game exits).
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
@@ -218,8 +252,8 @@ internal fun ShortcutsXmbView(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Landscape XMB is a couch front end: the Android nav buttons are hidden (an edge swipe brings them
-    // back briefly). Shown again on rotating to portrait, switching view, or leaving the tab.
+    // Landscape XMB is a couch front end: the Android status bar and nav buttons are hidden (an edge
+    // swipe brings them back briefly). Shown again on rotating to portrait, switching view, or leaving the tab.
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val view = LocalView.current
     DisposableEffect(landscape, lifecycleOwner) {
@@ -227,14 +261,14 @@ internal fun ShortcutsXmbView(
         val bars = if (landscape && window != null) WindowCompat.getInsetsController(window, view) else null
         val hideNav = {
             bars?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            bars?.hide(WindowInsetsCompat.Type.navigationBars())
+            bars?.hide(WindowInsetsCompat.Type.systemBars())
         }
         hideNav()
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) hideNav() }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            bars?.show(WindowInsetsCompat.Type.navigationBars())
+            bars?.show(WindowInsetsCompat.Type.systemBars())
         }
     }
     // Space under a see-through top bar: the backdrop fills it, the bar/cover layout starts below it.
@@ -257,7 +291,10 @@ internal fun ShortcutsXmbView(
         val wPx = with(density) { maxWidth.toPx() }
         val hPx = with(density) { maxHeight.toPx() }
 
+        var swipe by remember { mutableFloatStateOf(0f) }
+        val swipeBackPx = with(density) { 60.dp.toPx() }
         val hDrag = rememberDraggableState { delta ->
+            if (nav.depth > 0) { swipe += delta; return@rememberDraggableState }
             settleJob?.cancel()
             val p = (pos.floatValue - delta / pitchPx).coerceIn(-0.45f, n - 1 + 0.45f)
             pos.floatValue = p
@@ -266,6 +303,7 @@ internal fun ShortcutsXmbView(
         }
         var vAcc by remember { mutableFloatStateOf(0f) }
         val vDrag = rememberDraggableState { d ->
+            if (nav.depth > 0) return@rememberDraggableState
             vAcc += d
             val step = rowPx * 0.9f
             while (vAcc <= -step) { vAcc += step; act = (act + 1).coerceAtMost(actions.lastIndex) }
@@ -280,6 +318,28 @@ internal fun ShortcutsXmbView(
                 .focusable()
                 .onPreviewKeyEvent { e ->
                     if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    if (nav.depth > 0) {
+                        // Typing into a Text row: the field gets the keys; A = done, B = cancel.
+                        if (nav.editingKey != null) {
+                            return@onPreviewKeyEvent when (e.key) {
+                                Key.ButtonA -> { nav.commitEdit(xmbScope); true }
+                                Key.ButtonB -> { nav.pop(); true }
+                                else -> false
+                            }
+                        }
+                        val k = when (e.key) {
+                            Key.DirectionUp -> XmbKey.Up
+                            Key.DirectionDown -> XmbKey.Down
+                            Key.DirectionLeft -> XmbKey.Left
+                            Key.DirectionRight -> XmbKey.Right
+                            Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> XmbKey.A
+                            Key.ButtonB, Key.Escape -> XmbKey.B
+                            Key.ButtonL1 -> XmbKey.L1
+                            Key.ButtonR1 -> XmbKey.R1
+                            else -> null
+                        } ?: return@onPreviewKeyEvent false
+                        return@onPreviewKeyEvent nav.onKey(k, xmbScope)
+                    }
                     when (e.key) {
                         Key.DirectionLeft -> { settleTo(target - 1); true }
                         Key.DirectionRight -> { settleTo(target + 1); true }
@@ -287,7 +347,7 @@ internal fun ShortcutsXmbView(
                         Key.ButtonR1 -> { settleTo(target + 5); true }
                         Key.DirectionDown -> { act = (actIdx + 1).coerceAtMost(actions.lastIndex); true }
                         Key.DirectionUp -> if (actIdx > 0) { act = actIdx - 1; true } else false
-                        Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> { actions[actIdx].onClick(); true }
+                        Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> { runAction(actions[actIdx]); true }
                         Key.ButtonB -> when {
                             actIdx > 0 -> { act = 0; true }
                             selectionMode -> { onExitSelection(); true }
@@ -298,7 +358,11 @@ internal fun ShortcutsXmbView(
                 }
                 .draggable(
                     hDrag, Orientation.Horizontal,
-                    onDragStopped = { velocity -> settleTo((pos.floatValue - velocity / pitchPx * 0.14f).roundToInt()) },
+                    onDragStarted = { swipe = 0f },
+                    onDragStopped = { velocity ->
+                        if (nav.depth > 0) { if (swipe > swipeBackPx) nav.pop() }
+                        else settleTo((pos.floatValue - velocity / pitchPx * 0.14f).roundToInt())
+                    },
                 ),
         ) {
             // Background: accent glow → the focused cover, blurred → shade → the moving waves.
@@ -337,7 +401,16 @@ internal fun ShortcutsXmbView(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (hasPad) {
+                    if (hasPad && nested) {
+                        val hi = nav.hint(xmbScope)
+                        XmbHint("A", Color(0xFF3DDC84), hi.a)
+                        XmbHint("B", Color(0xFFFF5252), "Back")
+                        if (!m.port && m.w >= 600f) {
+                            XmbKeyHint("▲ ▼", "Move")
+                            if (hi.change) XmbKeyHint("◀ ▶", "Change")
+                        }
+                        if (hi.sections) XmbKeyHint("L1 R1", "Section")
+                    } else if (hasPad) {
                         XmbHint("A", Color(0xFF3DDC84), actions[actIdx].label)
                         XmbHint("B", Color(0xFFFF5252), "Back")
                         if (!m.port && m.w >= 600f) {
@@ -353,6 +426,8 @@ internal fun ShortcutsXmbView(
                     Text(clock, color = Color(0xFFDDDDDD), fontSize = 12.sp, fontWeight = FontWeight.Light)
                 }
 
+                val rootAlpha by animateFloatAsState(if (nested) 0f else 1f, tween(260), label = "xmbRootAlpha")
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = rootAlpha; translationY = (1f - rootAlpha) * -12.dp.toPx() }) {
                 // The bar. Only covers near the cross are composed; each one's placement is read from
                 // `pos` in its graphics layer, so a swipe re-draws without recomposing.
                 val baseIdx by remember { derivedStateOf { floor(pos.floatValue).toInt() } }
@@ -363,7 +438,7 @@ internal fun ShortcutsXmbView(
                         XmbCover(
                             shortcut = s, index = i, pos = pos, m = m, accent = accent,
                             focused = i == target, selectionMode = selectionMode, selected = s.file.path in selectedPaths,
-                            onClick = { if (i == target) { if (selectionMode) onToggleSelect(s) else onPlay(s) } else settleTo(i) },
+                            onClick = { if (nav.depth == 0) { if (i == target) { if (selectionMode) onToggleSelect(s) else onPlay(s) } else settleTo(i) } },
                         )
                     }
                 }
@@ -414,7 +489,7 @@ internal fun ShortcutsXmbView(
                                 action = a, selected = d == 0, accent = accent, iconBox = m.iconBox,
                                 modifier = Modifier
                                     .graphicsLayer { translationY = y.dp.toPx(); alpha = a2 }
-                                    .then(if (vis) Modifier.clickable(src, null) { act = i; a.onClick() } else Modifier),
+                                    .then(if (vis && !nested) Modifier.clickable(src, null) { act = i; runAction(a) } else Modifier),
                             )
                         }
                     }
@@ -426,6 +501,10 @@ internal fun ShortcutsXmbView(
                     ) {
                         XmbInfo(focused, playtime, if (m.port) 6 else 3, storeBadges)
                     }
+                }
+                }
+                if (nested) {
+                    XmbNestedLayer(nav, xmbScope, m.w, m.h, m.port, accent, focused.name, focused.icon, actions.map { it.icon }, actIdx)
                 }
             }
         }
@@ -575,7 +654,7 @@ private fun XmbActionRow(action: XmbAction, selected: Boolean, accent: Color, ic
         Spacer(Modifier.width(12.dp))
         Column {
             Text(
-                action.label,
+                if (action.menu != null) "${action.label}  ›" else action.label,
                 color = if (selected) Color.White else Color.White.copy(alpha = 0.58f),
                 fontSize = if (selected) 16.sp else 13.5.sp,
                 fontWeight = if (selected) FontWeight.Normal else FontWeight.Light,

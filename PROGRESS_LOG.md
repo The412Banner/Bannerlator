@@ -4,6 +4,7 @@
 > - r3 device test (user screenshot): after any text row's keyboard closed, D-pad focus landed on the top-bar buttons (Steam friends) and Down never came back to the XMB.
 > - Two causes: the "hand focus back to the XMB" hook after editing was never wired (`XmbNavState.refocus` stayed a no-op), and since r2 the XMB's focus target extended up behind the see-through top bar — D-pad focus search skips a target that overlaps the button you're on, so Down found nothing.
 > - Fix: refocus wired to the XMB root after commit/cancel; the focus target now starts below the top bar (keys still handled by the outer box); every tap target inside the XMB (covers, rows, choices, strips, breadcrumb) is non-focusable so focus can't be stranded on a row that scrolls away.
+> - ✅ CI-green (run 34658836305, commit `189f8a63`). Staged `/sdcard/Download/Bannerlator-1.0-xmb-view-r4-pubg.apk` sha `72531f10…`. Not device-proven yet.
 
 ## 2026-09-11 — 🧭 **CHECKPOINT: XMB r3 — a game's settings and tools built INTO the XMB (all three phases), CI in flight** (`feat/games-xmb-view`)
 > - User asks after the r2 test: the per-game settings pop-up was still hard with a controller and had no hints → "build the menu into the XMB itself… and the rest of the options… so it's all fluid"; then "build all three and give me a finished APK", plus hide the status bar too.
